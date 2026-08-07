@@ -1,0 +1,75 @@
+# Developer menu for lazymenu-cli. Run `lazymenu-cli` from the repository root.
+
+[menu]
+title = "rpg-s1 dev menu"
+quit_key = "q"
+loop = true
+key_format = "{key})"
+selected_foreground = "black"
+selected_background = "cyan"
+selected_bold = true
+
+[[items]]
+id = "run"
+label = "Run title-screen prototype"
+key = "r"
+command = ["cargo", "run"]
+group = "Play"
+tags = ["run", "play", "game", "title"]
+description = "Build and launch the current playable slice"
+favorite = true
+
+[[items]]
+id = "check"
+label = "Check"
+key = "c"
+command = ["cargo", "check"]
+group = "Quality"
+tags = ["check", "compile", "rust"]
+description = "Type-check the project without producing a release build"
+
+[[items]]
+id = "test"
+label = "Test"
+key = "t"
+command = ["cargo", "test"]
+group = "Quality"
+tags = ["test", "rust"]
+description = "Run the Rust test suite"
+
+[[items]]
+id = "clippy"
+label = "Clippy"
+key = "l"
+command = ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
+group = "Quality"
+tags = ["lint", "clippy", "rust"]
+description = "Run Clippy and reject warnings"
+
+[[items]]
+id = "format-check"
+label = "Check formatting"
+key = "f"
+command = ["cargo", "fmt", "--", "--check"]
+group = "Quality"
+tags = ["format", "rustfmt", "rust"]
+description = "Verify Rust formatting without changing files"
+
+[[items]]
+id = "build-release"
+label = "Build release binary"
+key = "b"
+command = ["cargo", "build", "--release"]
+group = "Build"
+tags = ["build", "release", "binary"]
+description = "Build an optimized native binary in target/release"
+
+[[items]]
+id = "clean"
+label = "Clean build artifacts"
+key = "x"
+command = ["cargo", "clean"]
+group = "Maintenance"
+tags = ["clean", "target", "delete"]
+description = "Delete Cargo build output"
+confirm = true

@@ -1,0 +1,24 @@
+mod title_screen;
+
+use bevy::{
+    prelude::*,
+    window::{PresentMode, WindowPlugin},
+};
+use title_screen::TitleScreenPlugin;
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Chronicles of the Lost Flame".into(),
+                resolution: (1280, 766).into(),
+                present_mode: PresentMode::AutoVsync,
+                resizable: true,
+                ..default()
+            }),
+            ..default()
+        }))
+        .insert_resource(ClearColor(Color::srgb_u8(10, 10, 30)))
+        .add_plugins(TitleScreenPlugin)
+        .run();
+}

@@ -1,0 +1,21 @@
+[package]
+name = "rpg-s1"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+description = "A small Rust and Bevy RPG prototype"
+
+[dependencies]
+bevy = { version = "0.19", default-features = false, features = [
+    "2d",
+    "ui",
+    "audio",
+    "mp3",
+    "webp",
+] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
