@@ -1,0 +1,8 @@
+- id: invented-grove-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: invented-sunken-cave-1280x468
+  ground_rect: { x: 120, y: 310, width: 910, height: 158 }
+
+- id: opaque-runtime-key
+  ground_rect: { x: 2, y: 3, width: 40, height: 50 }
