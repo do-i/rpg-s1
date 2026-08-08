@@ -143,7 +143,7 @@ sizes on the available llvmpipe renderer.
 | M2.05 | [x] Define the manifest service-sprite schema. | `T` | Apothecary, inn, item, weapon, armor, and item-box fields load. |
 | M2.06 | [x] Define the manifest protagonist/start schema. | `T` | Protagonist, map, position, and intro fields load. |
 | M2.07 | [x] Define the manifest flags/refs schema. | `T` | Bootstrap flags, managed flags, and all refs load. |
-| M2.08 | [ ] Add manifest required-field errors. | `T` | Missing fields identify their YAML location. |
+| M2.08 | [x] Add manifest required-field errors. | `T` | Missing fields identify their YAML location. |
 | M2.09 | [ ] Add manifest path-existence validation. | `T` | Every referenced file/directory produces a focused result. |
 | M2.10 | [ ] Define shared condition fields. | `S` | `requires` and `excludes` have one typed representation. |
 | M2.11 | [ ] Define shared position and direction types. | `T` | Coordinates and four/eight-way directions round-trip in fixtures. |

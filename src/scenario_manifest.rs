@@ -8,6 +8,36 @@ use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
+/// The complete known manifest schema for the pinned Rusted Kingdoms source snapshot.
+///
+/// This composes the existing leaf types from M2.03 through M2.07 without duplicating their
+/// nested field schemas. It intentionally does not flatten the partial adapters: Serde flatten
+/// loses the parent segment of a missing nested field, which would make required-field errors
+/// report `cursor_icon` instead of `title.cursor_icon`. `signs` remains accepted for its future
+/// owning milestone; strict unknown-field rejection is added once every pinned field has an
+/// owner.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct Manifest {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub window_title: String,
+    pub title: ManifestTitle,
+    pub font: ManifestFont,
+    pub ui: ManifestUi,
+    pub apothecary: ManifestApothecary,
+    pub inn: ManifestServiceSprite,
+    pub item_shop: ManifestServiceSprite,
+    pub weapon_shop: ManifestServiceSprite,
+    pub armor_shop: ManifestServiceSprite,
+    pub item_box: ManifestServiceSprite,
+    pub protagonist: ManifestProtagonist,
+    pub start: ManifestStart,
+    pub bootstrap_flags: Vec<String>,
+    pub engine_managed_flags: Vec<String>,
+    pub refs: ManifestRefs,
+}
+
 /// The manifest fields that identify scenario content and label its game window.
 ///
 /// `id` and `version` are content identity rather than the selected package key; see
@@ -226,7 +256,7 @@ impl std::error::Error for ScenarioDirectoryPathError {}
 #[cfg(test)]
 mod tests {
     use super::{
-        ManifestApothecary, ManifestApothecaryIcons, ManifestFlagsRefs, ManifestFont,
+        Manifest, ManifestApothecary, ManifestApothecaryIcons, ManifestFlagsRefs, ManifestFont,
         ManifestIdentityWindow, ManifestProtagonist, ManifestProtagonistStart, ManifestRefs,
         ManifestServiceSprite, ManifestServiceSprites, ManifestStart, ManifestTitle,
         ManifestTitleFontUi, ManifestUi, ScenarioDirectoryPath, ScenarioDirectoryPathError,
@@ -415,6 +445,66 @@ mod tests {
             Err(ScenarioDirectoryPathError::InvalidPath(
                 ScenarioRelativePathError::EscapesPackage
             ))
+        );
+    }
+
+    #[test]
+    fn composes_every_owned_manifest_slice_from_the_source_shape() {
+        let manifest: Manifest = scenario_yaml::from_str(include_str!(
+            "../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"
+        ))
+        .expect("the complete source-shaped manifest should deserialize");
+
+        assert_eq!(manifest.id, "my_rpg_story");
+        assert_eq!(
+            manifest.title.cursor_icon.as_str(),
+            "assets/images/icons/arrow-head-right.webp"
+        );
+        assert_eq!(
+            manifest.inn.sprite.as_str(),
+            "assets/sprites/npc/female_blue_01.tsx"
+        );
+        assert_eq!(manifest.start.position, [14, 5]);
+        assert_eq!(manifest.refs.encount.as_str(), "data/encount");
+    }
+
+    #[test]
+    fn complete_manifest_reports_a_missing_top_level_field_with_its_location() {
+        let document = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
+            .replacen("id: my_rpg_story\n", "", 1);
+        let error = scenario_yaml::from_str::<Manifest>(&document)
+            .expect_err("a complete manifest without id should fail");
+
+        assert_eq!(error.path(), "id");
+        let location = error
+            .location()
+            .expect("Serde YAML should retain the missing field location");
+        assert_eq!((location.line(), location.column()), (2, 1));
+        assert_eq!(
+            error.to_string(),
+            "id: missing field `id` at line 2 column 1"
+        );
+    }
+
+    #[test]
+    fn complete_manifest_reports_a_missing_nested_field_with_its_location() {
+        let document = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
+            .replacen(
+                "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
+                "",
+                1,
+            );
+        let error = scenario_yaml::from_str::<Manifest>(&document)
+            .expect_err("a complete manifest without title.cursor_icon should fail");
+
+        assert_eq!(error.path(), "title.cursor_icon");
+        let location = error
+            .location()
+            .expect("Serde YAML should retain the missing field location");
+        assert_eq!((location.line(), location.column()), (8, 3));
+        assert_eq!(
+            error.to_string(),
+            "title.cursor_icon: missing field `cursor_icon` at line 8 column 3"
         );
     }
 }
