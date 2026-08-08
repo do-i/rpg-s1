@@ -1,3 +1,4 @@
+pub mod app_state;
 mod title_screen;
 
 #[cfg(test)]

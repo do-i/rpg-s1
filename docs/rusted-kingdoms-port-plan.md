@@ -107,7 +107,7 @@ confirm sound before exiting cleanly.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M1.01 | [ ] Define the top-level `AppState` variants. | `S` | Boot, Title, NameEntry, Dialogue, World, Battle, FieldMenu, PostBattle, and GameOver are represented. |
+| M1.01 | [x] Define the top-level `AppState` variants. | `S` | Boot, Title, NameEntry, Dialogue, World, Battle, FieldMenu, PostBattle, and GameOver are represented. |
 | M1.02 | [ ] Move title startup into `OnEnter(AppState::Title)`. | `S` | Title entities appear only while Title is active. |
 | M1.03 | [ ] Add title-screen cleanup on state exit. | `T` | No title UI, sprite, or audio entity survives the transition. |
 | M1.04 | [ ] Add a single transition request event. | `S` | Systems request transitions without directly constructing the next scene. |
