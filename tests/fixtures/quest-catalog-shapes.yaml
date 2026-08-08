@@ -1,0 +1,15 @@
+- id: main_invented_act
+  name: An Invented Main Road
+  type: main
+  location: Invented Keep - Invented Shore
+  description: Follow the invented road.
+  started_flag: story_invented_started
+  completed_flag: story_invented_completed
+
+- id: sq_invented_errand
+  name: An Invented Errand
+  type: sub
+  location: Invented Village
+  description: Carry an invented message.
+  started_flag: sq_invented_started
+  completed_flag: sq_invented_done

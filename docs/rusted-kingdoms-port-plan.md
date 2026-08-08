@@ -157,7 +157,7 @@ sizes on the available llvmpipe renderer.
 | M2.19 | [x] Define balance data types. | `T` | The complete balance file loads with defaults made explicit. |
 | M2.20 | [x] Define battle-background data types. | `T` | Every background entry loads. |
 | M2.21 | [x] Define recipe data types. | `T` | Regular and unique-output recipes load. |
-| M2.22 | [ ] Define quest data types. | `S` | Every current quest objective/reward shape loads. |
+| M2.22 | [x] Define quest data types. | `S` | Every current quest objective/reward shape loads. |
 | M2.23 | [ ] Define audio-index data types. | `T` | BGM and SFX indices load and resolve paths. |
 | M2.24 | [ ] Add duplicate-ID detection per catalog. | `T` | A fixture with a duplicate reports both locations. |
 | M2.25 | [ ] Add cross-reference validation. | `S` | Party, maps, dialogue, items, enemies, encounters, recipes, quests, flags, and assets are checked. |
