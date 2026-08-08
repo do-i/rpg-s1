@@ -38,6 +38,15 @@ tags = ["test", "rust"]
 description = "Run the Rust test suite"
 
 [[items]]
+id = "validate-scenario"
+label = "Validate scenario data"
+key = "v"
+command = ["cargo", "run", "--", "validate-scenario"]
+group = "Quality"
+tags = ["validate", "scenario", "data", "rust"]
+description = "Validate the default Rusted Kingdoms package without launching Bevy"
+
+[[items]]
 id = "clippy"
 label = "Clippy"
 key = "l"

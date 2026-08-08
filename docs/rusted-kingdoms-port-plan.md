@@ -163,7 +163,7 @@ sizes on the available llvmpipe renderer.
 | M2.25 | [x] Add cross-reference validation. | `S` | Party, maps, dialogue, items, enemies, encounters, recipes, quests, flags, and assets are checked. |
 | M2.26 | [x] Add a `validate-scenario` binary subcommand. | `S` | Validation runs without launching Bevy. |
 | M2.27 | [x] Add validator parity fixtures from Python. | `S` | Representative accepted and rejected cases agree with `tools/validate.py`. |
-| M2.28 | [ ] Add validation to the developer menu. | `T` | `lazymenu-cli` exposes one Rust scenario-validation action. |
+| M2.28 | [x] Add validation to the developer menu. | `T` | `lazymenu-cli` exposes one Rust scenario-validation action. |
 
 **Gate 2:** The Rust validator accepts the pinned Rusted Kingdoms snapshot, or
 every disagreement is listed as a deliberate compatibility decision.
