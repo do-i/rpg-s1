@@ -4,6 +4,7 @@ mod title_screen;
 #[cfg(test)]
 mod test_support;
 
+use app_state::AppState;
 use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
@@ -23,6 +24,7 @@ fn main() {
             ..default()
         }))
         .insert_resource(ClearColor(Color::srgb_u8(10, 10, 30)))
+        .insert_state(AppState::Title)
         .add_plugins(TitleScreenPlugin)
         .run();
 }

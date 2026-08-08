@@ -5,6 +5,8 @@ use bevy::{
 };
 use std::time::Duration;
 
+use crate::app_state::AppState;
+
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
 const NORMAL_COLOR: Color = Color::srgb_u8(170, 140, 100);
@@ -19,10 +21,12 @@ impl Plugin for TitleScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TitleMenu>()
             .init_resource::<QuitLifecycle>()
-            .add_systems(Startup, setup_title_screen)
+            .add_systems(OnEnter(AppState::Title), setup_title_screen)
             .add_systems(
                 Update,
-                (handle_menu_input, observe_quit_playback, update_menu_colors).chain(),
+                (handle_menu_input, observe_quit_playback, update_menu_colors)
+                    .chain()
+                    .run_if(in_state(AppState::Title)),
             );
     }
 }
@@ -609,7 +613,7 @@ mod tests {
 
     #[test]
     fn headless_quit_input_spawns_one_marked_confirmation_and_suppresses_input() {
-        let mut app = crate::test_support::headless_title_app();
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
         app.update();
         app.world_mut().resource_mut::<TitleMenu>().selected = 2;
         app.world_mut()
@@ -662,7 +666,7 @@ mod tests {
 
     #[test]
     fn headless_start_timeout_emits_one_app_exit_message() {
-        let mut app = crate::test_support::headless_title_app();
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
         app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
             Duration::ZERO,
         ));
@@ -712,11 +716,31 @@ mod tests {
     }
 
     #[test]
-    fn title_screen_startup_spawns_the_complete_title_surface() {
-        let mut app = crate::test_support::headless_title_app();
+    fn title_screen_spawns_only_after_entering_title() {
+        let mut app = crate::test_support::headless_title_app(AppState::Boot);
         app.update();
 
         let world = app.world_mut();
+        assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Boot);
+        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Sprite>().iter(world).count(), 0);
+        assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 0);
+        assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 0);
+        assert_eq!(
+            world
+                .query::<&AudioPlayer<AudioSource>>()
+                .iter(world)
+                .count(),
+            0
+        );
+
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::Title);
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
 
         let background_handles = world
