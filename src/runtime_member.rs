@@ -149,6 +149,14 @@ impl RuntimeMember {
         self.row
     }
 
+    /// Moves this member to a battle row and returns the previous row.
+    ///
+    /// Runtime party state owns member lookup and exposes the public row-change operation. The
+    /// row itself stays here so there is only one mutable source of truth for member position.
+    pub(crate) fn set_row(&mut self, row: PartyRow) -> PartyRow {
+        std::mem::replace(&mut self.row, row)
+    }
+
     pub fn equipment(&self) -> &RuntimeEquipment {
         &self.equipment
     }
