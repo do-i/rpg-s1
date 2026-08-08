@@ -77,6 +77,18 @@ impl ActiveManifestLoad {
         self.failure.as_ref()
     }
 
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "tests verify hot-reload handle identity")
+    )]
+    pub(crate) fn handle(&self) -> &Handle<Manifest> {
+        &self.handle
+    }
+
+    pub(crate) fn root(&self) -> &ScenarioRoot {
+        &self.root
+    }
+
     /// Returns the selected typed manifest only while that exact handle is ready and present.
     ///
     /// A failed, pending, or unloaded request cannot expose a stale asset value.
@@ -129,7 +141,7 @@ impl fmt::Display for ManifestLoadFailure {
 
 impl Error for ManifestLoadFailure {}
 
-fn track_active_manifest_load(
+pub(crate) fn track_active_manifest_load(
     mut active: ResMut<ActiveManifestLoad>,
     asset_server: Res<AssetServer>,
     manifests: Res<Assets<Manifest>>,

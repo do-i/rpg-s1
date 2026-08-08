@@ -15,6 +15,7 @@ use crate::{
     name_entry::NameEntryPlugin,
     playtime::Playtime,
     scenario_manifest_asset::ScenarioManifestAssetPlugin,
+    scenario_new_game_assets::ScenarioNewGameAssetsPlugin,
     scenario_root::ScenarioRoot,
     title_screen::TitleScreenPlugin,
 };
@@ -52,6 +53,7 @@ pub(crate) fn headless_title_app_with_asset_base(
         .init_resource::<ButtonInput<KeyCode>>()
         .insert_resource(scenario_root)
         .add_plugins(ScenarioManifestAssetPlugin)
+        .add_plugins(ScenarioNewGameAssetsPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(initial_state)

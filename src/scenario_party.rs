@@ -11,13 +11,15 @@
 //! scenario-relative files, while class, map, item, ability, dialogue, NPC, and flag values are
 //! catalog identifiers whose referential validation belongs to M2.25.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_path::ScenarioRelativePath;
 use crate::scenario_spatial::Position;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 use serde::{Deserialize, Deserializer, de::Error as _};
 
 /// The mapping-root party catalog from `data/party.yaml`.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct PartyCatalog {
     /// Party definitions in authored order.

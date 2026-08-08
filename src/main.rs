@@ -29,6 +29,7 @@ pub mod scenario_item;
 pub mod scenario_manifest;
 pub mod scenario_manifest_asset;
 pub mod scenario_map;
+pub mod scenario_new_game_assets;
 pub mod scenario_party;
 pub mod scenario_path;
 pub mod scenario_quest;
@@ -54,6 +55,7 @@ use gameplay_rng::GameplayRngPlugin;
 use name_entry::NameEntryPlugin;
 use playtime::Playtime;
 use scenario_manifest_asset::ScenarioManifestAssetPlugin;
+use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use scenario_root::ScenarioRoot;
 use title_screen::TitleScreenPlugin;
 use ui_theme::UiTheme;
@@ -91,6 +93,7 @@ fn run_game() {
         .insert_resource(ClearColor(UiTheme::default().clear_color))
         .init_resource::<ScenarioRoot>()
         .add_plugins(ScenarioManifestAssetPlugin)
+        .add_plugins(ScenarioNewGameAssetsPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(AppState::Title)

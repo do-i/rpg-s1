@@ -6,13 +6,15 @@
 //! when no `BalanceData` is injected, so [`BalanceData::default`] records that complete fallback
 //! set without making any source YAML field optional. Runtime formulas and tuning are deferred.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_class::{PositiveFinite, UnitInterval};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::num::NonZeroU32;
 
 /// Complete scenario-wide balance data selected by `manifest.refs.balance`.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct BalanceData {
     pub progression: ProgressionBalance,
