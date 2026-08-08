@@ -9,6 +9,7 @@ pub mod scenario_balance;
 pub mod scenario_battle_background;
 pub mod scenario_class;
 pub mod scenario_condition;
+pub mod scenario_cross_reference;
 pub mod scenario_dialogue;
 pub mod scenario_duplicate_id;
 pub mod scenario_encounter;
