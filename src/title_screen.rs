@@ -300,13 +300,9 @@ fn handle_menu_input(
         return;
     }
 
-    let direction = if actions.just_pressed(AppAction::Up) {
-        Some(-1)
-    } else if actions.just_pressed(AppAction::Down) {
-        Some(1)
-    } else {
-        None
-    };
+    // The action map resolves Up+Down to one deterministic movement before this screen handles
+    // a simultaneous Confirm against the resulting selection.
+    let direction = actions.menu_navigation();
 
     if let Some(delta) = direction {
         menu.move_by(delta);
@@ -448,6 +444,39 @@ mod tests {
             TitleMenuAction::LoadGameDisabled
         );
         assert_eq!(title_menu_action(2), TitleMenuAction::Quit);
+    }
+
+    #[test]
+    fn title_menu_uses_the_action_maps_up_precedence_for_opposite_navigation() {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.update();
+        app.world_mut().resource_mut::<TitleMenu>().selected = 1;
+
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.press(KeyCode::ArrowUp);
+            keys.press(KeyCode::ArrowDown);
+        }
+        app.update();
+
+        assert_eq!(app.world().resource::<TitleMenu>().selected, 0);
+    }
+
+    #[test]
+    fn title_menu_navigates_before_confirming_a_same_frame_selection() {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.update();
+
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.press(KeyCode::ArrowDown);
+            keys.press(KeyCode::Enter);
+        }
+        app.update();
+
+        let world = app.world();
+        assert_eq!(world.resource::<TitleMenu>().selected, LOAD_GAME_INDEX);
+        assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
     }
 
     #[test]

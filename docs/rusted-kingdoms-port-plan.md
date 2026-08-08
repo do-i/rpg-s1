@@ -113,7 +113,7 @@ confirm sound before exiting cleanly.
 | M1.04 | [x] Add a single transition request event. | `S` | Systems request transitions without directly constructing the next scene. |
 | M1.05 | [x] Route New Game to `NameEntry`. | `T` | Confirming New Game changes state once. |
 | M1.06 | [x] Add a reusable Back/Confirm/Up/Down action map. | `S` | Title input uses actions rather than raw keys. |
-| M1.07 | [ ] Add action-map unit tests. | `T` | Keyboard mappings and simultaneous-key precedence are fixed. |
+| M1.07 | [x] Add action-map unit tests. | `T` | Keyboard mappings and simultaneous-key precedence are fixed. |
 | M1.08 | [ ] Add a UI theme resource. | `T` | Existing title colors and font sizes come from one resource. |
 | M1.09 | [ ] Add a scenario-root resource. | `T` | Runtime paths resolve under one configured relative root. |
 | M1.10 | [ ] Add contextual load-error reporting. | `S` | A bad asset/data path reports the scenario-relative path and cause. |
