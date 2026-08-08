@@ -1,0 +1,22 @@
+# Pinned-source-shaped manifest fixture for M2.06.
+# The partial adapter owns all protagonist/start fields and ignores later slices.
+id: my_rpg_story
+name: "Chronicles of the Lost Flame"
+version: "1.0.0"
+window_title: "Rusted Kingdoms"
+
+protagonist:
+  id: aric
+  name: "Aric"
+  class: hero
+  sprite: assets/sprites/party/01_aric_walk.tsx
+
+start:
+  map: town_01_ardel
+  position: [14, 5]
+  intro_dialogue: data/dialogue/intro_cutscene.yaml
+
+bootstrap_flags:
+  - story_quest_started
+refs:
+  party: data/party.yaml

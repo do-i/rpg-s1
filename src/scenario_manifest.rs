@@ -87,12 +87,42 @@ pub struct ManifestServiceSprite {
     pub sprite: ScenarioRelativePath,
 }
 
+/// The manifest fields that identify the default protagonist and new-game start.
+///
+/// This is a partial manifest adapter alongside the other manifest slices. `id`,
+/// `class`, and `map` are scenario identifiers rather than paths; only the sprite
+/// and intro dialogue values name files beneath the scenario root. `position`
+/// preserves the source `[x, y]` scalar sequence for this manifest-owned slice.
+/// M2.11 will replace that temporary representation with the shared position type.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestProtagonistStart {
+    pub protagonist: ManifestProtagonist,
+    pub start: ManifestStart,
+}
+
+/// The source-authored identity and field-sprite selection for the protagonist.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestProtagonist {
+    pub id: String,
+    pub name: String,
+    pub class: String,
+    pub sprite: ScenarioRelativePath,
+}
+
+/// The authored new-game map location and opening dialogue.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestStart {
+    pub map: String,
+    pub position: [i32; 2],
+    pub intro_dialogue: ScenarioRelativePath,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         ManifestApothecary, ManifestApothecaryIcons, ManifestFont, ManifestIdentityWindow,
-        ManifestServiceSprite, ManifestServiceSprites, ManifestTitle, ManifestTitleFontUi,
-        ManifestUi,
+        ManifestProtagonist, ManifestProtagonistStart, ManifestServiceSprite,
+        ManifestServiceSprites, ManifestStart, ManifestTitle, ManifestTitleFontUi, ManifestUi,
     };
     use crate::scenario_yaml;
 
@@ -188,6 +218,31 @@ mod tests {
                 },
                 item_box: ManifestServiceSprite {
                     sprite: "assets/sprites/objects/item_box.tsx".try_into().unwrap(),
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn loads_pinned_protagonist_and_new_game_start_values() {
+        let manifest: ManifestProtagonistStart = scenario_yaml::from_str(include_str!(
+            "../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml"
+        ))
+        .expect("the pinned manifest protagonist/start slice should deserialize");
+
+        assert_eq!(
+            manifest,
+            ManifestProtagonistStart {
+                protagonist: ManifestProtagonist {
+                    id: "aric".to_owned(),
+                    name: "Aric".to_owned(),
+                    class: "hero".to_owned(),
+                    sprite: "assets/sprites/party/01_aric_walk.tsx".try_into().unwrap(),
+                },
+                start: ManifestStart {
+                    map: "town_01_ardel".to_owned(),
+                    position: [14, 5],
+                    intro_dialogue: "data/dialogue/intro_cutscene.yaml".try_into().unwrap(),
                 },
             }
         );
