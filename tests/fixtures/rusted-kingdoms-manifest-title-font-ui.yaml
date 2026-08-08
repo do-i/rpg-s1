@@ -1,0 +1,24 @@
+# Pinned-source-shaped manifest fixture for M2.04.
+# The cursor differs only by ADR 0005's required migration repair.
+id: my_rpg_story
+name: "Chronicles of the Lost Flame"
+version: "1.0.0"
+window_title: "Rusted Kingdoms"
+
+title:
+  image: assets/images/title_bg/title_lost_flame.webp
+  cursor_icon: assets/images/icons/arrow-head-right.webp
+font:
+  path: assets/fonts/Philosopher-Regular.ttf
+ui:
+  menu_backdrop: assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp
+
+# Later slices deliberately remain unknown to this adapter.
+apothecary:
+  sprite: assets/sprites/npc/female_wiz_01.tsx
+protagonist:
+  id: aric
+start:
+  map: town_01_ardel
+refs:
+  party: data/party.yaml
