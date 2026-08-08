@@ -1,0 +1,61 @@
+# Source-shaped, invented party definitions covering both pinned record variants.
+party:
+  - id: ember
+    name: "Ember"
+    class: vanguard
+    protagonist: true
+    portrait: assets/images/ember-profile.webp
+    join:
+      condition: story_started
+      map: harbor_town
+      position: [12, 8]
+    row: front
+    age: 19
+    gender: male
+    level: 1
+    exp: 0
+    hp: 22
+    hp_max: 22
+    mp: 12
+    mp_max: 12
+    stats: { str: 28, dex: 17, con: 28, int: 5 }
+    equipped:
+      weapon: iron_blade
+      shield: round_shield
+      helmet: leather_cap
+      body: leather_coat
+      accessory: ""
+    abilities_unlocked: []
+    status_effects: []
+
+  - id: mira
+    name: "Mira"
+    class: mystic
+    protagonist: false
+    portrait: assets/images/mira-profile.webp
+    join:
+      condition: story_chapter_two
+      map: mountain_village
+      position: [8, 5]
+    recruit:
+      npc: mira
+      dialogue: mira_join
+      joined_flag: npc_mira_joined
+    row: back
+    age: 18
+    gender: female
+    level: 1
+    exp: 0
+    hp: 18
+    hp_max: 18
+    mp: 20
+    mp_max: 20
+    stats: { str: 18, dex: 17, con: 18, int: 24 }
+    equipped:
+      weapon: oak_staff
+      shield: ""
+      helmet: silver_circlet
+      body: cloth_robe
+      accessory: silver_charm
+    abilities_unlocked: [mend, ward]
+    status_effects: [blessed]

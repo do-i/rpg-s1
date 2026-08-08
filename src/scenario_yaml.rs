@@ -4,7 +4,7 @@
 //! selected by ADR 0002. File access, schema validation, and multi-document streams are added
 //! by later milestones.
 
-use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 use std::error::Error as StdError;
 use std::fmt;
 
@@ -15,6 +15,63 @@ where
 {
     serde_path_to_error::deserialize(serde_yaml_ng::Deserializer::from_str(document))
         .map_err(ScenarioYamlError::from)
+}
+
+/// Deserializes exactly one YAML string scalar without scalar-to-text coercion.
+///
+/// `serde_yaml_ng` follows its predecessor's `deserialize_string` behavior and presents number
+/// and boolean scalars as text to a plain Serde `String`. Scenario schemas use this helper when
+/// YAML scalar type is part of their compatibility contract, so `42`, `true`, and `null` cannot
+/// silently become identifiers or paths.
+pub fn deserialize_string<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_any(StrictStringVisitor)
+}
+
+/// Deserializes a YAML sequence whose elements must each be YAML string scalars.
+pub fn deserialize_strings<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Vec::<StrictString>::deserialize(deserializer)
+        .map(|values| values.into_iter().map(|value| value.0).collect())
+}
+
+struct StrictString(String);
+
+impl<'de> Deserialize<'de> for StrictString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserialize_string(deserializer).map(Self)
+    }
+}
+
+struct StrictStringVisitor;
+
+impl serde::de::Visitor<'_> for StrictStringVisitor {
+    type Value = String;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a YAML string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(value.to_owned())
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(value)
+    }
 }
 
 /// A YAML deserialization failure with the most specific source field path available.
@@ -153,6 +210,35 @@ mod tests {
     struct RequiredTitle {
         image: String,
         cursor_icon: String,
+    }
+
+    #[derive(Debug, Deserialize, Eq, PartialEq)]
+    #[serde(deny_unknown_fields)]
+    struct StrictStrings {
+        #[serde(deserialize_with = "super::deserialize_string")]
+        scalar: String,
+        #[serde(deserialize_with = "super::deserialize_strings")]
+        list: Vec<String>,
+    }
+
+    #[test]
+    fn strict_string_helpers_accept_only_yaml_strings() {
+        let strings: StrictStrings = from_str("scalar: plain\nlist: [plain, '42', \"true\"]\n")
+            .expect("plain and quoted YAML strings should deserialize");
+        assert_eq!(strings.scalar, "plain");
+        assert_eq!(strings.list, ["plain", "42", "true"]);
+
+        for document in [
+            "scalar: 42\nlist: []\n",
+            "scalar: true\nlist: []\n",
+            "scalar: null\nlist: []\n",
+            "scalar: okay\nlist: [42]\n",
+            "scalar: okay\nlist: [false]\n",
+            "scalar: okay\nlist: [null]\n",
+            "scalar: okay\nlist: scalar\n",
+        ] {
+            assert!(from_str::<StrictStrings>(document).is_err(), "{document}");
+        }
     }
 
     #[test]

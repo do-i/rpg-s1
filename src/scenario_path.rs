@@ -1,13 +1,13 @@
 //! Validated paths within one scenario package.
 
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 
 /// A normalized path relative to the active scenario package.
 ///
 /// Values use forward slashes and contain no empty, `.` or `..` components. Construction
 /// normalizes contained lexical traversal, but rejects traversal that would leave the package.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, serde::Deserialize)]
-#[serde(try_from = "String")]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ScenarioRelativePath(String);
 
 impl ScenarioRelativePath {
@@ -42,6 +42,16 @@ impl TryFrom<String> for ScenarioRelativePath {
 
     fn try_from(path: String) -> Result<Self, Self::Error> {
         Self::try_from(path.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ScenarioRelativePath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::try_from(crate::scenario_yaml::deserialize_string(deserializer)?)
+            .map_err(serde::de::Error::custom)
     }
 }
 
@@ -223,5 +233,9 @@ mod tests {
 
         let error = serde_yaml_ng::from_str::<PathHolder>("path: ../../outside.yaml").unwrap_err();
         assert!(error.to_string().contains("must not escape its package"));
+
+        for document in ["path: 42\n", "path: true\n", "path: null\n"] {
+            assert!(serde_yaml_ng::from_str::<PathHolder>(document).is_err());
+        }
     }
 }

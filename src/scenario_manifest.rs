@@ -6,6 +6,7 @@
 
 use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 use crate::scenario_spatial::Position;
+use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
@@ -19,9 +20,13 @@ use std::fmt;
 /// owner.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct Manifest {
+    #[serde(deserialize_with = "deserialize_string")]
     pub id: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub name: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub version: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub window_title: String,
     pub title: ManifestTitle,
     pub font: ManifestFont,
@@ -34,7 +39,9 @@ pub struct Manifest {
     pub item_box: ManifestServiceSprite,
     pub protagonist: ManifestProtagonist,
     pub start: ManifestStart,
+    #[serde(deserialize_with = "deserialize_strings")]
     pub bootstrap_flags: Vec<String>,
+    #[serde(deserialize_with = "deserialize_strings")]
     pub engine_managed_flags: Vec<String>,
     pub refs: ManifestRefs,
 }
@@ -46,9 +53,13 @@ pub struct Manifest {
 /// to save, cache, recording, and UI systems that are added later.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestIdentityWindow {
+    #[serde(deserialize_with = "deserialize_string")]
     pub id: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub name: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub version: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub window_title: String,
 }
 
@@ -134,8 +145,11 @@ pub struct ManifestProtagonistStart {
 /// The source-authored identity and field-sprite selection for the protagonist.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestProtagonist {
+    #[serde(deserialize_with = "deserialize_string")]
     pub id: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub name: String,
+    #[serde(deserialize_with = "deserialize_string")]
     pub class: String,
     pub sprite: ScenarioRelativePath,
 }
@@ -143,6 +157,7 @@ pub struct ManifestProtagonist {
 /// The authored new-game map location and opening dialogue.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestStart {
+    #[serde(deserialize_with = "deserialize_string")]
     pub map: String,
     pub position: Position,
     pub intro_dialogue: ScenarioRelativePath,
@@ -155,7 +170,9 @@ pub struct ManifestStart {
 /// runtime meaning in later milestones.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestFlagsRefs {
+    #[serde(deserialize_with = "deserialize_strings")]
     pub bootstrap_flags: Vec<String>,
+    #[serde(deserialize_with = "deserialize_strings")]
     pub engine_managed_flags: Vec<String>,
     pub refs: ManifestRefs,
 }
@@ -280,6 +297,37 @@ mod tests {
                 window_title: "Rusted Kingdoms".to_owned(),
             }
         );
+    }
+
+    #[test]
+    fn partial_manifest_scalar_strings_reject_non_string_yaml_types() {
+        let identity =
+            include_str!("../tests/fixtures/rusted-kingdoms-manifest-identity-window.yaml");
+        for document in [
+            identity.replacen("id: my_rpg_story", "id: 42", 1),
+            identity.replacen("name: \"Chronicles of the Lost Flame\"", "name: false", 1),
+            identity.replacen("version: \"1.0.0\"", "version: true", 1),
+            identity.replacen("window_title: \"Rusted Kingdoms\"", "window_title: 7", 1),
+        ] {
+            assert!(
+                scenario_yaml::from_str::<ManifestIdentityWindow>(&document).is_err(),
+                "{document}"
+            );
+        }
+
+        let protagonist =
+            include_str!("../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml");
+        for document in [
+            protagonist.replacen("  id: aric", "  id: 42", 1),
+            protagonist.replacen("  name: \"Aric\"", "  name: false", 1),
+            protagonist.replacen("  class: hero", "  class: 7", 1),
+            protagonist.replacen("  map: town_01_ardel", "  map: true", 1),
+        ] {
+            assert!(
+                scenario_yaml::from_str::<ManifestProtagonistStart>(&document).is_err(),
+                "{document}"
+            );
+        }
     }
 
     #[test]
@@ -429,6 +477,20 @@ mod tests {
     }
 
     #[test]
+    fn partial_manifest_flag_lists_reject_non_string_elements() {
+        let fixture = include_str!("../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml");
+        for document in [
+            fixture.replacen("  - story_quest_started", "  - 42", 1),
+            fixture.replacen("  - story_act2_started", "  - false", 1),
+        ] {
+            assert!(
+                scenario_yaml::from_str::<ManifestFlagsRefs>(&document).is_err(),
+                "{document}"
+            );
+        }
+    }
+
+    #[test]
     fn directory_references_require_the_source_marker_and_validate_the_result() {
         assert_eq!(
             ScenarioDirectoryPath::try_from("data/classes"),
@@ -466,6 +528,25 @@ mod tests {
         );
         assert_eq!(manifest.start.position, Position::new(14, 5));
         assert_eq!(manifest.refs.encount.as_str(), "data/encount");
+    }
+
+    #[test]
+    fn complete_manifest_strings_and_flag_lists_reject_non_string_yaml_types() {
+        let fixture = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml");
+        for document in [
+            fixture.replacen("id: my_rpg_story", "id: 42", 1),
+            fixture.replacen("name: \"Chronicles of the Lost Flame\"", "name: false", 1),
+            fixture.replacen("  id: aric", "  id: true", 1),
+            fixture.replacen("  name: Aric", "  name: 7", 1),
+            fixture.replacen("  map: town_01_ardel", "  map: false", 1),
+            fixture.replacen("  - story_quest_started", "  - 42", 1),
+            fixture.replacen("  - story_act2_started", "  - true", 1),
+        ] {
+            assert!(
+                scenario_yaml::from_str::<Manifest>(&document).is_err(),
+                "{document}"
+            );
+        }
     }
 
     #[test]

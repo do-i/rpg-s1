@@ -8,7 +8,7 @@
 //! Enemy move mappings also use the key `condition`, but their HP/turn rules are a distinct
 //! schema and deliberately do not use this type.
 
-use serde::{Deserialize, Deserializer, de::Error as _};
+use serde::Deserialize;
 
 /// A conjunction of required flags and excluded flags.
 ///
@@ -18,10 +18,16 @@ use serde::{Deserialize, Deserializer, de::Error as _};
 #[serde(deny_unknown_fields)]
 pub struct FlagConditions {
     /// Flag identifiers that must all be set.
-    #[serde(default, deserialize_with = "deserialize_flag_ids")]
+    #[serde(
+        default,
+        deserialize_with = "crate::scenario_yaml::deserialize_strings"
+    )]
     pub requires: Vec<String>,
     /// Flag identifiers that must all be absent.
-    #[serde(default, deserialize_with = "deserialize_flag_ids")]
+    #[serde(
+        default,
+        deserialize_with = "crate::scenario_yaml::deserialize_strings"
+    )]
     pub excludes: Vec<String>,
 }
 
@@ -34,19 +40,6 @@ impl FlagConditions {
         self.requires.iter().all(|flag| has_flag(flag))
             && self.excludes.iter().all(|flag| !has_flag(flag))
     }
-}
-
-fn deserialize_flag_ids<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Vec::<serde_yaml_ng::Value>::deserialize(deserializer)?
-        .into_iter()
-        .map(|value| match value {
-            serde_yaml_ng::Value::String(flag) => Ok(flag),
-            _ => Err(D::Error::custom("flag identifier must be a YAML string")),
-        })
-        .collect()
 }
 
 #[cfg(test)]
