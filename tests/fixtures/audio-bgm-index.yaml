@@ -1,0 +1,5 @@
+battle:
+  normal: bgm/Invented_March.mp3
+  boss: bgm/Invented_Storm.mp3
+town:
+  default: bgm/Invented_Town.mp3

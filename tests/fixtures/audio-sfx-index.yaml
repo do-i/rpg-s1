@@ -1,0 +1,6 @@
+battle:
+  encounter: sfx/battle/encounter.mp3
+  strike: sfx/battle/strike.mp3
+ui:
+  confirm: sfx/ui/confirm.mp3
+  cancel: sfx/ui/cancel.mp3
