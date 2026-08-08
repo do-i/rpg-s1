@@ -120,10 +120,17 @@ confirm sound before exiting cleanly.
 | M1.11 | [x] Add deterministic RNG as a resource. | `S` | A supplied seed repeats the same number sequence in tests. |
 | M1.12 | [x] Add playtime tracking independent of pause/menu time. | `T` | Unit tests match the Python playtime rules. |
 | M1.13 | [x] Add a fixed gameplay canvas policy. | `S` | Resize behavior has a documented scale/letterbox rule. |
-| M1.14 | [ ] Verify title rendering under the canvas policy. | `S` | The title remains correctly framed at baseline, smaller, and wider windows. |
+| M1.14 | [x] Verify title rendering under the canvas policy. | `S` | The title remains correctly framed at baseline, smaller, and wider windows. |
 
 **Gate 1:** Selecting New Game leaves a clean title state and reaches an empty
 Name Entry state through tested application infrastructure.
+
+Gate 1 passed on 2026-08-08. The headless title lifecycle test confirms that
+one New Game confirmation reaches `AppState::NameEntry`, removes every
+title-owned camera, sprite, UI, text, and audio entity, and remains in Name
+Entry on later updates. The complete 55-test suite and strict Clippy pass, and
+M1.14 records the title canvas at baseline, smaller, and wider real X11 window
+sizes on the available llvmpipe renderer.
 
 ## Milestone 2 — Scenario data foundation
 
