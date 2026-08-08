@@ -226,4 +226,72 @@ mod tests {
         );
         assert_eq!(title_menu_action(2), TitleMenuAction::Quit);
     }
+
+    #[test]
+    fn title_screen_startup_spawns_the_complete_title_surface() {
+        let mut app = crate::test_support::headless_title_app();
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
+
+        let background_handles = world
+            .query::<&Sprite>()
+            .iter(world)
+            .map(|sprite| sprite.image.id())
+            .collect::<Vec<_>>();
+
+        let mut entries = world
+            .query::<(&MenuEntry, &Text)>()
+            .iter(world)
+            .map(|(entry, text)| (entry.0, text.0.clone()))
+            .collect::<Vec<_>>();
+        entries.sort_by_key(|(index, _)| *index);
+        assert_eq!(
+            entries,
+            [
+                (0, "New Game".into()),
+                (1, "Load Game".into()),
+                (2, "Quit".into())
+            ]
+        );
+
+        let statuses = world
+            .query_filtered::<&Text, With<StatusMessage>>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(statuses, [""]);
+
+        let title_music = world
+            .query::<(&AudioPlayer<AudioSource>, &PlaybackSettings)>()
+            .iter(world)
+            .map(|(player, settings)| (player.0.id(), settings.mode, settings.volume))
+            .collect::<Vec<_>>();
+
+        let asset_server = world.resource::<AssetServer>();
+        let backgrounds = background_handles
+            .iter()
+            .map(|handle| {
+                asset_server
+                    .get_path(*handle)
+                    .expect("title background handle should retain its asset path")
+                    .path()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(backgrounds, ["images/title_lost_flame.webp"]);
+
+        assert_eq!(title_music.len(), 1);
+        let title_music_path = asset_server
+            .get_path(title_music[0].0)
+            .expect("title music handle should retain its asset path")
+            .path()
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(title_music_path, "audio/title_theme.mp3");
+        assert!(matches!(title_music[0].1, PlaybackMode::Loop));
+        assert_eq!(title_music[0].2, Volume::Linear(0.65));
+    }
 }

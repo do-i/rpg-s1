@@ -84,7 +84,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.12 | [x] Resolve the manifest cursor filename mismatch. | `T` | The chosen source file and compatibility action are recorded and tested by validation. |
 | M0.13 | [x] Add a title-menu action unit test. | `T` | New Game, disabled Load, and Quit resolve to distinct actions. |
 | M0.14 | [x] Add a headless Bevy app test harness. | `S` | A test can advance the app without opening a window. |
-| M0.15 | [ ] Add a title-screen spawn smoke test. | `T` | The expected camera, background, menu, status, and audio entities exist. |
+| M0.15 | [x] Add a title-screen spawn smoke test. | `T` | The expected camera, background, menu, status, and audio entities exist. |
 | M0.16 | [ ] Write the baseline manual play checklist. | `T` | Resize, keyboard, audio, disabled Load, New Game, and Quit are covered. |
 | M0.17 | [ ] Run and record the baseline manual play check. | `S` | The title screen is played through on real graphics/audio hardware. |
 | M0.18 | [ ] Add CI for format, test, and Clippy. | `T` | A clean checkout runs all three checks. |
