@@ -143,6 +143,56 @@ status. The required fields are intentionally repeated in each entry.
 | Related port task/wave | M0.10 |
 | Notes/blocker | **Release blocker.** Exact-title, artist-tag, and provider-tag web searches did not locate an authoritative public track page or asset-specific grant; search-result absence was not treated as a rights conclusion. Unblock with the Audjust generation/export record tied to this exact file and account, proof of the plan in effect when it was created, the versioned terms accepted at generation, and proof of rights to any submitted source audio. The collected grant must explicitly cover redistribution in the game, commercial use, derivatives, and any notice/attribution. If those records cannot be obtained, replace the track with independently licensed music and create a new ledger entry for it. |
 
+### Asset entry: `ALI-0003` — `001_Hover_01` menu sound effect
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0003` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/001_Hover_01.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/audio/menu_hover.mp3` |
+| Source SHA-256 | `2458f348156391f55587d16f1185fa3e2452392730168a9d839bffd4242a3e13` |
+| Destination SHA-256 | `2458f348156391f55587d16f1185fa3e2452392730168a9d839bffd4242a3e13` |
+| Asset kind | audio |
+| Title/name | `001_Hover_01` (menu hover effect) |
+| Creator/rightsholder | Leohpaz is identified as creator by the source `rusted_kingdoms/assets/audio/sfx/CREDIT`; rightsholder is not expressly identified. |
+| Source/evidence | Exact source file above; source LFS object for the same SHA-256; source import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c` (`Add Leohpaz SFX files`) and its `rusted_kingdoms/assets/audio/sfx/CREDIT`; source `rusted_kingdoms/data/audio/sfx_index.yaml` maps `ui.hover` to this exact path; [Retro RPG 100 UI Sound Effects](https://leohpaz.itch.io/100-retro-rpg-ui-sound-effects) and [Leohpaz profile](https://leohpaz.itch.io/), accessed 2026-08-07. The store page describes a ten-hover pack and one hover demo sample, but publishes neither file hashes nor filenames, so it is contextual store evidence rather than exact-file provenance. |
+| License identifier/name | Stated itch.io pack terms; no SPDX identifier and no license file tied to this exact hash were found. |
+| License text/notice location | [Retro RPG 100 UI Sound Effects licensing section](https://leohpaz.itch.io/100-retro-rpg-ui-sound-effects); it permits use in projects, prohibits selling or freely distributing the pack, and says credits are not mandatory. Those public terms are not proof that this exact imported file came from the demo or a licensed purchase. |
+| Required attribution | No mandatory credit stated on the candidate store page; retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. The source import is an MP3 in the `ui_menu` directory; no conversion or edit record was found. |
+| Redistribution permission | unknown; the candidate pack terms prohibit distributing the asset pack, and the source does not prove whether this exact file is a licensed demo/purchase file or how those terms apply to this game's bundled copy. |
+| Commercial-use permission | unknown; the candidate page permits project use but there is no exact-file provenance or acquisition record. |
+| Derivative-work permission | unknown; the candidate page does not state a derivative-work grant, and the source contains no asset-specific terms. |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-07 |
+| Related port task/wave | M0.11 |
+| Notes/blocker | **Release blocker.** The creator credit and filename category make the referenced store page plausible, not conclusive: its free demo offers one unnamed hover sample while the full pack contains ten, and neither download is hash-addressed publicly. Unblock with the original package/download record that maps this SHA-256 to a named file, proof that the source acquisition complied with the applicable demo or purchase terms, and written clarification from Leohpaz that embedding this exact file in a distributable game is permitted (including commercial releases, if intended). Record any required notice before approval; otherwise replace it with an independently licensed effect. |
+
+### Asset entry: `ALI-0004` — `013_Confirm_03` menu sound effect
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0004` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/audio/menu_confirm.mp3` |
+| Source SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
+| Destination SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
+| Asset kind | audio |
+| Title/name | `013_Confirm_03` (menu confirmation effect) |
+| Creator/rightsholder | Leohpaz is identified as creator by the source `rusted_kingdoms/assets/audio/sfx/CREDIT`; rightsholder is not expressly identified. |
+| Source/evidence | Exact source file above; source LFS object for the same SHA-256; source import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c` (`Add Leohpaz SFX files`) and its `rusted_kingdoms/assets/audio/sfx/CREDIT`; source `rusted_kingdoms/data/audio/sfx_index.yaml` maps `ui.confirm` to this exact path; [Retro RPG 100 UI Sound Effects](https://leohpaz.itch.io/100-retro-rpg-ui-sound-effects) and [Leohpaz profile](https://leohpaz.itch.io/), accessed 2026-08-07. The store page describes a ten-confirm pack and one confirm demo sample, but publishes neither file hashes nor filenames, so it is contextual store evidence rather than exact-file provenance. |
+| License identifier/name | Stated itch.io pack terms; no SPDX identifier and no license file tied to this exact hash were found. |
+| License text/notice location | [Retro RPG 100 UI Sound Effects licensing section](https://leohpaz.itch.io/100-retro-rpg-ui-sound-effects); it permits use in projects, prohibits selling or freely distributing the pack, and says credits are not mandatory. Those public terms are not proof that this exact imported file came from the demo or a licensed purchase. |
+| Required attribution | No mandatory credit stated on the candidate store page; retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. The source import is an MP3 in the `ui_menu` directory; no conversion or edit record was found. |
+| Redistribution permission | unknown; the candidate pack terms prohibit distributing the asset pack, and the source does not prove whether this exact file is a licensed demo/purchase file or how those terms apply to this game's bundled copy. |
+| Commercial-use permission | unknown; the candidate page permits project use but there is no exact-file provenance or acquisition record. |
+| Derivative-work permission | unknown; the candidate page does not state a derivative-work grant, and the source contains no asset-specific terms. |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-07 |
+| Related port task/wave | M0.11 |
+| Notes/blocker | **Release blocker.** The creator credit and filename category make the referenced store page plausible, not conclusive: its free demo offers one unnamed confirm sample while the full pack contains ten, and neither download is hash-addressed publicly. Unblock with the original package/download record that maps this SHA-256 to a named file, proof that the source acquisition complied with the applicable demo or purchase terms, and written clarification from Leohpaz that embedding this exact file in a distributable game is permitted (including commercial releases, if intended). Record any required notice before approval; otherwise replace it with an independently licensed effect. |
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather
