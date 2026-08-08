@@ -1,0 +1,19 @@
+- id: hush_mantle
+  name: Hush Mantle
+  type: accessory
+  equippable: [scout]
+  stats:
+    encounter_modifier: -0.25
+  buy_price: 640
+  sell_price: 320
+  description: "A quiet mantle invented for this fixture."
+
+- id: witness_seal
+  name: Witness Seal
+  type: accessory
+  equippable: [all]
+  stats:
+    blocks_ability: final_word
+  buy_price: null
+  sell_price: 0
+  description: "A seal that blocks one invented ability."

@@ -1,0 +1,21 @@
+- id: scholar_coat
+  name: Scholar Coat
+  type: body
+  slot_category: coat
+  stats:
+    con: 2
+    int: 1
+  buy_price: 120
+  sell_price: 60
+  description: "A fixture coat with two positive bonuses."
+
+- id: stone_harness
+  name: Stone Harness
+  type: body
+  slot_category: harness
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 540
+  sell_price: 270
+  description: "A fixture harness with a dexterity penalty."

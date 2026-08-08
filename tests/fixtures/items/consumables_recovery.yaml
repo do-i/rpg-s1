@@ -1,0 +1,40 @@
+- id: leaf_tonic
+  name: Leaf Tonic
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_hp: 80
+  buy_price: 60
+  sell_price: 30
+  description: "An invented fixed HP recovery item."
+
+- id: blue_tonic
+  name: Blue Tonic
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_mp: 40
+  buy_price: 90
+  sell_price: 45
+  description: "An invented fixed MP recovery item."
+
+- id: perfect_tonic
+  name: Perfect Tonic
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_hp: full
+    restore_mp: full
+  buy_price: null
+  sell_price: 0
+  description: "An invented full recovery item."
+
+- id: ember_seed
+  name: Ember Seed
+  type: consumable
+  use_context: [battle, world_map, dungeon]
+  effect:
+    revive_hp_pct: 0.75
+  buy_price: null
+  sell_price: 0
+  description: "An invented partial revive item."

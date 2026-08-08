@@ -1,0 +1,24 @@
+- id: cinder_flask
+  name: Cinder Flask
+  type: consumable
+  use_context: [battle]
+  effect:
+    damage: 75
+    element: fire
+    target: single_enemy
+  buy_price: null
+  sell_price: 0
+  description: "An invented single-target fire flask."
+
+- id: dawn_flask
+  name: Dawn Flask
+  type: consumable
+  use_context: [battle]
+  effect:
+    damage: 90
+    element: holy
+    target: single_enemy
+    bonus_vs: [undead, demon]
+  buy_price: 180
+  sell_price: 90
+  description: "An invented flask with enemy-trait bonuses."

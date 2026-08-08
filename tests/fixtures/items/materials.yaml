@@ -1,0 +1,5 @@
+- id: glass_fiber
+  name: Glass Fiber
+  type: material
+  sell_price: 17
+  description: "An invented crafting material."

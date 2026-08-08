@@ -1,0 +1,20 @@
+- id: reed_guard
+  name: Reed Guard
+  type: shield
+  slot_category: hand_guard
+  stats:
+    con: 1
+  buy_price: 80
+  sell_price: 40
+  description: "An invented shield without a dexterity modifier."
+
+- id: slab_guard
+  name: Slab Guard
+  type: shield
+  slot_category: slab_guard
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 500
+  sell_price: 250
+  description: "An invented shield with a dexterity penalty."

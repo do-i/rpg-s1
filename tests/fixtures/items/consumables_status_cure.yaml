@@ -1,0 +1,9 @@
+- id: clear_draught
+  name: Clear Draught
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    cure: [poison, silence, sleep]
+  buy_price: 210
+  sell_price: 105
+  description: "An invented status cure."

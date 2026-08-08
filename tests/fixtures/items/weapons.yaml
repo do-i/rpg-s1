@@ -1,0 +1,30 @@
+- id: practice_blade
+  name: Practice Blade
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 2
+  buy_price: 100
+  sell_price: 50
+  description: "An invented strength weapon."
+
+- id: duelist_blade
+  name: Duelist Blade
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 3
+    dex: 2
+  buy_price: 260
+  sell_price: 130
+  description: "An invented strength and dexterity weapon."
+
+- id: focus_branch
+  name: Focus Branch
+  type: weapon
+  slot_category: wand
+  stats:
+    int: 3
+  buy_price: 290
+  sell_price: 145
+  description: "An invented intelligence weapon."

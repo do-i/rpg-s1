@@ -1,0 +1,6 @@
+- id: mc_fixture
+  name: "Magic Core (Fixture)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 25
+  description: "An invented unit of magical exchange."

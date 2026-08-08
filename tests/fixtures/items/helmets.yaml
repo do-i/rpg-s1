@@ -1,0 +1,19 @@
+- id: trail_cap
+  name: Trail Cap
+  type: helmet
+  slot_category: cap
+  stats:
+    con: 1
+  buy_price: 50
+  sell_price: 25
+  description: "An invented constitution helmet."
+
+- id: thought_band
+  name: Thought Band
+  type: helmet
+  slot_category: circlet
+  stats:
+    int: 3
+  buy_price: 330
+  sell_price: 165
+  description: "An invented intelligence helmet."

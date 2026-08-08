@@ -1,0 +1,30 @@
+- id: ward_key
+  name: Ward Key
+  type: consumable
+  use_context: [battle]
+  effect:
+    bypass_barrier: true
+  buy_price: null
+  sell_price: 0
+  description: "An invented barrier bypass."
+
+- id: trail_roll
+  name: Trail Roll
+  type: consumable
+  use_context: [world_map, town, dungeon]
+  effect:
+    restore: [hp, mp]
+    cure: [poison, silence]
+  buy_price: 240
+  sell_price: 120
+  description: "Invented camp supplies."
+
+- id: return_shard
+  name: Return Shard
+  type: consumable
+  use_context: [world_map, dungeon]
+  effect:
+    action: warp
+  buy_price: 700
+  sell_price: 350
+  description: "An invented warp item."

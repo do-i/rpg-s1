@@ -1,0 +1,21 @@
+- id: undying_feather
+  name: Undying Feather
+  type: key
+  usable: true
+  use_context: [world_map]
+  effect:
+    revive_hp_pct: 0.25
+  sellable: false
+  droppable: false
+  description: "An invented reusable revive key item."
+
+- id: cloud_credential
+  name: Cloud Credential
+  type: key
+  usable: false
+  use_context: null
+  effect:
+    unlock_flag: fixture_cloud_route_unlocked
+  sellable: false
+  droppable: false
+  description: "An invented story-script key item."

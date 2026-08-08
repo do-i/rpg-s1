@@ -1,0 +1,34 @@
+- id: leaf_tonic
+  effect: restore_hp
+  amount: 80
+  target: single_alive
+
+- id: blue_tonic
+  effect: restore_mp
+  amount: 40
+  target: single_alive
+
+- id: perfect_tonic
+  effect: restore_full
+  target: single_alive
+
+- id: trail_roll
+  effect: restore_full
+  cures: [poison, silence]
+  target: all_alive
+
+- id: clear_draught
+  effect: cure
+  cures: [poison, silence, sleep]
+  target: single_alive
+
+- id: ember_seed
+  effect: revive
+  revive_hp_pct: 0.75
+  target: single_ko
+
+- id: undying_feather
+  effect: revive
+  revive_hp_pct: 0.25
+  target: single_ko
+  consumable: false
