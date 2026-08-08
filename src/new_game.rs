@@ -164,6 +164,7 @@ mod tests {
     use super::*;
     use crate::{
         gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng},
+        runtime_member::EquipmentSlot,
         scenario_party::PartyMember,
         scenario_spatial::Position,
         scenario_yaml,
@@ -242,6 +243,65 @@ mod tests {
         let actual = state.rng_mut().next_u64();
         let expected = GameplayRng::from_seed(DEFAULT_GAMEPLAY_SEED).next_u64();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn new_game_invariants_use_selected_caps_exact_bootstrap_flags_and_only_the_protagonist() {
+        let manifest = manifest();
+        let party = party();
+        let balance = balance();
+        let state = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+            },
+            Duration::ZERO,
+        )
+        .expect("valid invented inputs should build a game state");
+
+        assert_eq!(state.repository().gp(), 0);
+        assert_eq!(state.repository().item_counts().count(), 0);
+        assert_eq!(state.repository().gp_cap(), balance.economy.gp_cap.get());
+        assert_eq!(
+            state.repository().item_quantity_cap(),
+            balance.economy.item_qty_cap.get()
+        );
+
+        assert_eq!(
+            state.flags().iter().collect::<Vec<_>>(),
+            ["aric_teleport_unlocked", "story_quest_started"]
+        );
+        assert!(!state.flags().is_set("story_act2_started"));
+
+        assert_eq!(state.party().len(), 1);
+        assert_eq!(
+            state
+                .party()
+                .members()
+                .map(RuntimeMember::id)
+                .collect::<Vec<_>>(),
+            [manifest.protagonist.id.as_str()]
+        );
+        assert_eq!(state.controlled_member_id(), manifest.protagonist.id);
+        let protagonist = state.party().protagonist().unwrap();
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Weapon),
+            Some("iron_blade")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Shield),
+            Some("round_shield")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Helmet),
+            Some("leather_cap")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Body),
+            Some("leather_coat")
+        );
+        assert_eq!(protagonist.equipment().get(EquipmentSlot::Accessory), None);
     }
 
     #[test]
@@ -379,6 +439,40 @@ mod tests {
             state.party().protagonist().map(RuntimeMember::name),
             Some("Aric")
         );
+        assert_eq!(state.party().len(), 1);
+        assert_eq!(
+            state
+                .party()
+                .members()
+                .map(RuntimeMember::id)
+                .collect::<Vec<_>>(),
+            [manifest.protagonist.id.as_str()]
+        );
+        assert_eq!(state.repository().gp(), 0);
+        assert_eq!(state.repository().item_counts().count(), 0);
+        assert_eq!(state.repository().gp_cap(), balance.economy.gp_cap.get());
+        assert_eq!(
+            state.repository().item_quantity_cap(),
+            balance.economy.item_qty_cap.get()
+        );
+        let protagonist = state.party().protagonist().unwrap();
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Weapon),
+            Some("iron_sword")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Shield),
+            Some("buckler")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Helmet),
+            Some("leather_hat")
+        );
+        assert_eq!(
+            protagonist.equipment().get(EquipmentSlot::Body),
+            Some("leather_vest")
+        );
+        assert_eq!(protagonist.equipment().get(EquipmentSlot::Accessory), None);
         assert_eq!(
             state.map().current().map(RuntimeMapId::as_str),
             Some("town_01_ardel")
