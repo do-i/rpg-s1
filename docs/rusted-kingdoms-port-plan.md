@@ -75,7 +75,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.03 | [x] Inventory scenario data by schema and file count. | `T` | Manifest, maps, dialogue, encounters, enemies, items, classes, recipes, quests, and audio are counted. |
 | M0.04 | [x] Create the player-visible parity checklist. | `S` | Every README feature has a manual acceptance row. |
 | M0.05 | [x] Decide whether Rust saves must read Python YAML saves. | `X` | An ADR chooses compatibility or a one-time converter. |
-| M0.06 | [ ] Decide whether runtime reads source YAML/TMX unchanged. | `X` | An ADR fixes the data-compatibility policy. |
+| M0.06 | [x] Decide whether runtime reads source YAML/TMX unchanged. | `X` | An ADR fixes the data-compatibility policy. |
 | M0.07 | [ ] Decide the Rust TMX loading approach. | `X` | An ADR records crate/custom-parser choice and unsupported features. |
 | M0.08 | [ ] Decide the in-repo scenario asset layout. | `S` | One canonical relative root is documented. |
 | M0.09 | [ ] Build an asset-license inventory template. | `T` | Each copied asset can record origin, author, license, and destination. |
