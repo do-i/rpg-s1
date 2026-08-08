@@ -1,0 +1,31 @@
+# Pinned-source-shaped manifest fixture for M2.07.
+# The partial adapter owns flags and refs while it ignores the other manifest slices.
+id: my_rpg_story
+name: "Chronicles of the Lost Flame"
+version: "1.0.0"
+window_title: "Rusted Kingdoms"
+
+bootstrap_flags:
+  - story_quest_started
+  - aric_teleport_unlocked
+
+engine_managed_flags:
+  - story_act2_started
+  - story_act3_started
+  - story_act4_started
+  - boss_zone10_defeated
+
+refs:
+  party: data/party.yaml
+  classes: data/classes/
+  maps: data/maps/
+  dialogue: data/dialogue/
+  items: data/items/
+  enemies: data/enemies/
+  encount: data/encount/
+  recipe: data/recipe/
+  quests: data/quests.yaml
+  balance: data/balance.yaml
+  battle_backgrounds: data/battle_backgrounds.yaml
+  assets: assets/
+  tmx: assets/maps/

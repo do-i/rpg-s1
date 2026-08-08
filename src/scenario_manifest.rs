@@ -4,8 +4,9 @@
 //! behavior is intentional: a partial schema must be able to load the pinned complete
 //! manifest while its other sections are introduced by later milestones.
 
-use crate::scenario_path::ScenarioRelativePath;
-use serde::Deserialize;
+use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
+use serde::{Deserialize, Deserializer};
+use std::fmt;
 
 /// The manifest fields that identify scenario content and label its game window.
 ///
@@ -117,13 +118,120 @@ pub struct ManifestStart {
     pub intro_dialogue: ScenarioRelativePath,
 }
 
+/// The manifest-owned initial and engine-controlled flags, plus every data root.
+///
+/// This is a partial manifest adapter alongside the other manifest slices. Flag order and
+/// spelling are source content: the state builder and validator will give each list its
+/// runtime meaning in later milestones.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestFlagsRefs {
+    pub bootstrap_flags: Vec<String>,
+    pub engine_managed_flags: Vec<String>,
+    pub refs: ManifestRefs,
+}
+
+/// Every source-authored manifest reference.
+///
+/// The pinned manifest marks catalog roots with a trailing slash. `ScenarioDirectoryPath`
+/// consumes that source-only marker and retains the normalized, scenario-contained path, while
+/// file references remain ordinary [`ScenarioRelativePath`] values.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestRefs {
+    pub party: ScenarioRelativePath,
+    pub classes: ScenarioDirectoryPath,
+    pub maps: ScenarioDirectoryPath,
+    pub dialogue: ScenarioDirectoryPath,
+    pub items: ScenarioDirectoryPath,
+    pub enemies: ScenarioDirectoryPath,
+    pub encount: ScenarioDirectoryPath,
+    pub recipe: ScenarioDirectoryPath,
+    pub quests: ScenarioRelativePath,
+    pub balance: ScenarioRelativePath,
+    pub battle_backgrounds: ScenarioRelativePath,
+    pub assets: ScenarioDirectoryPath,
+    pub tmx: ScenarioDirectoryPath,
+}
+
+/// A source-authored directory reference within the active scenario package.
+///
+/// Source manifests use a trailing slash to distinguish catalog roots from single-file refs.
+/// The separator is accepted at this adapter boundary only; the stored value is a validated,
+/// normalized [`ScenarioRelativePath`]. This keeps ADR 0004's general path policy strict while
+/// preserving the pinned manifest spelling.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScenarioDirectoryPath(ScenarioRelativePath);
+
+impl ScenarioDirectoryPath {
+    /// Returns the normalized directory path without its source-only trailing slash.
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    /// Returns this directory reference as the shared validated path type.
+    pub fn as_relative_path(&self) -> &ScenarioRelativePath {
+        &self.0
+    }
+}
+
+impl TryFrom<&str> for ScenarioDirectoryPath {
+    type Error = ScenarioDirectoryPathError;
+
+    fn try_from(path: &str) -> Result<Self, Self::Error> {
+        let path = path
+            .strip_suffix('/')
+            .ok_or(ScenarioDirectoryPathError::MissingTrailingSlash)?;
+        ScenarioRelativePath::try_from(path)
+            .map(Self)
+            .map_err(ScenarioDirectoryPathError::InvalidPath)
+    }
+}
+
+impl TryFrom<String> for ScenarioDirectoryPath {
+    type Error = ScenarioDirectoryPathError;
+
+    fn try_from(path: String) -> Result<Self, Self::Error> {
+        Self::try_from(path.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ScenarioDirectoryPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Self::try_from(String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+    }
+}
+
+/// Why a manifest directory reference cannot be used.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScenarioDirectoryPathError {
+    MissingTrailingSlash,
+    InvalidPath(ScenarioRelativePathError),
+}
+
+impl fmt::Display for ScenarioDirectoryPathError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingTrailingSlash => {
+                formatter.write_str("manifest directory reference must end with '/'")
+            }
+            Self::InvalidPath(source) => source.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for ScenarioDirectoryPathError {}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        ManifestApothecary, ManifestApothecaryIcons, ManifestFont, ManifestIdentityWindow,
-        ManifestProtagonist, ManifestProtagonistStart, ManifestServiceSprite,
-        ManifestServiceSprites, ManifestStart, ManifestTitle, ManifestTitleFontUi, ManifestUi,
+        ManifestApothecary, ManifestApothecaryIcons, ManifestFlagsRefs, ManifestFont,
+        ManifestIdentityWindow, ManifestProtagonist, ManifestProtagonistStart, ManifestRefs,
+        ManifestServiceSprite, ManifestServiceSprites, ManifestStart, ManifestTitle,
+        ManifestTitleFontUi, ManifestUi, ScenarioDirectoryPath, ScenarioDirectoryPathError,
     };
+    use crate::scenario_path::ScenarioRelativePathError;
     use crate::scenario_yaml;
 
     #[test]
@@ -245,6 +353,68 @@ mod tests {
                     intro_dialogue: "data/dialogue/intro_cutscene.yaml".try_into().unwrap(),
                 },
             }
+        );
+    }
+
+    #[test]
+    fn loads_pinned_flags_and_every_reference_with_normalized_directory_paths() {
+        let manifest: ManifestFlagsRefs = scenario_yaml::from_str(include_str!(
+            "../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml"
+        ))
+        .expect("the pinned manifest flags/refs slice should deserialize");
+
+        assert_eq!(
+            manifest.bootstrap_flags,
+            ["story_quest_started", "aric_teleport_unlocked"]
+        );
+        assert_eq!(
+            manifest.engine_managed_flags,
+            [
+                "story_act2_started",
+                "story_act3_started",
+                "story_act4_started",
+                "boss_zone10_defeated",
+            ]
+        );
+        assert_eq!(
+            manifest.refs,
+            ManifestRefs {
+                party: "data/party.yaml".try_into().unwrap(),
+                classes: "data/classes/".try_into().unwrap(),
+                maps: "data/maps/".try_into().unwrap(),
+                dialogue: "data/dialogue/".try_into().unwrap(),
+                items: "data/items/".try_into().unwrap(),
+                enemies: "data/enemies/".try_into().unwrap(),
+                encount: "data/encount/".try_into().unwrap(),
+                recipe: "data/recipe/".try_into().unwrap(),
+                quests: "data/quests.yaml".try_into().unwrap(),
+                balance: "data/balance.yaml".try_into().unwrap(),
+                battle_backgrounds: "data/battle_backgrounds.yaml".try_into().unwrap(),
+                assets: "assets/".try_into().unwrap(),
+                tmx: "assets/maps/".try_into().unwrap(),
+            }
+        );
+        assert_eq!(manifest.refs.classes.as_str(), "data/classes");
+        assert_eq!(manifest.refs.tmx.as_relative_path().as_str(), "assets/maps");
+    }
+
+    #[test]
+    fn directory_references_require_the_source_marker_and_validate_the_result() {
+        assert_eq!(
+            ScenarioDirectoryPath::try_from("data/classes"),
+            Err(ScenarioDirectoryPathError::MissingTrailingSlash)
+        );
+        assert_eq!(
+            ScenarioDirectoryPath::try_from("data//classes/"),
+            Err(ScenarioDirectoryPathError::InvalidPath(
+                ScenarioRelativePathError::EmptyComponent
+            ))
+        );
+        assert_eq!(
+            ScenarioDirectoryPath::try_from("../outside/"),
+            Err(ScenarioDirectoryPathError::InvalidPath(
+                ScenarioRelativePathError::EscapesPackage
+            ))
         );
     }
 }
