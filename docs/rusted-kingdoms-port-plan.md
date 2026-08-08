@@ -196,7 +196,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.09 | [x] Build new-game state from the manifest. | `S` | Typed manifest, party, and balance inputs produce Python-matching start state; an ignored clean-pin oracle test covers exact source values. |
 | M3.10 | [x] Add new-game invariant tests. | `T` | Caps, initial equipment, flags, and party size are asserted. |
 | M3.10a | [x] Add runtime manifest asset loading. | `S` | `AssetServer` publishes only a completely parsed active manifest and exposes package-relative loading failure state. |
-| M3.11 | [ ] Render the name-entry prompt. | `T` | Default protagonist name and editing hint are visible. |
+| M3.11 | [x] Render the name-entry prompt. | `T` | Default protagonist name and editing hint are visible. Evidence: headless manifest-ready, waiting, failure, and cleanup tests cover one owned fixed-canvas UI/camera, an invented default name, and the scenario-qualified font handle. |
 | M3.12 | [ ] Implement name-entry text editing. | `S` | Insert, delete, cancel, confirm, and length rules are tested. |
 | M3.13 | [ ] Apply the confirmed protagonist name. | `T` | Only the protagonist runtime name changes. |
 | M3.14 | [ ] Render linear cutscene dialogue. | `S` | Intro lines advance one at a time and fit the canvas. |

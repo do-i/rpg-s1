@@ -831,17 +831,6 @@ mod tests {
             &AppState::NameEntry
         );
         assert_eq!(world.query::<&TitleScreenEntity>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Sprite>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Node>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Text>().iter(world).count(), 0);
-        assert_eq!(
-            world
-                .query::<&AudioPlayer<AudioSource>>()
-                .iter(world)
-                .count(),
-            0
-        );
 
         app.update();
         app.update();
@@ -1000,19 +989,8 @@ mod tests {
             world.resource::<State<AppState>>().get(),
             &AppState::NameEntry
         );
-        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Sprite>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Node>().iter(world).count(), 0);
-        assert_eq!(world.query::<&Text>().iter(world).count(), 0);
         assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 0);
         assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 0);
-        assert_eq!(
-            world
-                .query::<&AudioPlayer<AudioSource>>()
-                .iter(world)
-                .count(),
-            0
-        );
         assert_eq!(world.query::<&TitleScreenEntity>().iter(world).count(), 0);
         assert_eq!(world.resource::<TitleMenu>().selected, 0);
         assert_eq!(

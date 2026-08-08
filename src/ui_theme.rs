@@ -14,6 +14,14 @@ pub(crate) struct UiTheme {
     pub(crate) status_color: Color,
     pub(crate) menu_font_size: f32,
     pub(crate) status_font_size: f32,
+    pub(crate) name_entry_prompt_color: Color,
+    pub(crate) name_entry_box_color: Color,
+    pub(crate) name_entry_border_color: Color,
+    pub(crate) name_entry_input_color: Color,
+    pub(crate) name_entry_hint_color: Color,
+    pub(crate) name_entry_prompt_font_size: f32,
+    pub(crate) name_entry_input_font_size: f32,
+    pub(crate) name_entry_hint_font_size: f32,
 }
 
 impl Default for UiTheme {
@@ -27,6 +35,14 @@ impl Default for UiTheme {
             status_color: Color::srgb_u8(220, 190, 145),
             menu_font_size: 30.0,
             status_font_size: 17.0,
+            name_entry_prompt_color: Color::srgb_u8(180, 180, 140),
+            name_entry_box_color: Color::srgb_u8(40, 40, 70),
+            name_entry_border_color: Color::srgb_u8(180, 180, 100),
+            name_entry_input_color: Color::srgb_u8(255, 220, 80),
+            name_entry_hint_color: Color::srgb_u8(120, 120, 100),
+            name_entry_prompt_font_size: 36.0,
+            name_entry_input_font_size: 48.0,
+            name_entry_hint_font_size: 24.0,
         }
     }
 }

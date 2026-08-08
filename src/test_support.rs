@@ -12,6 +12,7 @@ use crate::{
     app_state::{AppState, AppStateTransitionPlugin},
     gameplay_canvas::FixedGameplayCanvasPlugin,
     gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
+    name_entry::NameEntryPlugin,
     playtime::Playtime,
     scenario_manifest_asset::ScenarioManifestAssetPlugin,
     scenario_root::ScenarioRoot,
@@ -57,7 +58,8 @@ pub(crate) fn headless_title_app_with_asset_base(
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
         .add_plugins(FixedGameplayCanvasPlugin)
-        .add_plugins(TitleScreenPlugin);
+        .add_plugins(TitleScreenPlugin)
+        .add_plugins(NameEntryPlugin);
     app
 }
 

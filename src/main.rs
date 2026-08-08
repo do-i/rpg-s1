@@ -5,6 +5,7 @@ pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod manifest_path_validation;
+mod name_entry;
 pub mod new_game;
 pub mod playtime;
 pub mod runtime_flags;
@@ -50,6 +51,7 @@ use bevy::{
 };
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
+use name_entry::NameEntryPlugin;
 use playtime::Playtime;
 use scenario_manifest_asset::ScenarioManifestAssetPlugin;
 use scenario_root::ScenarioRoot;
@@ -96,5 +98,6 @@ fn run_game() {
         .add_plugins(ActionInputPlugin)
         .add_plugins(FixedGameplayCanvasPlugin)
         .add_plugins(TitleScreenPlugin)
+        .add_plugins(NameEntryPlugin)
         .run();
 }
