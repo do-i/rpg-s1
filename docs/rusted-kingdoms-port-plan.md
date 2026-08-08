@@ -148,7 +148,7 @@ sizes on the available llvmpipe renderer.
 | M2.10 | [x] Define shared condition fields. | `S` | `requires` and `excludes` have one typed representation. |
 | M2.11 | [x] Define shared position and direction types. | `T` | Coordinates and four/eight-way directions round-trip in fixtures. |
 | M2.12 | [x] Define party-member data types. | `S` | All current `party.yaml` fields load without lossy values. |
-| M2.13 | [ ] Define class and ability data types. | `S` | One current class file and every ability variant load. |
+| M2.13 | [x] Define class and ability data types. | `S` | One current class file and every ability variant load. |
 | M2.14 | [ ] Define item catalog data types. | `S` | One file for each current item category loads. |
 | M2.15 | [ ] Define map metadata data types. | `S` | Ardel's shops, NPCs, animation, inn, and BGM load. |
 | M2.16 | [ ] Define dialogue data types. | `S` | Intro plus one branching NPC conversation load. |

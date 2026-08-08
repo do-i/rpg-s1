@@ -4,6 +4,7 @@ pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod manifest_path_validation;
 pub mod playtime;
+pub mod scenario_class;
 pub mod scenario_condition;
 pub mod scenario_manifest;
 pub mod scenario_party;

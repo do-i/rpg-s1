@@ -1,0 +1,241 @@
+class: warden
+name: Warden
+description: A watchful defender who mixes steel, craft, and old road magic.
+base_hp: 24
+base_mp: 9
+default_row: front
+stat_growth:
+  str: [2, 3, 2, 3, 2, 3, 2, 3, 2, 3]
+  dex: [2, 2, 1, 2, 2, 1, 2, 2, 1, 2]
+  con: [3, 3, 2, 3, 3, 2, 3, 3, 2, 3]
+  int: [1, 2, 1, 1, 2, 1, 1, 2, 1, 1]
+exp_curve: quadratic
+exp_base: 105
+exp_factor: 2.0
+equipment_slots:
+  weapon: [blade, polearm]
+  shield: []
+  helmet: [cap, helm]
+  body: [mail]
+  accessory: [all]
+passive_bonuses:
+  encounter_rate_reduction: 0.10
+  flee_success_bonus: 0.30
+  chest_trap_detect: true
+abilities:
+  - id: steady_cut
+    name: Steady Cut
+    unlock_level: 1
+    type: physical
+    attack_range: melee
+    description: A measured close-range strike.
+    mp_cost: 0
+    damage_coeff: 1.1
+    target: single_enemy
+
+  - id: double_cut
+    name: Double Cut
+    unlock_level: 2
+    type: physical
+    attack_range: melee
+    description: Two quick cuts against one foe.
+    mp_cost: 0
+    hits: 2
+    damage_coeff: 0.75
+    target: single_enemy
+
+  - id: sure_cut
+    name: Sure Cut
+    unlock_level: 3
+    type: physical
+    attack_range: melee
+    description: A precise strike that always finds a weak point.
+    mp_cost: 2
+    damage_coeff: 1.6
+    guaranteed_crit: true
+    target: single_enemy
+
+  - id: final_cut
+    name: Final Cut
+    unlock_level: 9
+    type: physical
+    attack_range: melee
+    description: A finishing stroke resisted by major foes.
+    mp_cost: 7
+    damage_coeff: 1.9
+    instant_kill_chance: 0.15
+    instant_kill_blocked_by: [boss]
+    target: single_enemy
+
+  - id: armor_break
+    name: Armor Break
+    unlock_level: 5
+    type: physical
+    attack_range: melee
+    description: A heavy blow that weakens an enemy's attack.
+    mp_cost: 3
+    damage_coeff: 0.9
+    effect:
+      target: single_enemy
+      stat: atk
+      modifier: 0.90
+      duration_turns: 2
+    target: single_enemy
+
+  - id: prism_storm
+    name: Prism Storm
+    unlock_level: 12
+    unlock_flag: prism_storm_unlocked
+    type: spell
+    element: wind
+    description: A many-hued storm carrying several lingering hazards.
+    mp_cost: 18
+    spell_coeff: 1.65
+    target: all_enemies
+    side_effects:
+      - type: burn
+        chance: 0.25
+        damage_per_turn: "max(1, floor(caster_atk * 0.08))"
+        duration_turns: 3
+        timing: end_of_turn
+      - type: freeze
+        chance: 0.20
+        duration_turns: 1
+      - type: stun
+        chance: 0.15
+        duration_turns: 1
+      - type: silence
+        chance: 0.30
+        duration_turns: 2
+      - type: knockback
+        chance: 0.40
+        atk_modifier: 0.85
+        duration_turns: 1
+
+  - id: stone_spark
+    name: Stone Spark
+    unlock_level: 1
+    type: spell
+    element: earth
+    description: A small stone charged with old magic.
+    mp_cost: 3
+    spell_coeff: 1.0
+    target: group_enemies
+
+  - id: mend
+    name: Mend
+    unlock_level: 1
+    type: heal
+    element: holy
+    description: Restores an ally through focused light.
+    mp_cost: 4
+    heal_coeff: 1.4
+    target: single_ally
+
+  - id: renew_self
+    name: Renew Self
+    unlock_level: 4
+    type: heal
+    description: Restores a share of the caster's maximum health.
+    mp_cost: 5
+    heal_coeff: 1.0
+    heal_pct: 0.20
+    target: self
+
+  - id: return
+    name: Return
+    unlock_level: 10
+    type: heal
+    element: holy
+    description: Returns a fallen ally with part of their health.
+    mp_cost: 16
+    revive_hp_pct: 0.45
+    target: single_ally
+
+  - id: cleanse
+    name: Cleanse
+    unlock_level: 2
+    type: utility
+    description: Clears every harmful status from one ally.
+    mp_cost: 4
+    effect:
+      remove_status: all
+    target: single_ally
+
+  - id: pilfer
+    name: Pilfer
+    unlock_level: 2
+    type: utility
+    description: Attempts to take a carried object from one foe.
+    mp_cost: 0
+    steal_chance: 0.35
+    target: single_enemy
+
+  - id: waystep
+    name: Waystep
+    unlock_level: 1
+    unlock_flag: waystep_unlocked
+    type: utility
+    description: Opens a picker for a previously visited destination.
+    mp_cost: 7
+    target: self
+    warp: select
+
+  - id: guard_song
+    name: Guard Song
+    unlock_level: 3
+    type: buff
+    element: holy
+    description: Strengthens the party's defense for several turns.
+    mp_cost: 5
+    effect:
+      target: party
+      stat: def
+      modifier: 1.20
+      duration_turns: 3
+
+  - id: draw_fire
+    name: Draw Fire
+    unlock_level: 4
+    type: buff
+    description: Draws every foe's attention to the caster.
+    mp_cost: 0
+    effect:
+      target: self
+      aggro: all
+      duration_turns: 2
+
+  - id: interpose
+    name: Interpose
+    unlock_level: 5
+    type: buff
+    description: Redirects harm from one ally to the caster.
+    mp_cost: 0
+    effect:
+      target: single_ally
+      redirect_damage_to: self
+      duration_turns: 1
+
+  - id: bastion
+    name: Bastion
+    unlock_level: 7
+    type: buff
+    description: Reduces incoming damage but prevents other actions.
+    mp_cost: 0
+    effect:
+      target: self
+      damage_reduction: 0.40
+      duration_turns: 2
+      restrict_actions: true
+
+  - id: sap
+    name: Sap
+    unlock_level: 6
+    type: debuff
+    description: Weakens every enemy's attack for a short time.
+    mp_cost: 6
+    effect:
+      target: all_enemies
+      stat: atk
+      modifier: 0.80
+      duration_turns: 2
