@@ -667,18 +667,30 @@ mod tests {
             Duration::ZERO,
         ));
         app.update();
-        app.world_mut().resource_mut::<TitleMenu>().selected = 2;
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(KeyCode::Enter);
-        app.update();
+
+        // Input-to-spawn behavior is covered above. Enter the adapter seam directly here so an
+        // asynchronous missing-loader result cannot replace the fallback timeout under test.
+        let accepted_at = app.world().resource::<Time>().elapsed();
+        app.world_mut().resource_mut::<QuitLifecycle>().state =
+            QuitLifecycleState::WaitingForStart { accepted_at };
 
         let mut exit_cursor = app.world().resource::<Messages<AppExit>>().get_cursor();
         app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
-            QUIT_START_TIMEOUT,
+            Duration::from_millis(250),
         ));
-        app.update();
 
+        for _ in 1..12 {
+            app.update();
+            assert_eq!(
+                exit_cursor
+                    .read(app.world().resource::<Messages<AppExit>>())
+                    .count(),
+                0,
+                "an absent pre-sink entity must not complete Quit before the deadline"
+            );
+        }
+
+        app.update();
         assert_eq!(
             exit_cursor
                 .read(app.world().resource::<Messages<AppExit>>())
