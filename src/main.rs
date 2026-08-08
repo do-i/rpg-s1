@@ -6,6 +6,7 @@ pub mod gameplay_rng;
 pub mod manifest_path_validation;
 pub mod playtime;
 pub mod runtime_flags;
+pub mod runtime_member;
 pub mod scenario_audio;
 pub mod scenario_balance;
 pub mod scenario_battle_background;
