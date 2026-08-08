@@ -1,6 +1,7 @@
 mod action_input;
 pub mod app_state;
 mod cli;
+pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod manifest_path_validation;
