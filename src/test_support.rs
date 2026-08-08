@@ -10,6 +10,7 @@ use bevy::{
 use crate::{
     action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
+    gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
     scenario_root::ScenarioRoot,
     title_screen::TitleScreenPlugin,
 };
@@ -32,6 +33,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<ScenarioRoot>()
+        .add_plugins(GameplayRngPlugin)
         .insert_state(initial_state)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
@@ -53,4 +55,8 @@ fn headless_title_app_advances_without_a_window() {
         app.world_mut().query::<&Window>().iter(app.world()).count(),
         0
     );
+
+    let actual = app.world_mut().resource_mut::<GameplayRng>().next_u64();
+    let expected = GameplayRng::from_seed(DEFAULT_GAMEPLAY_SEED).next_u64();
+    assert_eq!(actual, expected);
 }
