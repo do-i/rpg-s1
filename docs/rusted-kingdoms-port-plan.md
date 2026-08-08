@@ -185,7 +185,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M3.01 | [ ] Define runtime flag state. | `T` | Set, unset, requires, and excludes behavior is unit tested. |
+| M3.01 | [x] Define runtime flag state. | `T` | Set, unset, requires, and excludes behavior is unit tested. |
 | M3.02 | [ ] Define runtime member state. | `S` | Mutable HP/MP/EXP/equipment is separate from immutable catalog data. |
 | M3.03 | [ ] Define runtime party state. | `S` | Order, row, membership, and protagonist lookup are tested. |
 | M3.04 | [ ] Define runtime repository state. | `S` | GP, item counts, caps, and empty-stack removal are tested. |
