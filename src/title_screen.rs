@@ -9,13 +9,11 @@ use std::time::Duration;
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
+    ui_theme::UiTheme,
 };
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
-const NORMAL_COLOR: Color = Color::srgb_u8(170, 140, 100);
-const SELECTED_COLOR: Color = Color::srgb_u8(220, 140, 60);
-const DISABLED_COLOR: Color = Color::srgb_u8(80, 70, 55);
 const QUIT_START_TIMEOUT: Duration = Duration::from_secs(3);
 const QUIT_COMPLETION_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -25,6 +23,7 @@ impl Plugin for TitleScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TitleMenu>()
             .init_resource::<QuitLifecycle>()
+            .init_resource::<UiTheme>()
             .add_systems(OnEnter(AppState::Title), setup_title_screen)
             .add_systems(OnExit(AppState::Title), cleanup_title_screen)
             .add_systems(
@@ -53,6 +52,9 @@ struct MenuEntry(usize);
 
 #[derive(Component)]
 struct StatusMessage;
+
+#[derive(Component)]
+struct TitlePanel;
 
 #[derive(Component)]
 struct QuitConfirmSound;
@@ -186,7 +188,7 @@ fn title_menu_action(selected: usize) -> TitleMenuAction {
     }
 }
 
-fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, theme: Res<UiTheme>) {
     commands.spawn((Camera2d, TitleScreenEntity));
 
     commands.spawn((
@@ -226,7 +228,8 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                     border_radius: BorderRadius::all(px(12)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.11)),
+                BackgroundColor(theme.panel_color),
+                TitlePanel,
             ))
             .with_children(|panel| {
                 for (index, label) in MENU_LABELS.into_iter().enumerate() {
@@ -234,16 +237,10 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Text::new(label),
                         TextFont {
                             font: font.clone().into(),
-                            font_size: FontSize::Px(30.0),
+                            font_size: FontSize::Px(theme.menu_font_size),
                             ..default()
                         },
-                        TextColor(if index == 0 {
-                            SELECTED_COLOR
-                        } else if index == LOAD_GAME_INDEX {
-                            DISABLED_COLOR
-                        } else {
-                            NORMAL_COLOR
-                        }),
+                        TextColor(menu_entry_color(&theme, index, 0)),
                         TextLayout::justify(Justify::Center),
                         Node {
                             height: px(42),
@@ -258,10 +255,10 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                 Text::new(""),
                 TextFont {
                     font: font.into(),
-                    font_size: FontSize::Px(17.0),
+                    font_size: FontSize::Px(theme.status_font_size),
                     ..default()
                 },
-                TextColor(Color::srgb_u8(220, 190, 145)),
+                TextColor(theme.status_color),
                 TextLayout::justify(Justify::Center),
                 Node {
                     position_type: PositionType::Absolute,
@@ -390,25 +387,79 @@ fn observe_quit_playback(
     }
 }
 
-fn update_menu_colors(menu: Res<TitleMenu>, mut entries: Query<(&MenuEntry, &mut TextColor)>) {
+fn update_menu_colors(
+    menu: Res<TitleMenu>,
+    theme: Res<UiTheme>,
+    mut entries: Query<(&MenuEntry, &mut TextColor)>,
+) {
     if !menu.is_changed() {
         return;
     }
 
     for (entry, mut color) in &mut entries {
-        color.0 = if entry.0 == LOAD_GAME_INDEX {
-            DISABLED_COLOR
-        } else if entry.0 == menu.selected {
-            SELECTED_COLOR
-        } else {
-            NORMAL_COLOR
-        };
+        color.0 = menu_entry_color(&theme, entry.0, menu.selected);
+    }
+}
+
+fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize) -> Color {
+    if index == LOAD_GAME_INDEX {
+        theme.menu_disabled_color
+    } else if index == selected {
+        theme.menu_selected_color
+    } else {
+        theme.menu_normal_color
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_ui_theme_preserves_the_title_visual_contract() {
+        let theme = UiTheme::default();
+
+        assert_eq!(theme.clear_color, Color::srgb_u8(10, 10, 30));
+        assert_eq!(theme.panel_color, Color::srgba(0.0, 0.0, 0.0, 0.11));
+        assert_eq!(theme.menu_normal_color, Color::srgb_u8(170, 140, 100));
+        assert_eq!(theme.menu_selected_color, Color::srgb_u8(220, 140, 60));
+        assert_eq!(theme.menu_disabled_color, Color::srgb_u8(80, 70, 55));
+        assert_eq!(theme.status_color, Color::srgb_u8(220, 190, 145));
+        assert_eq!(theme.menu_font_size, 30.0);
+        assert_eq!(theme.status_font_size, 17.0);
+    }
+
+    #[test]
+    fn spawned_title_ui_uses_the_registered_theme() {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.update();
+
+        let theme = *app.world().resource::<UiTheme>();
+        let world = app.world_mut();
+
+        let mut menu_entries = world.query::<(&MenuEntry, &TextFont, &TextColor)>();
+        let mut seen_entries = 0;
+        for (entry, font, color) in menu_entries.iter(world) {
+            assert_eq!(font.font_size, FontSize::Px(theme.menu_font_size));
+            assert_eq!(color.0, menu_entry_color(&theme, entry.0, 0));
+            seen_entries += 1;
+        }
+        assert_eq!(seen_entries, MENU_LABELS.len());
+
+        let mut status_messages =
+            world.query_filtered::<(&TextFont, &TextColor), With<StatusMessage>>();
+        let [(font, color)] = status_messages.iter(world).collect::<Vec<_>>()[..] else {
+            panic!("title screen must spawn exactly one status message");
+        };
+        assert_eq!(font.font_size, FontSize::Px(theme.status_font_size));
+        assert_eq!(color.0, theme.status_color);
+
+        let mut panels = world.query_filtered::<&BackgroundColor, With<TitlePanel>>();
+        let [panel] = panels.iter(world).collect::<Vec<_>>()[..] else {
+            panic!("title screen must spawn exactly one themed panel");
+        };
+        assert_eq!(panel.0, theme.panel_color);
+    }
 
     fn activate_at(lifecycle: &mut QuitLifecycle, elapsed: Duration) {
         assert_eq!(

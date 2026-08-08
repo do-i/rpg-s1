@@ -1,6 +1,7 @@
 mod action_input;
 pub mod app_state;
 mod title_screen;
+mod ui_theme;
 
 #[cfg(test)]
 mod test_support;
@@ -12,6 +13,7 @@ use bevy::{
     window::{PresentMode, WindowPlugin},
 };
 use title_screen::TitleScreenPlugin;
+use ui_theme::UiTheme;
 
 fn main() {
     App::new()
@@ -25,7 +27,7 @@ fn main() {
             }),
             ..default()
         }))
-        .insert_resource(ClearColor(Color::srgb_u8(10, 10, 30)))
+        .insert_resource(ClearColor(UiTheme::default().clear_color))
         .insert_state(AppState::Title)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
