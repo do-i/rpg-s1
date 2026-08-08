@@ -6,6 +6,7 @@ pub mod gameplay_rng;
 pub mod manifest_path_validation;
 pub mod playtime;
 pub mod runtime_flags;
+pub mod runtime_map;
 pub mod runtime_member;
 pub mod runtime_party;
 pub mod runtime_repository;
