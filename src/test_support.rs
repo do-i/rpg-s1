@@ -1,0 +1,45 @@
+use bevy::{
+    asset::{AssetMetaCheck, AssetPlugin},
+    audio::{AudioPlugin, AudioSource},
+    prelude::*,
+    render::RenderPlugin,
+    window::WindowPlugin,
+};
+
+use crate::title_screen::TitleScreenPlugin;
+
+/// Builds the real title-screen app surface without platform, rendering, or audio plugins.
+///
+/// `AssetPlugin` provides typed handles to the startup systems, but intentionally no image,
+/// font, or audio loaders. Tests exercise ECS construction without reading live assets or
+/// initializing GPU and audio backends.
+pub(crate) fn headless_title_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin {
+            meta_check: AssetMetaCheck::Never,
+            ..default()
+        })
+        .init_asset::<Image>()
+        .init_asset::<Font>()
+        .init_asset::<AudioSource>()
+        .init_resource::<ButtonInput<KeyCode>>()
+        .add_plugins(TitleScreenPlugin);
+    app
+}
+
+#[test]
+fn headless_title_app_advances_without_a_window() {
+    let mut app = headless_title_app();
+
+    assert!(!app.is_plugin_added::<WindowPlugin>());
+    assert!(!app.is_plugin_added::<RenderPlugin>());
+    assert!(!app.is_plugin_added::<AudioPlugin>());
+
+    app.update();
+
+    assert_eq!(
+        app.world_mut().query::<&Window>().iter(app.world()).count(),
+        0
+    );
+}

@@ -1,5 +1,8 @@
 mod title_screen;
 
+#[cfg(test)]
+mod test_support;
+
 use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
