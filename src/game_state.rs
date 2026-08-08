@@ -5,9 +5,9 @@
 //! playtime. Quest status remains a pure view of the owned flags and immutable quest definitions,
 //! so it is deliberately not stored here.
 //!
-//! M3.08 defines ownership and construction invariants only. M7 owns the versioned serialization
-//! contract, while M3.09 will atomically replace the application's transitional standalone RNG
-//! and playtime resources when it installs a complete `GameState`.
+//! M3.08 defines ownership and construction invariants only. M3.09 builds this root from typed
+//! scenario data, and M3.13 owns the confirmed-name handoff that can atomically install it into
+//! the Bevy world and retire transitional standalone resources. M7 owns serialization.
 
 use std::{error::Error, fmt};
 

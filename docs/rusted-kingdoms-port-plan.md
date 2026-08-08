@@ -193,7 +193,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.06 | [x] Define opened-box state. | `T` | Box IDs can be recorded idempotently. |
 | M3.07 | [x] Derive runtime quest status from flags. | `S` | Inactive, active, and completed status follows the quest's runtime flags and is tested. |
 | M3.08 | [x] Compose the root `GameState`. | `S` | All runtime state has one validated root owner ready for later serialization. |
-| M3.09 | [ ] Build new-game state from the manifest. | `S` | Start map/position, protagonist, and bootstrap flags match Python. |
+| M3.09 | [x] Build new-game state from the manifest. | `S` | Typed manifest, party, and balance inputs produce Python-matching start state; an ignored clean-pin oracle test covers exact source values. |
 | M3.10 | [ ] Add new-game invariant tests. | `T` | Caps, initial equipment, flags, and party size are asserted. |
 | M3.11 | [ ] Render the name-entry prompt. | `T` | Default protagonist name and editing hint are visible. |
 | M3.12 | [ ] Implement name-entry text editing. | `S` | Insert, delete, cancel, confirm, and length rules are tested. |

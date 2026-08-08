@@ -5,6 +5,7 @@ pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod manifest_path_validation;
+pub mod new_game;
 pub mod playtime;
 pub mod runtime_flags;
 pub mod runtime_map;
