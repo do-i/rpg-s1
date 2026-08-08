@@ -79,7 +79,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.07 | [x] Decide the Rust TMX loading approach. | `X` | An ADR records crate/custom-parser choice and unsupported features. |
 | M0.08 | [x] Decide the in-repo scenario asset layout. | `S` | One canonical relative root is documented. |
 | M0.09 | [x] Build an asset-license inventory template. | `T` | Each copied asset can record origin, author, license, and destination. |
-| M0.10 | [ ] Audit title artwork and title music redistribution status. | `S` | Both assets have evidence or are blocked from release. |
+| M0.10 | [x] Audit title artwork and title music redistribution status. | `S` | Both assets have evidence or are blocked from release. |
 | M0.11 | [ ] Audit menu SFX redistribution status. | `T` | Attribution and redistribution decision are recorded. |
 | M0.12 | [ ] Resolve the manifest cursor filename mismatch. | `T` | The chosen source file and compatibility action are recorded and tested by validation. |
 | M0.13 | [ ] Add a title-menu action unit test. | `T` | New Game, disabled Load, and Quit resolve to distinct actions. |

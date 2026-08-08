@@ -11,5 +11,7 @@ evaluating the Rust and Bevy direction.
 - `fonts/Philosopher-Regular.ttf`: Philosopher font, licensed under the SIL Open
   Font License 1.1; see `fonts/Philosopher-OFL.txt`.
 
-The source repository does not record explicit licensing for the title artwork
-or music. Confirm their distribution terms before publishing this repository.
+The title artwork and title music are currently blocked from public release:
+their audits did not find sufficient redistribution evidence. See
+`../docs/asset-license-inventory.md` for the exact proof required to unblock or
+replace each file.
