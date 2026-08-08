@@ -11,6 +11,7 @@ use crate::{
     action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
     gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
+    playtime::Playtime,
     scenario_root::ScenarioRoot,
     title_screen::TitleScreenPlugin,
 };
@@ -33,6 +34,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<ScenarioRoot>()
+        .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(initial_state)
         .add_plugins(AppStateTransitionPlugin)
@@ -48,6 +50,7 @@ fn headless_title_app_advances_without_a_window() {
     assert!(!app.is_plugin_added::<WindowPlugin>());
     assert!(!app.is_plugin_added::<RenderPlugin>());
     assert!(!app.is_plugin_added::<AudioPlugin>());
+    assert_eq!(app.world().resource::<Playtime>().total_seconds(), 0);
 
     app.update();
 
