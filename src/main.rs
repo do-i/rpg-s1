@@ -1,5 +1,6 @@
 mod action_input;
 pub mod app_state;
+mod cli;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod manifest_path_validation;
@@ -43,7 +44,18 @@ use scenario_root::ScenarioRoot;
 use title_screen::TitleScreenPlugin;
 use ui_theme::UiTheme;
 
-fn main() {
+fn main() -> std::process::ExitCode {
+    let mut stdout = std::io::stdout();
+    let mut stderr = std::io::stderr();
+    std::process::ExitCode::from(cli::run(
+        std::env::args_os().skip(1),
+        &mut stdout,
+        &mut stderr,
+        run_game,
+    ))
+}
+
+fn run_game() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {

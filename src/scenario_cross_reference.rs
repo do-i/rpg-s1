@@ -119,6 +119,9 @@ pub struct ScenarioCatalogCounts {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ScenarioValidationReport {
     pub package_key: String,
+    pub scenario_id: Option<String>,
+    pub scenario_name: Option<String>,
+    pub scenario_version: Option<String>,
     pub counts: ScenarioCatalogCounts,
     pub checked_references: usize,
     pub diagnostics: Vec<ScenarioDiagnostic>,
@@ -258,6 +261,9 @@ impl<'a> Validator<'a> {
         let Some(manifest) = self.read_yaml::<Manifest>(SCENARIO_MANIFEST_PATH) else {
             return;
         };
+        self.report.scenario_id = Some(manifest.id.clone());
+        self.report.scenario_name = Some(manifest.name.clone());
+        self.report.scenario_version = Some(manifest.version.clone());
         self.validate_manifest_paths(&manifest);
 
         let party_path = manifest.refs.party.as_str().to_owned();
@@ -2310,6 +2316,9 @@ movement: {player_speed: 5}
 
         assert!(report.is_valid(), "{:#?}", report.diagnostics);
         assert!(report.diagnostics.is_empty());
+        assert_eq!(report.scenario_id.as_deref(), Some("invented_story"));
+        assert_eq!(report.scenario_name.as_deref(), Some("Invented Story"));
+        assert_eq!(report.scenario_version.as_deref(), Some("1.0"));
         assert_eq!(report.counts.party_members, 1);
         assert_eq!(report.counts.classes, 1);
         assert_eq!(report.counts.items, 1);
@@ -2597,6 +2606,12 @@ npcs:
         let root =
             std::env::var("RPG_S1_PINNED_SCENARIO_DIR").expect("set RPG_S1_PINNED_SCENARIO_DIR");
         let report = validate_scenario_directory(&ScenarioRoot::default(), root);
+        assert_eq!(report.scenario_id.as_deref(), Some("my_rpg_story"));
+        assert_eq!(
+            report.scenario_name.as_deref(),
+            Some("Chronicles of the Lost Flame")
+        );
+        assert_eq!(report.scenario_version.as_deref(), Some("1.0.0"));
         assert_eq!(report.counts.party_members, 5);
         assert_eq!(report.counts.classes, 5);
         assert_eq!(report.counts.abilities, 42);
