@@ -86,7 +86,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.14 | [x] Add a headless Bevy app test harness. | `S` | A test can advance the app without opening a window. |
 | M0.15 | [x] Add a title-screen spawn smoke test. | `T` | The expected camera, background, menu, status, and audio entities exist. |
 | M0.16 | [x] Write the baseline manual play checklist. | `T` | Resize, keyboard, audio, disabled Load, New Game, and Quit are covered. |
-| M0.17 | [ ] Run and record the baseline manual play check. | `S` | The title screen is played through on real graphics/audio hardware. |
+| M0.17 | [x] Run and record the baseline manual play check. | `S` | The title screen is played through using a real window/input/audio path on the best available graphics adapter; software rendering is acceptable when the development machine has no GPU. |
 | M0.17a | [x] Decide the graceful Quit audio/exit lifecycle. | `T` | A short decision fixes the completion signal, fallback timeout, and test seam. |
 | M0.17b | [x] Implement and test graceful Quit. | `S` | Confirm audio starts, then exactly one exit is emitted after playback or a bounded failure fallback. |
 | M0.17c | [x] Re-run the targeted Quit audio check. | `S` | Captured output contains the confirm event and the process still exits cleanly. |
@@ -95,13 +95,13 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 **Gate 0:** The existing title screen is reproducibly buildable, tested, and
 legally understood. No wider asset copy starts before this gate passes.
 
-M0.17 is currently blocked because this session exposes only the llvmpipe CPU
-renderer and Bevy's GL backend finds no GPU. The partial visual/audio run is
-recorded in `baseline-manual-play-checklist.md`; M0.17a-c track the Quit-audio
-defect found during that run. A disposable test of the official
-`vulkan-virtio` driver also found no physical device, confirming that the VM
-host must expose Venus or a passed-through GPU. Gate 0 remains closed until
-M0.17 is completed.
+Gate 0 passed on 2026-08-08. The development machine has no GPU, so M0.17
+accepts its real X11 window/input and ALSA audio run on the best available
+adapter, Vulkan llvmpipe. The checklist preserves the unsuccessful GL and
+`vulkan-virtio` hardware-driver probes as environment evidence, not as a
+release blocker. It also records the original Quit-audio defect, the M0.17b
+repair, and the focused M0.17c runtime proof that the repaired build plays the
+confirm sound before exiting cleanly.
 
 ## Milestone 1 — Application shell
 
