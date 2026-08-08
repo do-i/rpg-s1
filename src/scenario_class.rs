@@ -362,6 +362,12 @@ pub enum SideEffectTiming {
 pub struct PositiveFinite(f64);
 
 impl PositiveFinite {
+    /// Creates a positive finite value, or returns `None` for zero, negative, or non-finite
+    /// input.
+    pub fn new(value: f64) -> Option<Self> {
+        (value.is_finite() && value > 0.0).then_some(Self(value))
+    }
+
     pub fn get(self) -> f64 {
         self.0
     }

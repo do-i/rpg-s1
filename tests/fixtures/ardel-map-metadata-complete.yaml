@@ -1,0 +1,89 @@
+# Invented source-shaped fixture combining all map metadata fields authored by the Ardel family.
+id: town_01_ardel
+name: Ardel Village
+warp_order: 10
+bgm: town.default
+inn:
+  cost: 50
+  position: [8, 5]
+
+shop:
+  items:
+    - id: potion
+      name: Potion
+      buy_price: 100
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: antidote
+      name: Antidote
+      buy_price: 80
+      tags: [consumable, status]
+      unlock_flag: story_quest_started
+
+weapon_shop:
+  items:
+    - id: wooden_stick
+      buy_price: 30
+      unlock_flag: story_quest_started
+
+armor_shop:
+  items:
+    - id: cloth_hood
+      buy_price: 40
+      unlock_flag: story_quest_started
+
+npcs:
+  - id: elise
+    name: Elise
+    dialogue: elise_join
+    position: [12, 6]
+    sprite: assets/sprites/party/02_elise_walk.tsx
+    default_facing: down
+    present:
+      excludes: [npc_elise_joined]
+    animation:
+      mode: step
+      speed: 0.7
+
+  - id: guide_ellen
+    name: Guide Ellen
+    type: guide
+    availability: 0.30
+    dialogue: guide_ardel
+    excuses: guide_excuses
+    position: [5, 6]
+    sprite: assets/sprites/npc/teen_wiz_01.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.8
+      range: 5
+
+  - id: item_shop_keeper
+    name: Wilkin
+    dialogue: item_shop_ardel
+    position: [6, 3]
+    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+
+  - id: ardel_apprentice
+    name: Tomas
+    dialogue: ardel_apprentice
+    position: [24, 10]
+    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    default_facing: left
+    animation:
+      mode: wander
+      speed: 1.5
+      range: 3
+
+  - id: ardel_fisherman
+    name: Old Marn
+    dialogue: ardel_fisherman
+    position: [3, 8]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: right
