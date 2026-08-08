@@ -103,26 +103,40 @@ Fill this table during the run; leave untested assertions as NOT RUN.
 
 | Assertion | Result | Evidence / notes |
 | --- | --- | --- |
-| Preflight format, test, and Clippy | NOT RUN | |
-| Developer-menu entry / direct launch path | NOT RUN | |
-| Initial presentation | NOT RUN | |
-| Resize | NOT RUN | |
-| Title music and repeat | NOT RUN | |
-| Navigation, wrap, and hover SFX | NOT RUN | |
-| Disabled Load | NOT RUN | |
-| New Game status and confirm SFX | NOT RUN | |
-| Quit confirm SFX and clean exit | NOT RUN | |
-| Terminal/error review | NOT RUN | |
+| Preflight format, test, and Clippy | PASS | `cargo fmt -- --check`, `cargo test` (4 passed), and `cargo clippy --all-targets -- -D warnings` exited 0; see `/tmp/rpg-s1-m0-17-{fmt,test,clippy}.log`. |
+| Developer-menu entry / direct launch path | PASS | `lazymenu-cli --config menu.toml --print` reported `r`, `Run title-screen prototype`, `cargo run`; see `/tmp/rpg-s1-m0-17-menu.log`. All evidence launches used that direct `cargo run` path, with test-only environment instrumentation where noted below. |
+| Graphics hardware prerequisite | BLOCKED | The only Vulkan adapter is llvmpipe with CPU device type, so the successful visual run was software-rendered. A targeted `WGPU_BACKEND=gl cargo run` recovery found no GPU and exited 101; see `/tmp/rpg-s1-m0-17-runtime-gl.log`. No hardware-backed graphics adapter is available in this session. |
+| Initial presentation | PASS | X11 reported one mapped game window at exactly 1280x766. `/tmp/rpg-s1-m0-17-final-initial.png` shows the title art, dark surround, three bottom-centered menu entries, selected New Game, disabled-looking Load Game, and an empty status line. |
+| Resize | PASS | The same window remained mapped and responsive at 900x600, 1600x900, and restored 1280x766. Art and menu remained visible without corruption; see `/tmp/rpg-s1-m0-17-final-{small,large,restored}.png`. |
+| Title music and repeat | PASS | The game owned ALSA playback device `hw:0,0` in `RUNNING` state while a built-in ALSA file wrapper mirrored the hardware-bound PCM to `/tmp/rpg-s1-m0-17-alsa.raw`. The 48 kHz stereo S16_LE capture contains 211.71 seconds and nonzero signal (first 120 seconds: RMS -17.4 dB, peak -4.0 dB). A 10-second title-only sample repeated bit-for-bit after 25.5925417 seconds (correlation 1.0, maximum sample difference 0), proving multiple natural repeats before input. |
+| Navigation, wrap, and hover SFX | PASS | Ordered Up, Down, Down produced Quit, New Game, and disabled Load selection states in `/tmp/rpg-s1-m0-17-nav-{quit,new,load}.png`. The PCM repeat-residual contained distinct hover events at 112.78, 127.46, 141.15, 185.31, and 208.31 seconds for all five successful selection moves in the full sequence. |
+| Disabled Load | PASS | Enter and Space left the mapped 1280x766 title window unchanged and usable with no status line or transition; compare `/tmp/rpg-s1-m0-17-nav-load.png` and `/tmp/rpg-s1-m0-17-load-disabled.png`. The event-local PCM residual contained no new confirm event. |
+| New Game status and confirm SFX | PASS | `/tmp/rpg-s1-m0-17-new-game.png` shows `New Game is the next migration slice.` while the app remains open. The PCM repeat-residual contains a distinct confirm event at 188.30-188.82 seconds. |
+| Quit confirm SFX and clean exit | FAIL | `/tmp/rpg-s1-m0-17-quit-selected.png` shows Quit selected and Enter produced a clean exit status 0, but no distinct confirm event reached hardware PCM before the capture ended at 211.71 seconds. The 210.90-211.07 residual is the expected one-period echo of the 185.31 hover, not a new confirm. |
+| Terminal/error review | PASS | `/tmp/rpg-s1-m0-17-runtime-final.log` ends with command exit code 0 and has no panic, fatal error, asset error, or audio error. The only warnings are non-fatal XSETTINGS reload and expected llvmpipe software-rendering warnings. The separate GL recovery exited 101 because no GPU exists; that prerequisite failure is recorded as BLOCKED above. |
 
 Record the run date, commit under test, display/session, audio output device,
 launch path, screenshot/log locations, and any BLOCKED prerequisite here:
 
 ```text
-Date:
-Commit:
-Display/session:
-Audio output:
-Launch path:
-Screenshot/log locations:
-Blocked prerequisites:
+Date: 2026-08-07
+Commit: d8ab18e6e6bed24b3c0875979f094a4fffe0c5b7
+Display/session: X11 DISPLAY=:0; X.Org 21.1.24; Virtual-1 2206x1025; Vulkan llvmpipe CPU software renderer; game window 0x3400004; GL recovery found no GPU
+Audio output: ALSA card 0 HDA Intel, hw:0,0 Generic Analog; 48 kHz stereo S16_LE; application title volume 0.65
+Launch path: cargo run (final evidence run added ALSA_CONFIG_PATH=target/m0_17_asound.conf to mirror the same hw:0,0 PCM to /tmp)
+Screenshot/log locations: /tmp/rpg-s1-m0-17-*.png, /tmp/rpg-s1-m0-17-*.log, /tmp/rpg-s1-m0-17-alsa.raw
+Blocked prerequisites: Real graphics hardware. Vulkan exposes only llvmpipe CPU software rendering, and the GL backend reports no GPU. PulseAudio monitor capture was unavailable because the uninstrumented app opened ALSA hw:0,0 directly; the evidence run used ALSA's built-in file wrapper to preserve the real hardware-bound PCM instead.
 ```
+
+The partial evidence run followed the ordered checklist from initial
+presentation through Quit, but it does not complete M0.17 because no
+hardware-backed graphics adapter was available. The test-only X11 input/resize
+helper and ALSA mirror configuration live under ignored `target/` paths and do
+not change the shipped runtime. Audio repeat and event detection compared the
+captured PCM with itself one measured title-loop period earlier, so continuous
+title music cancels and new menu SFX remain visible. The failed Quit SFX is an
+observed baseline defect,
+not a blocked assertion. The PCM evidence proves nonzero game samples were
+delivered through the application's live ALSA hardware playback path; it is not
+a human-listener report or an acoustic microphone measurement of loudspeaker
+output.
