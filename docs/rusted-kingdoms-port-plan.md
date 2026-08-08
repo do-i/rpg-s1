@@ -89,7 +89,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.17 | [ ] Run and record the baseline manual play check. | `S` | The title screen is played through on real graphics/audio hardware. |
 | M0.17a | [x] Decide the graceful Quit audio/exit lifecycle. | `T` | A short decision fixes the completion signal, fallback timeout, and test seam. |
 | M0.17b | [x] Implement and test graceful Quit. | `S` | Confirm audio starts, then exactly one exit is emitted after playback or a bounded failure fallback. |
-| M0.17c | [ ] Re-run the targeted Quit audio check. | `S` | Captured output contains the confirm event and the process still exits cleanly. |
+| M0.17c | [x] Re-run the targeted Quit audio check. | `S` | Captured output contains the confirm event and the process still exits cleanly. |
 | M0.18 | [ ] Add CI for format, test, and Clippy. | `T` | A clean checkout runs all three checks. |
 
 **Gate 0:** The existing title screen is reproducibly buildable, tested, and

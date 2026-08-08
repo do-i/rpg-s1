@@ -135,8 +135,34 @@ helper and ALSA mirror configuration live under ignored `target/` paths and do
 not change the shipped runtime. Audio repeat and event detection compared the
 captured PCM with itself one measured title-loop period earlier, so continuous
 title music cancels and new menu SFX remain visible. The failed Quit SFX is an
-observed baseline defect,
-not a blocked assertion. The PCM evidence proves nonzero game samples were
+observed baseline defect, not a blocked assertion. The PCM evidence proves
+nonzero game samples were
 delivered through the application's live ALSA hardware playback path; it is not
 a human-listener report or an acoustic microphone measurement of loudspeaker
 output.
+
+## M0.17c targeted Quit audio recheck
+
+This focused recheck supersedes the earlier `Quit confirm SFX and clean exit`
+FAIL for the repaired commit only. The historical result above remains the
+baseline evidence for the defect at commit `d8ab18e`. This recheck did not
+repeat the complete checklist and does not change M0.17 or its graphics-hardware
+BLOCKED result.
+
+| Field | Result / evidence |
+| --- | --- |
+| Date and commit | 2026-08-07; `1cf1713c4f8be8ffe8013f3a75e849940ed54439` (`Play title confirm before quitting`). |
+| Preflight | PASS: `cargo fmt -- --check`, `cargo test` (13 passed), and `cargo clippy --all-targets -- -D warnings` each exited 0 before launch. |
+| Runtime path | PASS: actual `cargo run` on X11 `DISPLAY=:0`; the title window mapped at 1280x766. ALSA used the ignored M0.17 file wrapper with live slave `hw:0,0`, mirroring the same hardware-bound 48 kHz stereo S16_LE PCM to `/tmp/rpg-s1-m0-17c-alsa.raw`. |
+| Inputs | PASS: one Up selected Quit, then one Return activated it. Immediately before Return injection the capture contained 2,572,288 frames (53.589333 seconds). |
+| Quit confirm in output | PASS: the one-title-loop residual contains a new event from 54.154375 through 55.487708 seconds, starting 0.565042 seconds after the pre-Return capture marker. It matches the prior run's independently identified New Game confirm output at normalized correlation 0.999999783 and least-squares gain 1.000005679; fitted residual RMS is 0.475 sample counts versus event RMS 721.549. The same event's best correlation with the prior hover output is 0.005204271. |
+| Clean exit | PASS: the PCM contains the complete 1.333333-second confirm event plus a 0.064292-second capture tail. The terminal log completed 2.125950 seconds after the timestamp immediately before Return injection; because the helper completed injection within 0.504371 seconds, actual key-to-exit time is bounded to 1.621579-2.125950 seconds. `cargo run` exited 0, the log recorded `COMMAND_EXIT_CODE="0"`, and no `target/debug/rpg-s1` or `cargo run` process remained. |
+| Evidence | `/tmp/rpg-s1-m0-17c-runtime.log`, `/tmp/rpg-s1-m0-17c-alsa.raw` (10,665,984 bytes; SHA-256 `40d009b26465181650daafa85f73ff08cbf587536cdd9ad72e007a7121825595`), and `/tmp/rpg-s1-m0-17c-analysis.log`. |
+
+The signal comparison subtracts the sample stream exactly 1,228,442 frames
+(25.592541667 seconds, one measured title loop) earlier. The 50-52-second
+pre-Quit control cancels to zero RMS and peak, while the prior captured New
+Game confirm supplies an output-path reference independent of the source MP3
+decoder. This proves that the new confirm event reached the captured
+hardware-bound PCM before clean process exit; it is not a claim that a human
+listener acoustically heard a loudspeaker.
