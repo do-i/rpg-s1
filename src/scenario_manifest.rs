@@ -51,10 +51,48 @@ pub struct ManifestUi {
     pub menu_backdrop: ScenarioRelativePath,
 }
 
+/// The source manifest fields selecting sprites for field services and item boxes.
+///
+/// This is a partial manifest adapter alongside the presentation and identity adapters.
+/// The apothecary is the only current service with nested icon assets; retaining that
+/// structure prevents a later service implementation from guessing icon ownership.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestServiceSprites {
+    pub apothecary: ManifestApothecary,
+    pub inn: ManifestServiceSprite,
+    pub item_shop: ManifestServiceSprite,
+    pub weapon_shop: ManifestServiceSprite,
+    pub armor_shop: ManifestServiceSprite,
+    pub item_box: ManifestServiceSprite,
+}
+
+/// Apothecary presentation assets, including its source-authored lock-status icons.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestApothecary {
+    pub sprite: ScenarioRelativePath,
+    pub icons: ManifestApothecaryIcons,
+}
+
+/// The three source-authored apothecary icon states.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestApothecaryIcons {
+    pub locked: ScenarioRelativePath,
+    pub ready: ScenarioRelativePath,
+    pub missing: ScenarioRelativePath,
+}
+
+/// A service or item-box sprite selected by the manifest.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestServiceSprite {
+    pub sprite: ScenarioRelativePath,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        ManifestFont, ManifestIdentityWindow, ManifestTitle, ManifestTitleFontUi, ManifestUi,
+        ManifestApothecary, ManifestApothecaryIcons, ManifestFont, ManifestIdentityWindow,
+        ManifestServiceSprite, ManifestServiceSprites, ManifestTitle, ManifestTitleFontUi,
+        ManifestUi,
     };
     use crate::scenario_yaml;
 
@@ -101,6 +139,55 @@ mod tests {
                     menu_backdrop: "assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
                         .try_into()
                         .unwrap(),
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn loads_pinned_service_sprites_and_apothecary_icon_states() {
+        let manifest: ManifestServiceSprites = scenario_yaml::from_str(include_str!(
+            "../tests/fixtures/rusted-kingdoms-manifest-service-sprites.yaml"
+        ))
+        .expect("the pinned manifest service-sprite slice should deserialize");
+
+        assert_eq!(
+            manifest,
+            ManifestServiceSprites {
+                apothecary: ManifestApothecary {
+                    sprite: "assets/sprites/npc/female_wiz_01.tsx".try_into().unwrap(),
+                    icons: ManifestApothecaryIcons {
+                        locked: "assets/images/icons/lock-locked-red-small.webp"
+                            .try_into()
+                            .unwrap(),
+                        ready: "assets/images/icons/lock-unlocked-green-small.webp"
+                            .try_into()
+                            .unwrap(),
+                        missing: "assets/images/icons/lock-unlocked-yellow-small.webp"
+                            .try_into()
+                            .unwrap(),
+                    },
+                },
+                inn: ManifestServiceSprite {
+                    sprite: "assets/sprites/npc/female_blue_01.tsx".try_into().unwrap(),
+                },
+                item_shop: ManifestServiceSprite {
+                    sprite: "assets/sprites/npc/teen_halfmessy_01.tsx"
+                        .try_into()
+                        .unwrap(),
+                },
+                weapon_shop: ManifestServiceSprite {
+                    sprite: "assets/sprites/npc/male_sword_fighter_axe_fighter.tsx"
+                        .try_into()
+                        .unwrap(),
+                },
+                armor_shop: ManifestServiceSprite {
+                    sprite: "assets/sprites/npc/plate_knight_base.tsx"
+                        .try_into()
+                        .unwrap(),
+                },
+                item_box: ManifestServiceSprite {
+                    sprite: "assets/sprites/objects/item_box.tsx".try_into().unwrap(),
                 },
             }
         );

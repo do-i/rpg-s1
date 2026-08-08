@@ -1,0 +1,30 @@
+# Pinned-source-shaped manifest fixture for M2.05.
+# Later slices deliberately remain unknown to this partial adapter.
+id: my_rpg_story
+name: "Chronicles of the Lost Flame"
+version: "1.0.0"
+window_title: "Rusted Kingdoms"
+
+apothecary:
+  sprite: assets/sprites/npc/female_wiz_01.tsx
+  icons:
+    locked: assets/images/icons/lock-locked-red-small.webp
+    ready: assets/images/icons/lock-unlocked-green-small.webp
+    missing: assets/images/icons/lock-unlocked-yellow-small.webp
+inn:
+  sprite: assets/sprites/npc/female_blue_01.tsx
+item_shop:
+  sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+weapon_shop:
+  sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+armor_shop:
+  sprite: assets/sprites/npc/plate_knight_base.tsx
+item_box:
+  sprite: assets/sprites/objects/item_box.tsx
+
+protagonist:
+  id: aric
+start:
+  map: town_01_ardel
+refs:
+  party: data/party.yaml
