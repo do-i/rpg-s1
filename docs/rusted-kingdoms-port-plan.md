@@ -77,7 +77,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 | M0.05 | [x] Decide whether Rust saves must read Python YAML saves. | `X` | An ADR chooses compatibility or a one-time converter. |
 | M0.06 | [x] Decide whether runtime reads source YAML/TMX unchanged. | `X` | An ADR fixes the data-compatibility policy. |
 | M0.07 | [x] Decide the Rust TMX loading approach. | `X` | An ADR records crate/custom-parser choice and unsupported features. |
-| M0.08 | [ ] Decide the in-repo scenario asset layout. | `S` | One canonical relative root is documented. |
+| M0.08 | [x] Decide the in-repo scenario asset layout. | `S` | One canonical relative root is documented. |
 | M0.09 | [ ] Build an asset-license inventory template. | `T` | Each copied asset can record origin, author, license, and destination. |
 | M0.10 | [ ] Audit title artwork and title music redistribution status. | `S` | Both assets have evidence or are blocked from release. |
 | M0.11 | [ ] Audit menu SFX redistribution status. | `T` | Attribution and redistribution decision are recorded. |
