@@ -4,6 +4,7 @@ pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod playtime;
 pub mod scenario_root;
+pub mod scenario_yaml;
 mod title_screen;
 mod ui_theme;
 

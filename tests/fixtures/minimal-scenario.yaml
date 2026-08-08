@@ -1,0 +1,9 @@
+# Small, representative source-authored YAML document for M2.01.
+id: ardel_intro
+enabled: true
+retry_limit: 3
+title: "A # quoted title"
+tags:
+  - intro
+  - tutorial
+optional_note: null
