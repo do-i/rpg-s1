@@ -154,7 +154,7 @@ sizes on the available llvmpipe renderer.
 | M2.16 | [x] Define dialogue data types. | `S` | Intro plus one branching NPC conversation load. |
 | M2.17 | [x] Define enemy data types. | `S` | One enemy of each current rule shape loads. |
 | M2.18 | [x] Define encounter-zone data types. | `S` | One regular and one boss zone load. |
-| M2.19 | [ ] Define balance data types. | `T` | The complete balance file loads with defaults made explicit. |
+| M2.19 | [x] Define balance data types. | `T` | The complete balance file loads with defaults made explicit. |
 | M2.20 | [ ] Define battle-background data types. | `T` | Every background entry loads. |
 | M2.21 | [ ] Define recipe data types. | `T` | Regular and unique-output recipes load. |
 | M2.22 | [ ] Define quest data types. | `S` | Every current quest objective/reward shape loads. |

@@ -394,6 +394,11 @@ impl<'de> Deserialize<'de> for PositiveFinite {
 pub struct UnitInterval(f64);
 
 impl UnitInterval {
+    /// Creates a finite value in the inclusive range `0.0..=1.0`.
+    pub fn new(value: f64) -> Option<Self> {
+        (value.is_finite() && (0.0..=1.0).contains(&value)).then_some(Self(value))
+    }
+
     pub fn get(self) -> f64 {
         self.0
     }
@@ -405,13 +410,9 @@ impl<'de> Deserialize<'de> for UnitInterval {
         D: Deserializer<'de>,
     {
         let value = StrictFiniteFloat::deserialize(deserializer)?.0;
-        if (0.0..=1.0).contains(&value) {
-            Ok(Self(value))
-        } else {
-            Err(D::Error::custom(
-                "expected a floating-point number between zero and one",
-            ))
-        }
+        Self::new(value).ok_or_else(|| {
+            D::Error::custom("expected a floating-point number between zero and one")
+        })
     }
 }
 
@@ -1156,6 +1157,15 @@ mod tests {
                 scenario_yaml::from_str::<ClassDefinition>(&document).is_err(),
                 "document should be rejected:\n{document}"
             );
+        }
+    }
+
+    #[test]
+    fn unit_interval_constructor_accepts_boundaries_and_rejects_invalid_values() {
+        assert_eq!(UnitInterval::new(0.0).unwrap().get(), 0.0);
+        assert_eq!(UnitInterval::new(1.0).unwrap().get(), 1.0);
+        for value in [-0.01, 1.01, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(UnitInterval::new(value).is_none(), "accepted {value:?}");
         }
     }
 

@@ -1,0 +1,16 @@
+progression:
+  level_cap: 77
+  exp_cap: 900_000
+economy:
+  gp_cap: 600_000
+  item_qty_cap: 88
+  max_tags_per_item: 0
+battle:
+  flee_base_chance: 0.25
+  flee_rogue_dex_bonus: 0.01
+spawner:
+  rogue_chase_reduction: 0
+  stealth_cloak_reduction: 4
+  lure_charm_interval_mult: 1.25
+movement:
+  player_speed: 6
