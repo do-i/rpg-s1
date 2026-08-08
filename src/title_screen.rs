@@ -1,11 +1,12 @@
 use bevy::{
     asset::LoadState,
     audio::{AudioSink, PlaybackMode, Volume},
+    ecs::system::SystemParam,
     prelude::*,
 };
 use std::time::Duration;
 
-use crate::app_state::AppState;
+use crate::app_state::{AppState, AppStateTransitionRequest};
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
@@ -52,6 +53,14 @@ struct StatusMessage;
 
 #[derive(Component)]
 struct QuitConfirmSound;
+
+#[derive(SystemParam)]
+struct TitleMenuInputOutput<'w, 's> {
+    status: Single<'w, 's, &'static mut Text, With<StatusMessage>>,
+    asset_server: Res<'w, AssetServer>,
+    transitions: MessageWriter<'w, AppStateTransitionRequest>,
+    commands: Commands<'w, 's>,
+}
 
 /// Marks every independently spawned part of the title screen.
 ///
@@ -282,9 +291,7 @@ fn handle_menu_input(
     mut menu: ResMut<TitleMenu>,
     mut quit: ResMut<QuitLifecycle>,
     time: Res<Time>,
-    mut status: Single<&mut Text, With<StatusMessage>>,
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
+    mut output: TitleMenuInputOutput,
 ) {
     if !quit.accepts_input() {
         return;
@@ -300,12 +307,12 @@ fn handle_menu_input(
 
     if let Some(delta) = direction {
         menu.move_by(delta);
-        commands.spawn((
-            AudioPlayer::new(asset_server.load("audio/menu_hover.mp3")),
+        output.commands.spawn((
+            AudioPlayer::new(output.asset_server.load("audio/menu_hover.mp3")),
             PlaybackSettings::DESPAWN,
             TitleScreenEntity,
         ));
-        status.0.clear();
+        output.status.0.clear();
     }
 
     if !(keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space)) {
@@ -314,20 +321,23 @@ fn handle_menu_input(
 
     match title_menu_action(menu.selected) {
         TitleMenuAction::NewGame => {
-            commands.spawn((
-                AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
+            output.commands.spawn((
+                AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
                 PlaybackSettings::DESPAWN,
                 TitleScreenEntity,
             ));
-            status.0 = "New Game is the next migration slice.".into();
+            output.status.0.clear();
+            output
+                .transitions
+                .write(AppStateTransitionRequest::new(AppState::NameEntry));
         }
         TitleMenuAction::LoadGameDisabled => {}
         TitleMenuAction::Quit => {
             if reduce_quit_lifecycle(&mut quit, time.elapsed(), QuitLifecycleEvent::Activate)
                 == Some(QuitLifecycleEffect::SpawnConfirm)
             {
-                commands.spawn((
-                    AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
+                output.commands.spawn((
+                    AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
                     PlaybackSettings::DESPAWN,
                     QuitConfirmSound,
                     TitleScreenEntity,
@@ -689,6 +699,47 @@ mod tests {
                 .count(),
             2,
             "only title music and the single Quit confirmation should exist"
+        );
+    }
+
+    #[test]
+    fn confirming_new_game_transitions_once_and_cleans_up_title() {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.update();
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+
+        // The title system requests the transition during Update and the centralized system
+        // records it in PostUpdate. State entry and title cleanup happen on the next update.
+        app.update();
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(
+            world.resource::<State<AppState>>().get(),
+            &AppState::NameEntry
+        );
+        assert_eq!(world.query::<&TitleScreenEntity>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Sprite>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Node>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Text>().iter(world).count(), 0);
+        assert_eq!(
+            world
+                .query::<&AudioPlayer<AudioSource>>()
+                .iter(world)
+                .count(),
+            0
+        );
+
+        app.update();
+        app.update();
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::NameEntry,
+            "the consumed title confirmation must not request another transition"
         );
     }
 
