@@ -8,6 +8,7 @@ pub mod playtime;
 pub mod runtime_flags;
 pub mod runtime_map;
 pub mod runtime_member;
+pub mod runtime_opened_boxes;
 pub mod runtime_party;
 pub mod runtime_repository;
 pub mod scenario_audio;

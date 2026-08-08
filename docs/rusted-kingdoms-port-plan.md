@@ -190,7 +190,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.03 | [x] Define runtime party state. | `S` | Order, row, membership, and protagonist lookup are tested. |
 | M3.04 | [x] Define runtime repository state. | `S` | GP, item counts, caps, and empty-stack removal are tested. |
 | M3.05 | [x] Define runtime map state. | `T` | Current map, position, facing, and visited maps are represented. |
-| M3.06 | [ ] Define opened-box state. | `T` | Box IDs can be recorded idempotently. |
+| M3.06 | [x] Define opened-box state. | `T` | Box IDs can be recorded idempotently. |
 | M3.07 | [ ] Define quest progress state. | `S` | Inactive, active, completed, and objective progress are represented. |
 | M3.08 | [ ] Compose the root `GameState`. | `S` | All runtime state has one serializable owner. |
 | M3.09 | [ ] Build new-game state from the manifest. | `S` | Start map/position, protagonist, and bootstrap flags match Python. |
