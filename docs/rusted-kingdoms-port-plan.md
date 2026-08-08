@@ -98,7 +98,10 @@ legally understood. No wider asset copy starts before this gate passes.
 M0.17 is currently blocked because this session exposes only the llvmpipe CPU
 renderer and Bevy's GL backend finds no GPU. The partial visual/audio run is
 recorded in `baseline-manual-play-checklist.md`; M0.17a-c track the Quit-audio
-defect found during that run. Gate 0 remains closed until M0.17 is completed.
+defect found during that run. A disposable test of the official
+`vulkan-virtio` driver also found no physical device, confirming that the VM
+host must expose Venus or a passed-through GPU. Gate 0 remains closed until
+M0.17 is completed.
 
 ## Milestone 1 — Application shell
 

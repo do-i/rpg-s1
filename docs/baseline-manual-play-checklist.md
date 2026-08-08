@@ -166,3 +166,28 @@ Game confirm supplies an output-path reference independent of the source MP3
 decoder. This proves that the new confirm event reached the captured
 hardware-bound PCM before clean process exit; it is not a claim that a human
 listener acoustically heard a loudspeaker.
+
+## M0.17 graphics-hardware blocker recheck
+
+The graphics prerequisite was rechecked on 2026-08-08. The guest exposes a
+Virtio 1.0 GPU plus `/dev/dri/card1` and `/dev/dri/renderD128`, but
+`vulkaninfo --summary` still enumerates only llvmpipe with Vulkan device type
+`PHYSICAL_DEVICE_TYPE_CPU`. The installed Vulkan ICD directory contains only
+the llvmpipe manifest.
+
+To distinguish a missing guest driver from a missing host capability, the
+official Arch `vulkan-virtio` package (`1:26.1.6-1`) was downloaded and
+extracted under `/tmp` without installation. Vulkan was pointed exclusively at
+that disposable `virtio_icd.json` and `libvulkan_virtio.so`. The driver loaded,
+but physical-device enumeration failed with:
+
+```text
+setup_loader_term_phys_devs: Failed to detect any valid GPUs in the current config
+vkEnumeratePhysicalDevices failed with ERROR_INITIALIZATION_FAILED
+```
+
+The guest package alone therefore cannot unblock M0.17. The VM host must expose
+a hardware-backed Vulkan device through Virtio Venus or GPU passthrough (or
+provide another hardware-backed adapter that Bevy can enumerate). M0.17 stays
+unchecked until that external configuration changes and the complete checklist
+is rerun.
