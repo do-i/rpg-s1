@@ -1,0 +1,19 @@
+id: zone_clockwork_keep
+name: Clockwork Keep
+density: 0.12
+background: clockwork-keep-bg-1280x468
+
+entries:
+  - formation: [brass_sentry, brass_sentry]
+    weight: 75
+    chase_range: 0
+  - formation: [spring_mage]
+    weight: 25
+    chase_range: 0
+
+boss:
+  id: invented_clockwork_tyrant
+  name: Clockwork Tyrant
+  once: true
+  on_complete:
+    set_flag: boss_clockwork_keep_defeated

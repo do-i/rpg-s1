@@ -1,0 +1,21 @@
+id: zone_mossy_track
+name: Mossy Track
+density: 0.35
+spawn_frequency: 18.5
+background: moss-track-bg-1280x468
+
+entries:
+  - formation: [moss_hare]
+    weight: 60
+    chase_range: 4
+  - formation: [moss_hare, reed_wisp]
+    weight: 40
+    chase_range: 2
+  - formation: [sleeping_beetle]
+    weight: 0
+    chase_range: 0
+
+barrier_enemies:
+  - id: reed_wisp
+    requires_item: invented_reed_charm
+    blocked_message: The reeds turn aside your strike.

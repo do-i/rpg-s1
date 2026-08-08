@@ -7,6 +7,7 @@ pub mod playtime;
 pub mod scenario_class;
 pub mod scenario_condition;
 pub mod scenario_dialogue;
+pub mod scenario_encounter;
 pub mod scenario_enemy;
 pub mod scenario_item;
 pub mod scenario_manifest;
