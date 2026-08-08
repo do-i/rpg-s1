@@ -1,0 +1,36 @@
+# Invented id-less boss move set exercising all current move/condition/target signatures.
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 35
+    - condition:
+        hp_pct_below: 0.5
+      action: ability
+      id: invented_nova
+      weight: 45
+    - condition:
+        turn_mod:
+          every: 4
+      action: ability
+      id: invented_focus
+      weight: 100
+      once: true
+    - action: ability
+      id: invented_gaze
+      weight: 20
+targeting:
+  default: highest_hp
+  overrides:
+    - { ability: invented_nova, target: all_party }
+    - { ability: invented_focus, target: self }
+    - { ability: invented_snipe, target: highest_dex }
+    - { ability: invented_dive, target: lowest_hp }
+    - { ability: invented_drain, target: highest_hp }
+    - ability: invented_gaze
+      target: random_alive
+      blocked_by_accessory: invented_talisman
+      on_blocked: no_effect
+      on_hit: hp_to_1

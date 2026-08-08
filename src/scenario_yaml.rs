@@ -17,6 +17,19 @@ where
         .map_err(ScenarioYamlError::from)
 }
 
+/// Deserializes every document in a YAML multi-document stream.
+///
+/// Enemy rank catalogs use this source shape. Each stream member is checked through the same
+/// strict typed-schema and field-path boundary as [`from_str`].
+pub fn from_documents<T>(stream: &str) -> Result<Vec<T>, ScenarioYamlError>
+where
+    T: DeserializeOwned,
+{
+    serde_yaml_ng::Deserializer::from_str(stream)
+        .map(|document| serde_path_to_error::deserialize(document).map_err(ScenarioYamlError::from))
+        .collect()
+}
+
 /// Deserializes exactly one YAML string scalar without scalar-to-text coercion.
 ///
 /// `serde_yaml_ng` follows its predecessor's `deserialize_string` behavior and presents number
