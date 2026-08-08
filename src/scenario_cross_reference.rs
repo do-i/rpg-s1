@@ -2021,6 +2021,7 @@ fn add_actions(target: &mut FlagLocations, a: &DialogueActions, path: &str, base
 mod tests {
     use super::*;
     use std::{
+        process::{Command, Output},
         sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
@@ -2279,6 +2280,292 @@ movement: {player_speed: 5}
         }
     }
 
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    enum ValidationOutcome {
+        Pass,
+        Fail,
+    }
+
+    impl ValidationOutcome {
+        fn from_success(success: bool) -> Self {
+            if success { Self::Pass } else { Self::Fail }
+        }
+    }
+
+    struct PythonParityCase {
+        name: &'static str,
+        mutate: fn(&InventedScenario),
+        python: ValidationOutcome,
+        rust: ValidationOutcome,
+        python_evidence: &'static str,
+        rust_code: Option<&'static str>,
+        rust_field_path: Option<&'static str>,
+    }
+
+    fn no_mutation(_: &InventedScenario) {}
+
+    fn remove_intro_dialogue(fixture: &InventedScenario) {
+        fs::remove_file(fixture.0.join("data/dialogue/intro.yaml"))
+            .expect("invented intro should exist before removal");
+    }
+
+    fn add_shop_with_unknown_item(fixture: &InventedScenario) {
+        fixture.write(
+            "data/maps/village.yaml",
+            r#"name: Invented Village
+shop:
+  items:
+    - {id: absent_blade, buy_price: 10, unlock_flag: quest_started}
+"#,
+        );
+    }
+
+    fn add_encounter_with_unknown_background(fixture: &InventedScenario) {
+        fixture.write(
+            "data/encount/village.yaml",
+            "density: 0.0\nbackground: absent_backdrop\n",
+        );
+    }
+
+    fn add_dialogue_with_unknown_character(fixture: &InventedScenario) {
+        fixture.write(
+            "data/dialogue/recruiter.yaml",
+            r#"id: recruiter
+type: npc
+entries:
+  - lines: [Join the invented expedition.]
+    on_complete: {join_party: absent_companion}
+"#,
+        );
+    }
+
+    fn add_recipe_with_unknown_output(fixture: &InventedScenario) {
+        fixture.write(
+            "data/recipe/recipes.yaml",
+            r#"- id: absent_output_recipe
+  scroll_name: An Invented Recipe
+  output: {item: absent_tonic, qty: 1}
+  inputs: {}
+  gp_cost: 0
+"#,
+        );
+    }
+
+    fn remove_defined_quest_completion_flag(fixture: &InventedScenario) {
+        let manifest = fs::read_to_string(fixture.0.join("manifest.yaml"))
+            .expect("invented manifest should be readable")
+            .replace(
+                "bootstrap_flags: [quest_started, quest_done]",
+                "bootstrap_flags: [quest_started]",
+            );
+        fixture.write("manifest.yaml", &manifest);
+    }
+
+    fn remove_party_portrait(fixture: &InventedScenario) {
+        fs::remove_file(fixture.0.join("assets/maker_portrait.webp"))
+            .expect("invented portrait should exist before removal");
+    }
+
+    fn remove_manifest_cursor(fixture: &InventedScenario) {
+        fs::remove_file(fixture.0.join("assets/cursor.webp"))
+            .expect("invented cursor should exist before removal");
+    }
+
+    fn remove_bgm_asset(fixture: &InventedScenario) {
+        fs::remove_file(fixture.0.join("assets/audio/title.ogg"))
+            .expect("invented BGM asset should exist before removal");
+    }
+
+    fn add_encounter_with_unknown_enemy(fixture: &InventedScenario) {
+        fixture.write(
+            "data/encount/village.yaml",
+            r#"density: 0.0
+entries:
+  - formation: [absent_slime]
+    weight: 1
+    chase_range: 1
+"#,
+        );
+    }
+
+    fn python_parity_cases() -> [PythonParityCase; 11] {
+        [
+            PythonParityCase {
+                name: "accepted_compact_scenario",
+                mutate: no_mutation,
+                python: ValidationOutcome::Pass,
+                rust: ValidationOutcome::Pass,
+                python_evidence: "RESULT: PASS",
+                rust_code: None,
+                rust_field_path: None,
+            },
+            PythonParityCase {
+                name: "missing_manifest_intro_path",
+                mutate: remove_intro_dialogue,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "start.intro_dialogue not found",
+                rust_code: Some("path.missing"),
+                rust_field_path: Some("start.intro_dialogue"),
+            },
+            PythonParityCase {
+                name: "map_shop_unknown_item",
+                mutate: add_shop_with_unknown_item,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "shop item id not found in items registry: 'absent_blade'",
+                rust_code: Some("reference.missing"),
+                rust_field_path: Some("shop.items[0].id"),
+            },
+            PythonParityCase {
+                name: "encounter_unknown_background",
+                mutate: add_encounter_with_unknown_background,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "background 'absent_backdrop' has no ground_rect entry",
+                rust_code: Some("reference.missing"),
+                rust_field_path: Some("background"),
+            },
+            PythonParityCase {
+                name: "dialogue_join_unknown_character",
+                mutate: add_dialogue_with_unknown_character,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "on_complete.join_party character not found: 'absent_companion'",
+                rust_code: Some("reference.missing"),
+                rust_field_path: Some("entries[0].on_complete.join_party"),
+            },
+            PythonParityCase {
+                name: "recipe_unknown_output_item",
+                mutate: add_recipe_with_unknown_output,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "output.item not found in items registry: 'absent_tonic'",
+                rust_code: Some("reference.missing"),
+                rust_field_path: Some("[0].output.item"),
+            },
+            PythonParityCase {
+                name: "quest_consumes_undefined_flag",
+                mutate: remove_defined_quest_completion_flag,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "'quest_done' — consumed in: quests.yaml:invented_quest",
+                rust_code: Some("flag.undefined"),
+                rust_field_path: Some("[0].completed_flag"),
+            },
+            PythonParityCase {
+                name: "party_portrait_asset_missing",
+                mutate: remove_party_portrait,
+                python: ValidationOutcome::Fail,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "portrait file not found for 'maker': assets/maker_portrait.webp",
+                rust_code: Some("path.missing"),
+                rust_field_path: Some("party[0].portrait"),
+            },
+            PythonParityCase {
+                name: "manifest_cursor_missing_is_rust_strict",
+                mutate: remove_manifest_cursor,
+                python: ValidationOutcome::Pass,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "RESULT: PASS",
+                rust_code: Some("path.missing"),
+                rust_field_path: Some("title.cursor_icon"),
+            },
+            PythonParityCase {
+                name: "bgm_asset_missing_is_rust_strict",
+                mutate: remove_bgm_asset,
+                python: ValidationOutcome::Pass,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "RESULT: PASS",
+                rust_code: Some("path.missing"),
+                rust_field_path: Some("categories[0].entries[0]"),
+            },
+            PythonParityCase {
+                name: "encounter_enemy_missing_is_rust_strict",
+                mutate: add_encounter_with_unknown_enemy,
+                python: ValidationOutcome::Pass,
+                rust: ValidationOutcome::Fail,
+                python_evidence: "RESULT: PASS",
+                rust_code: Some("reference.missing"),
+                rust_field_path: Some("entries[0].formation[0]"),
+            },
+        ]
+    }
+
+    fn validate_rust_parity_case(case: &PythonParityCase, fixture: &InventedScenario) {
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        assert_eq!(
+            ValidationOutcome::from_success(report.is_valid()),
+            case.rust,
+            "Rust outcome changed for {}: {:#?}",
+            case.name,
+            report.diagnostics
+        );
+        if let Some(code) = case.rust_code {
+            assert!(
+                report.errors().any(|finding| {
+                    finding.code == code
+                        && case
+                            .rust_field_path
+                            .is_none_or(|field_path| finding.location.field_path == field_path)
+                }),
+                "Rust evidence changed for {}: {:#?}",
+                case.name,
+                report.diagnostics
+            );
+        }
+    }
+
+    fn command_output(command: &mut Command, description: &str) -> Output {
+        command
+            .output()
+            .unwrap_or_else(|error| panic!("{description} should run: {error}"))
+    }
+
+    fn assert_pinned_python_source(source: &Path) {
+        const PIN: &str = "08970359d6cb03586948625d29b0d3351dbbf785";
+        let head = command_output(
+            Command::new("git")
+                .arg("-C")
+                .arg(source)
+                .args(["rev-parse", "HEAD"]),
+            "source HEAD query",
+        );
+        assert!(head.status.success(), "source HEAD query failed");
+        assert_eq!(String::from_utf8(head.stdout).unwrap().trim(), PIN);
+
+        let status = command_output(
+            Command::new("git")
+                .arg("-C")
+                .arg(source)
+                .args(["status", "--short"]),
+            "source worktree query",
+        );
+        assert!(status.status.success(), "source worktree query failed");
+        assert!(
+            status.stdout.is_empty(),
+            "the pinned Python source worktree must be clean"
+        );
+    }
+
+    fn run_pinned_python_validator(source: &Path, scenario: &Path) -> Output {
+        let python = source.join(".venv/bin/python");
+        let validator = source.join("tools/validate.py");
+        assert!(
+            python.is_file(),
+            "pinned source virtualenv Python is missing"
+        );
+        assert!(validator.is_file(), "pinned Python validator is missing");
+        command_output(
+            Command::new(python)
+                .arg(validator)
+                .arg("--root")
+                .arg(scenario)
+                .current_dir(source),
+            "pinned Python validator",
+        )
+    }
+
     #[test]
     fn stable_locations_do_not_leak_host_paths() {
         let location = ScenarioLocation::new("data/maps/example.yaml", "npcs[1].dialogue");
@@ -2326,6 +2613,49 @@ movement: {player_speed: 5}
         assert_eq!(report.counts.dialogue_documents, 1);
         assert_eq!(report.counts.quests, 1);
         assert!(report.checked_references > 60);
+    }
+
+    #[test]
+    fn rust_validator_preserves_the_python_parity_matrix_without_python_installed() {
+        for case in python_parity_cases() {
+            let fixture = InventedScenario::new();
+            (case.mutate)(&fixture);
+            validate_rust_parity_case(&case, &fixture);
+        }
+    }
+
+    #[test]
+    #[ignore = "requires RPG_S1_PINNED_SOURCE_DIR at the clean pinned Python source checkout"]
+    fn compares_invented_parity_cases_with_the_pinned_python_validator() {
+        let requested_source = std::env::var_os("RPG_S1_PINNED_SOURCE_DIR")
+            .map(PathBuf::from)
+            .expect("set RPG_S1_PINNED_SOURCE_DIR");
+        let source = requested_source
+            .canonicalize()
+            .expect("the pinned Python source checkout should resolve");
+        assert_pinned_python_source(&source);
+
+        for case in python_parity_cases() {
+            let fixture = InventedScenario::new();
+            (case.mutate)(&fixture);
+            let python = run_pinned_python_validator(&source, &fixture.0);
+            let output = String::from_utf8(python.stdout)
+                .expect("the Python validator should write UTF-8 output");
+            assert_eq!(
+                ValidationOutcome::from_success(python.status.success()),
+                case.python,
+                "Python outcome changed for {}:\n{output}",
+                case.name
+            );
+            assert!(
+                output.contains(case.python_evidence),
+                "Python evidence changed for {}:\n{output}",
+                case.name
+            );
+            validate_rust_parity_case(&case, &fixture);
+        }
+
+        assert_pinned_python_source(&source);
     }
 
     #[test]
