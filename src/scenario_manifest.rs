@@ -4,6 +4,8 @@
 //! behavior is intentional: a partial schema must be able to load the pinned complete
 //! manifest while its other sections are introduced by later milestones.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 use crate::scenario_spatial::Position;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
@@ -18,7 +20,7 @@ use std::fmt;
 /// report `cursor_icon` instead of `title.cursor_icon`. `signs` remains accepted for its future
 /// owning milestone; strict unknown-field rejection is added once every pinned field has an
 /// owner.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 pub struct Manifest {
     #[serde(deserialize_with = "deserialize_string")]
     pub id: String,

@@ -24,7 +24,6 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const PRODUCTION_SCENARIO_COLLECTION: &str = "assets/scenarios";
 const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n\nValidate defaults to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path.";
 
 enum Command {
@@ -307,27 +306,28 @@ fn severity_name(severity: DiagnosticSeverity) -> &'static str {
     }
 }
 
-fn production_scenario_collection() -> PathBuf {
+pub(crate) fn production_asset_base() -> PathBuf {
     let manifest_directory = Path::new(env!("CARGO_MANIFEST_DIR"));
     match std::env::current_exe() {
-        Ok(executable) => scenario_collection_for_executable(&executable, manifest_directory),
-        Err(_) => manifest_directory.join(PRODUCTION_SCENARIO_COLLECTION),
+        Ok(executable) => asset_base_for_executable(&executable, manifest_directory),
+        Err(_) => manifest_directory.join("assets"),
     }
 }
 
-/// Resolves exactly the two layouts owned by ADR 0004 without inspecting the current directory.
-///
-/// Cargo-built development binaries live below the repository and use its collection. A packaged
-/// executable outside that tree owns an `assets/` directory beside itself. The returned path does
-/// not need to exist: selection reports the stable collection-unavailable diagnostic later.
-fn scenario_collection_for_executable(executable: &Path, manifest_directory: &Path) -> PathBuf {
+fn production_scenario_collection() -> PathBuf {
+    production_asset_base().join("scenarios")
+}
+
+/// Resolves the Bevy asset base through the same development/installed layout decision as the
+/// filesystem validator's scenario collection.
+fn asset_base_for_executable(executable: &Path, manifest_directory: &Path) -> PathBuf {
     if executable.starts_with(manifest_directory) {
-        manifest_directory.join(PRODUCTION_SCENARIO_COLLECTION)
+        manifest_directory.join("assets")
     } else {
         executable
             .parent()
             .unwrap_or(manifest_directory)
-            .join(PRODUCTION_SCENARIO_COLLECTION)
+            .join("assets")
     }
 }
 
@@ -426,8 +426,12 @@ mod tests {
         let executable = workspace.join("target/debug/rpg-s1");
 
         assert_eq!(
-            scenario_collection_for_executable(&executable, &workspace),
+            asset_base_for_executable(&executable, &workspace).join("scenarios"),
             workspace.join("assets/scenarios")
+        );
+        assert_eq!(
+            asset_base_for_executable(&executable, &workspace),
+            workspace.join("assets")
         );
     }
 
@@ -438,8 +442,12 @@ mod tests {
         let executable = base.join("package/rpg-s1");
 
         assert_eq!(
-            scenario_collection_for_executable(&executable, &manifest_directory),
+            asset_base_for_executable(&executable, &manifest_directory).join("scenarios"),
             base.join("package/assets/scenarios")
+        );
+        assert_eq!(
+            asset_base_for_executable(&executable, &manifest_directory),
+            base.join("package/assets")
         );
     }
 
@@ -449,7 +457,8 @@ mod tests {
         let manifest_directory = base.join("source/rpg-s1");
         let executable = base.join("package/rpg-s1");
 
-        let collection = scenario_collection_for_executable(&executable, &manifest_directory);
+        let collection =
+            asset_base_for_executable(&executable, &manifest_directory).join("scenarios");
 
         assert!(collection.is_absolute());
         assert_eq!(
@@ -470,7 +479,7 @@ mod tests {
         assert!(!intended.exists());
 
         assert_eq!(
-            scenario_collection_for_executable(&executable, &manifest_directory),
+            asset_base_for_executable(&executable, &manifest_directory).join("scenarios"),
             intended
         );
     }

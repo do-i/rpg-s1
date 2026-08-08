@@ -26,6 +26,7 @@ pub mod scenario_encounter;
 pub mod scenario_enemy;
 pub mod scenario_item;
 pub mod scenario_manifest;
+pub mod scenario_manifest_asset;
 pub mod scenario_map;
 pub mod scenario_party;
 pub mod scenario_path;
@@ -43,12 +44,14 @@ mod test_support;
 use action_input::ActionInputPlugin;
 use app_state::{AppState, AppStateTransitionPlugin};
 use bevy::{
+    asset::AssetPlugin,
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
 use playtime::Playtime;
+use scenario_manifest_asset::ScenarioManifestAssetPlugin;
 use scenario_root::ScenarioRoot;
 use title_screen::TitleScreenPlugin;
 use ui_theme::UiTheme;
@@ -66,18 +69,26 @@ fn main() -> std::process::ExitCode {
 
 fn run_game() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Chronicles of the Lost Flame".into(),
-                resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
-                present_mode: PresentMode::AutoVsync,
-                resizable: true,
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: cli::production_asset_base().to_string_lossy().into_owned(),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Chronicles of the Lost Flame".into(),
+                        resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
+                        present_mode: PresentMode::AutoVsync,
+                        resizable: true,
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .insert_resource(ClearColor(UiTheme::default().clear_color))
         .init_resource::<ScenarioRoot>()
+        .add_plugins(ScenarioManifestAssetPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(AppState::Title)

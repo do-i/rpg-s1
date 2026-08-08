@@ -13,6 +13,7 @@ use crate::{
     gameplay_canvas::FixedGameplayCanvasPlugin,
     gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
     playtime::Playtime,
+    scenario_manifest_asset::ScenarioManifestAssetPlugin,
     scenario_root::ScenarioRoot,
     title_screen::TitleScreenPlugin,
 };
@@ -23,10 +24,24 @@ use crate::{
 /// font, or audio loaders. Tests exercise ECS construction without reading live assets or
 /// initializing GPU and audio backends.
 pub(crate) fn headless_title_app(initial_state: AppState) -> App {
+    headless_title_app_with_asset_base(
+        initial_state,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_owned(),
+        ScenarioRoot::default(),
+    )
+}
+
+/// Builds the headless app against an explicitly selected AssetServer base and scenario package.
+pub(crate) fn headless_title_app_with_asset_base(
+    initial_state: AppState,
+    asset_base: String,
+    scenario_root: ScenarioRoot,
+) -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(StatesPlugin)
         .add_plugins(AssetPlugin {
+            file_path: asset_base,
             meta_check: AssetMetaCheck::Never,
             ..default()
         })
@@ -34,7 +49,8 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_asset::<Font>()
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<ScenarioRoot>()
+        .insert_resource(scenario_root)
+        .add_plugins(ScenarioManifestAssetPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(initial_state)
