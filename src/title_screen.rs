@@ -6,7 +6,10 @@ use bevy::{
 };
 use std::time::Duration;
 
-use crate::app_state::{AppState, AppStateTransitionRequest};
+use crate::{
+    action_input::{ActionState, AppAction},
+    app_state::{AppState, AppStateTransitionRequest},
+};
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
@@ -287,7 +290,7 @@ fn cleanup_title_screen(
 }
 
 fn handle_menu_input(
-    keys: Res<ButtonInput<KeyCode>>,
+    actions: Res<ActionState>,
     mut menu: ResMut<TitleMenu>,
     mut quit: ResMut<QuitLifecycle>,
     time: Res<Time>,
@@ -297,9 +300,9 @@ fn handle_menu_input(
         return;
     }
 
-    let direction = if keys.just_pressed(KeyCode::ArrowUp) {
+    let direction = if actions.just_pressed(AppAction::Up) {
         Some(-1)
-    } else if keys.just_pressed(KeyCode::ArrowDown) {
+    } else if actions.just_pressed(AppAction::Down) {
         Some(1)
     } else {
         None
@@ -315,7 +318,7 @@ fn handle_menu_input(
         output.status.0.clear();
     }
 
-    if !(keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space)) {
+    if !actions.just_pressed(AppAction::Confirm) {
         return;
     }
 

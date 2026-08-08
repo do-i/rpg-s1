@@ -8,6 +8,7 @@ use bevy::{
 };
 
 use crate::{
+    action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
     title_screen::TitleScreenPlugin,
 };
@@ -31,6 +32,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_resource::<ButtonInput<KeyCode>>()
         .insert_state(initial_state)
         .add_plugins(AppStateTransitionPlugin)
+        .add_plugins(ActionInputPlugin)
         .add_plugins(TitleScreenPlugin);
     app
 }

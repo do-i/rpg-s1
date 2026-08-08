@@ -1,9 +1,11 @@
+mod action_input;
 pub mod app_state;
 mod title_screen;
 
 #[cfg(test)]
 mod test_support;
 
+use action_input::ActionInputPlugin;
 use app_state::{AppState, AppStateTransitionPlugin};
 use bevy::{
     prelude::*,
@@ -26,6 +28,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb_u8(10, 10, 30)))
         .insert_state(AppState::Title)
         .add_plugins(AppStateTransitionPlugin)
+        .add_plugins(ActionInputPlugin)
         .add_plugins(TitleScreenPlugin)
         .run();
 }
