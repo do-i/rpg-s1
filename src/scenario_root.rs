@@ -4,6 +4,9 @@ use std::fmt;
 /// Default package selected by startup configuration.
 pub const DEFAULT_SCENARIO_PACKAGE_KEY: &str = "rusted_kingdoms";
 
+/// The scenario-relative path of every package's entry point.
+pub const SCENARIO_MANIFEST_PATH: &str = "manifest.yaml";
+
 /// Why a package key cannot identify a scenario package.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ScenarioPackageKeyError {
@@ -26,6 +29,64 @@ impl fmt::Display for ScenarioPackageKeyError {
 }
 
 impl std::error::Error for ScenarioPackageKeyError {}
+
+/// Adds stable scenario provenance to an asset or data loading failure.
+///
+/// Displayed paths are qualified by package key but remain relative to the package, so this
+/// context adds no machine path and does not repeat the `assets/scenarios/` storage layout. The
+/// original error is retained as the standard error source.
+#[derive(Debug)]
+pub struct ScenarioLoadError<E> {
+    package_key: String,
+    scenario_relative_path: String,
+    source: E,
+}
+
+impl<E> ScenarioLoadError<E> {
+    fn new(root: &ScenarioRoot, scenario_relative_path: impl Into<String>, source: E) -> Self {
+        Self {
+            package_key: root.package_key.clone(),
+            scenario_relative_path: scenario_relative_path.into(),
+            source,
+        }
+    }
+
+    /// Returns the package key that was active when the error was created.
+    pub fn package_key(&self) -> &str {
+        &self.package_key
+    }
+
+    /// Returns the failing path relative to the selected scenario package.
+    pub fn scenario_relative_path(&self) -> &str {
+        &self.scenario_relative_path
+    }
+
+    /// Returns the underlying loader, parser, or I/O error.
+    pub fn underlying(&self) -> &E {
+        &self.source
+    }
+
+    /// Consumes the contextual error and returns its underlying cause.
+    pub fn into_underlying(self) -> E {
+        self.source
+    }
+}
+
+impl<E: fmt::Display> fmt::Display for ScenarioLoadError<E> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{}:{}: {}",
+            self.package_key, self.scenario_relative_path, self.source
+        )
+    }
+}
+
+impl<E: std::error::Error + 'static> std::error::Error for ScenarioLoadError<E> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
 
 /// The active scenario's logical root beneath Bevy's asset source.
 ///
@@ -76,7 +137,7 @@ impl ScenarioRoot {
 
     /// Returns the selected scenario's manifest AssetServer path.
     pub fn manifest_asset_path(&self) -> String {
-        self.resolve("manifest.yaml")
+        self.resolve(SCENARIO_MANIFEST_PATH)
     }
 
     /// Resolves an already scenario-relative path under the active logical root.
@@ -86,6 +147,23 @@ impl ScenarioRoot {
     /// pass unvalidated input here.
     pub fn resolve(&self, scenario_relative_path: &str) -> String {
         format!("{}/{scenario_relative_path}", self.logical_root)
+    }
+
+    /// Adds this package's manifest provenance to an underlying loading error.
+    pub fn manifest_load_error<E>(&self, source: E) -> ScenarioLoadError<E> {
+        ScenarioLoadError::new(self, SCENARIO_MANIFEST_PATH, source)
+    }
+
+    /// Adds this package and an already scenario-relative path to an underlying loading error.
+    ///
+    /// This method deliberately does not validate or normalize the path. M2.02 introduces the
+    /// validated scenario-relative path type that production loaders will pass here.
+    pub fn load_error<E>(
+        &self,
+        scenario_relative_path: impl Into<String>,
+        source: E,
+    ) -> ScenarioLoadError<E> {
+        ScenarioLoadError::new(self, scenario_relative_path, source)
     }
 }
 
@@ -111,7 +189,23 @@ fn validate_package_key(package_key: &str) -> Result<(), ScenarioPackageKeyError
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_SCENARIO_PACKAGE_KEY, ScenarioPackageKeyError, ScenarioRoot};
+    use super::{
+        DEFAULT_SCENARIO_PACKAGE_KEY, SCENARIO_MANIFEST_PATH, ScenarioPackageKeyError, ScenarioRoot,
+    };
+    use std::{error::Error, fmt, io};
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct ParseError {
+        message: &'static str,
+    }
+
+    impl fmt::Display for ParseError {
+        fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str(self.message)
+        }
+    }
+
+    impl Error for ParseError {}
 
     #[test]
     fn default_manifest_and_nested_path_resolve_under_rusted_kingdoms() {
@@ -198,5 +292,61 @@ mod tests {
             assert!(!path.starts_with("assets/"));
             assert!(!path.contains(":"));
         }
+    }
+
+    #[test]
+    fn manifest_load_error_reports_package_relative_path_and_missing_cause() {
+        let root = ScenarioRoot::default();
+        let error = root.manifest_load_error(io::Error::new(
+            io::ErrorKind::NotFound,
+            "manifest file was not found",
+        ));
+
+        assert_eq!(
+            error.to_string(),
+            "rusted_kingdoms:manifest.yaml: manifest file was not found"
+        );
+        assert_eq!(error.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
+        assert_eq!(error.scenario_relative_path(), SCENARIO_MANIFEST_PATH);
+        assert_eq!(error.underlying().kind(), io::ErrorKind::NotFound);
+        assert_eq!(
+            Error::source(&error).map(ToString::to_string),
+            Some("manifest file was not found".to_owned())
+        );
+        assert!(!error.to_string().contains("assets/scenarios"));
+    }
+
+    #[test]
+    fn nested_load_error_preserves_parse_cause_and_alternate_package() {
+        let root = ScenarioRoot::try_for_package_key("test_campaign-2").unwrap();
+        let error = root.load_error(
+            "data/dialogue/opening.yaml",
+            ParseError {
+                message: "expected a mapping at line 4",
+            },
+        );
+
+        assert_eq!(
+            error.to_string(),
+            "test_campaign-2:data/dialogue/opening.yaml: expected a mapping at line 4"
+        );
+        assert_eq!(error.package_key(), "test_campaign-2");
+        assert_eq!(error.scenario_relative_path(), "data/dialogue/opening.yaml");
+        assert_eq!(
+            error.underlying(),
+            &ParseError {
+                message: "expected a mapping at line 4"
+            }
+        );
+        assert_eq!(
+            Error::source(&error).map(ToString::to_string),
+            Some("expected a mapping at line 4".to_owned())
+        );
+        assert_eq!(
+            error.into_underlying(),
+            ParseError {
+                message: "expected a mapping at line 4"
+            }
+        );
     }
 }
