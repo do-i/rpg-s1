@@ -1,0 +1,12 @@
+# Coordinates preserve the source's [x, y] sequence shape. The negative value is accepted
+# because Python's shared Position value object explicitly supports signed integer coordinates.
+positions:
+  - [14, 5]
+  - [-5, -3]
+
+# All source-authored facing strings are lowercase cardinal names.
+cardinal_directions: [up, left, down, right]
+
+# The Python player accepts simultaneous cardinal input. These are the canonical strict
+# snake-case spellings for that separate eight-way movement domain.
+eight_way_directions: [up, up_right, right, down_right, down, down_left, left, up_left]

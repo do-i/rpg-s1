@@ -5,6 +5,7 @@
 //! manifest while its other sections are introduced by later milestones.
 
 use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
+use crate::scenario_spatial::Position;
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
@@ -122,9 +123,8 @@ pub struct ManifestServiceSprite {
 ///
 /// This is a partial manifest adapter alongside the other manifest slices. `id`,
 /// `class`, and `map` are scenario identifiers rather than paths; only the sprite
-/// and intro dialogue values name files beneath the scenario root. `position`
-/// preserves the source `[x, y]` scalar sequence for this manifest-owned slice.
-/// M2.11 will replace that temporary representation with the shared position type.
+/// and intro dialogue values name files beneath the scenario root. `position` preserves the
+/// source `[x, y]` scalar sequence through the shared [`Position`] type.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestProtagonistStart {
     pub protagonist: ManifestProtagonist,
@@ -144,7 +144,7 @@ pub struct ManifestProtagonist {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestStart {
     pub map: String,
-    pub position: [i32; 2],
+    pub position: Position,
     pub intro_dialogue: ScenarioRelativePath,
 }
 
@@ -261,8 +261,8 @@ mod tests {
         ManifestServiceSprite, ManifestServiceSprites, ManifestStart, ManifestTitle,
         ManifestTitleFontUi, ManifestUi, ScenarioDirectoryPath, ScenarioDirectoryPathError,
     };
-    use crate::scenario_path::ScenarioRelativePathError;
     use crate::scenario_yaml;
+    use crate::{scenario_path::ScenarioRelativePathError, scenario_spatial::Position};
 
     #[test]
     fn loads_pinned_identity_and_window_values_from_complete_manifest_shape() {
@@ -379,7 +379,7 @@ mod tests {
                 },
                 start: ManifestStart {
                     map: "town_01_ardel".to_owned(),
-                    position: [14, 5],
+                    position: Position::new(14, 5),
                     intro_dialogue: "data/dialogue/intro_cutscene.yaml".try_into().unwrap(),
                 },
             }
@@ -464,7 +464,7 @@ mod tests {
             manifest.inn.sprite.as_str(),
             "assets/sprites/npc/female_blue_01.tsx"
         );
-        assert_eq!(manifest.start.position, [14, 5]);
+        assert_eq!(manifest.start.position, Position::new(14, 5));
         assert_eq!(manifest.refs.encount.as_str(), "data/encount");
     }
 

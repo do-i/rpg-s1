@@ -8,6 +8,7 @@ pub mod scenario_condition;
 pub mod scenario_manifest;
 pub mod scenario_path;
 pub mod scenario_root;
+pub mod scenario_spatial;
 pub mod scenario_yaml;
 mod title_screen;
 mod ui_theme;
