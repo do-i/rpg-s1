@@ -1,0 +1,16 @@
+cases:
+  - id: missing
+  - id: requires_only
+    condition:
+      requires: [story_quest_started]
+  - id: excludes_only
+    condition:
+      excludes: [npc_elise_joined]
+  - id: two_requires_empty_excludes
+    condition:
+      requires: [story_act3_started, boss_zone03_defeated]
+      excludes: []
+  - id: both
+    condition:
+      requires: [sq_stream_started]
+      excludes: [sq_stream_relayed]

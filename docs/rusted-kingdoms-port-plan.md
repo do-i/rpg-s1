@@ -145,7 +145,7 @@ sizes on the available llvmpipe renderer.
 | M2.07 | [x] Define the manifest flags/refs schema. | `T` | Bootstrap flags, managed flags, and all refs load. |
 | M2.08 | [x] Add manifest required-field errors. | `T` | Missing fields identify their YAML location. |
 | M2.09 | [x] Add manifest path-existence validation. | `T` | Every referenced file/directory produces a focused result. |
-| M2.10 | [ ] Define shared condition fields. | `S` | `requires` and `excludes` have one typed representation. |
+| M2.10 | [x] Define shared condition fields. | `S` | `requires` and `excludes` have one typed representation. |
 | M2.11 | [ ] Define shared position and direction types. | `T` | Coordinates and four/eight-way directions round-trip in fixtures. |
 | M2.12 | [ ] Define party-member data types. | `S` | All current `party.yaml` fields load without lossy values. |
 | M2.13 | [ ] Define class and ability data types. | `S` | One current class file and every ability variant load. |
