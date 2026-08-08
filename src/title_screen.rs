@@ -22,6 +22,7 @@ impl Plugin for TitleScreenPlugin {
         app.init_resource::<TitleMenu>()
             .init_resource::<QuitLifecycle>()
             .add_systems(OnEnter(AppState::Title), setup_title_screen)
+            .add_systems(OnExit(AppState::Title), cleanup_title_screen)
             .add_systems(
                 Update,
                 (handle_menu_input, observe_quit_playback, update_menu_colors)
@@ -51,6 +52,13 @@ struct StatusMessage;
 
 #[derive(Component)]
 struct QuitConfirmSound;
+
+/// Marks every independently spawned part of the title screen.
+///
+/// UI descendants belong to the marked root node, while cameras, sprites, and audio players are
+/// marked directly. This keeps the title state self-contained across state transitions.
+#[derive(Component)]
+struct TitleScreenEntity;
 
 #[derive(Debug, Default, Eq, PartialEq)]
 enum QuitLifecycleState {
@@ -167,10 +175,11 @@ fn title_menu_action(selected: usize) -> TitleMenuAction {
 }
 
 fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, TitleScreenEntity));
 
-    commands.spawn(Sprite::from_image(
-        asset_server.load("images/title_lost_flame.webp"),
+    commands.spawn((
+        Sprite::from_image(asset_server.load("images/title_lost_flame.webp")),
+        TitleScreenEntity,
     ));
 
     commands.spawn((
@@ -180,6 +189,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
             volume: Volume::Linear(0.65),
             ..default()
         },
+        TitleScreenEntity,
     ));
 
     let font = asset_server.load("fonts/Philosopher-Regular.ttf");
@@ -193,6 +203,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
             padding: UiRect::bottom(px(32)),
             ..default()
         })
+        .insert(TitleScreenEntity)
         .with_children(|root| {
             root.spawn((
                 Node {
@@ -252,6 +263,20 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
+fn cleanup_title_screen(
+    mut commands: Commands,
+    title_entities: Query<Entity, With<TitleScreenEntity>>,
+    mut menu: ResMut<TitleMenu>,
+    mut quit: ResMut<QuitLifecycle>,
+) {
+    for entity in &title_entities {
+        commands.entity(entity).despawn();
+    }
+
+    *menu = TitleMenu::default();
+    *quit = QuitLifecycle::default();
+}
+
 fn handle_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut menu: ResMut<TitleMenu>,
@@ -278,6 +303,7 @@ fn handle_menu_input(
         commands.spawn((
             AudioPlayer::new(asset_server.load("audio/menu_hover.mp3")),
             PlaybackSettings::DESPAWN,
+            TitleScreenEntity,
         ));
         status.0.clear();
     }
@@ -291,6 +317,7 @@ fn handle_menu_input(
             commands.spawn((
                 AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
                 PlaybackSettings::DESPAWN,
+                TitleScreenEntity,
             ));
             status.0 = "New Game is the next migration slice.".into();
         }
@@ -303,6 +330,7 @@ fn handle_menu_input(
                     AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
                     PlaybackSettings::DESPAWN,
                     QuitConfirmSound,
+                    TitleScreenEntity,
                 ));
             }
         }
@@ -716,7 +744,7 @@ mod tests {
     }
 
     #[test]
-    fn title_screen_spawns_only_after_entering_title() {
+    fn title_screen_is_removed_after_leaving_title() {
         let mut app = crate::test_support::headless_title_app(AppState::Boot);
         app.update();
 
@@ -801,5 +829,57 @@ mod tests {
         assert_eq!(title_music_path, "audio/title_theme.mp3");
         assert!(matches!(title_music[0].1, PlaybackMode::Loop));
         assert_eq!(title_music[0].2, Volume::Linear(0.65));
+
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::NameEntry);
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(
+            world.resource::<State<AppState>>().get(),
+            &AppState::NameEntry
+        );
+        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Sprite>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Node>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Text>().iter(world).count(), 0);
+        assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 0);
+        assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 0);
+        assert_eq!(
+            world
+                .query::<&AudioPlayer<AudioSource>>()
+                .iter(world)
+                .count(),
+            0
+        );
+        assert_eq!(world.query::<&TitleScreenEntity>().iter(world).count(), 0);
+        assert_eq!(world.resource::<TitleMenu>().selected, 0);
+        assert_eq!(
+            world.resource::<QuitLifecycle>().state,
+            QuitLifecycleState::Idle
+        );
+
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::Title);
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
+        assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
+        assert_eq!(world.query::<&Sprite>().iter(world).count(), 1);
+        assert_eq!(world.query::<&Node>().iter(world).count(), 6);
+        assert_eq!(world.query::<&Text>().iter(world).count(), 4);
+        assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 3);
+        assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 1);
+        assert_eq!(
+            world
+                .query::<&AudioPlayer<AudioSource>>()
+                .iter(world)
+                .count(),
+            1
+        );
+        assert_eq!(world.query::<&TitleScreenEntity>().iter(world).count(), 4);
     }
 }
