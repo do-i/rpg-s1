@@ -1,0 +1,32 @@
+id: mira_join
+type: npc
+entries:
+  - condition:
+      requires: [npc_mira_joined]
+    lines:
+      - "The road is quieter with two sets of boots."
+    on_complete:
+      open_shop: magic_core
+
+  - condition:
+      requires: [story_ember_seen]
+      excludes: [npc_mira_joined]
+    lines:
+      - "You heard it too, didn't you?"
+      - "Then I am coming with you."
+    on_complete:
+      set_flag: [npc_mira_joined, story_road_open]
+      give_items:
+        - id: field_tonic
+          qty: 2
+      join_party: mira
+
+  - condition:
+      requires: [story_road_open]
+    lines: ["Rest before the climb."]
+    on_complete:
+      open_inn: true
+
+  - lines: ["I still have salves if you need them."]
+    on_complete:
+      open_apothecary: true

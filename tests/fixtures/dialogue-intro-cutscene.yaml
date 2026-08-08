@@ -1,0 +1,12 @@
+id: ember_intro
+type: cutscene
+lines:
+  - "Before the bell rang, the valley held its breath."
+  - "..."
+  - "Then the blue ember answered Mira's name — once."
+on_complete:
+  set_flag: story_ember_seen
+  transition:
+    map: town_test_haven
+    position: [12, 8]
+    fade: in
