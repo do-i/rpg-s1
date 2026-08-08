@@ -37,6 +37,22 @@ struct MenuEntry(usize);
 #[derive(Component)]
 struct StatusMessage;
 
+#[derive(Debug, Eq, PartialEq)]
+enum TitleMenuAction {
+    NewGame,
+    LoadGameDisabled,
+    Quit,
+}
+
+fn title_menu_action(selected: usize) -> TitleMenuAction {
+    match selected {
+        0 => TitleMenuAction::NewGame,
+        LOAD_GAME_INDEX => TitleMenuAction::LoadGameDisabled,
+        2 => TitleMenuAction::Quit,
+        _ => unreachable!("menu selection must refer to a title menu entry"),
+    }
+}
+
 fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
 
@@ -151,23 +167,22 @@ fn handle_menu_input(
         return;
     }
 
-    match menu.selected {
-        0 => {
+    match title_menu_action(menu.selected) {
+        TitleMenuAction::NewGame => {
             commands.spawn((
                 AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
                 PlaybackSettings::DESPAWN,
             ));
             status.0 = "New Game is the next migration slice.".into();
         }
-        LOAD_GAME_INDEX => {}
-        2 => {
+        TitleMenuAction::LoadGameDisabled => {}
+        TitleMenuAction::Quit => {
             commands.spawn((
                 AudioPlayer::new(asset_server.load("audio/menu_confirm.mp3")),
                 PlaybackSettings::DESPAWN,
             ));
             commands.write_message(AppExit::Success);
         }
-        _ => unreachable!(),
     }
 }
 
@@ -200,5 +215,15 @@ mod tests {
 
         menu.move_by(1);
         assert_eq!(menu.selected, 0);
+    }
+
+    #[test]
+    fn title_menu_entries_resolve_to_distinct_actions() {
+        assert_eq!(title_menu_action(0), TitleMenuAction::NewGame);
+        assert_eq!(
+            title_menu_action(LOAD_GAME_INDEX),
+            TitleMenuAction::LoadGameDisabled
+        );
+        assert_eq!(title_menu_action(2), TitleMenuAction::Quit);
     }
 }
