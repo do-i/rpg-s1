@@ -168,6 +168,19 @@ sizes on the available llvmpipe renderer.
 **Gate 2:** The Rust validator accepts the pinned Rusted Kingdoms snapshot, or
 every disagreement is listed as a deliberate compatibility decision.
 
+Gate 2 passed on 2026-08-08. The exact
+`scenario_cross_reference::tests::audits_complete_pinned_scenario_with_typed_production_validator`
+audit checked 1,710 references and retained exactly 37 errors and one warning;
+`docs/rusted-kingdoms-validator-parity.md` exhaustively groups every finding,
+records the Python pass, and keeps TMX/TSX portal internals assigned to M4.
+`docs/adr/0005-title-cursor-reference-repair.md` records the remaining
+warning-only difference: Python's false `aric_teleport_unlocked` orphan warning,
+which Rust resolves through its modeled class-ability consumer. The live
+11-case Python/Rust oracle test covers the shared outcomes and explicit
+Rust-stricter decisions. The windowless `validate-scenario` path in
+`src/cli.rs` and the `menu.toml` **Validate scenario data** action both expose
+that same validator without constructing Bevy or requiring graphics hardware.
+
 ## Milestone 3 — New-game state and intro
 
 | ID | Task | Model | Done when |
