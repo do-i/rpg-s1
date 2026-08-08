@@ -70,7 +70,7 @@ architecture or pixel-for-pixel rendering. For each feature, capture:
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M0.01 | [ ] Record the source and target commit hashes in a port ledger. | `T` | The ledger has hashes, date, and dirty-worktree state. |
+| M0.01 | [x] Record the source and target commit hashes in a port ledger. | `T` | The ledger has hashes, date, and dirty-worktree state. |
 | M0.02 | [ ] Inventory Python engine features by package. | `T` | Every `engine/` package maps to a milestone or explicit deferral. |
 | M0.03 | [ ] Inventory scenario data by schema and file count. | `T` | Manifest, maps, dialogue, encounters, enemies, items, classes, recipes, quests, and audio are counted. |
 | M0.04 | [ ] Create the player-visible parity checklist. | `S` | Every README feature has a manual acceptance row. |
