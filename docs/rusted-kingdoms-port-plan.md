@@ -138,7 +138,7 @@ sizes on the available llvmpipe renderer.
 | --- | --- | --- | --- |
 | M2.01 | [x] Add Serde YAML support and one fixture. | `T` | A test deserializes a minimal YAML document. |
 | M2.02 | [x] Define a validated scenario-relative path type. | `S` | Absolute paths and `..` escapes are rejected. |
-| M2.03 | [ ] Define the manifest identity/window schema. | `T` | Current id, name, version, and window title load. |
+| M2.03 | [x] Define the manifest identity/window schema. | `T` | Current id, name, version, and window title load. |
 | M2.04 | [ ] Define the manifest title/font/UI schema. | `T` | Current title, font, backdrop, and cursor fields load. |
 | M2.05 | [ ] Define the manifest service-sprite schema. | `T` | Apothecary, inn, item, weapon, armor, and item-box fields load. |
 | M2.06 | [ ] Define the manifest protagonist/start schema. | `T` | Protagonist, map, position, and intro fields load. |

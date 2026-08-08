@@ -3,6 +3,7 @@ pub mod app_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod playtime;
+pub mod scenario_manifest;
 pub mod scenario_path;
 pub mod scenario_root;
 pub mod scenario_yaml;
