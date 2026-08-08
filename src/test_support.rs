@@ -7,7 +7,10 @@ use bevy::{
     window::WindowPlugin,
 };
 
-use crate::{app_state::AppState, title_screen::TitleScreenPlugin};
+use crate::{
+    app_state::{AppState, AppStateTransitionPlugin},
+    title_screen::TitleScreenPlugin,
+};
 
 /// Builds the real title-screen app surface without platform, rendering, or audio plugins.
 ///
@@ -27,6 +30,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
         .insert_state(initial_state)
+        .add_plugins(AppStateTransitionPlugin)
         .add_plugins(TitleScreenPlugin);
     app
 }
