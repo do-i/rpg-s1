@@ -1,0 +1,22 @@
+- id: recipe_invented_remedy
+  scroll_name: Invented Remedy
+  output: { item: invented_remedy, qty: 2 }
+  inputs:
+    items:
+      - { id: invented_herb, qty: 3 }
+    mc:
+      - { size: S, qty: 1 }
+  gp_cost: 80
+  unlock_flag: story_invented_started
+
+- id: recipe_invented_unique_key
+  scroll_name: Invented Singular Key
+  output: { item: invented_singular_key, qty: 1 }
+  unique_output: true
+  inputs:
+    items:
+      - { id: invented_fragment, qty: 1 }
+    mc:
+      - { size: XL, qty: 1 }
+  gp_cost: 400
+  unlock_flag: story_invented_late

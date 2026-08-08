@@ -16,6 +16,7 @@ pub mod scenario_manifest;
 pub mod scenario_map;
 pub mod scenario_party;
 pub mod scenario_path;
+pub mod scenario_recipe;
 pub mod scenario_root;
 pub mod scenario_spatial;
 pub mod scenario_yaml;
