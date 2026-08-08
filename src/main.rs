@@ -1,5 +1,6 @@
 mod action_input;
 pub mod app_state;
+pub mod gameplay_canvas;
 pub mod gameplay_rng;
 pub mod playtime;
 pub mod scenario_root;
@@ -15,6 +16,7 @@ use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
+use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
 use playtime::Playtime;
 use scenario_root::ScenarioRoot;
@@ -26,7 +28,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Chronicles of the Lost Flame".into(),
-                resolution: (1280, 766).into(),
+                resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
                 present_mode: PresentMode::AutoVsync,
                 resizable: true,
                 ..default()
@@ -40,6 +42,7 @@ fn main() {
         .insert_state(AppState::Title)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
+        .add_plugins(FixedGameplayCanvasPlugin)
         .add_plugins(TitleScreenPlugin)
         .run();
 }

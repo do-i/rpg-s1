@@ -119,7 +119,7 @@ confirm sound before exiting cleanly.
 | M1.10 | [x] Add contextual load-error reporting. | `S` | A bad asset/data path reports the scenario-relative path and cause. |
 | M1.11 | [x] Add deterministic RNG as a resource. | `S` | A supplied seed repeats the same number sequence in tests. |
 | M1.12 | [x] Add playtime tracking independent of pause/menu time. | `T` | Unit tests match the Python playtime rules. |
-| M1.13 | [ ] Add a fixed gameplay canvas policy. | `S` | Resize behavior has a documented scale/letterbox rule. |
+| M1.13 | [x] Add a fixed gameplay canvas policy. | `S` | Resize behavior has a documented scale/letterbox rule. |
 | M1.14 | [ ] Verify title rendering under the canvas policy. | `S` | The title remains correctly framed at baseline, smaller, and wider windows. |
 
 **Gate 1:** Selecting New Game leaves a clean title state and reaches an empty

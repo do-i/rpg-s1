@@ -9,6 +9,7 @@ use std::time::Duration;
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
+    gameplay_canvas::fixed_gameplay_camera,
     ui_theme::UiTheme,
 };
 
@@ -189,7 +190,7 @@ fn title_menu_action(selected: usize) -> TitleMenuAction {
 }
 
 fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, theme: Res<UiTheme>) {
-    commands.spawn((Camera2d, TitleScreenEntity));
+    commands.spawn((fixed_gameplay_camera(), TitleScreenEntity));
 
     commands.spawn((
         Sprite::from_image(asset_server.load("images/title_lost_flame.webp")),
@@ -459,6 +460,31 @@ mod tests {
             panic!("title screen must spawn exactly one themed panel");
         };
         assert_eq!(panel.0, theme.panel_color);
+    }
+
+    #[test]
+    fn spawned_title_camera_uses_the_fixed_gameplay_canvas() {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.update();
+
+        let world = app.world_mut();
+        let projection = world
+            .query_filtered::<&Projection, With<crate::gameplay_canvas::GameplayCanvasCamera>>()
+            .single(world)
+            .expect("title screen must spawn one gameplay canvas camera");
+        let Projection::Orthographic(projection) = projection else {
+            panic!("title camera must be orthographic");
+        };
+        let bevy::camera::ScalingMode::Fixed { width, height } = projection.scaling_mode else {
+            panic!("title camera must use the fixed logical canvas");
+        };
+        assert_eq!(
+            (width, height),
+            (
+                crate::gameplay_canvas::LOGICAL_CANVAS_WIDTH as f32,
+                crate::gameplay_canvas::LOGICAL_CANVAS_HEIGHT as f32,
+            )
+        );
     }
 
     fn activate_at(lifecycle: &mut QuitLifecycle, elapsed: Duration) {

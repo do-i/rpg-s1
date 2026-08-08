@@ -10,6 +10,7 @@ use bevy::{
 use crate::{
     action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
+    gameplay_canvas::FixedGameplayCanvasPlugin,
     gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
     playtime::Playtime,
     scenario_root::ScenarioRoot,
@@ -39,6 +40,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .insert_state(initial_state)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
+        .add_plugins(FixedGameplayCanvasPlugin)
         .add_plugins(TitleScreenPlugin);
     app
 }
