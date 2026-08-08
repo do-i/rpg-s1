@@ -10,6 +10,7 @@ use bevy::{
 use crate::{
     action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
+    scenario_root::ScenarioRoot,
     title_screen::TitleScreenPlugin,
 };
 
@@ -30,6 +31,7 @@ pub(crate) fn headless_title_app(initial_state: AppState) -> App {
         .init_asset::<Font>()
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
+        .init_resource::<ScenarioRoot>()
         .insert_state(initial_state)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)

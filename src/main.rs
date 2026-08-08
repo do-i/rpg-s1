@@ -1,5 +1,6 @@
 mod action_input;
 pub mod app_state;
+pub mod scenario_root;
 mod title_screen;
 mod ui_theme;
 
@@ -12,6 +13,7 @@ use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
+use scenario_root::ScenarioRoot;
 use title_screen::TitleScreenPlugin;
 use ui_theme::UiTheme;
 
@@ -28,6 +30,7 @@ fn main() {
             ..default()
         }))
         .insert_resource(ClearColor(UiTheme::default().clear_color))
+        .init_resource::<ScenarioRoot>()
         .insert_state(AppState::Title)
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
