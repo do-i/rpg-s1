@@ -1,6 +1,8 @@
 use bevy::prelude::Resource;
 use std::fmt;
 
+use crate::scenario_path::ScenarioRelativePath;
+
 /// Default package selected by startup configuration.
 pub const DEFAULT_SCENARIO_PACKAGE_KEY: &str = "rusted_kingdoms";
 
@@ -43,10 +45,10 @@ pub struct ScenarioLoadError<E> {
 }
 
 impl<E> ScenarioLoadError<E> {
-    fn new(root: &ScenarioRoot, scenario_relative_path: impl Into<String>, source: E) -> Self {
+    fn new(root: &ScenarioRoot, scenario_relative_path: &ScenarioRelativePath, source: E) -> Self {
         Self {
             package_key: root.package_key.clone(),
-            scenario_relative_path: scenario_relative_path.into(),
+            scenario_relative_path: scenario_relative_path.as_str().to_owned(),
             source,
         }
     }
@@ -92,8 +94,7 @@ impl<E: std::error::Error + 'static> std::error::Error for ScenarioLoadError<E> 
 ///
 /// This intentionally stores AssetServer-style paths instead of filesystem paths: callers use
 /// `scenarios/<package-key>/...`, while Bevy supplies the physical `assets/` base. Construction
-/// validates the package key; scenario-relative path containment is introduced by later
-/// scenario-loading tasks.
+/// validates both the package key and every path joined to the root.
 #[derive(Clone, Debug, Eq, PartialEq, Resource)]
 pub struct ScenarioRoot {
     package_key: String,
@@ -137,34 +138,32 @@ impl ScenarioRoot {
 
     /// Returns the selected scenario's manifest AssetServer path.
     pub fn manifest_asset_path(&self) -> String {
-        self.resolve(SCENARIO_MANIFEST_PATH)
+        self.resolve(&manifest_relative_path())
     }
 
-    /// Resolves an already scenario-relative path under the active logical root.
-    ///
-    /// This is deliberately a mechanical join. Scenario-relative path validation,
-    /// normalization, and containment are deferred to the M2.02 path type; callers must not
-    /// pass unvalidated input here.
-    pub fn resolve(&self, scenario_relative_path: &str) -> String {
+    /// Resolves a validated scenario-relative path under the active logical root.
+    pub fn resolve(&self, scenario_relative_path: &ScenarioRelativePath) -> String {
         format!("{}/{scenario_relative_path}", self.logical_root)
     }
 
     /// Adds this package's manifest provenance to an underlying loading error.
     pub fn manifest_load_error<E>(&self, source: E) -> ScenarioLoadError<E> {
-        ScenarioLoadError::new(self, SCENARIO_MANIFEST_PATH, source)
+        ScenarioLoadError::new(self, &manifest_relative_path(), source)
     }
 
-    /// Adds this package and an already scenario-relative path to an underlying loading error.
-    ///
-    /// This method deliberately does not validate or normalize the path. M2.02 introduces the
-    /// validated scenario-relative path type that production loaders will pass here.
+    /// Adds this package and a validated scenario-relative path to an underlying loading error.
     pub fn load_error<E>(
         &self,
-        scenario_relative_path: impl Into<String>,
+        scenario_relative_path: &ScenarioRelativePath,
         source: E,
     ) -> ScenarioLoadError<E> {
         ScenarioLoadError::new(self, scenario_relative_path, source)
     }
+}
+
+fn manifest_relative_path() -> ScenarioRelativePath {
+    ScenarioRelativePath::try_from(SCENARIO_MANIFEST_PATH)
+        .expect("the compiled-in scenario manifest path must be valid")
 }
 
 fn validate_package_key(package_key: &str) -> Result<(), ScenarioPackageKeyError> {
@@ -192,6 +191,7 @@ mod tests {
     use super::{
         DEFAULT_SCENARIO_PACKAGE_KEY, SCENARIO_MANIFEST_PATH, ScenarioPackageKeyError, ScenarioRoot,
     };
+    use crate::scenario_path::ScenarioRelativePath;
     use std::{error::Error, fmt, io};
 
     #[derive(Debug, Eq, PartialEq)]
@@ -210,6 +210,7 @@ mod tests {
     #[test]
     fn default_manifest_and_nested_path_resolve_under_rusted_kingdoms() {
         let root = ScenarioRoot::default();
+        let map_path = ScenarioRelativePath::try_from("assets/maps/town_01_ardel.tmx").unwrap();
 
         assert_eq!(root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
         assert_eq!(root.logical_root(), "scenarios/rusted_kingdoms");
@@ -218,7 +219,7 @@ mod tests {
             "scenarios/rusted_kingdoms/manifest.yaml"
         );
         assert_eq!(
-            root.resolve("assets/maps/town_01_ardel.tmx"),
+            root.resolve(&map_path),
             "scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"
         );
     }
@@ -226,6 +227,7 @@ mod tests {
     #[test]
     fn another_package_key_changes_only_the_logical_root() {
         let root = ScenarioRoot::try_for_package_key("test_campaign-2").unwrap();
+        let dialogue_path = ScenarioRelativePath::try_from("data/dialogue/opening.yaml").unwrap();
 
         assert_eq!(root.package_key(), "test_campaign-2");
         assert_eq!(root.logical_root(), "scenarios/test_campaign-2");
@@ -234,7 +236,7 @@ mod tests {
             "scenarios/test_campaign-2/manifest.yaml"
         );
         assert_eq!(
-            root.resolve("data/dialogue/opening.yaml"),
+            root.resolve(&dialogue_path),
             "scenarios/test_campaign-2/data/dialogue/opening.yaml"
         );
     }
@@ -282,11 +284,13 @@ mod tests {
     #[test]
     fn logical_asset_paths_remain_relative() {
         let root = ScenarioRoot::default();
+        let manifest_path = ScenarioRelativePath::try_from("manifest.yaml").unwrap();
+        let audio_path = ScenarioRelativePath::try_from("assets/audio/overworld.ogg").unwrap();
 
         for path in [
             root.logical_root().to_owned(),
-            root.resolve("manifest.yaml"),
-            root.resolve("assets/audio/overworld.ogg"),
+            root.resolve(&manifest_path),
+            root.resolve(&audio_path),
         ] {
             assert!(!path.starts_with('/'));
             assert!(!path.starts_with("assets/"));
@@ -319,8 +323,9 @@ mod tests {
     #[test]
     fn nested_load_error_preserves_parse_cause_and_alternate_package() {
         let root = ScenarioRoot::try_for_package_key("test_campaign-2").unwrap();
+        let dialogue_path = ScenarioRelativePath::try_from("data/dialogue/opening.yaml").unwrap();
         let error = root.load_error(
-            "data/dialogue/opening.yaml",
+            &dialogue_path,
             ParseError {
                 message: "expected a mapping at line 4",
             },
