@@ -215,7 +215,7 @@ installed manifest start state; no licensed assets or manual visual play are cla
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M4.01 | [ ] Parse the TMX map header. | `T` | Orientation, dimensions, tile size, and finite-map rule load. |
+| M4.01 | [x] Parse the TMX map header. | `T` | Strict typed finite-orthogonal header parser validates exact orientation, positive map/tile dimensions, and Tiled's omitted-`infinite` finite default; invented XML fixtures cover header-only child tolerance and location-safe failures, and an opt-in audit accepts all 47 pinned TMX headers. |
 | M4.02 | [ ] Parse external TSX references. | `S` | `firstgid` and normalized source paths load. |
 | M4.03 | [ ] Parse TSX image metadata. | `T` | Tile size, columns, count, and image dimensions load. |
 | M4.04 | [ ] Parse CSV tile-layer data. | `T` | Row/column count and GIDs are validated. |

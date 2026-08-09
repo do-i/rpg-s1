@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="invented" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0">
+  <tileset firstgid="1" source="invented.tsx"/>
+  <layer id="1" name="not interpreted yet"><data encoding="csv">1,2,3</data></layer>
+  <objectgroup id="2" name="not interpreted yet"><object id="1" x="0" y="0"/></objectgroup>
+</map>

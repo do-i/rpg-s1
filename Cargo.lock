@@ -4308,6 +4308,7 @@ name = "rpg-s1"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "quick-xml",
  "serde",
  "serde_path_to_error",
  "serde_yaml_ng",
