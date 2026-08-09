@@ -28,6 +28,11 @@ const LOADING_MESSAGE: &str = "Loading introduction...";
 
 pub(crate) struct IntroDialoguePlugin;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, SystemSet)]
+pub(crate) enum IntroDialogueSet {
+    Advance,
+}
+
 impl Plugin for IntroDialoguePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<IntroDialogueCompleted>()
@@ -44,6 +49,7 @@ impl Plugin for IntroDialoguePlugin {
             .add_systems(
                 Update,
                 advance_intro_dialogue
+                    .in_set(IntroDialogueSet::Advance)
                     .before(sync_intro_dialogue_view)
                     .run_if(in_state(AppState::Dialogue)),
             )
@@ -58,13 +64,10 @@ pub(crate) struct IntroDialogueCompleted {
 }
 
 impl IntroDialogueCompleted {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "M3.14 defines the typed completion handoff for M3.15 and M3.16"
-        )
-    )]
+    #[cfg(test)]
+    pub(crate) fn for_test(on_complete: DialogueActions) -> Self {
+        Self { on_complete }
+    }
     pub(crate) fn on_complete(&self) -> &DialogueActions {
         &self.on_complete
     }
@@ -458,6 +461,7 @@ mod tests {
         app_state::AppStateTransitionRequest,
         game_state::GameState,
         gameplay_canvas::{GameplayCanvasCamera, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH},
+        gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng},
         name_entry::{NameEntryConfirmed, NameEntryViewState},
         scenario_new_game_assets::ActiveNewGameInputsStatus,
         scenario_root::ScenarioRoot,
@@ -615,6 +619,137 @@ on_complete:
     }
 
     #[test]
+    fn final_confirm_produces_and_applies_only_the_intro_flag_once() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        assert!(
+            !app.world()
+                .resource::<GameState>()
+                .flags()
+                .is_set("invented_intro_completed_later")
+        );
+        for line_index in 0..3 {
+            press(&mut app, KeyCode::Enter);
+            app.update();
+            if line_index < 2 {
+                assert!(
+                    !app.world()
+                        .resource::<GameState>()
+                        .flags()
+                        .is_set("invented_intro_completed_later"),
+                    "the completion flag must remain absent before the final line"
+                );
+            }
+            // The production InputPlugin clears edge state each frame. This headless fixture
+            // injects directly into ButtonInput, so mirror that lifecycle explicitly.
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .clear_just_pressed(KeyCode::Enter);
+            release(&mut app, KeyCode::Enter);
+            app.update();
+        }
+        assert!(
+            app.world()
+                .resource::<GameState>()
+                .flags()
+                .is_set("invented_intro_completed_later")
+        );
+        let flags = app
+            .world()
+            .resource::<GameState>()
+            .flags()
+            .iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<GameState>()
+                .flags()
+                .iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>(),
+            flags
+        );
+    }
+
+    #[test]
+    fn completion_without_game_state_is_drained_before_a_later_session() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        let game = app.world_mut().remove_resource::<GameState>().unwrap();
+        let actions: DialogueActions =
+            crate::scenario_yaml::from_str("set_flag: should_not_replay").unwrap();
+        app.world_mut()
+            .resource_mut::<Messages<IntroDialogueCompleted>>()
+            .write(IntroDialogueCompleted::for_test(actions));
+        app.update();
+        app.world_mut().insert_resource(game);
+        app.update();
+        assert!(
+            !app.world()
+                .resource::<GameState>()
+                .flags()
+                .is_set("should_not_replay")
+        );
+    }
+
+    #[test]
+    fn completion_ignores_every_non_flag_action_and_keeps_dialogue_state() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        let mut expected_rng = GameplayRng::from_seed(DEFAULT_GAMEPLAY_SEED);
+        assert_eq!(
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .rng_mut()
+                .next_u64(),
+            expected_rng.next_u64()
+        );
+        let (flags, party, repository, map, opened, controlled, playtime, session_start) = {
+            let game = app.world().resource::<GameState>();
+            (
+                game.flags().clone(),
+                game.party().clone(),
+                game.repository().clone(),
+                game.map().clone(),
+                game.opened_boxes().clone(),
+                game.controlled_member_id().to_owned(),
+                game.playtime().total_seconds(),
+                game.playtime().session_start(),
+            )
+        };
+        let actions: DialogueActions = crate::scenario_yaml::from_str("set_flag: only_flag\ngive_items:\n  - id: potion\n    qty: 2\njoin_party: someone\ntransition:\n  map: elsewhere\n  position: [1, 2]\n  fade: in\nopen_shop: item\nopen_inn: true\nopen_apothecary: true\n").unwrap();
+        app.world_mut()
+            .resource_mut::<Messages<IntroDialogueCompleted>>()
+            .write(IntroDialogueCompleted::for_test(actions));
+        app.update();
+        assert_eq!(
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .rng_mut()
+                .next_u64(),
+            expected_rng.next_u64(),
+            "intro completion must not advance the gameplay RNG"
+        );
+        let game = app.world().resource::<GameState>();
+        let mut expected_flags = flags;
+        expected_flags.set("only_flag");
+        assert_eq!(game.flags(), &expected_flags);
+        assert_eq!(game.party(), &party);
+        assert_eq!(game.repository(), &repository);
+        assert_eq!(game.map(), &map);
+        assert_eq!(game.opened_boxes(), &opened);
+        assert_eq!(game.controlled_member_id(), controlled);
+        assert_eq!(game.playtime().total_seconds(), playtime);
+        assert_eq!(game.playtime().session_start(), session_start);
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
+        );
+    }
+
+    #[test]
     fn installed_manifest_intro_uses_one_fixed_canvas_tree_selected_font_and_bounded_wrapping() {
         let package = InventedPackage::new(Some(INTRO));
         let mut app = install_and_enter_dialogue(&package);
@@ -754,10 +889,9 @@ on_complete:
     fn fresh_enter_space_and_keypad_advance_once_then_complete_without_mutating_game() {
         let package = InventedPackage::new(Some(INTRO));
         let mut app = install_and_enter_dialogue(&package);
-        let (flags, map, party, repository, opened, controlled) = {
+        let (map, party, repository, opened, controlled) = {
             let game = app.world().resource::<GameState>();
             (
-                game.flags().clone(),
                 game.map().clone(),
                 game.party().clone(),
                 game.repository().clone(),
@@ -816,13 +950,12 @@ on_complete:
         assert!(completions(&mut app).is_empty());
 
         let game = app.world().resource::<GameState>();
-        assert_eq!(game.flags(), &flags);
+        assert!(game.flags().is_set("invented_intro_completed_later"));
         assert_eq!(game.map(), &map);
         assert_eq!(game.party(), &party);
         assert_eq!(game.repository(), &repository);
         assert_eq!(game.opened_boxes(), &opened);
         assert_eq!(game.controlled_member_id(), controlled);
-        assert!(!game.flags().is_set("invented_intro_completed_later"));
         assert_eq!(game.map().current().unwrap().as_str(), "town_01_ardel");
         assert_eq!(
             game.map().position(),
