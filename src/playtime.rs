@@ -57,6 +57,11 @@ impl Playtime {
         self.total_seconds
     }
 
+    #[cfg(test)]
+    pub(crate) const fn session_start(&self) -> Option<Duration> {
+        self.session_start
+    }
+
     /// Returns the value to serialize, excluding the active uncommitted segment.
     pub const fn to_seconds(&self) -> u64 {
         self.total_seconds

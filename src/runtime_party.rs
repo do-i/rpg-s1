@@ -61,6 +61,20 @@ impl RuntimeParty {
         self.members.iter().find(|member| member.is_protagonist())
     }
 
+    /// Renames the sole runtime protagonist without changing any catalog definition.
+    pub(crate) fn rename_protagonist(
+        &mut self,
+        name: impl Into<String>,
+    ) -> Result<(), RuntimePartyError> {
+        let member = self
+            .members
+            .iter_mut()
+            .find(|member| member.is_protagonist())
+            .ok_or(RuntimePartyError::MissingProtagonist)?;
+        member.rename(name);
+        Ok(())
+    }
+
     /// Adds a member at the end of the party without changing existing state on failure.
     ///
     /// Duplicate ids are rejected rather than ignored: silently treating a second member as an
@@ -173,6 +187,24 @@ mod tests {
     fn runtime(member: &PartyMember) -> RuntimeMember {
         RuntimeMember::try_from_catalog(member, &progression())
             .expect("invented member should construct runtime state")
+    }
+
+    #[test]
+    fn renaming_the_runtime_protagonist_preserves_catalog_identity_and_other_state() {
+        let catalog = catalog();
+        let source = &catalog.party[0];
+        let mut party = RuntimeParty::try_from_members([runtime(source)]).unwrap();
+        let before = party.protagonist().unwrap().clone();
+
+        party.rename_protagonist("Chosen Name").unwrap();
+
+        let renamed = party.protagonist().unwrap();
+        assert_eq!(renamed.name(), "Chosen Name");
+        assert_eq!(renamed.id(), before.id());
+        assert_eq!(renamed.class_id(), before.class_id());
+        assert_eq!(renamed.stats(), before.stats());
+        assert_eq!(renamed.equipment(), before.equipment());
+        assert_eq!(source.data().name, "Ember");
     }
 
     fn with_id(member: &mut PartyMember, id: &str) {

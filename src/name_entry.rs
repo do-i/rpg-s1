@@ -66,13 +66,13 @@ pub(crate) struct NameEntryConfirmed {
 }
 
 impl NameEntryConfirmed {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "M3.12 defines the typed handoff that M3.13 will consume"
-        )
-    )]
+    fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+    #[cfg(test)]
+    pub(crate) fn for_test(name: impl Into<String>) -> Self {
+        Self::new(name)
+    }
     pub(crate) fn name(&self) -> &str {
         &self.name
     }
@@ -183,9 +183,7 @@ fn handle_name_entry_keyboard(
                 terminal_action_seen = true;
             }
             KeyCode::Enter | KeyCode::NumpadEnter if !input.repeat => {
-                confirmations.write(NameEntryConfirmed {
-                    name: normalized_name(&draft),
-                });
+                confirmations.write(NameEntryConfirmed::new(normalized_name(&draft)));
                 terminal_action_seen = true;
             }
             KeyCode::Backspace => {

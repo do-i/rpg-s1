@@ -199,7 +199,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.11 | [x] Render the name-entry prompt. | `T` | Default protagonist name and editing hint are visible. Evidence: headless manifest-ready, waiting, failure, and cleanup tests cover one owned fixed-canvas UI/camera, an invented default name, and the scenario-qualified font handle. |
 | M3.12 | [x] Implement name-entry text editing. | `S` | Ordered `KeyboardInput` tests cover Unicode/capped insertion, deletion, contextual Space, cancel, normalized confirmation, repeats, manifest-wait/failure input, and cross-state draining. |
 | M3.12a | [x] Add transactional active new-game data loading. | `T` | After the selected manifest is ready, `AssetServer` publishes that manifest and its selected party and balance assets together, or exposes one package-relative failure without partial or stale data. Evidence: invented-package tests cover altered paths, loading/failure atomicity, stale revocation, and changed manifest refs. |
-| M3.13 | [ ] Apply the confirmed protagonist name. | `T` | Only the protagonist runtime name changes. |
+| M3.13 | [x] Apply the confirmed protagonist name. | `T` | Only the protagonist runtime name changes. Evidence: headless invented-package installation tests cover deferred confirmation, atomic success/resource transfer, and invalid-input failure retention. |
 | M3.14 | [ ] Render linear cutscene dialogue. | `S` | Intro lines advance one at a time and fit the canvas. |
 | M3.15 | [ ] Apply intro `on_complete` flags. | `T` | Completion changes the expected flag idempotently. |
 | M3.16 | [ ] Apply intro `on_complete` transition data. | `S` | Completion requests Ardel and the specified position. |

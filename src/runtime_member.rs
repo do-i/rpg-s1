@@ -109,6 +109,11 @@ impl RuntimeMember {
         &self.name
     }
 
+    /// Changes only this session member's display name; catalog identity and class linkage stay immutable.
+    pub(crate) fn rename(&mut self, name: impl Into<String>) {
+        self.name = name.into();
+    }
+
     pub fn is_protagonist(&self) -> bool {
         self.protagonist
     }
