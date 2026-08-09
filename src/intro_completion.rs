@@ -10,11 +10,18 @@ use crate::{
 
 pub struct IntroCompletionPlugin;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, SystemSet)]
+pub(crate) enum IntroCompletionSet {
+    Flags,
+}
+
 impl Plugin for IntroCompletionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            apply_intro_completion.after(IntroDialogueSet::Advance),
+            apply_intro_completion
+                .in_set(IntroCompletionSet::Flags)
+                .after(IntroDialogueSet::Advance),
         );
     }
 }

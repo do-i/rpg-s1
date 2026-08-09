@@ -203,7 +203,7 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.13a | [x] Add the active intro cutscene to transactional new-game loading. | `T` | `AssetServer` publishes the exact manifest-selected `CutsceneDialogue` together with manifest, party, and balance, or exposes one package-relative failure without partial or stale data. Evidence: invented-package tests cover selected intro paths, failures, ref replacement, removal, and NameEntry failure retention. |
 | M3.14 | [x] Render linear cutscene dialogue. | `S` | Headless invented-package tests cover selected lines/font, bounded character-fallback wrapping, fresh/held progression, one inert typed completion, loading/failure/revocation replacement, and cleanup. |
 | M3.15 | [x] Apply intro `on_complete` flags. | `T` | Completion changes the expected flag idempotently. Evidence: real intro completion, duplicate/no-session, and non-flag action isolation tests. |
-| M3.16 | [ ] Apply intro `on_complete` transition data. | `S` | Completion requests Ardel and the specified position. |
+| M3.16 | [x] Apply intro `on_complete` transition data. | `S` | Independent ordered completion readers now apply flags plus the exact validated map/position, preserve facing and typed fade for World, record visited-map semantics, and emit one central World request; real-final and injected tests cover ordering, unrelated-state preservation, missing data, duplicates, and no replay. |
 | M3.17 | [ ] Add Back/Confirm behavior tests for name and intro states. | `T` | Edge inputs cannot duplicate or skip transitions. |
 
 **Gate 3:** New Game accepts a name, plays the intro, and produces a tested

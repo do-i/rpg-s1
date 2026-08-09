@@ -6,6 +6,7 @@ pub mod gameplay_canvas;
 pub mod gameplay_rng;
 mod intro_completion;
 mod intro_dialogue;
+mod intro_transition;
 pub mod manifest_path_validation;
 mod name_entry;
 pub mod new_game;
@@ -57,6 +58,7 @@ use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_
 use gameplay_rng::GameplayRngPlugin;
 use intro_completion::IntroCompletionPlugin;
 use intro_dialogue::IntroDialoguePlugin;
+use intro_transition::IntroTransitionPlugin;
 use name_entry::NameEntryPlugin;
 use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
@@ -111,5 +113,6 @@ fn run_game() {
         .add_plugins(NewGameInstallPlugin)
         .add_plugins(IntroDialoguePlugin)
         .add_plugins(IntroCompletionPlugin)
+        .add_plugins(IntroTransitionPlugin)
         .run();
 }

@@ -695,7 +695,7 @@ on_complete:
     }
 
     #[test]
-    fn completion_ignores_every_non_flag_action_and_keeps_dialogue_state() {
+    fn completion_flag_handler_ignores_non_flag_actions_and_keeps_dialogue_state() {
         let package = InventedPackage::new(Some(INTRO));
         let mut app = install_and_enter_dialogue(&package);
         let mut expected_rng = GameplayRng::from_seed(DEFAULT_GAMEPLAY_SEED);
@@ -719,7 +719,7 @@ on_complete:
                 game.playtime().session_start(),
             )
         };
-        let actions: DialogueActions = crate::scenario_yaml::from_str("set_flag: only_flag\ngive_items:\n  - id: potion\n    qty: 2\njoin_party: someone\ntransition:\n  map: elsewhere\n  position: [1, 2]\n  fade: in\nopen_shop: item\nopen_inn: true\nopen_apothecary: true\n").unwrap();
+        let actions: DialogueActions = crate::scenario_yaml::from_str("set_flag: only_flag\ngive_items:\n  - id: potion\n    qty: 2\njoin_party: someone\nopen_shop: item\nopen_inn: true\nopen_apothecary: true\n").unwrap();
         app.world_mut()
             .resource_mut::<Messages<IntroDialogueCompleted>>()
             .write(IntroDialogueCompleted::for_test(actions));
@@ -886,13 +886,12 @@ on_complete:
     }
 
     #[test]
-    fn fresh_enter_space_and_keypad_advance_once_then_complete_without_mutating_game() {
+    fn fresh_enter_space_and_keypad_advance_once_then_complete() {
         let package = InventedPackage::new(Some(INTRO));
         let mut app = install_and_enter_dialogue(&package);
-        let (map, party, repository, opened, controlled) = {
+        let (party, repository, opened, controlled) = {
             let game = app.world().resource::<GameState>();
             (
-                game.map().clone(),
                 game.party().clone(),
                 game.repository().clone(),
                 game.opened_boxes().clone(),
@@ -934,11 +933,6 @@ on_complete:
                 .as_slice(),
             ["invented_intro_completed_later"]
         );
-        assert_eq!(
-            marked_text::<IntroDialogueHint>(app.world_mut()),
-            "Introduction complete"
-        );
-
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
             .clear_just_pressed(KeyCode::NumpadEnter);
@@ -951,19 +945,21 @@ on_complete:
 
         let game = app.world().resource::<GameState>();
         assert!(game.flags().is_set("invented_intro_completed_later"));
-        assert_eq!(game.map(), &map);
         assert_eq!(game.party(), &party);
         assert_eq!(game.repository(), &repository);
         assert_eq!(game.opened_boxes(), &opened);
         assert_eq!(game.controlled_member_id(), controlled);
-        assert_eq!(game.map().current().unwrap().as_str(), "town_01_ardel");
+        assert_eq!(
+            game.map().current().unwrap().as_str(),
+            "invented_destination"
+        );
         assert_eq!(
             game.map().position(),
-            crate::scenario_spatial::Position::new(14, 5)
+            crate::scenario_spatial::Position::new(8, 9)
         );
         assert_eq!(
             app.world().resource::<State<AppState>>().get(),
-            &AppState::Dialogue
+            &AppState::World
         );
     }
 

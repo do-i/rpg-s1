@@ -14,6 +14,7 @@ use crate::{
     gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng, GameplayRngPlugin},
     intro_completion::IntroCompletionPlugin,
     intro_dialogue::IntroDialoguePlugin,
+    intro_transition::IntroTransitionPlugin,
     name_entry::NameEntryPlugin,
     new_game_install::NewGameInstallPlugin,
     playtime::Playtime,
@@ -67,7 +68,8 @@ pub(crate) fn headless_title_app_with_asset_base(
         .add_plugins(NameEntryPlugin)
         .add_plugins(NewGameInstallPlugin)
         .add_plugins(IntroDialoguePlugin)
-        .add_plugins(IntroCompletionPlugin);
+        .add_plugins(IntroCompletionPlugin)
+        .add_plugins(IntroTransitionPlugin);
     app
 }
 
