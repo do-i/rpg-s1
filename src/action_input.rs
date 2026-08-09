@@ -33,7 +33,7 @@ impl Default for ActionMap {
         Self {
             bindings: [
                 vec![KeyCode::Escape],
-                vec![KeyCode::Enter, KeyCode::Space],
+                vec![KeyCode::Enter, KeyCode::Space, KeyCode::NumpadEnter],
                 vec![KeyCode::ArrowUp],
                 vec![KeyCode::ArrowDown],
             ],
@@ -121,7 +121,7 @@ mod tests {
         assert_eq!(map.bindings(AppAction::Back), [KeyCode::Escape]);
         assert_eq!(
             map.bindings(AppAction::Confirm),
-            [KeyCode::Enter, KeyCode::Space]
+            [KeyCode::Enter, KeyCode::Space, KeyCode::NumpadEnter]
         );
         assert_eq!(map.bindings(AppAction::Up), [KeyCode::ArrowUp]);
         assert_eq!(map.bindings(AppAction::Down), [KeyCode::ArrowDown]);
@@ -133,6 +133,7 @@ mod tests {
             (KeyCode::Escape, AppAction::Back),
             (KeyCode::Enter, AppAction::Confirm),
             (KeyCode::Space, AppAction::Confirm),
+            (KeyCode::NumpadEnter, AppAction::Confirm),
             (KeyCode::ArrowUp, AppAction::Up),
             (KeyCode::ArrowDown, AppAction::Down),
         ];

@@ -160,7 +160,7 @@ impl fmt::Display for NewGameInputsLoadFailure {
 }
 impl Error for NewGameInputsLoadFailure {}
 
-fn track_new_game_inputs(
+pub(crate) fn track_new_game_inputs(
     mut active: ResMut<ActiveNewGameInputs>,
     active_manifest: Res<ActiveManifestLoad>,
     manifests: Res<Assets<Manifest>>,

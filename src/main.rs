@@ -4,6 +4,7 @@ mod cli;
 pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
+mod intro_dialogue;
 pub mod manifest_path_validation;
 mod name_entry;
 pub mod new_game;
@@ -53,6 +54,7 @@ use bevy::{
 };
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
+use intro_dialogue::IntroDialoguePlugin;
 use name_entry::NameEntryPlugin;
 use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
@@ -105,5 +107,6 @@ fn run_game() {
         .add_plugins(TitleScreenPlugin)
         .add_plugins(NameEntryPlugin)
         .add_plugins(NewGameInstallPlugin)
+        .add_plugins(IntroDialoguePlugin)
         .run();
 }
