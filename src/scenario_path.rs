@@ -15,6 +15,21 @@ impl ScenarioRelativePath {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Resolves a containing-file-relative reference within the same scenario package.
+    ///
+    /// The reference is normalized lexically; filesystem canonicalization is intentionally left
+    /// to the resource boundary so paths cannot depend on a developer-machine layout.
+    pub(crate) fn resolve_from_file(
+        &self,
+        reference: &str,
+    ) -> Result<Self, ScenarioRelativePathError> {
+        reject_absolute_or_aliased(reference)?;
+        let Some((parent, _file_name)) = self.as_str().rsplit_once('/') else {
+            return Self::try_from(reference);
+        };
+        Self::try_from(format!("{parent}/{reference}"))
+    }
 }
 
 impl AsRef<str> for ScenarioRelativePath {
@@ -101,20 +116,7 @@ fn normalize(path: &str) -> Result<String, ScenarioRelativePathError> {
     if path.is_empty() {
         return Err(ScenarioRelativePathError::Empty);
     }
-    if path.starts_with('/') {
-        return Err(ScenarioRelativePathError::Absolute);
-    }
-
-    let bytes = path.as_bytes();
-    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
-        return Err(ScenarioRelativePathError::PlatformPrefix);
-    }
-    if path.contains(':') {
-        return Err(ScenarioRelativePathError::UriLike);
-    }
-    if path.contains('\\') {
-        return Err(ScenarioRelativePathError::Backslash);
-    }
+    reject_absolute_or_aliased(path)?;
 
     let mut normalized = Vec::new();
     for component in path.split('/') {
@@ -135,6 +137,24 @@ fn normalize(path: &str) -> Result<String, ScenarioRelativePathError> {
     } else {
         Ok(normalized.join("/"))
     }
+}
+
+fn reject_absolute_or_aliased(path: &str) -> Result<(), ScenarioRelativePathError> {
+    if path.starts_with('/') {
+        return Err(ScenarioRelativePathError::Absolute);
+    }
+
+    let bytes = path.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return Err(ScenarioRelativePathError::PlatformPrefix);
+    }
+    if path.contains(':') {
+        return Err(ScenarioRelativePathError::UriLike);
+    }
+    if path.contains('\\') {
+        return Err(ScenarioRelativePathError::Backslash);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -161,6 +181,41 @@ mod tests {
                 .as_str(),
             "assets/tilesets/walls.tsx"
         );
+    }
+
+    #[test]
+    fn resolves_containing_file_references_lexically_within_the_package() {
+        let owner = ScenarioRelativePath::try_from("assets/maps/field.tmx").unwrap();
+        assert_eq!(
+            owner
+                .resolve_from_file("../tilesets/./ground.tsx")
+                .unwrap()
+                .as_str(),
+            "assets/tilesets/ground.tsx"
+        );
+        let root_owner = ScenarioRelativePath::try_from("map.tmx").unwrap();
+        assert_eq!(
+            root_owner.resolve_from_file("tiles.tsx").unwrap().as_str(),
+            "tiles.tsx"
+        );
+    }
+
+    #[test]
+    fn containing_file_resolution_rejects_aliases_and_package_escapes() {
+        let owner = ScenarioRelativePath::try_from("assets/maps/field.tmx").unwrap();
+        for reference in [
+            "../../../outside.tsx",
+            "/absolute.tsx",
+            "C:/tiles.tsx",
+            "file://tiles.tsx",
+            "..\\tilesets\\ground.tsx",
+            "",
+        ] {
+            assert!(
+                owner.resolve_from_file(reference).is_err(),
+                "{reference:?} must be rejected"
+            );
+        }
     }
 
     #[test]
