@@ -43,6 +43,7 @@ pub mod scenario_spatial;
 pub mod scenario_yaml;
 mod title_screen;
 mod tmx_header;
+mod tsx_metadata;
 mod ui_theme;
 
 #[cfg(test)]

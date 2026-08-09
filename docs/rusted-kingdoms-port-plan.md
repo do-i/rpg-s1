@@ -217,7 +217,7 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | --- | --- | --- | --- |
 | M4.01 | [x] Parse the TMX map header. | `T` | Strict typed finite-orthogonal header parser validates exact orientation, positive map/tile dimensions, and Tiled's omitted-`infinite` finite default; invented XML fixtures cover header-only child tolerance and location-safe failures, and an opt-in audit accepts all 47 pinned TMX headers. |
 | M4.02 | [x] Parse external TSX references. | `S` | One owned TMX document retains strictly increasing positive `firstgid` values and safe containing-file-relative `.tsx` paths; invented fixtures cover malformed, inline, nested, duplicate, non-increasing, and escaping forms, while an opt-in 47-map audit proves all 263 external references normalize to 17 existing targets and identifies the one unsupported inline sample. |
-| M4.03 | [ ] Parse TSX image metadata. | `T` | Tile size, columns, count, and image dimensions load. |
+| M4.03 | [x] Parse TSX image metadata. | `T` | Strict typed external-TSX parser validates positive tile/grid/image metadata, one root-level PNG atlas with a safe containing-file-relative source, and atlas capacity; invented fixtures cover malformed, collection, duplicate, path, and trailing-XML failures, while an opt-in audit accepts all 17 external targets discovered from pinned TMX references and their images. |
 | M4.04 | [ ] Parse CSV tile-layer data. | `T` | Row/column count and GIDs are validated. |
 | M4.05 | [ ] Decode Tiled flip bits from a GID. | `S` | Horizontal, vertical, and diagonal flags have unit tests. |
 | M4.06 | [ ] Resolve a global GID to tileset/local ID. | `S` | Boundary and empty-tile cases are tested. |

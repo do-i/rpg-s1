@@ -345,6 +345,16 @@ fn scan_tmx_map_document(
     }
 }
 
+/// Test-only tolerant scan used by pinned corpus audits that must inventory external references
+/// even in the one map that also contains an unsupported inline tileset.
+#[cfg(test)]
+pub(crate) fn scan_tmx_external_tilesets_for_test(
+    xml: &str,
+    logical_tmx_path: &ScenarioRelativePath,
+) -> Result<TmxMapDocument, TmxMapDocumentError> {
+    Ok(scan_tmx_map_document(xml, logical_tmx_path)?.document)
+}
+
 fn require_root_tileset(depth: u32, offset: u64) -> Result<(), TmxMapDocumentError> {
     if depth == 1 {
         Ok(())
