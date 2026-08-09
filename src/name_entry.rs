@@ -170,9 +170,24 @@ fn handle_name_entry_keyboard(
     mut transitions: MessageWriter<AppStateTransitionRequest>,
 ) {
     let ready = *view == NameEntryViewState::Ready;
+    let inputs = keyboard.read().collect::<Vec<_>>();
+
+    // Back wins over every same-frame input, independent of platform message order. This makes
+    // cancellation safe when a keyboard batch contains both Escape and confirmation.
+    if ready
+        && inputs.iter().any(|input| {
+            input.key_code == KeyCode::Escape
+                && input.state == ButtonState::Pressed
+                && !input.repeat
+        })
+    {
+        transitions.write(AppStateTransitionRequest::new(AppState::Title));
+        return;
+    }
+
     let mut terminal_action_seen = false;
 
-    for input in keyboard.read() {
+    for input in inputs {
         if !ready || terminal_action_seen || input.state != ButtonState::Pressed {
             continue;
         }
@@ -786,8 +801,8 @@ mod tests {
             false,
         );
         write_keyboard(&mut app, KeyCode::Escape, ButtonState::Pressed, None, true);
-        press(&mut app, KeyCode::Escape, None);
         press(&mut app, KeyCode::Enter, None);
+        press(&mut app, KeyCode::Escape, None);
 
         app.update();
 
@@ -817,6 +832,29 @@ mod tests {
                 .count(),
             0
         );
+    }
+
+    #[test]
+    fn same_batch_back_and_confirm_prefers_cancel_in_either_order() {
+        for keys in [
+            [KeyCode::Enter, KeyCode::Escape],
+            [KeyCode::Escape, KeyCode::Enter],
+        ] {
+            let mut app = input_only_app(NameEntryViewState::Ready, "Nyra", "Nyra");
+            for key in keys {
+                press(&mut app, key, None);
+            }
+
+            app.update();
+
+            assert!(confirmed_names(&mut app).is_empty());
+            assert_eq!(
+                app.world()
+                    .resource::<Messages<AppStateTransitionRequest>>()
+                    .len(),
+                1
+            );
+        }
     }
 
     #[test]

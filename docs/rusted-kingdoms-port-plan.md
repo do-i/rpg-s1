@@ -204,10 +204,12 @@ that same validator without constructing Bevy or requiring graphics hardware.
 | M3.14 | [x] Render linear cutscene dialogue. | `S` | Headless invented-package tests cover selected lines/font, bounded character-fallback wrapping, fresh/held progression, one inert typed completion, loading/failure/revocation replacement, and cleanup. |
 | M3.15 | [x] Apply intro `on_complete` flags. | `T` | Completion changes the expected flag idempotently. Evidence: real intro completion, duplicate/no-session, and non-flag action isolation tests. |
 | M3.16 | [x] Apply intro `on_complete` transition data. | `S` | Independent ordered completion readers now apply flags plus the exact validated map/position, preserve facing and typed fade for World, record visited-map semantics, and emit one central World request; real-final and injected tests cover ordering, unrelated-state preservation, missing data, duplicates, and no replay. |
-| M3.17 | [ ] Add Back/Confirm behavior tests for name and intro states. | `T` | Edge inputs cannot duplicate or skip transitions. |
+| M3.17 | [x] Add Back/Confirm behavior tests for name and intro states. | `T` | Ordered NameEntry and semantic intro tests prove fresh edges advance once, stale/held edges cannot replay, and same-frame Back wins safely. Intro Back enters World at the installed manifest start without completion flags or authored transition. |
 
 **Gate 3:** New Game accepts a name, plays the intro, and produces a tested
-runtime state ready to enter Ardel.
+runtime state ready to enter Ardel. Evidence: automated headless invented-package flows cover
+name installation, normal final-confirm world transition, and Back cancellation into the already
+installed manifest start state; no licensed assets or manual visual play are claimed.
 
 ## Milestone 4 — One rendered, walkable map
 

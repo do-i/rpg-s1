@@ -1,13 +1,14 @@
 //! Manifest-selected introductory cutscene presentation and linear progression.
 //!
-//! This slice renders complete authored lines immediately. Typewriter timing, cancellation,
-//! completion effects, and the transition into the world remain owned by later milestones.
+//! This slice renders complete authored lines immediately. Typewriter timing remains owned by a
+//! later milestone; cancellation and completion hand off to the installed game flow.
 
 use bevy::{ecs::system::SystemParam, prelude::*, text::LineBreak};
 
 use crate::{
     action_input::{ActionState, AppAction},
-    app_state::AppState,
+    app_state::{AppState, AppStateTransitionRequest},
+    game_state::GameState,
     gameplay_canvas::fixed_gameplay_camera,
     scenario_balance::BalanceData,
     scenario_dialogue::{CutsceneDialogue, DialogueActions},
@@ -44,6 +45,13 @@ impl Plugin for IntroDialoguePlugin {
                 Update,
                 sync_intro_dialogue_view
                     .after(track_new_game_inputs)
+                    .run_if(in_state(AppState::Dialogue)),
+            )
+            .add_systems(
+                Update,
+                cancel_intro_dialogue
+                    .in_set(IntroDialogueSet::Advance)
+                    .before(advance_intro_dialogue)
                     .run_if(in_state(AppState::Dialogue)),
             )
             .add_systems(
@@ -261,7 +269,10 @@ fn advance_intro_dialogue(
     mut hints: Query<&mut Text, (With<IntroDialogueHint>, Without<IntroDialogueLine>)>,
     mut completions: MessageWriter<IntroDialogueCompleted>,
 ) {
-    if *view != IntroDialogueViewState::Ready || !actions.just_pressed(AppAction::Confirm) {
+    if *view != IntroDialogueViewState::Ready
+        || actions.just_pressed(AppAction::Back)
+        || !actions.just_pressed(AppAction::Confirm)
+    {
         return;
     }
     let Some(selected) = inputs.active.inputs(
@@ -289,6 +300,22 @@ fn advance_intro_dialogue(
             });
         }
         ProgressEffect::None => {}
+    }
+}
+
+/// Like Python's `DialogueScene`, Back closes the overlay without dispatching authored
+/// completion actions. It is ordered before progression and takes precedence over Confirm.
+fn cancel_intro_dialogue(
+    actions: Res<ActionState>,
+    view: Res<IntroDialogueViewState>,
+    game: Option<Res<GameState>>,
+    mut transitions: MessageWriter<AppStateTransitionRequest>,
+) {
+    if *view == IntroDialogueViewState::Ready
+        && actions.just_pressed(AppAction::Back)
+        && game.is_some()
+    {
+        transitions.write(AppStateTransitionRequest::new(AppState::World));
     }
 }
 
@@ -462,6 +489,7 @@ mod tests {
         game_state::GameState,
         gameplay_canvas::{GameplayCanvasCamera, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH},
         gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng},
+        intro_transition::PendingWorldTransition,
         name_entry::{NameEntryConfirmed, NameEntryViewState},
         scenario_new_game_assets::ActiveNewGameInputsStatus,
         scenario_root::ScenarioRoot,
@@ -886,6 +914,46 @@ on_complete:
     }
 
     #[test]
+    fn back_during_loading_is_drained_and_only_a_fresh_back_cancels() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        *app.world_mut().resource_mut::<IntroDialogueViewState>() = IntroDialogueViewState::Loading;
+        press(&mut app, KeyCode::Escape);
+
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<IntroDialogueViewState>(),
+            &IntroDialogueViewState::Ready
+        );
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
+        );
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Escape);
+        app.update();
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
+        );
+
+        release(&mut app, KeyCode::Escape);
+        app.update();
+        press(&mut app, KeyCode::Escape);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Escape);
+        app.update();
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::World
+        );
+    }
+
+    #[test]
     fn fresh_enter_space_and_keypad_advance_once_then_complete() {
         let package = InventedPackage::new(Some(INTRO));
         let mut app = install_and_enter_dialogue(&package);
@@ -960,6 +1028,90 @@ on_complete:
         assert_eq!(
             app.world().resource::<State<AppState>>().get(),
             &AppState::World
+        );
+    }
+
+    #[test]
+    fn same_frame_back_and_confirm_cancels_intro_into_manifest_start_without_effects() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        let (start_map, start_position, start_flags) = {
+            let game = app.world().resource::<GameState>();
+            (
+                game.map().current().cloned(),
+                game.map().position(),
+                game.flags().clone(),
+            )
+        };
+
+        press(&mut app, KeyCode::Enter);
+        press(&mut app, KeyCode::Escape);
+        app.update();
+
+        // The central state request is applied on the following frame. Mirror InputPlugin's
+        // edge lifecycle before that frame so these held test keys cannot issue a second cancel.
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Escape);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Enter);
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::World
+        );
+        let game = app.world().resource::<GameState>();
+        assert_eq!(game.map().current(), start_map.as_ref());
+        assert_eq!(game.map().position(), start_position);
+        assert_eq!(game.flags(), &start_flags);
+        assert!(!game.flags().is_set("invented_intro_completed_later"));
+        assert!(
+            app.world()
+                .resource::<PendingWorldTransition>()
+                .get()
+                .is_none()
+        );
+        assert!(completions(&mut app).is_empty());
+
+        app.update();
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::World
+        );
+        assert_eq!(
+            app.world().resource::<IntroDialogueProgress>(),
+            &IntroDialogueProgress::default()
+        );
+    }
+
+    #[test]
+    fn back_without_an_installed_game_cannot_enter_world_or_replay_later() {
+        let package = InventedPackage::new(Some(INTRO));
+        let mut app = install_and_enter_dialogue(&package);
+        let game = app.world_mut().remove_resource::<GameState>().unwrap();
+        app.world_mut()
+            .resource_mut::<Messages<AppStateTransitionRequest>>()
+            .clear();
+        press(&mut app, KeyCode::Escape);
+
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Escape);
+        app.world_mut().insert_resource(game);
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
+        );
+        assert_eq!(
+            app.world()
+                .resource::<Messages<AppStateTransitionRequest>>()
+                .len(),
+            0
         );
     }
 
