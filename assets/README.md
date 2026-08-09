@@ -1,5 +1,8 @@
 # Migrated assets
 
+Binary image, audio, and font files are stored with Git LFS. Install Git LFS
+and run `git lfs install` before cloning or checking out the repository.
+
 These prototype assets were copied from the sibling `agentic-rpg` project for
 evaluating the Rust and Bevy direction.
 
