@@ -15,6 +15,7 @@
 
 use std::num::NonZeroU32;
 
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de};
 
 use crate::scenario_condition::FlagConditions;
@@ -42,7 +43,7 @@ impl DialogueDocument {
 }
 
 /// A linear cutscene document such as the new-game introduction.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct CutsceneDialogue {
     #[serde(deserialize_with = "deserialize_string")]

@@ -9,6 +9,7 @@ use crate::{
     new_game::{NewGameScenario, build_new_game_state},
     playtime::Playtime,
     scenario_balance::BalanceData,
+    scenario_dialogue::CutsceneDialogue,
     scenario_manifest::Manifest,
     scenario_manifest_asset::ActiveManifestLoad,
     scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
@@ -82,6 +83,7 @@ struct NewGameAssets<'w> {
     manifests: Res<'w, Assets<Manifest>>,
     parties: Res<'w, Assets<PartyCatalog>>,
     balances: Res<'w, Assets<BalanceData>>,
+    intros: Res<'w, Assets<CutsceneDialogue>>,
 }
 fn install_confirmed_game(
     mut commands: Commands,
@@ -98,6 +100,7 @@ fn install_confirmed_game(
         &assets.manifests,
         &assets.parties,
         &assets.balances,
+        &assets.intros,
     ) else {
         if assets.active.status() == ActiveNewGameInputsStatus::Failed {
             state.status = NewGameInstallStatus::Failed;
@@ -164,6 +167,9 @@ mod tests {
     struct Package(PathBuf);
     impl Package {
         fn new(valid: bool) -> Self {
+            Self::with_intro(valid, true)
+        }
+        fn with_intro(valid: bool, intro: bool) -> Self {
             let root = std::env::temp_dir().join(format!(
                 "rpg-s1-install-{}-{}",
                 std::process::id(),
@@ -171,11 +177,19 @@ mod tests {
             ));
             let package = root.join("scenarios/invented");
             fs::create_dir_all(package.join("data")).unwrap();
+            fs::create_dir_all(package.join("data/dialogue")).unwrap();
             fs::write(
                 package.join("manifest.yaml"),
                 include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"),
             )
             .unwrap();
+            if intro {
+                fs::write(
+                    package.join("data/dialogue/intro_cutscene.yaml"),
+                    include_str!("../tests/fixtures/dialogue-intro-cutscene.yaml"),
+                )
+                .unwrap();
+            }
             let party = include_str!("../tests/fixtures/party-catalog-shapes.yaml")
                 .replacen("id: ember", "id: aric", 1)
                 .replacen("class: vanguard", "class: hero", 1);
@@ -440,6 +454,35 @@ mod tests {
                 .resource::<Messages<AppStateTransitionRequest>>()
                 .len(),
             0
+        );
+    }
+    #[test]
+    fn intro_failure_keeps_name_entry_and_transitional_ownership() {
+        let package = Package::with_intro(true, false);
+        let mut app = app(&package);
+        confirm(&mut app, "Queued");
+        for _ in 0..1000 {
+            app.update();
+            if app.world().resource::<NewGameInstallState>().status == NewGameInstallStatus::Failed
+            {
+                break;
+            }
+            std::thread::yield_now();
+        }
+        assert!(app.world().get_resource::<GameState>().is_none());
+        assert!(app.world().get_resource::<GameplayRng>().is_some());
+        assert!(app.world().get_resource::<Playtime>().is_some());
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::NameEntry
+        );
+        assert!(
+            app.world()
+                .resource::<NewGameInstallState>()
+                .failure
+                .as_deref()
+                .unwrap()
+                .contains("data/dialogue/intro_cutscene.yaml")
         );
     }
 }

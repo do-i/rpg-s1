@@ -14,6 +14,7 @@ use bevy::{
 
 use crate::{
     scenario_balance::BalanceData,
+    scenario_dialogue::CutsceneDialogue,
     scenario_manifest::Manifest,
     scenario_manifest_asset::{
         ActiveManifestLoad, ActiveManifestStatus, ManifestLoadFailure, track_active_manifest_load,
@@ -29,8 +30,10 @@ impl Plugin for ScenarioNewGameAssetsPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<PartyCatalog>()
             .init_asset::<BalanceData>()
+            .init_asset::<CutsceneDialogue>()
             .init_asset_loader::<PartyCatalogAssetLoader>()
             .init_asset_loader::<BalanceDataAssetLoader>()
+            .init_asset_loader::<CutsceneDialogueAssetLoader>()
             .init_resource::<ActiveNewGameInputs>()
             .add_systems(
                 Update,
@@ -57,8 +60,10 @@ pub struct ActiveNewGameInputs {
 struct NewGameHandles {
     party: Handle<PartyCatalog>,
     balance: Handle<BalanceData>,
+    intro: Handle<CutsceneDialogue>,
     party_path: String,
     balance_path: String,
+    intro_path: String,
 }
 
 impl Default for ActiveNewGameInputs {
@@ -75,6 +80,7 @@ pub struct NewGameInputs<'a> {
     pub manifest: &'a Manifest,
     pub party: &'a PartyCatalog,
     pub balance: &'a BalanceData,
+    pub intro: &'a CutsceneDialogue,
 }
 
 impl ActiveNewGameInputs {
@@ -90,6 +96,7 @@ impl ActiveNewGameInputs {
         manifests: &'a Assets<Manifest>,
         parties: &'a Assets<PartyCatalog>,
         balances: &'a Assets<BalanceData>,
+        intros: &'a Assets<CutsceneDialogue>,
     ) -> Option<NewGameInputs<'a>> {
         let handles = self.handles.as_ref()?;
         if self.status != ActiveNewGameInputsStatus::Ready {
@@ -98,6 +105,7 @@ impl ActiveNewGameInputs {
         let manifest = active_manifest.manifest(manifests)?;
         if manifest.refs.party.as_str() != handles.party_path
             || manifest.refs.balance.as_str() != handles.balance_path
+            || manifest.start.intro_dialogue.as_str() != handles.intro_path
         {
             return None;
         }
@@ -105,6 +113,7 @@ impl ActiveNewGameInputs {
             manifest,
             party: parties.get(&handles.party)?,
             balance: balances.get(&handles.balance)?,
+            intro: intros.get(&handles.intro)?,
         })
     }
 }
@@ -157,6 +166,7 @@ fn track_new_game_inputs(
     manifests: Res<Assets<Manifest>>,
     parties: Res<Assets<PartyCatalog>>,
     balances: Res<Assets<BalanceData>>,
+    intros: Res<Assets<CutsceneDialogue>>,
     asset_server: Res<AssetServer>,
 ) {
     let root = active_manifest.root();
@@ -178,8 +188,11 @@ fn track_new_game_inputs(
     };
     let party_path = manifest.refs.party.as_str().to_owned();
     let balance_path = manifest.refs.balance.as_str().to_owned();
+    let intro_path = manifest.start.intro_dialogue.as_str().to_owned();
     if active.handles.as_ref().is_some_and(|handles| {
-        handles.party_path != party_path || handles.balance_path != balance_path
+        handles.party_path != party_path
+            || handles.balance_path != balance_path
+            || handles.intro_path != intro_path
     }) {
         active.handles = None;
         active.failure = None;
@@ -191,6 +204,8 @@ fn track_new_game_inputs(
             party_path,
             balance: asset_server.load(root.resolve(&manifest.refs.balance)),
             balance_path,
+            intro: asset_server.load(root.resolve(&manifest.start.intro_dialogue)),
+            intro_path,
         });
         active.status = ActiveNewGameInputsStatus::Loading;
         active.failure = None;
@@ -215,6 +230,15 @@ fn track_new_game_inputs(
         active.status = ActiveNewGameInputsStatus::Failed;
         return;
     }
+    if let LoadState::Failed(error) = asset_server.load_state(handles.intro.id()) {
+        active.failure = Some(NewGameInputsLoadFailure::new(
+            root,
+            manifest.start.intro_dialogue.as_str(),
+            &error,
+        ));
+        active.status = ActiveNewGameInputsStatus::Failed;
+        return;
+    }
     if matches!(
         asset_server.load_state(handles.party.id()),
         LoadState::Loaded
@@ -223,6 +247,11 @@ fn track_new_game_inputs(
         LoadState::Loaded
     ) && parties.contains(&handles.party)
         && balances.contains(&handles.balance)
+        && matches!(
+            asset_server.load_state(handles.intro.id()),
+            LoadState::Loaded
+        )
+        && intros.contains(&handles.intro)
     {
         active.status = ActiveNewGameInputsStatus::Ready;
         active.failure = None;
@@ -253,6 +282,8 @@ fn safe_cause(error: &AssetLoadError) -> String {
 struct PartyCatalogAssetLoader;
 #[derive(Default, TypePath)]
 struct BalanceDataAssetLoader;
+#[derive(Default, TypePath)]
+struct CutsceneDialogueAssetLoader;
 macro_rules! loader {
     ($type:ty, $loader:ident) => {
         impl AssetLoader for $loader {
@@ -282,6 +313,7 @@ macro_rules! loader {
 }
 loader!(PartyCatalog, PartyCatalogAssetLoader);
 loader!(BalanceData, BalanceDataAssetLoader);
+loader!(CutsceneDialogue, CutsceneDialogueAssetLoader);
 #[derive(Debug)]
 enum NewGameAssetLoaderError {
     Io(std::io::Error),
@@ -325,10 +357,16 @@ mod tests {
             ));
             let package = root.join("scenarios").join(package_key);
             fs::create_dir_all(package.join("data")).expect("invented data directory");
+            fs::create_dir_all(package.join("data/dialogue")).expect("invented dialogue directory");
             let manifest = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
                 .replacen("data/party.yaml", "data/party-alt.yaml", 1)
                 .replacen("data/balance.yaml", "data/balance-alt.yaml", 1);
             fs::write(package.join("manifest.yaml"), manifest).expect("invented manifest");
+            fs::write(
+                package.join("data/dialogue/intro_cutscene.yaml"),
+                include_str!("../tests/fixtures/dialogue-intro-cutscene.yaml"),
+            )
+            .expect("invented intro");
             if let Some(party) = party {
                 fs::write(package.join("data/party-alt.yaml"), party).expect("invented party");
             }
@@ -380,6 +418,7 @@ mod tests {
                 world.resource::<Assets<Manifest>>(),
                 world.resource::<Assets<PartyCatalog>>(),
                 world.resource::<Assets<BalanceData>>(),
+                world.resource::<Assets<CutsceneDialogue>>(),
             )
             .is_some()
     }
@@ -402,6 +441,7 @@ mod tests {
                 world.resource::<Assets<Manifest>>(),
                 world.resource::<Assets<PartyCatalog>>(),
                 world.resource::<Assets<BalanceData>>(),
+                world.resource::<Assets<CutsceneDialogue>>(),
             )
             .expect("all inputs together");
         assert!(!inputs.party.party.is_empty());
@@ -565,6 +605,109 @@ mod tests {
                 .party_path,
             "data/party-next.yaml"
         );
+    }
+
+    #[test]
+    fn intro_path_ref_change_and_removal_are_transactional() {
+        let assets = InventedAssetBase::new("invented_campaign", Some(party()), Some(balance()));
+        let package = assets
+            .path()
+            .join("scenarios/invented_campaign/data/dialogue");
+        fs::write(
+            package.join("intro-next.yaml"),
+            include_str!("../tests/fixtures/dialogue-intro-cutscene.yaml"),
+        )
+        .unwrap();
+        let mut app = app_for(&assets, "invented_campaign");
+        update_until(&mut app, ActiveNewGameInputsStatus::Ready);
+        let handles = app
+            .world()
+            .resource::<ActiveNewGameInputs>()
+            .handles
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            app.world()
+                .resource::<AssetServer>()
+                .get_path(handles.intro.id())
+                .unwrap()
+                .path()
+                .to_string_lossy(),
+            "scenarios/invented_campaign/data/dialogue/intro_cutscene.yaml"
+        );
+        let manifest_handle = app
+            .world()
+            .resource::<ActiveManifestLoad>()
+            .handle()
+            .clone();
+        app.world_mut()
+            .resource_mut::<Assets<Manifest>>()
+            .get_mut(manifest_handle.id())
+            .unwrap()
+            .start
+            .intro_dialogue = "data/dialogue/intro-next.yaml".try_into().unwrap();
+        assert!(!inputs_present(&app));
+        update_until(&mut app, ActiveNewGameInputsStatus::Ready);
+        let intro = app
+            .world()
+            .resource::<ActiveNewGameInputs>()
+            .handles
+            .as_ref()
+            .unwrap()
+            .intro
+            .clone();
+        assert_eq!(
+            app.world()
+                .resource::<ActiveNewGameInputs>()
+                .handles
+                .as_ref()
+                .unwrap()
+                .intro_path,
+            "data/dialogue/intro-next.yaml"
+        );
+        app.world_mut()
+            .resource_mut::<Assets<CutsceneDialogue>>()
+            .remove(intro.id());
+        app.update();
+        assert_eq!(
+            app.world().resource::<ActiveNewGameInputs>().status(),
+            ActiveNewGameInputsStatus::Loading
+        );
+        assert!(!inputs_present(&app));
+    }
+
+    #[test]
+    fn selected_intro_missing_malformed_or_wrong_variant_fails_without_inputs() {
+        for (key, replacement) in [
+            ("missing_intro", None),
+            ("malformed_intro", Some("invalid: [")),
+            (
+                "entry_intro",
+                Some(include_str!(
+                    "../tests/fixtures/dialogue-branching-npc.yaml"
+                )),
+            ),
+        ] {
+            let assets = InventedAssetBase::new(key, Some(party()), Some(balance()));
+            let path = assets
+                .path()
+                .join(format!("scenarios/{key}/data/dialogue/intro_cutscene.yaml"));
+            match replacement {
+                Some(document) => fs::write(&path, document).unwrap(),
+                None => fs::remove_file(&path).unwrap(),
+            }
+            let mut app = app_for(&assets, key);
+            update_until(&mut app, ActiveNewGameInputsStatus::Failed);
+            let failure = app
+                .world()
+                .resource::<ActiveNewGameInputs>()
+                .failure()
+                .unwrap()
+                .to_string();
+            assert!(failure.starts_with(&format!("{key}:data/dialogue/intro_cutscene.yaml:")));
+            assert!(!failure.contains(assets.path().to_string_lossy().as_ref()));
+            assert!(!inputs_present(&app));
+        }
     }
 
     #[test]
