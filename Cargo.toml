@@ -11,6 +11,7 @@ bevy = { version = "0.19", default-features = false, features = [
     "ui",
     "audio",
     "mp3",
+    "png",
     "webp",
 ] }
 quick-xml = "=0.41.0"
