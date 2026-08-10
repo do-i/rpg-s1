@@ -1,0 +1,180 @@
+# data/party.yaml
+#
+# Single source of truth for every party member: stats, equipment, portrait,
+# and recruit linkage. Loaded by:
+#   - engine/io/game_state_loader.py     (from_new_game — protagonist)
+#   - engine/world/world_map_logic.py    (apply_join_party — companions at runtime)
+#   - engine/debug/debug_bootstrap.py    (inject_full_party — debug mode)
+#   - engine/battle/battle_asset_cache.py (load_portrait)
+#
+# Schema:
+#   id, name, class, protagonist?, portrait
+#   join: { condition, map, position }
+#   recruit?: { npc, dialogue, joined_flag }   # absent for the protagonist
+#   row, level, exp, hp/hp_max, mp/mp_max
+#   stats: { str, dex, con, int }
+#   equipped: { weapon, shield, helmet, body, accessory }
+#   abilities_unlocked, status_effects
+#   age, gender                                # cosmetic, unused by engine
+
+party:
+  - id: aric
+    name: "Aric"
+    class: hero
+    protagonist: true
+    portrait: assets/images/aric_profile.png
+    join:
+      condition: story_quest_started
+      map: town_01_ardel
+      position: [12, 8]
+
+    row: front
+    age: 17
+    gender: male
+    level: 1
+    exp: 0
+    hp: 22
+    hp_max: 22
+    mp: 12
+    mp_max: 12
+    stats: { str: 28, dex: 17, con: 28, int: 5 }
+    equipped:
+      weapon: iron_sword
+      shield: buckler
+      helmet: leather_hat
+      body: leather_vest
+      accessory: ""
+    abilities_unlocked: []
+    status_effects: []
+
+  - id: elise
+    name: "Elise"
+    class: cleric
+    protagonist: false
+    portrait: assets/images/elise_profile.png
+    join:
+      condition: story_quest_started
+      map: town_01_ardel
+      position: [10, 6]
+    recruit:
+      npc: elise
+      dialogue: elise_join
+      joined_flag: npc_elise_joined
+
+    row: back
+    age: 16
+    gender: female
+    level: 1
+    exp: 0
+    hp: 18
+    hp_max: 18
+    mp: 18
+    mp_max: 18
+    stats: { str: 26, dex: 26, con: 27, int: 22 }
+    equipped:
+      weapon: oak_staff
+      shield: buckler
+      helmet: silver_circlet
+      body: cloth_robe
+      accessory: ""
+    abilities_unlocked: [heal]
+    status_effects: []
+
+  - id: reiya
+    name: "Reiya"
+    class: sorcerer
+    protagonist: false
+    portrait: assets/images/reiya_profile.png
+    join:
+      condition: story_act2_started
+      map: town_02_millhaven
+      position: [8, 5]
+    recruit:
+      npc: reiya
+      dialogue: reiya_join
+      joined_flag: npc_reiya_joined
+
+    row: back
+    age: 18
+    gender: female
+    level: 1
+    exp: 0
+    hp: 22
+    hp_max: 22
+    mp: 20
+    mp_max: 20
+    stats: { str: 18, dex: 17, con: 18, int: 24 }
+    equipped:
+      weapon: oak_staff
+      shield: ""
+      helmet: silver_circlet
+      body: cloth_robe
+      accessory: ""
+    abilities_unlocked: [fire_bolt, aqua_shot]
+    status_effects: []
+
+  - id: jep
+    name: "Jep"
+    class: rogue
+    protagonist: false
+    portrait: assets/images/jep_profile.png
+    join:
+      condition: story_act3_started
+      map: dungeon_ruinwatch
+      position: [5, 9]
+    recruit:
+      npc: jep
+      dialogue: jep_join
+      joined_flag: npc_jep_joined
+
+    row: back
+    age: 15
+    gender: male
+    level: 1
+    exp: 0
+    hp: 22
+    hp_max: 22
+    mp: 10
+    mp_max: 10
+    stats: { str: 18, dex: 27, con: 18, int: 5 }
+    equipped:
+      weapon: dagger
+      shield: buckler
+      helmet: cloth_hood
+      body: leather_vest
+      accessory: ""
+    abilities_unlocked: []
+    status_effects: []
+
+  - id: kael
+    name: "Kael"
+    class: warrior
+    protagonist: false
+    portrait: assets/images/kael_profile.png
+    join:
+      condition: story_act4_started
+      map: town_04_frostholm
+      position: [6, 4]
+    recruit:
+      npc: kael
+      dialogue: kael_join
+      joined_flag: npc_kael_joined
+
+    row: front
+    age: 20
+    gender: male
+    level: 1
+    exp: 0
+    hp: 22
+    hp_max: 22
+    mp: 10
+    mp_max: 10
+    stats: { str: 38, dex: 7, con: 38, int: 5 }
+    equipped:
+      weapon: iron_sword
+      shield: kite_shield
+      helmet: iron_helm
+      body: chainmail
+      accessory: ""
+    abilities_unlocked: [shield_bash, taunt]
+    status_effects: []

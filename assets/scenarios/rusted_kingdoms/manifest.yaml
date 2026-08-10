@@ -1,0 +1,86 @@
+# rusted_kingdoms/manifest.yaml
+# -- updated refs and protagonist.sprite path --
+
+id: my_rpg_story
+name: "Chronicles of the Lost Flame"
+version: "1.0.0"
+window_title: "Rusted Kingdoms"
+
+title:
+  image: assets/images/title_bg/title_lost_flame.webp
+  cursor_icon: assets/images/icons/arrow-head-red-right-01.webp
+
+font:
+  path: assets/fonts/Philosopher-Regular.ttf
+
+ui:
+  # Backdrop behind field menus (item/spell/equip/status/shops/inn).
+  menu_backdrop: assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp
+
+apothecary:
+  sprite: assets/sprites/npc/female_wiz_01.tsx
+  icons:
+    locked:  assets/images/icons/lock-locked-red-small.webp
+    ready:   assets/images/icons/lock-unlocked-green-small.webp
+    missing: assets/images/icons/lock-unlocked-yellow-small.webp
+
+inn:
+  sprite: assets/sprites/npc/female_blue_01.tsx
+
+item_shop:
+  sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+
+weapon_shop:
+  sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+
+armor_shop:
+  sprite: assets/sprites/npc/plate_knight_base.tsx
+
+item_box:
+  sprite: assets/sprites/objects/item_box.tsx
+
+# Message boards: map tiles the player can read. Any cell painted with one of
+# these local tile ids from the named tileset becomes a readable sign that
+# plays the per-map dialogue file `data/dialogue/sign_<map_id>.yaml`.
+signs:
+  tileset: stone_tile_stares_16x16
+  tile_ids: [18, 19, 20, 21]
+
+protagonist:
+  id: aric
+  name: "Aric"
+  class: hero
+  sprite: assets/sprites/party/01_aric_walk.tsx
+
+start:
+  map: town_01_ardel
+  position: [14, 5]
+  intro_dialogue: data/dialogue/intro_cutscene.yaml
+
+bootstrap_flags:
+  - story_quest_started
+  # DEBUG: unlocks Aric's Teleport skill from the start of the game. In the
+  # shipped game this flag should instead be set by a mid-game story event;
+  # remove this line to restore the intended mid-game unlock.
+  - aric_teleport_unlocked
+
+engine_managed_flags:
+  - story_act2_started
+  - story_act3_started
+  - story_act4_started
+  - boss_zone10_defeated
+
+refs:
+  party:      data/party.yaml
+  classes:    data/classes/
+  maps:       data/maps/
+  dialogue:   data/dialogue/
+  items:      data/items/
+  enemies:    data/enemies/
+  encount:    data/encount/
+  recipe:     data/recipe/
+  quests:     data/quests.yaml
+  balance:    data/balance.yaml
+  battle_backgrounds: data/battle_backgrounds.yaml
+  assets:     assets/
+  tmx:        assets/maps/

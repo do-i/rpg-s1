@@ -1,0 +1,29 @@
+# story_content/dialogue/intro_cutscene.yaml
+# Plays after name entry, before loading town_01_ardel
+# No speaker labels — narration style, black screen with text
+
+id: intro_cutscene
+type: cutscene  # no NPC, no condition check — plays once on new game
+
+lines:
+  - "Long ago, a flame fell from the sky and split the earth."
+  - "The people called it the Lost Flame."
+  - "They said it chose no king, no god — only a bearer."
+  - "Then it vanished. The world forgot."
+  - "..."
+  - "Three years ago, a forge burned in Ardel Village."
+  - "The blacksmith inside did not survive."
+  - "His son was the only one who saw the fire clearly."
+  - "It was not orange. It was not red."
+  - "It was the color of something older."
+  - "..."
+  - "Now the flame has returned."
+  - "And once again — only one person can see it."
+
+on_complete:
+  set_flag: story_quest_started  # already set by bootstrap, harmless no-op
+  transition:
+    map: town_01_ardel
+    position: [12, 8]
+    fade: in
+    

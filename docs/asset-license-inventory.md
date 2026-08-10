@@ -268,6 +268,531 @@ status. The required fields are intentionally repeated in each entry.
 | Related port task/wave | M4.15 |
 | Notes/blocker | The not-applicable fields are intentional because this file is a generated factual attribution notice. Its creators, layer paths, license choices, and source links are necessary evidence for the associated sprite and must not be removed. |
 
+### Asset entry: `ALI-0008` — Ardel town Tiled map
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0008` |
+| Source path | `rusted_kingdoms/assets/maps/town_01_ardel.tmx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx` |
+| Source SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
+| Destination SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
+| Asset kind | TMX |
+| Title/name | Ardel town map (`town_01_ardel`) |
+| Creator/rightsholder | Ninja is the source commit author; copyright ownership and any additional contributors are not expressly documented. |
+| Source/evidence | Exact pinned source file; source creation commit `9a85c1a6b142bdd38cd23df9f368e51febd83a55` (`Use real tilesets`) and subsequent file history through `0897035`; source README states that engine source is MIT and bundled third-party assets retain their own terms, but does not state a license for project-authored scenario maps; inspected 2026-08-10 |
+| License identifier/name | unknown; the source README's MIT statement is expressly limited to engine source |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. M4.11-M4.13 render its ground, terrain, and decoration layers from exact copied dependencies while reserving `collision` as non-visual data. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.11-M4.13 |
+| Notes/blocker | **Release blocker.** The task authorizes this working-copy migration, but repository ownership and commit authorship do not establish a public redistribution license. Before release, obtain an explicit grant from the map rightsholder covering redistribution, commercial use, and derivatives, and record any attribution requirement. The referenced third-party terrain atlas is reviewed separately below. |
+
+### Asset entry: `ALI-0009` — LPC terrain atlas image
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0009` |
+| Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.png` |
+| Source SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
+| Destination SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
+| Asset kind | tileset image |
+| Title/name | `[LPC] Terrains` (`terrain-v7`) |
+| Creator/rightsholder | bluecarrot16; Lanea Zimmerman (Sharm); Daniel Eddeland (Daneeklu); Richard Kettering (Jetrel); Zachariah Husiar (Zabin); Hyptosis; Casper Nilsson; Buko Studios; Nushio; ZaPaper; billknye; William Thompson; caeles; Redshrike; Bertram; Rayane Félix (RayaneFLX), as recorded by the pinned terrain credit |
+| Source/evidence | Exact pinned source file and source LFS declaration; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); pinned `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`, which identifies every component collection, creator, license choice, and OpenGameArt source URL; source README Credits and Attribution section; inspected 2026-08-10 |
+| License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`). The preserved source notice offers CC BY-SA 3.0 for every ShareAlike component and CC BY 3.0 for the two attribution-only components; CC BY-SA 3.0 is the selected distribution license for the combined atlas. |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); complete local attribution at `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
+| Required attribution | Preserve the complete creator, component-title, license, and source-link record in `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`; identify the combined terrain atlas as LPC artwork distributed under CC BY-SA 3.0; keep the notice reasonably discoverable in a shipped game. |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes, conditional on attribution, the CC BY-SA 3.0 notice, and ShareAlike terms |
+| Commercial-use permission | yes, conditional on CC BY-SA 3.0 compliance |
+| Derivative-work permission | yes, conditional on attribution, change identification, and ShareAlike terms |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.11 |
+| Notes/blocker | Approved for this byte-identical copy with the complete local credit and selected CC BY-SA 3.0 notice. A changed image hash or removed attribution requires a fresh review. Git LFS covers the destination PNG. |
+
+### Asset entry: `ALI-0010` — LPC terrain Tiled metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0010` |
+| Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx` |
+| Source SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
+| Destination SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
+| Asset kind | TSX |
+| Title/name | `terrain-v7` Tiled tileset metadata |
+| Creator/rightsholder | Ninja is the source import author; the credited LPC terrain contributors are the rightsholders of the referenced atlas. |
+| Source/evidence | Exact pinned source file; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); companion pinned terrain image and `CREDITS-terrain.txt`; inspected 2026-08-10 |
+| License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`) for distribution as companion metadata to the reviewed terrain atlas |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); local attribution at `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
+| Required attribution | Preserve the companion terrain credit and CC BY-SA 3.0 notice with this metadata and its referenced image. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. The TSX retains its sibling `terrain-v7.png` reference, 32-pixel tiles, 32 columns, 2,048 tiles, and Wang metadata. |
+| Redistribution permission | yes, conditional on the companion attribution and CC BY-SA 3.0 terms |
+| Commercial-use permission | yes, conditional on CC BY-SA 3.0 compliance |
+| Derivative-work permission | yes, conditional on CC BY-SA 3.0 terms |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.11 |
+| Notes/blocker | Approved only as unmodified companion metadata for `ALI-0009`; its relative image reference must continue to resolve inside the scenario package. |
+
+### Asset entry: `ALI-0011` — LPC terrain attribution record
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0011` |
+| Source path | `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
+| Source SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
+| Destination SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
+| Asset kind | license text |
+| Title/name | `[LPC] Terrains` component attribution record |
+| Creator/rightsholder | not-applicable; this factual notice identifies the creators and licenses for the associated terrain artwork |
+| Source/evidence | Exact pinned source notice imported with the terrain pack by commit `cb425944cff27b5b25b632aa264be9c726d0c147`; its component-specific OpenGameArt links and license choices; inspected 2026-08-10 |
+| License identifier/name | not-applicable; retained as the required attribution and license-choice record for `ALI-0009` and `ALI-0010` |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) applies to the combined associated atlas; this file is its local attribution notice |
+| Required attribution | Preserve this file unmodified and keep it reasonably discoverable in a shipped game. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes; redistribution preserves the associated asset's required attribution |
+| Commercial-use permission | yes; this is a required factual attribution record, not independently exploited artwork |
+| Derivative-work permission | not-applicable; preserve the factual attribution unmodified |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.11 |
+| Notes/blocker | The not-applicable fields are intentional because this file is a factual attribution notice. It must remain alongside the associated terrain atlas. |
+
+### Asset entry: `ALI-0012` — `grass_cave_walls_24x14` atlas image
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0012` |
+| Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.png` |
+| Source SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
+| Destination SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
+| Asset kind | tileset image |
+| Title/name | `grass_cave_walls_24x14` atlas |
+| Creator/rightsholder | unknown |
+| Source/evidence | Exact pinned source file and source import commit `9a85c1a6b142bdd38cd23df9f368e51febd83a55` (`Use real tilesets`); no creator, upstream package, license file, or public exact-filename result was found; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** The task authorizes this exact working-copy migration so Ardel can be rendered locally, but possession and source commit history do not establish public redistribution rights. Obtain the original package, creator identity, exact-file provenance, and applicable license or replace the atlas before release. |
+
+### Asset entry: `ALI-0013` — `grass_cave_walls_24x14` Tiled metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0013` |
+| Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx` |
+| Source SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
+| Destination SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
+| Asset kind | TSX |
+| Title/name | `grass_cave_walls_24x14` Tiled metadata |
+| Creator/rightsholder | Ninja is the source import author; ownership of the referenced atlas and metadata is not documented. |
+| Source/evidence | Exact pinned source file and source import commit `9a85c1a6b142bdd38cd23df9f368e51febd83a55`; companion image `ALI-0012`; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, 24 columns, and 336 tiles. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** Resolve the companion image's provenance and identify the metadata's applicable terms before public redistribution. |
+
+### Asset entry: `ALI-0014` — `icon_table_stage_14x9` atlas image
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0014` |
+| Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.png` |
+| Source SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
+| Destination SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
+| Asset kind | tileset image |
+| Title/name | `icon_table_stage_14x9` atlas |
+| Creator/rightsholder | unknown |
+| Source/evidence | Exact pinned source file and source import commit `167f349f16cd5af934fa4339d4d51ead4b27c202` (`add more tiles and collision tests`); no creator, upstream package, license file, or public exact-filename result was found; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** The task authorizes this exact working-copy migration so Ardel can be rendered locally, but source history does not establish rights. Obtain original-package provenance and a redistribution grant or replace the atlas before release. |
+
+### Asset entry: `ALI-0015` — `icon_table_stage_14x9` Tiled metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0015` |
+| Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx` |
+| Source SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
+| Destination SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
+| Asset kind | TSX |
+| Title/name | `icon_table_stage_14x9` Tiled metadata |
+| Creator/rightsholder | Ninja is the source import author; ownership of the referenced atlas and metadata is not documented. |
+| Source/evidence | Exact pinned source file and source import commit `167f349f16cd5af934fa4339d4d51ead4b27c202`; companion image `ALI-0014`; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, 14 columns, and 126 tiles. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** Resolve the companion image's provenance and identify the metadata's applicable terms before public redistribution. |
+
+### Asset entry: `ALI-0016` — Astral Pixels `finestre` atlas image
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0016` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.png` |
+| Source SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
+| Destination SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
+| Asset kind | tileset image |
+| Title/name | `finestre` window atlas from RPG Interior Tileset 32x32 |
+| Creator/rightsholder | AstralPixels is identified by the pinned local credit and candidate official asset page. |
+| Source/evidence | Exact pinned source file; source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2` (`Add house map in ardel`); pinned `astralpixels/credit.txt`; [official RPG Interior Tileset 32x32 asset page](https://astralpixels.itch.io/rpg-interior-tileset-32x32-furniture-house-pack), accessed 2026-08-10 |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | Official asset page linked above permits personal and commercial project use and modification, prohibits redistributing/reselling/repackaging the assets, and does not require credit. |
+| Required attribution | None stated by the candidate asset page; preserve the pinned voluntary credit while provenance is resolved. |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. The 160-by-160 file appears to be a project-specific extracted window atlas, but the derivation recipe is not documented. |
+| Redistribution permission | unknown; project embedding appears contemplated by the candidate terms, but the source does not prove exact-file acquisition or how the extracted atlas was produced. |
+| Commercial-use permission | unknown pending exact-file provenance; the candidate terms permit commercial project use. |
+| Derivative-work permission | unknown pending exact-file provenance; the candidate terms permit modification. |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** Obtain the original `interior1.zip` acquisition record and preserve a reproducible mapping from that package to this extracted exact hash. Confirm that embedding the extracted subset in a distributable game complies with the no-repackaging term before release. |
+
+### Asset entry: `ALI-0017` — Astral Pixels `finestre` Tiled metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0017` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx` |
+| Source SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
+| Destination SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
+| Asset kind | TSX |
+| Title/name | Astral Pixels `finestre` Tiled metadata |
+| Creator/rightsholder | Ninja is the source import author; AstralPixels is the identified creator of the referenced artwork. |
+| Source/evidence | Exact pinned source file and source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; companion image `ALI-0016`; pinned `astralpixels/credit.txt`; inspected 2026-08-10 |
+| License identifier/name | unknown for the project-authored metadata; companion artwork has candidate official asset-page terms. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016` |
+| Required attribution | Preserve the companion voluntary credit while provenance is unresolved. |
+| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, five columns, and 25 tiles. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | **Release blocker.** Resolve the companion exact-file provenance and metadata terms before public redistribution. |
+
+### Asset entry: `ALI-0018` — Astral Pixels source credit
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0018` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` |
+| Source SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
+| Destination SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
+| Asset kind | attribution/source notice |
+| Title/name | Astral Pixels source credit |
+| Creator/rightsholder | not-applicable; this factual notice identifies the associated artwork's candidate official source. |
+| Source/evidence | Exact pinned source notice and source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; official page linked by the notice; inspected 2026-08-10 |
+| License identifier/name | not-applicable; retained as source evidence for the associated artwork. |
+| License text/notice location | Official Astral Pixels asset page named in the file. |
+| Required attribution | Preserve unmodified while the associated asset remains in the tree. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes; this factual source URL is preserved to support rights review. |
+| Commercial-use permission | yes; this factual notice is not independently exploited artwork. |
+| Derivative-work permission | not-applicable; preserve the factual notice unmodified. |
+| Review status | `approved` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.12 |
+| Notes/blocker | This notice does not itself prove exact-file provenance or remove the `ALI-0016` and `ALI-0017` blockers. |
+
+### Asset entry: `ALI-0019` — Rusted Kingdoms scenario manifest
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0019` |
+| Source path | `rusted_kingdoms/manifest.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/manifest.yaml` |
+| Source SHA-256 | `93bd1d549152437237c37e398f9e9bc9cc7dcb6cb934cb013857a0a5c7340ec9` |
+| Destination SHA-256 | `93bd1d549152437237c37e398f9e9bc9cc7dcb6cb934cb013857a0a5c7340ec9` |
+| Asset kind | scenario YAML |
+| Title/name | Rusted Kingdoms scenario manifest |
+| Creator/rightsholder | unknown; Ninja authored commits in the file history, but commit authorship does not establish sole ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file; latest pinned change `1bcbdf4bb6bd2c7cee05b30c83240a13fbd722f0`; source README license section, which limits MIT to engine source and leaves bundled content under its own terms; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario content. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. This manifest selects the production new-game inputs, scenario font, starting map, and protagonist sprite. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.13-M4.25 runtime closure |
+| Notes/blocker | **Release blocker.** The user authorized local parity inclusion from their source tree, not public redistribution. Obtain an explicit grant from the scenario rightsholder covering redistribution, commercial use, derivatives, and attribution before release. |
+
+### Asset entry: `ALI-0020` — Rusted Kingdoms party catalog
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0020` |
+| Source path | `rusted_kingdoms/data/party.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/party.yaml` |
+| Source SHA-256 | `24e95813f5d500f771f6fd9c3d37e46aba3c1b170832471edf18ab4760a6e04e` |
+| Destination SHA-256 | `24e95813f5d500f771f6fd9c3d37e46aba3c1b170832471edf18ab4760a6e04e` |
+| Asset kind | scenario YAML |
+| Title/name | Rusted Kingdoms party catalog |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file; creation commit `3f5a7252041bf52ea0af20e7dde09271447db7d2` and latest pinned change `06ced7291f978b0c065697545dc17d6320cb44cb`; source README license boundary; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario content. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. The production new-game builder reads the Aric record from this catalog. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.13-M4.25 runtime closure |
+| Notes/blocker | **Release blocker.** Local parity inclusion is authorized for this task, but public redistribution requires an explicit scenario-content grant. |
+
+### Asset entry: `ALI-0021` — Rusted Kingdoms balance data
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0021` |
+| Source path | `rusted_kingdoms/data/balance.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/balance.yaml` |
+| Source SHA-256 | `06e38b48fd5bed575fb8f6ca3990f8864ce2d891bb3d8c57602264913f7fad53` |
+| Destination SHA-256 | `06e38b48fd5bed575fb8f6ca3990f8864ce2d891bb3d8c57602264913f7fad53` |
+| Asset kind | scenario YAML |
+| Title/name | Rusted Kingdoms balance data |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and latest pinned change `bb292536b530559d3be8cd615f64035a71017c3f`; source README license boundary; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario content. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. The production new-game builder consumes its progression and economy caps. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.13-M4.25 runtime closure |
+| Notes/blocker | **Release blocker.** Local parity inclusion is authorized for this task, but public redistribution requires an explicit scenario-content grant. |
+
+### Asset entry: `ALI-0022` — Rusted Kingdoms intro cutscene
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0022` |
+| Source path | `rusted_kingdoms/data/dialogue/intro_cutscene.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/intro_cutscene.yaml` |
+| Source SHA-256 | `f0ceb9f3b1d9cd13673dacd63f021b69686c2adfe9b85792f8fb23609b6e6d3a` |
+| Destination SHA-256 | `f0ceb9f3b1d9cd13673dacd63f021b69686c2adfe9b85792f8fb23609b6e6d3a` |
+| Asset kind | scenario dialogue YAML |
+| Title/name | Rusted Kingdoms opening narration |
+| Creator/rightsholder | unknown; source commit authorship does not establish rights to the authored narrative. |
+| Source/evidence | Exact pinned source file; creation/history includes `a118974daf66c44ef30eb8a50c84d967d1e61417` and latest pinned path change `b9ca66094b4fb6b004fd5ec74be8f1ff7122dc44`; source README license boundary; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario narrative. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. It drives the production Dialogue-to-World transition. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.14-M4.25 runtime closure |
+| Notes/blocker | **Release blocker.** Obtain an explicit grant from the narrative rightsholder before public distribution; local parity inclusion alone is not rights evidence. |
+
+### Asset entry: `ALI-0023` — Philosopher Regular scenario font
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0023` |
+| Source path | `rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` |
+| Source SHA-256 | `9b9dced466f89eedbe6e9c6900e6bbcde6ad9bf3042b6e7715cd9ebed1125bd9` |
+| Destination SHA-256 | `9b9dced466f89eedbe6e9c6900e6bbcde6ad9bf3042b6e7715cd9ebed1125bd9` |
+| Asset kind | font |
+| Title/name | Philosopher Regular |
+| Creator/rightsholder | The Philosopher Project Authors, copyright 2011, as stated by the companion OFL notice. |
+| Source/evidence | Exact pinned source font and import commit `69f9dc104b1dc448b0dbf13325c34532050eb32d`; exact companion `Philosopher-OFL.txt`; inspected 2026-08-10 |
+| License identifier/name | SIL Open Font License 1.1 (`OFL-1.1`) |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` |
+| Required attribution | Distribute the copyright notice and OFL-1.1 license with the font; do not sell the font by itself or use a Reserved Font Name for a modified version without permission. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. The scenario-scoped copy is intentional because the manifest resolves fonts relative to its package root. |
+| Redistribution permission | yes, conditional on OFL-1.1 |
+| Commercial-use permission | yes, conditional on OFL-1.1 and not selling the font by itself |
+| Derivative-work permission | yes, conditional on OFL-1.1, its license-continuity rule, and Reserved Font Name restriction |
+| Review status | `approved` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.14-M4.25 runtime closure |
+| Notes/blocker | Approved for this exact hash with the exact companion OFL notice. Git LFS covers the destination TTF. |
+
+### Asset entry: `ALI-0024` — Philosopher OFL notice
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0024` |
+| Source path | `rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` |
+| Source SHA-256 | `a812c3a94bd45b79bb8eb94a349f72a66b859f08dbdbb49777e9e9e81b8c9575` |
+| Destination SHA-256 | `a812c3a94bd45b79bb8eb94a349f72a66b859f08dbdbb49777e9e9e81b8c9575` |
+| Asset kind | license text |
+| Title/name | Philosopher SIL Open Font License notice |
+| Creator/rightsholder | not-applicable; this is the copyright and license notice supplied for the companion font. |
+| Source/evidence | Exact pinned source notice and import commit `69f9dc104b1dc448b0dbf13325c34532050eb32d`; inspected 2026-08-10 |
+| License identifier/name | SIL Open Font License 1.1 (`OFL-1.1`) |
+| License text/notice location | This destination file is the complete local notice. |
+| Required attribution | Preserve the file with the companion font. |
+| Modification status/details | Unmodified, including its source CRLF line endings: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes; preservation satisfies the companion font's notice requirement |
+| Commercial-use permission | yes; this required notice is not independently exploited artwork |
+| Derivative-work permission | not-applicable; preserve the complete notice unmodified |
+| Review status | `approved` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M3.14-M4.25 runtime closure |
+| Notes/blocker | Approved as the exact companion notice for `ALI-0023`. |
+
+### Asset entry: `ALI-0025` — Ardel map metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0025` |
+| Source path | `rusted_kingdoms/data/maps/town_01_ardel.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml` |
+| Source SHA-256 | `06e8333dad57fc6139d2cffab14c1214a2be619469f704d354a31898bf20c8d8` |
+| Destination SHA-256 | `06e8333dad57fc6139d2cffab14c1214a2be619469f704d354a31898bf20c8d8` |
+| Asset kind | scenario map YAML |
+| Title/name | Ardel Village metadata |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file; creation/history includes `9a121085c79bd52c4a0da30cf7bd68567f3bc03a` and latest pinned change `1bcbdf4bb6bd2c7cee05b30c83240a13fbd722f0`; source README license boundary; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario content. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. Its `bgm: town.default` field is the production Ardel BGM selection. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.24-M4.25 |
+| Notes/blocker | **Release blocker.** Obtain an explicit scenario-content grant before public redistribution. This task authorizes only the local parity copy. |
+
+### Asset entry: `ALI-0026` — Rusted Kingdoms BGM index
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0026` |
+| Source path | `rusted_kingdoms/data/audio/bgm_index.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/audio/bgm_index.yaml` |
+| Source SHA-256 | `ae2c01bbaf243f3fcc6858a9beefd5c552f65edf7a05fc20b60433d17ac6aaa3` |
+| Destination SHA-256 | `ae2c01bbaf243f3fcc6858a9beefd5c552f65edf7a05fc20b60433d17ac6aaa3` |
+| Asset kind | scenario audio-index YAML |
+| Title/name | Rusted Kingdoms BGM index |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file; creation commit `994eb9a63b7b6e41fc2c85fe3b07fe4578f52182` and latest pinned change `d4be1ace21b23f4f1df63f0f32b5693c95687647`; source README license boundary; inspected 2026-08-10 |
+| License identifier/name | unknown; the source repository's MIT statement does not cover scenario content. |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified working-copy parity inclusion: source and destination are byte-for-byte identical. It maps `town.default` to `bgm/Whiteveil_Streets.mp3`; its other entries intentionally remain unresolved until later map waves copy their tracks. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.24-M4.25 |
+| Notes/blocker | **Release blocker.** Local runtime parity does not establish permission to redistribute this scenario index or any track it references. |
+
+### Asset entry: `ALI-0027` — Whiteveil Streets BGM
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0027` |
+| Source path | `rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3` |
+| Source SHA-256 | `1c2411d98b665d011b216c8f96c6ceb4321892afd25a4a355c526f9245ef3584` |
+| Destination SHA-256 | `1c2411d98b665d011b216c8f96c6ceb4321892afd25a4a355c526f9245ef3584` |
+| Asset kind | audio |
+| Title/name | Whiteveil Streets |
+| Creator/rightsholder | unknown |
+| Source/evidence | Exact pinned source file; source import commit `78ce00d184a2b4768a63e25be81cc578ec76aec3` and later path history through `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; companion `rusted_kingdoms/assets/audio/README-audio.md`, which records a generation prompt and `https://www.youtube.com/watch?v=kDwZaYTKr9I` but no creator identity, generation provider, acquisition record, or license; MP3 inspection shows a 194.56-second, 64-kbps, 48-kHz stereo file with only `encoder=Lavf62.3.100`; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown; the companion README is provenance context, not a redistribution license. |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.24-M4.25 |
+| Notes/blocker | **Release blocker.** The user authorized intentional local inclusion from their source tree, but possession, an encoder tag, a prompt, and a YouTube link do not prove ownership or permission. Before release, obtain the exact generation/acquisition record, creator/rightsholder identity, applicable versioned terms or written grant, and proof that redistribution in a commercial game and derivative use are permitted. Otherwise replace the track with independently licensed music and add a new ledger entry. Git LFS covers this MP3. |
+
+### Asset entry: `ALI-0028` — Rusted Kingdoms audio provenance README
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0028` |
+| Source path | `rusted_kingdoms/assets/audio/README-audio.md` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/README-audio.md` |
+| Source SHA-256 | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` |
+| Destination SHA-256 | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` |
+| Asset kind | provenance record |
+| Title/name | Rusted Kingdoms BGM prompt and source notes |
+| Creator/rightsholder | unknown; the file does not identify who authored its prompts or responses. |
+| Source/evidence | Exact pinned source file; creation commit `78ce00d184a2b4768a63e25be81cc578ec76aec3` and latest pinned path change `b9ca66094b4fb6b004fd5ec74be8f1ff7122dc44`; inspected 2026-08-10 |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local evidence copy: source and destination are byte-for-byte identical. It preserves the only source-tree context currently associated with Whiteveil Streets. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M4.24-M4.25 |
+| Notes/blocker | **Release blocker.** Retain this file as local provenance evidence while `ALI-0027` is unresolved, but do not ship it or infer music rights from it without an explicit grant covering the record itself and the associated track. |
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather

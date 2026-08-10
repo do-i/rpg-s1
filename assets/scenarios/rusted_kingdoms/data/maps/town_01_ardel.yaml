@@ -1,0 +1,106 @@
+id: town_01_ardel
+name: Ardel Village
+warp_order: 10
+bgm: town.default
+inn:
+  cost: 50
+  position: [8, 5]
+
+shop:
+  items:
+    - id: potion
+      name: Potion
+      buy_price: 100
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: hi_potion
+      name: Hi-Potion
+      buy_price: 500
+      tags: [consumable, recovery]
+      unlock_flag: story_act2_started
+    - id: ether
+      name: Ether
+      buy_price: 150
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: tent
+      name: Tent
+      buy_price: 500
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: antidote
+      name: Antidote
+      buy_price: 80
+      tags: [consumable, status]
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      name: Echo Herb
+      buy_price: 80
+      tags: [consumable, status]
+      unlock_flag: story_quest_started
+
+npcs:
+  - id: elise
+    name: "Elise"
+    dialogue: elise_join
+    position: [12, 6]
+    sprite: assets/sprites/party/02_elise_walk.tsx
+    default_facing: down
+    present:
+      excludes: [npc_elise_joined]
+    animation:
+      mode: step
+      speed: 0.7
+
+  - id: guide_ellen
+    name: "Guide Ellen"
+    type: guide
+    availability: 0.30
+    dialogue: guide_ardel
+    excuses: guide_excuses
+    position: [5, 6]
+    sprite: assets/sprites/npc/teen_wiz_01.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.8
+      range: 5
+
+  - id: ardel_smith
+    name: "Bram"
+    dialogue: ardel_smith
+    position: [20, 6]
+    sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.5
+
+  - id: ardel_apprentice
+    name: "Tomas"
+    dialogue: ardel_apprentice
+    position: [24, 10]
+    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    default_facing: left
+    animation:
+      mode: wander
+      speed: 1.5
+      range: 3
+
+  - id: ardel_fisherman
+    name: "Old Marn"
+    dialogue: ardel_fisherman
+    position: [3, 8]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: right
+
+  - id: ardel_child
+    name: "Pip"
+    dialogue: ardel_child
+    position: [15, 8]
+    sprite: assets/sprites/npc/village_female_person_basket_carrier.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 2.2
+      range: 4

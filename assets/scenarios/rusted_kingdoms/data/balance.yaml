@@ -1,0 +1,26 @@
+# rusted_kingdoms/data/balance.yaml
+#
+# Scenario-wide balance constants. Engine loads this once at startup
+# via BalanceData; values flow to consumers through DI.
+# Per-class EXP curves (exp_base, exp_factor) live in data/classes/*.yaml.
+
+progression:
+  level_cap: 100
+  exp_cap:   1_000_000
+
+economy:
+  gp_cap:            8_000_000
+  item_qty_cap:      100
+  max_tags_per_item: 5
+
+battle:
+  flee_base_chance:     0.30
+  flee_rogue_dex_bonus: 0.02
+
+spawner:
+  rogue_chase_reduction:    2      # tiles
+  stealth_cloak_reduction:  3      # tiles
+  lure_charm_interval_mult: 0.5    # halves spawn interval
+
+movement:
+  player_speed: 5
