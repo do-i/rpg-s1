@@ -162,6 +162,10 @@ fn sync_world_actor_request(
     state.status = WorldActorStatus::LoadingMetadata;
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "transactional NPC publication needs each independently loaded Bevy asset resource"
+)]
 fn drive_world_actor_load(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

@@ -183,6 +183,10 @@ fn sync_world_object_request(
     state.status = WorldObjectStatus::Loading;
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "atomic sign and item-box publication needs each independent Bevy asset boundary"
+)]
 fn drive_world_object_load(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

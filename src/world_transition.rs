@@ -68,18 +68,22 @@ impl RuntimePortal {
         self.object_id
     }
 
+    #[cfg(test)]
     pub(crate) fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
+    #[cfg(test)]
     pub(crate) const fn bounds(&self) -> PortalBounds {
         self.bounds
     }
 
+    #[cfg(test)]
     pub(crate) fn target_map(&self) -> &RuntimeMapId {
         &self.target_map
     }
 
+    #[cfg(test)]
     pub(crate) const fn target_position(&self) -> Position {
         self.target_position
     }
@@ -210,10 +214,6 @@ impl PortalEntryDetector {
         self.overlapping = now;
         entered
     }
-
-    pub(crate) fn clear(&mut self) {
-        self.overlapping.clear();
-    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -241,6 +241,7 @@ pub(crate) struct WorldTransition {
     alpha: f32,
     pending: Option<PendingTransition>,
     detector: PortalEntryDetector,
+    suppress_entry_until_exit: bool,
     failure: Option<String>,
 }
 
@@ -251,12 +252,14 @@ impl Default for WorldTransition {
             alpha: 1.0,
             pending: None,
             detector: PortalEntryDetector::default(),
+            suppress_entry_until_exit: false,
             failure: None,
         }
     }
 }
 
 impl WorldTransition {
+    #[cfg(test)]
     pub(crate) const fn phase(&self) -> TransitionPhase {
         self.phase
     }
@@ -320,7 +323,7 @@ impl WorldTransition {
     pub(crate) fn destination_published(&mut self) {
         debug_assert_eq!(self.phase, TransitionPhase::Publishing);
         self.pending = None;
-        self.detector.clear();
+        self.suppress_entry_until_exit = true;
         self.phase = TransitionPhase::FadingIn;
         self.alpha = 1.0;
     }
@@ -336,6 +339,21 @@ impl WorldTransition {
         self.failure = Some(reason.into());
         self.phase = TransitionPhase::FadingIn;
         self.alpha = 1.0;
+    }
+
+    fn suppress_destination_overlap(
+        &mut self,
+        portals: &[RuntimePortal],
+        player_tile: Position,
+    ) -> bool {
+        if !self.suppress_entry_until_exit {
+            return false;
+        }
+        let _ignored_entry = self.detector.entered(portals, player_tile);
+        if self.detector.overlapping.is_empty() {
+            self.suppress_entry_until_exit = false;
+        }
+        true
     }
 }
 
@@ -398,6 +416,9 @@ fn detect_portal_entry(
     let Ok(portals) = runtime_portals(map.document()) else {
         return;
     };
+    if transition.suppress_destination_overlap(&portals, game.map().position()) {
+        return;
+    }
     let entered = transition
         .detector
         .entered(&portals, game.map().position())
@@ -434,6 +455,10 @@ fn advance_transition_fade(time: Res<Time>, mut transition: ResMut<WorldTransiti
     transition.advance_fade(time.delta_secs());
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the transition publish barrier observes every map-scoped World subsystem"
+)]
 fn drive_transition_loading(
     asset_server: Res<AssetServer>,
     maps: Res<Assets<TmxGroundAsset>>,
@@ -567,6 +592,38 @@ mod tests {
                 .entered(&portals, Position::new(2, 3))
                 .map(RuntimePortal::object_id),
             Some(7)
+        );
+    }
+
+    #[test]
+    fn destination_portal_contact_is_seeded_until_the_player_exits() {
+        let portals = ardel_portals();
+        let house = portals
+            .iter()
+            .find(|portal| portal.name() == Some("house"))
+            .unwrap();
+        let mut transition = WorldTransition {
+            phase: TransitionPhase::Publishing,
+            pending: Some(PendingTransition {
+                target_map: RuntimeMapId::try_new("town_01_ardel").unwrap(),
+                target_position: Position::new(3, 4),
+                facing: CardinalDirection::Down,
+            }),
+            ..default()
+        };
+
+        transition.destination_published();
+        transition.phase = TransitionPhase::Idle;
+        assert!(transition.suppress_destination_overlap(&portals, Position::new(3, 4)));
+        assert!(transition.suppress_destination_overlap(&portals, Position::new(3, 4)));
+        assert!(transition.suppress_destination_overlap(&portals, Position::new(4, 4)));
+        assert!(!transition.suppress_destination_overlap(&portals, Position::new(4, 4)));
+        assert_eq!(
+            transition
+                .detector
+                .entered(&portals, Position::new(3, 4))
+                .map(RuntimePortal::object_id),
+            Some(house.object_id())
         );
     }
 

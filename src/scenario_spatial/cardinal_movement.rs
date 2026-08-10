@@ -147,6 +147,10 @@ fn load_active_map_collision(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the movement system consumes independent Bevy resources and collision queries"
+)]
 fn move_world_player(
     actions: Option<Res<ActionState>>,
     time: Option<Res<Time>>,

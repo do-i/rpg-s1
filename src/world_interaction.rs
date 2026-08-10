@@ -120,6 +120,10 @@ fn begin_world_interactions(
     };
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "interaction arbitration intentionally queries each distinct World target class"
+)]
 fn request_npc_dialogue(
     actions: Res<ActionState>,
     asset_server: Res<AssetServer>,
@@ -236,7 +240,7 @@ fn select_npc<'a>(
     npcs: impl Iterator<Item = &'a WorldNpc>,
 ) -> Option<&'a WorldNpc> {
     npcs.filter(|npc| {
-        npc.map_id().len() > 0
+        !npc.map_id().is_empty()
             && is_in_facing_direction(player, npc.tile_position(), facing)
             && within_range(player, npc.tile_position(), npc.interaction_range())
     })
@@ -559,6 +563,11 @@ impl fmt::Display for DialogueActionError {
 
 impl Error for DialogueActionError {}
 
+#[expect(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    reason = "the dialogue overlay updates disjoint Bevy Text roles in one synchronized pass"
+)]
 fn sync_dialogue_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -648,8 +657,8 @@ fn sync_dialogue_overlay(
     if let Ok(mut hint) = hints.single_mut() {
         hint.0 = match session.phase() {
             DialoguePhase::Typing => "ENTER · reveal     ESC · close",
-            DialoguePhase::Ready => "▼  ENTER · continue     ESC · close",
-            DialoguePhase::Choosing => "▲/▼ · choose     ENTER · select     ESC · close",
+            DialoguePhase::Ready => ">  ENTER · continue     ESC · close",
+            DialoguePhase::Choosing => "UP/DOWN · choose     ENTER · select     ESC · close",
             DialoguePhase::Closed => "",
         }
         .to_owned();
@@ -976,6 +985,7 @@ mod tests {
             InteractionSound::Blocked,
             InteractionSound::Dialogue,
             InteractionSound::Box,
+            InteractionSound::Cancel,
         ] {
             let path = index.resolve_key(&root, sound.source_key()).unwrap();
             assert!(path.starts_with("scenarios/rusted_kingdoms/assets/audio/sfx/"));
