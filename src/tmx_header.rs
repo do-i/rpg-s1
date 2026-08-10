@@ -1,14 +1,14 @@
 //! Strict, renderer-independent metadata from a finite orthogonal TMX document.
 //!
 //! The header-only API intentionally stops after the `<map>` start tag. The owned document API
-//! additionally scans direct external tileset references and finite CSV tile layers, decoding
-//! orthogonal tile transforms from each raw GID; objects remain uninterpreted.
+//! additionally scans direct external tileset references, finite CSV tile layers, and direct
+//! rectangle object groups, decoding orthogonal tile transforms from each raw GID.
 
 #![cfg_attr(
     not(test),
     expect(
         dead_code,
-        reason = "M4.01-M4.06 establish parser APIs before later M4 map loading consumes them"
+        reason = "M4.01-M4.08 establish parser APIs before later M4 map loading consumes them"
     )
 )]
 
@@ -189,6 +189,96 @@ pub(crate) struct TmxTileLayer {
     width: u32,
     height: u32,
     gids: Vec<TmxTileGid>,
+}
+
+/// One ordered direct TMX object group from the supported game-data allowlist.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct TmxObjectGroup {
+    id: u32,
+    name: String,
+    objects: Vec<TmxRectangleObject>,
+}
+
+impl TmxObjectGroup {
+    pub(crate) const fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub(crate) fn objects(&self) -> &[TmxRectangleObject] {
+        &self.objects
+    }
+}
+
+/// Renderer-independent bounds and typed ordered properties for one rectangle object.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct TmxRectangleObject {
+    id: u32,
+    name: Option<String>,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    properties: Vec<TmxProperty>,
+}
+
+impl TmxRectangleObject {
+    pub(crate) const fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub(crate) fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub(crate) const fn x(&self) -> f64 {
+        self.x
+    }
+
+    pub(crate) const fn y(&self) -> f64 {
+        self.y
+    }
+
+    pub(crate) const fn width(&self) -> f64 {
+        self.width
+    }
+
+    pub(crate) const fn height(&self) -> f64 {
+        self.height
+    }
+
+    pub(crate) fn properties(&self) -> &[TmxProperty] {
+        &self.properties
+    }
+}
+
+/// One named Tiled property in authored source order.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct TmxProperty {
+    name: String,
+    value: TmxPropertyValue,
+}
+
+impl TmxProperty {
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub(crate) const fn value(&self) -> &TmxPropertyValue {
+        &self.value
+    }
+}
+
+/// The strict scalar property types accepted by the TMX profile.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum TmxPropertyValue {
+    String(String),
+    Integer(i64),
+    Float(f64),
+    Boolean(bool),
 }
 
 impl TmxTileLayer {
@@ -386,11 +476,12 @@ impl fmt::Display for TmxGidResolutionError {
 impl std::error::Error for TmxGidResolutionError {}
 
 /// The single owned TMX parse result extended by later M4 milestones.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct TmxMapDocument {
     header: TmxMapHeader,
     external_tilesets: Vec<TmxExternalTileset>,
     tile_layers: Vec<TmxTileLayer>,
+    object_groups: Vec<TmxObjectGroup>,
 }
 
 impl TmxMapDocument {
@@ -404,6 +495,10 @@ impl TmxMapDocument {
 
     pub(crate) fn tile_layers(&self) -> &[TmxTileLayer] {
         &self.tile_layers
+    }
+
+    pub(crate) fn object_groups(&self) -> &[TmxObjectGroup] {
+        &self.object_groups
     }
 }
 
@@ -544,6 +639,7 @@ fn scan_tmx_map_document(
             header,
             external_tilesets: Vec::new(),
             tile_layers: Vec::new(),
+            object_groups: Vec::new(),
         },
         first_inline_error: None,
         inline_tilesets: 0,
@@ -555,6 +651,9 @@ fn scan_tmx_map_document(
 
     let mut depth = 1_u32;
     let mut normalized_sources = HashSet::new();
+    let mut object_group_ids = HashSet::new();
+    let mut object_group_names = HashSet::new();
+    let mut object_ids = HashSet::new();
     loop {
         let offset = reader.buffer_position();
         match reader
@@ -562,6 +661,24 @@ fn scan_tmx_map_document(
             .map_err(|error| TmxMapDocumentError::new(offset, format!("malformed XML: {error}")))?
         {
             Event::Start(element) => {
+                if element.name().as_ref() == b"objectgroup" {
+                    require_root_object_group(depth, offset)?;
+                    let group = parse_object_group(&mut reader, &element, offset, &mut object_ids)?;
+                    validate_object_group_identity(
+                        &group,
+                        &mut object_group_ids,
+                        &mut object_group_names,
+                        offset,
+                    )?;
+                    scan.document.object_groups.push(group);
+                    continue;
+                }
+                if element.name().as_ref() == b"object" {
+                    return Err(TmxMapDocumentError::new(
+                        offset,
+                        "`object` must be a direct child of `objectgroup`",
+                    ));
+                }
                 if element.name().as_ref() == b"layer" {
                     require_root_layer(depth, offset)?;
                     let layer = parse_tile_layer(&mut reader, &element, offset, header)?;
@@ -593,6 +710,24 @@ fn scan_tmx_map_document(
                 depth += 1;
             }
             Event::Empty(element) => {
+                if element.name().as_ref() == b"objectgroup" {
+                    require_root_object_group(depth, offset)?;
+                    let group = parse_empty_object_group(&reader, &element, offset)?;
+                    validate_object_group_identity(
+                        &group,
+                        &mut object_group_ids,
+                        &mut object_group_names,
+                        offset,
+                    )?;
+                    scan.document.object_groups.push(group);
+                    continue;
+                }
+                if element.name().as_ref() == b"object" {
+                    return Err(TmxMapDocumentError::new(
+                        offset,
+                        "`object` must be a direct child of `objectgroup`",
+                    ));
+                }
                 if element.name().as_ref() == b"layer" {
                     require_root_layer(depth, offset)?;
                     return Err(TmxMapDocumentError::new(
@@ -665,6 +800,604 @@ fn require_root_layer(depth: u32, offset: u64) -> Result<(), TmxMapDocumentError
         Err(TmxMapDocumentError::new(
             offset,
             "tile `layer` must be a direct child of `map`",
+        ))
+    }
+}
+
+fn require_root_object_group(depth: u32, offset: u64) -> Result<(), TmxMapDocumentError> {
+    if depth == 1 {
+        Ok(())
+    } else {
+        Err(TmxMapDocumentError::new(
+            offset,
+            "`objectgroup` must be a direct child of `map`",
+        ))
+    }
+}
+
+fn parse_empty_object_group(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<TmxObjectGroup, TmxMapDocumentError> {
+    let (id, name) = parse_object_group_attributes(reader, element, offset)?;
+    Ok(TmxObjectGroup {
+        id,
+        name,
+        objects: Vec::new(),
+    })
+}
+
+fn parse_object_group(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    object_ids: &mut HashSet<u32>,
+) -> Result<TmxObjectGroup, TmxMapDocumentError> {
+    let (id, name) = parse_object_group_attributes(reader, element, offset)?;
+    let mut objects = Vec::new();
+    loop {
+        let child_offset = reader.buffer_position();
+        match reader.read_event().map_err(|error| {
+            TmxMapDocumentError::new(child_offset, format!("malformed XML: {error}"))
+        })? {
+            Event::Start(child) if child.name().as_ref() == b"object" => {
+                let object = parse_rectangle_object(reader, &child, child_offset)?;
+                validate_object_id(object.id, object_ids, child_offset)?;
+                if name == "portals" {
+                    validate_portal_properties(&object, child_offset)?;
+                }
+                objects.push(object);
+            }
+            Event::Empty(child) if child.name().as_ref() == b"object" => {
+                let object = parse_empty_rectangle_object(reader, &child, child_offset)?;
+                validate_object_id(object.id, object_ids, child_offset)?;
+                if name == "portals" {
+                    validate_portal_properties(&object, child_offset)?;
+                }
+                objects.push(object);
+            }
+            Event::Start(child) | Event::Empty(child) => {
+                let child_name = str::from_utf8(child.name().as_ref())
+                    .unwrap_or("non-UTF-8")
+                    .to_owned();
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    format!("unsupported `{child_name}` child in `objectgroup`"),
+                ));
+            }
+            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Comment(_) => {}
+            Event::End(end) if end.name().as_ref() == b"objectgroup" => {
+                return Ok(TmxObjectGroup { id, name, objects });
+            }
+            Event::End(_) => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected closing element in `objectgroup`",
+                ));
+            }
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected end of XML before `objectgroup` closed",
+                ));
+            }
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "`objectgroup` may contain rectangle `object` elements only",
+                ));
+            }
+        }
+    }
+}
+
+fn parse_object_group_attributes(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<(u32, String), TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    if let Some(name) = attributes
+        .keys()
+        .find(|name| !matches!(name.as_str(), "id" | "name"))
+    {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported `objectgroup` attribute `{name}`"),
+        ));
+    }
+    let id = positive_document_u32(&attributes, "id", offset)?;
+    let name = required_document_attribute(&attributes, "name", offset)?;
+    if !matches!(name, "portals" | "boss_enemy") {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported object-group name `{name}`"),
+        ));
+    }
+    Ok((id, name.to_owned()))
+}
+
+fn validate_object_group_identity(
+    group: &TmxObjectGroup,
+    ids: &mut HashSet<u32>,
+    names: &mut HashSet<String>,
+    offset: u64,
+) -> Result<(), TmxMapDocumentError> {
+    if !ids.insert(group.id) {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("duplicate object-group ID {}", group.id),
+        ));
+    }
+    if !names.insert(group.name.clone()) {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("duplicate object-group name `{}`", group.name),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_object_id(
+    id: u32,
+    object_ids: &mut HashSet<u32>,
+    offset: u64,
+) -> Result<(), TmxMapDocumentError> {
+    if object_ids.insert(id) {
+        Ok(())
+    } else {
+        Err(TmxMapDocumentError::new(
+            offset,
+            format!("duplicate object ID {id}"),
+        ))
+    }
+}
+
+fn validate_portal_properties(
+    object: &TmxRectangleObject,
+    offset: u64,
+) -> Result<(), TmxMapDocumentError> {
+    // The pinned corpus contains seven editor markers in the `portals` group with no properties;
+    // property-bearing entries are the runtime portals and must have the exact domain schema.
+    if object.properties.is_empty() {
+        return Ok(());
+    }
+    let target_map = object
+        .properties
+        .iter()
+        .find(|property| property.name == "target_map");
+    let target_x = object
+        .properties
+        .iter()
+        .find(|property| property.name == "target_position_x");
+    let target_y = object
+        .properties
+        .iter()
+        .find(|property| property.name == "target_position_y");
+    if object.properties.len() != 3
+        || !target_map.is_some_and(|property| {
+            matches!(property.value, TmxPropertyValue::String(ref value) if !value.is_empty())
+        })
+        || !target_x.is_some_and(|property| {
+            matches!(property.value, TmxPropertyValue::Integer(_))
+        })
+        || !target_y.is_some_and(|property| {
+            matches!(property.value, TmxPropertyValue::Integer(_))
+        })
+    {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!(
+                "portal object {} must have exactly string `target_map` and integer `target_position_x`/`target_position_y` properties",
+                object.id
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn parse_empty_rectangle_object(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<TmxRectangleObject, TmxMapDocumentError> {
+    parse_rectangle_object_attributes(reader, element, offset, Vec::new())
+}
+
+fn parse_rectangle_object(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<TmxRectangleObject, TmxMapDocumentError> {
+    let mut properties = None;
+    loop {
+        let child_offset = reader.buffer_position();
+        match reader.read_event().map_err(|error| {
+            TmxMapDocumentError::new(child_offset, format!("malformed XML: {error}"))
+        })? {
+            Event::Start(child) if child.name().as_ref() == b"properties" => {
+                if properties.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "rectangle `object` may contain at most one `properties` element",
+                    ));
+                }
+                properties = Some(parse_typed_properties(reader, &child, child_offset)?);
+            }
+            Event::Empty(child) if child.name().as_ref() == b"properties" => {
+                if properties.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "rectangle `object` may contain at most one `properties` element",
+                    ));
+                }
+                require_no_attributes(reader, &child, child_offset, "properties")?;
+                properties = Some(Vec::new());
+            }
+            Event::Start(child) | Event::Empty(child) => {
+                let child_name = str::from_utf8(child.name().as_ref())
+                    .unwrap_or("non-UTF-8")
+                    .to_owned();
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    format!("unsupported rectangle-object child `{child_name}`"),
+                ));
+            }
+            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Comment(_) => {}
+            Event::End(end) if end.name().as_ref() == b"object" => {
+                return parse_rectangle_object_attributes(
+                    reader,
+                    element,
+                    offset,
+                    properties.unwrap_or_default(),
+                );
+            }
+            Event::End(_) => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected closing element in rectangle `object`",
+                ));
+            }
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected end of XML before rectangle `object` closed",
+                ));
+            }
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "rectangle `object` may contain `properties` only",
+                ));
+            }
+        }
+    }
+}
+
+fn parse_rectangle_object_attributes(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    properties: Vec<TmxProperty>,
+) -> Result<TmxRectangleObject, TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    if let Some(name) = attributes.keys().find(|name| {
+        !matches!(
+            name.as_str(),
+            "id" | "name" | "x" | "y" | "width" | "height"
+        )
+    }) {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported rectangle `object` attribute `{name}`"),
+        ));
+    }
+    let id = positive_document_u32(&attributes, "id", offset)?;
+    let x = finite_document_f64(&attributes, "x", offset)?;
+    let y = finite_document_f64(&attributes, "y", offset)?;
+    let width = optional_nonnegative_document_f64(&attributes, "width", offset)?;
+    let height = optional_nonnegative_document_f64(&attributes, "height", offset)?;
+    Ok(TmxRectangleObject {
+        id,
+        name: attributes.get("name").cloned(),
+        x,
+        y,
+        width,
+        height,
+        properties,
+    })
+}
+
+fn parse_typed_properties(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<Vec<TmxProperty>, TmxMapDocumentError> {
+    require_no_attributes(reader, element, offset, "properties")?;
+    let mut properties = Vec::new();
+    let mut names = HashSet::new();
+    loop {
+        let child_offset = reader.buffer_position();
+        match reader.read_event().map_err(|error| {
+            TmxMapDocumentError::new(child_offset, format!("malformed XML: {error}"))
+        })? {
+            Event::Empty(child) if child.name().as_ref() == b"property" => {
+                let property = parse_typed_property(reader, &child, child_offset, None)?;
+                if !names.insert(property.name.clone()) {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        format!("duplicate property name `{}`", property.name),
+                    ));
+                }
+                properties.push(property);
+            }
+            Event::Start(child) if child.name().as_ref() == b"property" => {
+                let text = read_property_text(reader, child_offset)?;
+                let property = parse_typed_property(reader, &child, child_offset, Some(text))?;
+                if !names.insert(property.name.clone()) {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        format!("duplicate property name `{}`", property.name),
+                    ));
+                }
+                properties.push(property);
+            }
+            Event::Start(child) | Event::Empty(child) => {
+                let child_name = str::from_utf8(child.name().as_ref())
+                    .unwrap_or("non-UTF-8")
+                    .to_owned();
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    format!("unsupported `{child_name}` child in `properties`"),
+                ));
+            }
+            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Comment(_) => {}
+            Event::End(end) if end.name().as_ref() == b"properties" => return Ok(properties),
+            Event::End(_) => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected closing element in `properties`",
+                ));
+            }
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected end of XML before `properties` closed",
+                ));
+            }
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "`properties` may contain `property` elements only",
+                ));
+            }
+        }
+    }
+}
+
+fn parse_typed_property(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    text: Option<String>,
+) -> Result<TmxProperty, TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    if let Some(attribute) = attributes
+        .keys()
+        .find(|attribute| !matches!(attribute.as_str(), "name" | "type" | "value"))
+    {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported `property` attribute `{attribute}`"),
+        ));
+    }
+    let name = required_document_attribute(&attributes, "name", offset)?;
+    if name.trim().is_empty() {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            "invalid `name` attribute: property name must not be empty",
+        ));
+    }
+    let property_type = attributes
+        .get("type")
+        .map(String::as_str)
+        .unwrap_or("string");
+    if !matches!(property_type, "string" | "int" | "float" | "bool") {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported property type `{property_type}` for `{name}`"),
+        ));
+    }
+    if attributes.contains_key("value") && text.as_ref().is_some_and(|text| !text.is_empty()) {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("property `{name}` must use either the `value` attribute or text, not both"),
+        ));
+    }
+    let source_value = attributes
+        .get("value")
+        .cloned()
+        .or(text)
+        .unwrap_or_default();
+    if source_value.is_empty() && property_type != "string" {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("property `{name}` of type `{property_type}` requires a value"),
+        ));
+    }
+    let value = match property_type {
+        "string" => TmxPropertyValue::String(source_value),
+        "int" => TmxPropertyValue::Integer(source_value.parse::<i64>().map_err(|_| {
+            TmxMapDocumentError::new(
+                offset,
+                format!("property `{name}` has invalid integer value `{source_value}`"),
+            )
+        })?),
+        "float" => {
+            let parsed = source_value.parse::<f64>().map_err(|_| {
+                TmxMapDocumentError::new(
+                    offset,
+                    format!("property `{name}` has invalid finite float value `{source_value}`"),
+                )
+            })?;
+            if !parsed.is_finite() {
+                return Err(TmxMapDocumentError::new(
+                    offset,
+                    format!("property `{name}` has invalid finite float value `{source_value}`"),
+                ));
+            }
+            TmxPropertyValue::Float(parsed)
+        }
+        "bool" => match source_value.as_str() {
+            "true" => TmxPropertyValue::Boolean(true),
+            "false" => TmxPropertyValue::Boolean(false),
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    offset,
+                    format!("property `{name}` has invalid boolean value `{source_value}`"),
+                ));
+            }
+        },
+        _ => unreachable!("property type allowlist checked above"),
+    };
+    Ok(TmxProperty {
+        name: name.to_owned(),
+        value,
+    })
+}
+
+fn read_property_text(
+    reader: &mut Reader<&[u8]>,
+    property_offset: u64,
+) -> Result<String, TmxMapDocumentError> {
+    let mut text_value = String::new();
+    loop {
+        let offset = reader.buffer_position();
+        match reader
+            .read_event()
+            .map_err(|error| TmxMapDocumentError::new(offset, format!("malformed XML: {error}")))?
+        {
+            Event::Text(text) => text_value.push_str(
+                &text.xml_content(XmlVersion::Implicit1_0).map_err(|error| {
+                    TmxMapDocumentError::new(offset, format!("invalid property text: {error}"))
+                })?,
+            ),
+            Event::CData(text) => text_value.push_str(
+                &text.xml_content(XmlVersion::Implicit1_0).map_err(|error| {
+                    TmxMapDocumentError::new(offset, format!("invalid property CDATA: {error}"))
+                })?,
+            ),
+            Event::GeneralRef(reference) => {
+                if let Some(character) = reference.resolve_char_ref().map_err(|error| {
+                    TmxMapDocumentError::new(
+                        offset,
+                        format!("invalid property character reference: {error}"),
+                    )
+                })? {
+                    text_value.push(character);
+                } else {
+                    let reference = reference.decode().map_err(|error| {
+                        TmxMapDocumentError::new(
+                            offset,
+                            format!("invalid property reference: {error}"),
+                        )
+                    })?;
+                    text_value.push(match reference.as_ref() {
+                        "lt" => '<',
+                        "gt" => '>',
+                        "amp" => '&',
+                        "apos" => '\'',
+                        "quot" => '"',
+                        _ => {
+                            return Err(TmxMapDocumentError::new(
+                                offset,
+                                format!("unsupported property entity reference `&{reference};`"),
+                            ));
+                        }
+                    });
+                }
+            }
+            Event::Comment(_) => {}
+            Event::End(end) if end.name().as_ref() == b"property" => return Ok(text_value),
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    offset,
+                    "unexpected end of XML before `property` closed",
+                ));
+            }
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    property_offset,
+                    "`property` value must contain text only",
+                ));
+            }
+        }
+    }
+}
+
+fn require_no_attributes(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    element_name: &str,
+) -> Result<(), TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    if let Some(name) = attributes.keys().next() {
+        Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported `{element_name}` attribute `{name}`"),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn finite_document_f64(
+    attributes: &std::collections::BTreeMap<String, String>,
+    name: &str,
+    offset: u64,
+) -> Result<f64, TmxMapDocumentError> {
+    let value = required_document_attribute(attributes, name, offset)?;
+    let parsed = value.parse::<f64>().map_err(|_| {
+        TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected finite number"),
+        )
+    })?;
+    if parsed.is_finite() {
+        Ok(parsed)
+    } else {
+        Err(TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected finite number"),
+        ))
+    }
+}
+
+fn optional_nonnegative_document_f64(
+    attributes: &std::collections::BTreeMap<String, String>,
+    name: &str,
+    offset: u64,
+) -> Result<f64, TmxMapDocumentError> {
+    let Some(value) = attributes.get(name) else {
+        return Ok(0.0);
+    };
+    let parsed = value.parse::<f64>().map_err(|_| {
+        TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected non-negative finite number"),
+        )
+    })?;
+    if parsed.is_finite() && parsed >= 0.0 {
+        Ok(parsed)
+    } else {
+        Err(TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected non-negative finite number"),
         ))
     }
 }
@@ -1491,7 +2224,7 @@ mod tests {
             r#"
                 <properties><property name="invented" value="ignored-for-now"/></properties>
                 <tileset firstgid="1" source="../../tilesets/./ground.tsx"/>
-                <objectgroup id="1" name="ignored-for-now"/>
+                <objectgroup id="1" name="portals"/>
                 <tileset firstgid="257" source="../tilesets/../tilesets/walls.tsx"/>
             "#,
         );
@@ -1511,6 +2244,325 @@ mod tests {
             "assets/maps/tilesets/walls.tsx"
         );
         assert!(document.tile_layers().is_empty());
+        assert_eq!(document.object_groups().len(), 1);
+    }
+
+    #[test]
+    fn parses_direct_rectangle_groups_in_source_order_with_typed_properties() {
+        let xml = invented_document(
+            r#"
+                <objectgroup id="5" name="portals">
+                    <object id="7" name="exit" x="-4.5" y="3.25" width="12" height="0.5">
+                        <properties>
+                            <property name="target_map" value="next_map"/>
+                            <property name="target_position_x" type="int" value="-7"/>
+                            <property name="target_position_y" type="int">12</property>
+                        </properties>
+                    </object>
+                    <object id="8" x="5" y="6"/>
+                </objectgroup>
+                <objectgroup id="6" name="boss_enemy">
+                    <object id="9" name="boss" x="32" y="64" width="32" height="32"/>
+                </objectgroup>
+            "#,
+        );
+        let document = parse_tmx_map_document(&xml, &invented_path()).unwrap();
+
+        assert_eq!(document.object_groups().len(), 2);
+        let portals = &document.object_groups()[0];
+        assert_eq!((portals.id(), portals.name()), (5, "portals"));
+        assert_eq!(portals.objects().len(), 2);
+        let portal = &portals.objects()[0];
+        assert_eq!((portal.id(), portal.name()), (7, Some("exit")));
+        assert_eq!(
+            (portal.x(), portal.y(), portal.width(), portal.height()),
+            (-4.5, 3.25, 12.0, 0.5)
+        );
+        assert_eq!(portal.properties().len(), 3);
+        assert_eq!(
+            portal.properties()[0],
+            TmxProperty {
+                name: "target_map".to_owned(),
+                value: TmxPropertyValue::String("next_map".to_owned()),
+            }
+        );
+        assert_eq!(
+            portal.properties()[1],
+            TmxProperty {
+                name: "target_position_x".to_owned(),
+                value: TmxPropertyValue::Integer(-7),
+            }
+        );
+        assert_eq!(
+            portal.properties()[2],
+            TmxProperty {
+                name: "target_position_y".to_owned(),
+                value: TmxPropertyValue::Integer(12),
+            }
+        );
+
+        let zero_sized = &portals.objects()[1];
+        assert_eq!(zero_sized.name(), None);
+        assert_eq!((zero_sized.width(), zero_sized.height()), (0.0, 0.0));
+        assert!(zero_sized.properties().is_empty());
+        assert_eq!(document.object_groups()[1].name(), "boss_enemy");
+    }
+
+    #[test]
+    fn parses_string_float_and_boolean_property_sources_without_coercion() {
+        let xml = invented_document(
+            r#"
+                <objectgroup id="1" name="boss_enemy">
+                    <object id="1" x="0" y="0">
+                        <properties>
+                            <property name="implicit_empty"/>
+                            <property name="explicit_string" type="string">hello &amp; goodbye</property>
+                            <property name="float_value" type="float" value="-1.25"/>
+                            <property name="bool_true" type="bool">true</property>
+                            <property name="bool_false" type="bool" value="false"/>
+                        </properties>
+                    </object>
+                </objectgroup>
+            "#,
+        );
+        let document = parse_tmx_map_document(&xml, &invented_path()).unwrap();
+        let properties = document.object_groups()[0].objects()[0].properties();
+        assert_eq!(
+            properties.iter().map(TmxProperty::name).collect::<Vec<_>>(),
+            [
+                "implicit_empty",
+                "explicit_string",
+                "float_value",
+                "bool_true",
+                "bool_false",
+            ]
+        );
+        assert_eq!(
+            properties[0].value(),
+            &TmxPropertyValue::String(String::new())
+        );
+        assert_eq!(
+            properties[1].value(),
+            &TmxPropertyValue::String("hello & goodbye".to_owned())
+        );
+        assert_eq!(properties[2].value(), &TmxPropertyValue::Float(-1.25));
+        assert_eq!(properties[3].value(), &TmxPropertyValue::Boolean(true));
+        assert_eq!(properties[4].value(), &TmxPropertyValue::Boolean(false));
+    }
+
+    #[test]
+    fn rejects_invalid_typed_property_forms_and_values() {
+        for (property, expected) in [
+            (
+                r#"<property value="x"/>"#,
+                "missing required `name` attribute",
+            ),
+            (r#"<property name=" "/>"#, "property name must not be empty"),
+            (
+                r#"<property name="x" invented="no"/>"#,
+                "unsupported `property` attribute `invented`",
+            ),
+            (
+                r##"<property name="x" type="color" value="#ffffff"/>"##,
+                "unsupported property type `color`",
+            ),
+            (
+                r#"<property name="x" type="int" value="1.0"/>"#,
+                "invalid integer value `1.0`",
+            ),
+            (
+                r#"<property name="x" type="float" value="NaN"/>"#,
+                "invalid finite float value `NaN`",
+            ),
+            (
+                r#"<property name="x" type="float" value="inf"/>"#,
+                "invalid finite float value `inf`",
+            ),
+            (
+                r#"<property name="x" type="bool" value="1"/>"#,
+                "invalid boolean value `1`",
+            ),
+            (
+                r#"<property name="x" type="bool" value="TRUE"/>"#,
+                "invalid boolean value `TRUE`",
+            ),
+            (
+                r#"<property name="x" type="int"/>"#,
+                "type `int` requires a value",
+            ),
+            (
+                r#"<property name="x" value="attribute">text</property>"#,
+                "either the `value` attribute or text, not both",
+            ),
+        ] {
+            let xml = invented_document(&format!(
+                r#"<objectgroup id="1" name="boss_enemy"><object id="1" x="0" y="0"><properties>{property}</properties></object></objectgroup>"#
+            ));
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(
+                error.detail.contains(expected),
+                "{property}: expected {expected:?}, got {error:?}"
+            );
+        }
+
+        let duplicate = invented_document(
+            r#"<objectgroup id="1" name="boss_enemy"><object id="1" x="0" y="0"><properties><property name="same"/><property name="same" value="again"/></properties></object></objectgroup>"#,
+        );
+        assert_eq!(
+            parse_tmx_map_document(&duplicate, &invented_path())
+                .unwrap_err()
+                .detail,
+            "duplicate property name `same`"
+        );
+    }
+
+    #[test]
+    fn rejects_incomplete_or_mistyped_property_bearing_portals() {
+        for properties in [
+            r#"<property name="target_map" value="next"/>"#,
+            r#"<property name="target_map" type="int" value="1"/><property name="target_position_x" type="int" value="2"/><property name="target_position_y" type="int" value="3"/>"#,
+            r#"<property name="target_map" value="next"/><property name="target_position_x" value="2"/><property name="target_position_y" type="int" value="3"/>"#,
+            r#"<property name="target_map" value="next"/><property name="target_position_x" type="int" value="2"/><property name="invented" type="int" value="3"/>"#,
+        ] {
+            let xml = invented_document(&format!(
+                r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0"><properties>{properties}</properties></object></objectgroup>"#
+            ));
+            assert!(
+                parse_tmx_map_document(&xml, &invented_path())
+                    .unwrap_err()
+                    .detail
+                    .contains("must have exactly string `target_map` and integer")
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unsupported_object_geometry_and_attributes() {
+        for child in [
+            "<point/>",
+            "<ellipse/>",
+            "<polygon points=\"0,0 1,1\"/>",
+            "<polyline points=\"0,0 1,1\"/>",
+            "<text>invented</text>",
+        ] {
+            let xml = invented_document(&format!(
+                r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0">{child}</object></objectgroup>"#
+            ));
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(
+                error.detail.contains("unsupported rectangle-object child"),
+                "{child}: {error:?}"
+            );
+        }
+
+        for attribute in [
+            r#"gid="1""#,
+            r#"template="invented.tx""#,
+            r#"rotation="90""#,
+            r#"class="Invented""#,
+        ] {
+            let xml = invented_document(&format!(
+                r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0" {attribute}/></objectgroup>"#
+            ));
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(
+                error
+                    .detail
+                    .contains("unsupported rectangle `object` attribute"),
+                "{attribute}: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_nested_object_structures_and_unknown_groups() {
+        for (children, expected) in [
+            (
+                r#"<group><objectgroup id="1" name="portals"/></group>"#,
+                "`objectgroup` must be a direct child of `map`",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><objectgroup id="2" name="boss_enemy"/></objectgroup>"#,
+                "unsupported `objectgroup` child in `objectgroup`",
+            ),
+            (
+                r#"<object id="1" x="0" y="0"/>"#,
+                "`object` must be a direct child of `objectgroup`",
+            ),
+            (
+                r#"<objectgroup id="1" name="invented"/>"#,
+                "unsupported object-group name `invented`",
+            ),
+        ] {
+            let error =
+                parse_tmx_map_document(&invented_document(children), &invented_path()).unwrap_err();
+            assert_eq!(error.detail, expected, "{children}");
+        }
+    }
+
+    #[test]
+    fn rejects_duplicate_object_group_and_object_identities() {
+        for (children, expected) in [
+            (
+                r#"<objectgroup id="1" name="portals"/><objectgroup id="1" name="boss_enemy"/>"#,
+                "duplicate object-group ID 1",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"/><objectgroup id="2" name="portals"/>"#,
+                "duplicate object-group name `portals`",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="7" x="0" y="0"/></objectgroup><objectgroup id="2" name="boss_enemy"><object id="7" x="1" y="1"/></objectgroup>"#,
+                "duplicate object ID 7",
+            ),
+        ] {
+            let error =
+                parse_tmx_map_document(&invented_document(children), &invented_path()).unwrap_err();
+            assert_eq!(error.detail, expected, "{children}");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_duplicate_and_invalid_object_attributes() {
+        for (children, expected) in [
+            (
+                r#"<objectgroup id="1" id="2" name="portals"/>"#,
+                "duplicate `id` attribute",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="1" id="2" x="0" y="0"/></objectgroup>"#,
+                "duplicate `id` attribute",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0"><properties><property name="a" name="b"/></properties></object></objectgroup>"#,
+                "duplicate `name` attribute",
+            ),
+            (
+                r#"<objectgroup name="portals"/>"#,
+                "missing required `id` attribute",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object x="0" y="0"/></objectgroup>"#,
+                "missing required `id` attribute",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="1" y="0"/></objectgroup>"#,
+                "missing required `x` attribute",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="1" x="NaN" y="0"/></objectgroup>"#,
+                "invalid `x` attribute `NaN`; expected finite number",
+            ),
+            (
+                r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0" width="-1"/></objectgroup>"#,
+                "invalid `width` attribute `-1`; expected non-negative finite number",
+            ),
+        ] {
+            let error =
+                parse_tmx_map_document(&invented_document(children), &invented_path()).unwrap_err();
+            assert_eq!(error.detail, expected, "{children}");
+            assert!(error.offset() <= children.len() as u64 + 100);
+        }
     }
 
     #[test]
@@ -1898,5 +2950,82 @@ mod tests {
         assert_eq!(layer_count, 170);
         assert_eq!(gid_count, 161_066);
         assert_eq!(flip_combination_counts, [160_864, 10, 2, 0, 0, 189, 1, 0]);
+    }
+
+    #[test]
+    #[ignore = "requires the separately pinned Python scenario checkout"]
+    fn audits_every_pinned_rectangle_object_group_when_source_is_available() {
+        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
+            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+        let maps = Path::new(&maps);
+        let scenario_root = maps
+            .parent()
+            .and_then(Path::parent)
+            .expect("TMX directory should be nested below the scenario root");
+        let mut files = fs::read_dir(maps)
+            .expect("TMX map directory should be readable")
+            .map(|entry| entry.expect("directory entry should be readable").path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "tmx"))
+            .collect::<Vec<_>>();
+        files.sort();
+
+        let mut portal_groups = 0;
+        let mut boss_groups = 0;
+        let mut objects = 0;
+        let mut zero_sized_objects = 0;
+        let mut properties = 0;
+        let mut property_strings = 0;
+        let mut property_integers = 0;
+        let mut property_floats = 0;
+        let mut property_booleans = 0;
+        let mut runtime_portals = 0;
+        for path in &files {
+            let logical = path
+                .strip_prefix(scenario_root)
+                .expect("TMX should be inside scenario root")
+                .to_str()
+                .expect("pinned scenario paths should be UTF-8");
+            let logical = ScenarioRelativePath::try_from(logical).unwrap();
+            let xml = fs::read_to_string(path).expect("TMX file should be readable");
+            let document = scan_tmx_map_document(&xml, &logical)
+                .unwrap_or_else(|error| panic!("{logical}: {error}"))
+                .document;
+            for group in document.object_groups() {
+                match group.name() {
+                    "portals" => portal_groups += 1,
+                    "boss_enemy" => boss_groups += 1,
+                    name => panic!("unexpected accepted object-group name {name}"),
+                }
+                for object in group.objects() {
+                    objects += 1;
+                    zero_sized_objects +=
+                        usize::from(object.width() == 0.0 && object.height() == 0.0);
+                    properties += object.properties().len();
+                    if group.name() == "portals" && !object.properties().is_empty() {
+                        runtime_portals += 1;
+                    }
+                    for property in object.properties() {
+                        match property.value() {
+                            TmxPropertyValue::String(_) => property_strings += 1,
+                            TmxPropertyValue::Integer(_) => property_integers += 1,
+                            TmxPropertyValue::Float(_) => property_floats += 1,
+                            TmxPropertyValue::Boolean(_) => property_booleans += 1,
+                        }
+                    }
+                }
+            }
+        }
+
+        assert_eq!(files.len(), 47);
+        assert_eq!(portal_groups, 45);
+        assert_eq!(boss_groups, 10);
+        assert_eq!(objects, 109);
+        assert_eq!(zero_sized_objects, 10);
+        assert_eq!(runtime_portals, 92);
+        assert_eq!(properties, 276);
+        assert_eq!(property_strings, 92);
+        assert_eq!(property_integers, 184);
+        assert_eq!(property_floats, 0);
+        assert_eq!(property_booleans, 0);
     }
 }
