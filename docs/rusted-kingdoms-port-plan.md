@@ -220,7 +220,7 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | M4.03 | [x] Parse TSX image metadata. | `T` | Strict typed external-TSX parser validates positive tile/grid/image metadata, one root-level PNG atlas with a safe containing-file-relative source, and atlas capacity; invented fixtures cover malformed, collection, duplicate, path, and trailing-XML failures, while an opt-in audit accepts all 17 external targets discovered from pinned TMX references and their images. |
 | M4.04 | [x] Parse CSV tile-layer data. | `T` | Strict finite-layer parsing retains ordered raw `u32` GIDs and validates layer/map dimensions, CSV row/column counts, encoding, and individual values; invented tests cover source order, flip-bit preservation, CDATA, bounds, and focused failures, while an opt-in pinned-snapshot audit accepts all 170 layers and 161,066 GIDs across 47 maps. |
 | M4.05 | [x] Decode Tiled flip bits from a GID. | `S` | Typed orthogonal GIDs separate the stripped global ID from independent horizontal, vertical, and diagonal flags; all eight combinations and empty tiles round-trip in unit tests, the unsupported 120-degree flag reports its cell, and an opt-in corpus audit confirms the pinned combination counts. |
-| M4.06 | [ ] Resolve a global GID to tileset/local ID. | `S` | Boundary and empty-tile cases are tested. |
+| M4.06 | [x] Resolve a global GID to tileset/local ID. | `S` | Typed metadata-backed external-tileset ranges resolve decoded non-empty GIDs to their source identity and zero-based local ID while retaining transform flags; tests cover adjacent start/end boundaries, empty and flag-only empty cells, gaps, unmapped IDs, unordered and overlapping bindings, and range overflow. |
 | M4.07 | [ ] Parse object groups and rectangles. | `T` | Portal objects retain id, name, bounds, and properties. |
 | M4.08 | [ ] Parse typed Tiled properties. | `T` | String, integer, float, and boolean values load. |
 | M4.09 | [ ] Parse TSX tile animation frames. | `S` | Aric's durations and tile IDs load unchanged. |
@@ -549,5 +549,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M4.06**. Resolve each decoded non-empty global GID through the
-ordered external tileset ranges, retaining the tileset identity and local ID.
+Continue with **M4.07**. Parse direct object groups and rectangle objects in
+source order, retaining each object's ID, optional name, bounds, and properties.

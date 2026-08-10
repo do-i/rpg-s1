@@ -8,7 +8,7 @@
     not(test),
     expect(
         dead_code,
-        reason = "M4.01-M4.05 establish parser APIs before later M4 map loading consumes them"
+        reason = "M4.01-M4.06 establish parser APIs before later M4 map loading consumes them"
     )
 )]
 
@@ -17,6 +17,7 @@ use std::{collections::HashSet, fmt, str};
 use quick_xml::{Reader, XmlVersion, events::Event};
 
 use crate::scenario_path::ScenarioRelativePath;
+use crate::tsx_metadata::TsxTilesetMetadata;
 
 /// The only map orientation supported by the current fixed-grid runtime profile.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -229,6 +230,160 @@ impl TmxExternalTileset {
         &self.source
     }
 }
+
+/// Validated ordered external-tileset ranges for resolving decoded TMX tile GIDs.
+#[derive(Clone, Debug)]
+pub(crate) struct TmxTilesetRanges<'a> {
+    ranges: Vec<TmxTilesetRange<'a>>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TmxTilesetRange<'a> {
+    tileset: &'a TmxExternalTileset,
+    exclusive_end: u32,
+}
+
+impl<'a> TmxTilesetRanges<'a> {
+    /// Couples each ordered TMX reference to its parsed external TSX metadata.
+    pub(crate) fn try_new(
+        tilesets: impl IntoIterator<Item = (&'a TmxExternalTileset, &'a TsxTilesetMetadata)>,
+    ) -> Result<Self, TmxGidResolutionError> {
+        let mut ranges: Vec<TmxTilesetRange<'a>> = Vec::new();
+        for (tileset, metadata) in tilesets {
+            let exclusive_end = tileset.first_gid.checked_add(metadata.tile_count()).ok_or(
+                TmxGidResolutionError::TilesetRangeOverflow {
+                    first_gid: tileset.first_gid,
+                    tile_count: metadata.tile_count(),
+                },
+            )?;
+            if let Some(previous) = ranges.last() {
+                if tileset.first_gid <= previous.tileset.first_gid {
+                    return Err(TmxGidResolutionError::TilesetsNotStrictlyOrdered {
+                        previous_first_gid: previous.tileset.first_gid,
+                        first_gid: tileset.first_gid,
+                    });
+                }
+                if tileset.first_gid < previous.exclusive_end {
+                    return Err(TmxGidResolutionError::OverlappingTilesets {
+                        previous_first_gid: previous.tileset.first_gid,
+                        previous_exclusive_end: previous.exclusive_end,
+                        first_gid: tileset.first_gid,
+                    });
+                }
+            }
+            ranges.push(TmxTilesetRange {
+                tileset,
+                exclusive_end,
+            });
+        }
+        Ok(Self { ranges })
+    }
+
+    /// Resolves a decoded, non-empty global ID while retaining its transform flags.
+    pub(crate) fn resolve(
+        &self,
+        gid: TmxTileGid,
+    ) -> Result<Option<TmxResolvedTile<'a>>, TmxGidResolutionError> {
+        if gid.is_empty() {
+            return Ok(None);
+        }
+        let range_index = self
+            .ranges
+            .partition_point(|range| range.tileset.first_gid <= gid.global_id());
+        let Some(range) = range_index
+            .checked_sub(1)
+            .and_then(|index| self.ranges.get(index))
+        else {
+            return Err(TmxGidResolutionError::UnmappedGlobalId(gid.global_id()));
+        };
+        if gid.global_id() >= range.exclusive_end {
+            return Err(TmxGidResolutionError::UnmappedGlobalId(gid.global_id()));
+        }
+        Ok(Some(TmxResolvedTile {
+            gid,
+            tileset: range.tileset,
+            local_id: gid.global_id() - range.tileset.first_gid,
+        }))
+    }
+}
+
+/// One decoded map tile resolved to its external tileset and zero-based local ID.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct TmxResolvedTile<'a> {
+    gid: TmxTileGid,
+    tileset: &'a TmxExternalTileset,
+    local_id: u32,
+}
+
+impl<'a> TmxResolvedTile<'a> {
+    pub(crate) const fn gid(self) -> TmxTileGid {
+        self.gid
+    }
+
+    pub(crate) const fn tileset(self) -> &'a TmxExternalTileset {
+        self.tileset
+    }
+
+    pub(crate) const fn local_id(self) -> u32 {
+        self.local_id
+    }
+}
+
+/// Failure to construct or query strict ordered external-tileset ranges.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum TmxGidResolutionError {
+    TilesetRangeOverflow {
+        first_gid: u32,
+        tile_count: u32,
+    },
+    TilesetsNotStrictlyOrdered {
+        previous_first_gid: u32,
+        first_gid: u32,
+    },
+    OverlappingTilesets {
+        previous_first_gid: u32,
+        previous_exclusive_end: u32,
+        first_gid: u32,
+    },
+    UnmappedGlobalId(u32),
+}
+
+impl fmt::Display for TmxGidResolutionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TilesetRangeOverflow {
+                first_gid,
+                tile_count,
+            } => write!(
+                formatter,
+                "tileset range firstgid {first_gid} plus tilecount {tile_count} exceeds u32"
+            ),
+            Self::TilesetsNotStrictlyOrdered {
+                previous_first_gid,
+                first_gid,
+            } => write!(
+                formatter,
+                "tileset firstgid {first_gid} must be greater than preceding firstgid {previous_first_gid}"
+            ),
+            Self::OverlappingTilesets {
+                previous_first_gid,
+                previous_exclusive_end,
+                first_gid,
+            } => write!(
+                formatter,
+                "tileset firstgid {first_gid} overlaps range {previous_first_gid}..{previous_exclusive_end}"
+            ),
+            Self::UnmappedGlobalId(global_id) => {
+                write!(
+                    formatter,
+                    "global tile ID {global_id} is outside every tileset range"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for TmxGidResolutionError {}
 
 /// The single owned TMX parse result extended by later M4 milestones.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1033,6 +1188,7 @@ mod tests {
     use std::{collections::BTreeSet, fs, path::Path};
 
     use super::*;
+    use crate::tsx_metadata::parse_tsx_tileset_metadata;
 
     const VALID: &str = include_str!("../tests/fixtures/tmx-header/finite-orthogonal.tmx");
 
@@ -1044,6 +1200,17 @@ mod tests {
 
     fn invented_path() -> ScenarioRelativePath {
         ScenarioRelativePath::try_from("assets/maps/region/invented.tmx").unwrap()
+    }
+
+    fn invented_tileset_metadata(tile_count: u32) -> TsxTilesetMetadata {
+        let xml = format!(
+            r#"<tileset tilewidth="1" tileheight="1" columns="1" tilecount="{tile_count}"><image source="invented.png" width="1" height="{tile_count}"/></tileset>"#
+        );
+        parse_tsx_tileset_metadata(
+            &xml,
+            &ScenarioRelativePath::try_from("assets/tilesets/invented.tsx").unwrap(),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -1105,6 +1272,136 @@ mod tests {
                 Err(TmxTileGidError::Unsupported120DegreeRotation)
             );
         }
+    }
+
+    #[test]
+    fn resolves_ordered_tileset_boundaries_to_typed_local_ids() {
+        let document = parse_tmx_map_document(
+            &invented_document(
+                r#"<tileset firstgid="1" source="../../tilesets/ground.tsx"/><tileset firstgid="4" source="../../tilesets/walls.tsx"/>"#,
+            ),
+            &invented_path(),
+        )
+        .unwrap();
+        let ground = invented_tileset_metadata(3);
+        let walls = invented_tileset_metadata(2);
+        let ranges = TmxTilesetRanges::try_new([
+            (&document.external_tilesets()[0], &ground),
+            (&document.external_tilesets()[1], &walls),
+        ])
+        .unwrap();
+
+        for (raw_gid, expected_source, expected_local_id) in [
+            (
+                TILED_HORIZONTAL_FLIP_FLAG | 1,
+                "assets/tilesets/ground.tsx",
+                0,
+            ),
+            (3, "assets/tilesets/ground.tsx", 2),
+            (4, "assets/tilesets/walls.tsx", 0),
+            (5, "assets/tilesets/walls.tsx", 1),
+        ] {
+            let gid = TmxTileGid::decode_orthogonal(raw_gid).unwrap();
+            let resolved = ranges.resolve(gid).unwrap().unwrap();
+            assert_eq!(resolved.gid(), gid);
+            assert_eq!(resolved.tileset().source().as_str(), expected_source);
+            assert_eq!(resolved.local_id(), expected_local_id);
+        }
+
+        let flipped = ranges
+            .resolve(TmxTileGid::decode_orthogonal(TILED_HORIZONTAL_FLIP_FLAG | 1).unwrap())
+            .unwrap()
+            .unwrap();
+        assert!(flipped.gid().flip_horizontally());
+    }
+
+    #[test]
+    fn treats_empty_gid_as_no_tile_without_requiring_a_tileset() {
+        let ranges = TmxTilesetRanges::try_new([]).unwrap();
+        for raw_gid in [0, TILED_HORIZONTAL_FLIP_FLAG | TILED_DIAGONAL_FLIP_FLAG] {
+            let empty = TmxTileGid::decode_orthogonal(raw_gid).unwrap();
+            assert!(empty.is_empty());
+            assert_eq!(ranges.resolve(empty), Ok(None));
+        }
+    }
+
+    #[test]
+    fn rejects_gids_before_between_and_at_the_end_of_declared_ranges() {
+        let document = parse_tmx_map_document(
+            &invented_document(
+                r#"<tileset firstgid="5" source="../../tilesets/ground.tsx"/><tileset firstgid="10" source="../../tilesets/walls.tsx"/>"#,
+            ),
+            &invented_path(),
+        )
+        .unwrap();
+        let ground = invented_tileset_metadata(2);
+        let walls = invented_tileset_metadata(3);
+        let ranges = TmxTilesetRanges::try_new([
+            (&document.external_tilesets()[0], &ground),
+            (&document.external_tilesets()[1], &walls),
+        ])
+        .unwrap();
+
+        for global_id in [1, 7, 9, 13] {
+            let gid = TmxTileGid::decode_orthogonal(global_id).unwrap();
+            assert_eq!(
+                ranges.resolve(gid),
+                Err(TmxGidResolutionError::UnmappedGlobalId(global_id))
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unordered_overlapping_and_overflowing_tileset_ranges() {
+        let document = parse_tmx_map_document(
+            &invented_document(
+                r#"<tileset firstgid="1" source="../../tilesets/ground.tsx"/><tileset firstgid="4" source="../../tilesets/walls.tsx"/>"#,
+            ),
+            &invented_path(),
+        )
+        .unwrap();
+        let five_tiles = invented_tileset_metadata(5);
+        let one_tile = invented_tileset_metadata(1);
+
+        assert_eq!(
+            TmxTilesetRanges::try_new([
+                (&document.external_tilesets()[1], &one_tile),
+                (&document.external_tilesets()[0], &one_tile),
+            ])
+            .unwrap_err(),
+            TmxGidResolutionError::TilesetsNotStrictlyOrdered {
+                previous_first_gid: 4,
+                first_gid: 1,
+            }
+        );
+        assert_eq!(
+            TmxTilesetRanges::try_new([
+                (&document.external_tilesets()[0], &five_tiles),
+                (&document.external_tilesets()[1], &one_tile),
+            ])
+            .unwrap_err(),
+            TmxGidResolutionError::OverlappingTilesets {
+                previous_first_gid: 1,
+                previous_exclusive_end: 6,
+                first_gid: 4,
+            }
+        );
+
+        let overflowing = parse_tmx_map_document(
+            &invented_document(
+                r#"<tileset firstgid="4294967295" source="../../tilesets/huge.tsx"/>"#,
+            ),
+            &invented_path(),
+        )
+        .unwrap();
+        assert_eq!(
+            TmxTilesetRanges::try_new([(&overflowing.external_tilesets()[0], &one_tile)])
+                .unwrap_err(),
+            TmxGidResolutionError::TilesetRangeOverflow {
+                first_gid: u32::MAX,
+                tile_count: 1,
+            }
+        );
     }
 
     #[test]
