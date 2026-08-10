@@ -13,6 +13,10 @@
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod aric_atlas;
+pub(crate) mod cardinal_movement;
+pub(crate) mod collision_occupancy;
+
 /// An immutable two-dimensional integer coordinate serialized as source-shaped `[x, y]` YAML.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(from = "[i32; 2]", into = "[i32; 2]")]

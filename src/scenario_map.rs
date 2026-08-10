@@ -11,6 +11,7 @@
 
 use std::num::NonZeroU32;
 
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer};
 
 use crate::scenario_class::{PositiveFinite, UnitInterval};
@@ -20,7 +21,7 @@ use crate::scenario_spatial::{CardinalDirection, Position};
 use crate::scenario_yaml::deserialize_string;
 
 /// One same-stem YAML metadata document beneath `data/maps/`.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct MapMetadata {
     /// Authored identity. Missing values use the containing filename stem.

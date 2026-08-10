@@ -41,10 +41,15 @@ pub mod scenario_recipe;
 pub mod scenario_root;
 pub mod scenario_spatial;
 pub mod scenario_yaml;
+mod tile_coordinates;
 mod title_screen;
+mod tmx_ground_asset;
 mod tmx_header;
+mod tsx_atlas_asset;
 mod tsx_metadata;
 mod ui_theme;
+mod world_audio;
+mod world_player;
 
 #[cfg(test)]
 mod test_support;
@@ -68,7 +73,11 @@ use scenario_manifest_asset::ScenarioManifestAssetPlugin;
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use scenario_root::ScenarioRoot;
 use title_screen::TitleScreenPlugin;
+use tmx_ground_asset::TmxGroundAssetPlugin;
+use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
+use world_audio::WorldAudioPlugin;
+use world_player::WorldPlayerPlugin;
 
 fn main() -> std::process::ExitCode {
     let mut stdout = std::io::stdout();
@@ -104,6 +113,8 @@ fn run_game() {
         .init_resource::<ScenarioRoot>()
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioNewGameAssetsPlugin)
+        .add_plugins(TsxAtlasAssetPlugin)
+        .add_plugins(TmxGroundAssetPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(AppState::Title)
@@ -116,5 +127,7 @@ fn run_game() {
         .add_plugins(IntroDialoguePlugin)
         .add_plugins(IntroCompletionPlugin)
         .add_plugins(IntroTransitionPlugin)
+        .add_plugins(WorldAudioPlugin)
+        .add_plugins(WorldPlayerPlugin)
         .run();
 }

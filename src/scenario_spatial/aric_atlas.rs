@@ -9,7 +9,7 @@
     not(test),
     expect(
         dead_code,
-        reason = "M4.16 establishes pure Aric atlas selection before M4.17 spawns its renderer"
+        reason = "M4.16/M4.20 establish Aric atlas selection and authored animation playback"
     )
 )]
 
@@ -31,6 +31,23 @@ const ARIC_ANIMATION_OWNERS: [u32; 4] = [0, 9, 18, 27];
 pub(crate) struct AtlasFrame {
     tile_id: u32,
     rectangle: AtlasRectangle,
+}
+
+/// One authored walk frame with its exact TSX duration.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct AtlasAnimationFrame {
+    tile_id: u32,
+    duration_ms: u32,
+}
+
+impl AtlasAnimationFrame {
+    pub(crate) const fn tile_id(self) -> u32 {
+        self.tile_id
+    }
+
+    pub(crate) const fn duration_ms(self) -> u32 {
+        self.duration_ms
+    }
 }
 
 impl AtlasFrame {
@@ -79,6 +96,7 @@ pub(crate) struct AricAtlasLayout {
     rows: u32,
     tile_count: u32,
     directional_base_tiles: [u32; 4],
+    directional_walk_frames: [Vec<AtlasAnimationFrame>; 4],
 }
 
 impl AricAtlasLayout {
@@ -104,6 +122,17 @@ impl AricAtlasLayout {
             });
         }
 
+        let directional_walk_frames = std::array::from_fn(|index| {
+            metadata.animations()[index]
+                .frames()
+                .iter()
+                .map(|frame| AtlasAnimationFrame {
+                    tile_id: frame.tile_id(),
+                    duration_ms: frame.duration_ms(),
+                })
+                .collect()
+        });
+
         Ok(Self {
             frame_width: metadata.tile_width(),
             frame_height: metadata.tile_height(),
@@ -111,6 +140,7 @@ impl AricAtlasLayout {
             rows: metadata.image().height() / metadata.tile_height(),
             tile_count: metadata.tile_count(),
             directional_base_tiles: ARIC_ANIMATION_OWNERS,
+            directional_walk_frames,
         })
     }
 
@@ -154,15 +184,24 @@ impl AricAtlasLayout {
 
     /// Selects the TSX animation-owner tile used as the idle/base frame for one facing.
     pub(crate) fn base_frame(&self, direction: CardinalDirection) -> AtlasFrame {
-        let index = match direction {
-            CardinalDirection::Up => 0,
-            CardinalDirection::Left => 1,
-            CardinalDirection::Down => 2,
-            CardinalDirection::Right => 3,
-        };
+        let index = direction_index(direction);
         let tile_id = self.directional_base_tiles[index];
         self.frame(tile_id)
             .expect("validated directional base tile must be inside the Aric atlas")
+    }
+
+    /// Returns the exact ordered TSX walk frames for one cardinal facing.
+    pub(crate) fn walk_frames(&self, direction: CardinalDirection) -> &[AtlasAnimationFrame] {
+        &self.directional_walk_frames[direction_index(direction)]
+    }
+}
+
+const fn direction_index(direction: CardinalDirection) -> usize {
+    match direction {
+        CardinalDirection::Up => 0,
+        CardinalDirection::Left => 1,
+        CardinalDirection::Down => 2,
+        CardinalDirection::Right => 3,
     }
 }
 
@@ -284,6 +323,28 @@ mod tests {
             assert_eq!(frame.rectangle().y(), expected_y);
             assert_eq!(frame.rectangle().width(), 64);
             assert_eq!(frame.rectangle().height(), 64);
+        }
+    }
+
+    #[test]
+    fn cardinal_walks_retain_exact_authored_frame_ids_and_durations() {
+        let layout = AricAtlasLayout::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
+
+        for (direction, expected_tiles) in [
+            (CardinalDirection::Up, 1_u32..=8),
+            (CardinalDirection::Left, 10..=17),
+            (CardinalDirection::Down, 19..=26),
+            (CardinalDirection::Right, 28..=35),
+        ] {
+            let frames = layout.walk_frames(direction);
+            assert_eq!(
+                frames
+                    .iter()
+                    .map(|frame| frame.tile_id())
+                    .collect::<Vec<_>>(),
+                expected_tiles.collect::<Vec<_>>()
+            );
+            assert!(frames.iter().all(|frame| frame.duration_ms() == 100));
         }
     }
 

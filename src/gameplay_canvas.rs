@@ -5,6 +5,8 @@ use bevy::{
     window::PrimaryWindow,
 };
 
+pub(crate) mod camera_follow;
+
 pub const LOGICAL_CANVAS_WIDTH: u32 = 1280;
 pub const LOGICAL_CANVAS_HEIGHT: u32 = 766;
 

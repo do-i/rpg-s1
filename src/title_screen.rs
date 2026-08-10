@@ -11,6 +11,7 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_canvas::fixed_gameplay_camera,
     ui_theme::UiTheme,
+    world_audio::LogicalBgmPlayer,
 };
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
@@ -204,6 +205,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, th
             volume: Volume::Linear(0.65),
             ..default()
         },
+        LogicalBgmPlayer,
         TitleScreenEntity,
     ));
 

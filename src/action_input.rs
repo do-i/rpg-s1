@@ -22,10 +22,32 @@ impl AppAction {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+enum MovementAction {
+    Up,
+    Left,
+    Down,
+    Right,
+}
+
+impl MovementAction {
+    const ALL: [Self; 4] = [Self::Up, Self::Left, Self::Down, Self::Right];
+
+    const fn index(self) -> usize {
+        match self {
+            Self::Up => 0,
+            Self::Left => 1,
+            Self::Down => 2,
+            Self::Right => 3,
+        }
+    }
+}
+
 /// Keyboard bindings for semantic application-shell actions.
 #[derive(Resource)]
 pub(crate) struct ActionMap {
     bindings: [Vec<KeyCode>; 4],
+    movement_bindings: [Vec<KeyCode>; 4],
 }
 
 impl Default for ActionMap {
@@ -37,6 +59,12 @@ impl Default for ActionMap {
                 vec![KeyCode::ArrowUp],
                 vec![KeyCode::ArrowDown],
             ],
+            movement_bindings: [
+                vec![KeyCode::ArrowUp],
+                vec![KeyCode::ArrowLeft],
+                vec![KeyCode::ArrowDown],
+                vec![KeyCode::ArrowRight],
+            ],
         }
     }
 }
@@ -45,12 +73,18 @@ impl ActionMap {
     fn bindings(&self, action: AppAction) -> &[KeyCode] {
         &self.bindings[action.index()]
     }
+
+    fn movement_bindings(&self, action: MovementAction) -> &[KeyCode] {
+        &self.movement_bindings[action.index()]
+    }
 }
 
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
     just_pressed: [bool; 4],
+    movement_just_pressed: [bool; 4],
+    movement_pressed: [bool; 4],
 }
 
 impl ActionState {
@@ -71,6 +105,40 @@ impl ActionState {
             Some(1)
         } else {
             None
+        }
+    }
+
+    /// Resolves one fresh source-compatible eight-way movement action.
+    ///
+    /// At least one direction must have begun this frame, preserving the milestone's one-tile
+    /// action contract. The vector itself uses every currently held direction, so pressing a
+    /// second perpendicular key while the first remains held produces a diagonal action exactly
+    /// as Python's summed key state does. Opposite directions cancel.
+    pub(crate) fn movement(&self) -> Option<crate::scenario_spatial::EightWayDirection> {
+        use crate::scenario_spatial::EightWayDirection;
+
+        if !self
+            .movement_just_pressed
+            .into_iter()
+            .any(|pressed| pressed)
+        {
+            return None;
+        }
+
+        let horizontal = i8::from(self.movement_pressed[MovementAction::Right.index()])
+            - i8::from(self.movement_pressed[MovementAction::Left.index()]);
+        let vertical = i8::from(self.movement_pressed[MovementAction::Down.index()])
+            - i8::from(self.movement_pressed[MovementAction::Up.index()]);
+        match (horizontal, vertical) {
+            (0, -1) => Some(EightWayDirection::Up),
+            (1, -1) => Some(EightWayDirection::UpRight),
+            (1, 0) => Some(EightWayDirection::Right),
+            (1, 1) => Some(EightWayDirection::DownRight),
+            (0, 1) => Some(EightWayDirection::Down),
+            (-1, 1) => Some(EightWayDirection::DownLeft),
+            (-1, 0) => Some(EightWayDirection::Left),
+            (-1, -1) => Some(EightWayDirection::UpLeft),
+            _ => None,
         }
     }
 }
@@ -95,6 +163,16 @@ fn update_action_state(
             .bindings(action)
             .iter()
             .any(|key| keys.just_pressed(*key));
+    }
+    for action in MovementAction::ALL {
+        actions.movement_just_pressed[action.index()] = map
+            .movement_bindings(action)
+            .iter()
+            .any(|key| keys.just_pressed(*key));
+        actions.movement_pressed[action.index()] = map
+            .movement_bindings(action)
+            .iter()
+            .any(|key| keys.pressed(*key));
     }
 }
 
@@ -125,6 +203,22 @@ mod tests {
         );
         assert_eq!(map.bindings(AppAction::Up), [KeyCode::ArrowUp]);
         assert_eq!(map.bindings(AppAction::Down), [KeyCode::ArrowDown]);
+        assert_eq!(
+            map.movement_bindings(MovementAction::Up),
+            [KeyCode::ArrowUp]
+        );
+        assert_eq!(
+            map.movement_bindings(MovementAction::Left),
+            [KeyCode::ArrowLeft]
+        );
+        assert_eq!(
+            map.movement_bindings(MovementAction::Down),
+            [KeyCode::ArrowDown]
+        );
+        assert_eq!(
+            map.movement_bindings(MovementAction::Right),
+            [KeyCode::ArrowRight]
+        );
     }
 
     #[test]
@@ -216,6 +310,83 @@ mod tests {
         assert!(actions.just_pressed(AppAction::Up));
         assert!(actions.just_pressed(AppAction::Down));
         assert_eq!(actions.menu_navigation(), Some(-1));
+        assert_eq!(actions.movement(), None);
+    }
+
+    #[test]
+    fn simultaneous_perpendicular_input_resolves_all_four_diagonals() {
+        use crate::scenario_spatial::EightWayDirection;
+
+        for (keys, expected) in [
+            (
+                [KeyCode::ArrowUp, KeyCode::ArrowRight],
+                EightWayDirection::UpRight,
+            ),
+            (
+                [KeyCode::ArrowDown, KeyCode::ArrowRight],
+                EightWayDirection::DownRight,
+            ),
+            (
+                [KeyCode::ArrowDown, KeyCode::ArrowLeft],
+                EightWayDirection::DownLeft,
+            ),
+            (
+                [KeyCode::ArrowUp, KeyCode::ArrowLeft],
+                EightWayDirection::UpLeft,
+            ),
+        ] {
+            let mut app = action_app();
+            app.update();
+            {
+                let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+                for key in keys {
+                    input.press(key);
+                }
+            }
+            app.update();
+
+            assert_eq!(
+                app.world().resource::<ActionState>().movement(),
+                Some(expected)
+            );
+        }
+    }
+
+    #[test]
+    fn newly_pressed_direction_combines_with_an_already_held_direction_once() {
+        use crate::scenario_spatial::EightWayDirection;
+
+        let mut app = action_app();
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowUp);
+        app.update();
+        assert_eq!(
+            app.world().resource::<ActionState>().movement(),
+            Some(EightWayDirection::Up)
+        );
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        app.update();
+        assert_eq!(app.world().resource::<ActionState>().movement(), None);
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowRight);
+        app.update();
+        assert_eq!(
+            app.world().resource::<ActionState>().movement(),
+            Some(EightWayDirection::UpRight)
+        );
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        app.update();
+        assert_eq!(app.world().resource::<ActionState>().movement(), None);
     }
 
     #[test]

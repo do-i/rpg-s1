@@ -7,6 +7,7 @@
 //! data only; audio playback, Bevy loading, volume, looping, and existence checks remain in
 //! later tasks.
 
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de::MapAccess};
 
 use crate::{scenario_path::ScenarioRelativePath, scenario_root::ScenarioRoot, scenario_yaml};
@@ -22,7 +23,7 @@ pub const AUDIO_ASSET_ROOT: &str = "assets/audio";
 ///
 /// Categories and entries retain YAML encounter order. BGM logical keys are category-qualified
 /// (`battle.normal`), exactly as Python's `BgmManager` creates them.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Eq, PartialEq, TypePath)]
 pub struct BgmIndex {
     pub categories: Vec<AudioCategory>,
 }
