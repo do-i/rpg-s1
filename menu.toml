@@ -11,12 +11,12 @@ selected_bold = true
 
 [[items]]
 id = "run"
-label = "Run title-screen prototype"
+label = "Run playable M4 slice"
 key = "r"
 command = ["cargo", "run"]
 group = "Play"
-tags = ["run", "play", "game", "title"]
-description = "Build and launch the current playable slice"
+tags = ["run", "play", "game", "ardel", "world"]
+description = "Start a new game and walk around the rendered first town"
 favorite = true
 
 [[items]]
@@ -54,6 +54,15 @@ command = ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
 group = "Quality"
 tags = ["lint", "clippy", "rust"]
 description = "Run Clippy and reject warnings"
+
+[[items]]
+id = "ardel-screenshot"
+label = "Check Ardel screenshot"
+key = "s"
+command = ["scripts/check-ardel-screenshot.sh"]
+group = "Quality"
+tags = ["screenshot", "visual", "ardel", "regression"]
+description = "Render and compare the deterministic M4 town composition"
 
 [[items]]
 id = "format-check"

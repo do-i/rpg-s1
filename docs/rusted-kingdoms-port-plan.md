@@ -221,29 +221,33 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | M4.04 | [x] Parse CSV tile-layer data. | `T` | Strict finite-layer parsing retains ordered raw `u32` GIDs and validates layer/map dimensions, CSV row/column counts, encoding, and individual values; invented tests cover source order, flip-bit preservation, CDATA, bounds, and focused failures, while an opt-in pinned-snapshot audit accepts all 170 layers and 161,066 GIDs across 47 maps. |
 | M4.05 | [x] Decode Tiled flip bits from a GID. | `S` | Typed orthogonal GIDs separate the stripped global ID from independent horizontal, vertical, and diagonal flags; all eight combinations and empty tiles round-trip in unit tests, the unsupported 120-degree flag reports its cell, and an opt-in corpus audit confirms the pinned combination counts. |
 | M4.06 | [x] Resolve a global GID to tileset/local ID. | `S` | Typed metadata-backed external-tileset ranges resolve decoded non-empty GIDs to their source identity and zero-based local ID while retaining transform flags; tests cover adjacent start/end boundaries, empty and flag-only empty cells, gaps, unmapped IDs, unordered and overlapping bindings, and range overflow. |
-| M4.07 | [ ] Parse object groups and rectangles. | `T` | Portal objects retain id, name, bounds, and properties. |
-| M4.08 | [ ] Parse typed Tiled properties. | `T` | String, integer, float, and boolean values load. |
+| M4.07 | [x] Parse object groups and rectangles. | `T` | Strict direct `portals` and `boss_enemy` groups retain ordered rectangle IDs, optional names, finite bounds, zero-sized markers, and deferred raw properties; invented fixtures reject unsupported geometry and malformed structure, while an opt-in 47-map audit proves 55 groups, 109 objects, and 276 retained properties. |
+| M4.08 | [x] Parse typed Tiled properties. | `T` | Ordered properties load exact strings, signed integers, finite floats, and strict booleans with standard value/text forms; focused tests reject coercions, duplicates, unsupported types, and malformed portal schemas, while the 47-map audit proves 92 typed portals and all 276 corpus properties. |
 | M4.09 | [x] Parse TSX tile animation frames. | `S` | Strict owned TSX animations retain owner tile IDs plus ordered, positive-duration frames; invented fixtures cover structural, attribute, duplicate, and range failures, while an opt-in pinned audit proves Aric's four eight-frame walks retain their exact consecutive tile IDs and 100 ms durations. |
-| M4.10 | [ ] Load tileset textures into atlases. | `S` | One external TSX renders its expected tile. |
-| M4.11 | [ ] Render one static tile layer. | `S` | Ardel ground appears at the correct coordinates. |
-| M4.12 | [ ] Render all visible Ardel layers in source order. | `S` | Ground, terrain, decoration, and top layers visually agree with Python. |
-| M4.13 | [ ] Exclude the collision layer from visible rendering. | `T` | Collision tiles never draw. |
-| M4.14 | [ ] Build collision occupancy from the collision layer. | `S` | Known blocked and open Ardel cells are tested. |
+| M4.10 | [x] Load tileset textures into atlases. | `S` | A Bevy `.tsx` asset loader parses through the project adapter, tracks the contained PNG as a recursive dependency, publishes a labeled atlas layout, and constructs a tile-indexed Sprite; a headless invented PNG/TSX test proves decoded image dimensions and the exact ECS atlas rectangle. |
+| M4.11 | [x] Render one static tile layer. | `S` | The production Ardel loader projects all 600 nonempty ground cells to exact TMX centers; real-asset tests and the deterministic screenshot oracle prove the layer appears in the fixed canvas. |
+| M4.12 | [x] Render all visible Ardel layers in source order. | `S` | The active-map loader requests only visible-layer atlases and spawns ground, terrain, and decoration in authored order; real-asset projection tests and the RGBA screenshot oracle cover the complete copied composition. |
+| M4.13 | [x] Exclude the collision layer from visible rendering. | `T` | Dependency selection and bundle construction filter `collision` before spawning; production tests and the screenshot oracle prove its nonzero cells never draw. |
+| M4.14 | [x] Build collision occupancy from the collision layer. | `S` | A renderer-free row-major occupancy requires exactly one reserved collision layer, treats every decoded nonzero GID as blocked, provides bounds-safe O(1) queries, and passes invented edge cases plus an opt-in known blocked/open Ardel-cell audit. |
 | M4.15 | [x] Copy and register Aric's walk sprite assets. | `T` | The byte-identical PNG, TSX, and per-layer credit are registered under the canonical scenario path; Git LFS covers the atlas, exact hashes and upstream history are recorded, and approved ledger entries preserve the distinct CC BY-SA 3.0 and OGA-BY 3.0 obligations. |
-| M4.16 | [ ] Slice Aric's sprite atlas from TSX metadata. | `S` | Four directions select the correct base frames. |
-| M4.17 | [ ] Spawn Aric at the new-game position. | `T` | World position matches the scenario tile coordinate. |
-| M4.18 | [ ] Implement one-tile cardinal movement. | `S` | Each action moves exactly one legal tile. |
-| M4.19 | [ ] Reject movement into collision cells. | `S` | Movement tests cover all four directions. |
-| M4.20 | [ ] Animate walking while movement is active. | `S` | Frame timing follows TSX durations and idles cleanly. |
-| M4.21 | [ ] Add diagonal movement policy. | `S` | Eight-way input and corner collision match the Python behavior. |
-| M4.22 | [ ] Add a clamped camera follow system. | `S` | Small-map and edge positions are tested. |
-| M4.23 | [ ] Add layer/entity Y ordering. | `S` | Aric draws in front of and behind the correct map content. |
-| M4.24 | [ ] Start Ardel BGM from map metadata. | `T` | Entering Ardel plays the indexed looping track once. |
-| M4.25 | [ ] Stop title BGM before Ardel BGM starts. | `T` | Only one BGM player remains. |
-| M4.26 | [ ] Add a deterministic Ardel screenshot check. | `S` | A fixed spawn frame can be compared across changes. |
+| M4.16 | [x] Slice Aric's sprite atlas from TSX metadata. | `S` | A strict renderer-independent layout validates the copied 576x256 TSX atlas as 9x4 64-pixel cells and maps Up/Left/Down/Right to exact authored base tiles 0/9/18/27; focused tests cover bounds and profile drift. |
+| M4.17 | [x] Spawn Aric at the new-game position. | `T` | Transactional World spawning consumes the installed runtime map position/facing, projects it through shared TMX coordinates, and publishes one real-atlas player only after dependencies are ready; production smoke and live play prove the authored spawn. |
+| M4.18 | [x] Implement one-tile cardinal movement. | `S` | Fresh Arrow actions update runtime and rendered position by exactly one legal tile; four-direction tests plus the live Gate 4 playthrough prove the integrated path. |
+| M4.19 | [x] Reject movement into collision cells. | `S` | Active-map collision is derived from the loaded TMX and fails closed; focused tests cover all four blocked directions, bounds, stale data, and missing/failed loads. |
+| M4.20 | [x] Animate walking while movement is active. | `S` | Aric retains exact authored frame IDs and 100 ms TSX durations, exposes each step pose long enough to render, and returns to the directional idle frame deterministically. |
+| M4.21 | [x] Add diagonal movement policy. | `S` | Eight-way input uses vertical-priority facing and adapts Python's full-then-X-then-Y slide order to one-tile movement without corner cutting; all diagonals and blocked-corner cases are tested. |
+| M4.22 | [x] Add a clamped camera follow system. | `S` | The active TMX spawns one fixed-canvas camera with finite map bounds and Aric as its follow target; production Ardel centering plus focused center/four-edge/small-axis tests cover live wiring without oscillation. |
+| M4.23 | [x] Add layer/entity Y ordering. | `S` | Ground/terrain remain authored backgrounds, explicit top layers remain foreground, and decoration/Aric use deterministic bottom-edge depth with stable source-order ties; numeric, screenshot, and live-play evidence cover both sides of the band. |
+| M4.24 | [x] Start Ardel BGM from map metadata. | `T` | World entry loads same-stem map metadata plus the scenario BGM index and starts the resolved `town.default` MP3 once in looping mode; the production package smoke test decodes a real sample. |
+| M4.25 | [x] Stop title BGM before Ardel BGM starts. | `T` | A shared logical-BGM marker and explicit stop barrier remove the title loop first; tests prove one Ardel player remains and unexpected duplicates are retired without restart. |
+| M4.26 | [x] Add a deterministic Ardel screenshot check. | `S` | `scripts/check-ardel-screenshot.sh` renders the copied visible layers and real Aric atlas at `[14, 5]`, excludes collision, applies canvas/Y ordering, and verifies decoded RGBA8 hash `122b47cda515c384cb40a531fb3e86666d28a71676e944639525c8fd4924934c`. |
 
 **Gate 4:** A player can start a new game and walk around a correctly rendered
-Ardel with collision, animation, camera behavior, and BGM.
+Ardel with collision, animation, camera behavior, and BGM. Evidence: the production-package
+smoke test loads the full New Game asset closure through Bevy, 338 default tests plus eight
+opt-in pinned TMX/TSX/collision/byte audits pass, the deterministic 1280x766 Ardel oracle matches,
+and the 2026-08-10 live playthrough reached Ardel from the title screen before moving one cardinal
+and one diagonal tile without runtime asset errors.
 
 ## Milestone 5 — World interaction vertical slice
 
@@ -549,5 +553,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M4.07**. Parse direct object groups and rectangle objects in
-source order, retaining each object's ID, optional name, bounds, and properties.
+Continue with **M5.01**. Convert the parsed TMX portal rectangles to runtime
+triggers and prove Ardel's portal bounds and destinations against source data.
