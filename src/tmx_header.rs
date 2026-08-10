@@ -1,13 +1,14 @@
 //! Strict, renderer-independent metadata from a finite orthogonal TMX document.
 //!
 //! The header-only API intentionally stops after the `<map>` start tag. The owned document API
-//! additionally scans direct external tileset references; layers and objects remain uninterpreted.
+//! additionally scans direct external tileset references and finite CSV tile layers; objects
+//! remain uninterpreted.
 
 #![cfg_attr(
     not(test),
     expect(
         dead_code,
-        reason = "M4.01-M4.02 establish parser APIs before later M4 map loading consumes them"
+        reason = "M4.01-M4.04 establish parser APIs before later M4 map loading consumes them"
     )
 )]
 
@@ -102,6 +103,48 @@ pub(crate) struct TmxExternalTileset {
     source: ScenarioRelativePath,
 }
 
+/// One finite tile layer with raw Tiled global IDs in row-major order.
+///
+/// Flip bits intentionally remain encoded in each GID until M4.05 gives them a typed form.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TmxTileLayer {
+    id: u32,
+    name: String,
+    width: u32,
+    height: u32,
+    gids: Vec<u32>,
+}
+
+impl TmxTileLayer {
+    pub(crate) const fn id(&self) -> u32 {
+        self.id
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub(crate) const fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub(crate) const fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub(crate) fn gids(&self) -> &[u32] {
+        &self.gids
+    }
+
+    pub(crate) fn gid_at(&self, column: u32, row: u32) -> Option<u32> {
+        if column >= self.width || row >= self.height {
+            return None;
+        }
+        let index = usize::try_from(row.checked_mul(self.width)?.checked_add(column)?).ok()?;
+        self.gids.get(index).copied()
+    }
+}
+
 impl TmxExternalTileset {
     pub(crate) const fn first_gid(&self) -> u32 {
         self.first_gid
@@ -117,6 +160,7 @@ impl TmxExternalTileset {
 pub(crate) struct TmxMapDocument {
     header: TmxMapHeader,
     external_tilesets: Vec<TmxExternalTileset>,
+    tile_layers: Vec<TmxTileLayer>,
 }
 
 impl TmxMapDocument {
@@ -126,6 +170,10 @@ impl TmxMapDocument {
 
     pub(crate) fn external_tilesets(&self) -> &[TmxExternalTileset] {
         &self.external_tilesets
+    }
+
+    pub(crate) fn tile_layers(&self) -> &[TmxTileLayer] {
+        &self.tile_layers
     }
 }
 
@@ -265,6 +313,7 @@ fn scan_tmx_map_document(
         document: TmxMapDocument {
             header,
             external_tilesets: Vec::new(),
+            tile_layers: Vec::new(),
         },
         first_inline_error: None,
         inline_tilesets: 0,
@@ -283,6 +332,12 @@ fn scan_tmx_map_document(
             .map_err(|error| TmxMapDocumentError::new(offset, format!("malformed XML: {error}")))?
         {
             Event::Start(element) => {
+                if element.name().as_ref() == b"layer" {
+                    require_root_layer(depth, offset)?;
+                    let layer = parse_tile_layer(&mut reader, &element, offset, header)?;
+                    scan.document.tile_layers.push(layer);
+                    continue;
+                }
                 if element.name().as_ref() == b"tileset" {
                     require_root_tileset(depth, offset)?;
                     match parse_external_tileset(&reader, &element, offset, logical_tmx_path) {
@@ -308,6 +363,13 @@ fn scan_tmx_map_document(
                 depth += 1;
             }
             Event::Empty(element) => {
+                if element.name().as_ref() == b"layer" {
+                    require_root_layer(depth, offset)?;
+                    return Err(TmxMapDocumentError::new(
+                        offset,
+                        "tile `layer` must contain one CSV `data` element",
+                    ));
+                }
                 if element.name().as_ref() == b"tileset" {
                     require_root_tileset(depth, offset)?;
                     match parse_external_tileset(&reader, &element, offset, logical_tmx_path) {
@@ -364,6 +426,301 @@ fn require_root_tileset(depth: u32, offset: u64) -> Result<(), TmxMapDocumentErr
             "`tileset` must be a direct child of `map`",
         ))
     }
+}
+
+fn require_root_layer(depth: u32, offset: u64) -> Result<(), TmxMapDocumentError> {
+    if depth == 1 {
+        Ok(())
+    } else {
+        Err(TmxMapDocumentError::new(
+            offset,
+            "tile `layer` must be a direct child of `map`",
+        ))
+    }
+}
+
+fn parse_tile_layer(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    map_header: TmxMapHeader,
+) -> Result<TmxTileLayer, TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    let id = positive_document_u32(&attributes, "id", offset)?;
+    let name = required_document_attribute(&attributes, "name", offset)?;
+    if name.trim().is_empty() {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            "invalid `name` attribute: layer name must not be empty",
+        ));
+    }
+    let width = positive_document_u32(&attributes, "width", offset)?;
+    let height = positive_document_u32(&attributes, "height", offset)?;
+    if width != map_header.width || height != map_header.height {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!(
+                "tile layer `{name}` dimensions {width}x{height} do not match map dimensions {}x{}",
+                map_header.width, map_header.height
+            ),
+        ));
+    }
+
+    let mut csv = None;
+    let mut depth = 1_u32;
+    loop {
+        let child_offset = reader.buffer_position();
+        match reader.read_event().map_err(|error| {
+            TmxMapDocumentError::new(child_offset, format!("malformed XML: {error}"))
+        })? {
+            Event::Start(child) if child.name().as_ref() == b"data" => {
+                if depth != 1 {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "`data` must be a direct child of tile `layer`",
+                    ));
+                }
+                if csv.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "tile `layer` must contain exactly one `data` element",
+                    ));
+                }
+                validate_csv_data_attributes(reader, &child, child_offset)?;
+                csv = Some(read_csv_data(reader, child_offset)?);
+            }
+            Event::Empty(child) if child.name().as_ref() == b"data" => {
+                if depth != 1 {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "`data` must be a direct child of tile `layer`",
+                    ));
+                }
+                if csv.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "tile `layer` must contain exactly one `data` element",
+                    ));
+                }
+                validate_csv_data_attributes(reader, &child, child_offset)?;
+                csv = Some(String::new());
+            }
+            Event::Start(_) => depth += 1,
+            Event::End(_) if depth == 1 => {
+                let csv = csv.ok_or_else(|| {
+                    TmxMapDocumentError::new(
+                        offset,
+                        "tile `layer` must contain one CSV `data` element",
+                    )
+                })?;
+                let gids = parse_csv_gids(&csv, width, height, offset, name)?;
+                return Ok(TmxTileLayer {
+                    id,
+                    name: name.to_owned(),
+                    width,
+                    height,
+                    gids,
+                });
+            }
+            Event::End(_) => depth -= 1,
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    child_offset,
+                    "unexpected end of XML before tile `layer` closed",
+                ));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn validate_csv_data_attributes(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<(), TmxMapDocumentError> {
+    let attributes = collect_document_attributes(reader, element, offset)?;
+    let encoding = required_document_attribute(&attributes, "encoding", offset)?;
+    if encoding != "csv" {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported tile data encoding `{encoding}`; expected `csv`"),
+        ));
+    }
+    if let Some(compression) = attributes.get("compression") {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("compression `{compression}` is unsupported for CSV tile data"),
+        ));
+    }
+    if let Some(name) = attributes.keys().find(|name| name.as_str() != "encoding") {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("unsupported `data` attribute `{name}`"),
+        ));
+    }
+    Ok(())
+}
+
+fn read_csv_data(
+    reader: &mut Reader<&[u8]>,
+    data_offset: u64,
+) -> Result<String, TmxMapDocumentError> {
+    let mut csv = String::new();
+    loop {
+        let offset = reader.buffer_position();
+        match reader
+            .read_event()
+            .map_err(|error| TmxMapDocumentError::new(offset, format!("malformed XML: {error}")))?
+        {
+            Event::Text(text) => csv
+                .push_str(str::from_utf8(text.as_ref()).map_err(|_| {
+                    TmxMapDocumentError::new(offset, "CSV tile data must be UTF-8")
+                })?),
+            Event::CData(data) => csv
+                .push_str(str::from_utf8(data.as_ref()).map_err(|_| {
+                    TmxMapDocumentError::new(offset, "CSV tile data must be UTF-8")
+                })?),
+            Event::Comment(_) => {}
+            Event::End(_) => return Ok(csv),
+            Event::Eof => {
+                return Err(TmxMapDocumentError::new(
+                    offset,
+                    "unexpected end of XML before tile `data` closed",
+                ));
+            }
+            _ => {
+                return Err(TmxMapDocumentError::new(
+                    data_offset,
+                    "CSV tile `data` must contain text only",
+                ));
+            }
+        }
+    }
+}
+
+fn parse_csv_gids(
+    csv: &str,
+    width: u32,
+    height: u32,
+    offset: u64,
+    layer_name: &str,
+) -> Result<Vec<u32>, TmxMapDocumentError> {
+    let rows = csv
+        .lines()
+        .map(str::trim)
+        .filter(|row| !row.is_empty())
+        .collect::<Vec<_>>();
+    if rows.len() != height as usize {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!(
+                "tile layer `{layer_name}` has {} CSV rows; expected {height}",
+                rows.len()
+            ),
+        ));
+    }
+
+    let capacity = usize::try_from(width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .ok_or_else(|| TmxMapDocumentError::new(offset, "tile layer dimensions are too large"))?;
+    let mut gids = Vec::with_capacity(capacity);
+    for (row_index, row) in rows.iter().enumerate() {
+        let mut cells = row.split(',').map(str::trim).collect::<Vec<_>>();
+        if cells.last() == Some(&"") {
+            cells.pop();
+        }
+        if cells.len() != width as usize {
+            return Err(TmxMapDocumentError::new(
+                offset,
+                format!(
+                    "tile layer `{layer_name}` CSV row {} has {} columns; expected {width}",
+                    row_index + 1,
+                    cells.len()
+                ),
+            ));
+        }
+        for (column_index, cell) in cells.into_iter().enumerate() {
+            let gid = cell.parse::<u32>().map_err(|_| {
+                TmxMapDocumentError::new(
+                    offset,
+                    format!(
+                        "tile layer `{layer_name}` has invalid GID `{cell}` at row {}, column {}; expected u32",
+                        row_index + 1,
+                        column_index + 1
+                    ),
+                )
+            })?;
+            gids.push(gid);
+        }
+    }
+    Ok(gids)
+}
+
+fn collect_document_attributes(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+) -> Result<std::collections::BTreeMap<String, String>, TmxMapDocumentError> {
+    let mut attributes = std::collections::BTreeMap::new();
+    let mut seen = HashSet::new();
+    for attribute in element.attributes().with_checks(false) {
+        let attribute = attribute.map_err(|error| {
+            TmxMapDocumentError::new(offset, format!("invalid attribute: {error}"))
+        })?;
+        let name = str::from_utf8(attribute.key.as_ref())
+            .map_err(|_| TmxMapDocumentError::new(offset, "attribute names must be UTF-8"))?;
+        if !seen.insert(name.to_owned()) {
+            return Err(TmxMapDocumentError::new(
+                offset,
+                format!("duplicate `{name}` attribute"),
+            ));
+        }
+        let value = attribute
+            .decoded_and_normalized_value(XmlVersion::Implicit1_0, reader.decoder())
+            .map_err(|error| {
+                TmxMapDocumentError::new(offset, format!("invalid `{name}` attribute: {error}"))
+            })?
+            .into_owned();
+        attributes.insert(name.to_owned(), value);
+    }
+    Ok(attributes)
+}
+
+fn required_document_attribute<'a>(
+    attributes: &'a std::collections::BTreeMap<String, String>,
+    name: &str,
+    offset: u64,
+) -> Result<&'a str, TmxMapDocumentError> {
+    attributes.get(name).map(String::as_str).ok_or_else(|| {
+        TmxMapDocumentError::new(offset, format!("missing required `{name}` attribute"))
+    })
+}
+
+fn positive_document_u32(
+    attributes: &std::collections::BTreeMap<String, String>,
+    name: &str,
+    offset: u64,
+) -> Result<u32, TmxMapDocumentError> {
+    let value = required_document_attribute(attributes, name, offset)?;
+    let parsed = value.parse::<u32>().map_err(|_| {
+        TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected u32"),
+        )
+    })?;
+    if parsed == 0 {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            format!("invalid `{name}` attribute `0`; expected positive u32"),
+        ));
+    }
+    Ok(parsed)
 }
 
 fn parse_external_tileset(
@@ -691,7 +1048,7 @@ mod tests {
             r#"
                 <properties><property name="invented" value="ignored-for-now"/></properties>
                 <tileset firstgid="1" source="../../tilesets/./ground.tsx"/>
-                <layer id="1"><data encoding="csv">0</data></layer>
+                <objectgroup id="1" name="ignored-for-now"/>
                 <tileset firstgid="257" source="../tilesets/../tilesets/walls.tsx"/>
             "#,
         );
@@ -710,6 +1067,107 @@ mod tests {
             document.external_tilesets()[1].source().as_str(),
             "assets/maps/tilesets/walls.tsx"
         );
+        assert!(document.tile_layers().is_empty());
+    }
+
+    #[test]
+    fn parses_finite_csv_tile_layers_in_source_order_with_raw_gids() {
+        let xml = r#"
+            <map orientation="orthogonal" width="3" height="2" tilewidth="32" tileheight="32">
+                <layer id="7" name="ground" width="3" height="2" visible="0">
+                    <data encoding="csv">
+                        0,1,2147483650,
+                        3,4,4294967295
+                    </data>
+                </layer>
+                <layer id="8" name="decoration" width="3" height="2">
+                    <data encoding="csv"><![CDATA[
+                        6,5,4,
+                        3,2,1
+                    ]]></data>
+                </layer>
+            </map>
+        "#;
+
+        let document = parse_tmx_map_document(xml, &invented_path()).unwrap();
+        assert_eq!(document.tile_layers().len(), 2);
+        let ground = &document.tile_layers()[0];
+        assert_eq!(ground.id(), 7);
+        assert_eq!(ground.name(), "ground");
+        assert_eq!(ground.width(), 3);
+        assert_eq!(ground.height(), 2);
+        assert_eq!(ground.gids(), &[0, 1, 2_147_483_650, 3, 4, u32::MAX]);
+        assert_eq!(ground.gid_at(2, 1), Some(u32::MAX));
+        assert_eq!(ground.gid_at(3, 1), None);
+        assert_eq!(ground.gid_at(0, 2), None);
+        assert_eq!(document.tile_layers()[1].name(), "decoration");
+        assert_eq!(document.tile_layers()[1].gids(), &[6, 5, 4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn rejects_invalid_layer_shape_and_csv_encoding() {
+        let cases = [
+            (
+                r#"<layer id="1" width="3" height="2"><data encoding="csv">0,0,0,
+0,0,0</data></layer>"#,
+                "missing required `name` attribute",
+            ),
+            (
+                r#"<layer id="1" name="ground" width="2" height="2"><data encoding="csv">0,0,
+0,0</data></layer>"#,
+                "dimensions 2x2 do not match map dimensions 3x2",
+            ),
+            (
+                r#"<layer id="1" name="ground" width="3" height="2"/>"#,
+                "must contain one CSV `data` element",
+            ),
+            (
+                r#"<layer id="1" name="ground" width="3" height="2"><data encoding="base64">AAAA</data></layer>"#,
+                "unsupported tile data encoding `base64`",
+            ),
+            (
+                r#"<layer id="1" name="ground" width="3" height="2"><data encoding="csv" compression="gzip">0,0,0,
+0,0,0</data></layer>"#,
+                "compression `gzip` is unsupported",
+            ),
+        ];
+
+        for (layer, expected) in cases {
+            let xml = format!(
+                r#"<map orientation="orthogonal" width="3" height="2" tilewidth="32" tileheight="32">{layer}</map>"#
+            );
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(
+                error.detail.contains(expected),
+                "expected {expected:?}, got {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_wrong_csv_row_column_counts_and_invalid_gids() {
+        for (csv, expected) in [
+            ("0,0,0", "has 1 CSV rows; expected 2"),
+            ("0,0,\n0,0,0", "CSV row 1 has 2 columns; expected 3"),
+            ("0,0,0,0,\n0,0,0", "CSV row 1 has 4 columns; expected 3"),
+            (
+                "0,-1,0,\n0,0,0",
+                "invalid GID `-1` at row 1, column 2; expected u32",
+            ),
+            (
+                "0,,0,\n0,0,0",
+                "invalid GID `` at row 1, column 2; expected u32",
+            ),
+        ] {
+            let xml = format!(
+                r#"<map orientation="orthogonal" width="3" height="2" tilewidth="32" tileheight="32"><layer id="1" name="ground" width="3" height="2"><data encoding="csv">{csv}</data></layer></map>"#
+            );
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(
+                error.detail.contains(expected),
+                "expected {expected:?}, got {error:?}"
+            );
+        }
     }
 
     #[test]
@@ -915,5 +1373,52 @@ mod tests {
         assert_eq!(inline_tilesets, 1);
         assert_eq!(reference_count, 263);
         assert_eq!(distinct_sources.len(), 17);
+    }
+
+    #[test]
+    #[ignore = "requires the separately pinned Python scenario checkout"]
+    fn audits_every_pinned_csv_tile_layer_when_source_is_available() {
+        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
+            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+        let maps = Path::new(&maps);
+        let scenario_root = maps
+            .parent()
+            .and_then(Path::parent)
+            .expect("TMX directory should be nested below the scenario root");
+        let mut files = fs::read_dir(maps)
+            .expect("TMX map directory should be readable")
+            .map(|entry| entry.expect("directory entry should be readable").path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "tmx"))
+            .collect::<Vec<_>>();
+        files.sort();
+
+        let mut layer_count = 0;
+        let mut gid_count = 0;
+        for path in &files {
+            let logical = path
+                .strip_prefix(scenario_root)
+                .expect("TMX should be inside scenario root")
+                .to_str()
+                .expect("pinned scenario paths should be UTF-8");
+            let logical = ScenarioRelativePath::try_from(logical).unwrap();
+            let xml = fs::read_to_string(path).expect("TMX file should be readable");
+            let document = scan_tmx_map_document(&xml, &logical)
+                .unwrap_or_else(|error| panic!("{logical}: {error}"))
+                .document;
+            for layer in document.tile_layers() {
+                assert_eq!(layer.width(), document.header().width());
+                assert_eq!(layer.height(), document.header().height());
+                assert_eq!(
+                    layer.gids().len(),
+                    usize::try_from(layer.width() * layer.height()).unwrap()
+                );
+                layer_count += 1;
+                gid_count += layer.gids().len();
+            }
+        }
+
+        assert_eq!(files.len(), 47);
+        assert_eq!(layer_count, 170);
+        assert_eq!(gid_count, 161_066);
     }
 }
