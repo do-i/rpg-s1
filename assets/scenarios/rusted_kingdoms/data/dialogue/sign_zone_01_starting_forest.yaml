@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_01_starting_forest.yaml
+id: sign_zone_01_starting_forest
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Starting Forest"
+      - "North of Ardel. The trees greyed overnight and the beasts came back twisted. Rustkin roam where the rot runs deepest."
+      - "Clear a path through and the forest may quiet again. Don't stray deep until you're ready."

@@ -59,6 +59,34 @@ pub(crate) struct DialogueSession {
 }
 
 impl DialogueSession {
+    pub(crate) fn message(
+        id: impl Into<String>,
+        speaker: Option<String>,
+        lines: Vec<String>,
+    ) -> Self {
+        let flags = RuntimeFlags::default();
+        Self::resolve(
+            id,
+            speaker,
+            EntryDialogue {
+                id: None,
+                kind: None,
+                entries: vec![crate::scenario_dialogue::DialogueEntry {
+                    node: None,
+                    condition: Default::default(),
+                    lines,
+                    choices: Vec::new(),
+                    next: None,
+                    end: true,
+                    on_complete: Default::default(),
+                }],
+            },
+            &flags,
+        )
+        .expect("one terminal message is a valid dialogue graph")
+        .expect("unconditional message must resolve")
+    }
+
     pub(crate) fn resolve(
         id: impl Into<String>,
         speaker: Option<String>,

@@ -1,0 +1,25 @@
+battle:
+  encounter:      sfx/battle/55_Encounter_02.mp3
+  atk_slash:      sfx/battle/22_Slash_04.mp3
+  atk_impact:     sfx/battle/15_Impact_flesh_02.mp3
+  party_hit:      sfx/battle/77_flesh_02.mp3
+  defend:         sfx/battle/39_Block_03.mp3
+  flee:           sfx/battle/51_Flee_02.mp3
+  enemy_death:    sfx/battle/69_Enemy_death_01.mp3
+  heal:           sfx/buffs_heals/02_Heal_02.mp3
+  revive:         sfx/buffs_heals/30_Revive_03.mp3
+  atk_buff:       sfx/buffs_heals/16_Atk_buff_04.mp3
+  def_buff:       sfx/buffs_heals/17_Def_buff_01.mp3
+  debuff:         sfx/buffs_heals/21_Debuff_01.mp3
+  spell_fire:     sfx/atk_magic/04_Fire_explosion_04_medium.mp3
+  spell_ice:      sfx/atk_magic/13_Ice_explosion_01.mp3
+  spell_thunder:  sfx/atk_magic/18_Thunder_02.mp3
+  spell_water:    sfx/atk_magic/22_Water_02.mp3
+  spell_wind:     sfx/atk_magic/25_Wind_01.mp3
+  spell_earth:    sfx/atk_magic/30_Earth_02.mp3
+ui:
+  hover:          sfx/ui_menu/001_Hover_01.mp3
+  confirm:        sfx/ui_menu/013_Confirm_03.mp3
+  cancel:         sfx/ui_menu/029_Decline_09.mp3
+  denied:         sfx/ui_menu/033_Denied_03.mp3
+  use_item:       sfx/ui_menu/051_use_item_01.mp3

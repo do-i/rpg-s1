@@ -4,6 +4,7 @@ use std::{error::Error, fmt};
 
 use bevy::{
     asset::{AssetApp, AssetLoader, LoadContext, LoadState, io::Reader},
+    audio::Volume,
     prelude::*,
     reflect::TypePath,
 };
@@ -13,8 +14,10 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     runtime_member::RuntimeMember,
+    scenario_audio::{SFX_INDEX_PATH, SfxIndex},
     scenario_balance::BalanceData,
     scenario_dialogue::{DialogueActions, DialogueDocument},
+    scenario_map::MagicCoreSize,
     scenario_party::PartyCatalog,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -23,6 +26,7 @@ use crate::{
     ui_theme::UiTheme,
     world_actor::WorldNpc,
     world_dialogue::{DialogueEvent, DialoguePhase, DialogueSession, apply_flag_actions},
+    world_object::{WorldItemBox, WorldSign},
     world_transition::WorldTransition,
 };
 
@@ -31,7 +35,9 @@ pub(crate) struct WorldInteractionPlugin;
 impl Plugin for WorldInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<DialogueDocument>()
+            .init_asset::<SfxIndex>()
             .init_asset_loader::<DialogueDocumentAssetLoader>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
             .init_resource::<WorldInteractionState>()
             .add_systems(OnEnter(AppState::World), begin_world_interactions)
             .add_systems(
@@ -40,6 +46,7 @@ impl Plugin for WorldInteractionPlugin {
                     request_npc_dialogue,
                     resolve_dialogue_request,
                     drive_dialogue_session,
+                    play_interaction_sfx,
                     sync_dialogue_overlay,
                 )
                     .chain()
@@ -55,7 +62,11 @@ pub(crate) struct WorldInteractionState {
     session: Option<DialogueSession>,
     party: Option<Handle<PartyCatalog>>,
     balance: Option<Handle<BalanceData>>,
+    sfx_index: Option<Handle<SfxIndex>>,
+    pending_sounds: Vec<InteractionSound>,
     failure: Option<String>,
+    sfx_failure: Option<String>,
+    suppress_confirm: bool,
 }
 
 impl WorldInteractionState {
@@ -102,6 +113,9 @@ fn begin_world_interactions(
         balance: Some(asset_server.load(scenario_root.resolve(
             &ScenarioRelativePath::try_from("data/balance.yaml").expect("canonical balance path"),
         ))),
+        sfx_index: Some(asset_server.load(scenario_root.resolve(
+            &ScenarioRelativePath::try_from(SFX_INDEX_PATH).expect("canonical SFX index path"),
+        ))),
         ..default()
     };
 }
@@ -111,8 +125,10 @@ fn request_npc_dialogue(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
     transition: Res<WorldTransition>,
-    game: Option<Res<GameState>>,
+    game: Option<ResMut<GameState>>,
     npcs: Query<&WorldNpc>,
+    signs: Query<&WorldSign>,
+    boxes: Query<&WorldItemBox>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     if state.input_locked()
@@ -121,24 +137,97 @@ fn request_npc_dialogue(
     {
         return;
     }
-    let Some(game) = game else {
+    let Some(mut game) = game else {
         return;
     };
-    let Some(target) = select_npc(game.map().position(), game.map().facing(), npcs.iter()) else {
+    let player = game.map().position();
+    let facing = game.map().facing();
+    let npc = select_npc(player, facing, npcs.iter()).map(|target| {
+        (
+            distance_squared(player, target.tile_position()),
+            0_u8,
+            InteractionTarget::Dialogue {
+                id: target.dialogue_id().to_owned(),
+                speaker: Some(target.name().to_owned()),
+            },
+        )
+    });
+    let sign = signs
+        .iter()
+        .filter(|sign| {
+            is_in_facing_direction(player, sign.tile_position(), facing)
+                && within_range(player, sign.tile_position(), 1.5)
+        })
+        .min_by_key(|sign| (distance_squared(player, sign.tile_position()), sign.id()))
+        .map(|sign| {
+            (
+                distance_squared(player, sign.tile_position()),
+                1_u8,
+                InteractionTarget::Dialogue {
+                    id: sign.dialogue_id().to_owned(),
+                    speaker: None,
+                },
+            )
+        });
+    let item_box = boxes
+        .iter()
+        .filter(|item_box| {
+            is_in_facing_direction(player, item_box.tile_position(), facing)
+                && within_range(player, item_box.tile_position(), 1.5)
+        })
+        .min_by_key(|item_box| distance_squared(player, item_box.tile_position()))
+        .map(|item_box| {
+            (
+                distance_squared(player, item_box.tile_position()),
+                2_u8,
+                InteractionTarget::Box(item_box),
+            )
+        });
+    let Some((_, _, target)) = [npc, sign, item_box]
+        .into_iter()
+        .flatten()
+        .min_by_key(|(distance, priority, _)| (*distance, *priority))
+    else {
+        state.pending_sounds.push(InteractionSound::Blocked);
         return;
     };
-    let id = target.dialogue_id().to_owned();
+    if let InteractionTarget::Box(item_box) = target {
+        let outcome = open_item_box(item_box, &mut game);
+        state.pending_sounds.push(if outcome.opened {
+            InteractionSound::Box
+        } else {
+            InteractionSound::Blocked
+        });
+        state.session = Some(DialogueSession::message(
+            format!("box_{}", item_box.id()),
+            Some("Treasure".to_owned()),
+            vec![outcome.message],
+        ));
+        state.suppress_confirm = true;
+        state.failure = None;
+        return;
+    }
+    let InteractionTarget::Dialogue { id, speaker } = target else {
+        unreachable!();
+    };
     let logical = format!("data/dialogue/{id}.yaml");
     let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+        state.pending_sounds.push(InteractionSound::Blocked);
         state.failure = Some(format!("dialogue id `{id}` cannot select a scenario file"));
         return;
     };
     state.request = Some(DialogueRequest {
         id,
-        speaker: Some(target.name().to_owned()),
+        speaker,
         handle: asset_server.load(scenario_root.resolve(&logical)),
     });
+    state.pending_sounds.push(InteractionSound::Dialogue);
     state.failure = None;
+}
+
+enum InteractionTarget<'a> {
+    Dialogue { id: String, speaker: Option<String> },
+    Box(&'a WorldItemBox),
 }
 
 fn select_npc<'a>(
@@ -173,6 +262,50 @@ fn distance_squared(left: Position, right: Position) -> i64 {
     let dx = i64::from(right.x) - i64::from(left.x);
     let dy = i64::from(right.y) - i64::from(left.y);
     dx * dx + dy * dy
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct ItemBoxOutcome {
+    message: String,
+    opened: bool,
+}
+
+fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcome {
+    let key = item_box.key();
+    if game.opened_boxes().contains(&key) {
+        return ItemBoxOutcome {
+            message: "This treasure box is already open.".to_owned(),
+            opened: false,
+        };
+    }
+
+    let mut grants = Vec::new();
+    for item in &item_box.loot().items {
+        let _outcome = game.repository_mut().add_item(&item.id, item.qty.get());
+        grants.push(format!("{} ×{}", item.id, item.qty));
+    }
+    for core in &item_box.loot().magic_cores {
+        let size = match core.size {
+            MagicCoreSize::Xs => "xs",
+            MagicCoreSize::S => "s",
+            MagicCoreSize::M => "m",
+            MagicCoreSize::L => "l",
+            MagicCoreSize::Xl => "xl",
+        };
+        let id = format!("mc_{size}");
+        let _outcome = game.repository_mut().add_item(&id, core.qty.get());
+        grants.push(format!("{id} ×{}", core.qty));
+    }
+    game.opened_boxes_mut().record(key);
+    let message = if grants.is_empty() {
+        "The treasure box was empty.".to_owned()
+    } else {
+        format!("Found {}.", grants.join(", "))
+    };
+    ItemBoxOutcome {
+        message,
+        opened: true,
+    }
 }
 
 fn resolve_dialogue_request(
@@ -216,6 +349,7 @@ fn resolve_dialogue_request(
     ) {
         Ok(Some(session)) => {
             state.session = Some(session);
+            state.suppress_confirm = true;
             state.request = None;
             state.failure = None;
         }
@@ -240,6 +374,10 @@ fn drive_dialogue_session(
     let Some(mut game) = game else {
         return;
     };
+    if state.suppress_confirm {
+        state.suppress_confirm = false;
+        return;
+    }
     let Some(session) = state.session.as_mut() else {
         return;
     };
@@ -247,6 +385,7 @@ fn drive_dialogue_session(
     if actions.just_pressed(AppAction::Back) {
         session.cancel();
         state.session = None;
+        state.pending_sounds.push(InteractionSound::Cancel);
         return;
     }
     if let Some(delta) = actions.menu_navigation() {
@@ -256,6 +395,13 @@ fn drive_dialogue_session(
         return;
     }
     let event = session.confirm(game.flags());
+    state
+        .pending_sounds
+        .push(if event == DialogueEvent::Blocked {
+            InteractionSound::Blocked
+        } else {
+            InteractionSound::Confirm
+        });
     if let DialogueEvent::Apply(completions) = event {
         let party = state
             .party
@@ -277,6 +423,80 @@ fn drive_dialogue_session(
         .is_some_and(|session| session.phase() == DialoguePhase::Closed)
     {
         state.session = None;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum InteractionSound {
+    Confirm,
+    Blocked,
+    Dialogue,
+    Box,
+    Cancel,
+}
+
+impl InteractionSound {
+    const fn source_key(self) -> &'static str {
+        match self {
+            Self::Confirm | Self::Dialogue => "confirm",
+            Self::Blocked => "denied",
+            Self::Box => "use_item",
+            Self::Cancel => "cancel",
+        }
+    }
+}
+
+#[derive(Component, Debug, Eq, PartialEq)]
+struct WorldInteractionSfx {
+    logical_event: InteractionSound,
+    source_key: &'static str,
+    asset_path: String,
+}
+
+fn play_interaction_sfx(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    indexes: Res<Assets<SfxIndex>>,
+    mut state: ResMut<WorldInteractionState>,
+) {
+    if state.pending_sounds.is_empty() {
+        return;
+    }
+    let Some(handle) = state.sfx_index.as_ref() else {
+        state.sfx_failure = Some("scenario SFX index was not requested".to_owned());
+        return;
+    };
+    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
+        state.sfx_failure = Some("scenario SFX index failed to load".to_owned());
+        state.pending_sounds.clear();
+        return;
+    }
+    let Some(index) = indexes.get(handle) else {
+        return;
+    };
+    let pending_sounds = std::mem::take(&mut state.pending_sounds);
+    for logical_event in pending_sounds {
+        let source_key = logical_event.source_key();
+        let Some(asset_path) = index.resolve_key(&scenario_root, source_key) else {
+            state.sfx_failure = Some(format!(
+                "interaction SFX `{source_key}` is missing from the scenario index"
+            ));
+            continue;
+        };
+        commands.spawn((
+            AudioPlayer::new(asset_server.load(asset_path.clone())),
+            PlaybackSettings {
+                volume: Volume::Linear(0.6),
+                ..PlaybackSettings::DESPAWN
+            },
+            WorldInteractionSfx {
+                logical_event,
+                source_key,
+                asset_path,
+            },
+        ));
+        state.sfx_failure = None;
     }
 }
 
@@ -566,6 +786,53 @@ impl fmt::Display for DialogueDocumentAssetError {
 
 impl Error for DialogueDocumentAssetError {}
 
+#[derive(Default, TypePath)]
+struct SfxIndexAssetLoader;
+
+impl AssetLoader for SfxIndexAssetLoader {
+    type Asset = SfxIndex;
+    type Settings = ();
+    type Error = SfxIndexAssetError;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader
+            .read_to_end(&mut bytes)
+            .await
+            .map_err(SfxIndexAssetError::Io)?;
+        let document = std::str::from_utf8(&bytes).map_err(SfxIndexAssetError::Utf8)?;
+        scenario_yaml::from_str(document).map_err(SfxIndexAssetError::Yaml)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["yaml", "yml"]
+    }
+}
+
+#[derive(Debug)]
+enum SfxIndexAssetError {
+    Io(std::io::Error),
+    Utf8(std::str::Utf8Error),
+    Yaml(ScenarioYamlError),
+}
+
+impl fmt::Display for SfxIndexAssetError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => write!(formatter, "SFX index read failed: {error}"),
+            Self::Utf8(error) => write!(formatter, "SFX index is not UTF-8: {error}"),
+            Self::Yaml(error) => write!(formatter, "SFX index YAML is invalid: {error}"),
+        }
+    }
+}
+
+impl Error for SfxIndexAssetError {}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -573,7 +840,9 @@ mod tests {
     use super::*;
     use crate::{
         new_game::{NewGameScenario, build_new_game_state},
+        runtime_map::RuntimeMapId,
         scenario_manifest::Manifest,
+        scenario_map::MapMetadata,
         scenario_yaml,
     };
 
@@ -636,5 +905,84 @@ mod tests {
             .unwrap();
         let expected = RuntimeMember::try_from_catalog(source, &balance.progression).unwrap();
         assert_eq!(elise, &expected);
+    }
+
+    #[test]
+    fn source_forest_box_grants_once_and_reports_open_on_repeat() {
+        let manifest: Manifest = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/manifest.yaml"
+        ))
+        .unwrap();
+        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .unwrap();
+        let balance: BalanceData = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/balance.yaml"
+        ))
+        .unwrap();
+        let metadata: MapMetadata = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml"
+        ))
+        .unwrap();
+        let mut game = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+        let source = &metadata.item_boxes[0];
+        let item_box = WorldItemBox::for_test(
+            RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+            source.id.clone(),
+            source.position,
+            source.loot.clone(),
+        );
+
+        let first = open_item_box(&item_box, &mut game);
+        let second = open_item_box(&item_box, &mut game);
+
+        assert!(first.opened);
+        assert!(first.message.contains("potion ×2"));
+        assert!(first.message.contains("antidote ×1"));
+        assert_eq!(
+            second,
+            ItemBoxOutcome {
+                message: "This treasure box is already open.".to_owned(),
+                opened: false,
+            }
+        );
+        assert_eq!(game.repository().item_count("potion"), 2);
+        assert_eq!(game.repository().item_count("antidote"), 1);
+        assert_eq!(game.repository().item_count("mc_m"), 3);
+        assert_eq!(game.repository().item_count("mc_s"), 10);
+        assert!(game.opened_boxes().contains(&item_box.key()));
+        assert_eq!(game.opened_boxes().iter().count(), 1);
+    }
+
+    #[test]
+    fn required_interaction_sounds_resolve_through_source_index() {
+        let index: SfxIndex = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/audio/sfx_index.yaml"
+        ))
+        .unwrap();
+        let root = ScenarioRoot::default();
+
+        for sound in [
+            InteractionSound::Confirm,
+            InteractionSound::Blocked,
+            InteractionSound::Dialogue,
+            InteractionSound::Box,
+        ] {
+            let path = index.resolve_key(&root, sound.source_key()).unwrap();
+            assert!(path.starts_with("scenarios/rusted_kingdoms/assets/audio/sfx/"));
+            assert!(path.ends_with(".mp3"));
+        }
+        assert_eq!(InteractionSound::Dialogue.source_key(), "confirm");
+        assert_eq!(InteractionSound::Blocked.source_key(), "denied");
+        assert_eq!(InteractionSound::Box.source_key(), "use_item");
     }
 }

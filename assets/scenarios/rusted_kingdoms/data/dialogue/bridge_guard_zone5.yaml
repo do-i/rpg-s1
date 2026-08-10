@@ -1,0 +1,11 @@
+# data/dialogue/bridge_guard_zone5.yaml
+id: bridge_guard_zone5
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act2_started]
+      excludes: [boss_zone04_defeated]
+    lines:
+      - "The ruins to the south are crawling with the undead."
+      - "No one crosses this bridge until they're cleared out."

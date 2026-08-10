@@ -1,0 +1,71 @@
+# data/maps/world.yaml
+name: Starting Forest
+warp_order: 20
+bgm: zone.starting_forest
+
+enemy_spawn:
+  init: 3
+  max: 6
+  interval: 25.0
+
+transport:
+  sail:
+    unlock_flag: transport_sail_unlocked
+    origin: port_tile
+  fly:
+    unlock_flag: transport_fly_unlocked
+    origin: world_map_any
+  warp:
+    unlock_flag: transport_warp_unlocked
+    origin: world_map_any
+    destinations: visited_only
+
+npcs:
+  - id: bridge_guard_zone5
+    name: "Guardsman Pike"
+    type: gate
+    position: [4, 8]
+    dialogue: bridge_guard_zone5
+    sprite: assets/sprites/npc/knight_01.tsx
+    present:
+      excludes: [boss_zone04_defeated]
+
+  - id: stronghold_gate_guard
+
+    name: "Warden Malc"
+    type: gate
+    position: [28, 8]
+    dialogue: stronghold_gate_guard
+    sprite: assets/sprites/npc/knight_01.tsx
+    present:
+      excludes: [boss_zone09_defeated]
+
+item_boxes:
+  - id: forest_chest_01
+    position: [47, 30]
+    loot:
+      items:
+        - id: potion
+          qty: 2
+        - id: antidote
+          qty: 1
+      magic_cores:
+        - size: m
+          qty: 3
+        - size: s
+          qty: 10
+  - id: forest_chest_02
+    position: [28, 11]
+    loot:
+      items:
+        - id: potion
+          qty: 2
+  - id: forest_chest_03
+    position: [5, 25]
+    loot:
+      items:
+        - id: antidote
+          qty: 1
+      magic_cores:
+        - size: s
+          qty: 2

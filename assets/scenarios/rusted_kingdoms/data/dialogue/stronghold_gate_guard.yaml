@@ -1,0 +1,12 @@
+# data/dialogue/stronghold_gate_guard.yaml
+id: stronghold_gate_guard
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act4_started]
+      excludes: [boss_zone09_defeated]
+    lines:
+      - "The road ahead leads to the Final Stronghold."
+      - "Nothing comes back from there. Not until the Flame Dragon is dead."
+      - "Turn back."

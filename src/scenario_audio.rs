@@ -33,7 +33,7 @@ pub struct BgmIndex {
 /// Python's `SfxManager` looks up SFX by the unqualified event name. If a future source catalog
 /// repeats a name in a later category, its last occurrence wins, matching Python assignment
 /// order. Duplicate reporting belongs to M2.24.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Eq, PartialEq, TypePath)]
 pub struct SfxIndex {
     pub categories: Vec<AudioCategory>,
 }

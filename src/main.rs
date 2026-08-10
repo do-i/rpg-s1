@@ -52,6 +52,7 @@ mod world_actor;
 mod world_audio;
 mod world_dialogue;
 mod world_interaction;
+mod world_object;
 mod world_player;
 mod world_transition;
 
@@ -83,6 +84,7 @@ use ui_theme::UiTheme;
 use world_actor::WorldActorPlugin;
 use world_audio::WorldAudioPlugin;
 use world_interaction::WorldInteractionPlugin;
+use world_object::WorldObjectPlugin;
 use world_player::WorldPlayerPlugin;
 use world_transition::WorldTransitionPlugin;
 
@@ -136,6 +138,7 @@ fn run_game() {
         .add_plugins(IntroTransitionPlugin)
         .add_plugins(WorldAudioPlugin)
         .add_plugins(WorldActorPlugin)
+        .add_plugins(WorldObjectPlugin)
         .add_plugins(WorldTransitionPlugin)
         .add_plugins(WorldInteractionPlugin)
         .add_plugins(WorldPlayerPlugin)

@@ -17,9 +17,8 @@ use std::fmt;
 /// This composes the existing leaf types from M2.03 through M2.07 without duplicating their
 /// nested field schemas. It intentionally does not flatten the partial adapters: Serde flatten
 /// loses the parent segment of a missing nested field, which would make required-field errors
-/// report `cursor_icon` instead of `title.cursor_icon`. `signs` remains accepted for its future
-/// owning milestone; strict unknown-field rejection is added once every pinned field has an
-/// owner.
+/// report `cursor_icon` instead of `title.cursor_icon`. Strict unknown-field rejection is added
+/// once every pinned field has an owner.
 #[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 pub struct Manifest {
     #[serde(deserialize_with = "deserialize_string")]
@@ -39,6 +38,8 @@ pub struct Manifest {
     pub weapon_shop: ManifestServiceSprite,
     pub armor_shop: ManifestServiceSprite,
     pub item_box: ManifestServiceSprite,
+    #[serde(default)]
+    pub signs: ManifestSigns,
     pub protagonist: ManifestProtagonist,
     pub start: ManifestStart,
     #[serde(deserialize_with = "deserialize_strings")]
@@ -46,6 +47,14 @@ pub struct Manifest {
     #[serde(deserialize_with = "deserialize_strings")]
     pub engine_managed_flags: Vec<String>,
     pub refs: ManifestRefs,
+}
+
+/// Tile-profile used to discover readable message boards in every TMX map.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
+pub struct ManifestSigns {
+    #[serde(deserialize_with = "deserialize_string")]
+    pub tileset: String,
+    pub tile_ids: Vec<u32>,
 }
 
 /// The manifest fields that identify scenario content and label its game window.
