@@ -223,7 +223,7 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | M4.06 | [x] Resolve a global GID to tileset/local ID. | `S` | Typed metadata-backed external-tileset ranges resolve decoded non-empty GIDs to their source identity and zero-based local ID while retaining transform flags; tests cover adjacent start/end boundaries, empty and flag-only empty cells, gaps, unmapped IDs, unordered and overlapping bindings, and range overflow. |
 | M4.07 | [ ] Parse object groups and rectangles. | `T` | Portal objects retain id, name, bounds, and properties. |
 | M4.08 | [ ] Parse typed Tiled properties. | `T` | String, integer, float, and boolean values load. |
-| M4.09 | [ ] Parse TSX tile animation frames. | `S` | Aric's durations and tile IDs load unchanged. |
+| M4.09 | [x] Parse TSX tile animation frames. | `S` | Strict owned TSX animations retain owner tile IDs plus ordered, positive-duration frames; invented fixtures cover structural, attribute, duplicate, and range failures, while an opt-in pinned audit proves Aric's four eight-frame walks retain their exact consecutive tile IDs and 100 ms durations. |
 | M4.10 | [ ] Load tileset textures into atlases. | `S` | One external TSX renders its expected tile. |
 | M4.11 | [ ] Render one static tile layer. | `S` | Ardel ground appears at the correct coordinates. |
 | M4.12 | [ ] Render all visible Ardel layers in source order. | `S` | Ground, terrain, decoration, and top layers visually agree with Python. |

@@ -4,7 +4,7 @@
     not(test),
     expect(
         dead_code,
-        reason = "M4.03 establishes typed TSX metadata before later M4 atlas loading consumes it"
+        reason = "M4.03/M4.09 establish typed TSX metadata before later M4 atlas and animation systems consume it"
     )
 )]
 
@@ -22,6 +22,7 @@ pub(crate) struct TsxTilesetMetadata {
     columns: u32,
     tile_count: u32,
     image: TsxImageMetadata,
+    animations: Vec<TsxTileAnimation>,
 }
 
 impl TsxTilesetMetadata {
@@ -43,6 +44,44 @@ impl TsxTilesetMetadata {
 
     pub(crate) const fn image(&self) -> &TsxImageMetadata {
         &self.image
+    }
+
+    pub(crate) fn animations(&self) -> &[TsxTileAnimation] {
+        &self.animations
+    }
+}
+
+/// One tileset-local animation, attached to the tile identified by `tile_id`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TsxTileAnimation {
+    tile_id: u32,
+    frames: Vec<TsxAnimationFrame>,
+}
+
+impl TsxTileAnimation {
+    pub(crate) const fn tile_id(&self) -> u32 {
+        self.tile_id
+    }
+
+    pub(crate) fn frames(&self) -> &[TsxAnimationFrame] {
+        &self.frames
+    }
+}
+
+/// One ordered TSX animation frame using a tileset-local tile ID.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct TsxAnimationFrame {
+    tile_id: u32,
+    duration_ms: u32,
+}
+
+impl TsxAnimationFrame {
+    pub(crate) const fn tile_id(self) -> u32 {
+        self.tile_id
+    }
+
+    pub(crate) const fn duration_ms(self) -> u32 {
+        self.duration_ms
     }
 }
 
@@ -137,6 +176,8 @@ pub(crate) fn parse_tsx_tileset_metadata(
     }
 
     let mut image = None;
+    let mut animations = Vec::new();
+    let mut seen_tile_ids = HashSet::new();
     let mut depth = 1_u32;
     loop {
         let offset = reader.buffer_position();
@@ -156,6 +197,23 @@ pub(crate) fn parse_tsx_tileset_metadata(
                         offset,
                         "root-level `image` must be an empty element",
                     ));
+                }
+                if element.name().as_ref() == b"tile" && depth == 1 {
+                    let (tile_id, animation) =
+                        parse_tile(&mut reader, &element, offset, tile_count)?;
+                    if !seen_tile_ids.insert(tile_id) {
+                        return Err(TsxMetadataError::new(
+                            offset,
+                            format!("duplicate tile definition for id {tile_id}"),
+                        ));
+                    }
+                    if let Some(animation) = animation {
+                        animations.push(animation);
+                    }
+                    continue;
+                }
+                if matches!(element.name().as_ref(), b"animation" | b"frame") {
+                    return Err(animation_location_error(element.name().as_ref(), offset));
                 }
                 depth += 1;
             }
@@ -179,6 +237,24 @@ pub(crate) fn parse_tsx_tileset_metadata(
                     logical_tsx_path,
                 )?);
             }
+            Event::Empty(element) if element.name().as_ref() == b"tile" => {
+                if depth != 1 {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        "`tile` must be a direct child of `tileset`",
+                    ));
+                }
+                let tile_id = parse_tile_id(&reader, &element, offset, tile_count)?;
+                if !seen_tile_ids.insert(tile_id) {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        format!("duplicate tile definition for id {tile_id}"),
+                    ));
+                }
+            }
+            Event::Empty(element) if matches!(element.name().as_ref(), b"animation" | b"frame") => {
+                return Err(animation_location_error(element.name().as_ref(), offset));
+            }
             Event::Empty(_) => {}
             Event::End(_) if depth == 1 => {
                 require_document_end(&mut reader)?;
@@ -199,6 +275,7 @@ pub(crate) fn parse_tsx_tileset_metadata(
                     columns,
                     tile_count,
                     image,
+                    animations,
                 });
             }
             Event::End(_) => depth -= 1,
@@ -210,6 +287,217 @@ pub(crate) fn parse_tsx_tileset_metadata(
             }
             _ => {}
         }
+    }
+}
+
+fn parse_tile(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    tile_count: u32,
+) -> Result<(u32, Option<TsxTileAnimation>), TsxMetadataError> {
+    // Keep structural errors inside the tile more specific than an attribute
+    // error on the containing tile (for example, a nested atlas image).
+    let tile_id = parse_tile_id(reader, element, offset, tile_count);
+    let mut animation = None;
+    let mut depth = 1_u32;
+
+    loop {
+        let offset = reader.buffer_position();
+        match reader
+            .read_event()
+            .map_err(|error| TsxMetadataError::new(offset, format!("malformed XML: {error}")))?
+        {
+            Event::Start(element) if element.name().as_ref() == b"image" => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "`image` must be a direct child of `tileset`",
+                ));
+            }
+            Event::Start(element) if element.name().as_ref() == b"animation" => {
+                let tile_id = tile_id.clone()?;
+                if depth != 1 {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        "`animation` must be a direct child of `tile`",
+                    ));
+                }
+                if animation.is_some() {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        format!("tile {tile_id} has multiple `animation` elements"),
+                    ));
+                }
+                let frames = parse_animation(reader, &element, offset, tile_count)?;
+                animation = Some(TsxTileAnimation { tile_id, frames });
+            }
+            Event::Start(element) if element.name().as_ref() == b"frame" => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "`frame` must be a direct child of `animation`",
+                ));
+            }
+            Event::Start(_) => depth += 1,
+            Event::Empty(element) if element.name().as_ref() == b"image" => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "`image` must be a direct child of `tileset`",
+                ));
+            }
+            Event::Empty(element) if element.name().as_ref() == b"animation" => {
+                let tile_id = tile_id.clone()?;
+                if depth != 1 {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        "`animation` must be a direct child of `tile`",
+                    ));
+                }
+                return Err(TsxMetadataError::new(
+                    offset,
+                    format!("tile {tile_id} animation must contain at least one `frame`"),
+                ));
+            }
+            Event::Empty(element) if element.name().as_ref() == b"frame" => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "`frame` must be a direct child of `animation`",
+                ));
+            }
+            Event::Empty(_) => {}
+            Event::End(_) if depth == 1 => return Ok((tile_id?, animation)),
+            Event::End(_) => depth -= 1,
+            Event::Eof => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "unexpected end of XML before `tile` closed",
+                ));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn parse_tile_id(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    tile_count: u32,
+) -> Result<u32, TsxMetadataError> {
+    let attributes = collect_attributes(reader, element, offset)?;
+    reject_unknown_attributes(&attributes, &["id"], "tile", offset)?;
+    let tile_id = u32_attribute(&attributes, "id", offset)?;
+    if tile_id >= tile_count {
+        return Err(TsxMetadataError::new(
+            offset,
+            format!("tile id {tile_id} is outside tilecount {tile_count}"),
+        ));
+    }
+    Ok(tile_id)
+}
+
+fn parse_animation(
+    reader: &mut Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    tile_count: u32,
+) -> Result<Vec<TsxAnimationFrame>, TsxMetadataError> {
+    let attributes = collect_attributes(reader, element, offset)?;
+    reject_unknown_attributes(&attributes, &[], "animation", offset)?;
+    let mut frames = Vec::new();
+
+    loop {
+        let offset = reader.buffer_position();
+        match reader
+            .read_event()
+            .map_err(|error| TsxMetadataError::new(offset, format!("malformed XML: {error}")))?
+        {
+            Event::Empty(element) if element.name().as_ref() == b"frame" => {
+                frames.push(parse_animation_frame(reader, &element, offset, tile_count)?);
+            }
+            Event::Start(element) if element.name().as_ref() == b"frame" => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "animation `frame` must be an empty element",
+                ));
+            }
+            Event::Start(element) | Event::Empty(element) => {
+                let name = String::from_utf8_lossy(element.name().as_ref()).into_owned();
+                return Err(TsxMetadataError::new(
+                    offset,
+                    format!("unsupported `{name}` child in `animation`"),
+                ));
+            }
+            Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
+            Event::Comment(_) => {}
+            Event::End(_) => {
+                if frames.is_empty() {
+                    return Err(TsxMetadataError::new(
+                        offset,
+                        "animation must contain at least one `frame`",
+                    ));
+                }
+                return Ok(frames);
+            }
+            Event::Eof => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "unexpected end of XML before `animation` closed",
+                ));
+            }
+            _ => {
+                return Err(TsxMetadataError::new(
+                    offset,
+                    "animation may contain only empty `frame` elements",
+                ));
+            }
+        }
+    }
+}
+
+fn parse_animation_frame(
+    reader: &Reader<&[u8]>,
+    element: &quick_xml::events::BytesStart<'_>,
+    offset: u64,
+    tile_count: u32,
+) -> Result<TsxAnimationFrame, TsxMetadataError> {
+    let attributes = collect_attributes(reader, element, offset)?;
+    reject_unknown_attributes(&attributes, &["tileid", "duration"], "frame", offset)?;
+    let tile_id = u32_attribute(&attributes, "tileid", offset)?;
+    if tile_id >= tile_count {
+        return Err(TsxMetadataError::new(
+            offset,
+            format!("animation frame tileid {tile_id} is outside tilecount {tile_count}"),
+        ));
+    }
+    Ok(TsxAnimationFrame {
+        tile_id,
+        duration_ms: positive_u32(&attributes, "duration", offset)?,
+    })
+}
+
+fn reject_unknown_attributes(
+    attributes: &std::collections::BTreeMap<String, String>,
+    allowed: &[&str],
+    element: &str,
+    offset: u64,
+) -> Result<(), TsxMetadataError> {
+    if let Some(name) = attributes
+        .keys()
+        .find(|name| !allowed.contains(&name.as_str()))
+    {
+        return Err(TsxMetadataError::new(
+            offset,
+            format!("unsupported `{name}` attribute on `{element}`"),
+        ));
+    }
+    Ok(())
+}
+
+fn animation_location_error(name: &[u8], offset: u64) -> TsxMetadataError {
+    if name == b"animation" {
+        TsxMetadataError::new(offset, "`animation` must be a direct child of `tile`")
+    } else {
+        TsxMetadataError::new(offset, "`frame` must be a direct child of `animation`")
     }
 }
 
@@ -333,13 +621,7 @@ fn positive_u32(
     name: &str,
     offset: u64,
 ) -> Result<u32, TsxMetadataError> {
-    let value = required(attributes, name, offset)?;
-    let parsed = value.parse::<u32>().map_err(|_| {
-        TsxMetadataError::new(
-            offset,
-            format!("invalid `{name}` attribute `{value}`; expected u32"),
-        )
-    })?;
+    let parsed = u32_attribute(attributes, name, offset)?;
     if parsed == 0 {
         return Err(TsxMetadataError::new(
             offset,
@@ -347,6 +629,20 @@ fn positive_u32(
         ));
     }
     Ok(parsed)
+}
+
+fn u32_attribute(
+    attributes: &std::collections::BTreeMap<String, String>,
+    name: &str,
+    offset: u64,
+) -> Result<u32, TsxMetadataError> {
+    let value = required(attributes, name, offset)?;
+    value.parse::<u32>().map_err(|_| {
+        TsxMetadataError::new(
+            offset,
+            format!("invalid `{name}` attribute `{value}`; expected u32"),
+        )
+    })
 }
 
 fn validate_atlas_geometry(
@@ -401,6 +697,8 @@ mod tests {
     use crate::tmx_header::scan_tmx_external_tilesets_for_test;
 
     const VALID: &str = include_str!("../tests/fixtures/tsx-metadata/invented-atlas.tsx");
+    const VALID_ANIMATION: &str =
+        include_str!("../tests/fixtures/tsx-metadata/invented-animation.tsx");
 
     fn owner() -> ScenarioRelativePath {
         ScenarioRelativePath::try_from("assets/tilesets/ground/invented.tsx").unwrap()
@@ -420,6 +718,38 @@ mod tests {
         assert_eq!(
             (metadata.image().width(), metadata.image().height()),
             (100, 32)
+        );
+        assert!(metadata.animations().is_empty());
+    }
+
+    #[test]
+    fn retains_animation_owner_frame_order_tile_ids_and_durations() {
+        let metadata = parse_tsx_tileset_metadata(VALID_ANIMATION, &owner()).unwrap();
+        let animations = metadata.animations();
+        assert_eq!(
+            animations
+                .iter()
+                .map(TsxTileAnimation::tile_id)
+                .collect::<Vec<_>>(),
+            [0, 4]
+        );
+        assert_eq!(
+            animations[0]
+                .frames()
+                .iter()
+                .copied()
+                .map(|frame| (frame.tile_id(), frame.duration_ms()))
+                .collect::<Vec<_>>(),
+            [(1, 75), (2, 125), (3, 200)]
+        );
+        assert_eq!(
+            animations[1]
+                .frames()
+                .iter()
+                .copied()
+                .map(|frame| (frame.tile_id(), frame.duration_ms()))
+                .collect::<Vec<_>>(),
+            [(5, 40), (4, 60)]
         );
     }
 
@@ -497,6 +827,144 @@ mod tests {
             assert!(
                 parse_tsx_tileset_metadata(&xml, &owner()).is_err(),
                 "{source:?} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_animation_structure_attributes_ranges_and_durations() {
+        let cases = [
+            (
+                r#"<tile id="0"><animation/></tile>"#,
+                "tile 0 animation must contain at least one `frame`",
+            ),
+            (
+                r#"<tile id="0"><animation></animation></tile>"#,
+                "animation must contain at least one `frame`",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1" duration="1"></frame></animation></tile>"#,
+                "animation `frame` must be an empty element",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1"/></animation></tile>"#,
+                "missing required `duration` attribute",
+            ),
+            (
+                r#"<tile id="0"><animation><frame duration="1"/></animation></tile>"#,
+                "missing required `tileid` attribute",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1" duration="0"/></animation></tile>"#,
+                "invalid `duration` attribute `0`; expected positive u32",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1" duration="-1"/></animation></tile>"#,
+                "invalid `duration` attribute `-1`; expected u32",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="6" duration="1"/></animation></tile>"#,
+                "animation frame tileid 6 is outside tilecount 6",
+            ),
+            (
+                r#"<tile id="6"><animation><frame tileid="1" duration="1"/></animation></tile>"#,
+                "tile id 6 is outside tilecount 6",
+            ),
+            (
+                r#"<tile id="0"><animation loop="true"><frame tileid="1" duration="1"/></animation></tile>"#,
+                "unsupported `loop` attribute on `animation`",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1" duration="1" extra="no"/></animation></tile>"#,
+                "unsupported `extra` attribute on `frame`",
+            ),
+            (
+                r#"<tile id="0"><animation><properties/></animation></tile>"#,
+                "unsupported `properties` child in `animation`",
+            ),
+            (
+                r#"<tile id="0"><animation><frame tileid="1" duration="1"/></animation><animation><frame tileid="2" duration="1"/></animation></tile>"#,
+                "tile 0 has multiple `animation` elements",
+            ),
+        ];
+
+        for (tile, expected) in cases {
+            let xml = format!(
+                r#"<tileset tilewidth="16" tileheight="16" columns="3" tilecount="6"><image source="a.png" width="48" height="32"/>{tile}</tileset>"#
+            );
+            assert_eq!(
+                parse_tsx_tileset_metadata(&xml, &owner())
+                    .unwrap_err()
+                    .detail,
+                expected,
+                "fixture: {tile}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_duplicate_animation_owner_tiles_and_misplaced_animation_elements() {
+        for (tiles, expected) in [
+            (
+                r#"<tile id="0"/><tile id="0"><animation><frame tileid="1" duration="1"/></animation></tile>"#,
+                "duplicate tile definition for id 0",
+            ),
+            (
+                r#"<animation><frame tileid="1" duration="1"/></animation>"#,
+                "`animation` must be a direct child of `tile`",
+            ),
+            (
+                r#"<frame tileid="1" duration="1"/>"#,
+                "`frame` must be a direct child of `animation`",
+            ),
+            (
+                r#"<tile id="0"><properties><animation><frame tileid="1" duration="1"/></animation></properties></tile>"#,
+                "`animation` must be a direct child of `tile`",
+            ),
+        ] {
+            let xml = format!(
+                r#"<tileset tilewidth="16" tileheight="16" columns="3" tilecount="6"><image source="a.png" width="48" height="32"/>{tiles}</tileset>"#
+            );
+            assert_eq!(
+                parse_tsx_tileset_metadata(&xml, &owner())
+                    .unwrap_err()
+                    .detail,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "requires RPG_S1_PINNED_SCENARIO_DIR pointing at the pinned source scenario"]
+    fn audits_aric_animation_frames_from_pinned_scenario() {
+        let scenario_root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
+            .expect("RPG_S1_PINNED_SCENARIO_DIR must name the pinned rusted_kingdoms directory");
+        let logical =
+            ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx").unwrap();
+        let xml = fs::read_to_string(Path::new(&scenario_root).join(logical.as_str()))
+            .expect("Aric TSX should be readable");
+        let metadata = parse_tsx_tileset_metadata(&xml, &logical).unwrap();
+
+        assert_eq!(metadata.tile_count(), 36);
+        assert_eq!(metadata.animations().len(), 4);
+        for (animation, expected_owner) in metadata.animations().iter().zip([0_u32, 9, 18, 27]) {
+            assert_eq!(animation.tile_id(), expected_owner);
+            assert_eq!(animation.frames().len(), 8);
+            assert_eq!(
+                animation
+                    .frames()
+                    .iter()
+                    .copied()
+                    .map(TsxAnimationFrame::tile_id)
+                    .collect::<Vec<_>>(),
+                (expected_owner + 1..=expected_owner + 8).collect::<Vec<_>>()
+            );
+            assert!(
+                animation
+                    .frames()
+                    .iter()
+                    .copied()
+                    .all(|frame| frame.duration_ms() == 100)
             );
         }
     }
