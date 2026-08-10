@@ -1,0 +1,36 @@
+# data/dialogue/guide_ardel.yaml
+id: guide_ardel
+type: guide
+
+entries:
+  # Act 2 started — sailing unlocked, nothing left to guide here
+  - condition:
+      requires: [transport_sail_unlocked]
+      excludes: []
+    lines:
+      - "You've got your sea legs now. I've nothing left to teach you."
+
+  # Act 2 started, sail not yet unlocked — nudge toward Harborgate
+  - condition:
+      requires: [story_act2_started]
+      excludes: [transport_sail_unlocked]
+    lines:
+      - "If you're heading east, the roads only go so far."
+      - "Harborgate has a port master who owes me a favor. Tell him Ellen sent you."
+
+  # Zone 1 boss cleared, Act 2 not yet started — hint toward act2 trigger
+  - condition:
+      requires: [boss_zone01_defeated]
+      excludes: [story_act2_started]
+    lines:
+      - "The forest is quiet again. Whatever you did in there — it worked."
+      - "Millhaven is the next town east. Bigger, louder, and full of people who know things."
+
+  # Default — quest started, nothing done yet
+  - condition:
+      requires: [story_quest_started]
+      excludes: [boss_zone01_defeated]
+    lines:
+      - "New to Ardel? The forest to the north is where most trouble starts."
+      - "If you're looking for purpose — that's probably where you'll find it."
+      - "Don't stray too deep until you're ready."

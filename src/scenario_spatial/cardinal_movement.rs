@@ -16,6 +16,7 @@ use crate::{
     tile_coordinates::tmx_tile_center,
     tmx_ground_asset::TmxGroundAsset,
     world_actor::WorldNpc,
+    world_interaction::WorldInteractionState,
     world_player::{WorldPlayer, WorldPlayerAnimation},
     world_transition::WorldTransition,
 };
@@ -150,6 +151,7 @@ fn move_world_player(
     time: Option<Res<Time>>,
     collision: Res<ActiveMapCollision>,
     transition: Option<Res<WorldTransition>>,
+    interaction: Option<Res<WorldInteractionState>>,
     npcs: Query<&WorldNpc>,
     game: Option<ResMut<GameState>>,
     mut players: Query<(&mut Transform, &mut Sprite, &mut WorldPlayerAnimation), With<WorldPlayer>>,
@@ -168,6 +170,9 @@ fn move_world_player(
     if transition
         .as_deref()
         .is_some_and(WorldTransition::input_locked)
+        || interaction
+            .as_deref()
+            .is_some_and(WorldInteractionState::input_locked)
     {
         let tile_id = player_animation.update(None, delta_time);
         set_atlas_tile(&mut player_sprite, tile_id);

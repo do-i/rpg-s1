@@ -2,10 +2,10 @@
 //!
 //! The pinned `0897035` scenario contains 91 mapping-root dialogue files. One is a cutscene,
 //! 89 contain ordered conditional entries, and one is a reusable line pool. Conditional
-//! dialogue branches by selecting the first entry whose [`FlagConditions`] match; the source
-//! has no choice, node, `next`, or `end` fields. Speaker names and portraits likewise come from
-//! map NPC metadata rather than dialogue YAML, so authored line text is preserved here exactly
-//! as an ordered string list.
+//! dialogue branches by selecting the first entry whose [`FlagConditions`] match. The copied
+//! source corpus is linear; the optional node, choice, `next`, and terminal fields extend that
+//! wire format for the M5 runtime without changing any source-authored document. Speaker names
+//! and portraits still come from map NPC metadata.
 //!
 //! Entry documents may omit `id` (one pinned file does) and `type` (thirteen do). The line-pool
 //! utility also has no id. In those cases the containing filename stem is the effective id,
@@ -23,7 +23,7 @@ use crate::scenario_spatial::Position;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 
 /// One complete YAML document beneath `data/dialogue/`.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 #[serde(untagged)]
 pub enum DialogueDocument {
     Cutscene(CutsceneDialogue),
@@ -93,12 +93,37 @@ pub enum EntryDialogueKind {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DialogueEntry {
+    /// Optional graph-node identity. Node entries are reached by `next` or a choice target.
+    #[serde(default, deserialize_with = "deserialize_optional_string")]
+    pub node: Option<String>,
     #[serde(default)]
     pub condition: FlagConditions,
     #[serde(deserialize_with = "deserialize_strings")]
     pub lines: Vec<String>,
     #[serde(default)]
+    pub choices: Vec<DialogueChoice>,
+    #[serde(default, deserialize_with = "deserialize_optional_string")]
+    pub next: Option<String>,
+    #[serde(default)]
+    pub end: bool,
+    #[serde(default)]
     pub on_complete: DialogueActions,
+}
+
+/// One visible graph choice with independent visibility and enabled conditions.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DialogueChoice {
+    #[serde(deserialize_with = "deserialize_string")]
+    pub text: String,
+    #[serde(deserialize_with = "deserialize_string")]
+    pub target: String,
+    #[serde(default)]
+    pub condition: FlagConditions,
+    #[serde(default)]
+    pub enabled: FlagConditions,
+    #[serde(default)]
+    pub on_select: DialogueActions,
 }
 
 /// An id-less reusable list of authored lines.
@@ -118,6 +143,8 @@ pub struct DialogueLinePool {
 pub struct DialogueActions {
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub set_flag: Option<SetFlagAction>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub unset_flag: Option<SetFlagAction>,
     #[serde(default)]
     pub give_items: Vec<DialogueItemGrant>,
     #[serde(default, deserialize_with = "deserialize_optional_string")]
@@ -339,10 +366,52 @@ mod tests {
     }
 
     #[test]
+    fn loads_runtime_choice_nodes_disabled_conditions_and_unset_effects() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            r#"
+id: invented_graph
+type: npc
+entries:
+  - lines: ["Choose."]
+    choices:
+      - text: "Open road"
+        target: road
+        condition: { requires: [road_seen] }
+        enabled: { excludes: [road_blocked] }
+        on_select: { set_flag: choice_taken }
+      - text: "Locked road"
+        target: road
+        enabled: { requires: [never_set] }
+  - node: road
+    lines: ["The road opens."]
+    end: true
+    on_complete: { unset_flag: [road_seen, road_blocked] }
+"#,
+        )
+        .unwrap();
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("entry graph should select entry document");
+        };
+        assert_eq!(dialogue.entries[0].choices.len(), 2);
+        assert_eq!(dialogue.entries[0].choices[0].target, "road");
+        assert_eq!(dialogue.entries[1].node.as_deref(), Some("road"));
+        assert!(dialogue.entries[1].end);
+        assert_eq!(
+            dialogue.entries[1]
+                .on_complete
+                .unset_flag
+                .as_ref()
+                .unwrap()
+                .as_slice(),
+            ["road_seen", "road_blocked"]
+        );
+    }
+
+    #[test]
     fn rejects_unknown_graph_fields_nulls_coercions_and_invalid_action_variants() {
         for document in [
             "id: intro\ntype: cutscene\nlines: [hello]\nchoice: continue\n",
-            "id: npc\ntype: npc\nentries: [{ lines: [hello], next: goodbye }]\n",
+            "id: npc\ntype: npc\nentries: [{ lines: [hello], jump: goodbye }]\n",
             "id: npc\ntype: npc\nentries: [{ lines: [hello], speaker: Mira }]\n",
             "id: npc\ntype: npc\nentries: [{ lines: [hello], condition: null }]\n",
             "id: npc\ntype: npc\nentries: [{ lines: [hello], on_complete: null }]\n",

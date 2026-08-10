@@ -1,0 +1,7 @@
+# story_content/dialogue/guide_excuses.yaml
+# shared pool — one file reused by all guides
+lines:
+  - "Hmm, my memory is a bit foggy today..."
+  - "Ask me again later, I just woke up."
+  - "I would tell you, but where's the fun in that?"
+  - "Sorry, I'm off duty right now."

@@ -1,0 +1,34 @@
+# story_content/dialogue/elise_join.yaml
+id: elise_join
+type: npc
+entries:
+  - condition:
+      requires: [npc_elise_joined, boss_zone01_defeated]
+    lines:
+      - "The forest changed after the beast fell. Not healed. Listening."
+      - "If the elder knows why your flame answered it, we should ask before the trail goes cold."
+
+  - condition:
+      requires: [npc_elise_joined]
+    lines:
+      - "I packed bandages, salve, and the temple's oldest field prayer."
+      - "The sisters would call that too much. I call it a start."
+
+  - condition:
+      requires: [story_quest_started]
+      excludes: [npc_elise_joined]
+    lines:
+      - "Aric. I saw the flame last night near your father's forge."
+      - "I know you saw it too. Please don't pretend you didn't."
+      - "The forest is rusting from the inside, and the elder keeps looking at you like she knows why."
+      - "I can heal. I can read old shrine script. And I am done being protected from answers."
+      - "Please. Let me come."
+    on_complete:
+      set_flag: npc_elise_joined
+      join_party: elise
+
+  - condition:
+      excludes: [npc_elise_joined]
+    lines:
+      - "Morning, Aric. Tell your father the salve worked."
+      - "And tell him I was right about the dosage."

@@ -33,6 +33,10 @@ Scenario assets preserve their source-relative layout beneath
   the production new-game, intro, and initial-World path. These project-authored
   files remain blocked from public release pending an explicit redistribution
   grant; see the license inventory.
+- The M5 field-dialogue subset under `data/dialogue/` is an exact copy of the
+  source-authored Elise, Ardel NPC, elder, guide, and notice-board documents.
+  These text assets remain blocked from public release under the same pending
+  project-authored redistribution grant.
 - `scenarios/rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` is the
   manifest-selected copy of Philosopher under the SIL Open Font License 1.1;
   its exact source notice is preserved beside it as `Philosopher-OFL.txt`.

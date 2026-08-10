@@ -1,0 +1,46 @@
+# data/dialogue/elder_intro.yaml
+id: elder_intro
+type: npc
+
+entries:
+  # After reward given — acknowledge and hint forward
+  - condition:
+      requires: [npc_elder_reward_given]
+      excludes: []
+    lines:
+      - "The plains to the east have been unsettled lately."
+      - "If you're continuing your journey, tread carefully beyond the forest."
+
+  # Reward gate — boss defeated, reward not yet given
+  - condition:
+      requires: [boss_zone01_defeated]
+      excludes: [npc_elder_reward_given]
+    lines:
+      - "The forest breathes easier now. That creature had plagued us for years."
+      - "You have our gratitude, {protagonist}. Take this — you've earned it."
+    on_complete:
+      set_flag:
+        - npc_elder_reward_given
+        - story_act2_started
+      give_items:
+        - id: hi_potion
+          qty: 2
+        - id: tent
+          qty: 1
+
+  # After zone 1 cleared but before reward — should not normally trigger
+  # (same condition as reward entry without excludes — kept as safety fallback)
+  - condition:
+      requires: [boss_zone01_defeated]
+      excludes: []
+    lines:
+      - "You've done something remarkable today."
+
+  # Default — quest started, nothing done yet
+  - condition:
+      requires: [story_quest_started]
+      excludes: []
+    lines:
+      - "Welcome to Ardel, traveler. These are quiet lands — mostly."
+      - "The forest to the north has not always been so dark."
+      - "If you seek purpose, that darkness may be a good place to start."

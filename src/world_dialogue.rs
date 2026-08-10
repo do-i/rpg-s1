@@ -1,0 +1,403 @@
+//! Renderer-independent field dialogue resolution and progression.
+
+use std::{collections::BTreeSet, fmt};
+
+use crate::{
+    runtime_flags::RuntimeFlags,
+    scenario_dialogue::{DialogueActions, DialogueChoice, EntryDialogue},
+};
+
+const TYPEWRITER_CHARS_PER_SECOND: f32 = 60.0;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum DialoguePhase {
+    Typing,
+    Ready,
+    Choosing,
+    Closed,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ChoiceView {
+    source_index: usize,
+    text: String,
+    enabled: bool,
+}
+
+impl ChoiceView {
+    pub(crate) fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub(crate) const fn enabled(&self) -> bool {
+        self.enabled
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum DialogueEvent {
+    None,
+    Revealed,
+    Advanced,
+    Blocked,
+    Apply(Vec<DialogueActions>),
+    Cancelled,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct DialogueSession {
+    id: String,
+    speaker: Option<String>,
+    dialogue: EntryDialogue,
+    current: usize,
+    line: usize,
+    revealed_chars: usize,
+    phase: DialoguePhase,
+    choices: Vec<ChoiceView>,
+    selected_choice: usize,
+    completed_entries: BTreeSet<usize>,
+}
+
+impl DialogueSession {
+    pub(crate) fn resolve(
+        id: impl Into<String>,
+        speaker: Option<String>,
+        dialogue: EntryDialogue,
+        flags: &RuntimeFlags,
+    ) -> Result<Option<Self>, DialogueSessionError> {
+        validate_graph(&dialogue)?;
+        let Some(current) = dialogue
+            .entries
+            .iter()
+            .position(|entry| entry.node.is_none() && flags.satisfies(&entry.condition))
+        else {
+            return Ok(None);
+        };
+        let mut session = Self {
+            id: id.into(),
+            speaker,
+            dialogue,
+            current,
+            line: 0,
+            revealed_chars: 0,
+            phase: DialoguePhase::Typing,
+            choices: Vec::new(),
+            selected_choice: 0,
+            completed_entries: BTreeSet::new(),
+        };
+        session.prime(flags);
+        Ok(Some(session))
+    }
+
+    pub(crate) fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub(crate) fn speaker(&self) -> Option<&str> {
+        self.speaker.as_deref()
+    }
+
+    pub(crate) const fn phase(&self) -> DialoguePhase {
+        self.phase
+    }
+
+    pub(crate) fn current_line(&self) -> &str {
+        self.dialogue.entries[self.current]
+            .lines
+            .get(self.line)
+            .map(String::as_str)
+            .unwrap_or("")
+    }
+
+    pub(crate) fn visible_text(&self) -> String {
+        self.current_line()
+            .chars()
+            .take(self.revealed_chars)
+            .collect()
+    }
+
+    pub(crate) fn choices(&self) -> &[ChoiceView] {
+        &self.choices
+    }
+
+    pub(crate) const fn selected_choice(&self) -> usize {
+        self.selected_choice
+    }
+
+    pub(crate) fn tick(&mut self, delta_seconds: f32) {
+        if self.phase != DialoguePhase::Typing {
+            return;
+        }
+        let total = self.current_line().chars().count();
+        let additional = (TYPEWRITER_CHARS_PER_SECOND * delta_seconds.max(0.0)) as usize;
+        self.revealed_chars = self.revealed_chars.saturating_add(additional).min(total);
+        if self.revealed_chars == total {
+            self.phase = DialoguePhase::Ready;
+        }
+    }
+
+    pub(crate) fn confirm(&mut self, flags: &RuntimeFlags) -> DialogueEvent {
+        match self.phase {
+            DialoguePhase::Typing => {
+                self.revealed_chars = self.current_line().chars().count();
+                self.phase = DialoguePhase::Ready;
+                DialogueEvent::Revealed
+            }
+            DialoguePhase::Ready => {
+                if self.line + 1 < self.dialogue.entries[self.current].lines.len() {
+                    self.line += 1;
+                    self.revealed_chars = 0;
+                    self.phase = DialoguePhase::Typing;
+                    return DialogueEvent::Advanced;
+                }
+                if !self.dialogue.entries[self.current].choices.is_empty() {
+                    self.open_choices(flags);
+                    return DialogueEvent::Advanced;
+                }
+                self.finish_entry(None, flags)
+            }
+            DialoguePhase::Choosing => {
+                let Some(choice) = self.choices.get(self.selected_choice) else {
+                    return DialogueEvent::Blocked;
+                };
+                if !choice.enabled {
+                    return DialogueEvent::Blocked;
+                }
+                let choice =
+                    self.dialogue.entries[self.current].choices[choice.source_index].clone();
+                self.finish_entry(Some(choice), flags)
+            }
+            DialoguePhase::Closed => DialogueEvent::None,
+        }
+    }
+
+    pub(crate) fn move_choice(&mut self, delta: i32) -> bool {
+        if self.phase != DialoguePhase::Choosing || self.choices.is_empty() || delta == 0 {
+            return false;
+        }
+        let len = self.choices.len() as i32;
+        self.selected_choice = (self.selected_choice as i32 + delta).rem_euclid(len) as usize;
+        true
+    }
+
+    pub(crate) fn cancel(&mut self) -> DialogueEvent {
+        if self.phase == DialoguePhase::Closed {
+            return DialogueEvent::None;
+        }
+        self.phase = DialoguePhase::Closed;
+        DialogueEvent::Cancelled
+    }
+
+    fn prime(&mut self, flags: &RuntimeFlags) {
+        self.line = 0;
+        self.revealed_chars = 0;
+        self.choices.clear();
+        self.selected_choice = 0;
+        if self.dialogue.entries[self.current].lines.is_empty() {
+            self.open_choices(flags);
+        } else {
+            self.phase = DialoguePhase::Typing;
+        }
+    }
+
+    fn open_choices(&mut self, flags: &RuntimeFlags) {
+        self.choices = self.dialogue.entries[self.current]
+            .choices
+            .iter()
+            .enumerate()
+            .filter(|(_, choice)| flags.satisfies(&choice.condition))
+            .map(|(source_index, choice)| ChoiceView {
+                source_index,
+                text: choice.text.clone(),
+                enabled: flags.satisfies(&choice.enabled),
+            })
+            .collect();
+        self.selected_choice = 0;
+        self.phase = DialoguePhase::Choosing;
+    }
+
+    fn finish_entry(
+        &mut self,
+        choice: Option<DialogueChoice>,
+        flags: &RuntimeFlags,
+    ) -> DialogueEvent {
+        let entry = &self.dialogue.entries[self.current];
+        let mut actions = Vec::new();
+        if self.completed_entries.insert(self.current) {
+            actions.push(entry.on_complete.clone());
+        }
+        if let Some(choice) = choice.as_ref() {
+            actions.push(choice.on_select.clone());
+        }
+        let target = choice
+            .as_ref()
+            .map(|choice| choice.target.as_str())
+            .or(entry.next.as_deref());
+        if entry.end || target.is_none() {
+            self.phase = DialoguePhase::Closed;
+        } else {
+            self.current = self
+                .dialogue
+                .entries
+                .iter()
+                .position(|entry| entry.node.as_deref() == target)
+                .expect("validated graph target must exist");
+            self.prime(flags);
+        }
+        DialogueEvent::Apply(actions)
+    }
+}
+
+pub(crate) fn apply_flag_actions(actions: &DialogueActions, flags: &mut RuntimeFlags) {
+    if let Some(set) = actions.set_flag.as_ref() {
+        for flag in set.as_slice() {
+            flags.set(flag.clone());
+        }
+    }
+    if let Some(unset) = actions.unset_flag.as_ref() {
+        for flag in unset.as_slice() {
+            flags.unset(flag);
+        }
+    }
+}
+
+fn validate_graph(dialogue: &EntryDialogue) -> Result<(), DialogueSessionError> {
+    let mut nodes = BTreeSet::new();
+    for entry in &dialogue.entries {
+        if let Some(node) = entry.node.as_ref()
+            && !nodes.insert(node.as_str())
+        {
+            return Err(DialogueSessionError::DuplicateNode(node.clone()));
+        }
+    }
+    for entry in &dialogue.entries {
+        for target in entry
+            .next
+            .iter()
+            .map(String::as_str)
+            .chain(entry.choices.iter().map(|choice| choice.target.as_str()))
+        {
+            if !nodes.contains(target) {
+                return Err(DialogueSessionError::MissingNode(target.to_owned()));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum DialogueSessionError {
+    DuplicateNode(String),
+    MissingNode(String),
+}
+
+impl fmt::Display for DialogueSessionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DuplicateNode(node) => write!(formatter, "dialogue has duplicate node `{node}`"),
+            Self::MissingNode(node) => write!(formatter, "dialogue targets missing node `{node}`"),
+        }
+    }
+}
+
+impl std::error::Error for DialogueSessionError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{scenario_dialogue::DialogueDocument, scenario_yaml};
+
+    fn dialogue(yaml: &str) -> EntryDialogue {
+        let DialogueDocument::Entries(dialogue) = scenario_yaml::from_str(yaml).unwrap() else {
+            panic!("expected entry dialogue");
+        };
+        dialogue
+    }
+
+    #[test]
+    fn confirm_completes_typewriter_before_advancing_linear_lines() {
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve(
+            "linear",
+            Some("Maeve".into()),
+            dialogue("id: linear\ntype: npc\nentries:\n  - lines: [First, Second]\n"),
+            &flags,
+        )
+        .unwrap()
+        .unwrap();
+        session.tick(0.02);
+        assert_eq!(session.visible_text(), "F");
+        assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
+        assert_eq!(session.visible_text(), "First");
+        assert_eq!(session.confirm(&flags), DialogueEvent::Advanced);
+        assert_eq!(session.current_line(), "Second");
+        assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
+        assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
+        assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    #[test]
+    fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
+        let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
+        let graph = dialogue(
+            r#"id: graph
+type: npc
+entries:
+  - lines: [Choose]
+    choices:
+      - { text: Hidden, target: end, condition: { requires: [hidden] } }
+      - { text: Disabled, target: end, enabled: { excludes: [blocked] } }
+      - { text: Open, target: end, condition: { requires: [show_open] }, on_select: { set_flag: chose_open } }
+  - node: end
+    lines: [Done]
+    end: true
+"#,
+        );
+        let mut session = DialogueSession::resolve("graph", None, graph, &flags)
+            .unwrap()
+            .unwrap();
+        session.confirm(&flags);
+        session.confirm(&flags);
+        assert_eq!(session.phase(), DialoguePhase::Choosing);
+        assert_eq!(session.choices().len(), 2);
+        assert_eq!(session.choices()[0].text(), "Disabled");
+        assert!(!session.choices()[0].enabled());
+        assert_eq!(session.confirm(&flags), DialogueEvent::Blocked);
+        assert!(session.move_choice(1));
+        let DialogueEvent::Apply(actions) = session.confirm(&flags) else {
+            panic!("enabled choice should apply and jump");
+        };
+        assert_eq!(actions.len(), 2);
+        assert_eq!(session.current_line(), "Done");
+        session.confirm(&flags);
+        assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
+        assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    #[test]
+    fn flag_set_and_unset_effects_are_idempotent() {
+        let actions: DialogueActions =
+            scenario_yaml::from_str("set_flag: [kept, new]\nunset_flag: [old, absent]\n").unwrap();
+        let mut flags = RuntimeFlags::from_bootstrap(["kept", "old"]);
+        apply_flag_actions(&actions, &mut flags);
+        apply_flag_actions(&actions, &mut flags);
+        assert_eq!(flags.iter().collect::<Vec<_>>(), ["kept", "new"]);
+    }
+
+    #[test]
+    fn invalid_duplicate_and_missing_graph_targets_fail_before_session_start() {
+        let flags = RuntimeFlags::default();
+        let duplicate = dialogue(
+            "entries:\n  - { lines: [Start], next: same }\n  - { node: same, lines: [A] }\n  - { node: same, lines: [B] }\n",
+        );
+        assert_eq!(
+            DialogueSession::resolve("bad", None, duplicate, &flags).unwrap_err(),
+            DialogueSessionError::DuplicateNode("same".into())
+        );
+        let missing = dialogue("entries:\n  - { lines: [Start], next: nowhere }\n");
+        assert_eq!(
+            DialogueSession::resolve("bad", None, missing, &flags).unwrap_err(),
+            DialogueSessionError::MissingNode("nowhere".into())
+        );
+    }
+}

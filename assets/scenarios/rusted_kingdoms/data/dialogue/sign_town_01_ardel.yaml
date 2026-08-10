@@ -1,0 +1,10 @@
+# data/dialogue/sign_town_01_ardel.yaml
+#
+# Message board for Ardel Village. Read from the sign tiles painted on the map.
+id: sign_town_01_ardel
+type: board
+entries:
+  - lines:
+      - "Notice Board — Ardel Village"
+      - "A quiet farming town at the forest's edge. Mind the old well to the north — past it, the grass turns grey."
+      - "The shrine still smells of ash. Bram the smith always has work for steady hands."

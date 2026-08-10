@@ -1,0 +1,61 @@
+# data/dialogue/ardel_fisherman.yaml
+#
+# Flavor NPC: an old fisherman by Ardel's stream. Lines shift with the story.
+#
+# Sub-quest giver: Old Marn the fisherman. The fish are dying and he wants
+# the shrine keeper (ardel_shrine_keeper) to speak the old water-blessing
+# over the stream, but the two haven't traded a word in forty years.
+# Relay between them. Reward: 2 Lure Charms.
+id: ardel_fisherman
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_stream_done]
+    lines:
+      - "The keeper came down at dusk, just as he said. Spoke the words over the water."
+      - "Fish are still dying. But a man fishes better with his heart settled, and mine is."
+
+  # Keeper agreed — reward
+  - condition:
+      requires: [sq_stream_relayed]
+      excludes: [sq_stream_done]
+    lines:
+      - "He'll come? Forty years of silence between us, and he'll come."
+      - "Take these. Hand-tied lures — nothing in the water or out of it can resist them."
+      - "Mind what they draw, though. A lure doesn't ask what's biting."
+    on_complete:
+      set_flag: sq_stream_done
+      give_items:
+        - id: lure_charm
+          qty: 2
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_stream_started]
+      excludes: [sq_stream_relayed]
+    lines:
+      - "The keeper's up at the burnt shrine. Ask him if the water-blessing still holds."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_stream_started]
+    lines:
+      - "The fish swim belly-up some mornings now. The rot's in the water, not just the trees."
+      - "There's an old blessing for the stream. The shrine keeper's the last who remembers the words."
+      - "I'd ask him myself, but him and me haven't spoken in forty years. Would you go?"
+    on_complete:
+      set_flag: sq_stream_started
+
+  - condition:
+      requires: [boss_zone01_defeated]
+    lines:
+      - "Fish came back to the stream the day the beast fell. Coincidence, they tell me."
+      - "I've fished forty years. There's no such thing as coincidence in this water."
+
+  - condition:
+      requires: [story_quest_started]
+    lines:
+      - "The fish swim belly-up some mornings now. The rot's in the water, not just the trees."
+      - "Whatever you're planning, lad, plan it quick."

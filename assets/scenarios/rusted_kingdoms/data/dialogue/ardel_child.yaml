@@ -1,0 +1,16 @@
+# data/dialogue/ardel_child.yaml
+#
+# Flavor NPC: a village child in Ardel.
+id: ardel_child
+type: npc
+
+entries:
+  - condition:
+      requires: [npc_elise_joined]
+    lines:
+      - "Elise went with YOU? But she always says the forest eats people!"
+      - "...Bring her back, okay? She tells the best stories."
+
+  - lines:
+      - "Mama says don't go past the well. The well's where the grass turns grey."
+      - "Did you see it turn grey? I saw it. I'm not making it up."

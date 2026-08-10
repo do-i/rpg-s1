@@ -1,0 +1,46 @@
+# data/dialogue/ardel_smith.yaml
+#
+# Sub-quest giver: Bram the blacksmith of Ardel. A short in-town errand —
+# his apprentice Tomas (ardel_apprentice) is holding Bram's good whetstone.
+# Relay between the two and Bram sharpens your gear, with potions as thanks.
+id: ardel_smith
+type: npc
+
+entries:
+  # Quest complete — repeatable thanks
+  - condition:
+      requires: [sq_smith_done]
+    lines:
+      - "An edge like that'll last you to Millhaven and back."
+      - "You ever need steel seen to, my forge is yours."
+
+  # Tomas relayed — hand over reward
+  - condition:
+      requires: [sq_smith_relayed]
+      excludes: [sq_smith_done]
+    lines:
+      - "Ha! So the boy DID still have it. Knew it."
+      - "Here — fresh edge on every blade you carry, and a few potions for the road."
+    on_complete:
+      set_flag: sq_smith_done
+      give_items:
+        - id: potion
+          qty: 3
+
+  # Quest started, not yet relayed — nudge
+  - condition:
+      requires: [sq_smith_started]
+      excludes: [sq_smith_relayed]
+    lines:
+      - "Tomas wandered off with my good whetstone again."
+      - "Catch him before he loses it in the long grass, would you?"
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_smith_started]
+    lines:
+      - "Off to the forest, are you? Not with a dull blade you're not."
+      - "My whetstone's with my apprentice, Tomas — over by the east wall."
+      - "Fetch it back and I'll put a proper edge on your steel."
+    on_complete:
+      set_flag: sq_smith_started

@@ -1,0 +1,28 @@
+# data/dialogue/ardel_apprentice.yaml
+#
+# Tomas, Bram's apprentice. Holds the whetstone for the ardel_smith errand.
+id: ardel_apprentice
+type: npc
+
+entries:
+  # After relaying — flavor
+  - condition:
+      requires: [sq_smith_relayed]
+    lines:
+      - "Tell Bram the new grind angle works. He'll grumble. He always grumbles."
+
+  # Quest active — hand over the whetstone
+  - condition:
+      requires: [sq_smith_started]
+      excludes: [sq_smith_relayed]
+    lines:
+      - "The whetstone? Oh — right, this old thing."
+      - "Tell Bram I wasn't losing it, I was... testing the grass for damp."
+    on_complete:
+      set_flag: sq_smith_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_smith_started]
+    lines:
+      - "Bram works me like a forge bellows. Don't tell him I said that."
