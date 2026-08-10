@@ -15,10 +15,12 @@ use bevy::{
         Asset, AssetApp, AssetLoader, AssetPath, AssetServer, Assets, Handle, LoadContext,
         LoadState, io::Reader,
     },
+    ecs::schedule::ApplyDeferred,
     ecs::{bundle::Bundle, component::Component},
     prelude::{
         App, Commands, Entity, FromWorld, IntoScheduleConfigs, OnEnter, OnExit, Plugin, PostUpdate,
-        Query, Res, ResMut, Resource, Sprite, Transform, Update, Vec2, Vec3, With, World, in_state,
+        Quat, Query, Res, ResMut, Resource, Sprite, Transform, Update, Vec2, Vec3, With, World,
+        in_state,
     },
     reflect::TypePath,
 };
@@ -60,7 +62,12 @@ impl Plugin for TmxGroundAssetPlugin {
             .init_asset_loader::<TmxGroundAssetLoader>()
             .init_resource::<StaticMapRenderState>()
             .add_systems(OnEnter(AppState::World), begin_static_map_load)
-            .add_systems(Update, spawn_static_map.run_if(in_state(AppState::World)))
+            .add_systems(
+                Update,
+                (sync_static_map_request, ApplyDeferred, spawn_static_map)
+                    .chain()
+                    .run_if(in_state(AppState::World)),
+            )
             .add_systems(
                 PostUpdate,
                 follow_map_camera.run_if(in_state(AppState::World)),
@@ -70,7 +77,7 @@ impl Plugin for TmxGroundAssetPlugin {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum StaticMapRenderStatus {
+pub(crate) enum StaticMapRenderStatus {
     #[default]
     Idle,
     Loading,
@@ -80,9 +87,20 @@ enum StaticMapRenderStatus {
 
 /// Strong handle and publication state for the active World's static map.
 #[derive(Debug, Default, Resource)]
-struct StaticMapRenderState {
+pub(crate) struct StaticMapRenderState {
+    map_id: Option<String>,
     handle: Option<Handle<TmxGroundAsset>>,
     status: StaticMapRenderStatus,
+}
+
+impl StaticMapRenderState {
+    pub(crate) fn map<'a>(&self, maps: &'a Assets<TmxGroundAsset>) -> Option<&'a TmxGroundAsset> {
+        maps.get(self.handle.as_ref()?)
+    }
+
+    pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
+        self.map_id.as_deref() == Some(map_id) && self.status == StaticMapRenderStatus::Spawned
+    }
 }
 
 /// A parsed TMX document with the atlases used by visible tile layers requested from Bevy.
@@ -172,16 +190,6 @@ impl TmxGroundAsset {
                     else {
                         continue;
                     };
-                    if resolved.gid().flip_horizontally()
-                        || resolved.gid().flip_vertically()
-                        || resolved.gid().flip_diagonally()
-                    {
-                        return Err(StaticLayerBuildError::TransformedVisibleTile {
-                            layer_id: layer.id(),
-                            column,
-                            row,
-                        });
-                    }
                     let dependency_index = self
                         .atlas_reference_indices
                         .iter()
@@ -197,9 +205,10 @@ impl TmxGroundAsset {
                             self.atlas_reference_indices[dependency_index],
                         ),
                     )?;
-                    let sprite = atlas
+                    let mut sprite = atlas
                         .sprite_for_tile(resolved.local_id())
                         .map_err(StaticLayerBuildError::AtlasTile)?;
+                    let rotation = apply_tiled_transform(&mut sprite, resolved.gid());
                     let center =
                         tmx_tile_center(column, row, header.tile_width(), header.tile_height());
                     let z = static_tile_z(layer.name(), layer_index, row, header.tile_height());
@@ -213,7 +222,11 @@ impl TmxGroundAsset {
                             local_id: resolved.local_id(),
                         },
                         sprite,
-                        transform: Transform::from_translation(Vec3::new(center.x, center.y, z)),
+                        transform: Transform {
+                            translation: Vec3::new(center.x, center.y, z),
+                            rotation,
+                            ..Default::default()
+                        },
                     });
                 }
             }
@@ -289,6 +302,32 @@ fn static_tile_z(layer_name: &str, layer_index: usize, row: u32, tile_height: u3
     Y_SORT_Z_BASE + screen_bottom * Y_SORT_Z_PER_PIXEL + layer_index as f32 * Y_SORT_SOURCE_TIE
 }
 
+fn apply_tiled_transform(sprite: &mut Sprite, gid: crate::tmx_header::TmxTileGid) -> Quat {
+    let horizontal = gid.flip_horizontally();
+    let vertical = gid.flip_vertically();
+    if !gid.flip_diagonally() {
+        sprite.flip_x = horizontal;
+        sprite.flip_y = vertical;
+        return Quat::IDENTITY;
+    }
+
+    // Tiled applies the anti-diagonal reflection before its horizontal and vertical flags.
+    // Square orthogonal tiles can represent all eight combinations with one quarter turn plus
+    // Bevy's two sprite reflections.
+    match (horizontal, vertical) {
+        (false, false) => {
+            sprite.flip_y = true;
+            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+        }
+        (true, false) => Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+        (false, true) => Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2),
+        (true, true) => {
+            sprite.flip_x = true;
+            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+        }
+    }
+}
+
 fn begin_static_map_load(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
@@ -309,6 +348,45 @@ fn begin_static_map_load(
         state.status = StaticMapRenderStatus::Failed;
         return;
     };
+    state.map_id = Some(map_id.to_owned());
+    state.handle = Some(asset_server.load(scenario_root.resolve(&logical)));
+    state.status = StaticMapRenderStatus::Loading;
+}
+
+fn sync_static_map_request(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    game: Option<Res<GameState>>,
+    tiles: Query<Entity, With<StaticMapTile>>,
+    cameras: Query<Entity, With<WorldMapCamera>>,
+    mut state: ResMut<StaticMapRenderState>,
+) {
+    let current = game
+        .as_deref()
+        .and_then(|game| game.map().current())
+        .map(|map| map.as_str());
+    if current == state.map_id.as_deref() {
+        return;
+    }
+
+    for entity in &tiles {
+        commands.entity(entity).despawn();
+    }
+    for entity in &cameras {
+        commands.entity(entity).despawn();
+    }
+    *state = StaticMapRenderState::default();
+    let Some(map_id) = current else {
+        state.status = StaticMapRenderStatus::Failed;
+        return;
+    };
+    let logical = format!("assets/maps/{map_id}.tmx");
+    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+        state.status = StaticMapRenderStatus::Failed;
+        return;
+    };
+    state.map_id = Some(map_id.to_owned());
     state.handle = Some(asset_server.load(scenario_root.resolve(&logical)));
     state.status = StaticMapRenderStatus::Loading;
 }
@@ -567,11 +645,6 @@ pub(crate) enum StaticLayerBuildError {
     AtlasNotLoaded(usize),
     GidResolution(TmxGidResolutionError),
     AtlasTile(TsxAtlasTileError),
-    TransformedVisibleTile {
-        layer_id: u32,
-        column: u32,
-        row: u32,
-    },
 }
 
 impl fmt::Display for StaticLayerBuildError {
@@ -582,14 +655,6 @@ impl fmt::Display for StaticLayerBuildError {
             }
             Self::GidResolution(error) => write!(formatter, "visible GID is invalid: {error}"),
             Self::AtlasTile(error) => write!(formatter, "visible atlas tile is invalid: {error}"),
-            Self::TransformedVisibleTile {
-                layer_id,
-                column,
-                row,
-            } => write!(
-                formatter,
-                "transformed visible tile in layer {layer_id} at ({column}, {row}) is unsupported"
-            ),
         }
     }
 }
@@ -599,7 +664,7 @@ impl Error for StaticLayerBuildError {
         match self {
             Self::GidResolution(error) => Some(error),
             Self::AtlasTile(error) => Some(error),
-            Self::AtlasNotLoaded(_) | Self::TransformedVisibleTile { .. } => None,
+            Self::AtlasNotLoaded(_) => None,
         }
     }
 }
@@ -651,11 +716,11 @@ mod tests {
         app
     }
 
-    fn load_ardel(app: &mut App) -> Handle<TmxGroundAsset> {
+    fn load_map(app: &mut App, relative: &str) -> Handle<TmxGroundAsset> {
         let handle = app
             .world()
             .resource::<AssetServer>()
-            .load(format!("scenarios/rusted_kingdoms/{ARDEL_TMX_PATH}"));
+            .load(format!("scenarios/rusted_kingdoms/{relative}"));
         for _ in 0..2_000 {
             app.update();
             let server = app.world().resource::<AssetServer>();
@@ -663,16 +728,51 @@ mod tests {
                 return handle;
             }
             if let LoadState::Failed(error) = server.load_state(handle.id()) {
-                panic!("Ardel ground load failed: {error}");
+                panic!("map load failed for {relative}: {error}");
             }
             std::thread::yield_now();
         }
         let server = app.world().resource::<AssetServer>();
         panic!(
-            "Ardel ground dependencies did not load: root={:?}, recursive={:?}",
+            "map dependencies did not load for {relative}: root={:?}, recursive={:?}",
             server.load_state(handle.id()),
             server.recursive_dependency_load_state(handle.id())
         );
+    }
+
+    fn load_ardel(app: &mut App) -> Handle<TmxGroundAsset> {
+        load_map(app, ARDEL_TMX_PATH)
+    }
+
+    #[test]
+    fn ardel_house_loads_all_visible_dependencies_and_applies_tiled_transforms() {
+        let mut app = ground_app();
+        let handle = load_map(&mut app, "assets/maps/town_01_ardel_house_01.tmx");
+        let maps = app.world().resource::<Assets<TmxGroundAsset>>();
+        let map = maps.get(&handle).unwrap();
+        assert_eq!(
+            (
+                map.document().header().width(),
+                map.document().header().height()
+            ),
+            (25, 13)
+        );
+        assert_eq!(map.atlas_handles().len(), 4);
+        let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
+        let bundles = map.visible_bundles(atlases).unwrap();
+        let transformed = bundles
+            .iter()
+            .find(|bundle| {
+                bundle.tile.layer_id() == 3 && bundle.tile.column() == 18 && bundle.tile.row() == 3
+            })
+            .expect("source H+D transformed floor tile should render");
+        assert_eq!(transformed.tile.global_id(), 221);
+        assert_eq!(
+            transformed.transform.rotation,
+            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+        );
+        assert!(!transformed.sprite.flip_x);
+        assert!(!transformed.sprite.flip_y);
     }
 
     #[test]
@@ -800,6 +900,7 @@ mod tests {
             expected_count
         };
         *app.world_mut().resource_mut::<StaticMapRenderState>() = StaticMapRenderState {
+            map_id: Some("town_01_ardel".to_owned()),
             handle: Some(map_handle),
             status: StaticMapRenderStatus::Loading,
         };
@@ -905,16 +1006,32 @@ mod tests {
             Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/scenarios/rusted_kingdoms");
         for relative in [
             "assets/maps/town_01_ardel.tmx",
+            "assets/maps/town_01_ardel_house_01.tmx",
             "assets/tilesets/grass_cave_walls_24x14.tsx",
             "assets/tilesets/grass_cave_walls_24x14.png",
             "assets/tilesets/icon_table_stage_14x9.tsx",
             "assets/tilesets/icon_table_stage_14x9.png",
             "assets/tilesets/astralpixels/finestre.tsx",
             "assets/tilesets/astralpixels/finestre.png",
+            "assets/tilesets/astralpixels/muro_tileset_wall.tsx",
+            "assets/tilesets/astralpixels/muro_tileset.png",
+            "assets/tilesets/astralpixels/cucina.tsx",
+            "assets/tilesets/astralpixels/cucina.png",
+            "assets/tilesets/astralpixels/mensole.tsx",
+            "assets/tilesets/astralpixels/mensole.png",
+            "assets/tilesets/astralpixels/terreno.tsx",
+            "assets/tilesets/astralpixels/terreno.png",
+            "assets/tilesets/astralpixels/mobili.tsx",
+            "assets/tilesets/astralpixels/mobili.png",
+            "assets/tilesets/astralpixels/altro.tsx",
+            "assets/tilesets/astralpixels/altro.png",
+            "assets/tilesets/astralpixels/scale.tsx",
+            "assets/tilesets/astralpixels/scale.png",
             "assets/tilesets/astralpixels/credit.txt",
             "assets/tilesets/ground/terrain-v7.tsx",
             "assets/tilesets/ground/terrain-v7.png",
             "assets/tilesets/ground/CREDITS-terrain.txt",
+            "data/maps/town_01_ardel_house_01.yaml",
         ] {
             assert_eq!(
                 fs::read(Path::new(&source_root).join(relative)).unwrap(),

@@ -8,6 +8,7 @@ use std::{error::Error, fmt, time::Duration};
 
 use bevy::{
     asset::{AssetServer, Assets, Handle, LoadState},
+    ecs::schedule::ApplyDeferred,
     prelude::*,
 };
 
@@ -31,7 +32,12 @@ impl Plugin for WorldPlayerPlugin {
         app.init_resource::<WorldPlayerSpawnState>()
             .add_plugins(crate::scenario_spatial::cardinal_movement::CardinalMovementPlugin)
             .add_systems(OnEnter(AppState::World), begin_world_player_load)
-            .add_systems(Update, spawn_world_player.run_if(in_state(AppState::World)))
+            .add_systems(
+                Update,
+                (sync_world_player_map, ApplyDeferred, spawn_world_player)
+                    .chain()
+                    .run_if(in_state(AppState::World)),
+            )
             .add_systems(
                 PostUpdate,
                 update_world_player_y_order.run_if(in_state(AppState::World)),
@@ -134,6 +140,7 @@ pub(crate) enum WorldPlayerSpawnStatus {
 #[derive(Debug, Resource)]
 pub(crate) struct WorldPlayerSpawnState {
     atlas: Option<Handle<TsxAtlasAsset>>,
+    map_id: Option<String>,
     status: WorldPlayerSpawnStatus,
     failure: Option<WorldPlayerSpawnFailure>,
 }
@@ -142,6 +149,7 @@ impl Default for WorldPlayerSpawnState {
     fn default() -> Self {
         Self {
             atlas: None,
+            map_id: None,
             status: WorldPlayerSpawnStatus::Idle,
             failure: None,
         }
@@ -162,6 +170,10 @@ impl WorldPlayerSpawnState {
 
     pub(crate) const fn failure(&self) -> Option<&WorldPlayerSpawnFailure> {
         self.failure.as_ref()
+    }
+
+    pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
+        self.map_id.as_deref() == Some(map_id) && self.status == WorldPlayerSpawnStatus::Spawned
     }
 }
 
@@ -201,15 +213,45 @@ impl Error for WorldPlayerSpawnFailure {}
 fn begin_world_player_load(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    game: Option<Res<GameState>>,
     mut state: ResMut<WorldPlayerSpawnState>,
 ) {
     let logical = ScenarioRelativePath::try_from(ARIC_TSX_PATH)
         .expect("the canonical Aric TSX path must remain scenario-relative");
     *state = WorldPlayerSpawnState {
         atlas: Some(asset_server.load(scenario_root.resolve(&logical))),
+        map_id: game
+            .as_deref()
+            .and_then(|game| game.map().current())
+            .map(|map| map.as_str().to_owned()),
         status: WorldPlayerSpawnStatus::Loading,
         failure: None,
     };
+}
+
+fn sync_world_player_map(
+    mut commands: Commands,
+    game: Option<Res<GameState>>,
+    players: Query<Entity, With<WorldPlayer>>,
+    mut state: ResMut<WorldPlayerSpawnState>,
+) {
+    let current = game
+        .as_deref()
+        .and_then(|game| game.map().current())
+        .map(|map| map.as_str());
+    if current == state.map_id.as_deref() {
+        return;
+    }
+    for entity in &players {
+        commands.entity(entity).despawn();
+    }
+    state.map_id = current.map(str::to_owned);
+    state.status = if current.is_some() {
+        WorldPlayerSpawnStatus::Loading
+    } else {
+        WorldPlayerSpawnStatus::WaitingForGame
+    };
+    state.failure = None;
 }
 
 fn spawn_world_player(

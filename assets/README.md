@@ -57,6 +57,13 @@ Scenario assets preserve their source-relative layout beneath
   the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, Astral Pixels
   `finestre`, and `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas
   references are intentionally not runtime rendering dependencies.
+- `scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` and its
+  same-stem map metadata provide the Gate 5 reversible interior. Its eight
+  visible Astral Pixels TSX/PNG pairs preserve the source-relative layout and
+  the existing `astralpixels/credit.txt` source notice. As with `finestre`, the
+  notice identifies a plausible asset page but does not prove the exact files'
+  acquisition or redistribution terms, so these parity copies remain blocked
+  from public release.
 - `scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`
   preserves the complete LPC terrain attribution. The terrain atlas is
   distributed under CC BY-SA 3.0 with that notice. The byte-identical TMX

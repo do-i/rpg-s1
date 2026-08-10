@@ -2,13 +2,20 @@
 
 use std::{collections::BTreeSet, fmt};
 
-use bevy::prelude::*;
+use bevy::{asset::LoadState, prelude::*};
 
 use crate::{
     app_state::AppState,
+    game_state::GameState,
     runtime_map::RuntimeMapId,
+    scenario_path::ScenarioRelativePath,
+    scenario_root::ScenarioRoot,
+    scenario_spatial::collision_occupancy::CollisionOccupancy,
     scenario_spatial::{CardinalDirection, Position},
+    tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tmx_header::{TmxMapDocument, TmxPropertyValue},
+    tsx_atlas_asset::TsxAtlasAsset,
+    world_player::WorldPlayerSpawnState,
 };
 
 const PLAYER_TILE_SIZE: f64 = 32.0;
@@ -20,8 +27,27 @@ pub(crate) struct WorldTransitionPlugin;
 impl Plugin for WorldTransitionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WorldTransition>()
-            .add_systems(OnEnter(AppState::World), reset_transition)
-            .add_systems(OnExit(AppState::World), reset_transition);
+            .init_resource::<TransitionDestinationLoad>()
+            .add_systems(
+                OnEnter(AppState::World),
+                (reset_transition, spawn_fade_overlay).chain(),
+            )
+            .add_systems(
+                Update,
+                (
+                    detect_portal_entry,
+                    prepare_destination_load,
+                    advance_transition_fade,
+                    drive_transition_loading,
+                    update_fade_overlay,
+                )
+                    .chain()
+                    .run_if(in_state(AppState::World)),
+            )
+            .add_systems(
+                OnExit(AppState::World),
+                (reset_transition, cleanup_fade_overlay),
+            );
     }
 }
 
@@ -196,7 +222,7 @@ pub(crate) enum TransitionPhase {
     Idle,
     FadingOut,
     Loading,
-    Failed,
+    Publishing,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -213,6 +239,7 @@ pub(crate) struct WorldTransition {
     alpha: f32,
     pending: Option<PendingTransition>,
     detector: PortalEntryDetector,
+    failure: Option<String>,
 }
 
 impl Default for WorldTransition {
@@ -222,6 +249,7 @@ impl Default for WorldTransition {
             alpha: 1.0,
             pending: None,
             detector: PortalEntryDetector::default(),
+            failure: None,
         }
     }
 }
@@ -243,6 +271,17 @@ impl WorldTransition {
         self.pending.as_ref()
     }
 
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "transition diagnostics are exposed before the World error UI"
+        )
+    )]
+    pub(crate) fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
+
     pub(crate) fn request(&mut self, portal: &RuntimePortal, facing: CardinalDirection) -> bool {
         if self.phase != TransitionPhase::Idle {
             return false;
@@ -252,6 +291,7 @@ impl WorldTransition {
             target_position: portal.target_position,
             facing,
         });
+        self.failure = None;
         self.phase = TransitionPhase::FadingOut;
         true
     }
@@ -276,23 +316,193 @@ impl WorldTransition {
     }
 
     pub(crate) fn destination_published(&mut self) {
-        debug_assert_eq!(self.phase, TransitionPhase::Loading);
+        debug_assert_eq!(self.phase, TransitionPhase::Publishing);
         self.pending = None;
         self.detector.clear();
         self.phase = TransitionPhase::FadingIn;
         self.alpha = 1.0;
     }
 
-    pub(crate) fn destination_failed(&mut self) {
+    fn destination_committed(&mut self) {
+        debug_assert_eq!(self.phase, TransitionPhase::Loading);
+        self.phase = TransitionPhase::Publishing;
+    }
+
+    pub(crate) fn destination_failed(&mut self, reason: impl Into<String>) {
         debug_assert_eq!(self.phase, TransitionPhase::Loading);
         self.pending = None;
-        self.phase = TransitionPhase::Failed;
+        self.failure = Some(reason.into());
+        self.phase = TransitionPhase::FadingIn;
         self.alpha = 1.0;
     }
 }
 
-fn reset_transition(mut transition: ResMut<WorldTransition>) {
+#[derive(Debug, Default, Resource)]
+struct TransitionDestinationLoad {
+    map_id: Option<String>,
+    handle: Option<Handle<TmxGroundAsset>>,
+}
+
+#[derive(Component)]
+struct WorldFadeOverlay;
+
+fn spawn_fade_overlay(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::ZERO,
+            top: Val::ZERO,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        BackgroundColor(Color::BLACK),
+        GlobalZIndex(10_000),
+        Pickable::IGNORE,
+        WorldFadeOverlay,
+    ));
+}
+
+fn cleanup_fade_overlay(mut commands: Commands, overlays: Query<Entity, With<WorldFadeOverlay>>) {
+    for entity in &overlays {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn update_fade_overlay(
+    transition: Res<WorldTransition>,
+    mut overlays: Query<&mut BackgroundColor, With<WorldFadeOverlay>>,
+) {
+    for mut background in &mut overlays {
+        background.0 = Color::srgba(0.0, 0.0, 0.0, transition.alpha());
+    }
+}
+
+fn detect_portal_entry(
+    maps: Res<Assets<TmxGroundAsset>>,
+    render: Res<StaticMapRenderState>,
+    game: Option<Res<GameState>>,
+    mut transition: ResMut<WorldTransition>,
+) {
+    if transition.phase != TransitionPhase::Idle {
+        return;
+    }
+    let Some(game) = game else {
+        return;
+    };
+    let Some(map) = render.map(&maps) else {
+        return;
+    };
+    let Ok(portals) = runtime_portals(map.document()) else {
+        return;
+    };
+    let entered = transition
+        .detector
+        .entered(&portals, game.map().position())
+        .cloned();
+    if let Some(portal) = entered {
+        transition.request(&portal, game.map().facing());
+    }
+}
+
+fn prepare_destination_load(
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    transition: Res<WorldTransition>,
+    mut destination: ResMut<TransitionDestinationLoad>,
+) {
+    let Some(pending) = transition.pending() else {
+        *destination = TransitionDestinationLoad::default();
+        return;
+    };
+    let map_id = pending.target_map.as_str();
+    if destination.map_id.as_deref() == Some(map_id) {
+        return;
+    }
+    *destination = TransitionDestinationLoad::default();
+    let logical = format!("assets/maps/{map_id}.tmx");
+    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+        return;
+    };
+    destination.map_id = Some(map_id.to_owned());
+    destination.handle = Some(asset_server.load(scenario_root.resolve(&logical)));
+}
+
+fn advance_transition_fade(time: Res<Time>, mut transition: ResMut<WorldTransition>) {
+    transition.advance_fade(time.delta_secs());
+}
+
+fn drive_transition_loading(
+    asset_server: Res<AssetServer>,
+    maps: Res<Assets<TmxGroundAsset>>,
+    atlases: Res<Assets<TsxAtlasAsset>>,
+    destination: Res<TransitionDestinationLoad>,
+    render: Res<StaticMapRenderState>,
+    player: Res<WorldPlayerSpawnState>,
+    game: Option<ResMut<GameState>>,
+    mut transition: ResMut<WorldTransition>,
+) {
+    if transition.phase == TransitionPhase::Publishing {
+        let Some(map_id) = transition
+            .pending()
+            .map(|pending| pending.target_map.as_str())
+        else {
+            return;
+        };
+        if render.is_spawned_for(map_id) && player.is_spawned_for(map_id) {
+            transition.destination_published();
+        }
+        return;
+    }
+    if transition.phase != TransitionPhase::Loading {
+        return;
+    }
+
+    let Some(handle) = destination.handle.as_ref() else {
+        transition.destination_failed("destination map path is invalid");
+        return;
+    };
+    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
+        transition.destination_failed("destination map failed to load");
+        return;
+    }
+    if !asset_server.is_loaded_with_dependencies(handle.id()) {
+        return;
+    }
+    let Some(map) = maps.get(handle) else {
+        return;
+    };
+    if let Err(error) = map.visible_bundles(&atlases) {
+        transition.destination_failed(format!("destination map cannot render: {error}"));
+        return;
+    }
+    if let Err(error) = CollisionOccupancy::from_tmx_document(map.document()) {
+        transition.destination_failed(format!("destination collision is invalid: {error}"));
+        return;
+    }
+    if let Err(error) = runtime_portals(map.document()) {
+        transition.destination_failed(format!("destination portals are invalid: {error}"));
+        return;
+    }
+
+    let Some(mut game) = game else {
+        transition.destination_failed("game session disappeared during transition");
+        return;
+    };
+    let Some(pending) = transition.pending().cloned() else {
+        return;
+    };
+    game.map_mut()
+        .move_to(pending.target_map, pending.target_position, pending.facing);
+    transition.destination_committed();
+}
+
+fn reset_transition(
+    mut transition: ResMut<WorldTransition>,
+    mut destination: ResMut<TransitionDestinationLoad>,
+) {
     *transition = WorldTransition::default();
+    *destination = TransitionDestinationLoad::default();
 }
 
 #[cfg(test)]
@@ -366,10 +576,47 @@ mod tests {
         assert_eq!(transition.phase(), TransitionPhase::Loading);
         assert!(transition.input_locked());
         assert_eq!(transition.pending().unwrap().facing, CardinalDirection::Up);
+        transition.destination_committed();
         transition.destination_published();
         assert_eq!(transition.phase(), TransitionPhase::FadingIn);
         transition.advance_fade(1.0);
         assert_eq!(transition.phase(), TransitionPhase::Idle);
         assert!(!transition.input_locked());
+    }
+
+    #[test]
+    fn failed_destination_keeps_source_location_and_visited_history_unchanged() {
+        let source = RuntimeMapId::try_new("town_01_ardel").unwrap();
+        let mut map = crate::runtime_map::RuntimeMapState::new(
+            source.clone(),
+            Position::new(2, 3),
+            CardinalDirection::Up,
+        );
+        let portal = ardel_portals()
+            .into_iter()
+            .find(|portal| portal.name() == Some("house"))
+            .unwrap();
+        let mut transition = WorldTransition {
+            phase: TransitionPhase::Idle,
+            alpha: 0.0,
+            ..default()
+        };
+        assert!(transition.request(&portal, CardinalDirection::Up));
+        transition.advance_fade(1.0);
+        transition.destination_failed("invented load failure");
+
+        assert_eq!(map.current(), Some(&source));
+        assert_eq!(map.position(), Position::new(2, 3));
+        assert_eq!(map.visited().count(), 0);
+        assert_eq!(transition.failure(), Some("invented load failure"));
+
+        let pending = PendingTransition {
+            target_map: RuntimeMapId::try_new("town_01_ardel_house_01").unwrap(),
+            target_position: Position::new(10, 11),
+            facing: CardinalDirection::Up,
+        };
+        map.move_to(pending.target_map, pending.target_position, pending.facing);
+        assert!(map.has_visited(&source));
+        assert_eq!(map.position(), Position::new(10, 11));
     }
 }

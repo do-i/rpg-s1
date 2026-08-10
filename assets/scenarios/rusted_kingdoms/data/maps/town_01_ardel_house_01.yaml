@@ -1,0 +1,15 @@
+id: town_01_ardel_house_01
+name: Ardel Village
+bgm: town.default
+
+npcs:
+  - id: elder
+    name: "Elder Maeve"
+    dialogue: elder_intro
+    position: [11, 3]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: up
+    animation:
+      mode: wander
+      speed: 1.8
+      range: 3

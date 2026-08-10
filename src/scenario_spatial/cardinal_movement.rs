@@ -16,6 +16,7 @@ use crate::{
     tile_coordinates::tmx_tile_center,
     tmx_ground_asset::TmxGroundAsset,
     world_player::{WorldPlayer, WorldPlayerAnimation},
+    world_transition::WorldTransition,
 };
 
 const RUSTED_KINGDOMS_TILE_WIDTH: u32 = 32;
@@ -147,6 +148,7 @@ fn move_world_player(
     actions: Option<Res<ActionState>>,
     time: Option<Res<Time>>,
     collision: Res<ActiveMapCollision>,
+    transition: Option<Res<WorldTransition>>,
     game: Option<ResMut<GameState>>,
     mut players: Query<(&mut Transform, &mut Sprite, &mut WorldPlayerAnimation), With<WorldPlayer>>,
 ) {
@@ -161,6 +163,14 @@ fn move_world_player(
         return;
     };
     let delta_time = time.as_deref().map(Time::delta).unwrap_or(Duration::ZERO);
+    if transition
+        .as_deref()
+        .is_some_and(WorldTransition::input_locked)
+    {
+        let tile_id = player_animation.update(None, delta_time);
+        set_atlas_tile(&mut player_sprite, tile_id);
+        return;
+    }
     let Some(direction) = actions.movement() else {
         let tile_id = player_animation.update(None, delta_time);
         set_atlas_tile(&mut player_sprite, tile_id);
