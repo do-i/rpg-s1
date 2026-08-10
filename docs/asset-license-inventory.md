@@ -193,6 +193,81 @@ status. The required fields are intentionally repeated in each entry.
 | Related port task/wave | M0.11 |
 | Notes/blocker | **Release blocker.** The creator credit and filename category make the referenced store page plausible, not conclusive: its free demo offers one unnamed confirm sample while the full pack contains ten, and neither download is hash-addressed publicly. Unblock with the original package/download record that maps this SHA-256 to a named file, proof that the source acquisition complied with the applicable demo or purchase terms, and written clarification from Leohpaz that embedding this exact file in a distributable game is permitted (including commercial releases, if intended). Record any required notice before approval; otherwise replace it with an independently licensed effect. |
 
+### Asset entry: `ALI-0005` — Aric walk sprite atlas image
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0005` |
+| Source path | `rusted_kingdoms/assets/sprites/party/01_aric_walk.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.png` |
+| Source SHA-256 | `bf728f9c5f37acbd8818ea3a9966cc261de90f2a0dd489866f816795d8500ef1` |
+| Destination SHA-256 | `bf728f9c5f37acbd8818ea3a9966cc261de90f2a0dd489866f816795d8500ef1` |
+| Asset kind | image |
+| Title/name | Aric four-direction walk sprite atlas |
+| Creator/rightsholder | bluecarrot16; Evert; TheraHedwig; Benjamin K. Smith (BenCreating); MuffinElZangano; Durrani; Pierre Vigier (pvigier); Eliza Wyatt (ElizaWy); Matthew Krohn (makrohn); Johannes Sjölund (wulax); Stephen Challener (Redshrike); JaidynReiman; Nila122; Fabzy; Michael Whitlock (bigbeargames), as recorded by the pinned source's per-character credit |
+| Source/evidence | Pinned source file and its LFS declaration for the same SHA-256; pinned `credits/01_aric_credits.txt`; source `README.md` Credits and Attribution section; [official Universal LPC generator licensing and attribution guidance](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator#licensing-and-attribution-credits); source image commits `050cbbfa9cb3ea912cf74a702858e57308a926b7`, `1af64f33a9f95e5a194fb2c55130d4328d2907ff`, and `54f9b27ba734bf9e843104e37cdd5aba5b95eadc`; inspected 2026-08-10 |
+| License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`) and OpenGameArt.org Attribution 3.0 (`OGA-BY-3.0`) for their respective component layers. The preserved per-layer record identifies the available choices; CC BY-SA 3.0 is selected where offered and OGA-BY 3.0 is selected for the two layers that offer only OGA-BY 3.0. |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) and [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt); required local attribution is preserved at `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` |
+| Required attribution | Preserve the complete creator, layer, license-choice, and source-link record in `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt`; identify the sprite as Liberated Pixel Cup artwork under CC BY-SA 3.0 and OGA-BY 3.0 for their respective components; keep that attribution reasonably discoverable in a shipped game. |
+| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. In the source repository, the original generator export was replaced by commit `1af64f3` (`improve sprite quality`) and then normalized to a 576 by 256, four-row walk sheet by commit `54f9b27`; the pinned source continues to associate its per-character layer and contributor record with the resulting atlas. |
+| Redistribution permission | yes, conditional on the respective CC BY-SA 3.0 and OGA-BY 3.0 notices and attribution requirements, plus ShareAlike for the CC BY-SA components |
+| Commercial-use permission | yes, conditional on compliance with both selected licenses |
+| Derivative-work permission | yes, conditional on the respective selected-license terms, including ShareAlike for adaptations of CC BY-SA components and change identification under OGA-BY 3.0 |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.15 |
+| Notes/blocker | Approved for the byte-identical M4.15 copy with the preserved local credit and both selected-license notices. Do not remove or obscure the attribution, apply technical restrictions to the CC BY-SA components in conflict with that license, or distribute a modified version without satisfying each component's applicable terms. A different PNG hash requires a fresh evidence and attribution review. |
+
+### Asset entry: `ALI-0006` — Aric walk Tiled tileset metadata
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0006` |
+| Source path | `rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx` |
+| Source SHA-256 | `6349f6d0253ef916fff749fe03d712736725685b807fc3c605225453e7f0654a` |
+| Destination SHA-256 | `6349f6d0253ef916fff749fe03d712736725685b807fc3c605225453e7f0654a` |
+| Asset kind | TSX |
+| Title/name | Aric walk Tiled tileset metadata |
+| Creator/rightsholder | Ninja (source commit author) and the credited LPC sprite contributors for the referenced atlas |
+| Source/evidence | Exact pinned source file; source commit `050cbbfa9cb3ea912cf74a702858e57308a926b7` (`Add party sprites`); pinned `credits/01_aric_credits.txt`; source `README.md` Credits and Attribution section; inspected 2026-08-10 |
+| License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`) and OpenGameArt.org Attribution 3.0 (`OGA-BY-3.0`) for distribution with the respective components of the Aric atlas |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) and [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt); required local attribution is preserved at `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` |
+| Required attribution | Preserve the companion Aric credit plus both selected-license notices with this metadata and its referenced image. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. The TSX retains the sibling image source `01_aric_walk.png`, 64 by 64 tile size, 9 columns, 36 tiles, and four ordered walk animations. |
+| Redistribution permission | yes, conditional on the companion attribution and both selected licenses' terms |
+| Commercial-use permission | yes, conditional on compliance with both selected licenses |
+| Derivative-work permission | yes, conditional on the respective selected-license terms |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.15 |
+| Notes/blocker | Approved only as the unmodified companion metadata for `ALI-0005`. Its relative image reference is part of the approved registration and must continue to resolve inside the scenario package. |
+
+### Asset entry: `ALI-0007` — Aric sprite attribution record
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0007` |
+| Source path | `credits/01_aric_credits.txt` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` |
+| Source SHA-256 | `fe2262356929bbf363480599ebf19194a7c1e31b7f46e3b265b444ca20eff20d` |
+| Destination SHA-256 | `fe2262356929bbf363480599ebf19194a7c1e31b7f46e3b265b444ca20eff20d` |
+| Asset kind | license text |
+| Title/name | Aric sprite layer attribution record |
+| Creator/rightsholder | not-applicable; this generated factual notice identifies the creators and license choices for the component artwork |
+| Source/evidence | Exact pinned source file; source commit `58b7e62fe55651a2aeb44446e4bcc562996a63a7` (`Add credits for sprites`); official Universal LPC generator guidance says generated sprites must ship a composed credit list or the complete generator credits; inspected 2026-08-10 |
+| License identifier/name | not-applicable; retained as the required attribution and license-choice record for `ALI-0005` and `ALI-0006`, not as independently used artwork |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) and [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt) apply to their respective components of the associated Aric sprite; this file is their local attribution notice |
+| Required attribution | Preserve this file unmodified and make it reasonably discoverable in a shipped game. |
+| Modification status/details | Unmodified: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes; redistribution is required to preserve the associated asset's attribution |
+| Commercial-use permission | yes; this is a required factual attribution record, not independently exploited artwork |
+| Derivative-work permission | not-applicable; preserve the factual attribution unmodified |
+| Review status | `approved` |
+| Reviewer/date | Codex asset-license review, 2026-08-10 |
+| Related port task/wave | M4.15 |
+| Notes/blocker | The not-applicable fields are intentional because this file is a generated factual attribution notice. Its creators, layer paths, license choices, and source links are necessary evidence for the associated sprite and must not be removed. |
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather

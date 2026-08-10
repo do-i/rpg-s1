@@ -229,7 +229,7 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | M4.12 | [ ] Render all visible Ardel layers in source order. | `S` | Ground, terrain, decoration, and top layers visually agree with Python. |
 | M4.13 | [ ] Exclude the collision layer from visible rendering. | `T` | Collision tiles never draw. |
 | M4.14 | [ ] Build collision occupancy from the collision layer. | `S` | Known blocked and open Ardel cells are tested. |
-| M4.15 | [ ] Copy and register Aric's walk sprite assets. | `T` | License ledger and asset references are complete. |
+| M4.15 | [x] Copy and register Aric's walk sprite assets. | `T` | The byte-identical PNG, TSX, and per-layer credit are registered under the canonical scenario path; Git LFS covers the atlas, exact hashes and upstream history are recorded, and approved ledger entries preserve the distinct CC BY-SA 3.0 and OGA-BY 3.0 obligations. |
 | M4.16 | [ ] Slice Aric's sprite atlas from TSX metadata. | `S` | Four directions select the correct base frames. |
 | M4.17 | [ ] Spawn Aric at the new-game position. | `T` | World position matches the scenario tile coordinate. |
 | M4.18 | [ ] Implement one-tile cardinal movement. | `S` | Each action moves exactly one legal tile. |
