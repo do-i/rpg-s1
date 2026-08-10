@@ -48,6 +48,7 @@ mod tmx_header;
 mod tsx_atlas_asset;
 mod tsx_metadata;
 mod ui_theme;
+mod world_actor;
 mod world_audio;
 mod world_player;
 mod world_transition;
@@ -77,6 +78,7 @@ use title_screen::TitleScreenPlugin;
 use tmx_ground_asset::TmxGroundAssetPlugin;
 use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
+use world_actor::WorldActorPlugin;
 use world_audio::WorldAudioPlugin;
 use world_player::WorldPlayerPlugin;
 use world_transition::WorldTransitionPlugin;
@@ -130,6 +132,7 @@ fn run_game() {
         .add_plugins(IntroCompletionPlugin)
         .add_plugins(IntroTransitionPlugin)
         .add_plugins(WorldAudioPlugin)
+        .add_plugins(WorldActorPlugin)
         .add_plugins(WorldTransitionPlugin)
         .add_plugins(WorldPlayerPlugin)
         .run();

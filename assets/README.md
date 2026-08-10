@@ -52,6 +52,12 @@ Scenario assets preserve their source-relative layout beneath
   `scenarios/rusted_kingdoms/credits/01_aric_credits.txt`; the complete audit,
   content hashes, and upstream history are recorded in
   `../docs/asset-license-inventory.md`.
+- The copied Elise and Ardel NPC TSX/PNG pairs provide the source-authored M5
+  field cast. The sibling source identifies its character sprites generally as
+  Liberated Pixel Cup assets, but retains no per-file generator credit for
+  these exact hashes. They are local parity inputs and remain blocked from
+  public release until exact layer provenance, license choices, and attribution
+  are reconstructed or the sprites are replaced.
 - `scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx` is the canonical
   30-by-20 Ardel map. Its visible ground, terrain, and decoration layers use
   the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, Astral Pixels

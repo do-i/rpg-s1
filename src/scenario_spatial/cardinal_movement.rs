@@ -15,6 +15,7 @@ use crate::{
     },
     tile_coordinates::tmx_tile_center,
     tmx_ground_asset::TmxGroundAsset,
+    world_actor::WorldNpc,
     world_player::{WorldPlayer, WorldPlayerAnimation},
     world_transition::WorldTransition,
 };
@@ -149,6 +150,7 @@ fn move_world_player(
     time: Option<Res<Time>>,
     collision: Res<ActiveMapCollision>,
     transition: Option<Res<WorldTransition>>,
+    npcs: Query<&WorldNpc>,
     game: Option<ResMut<GameState>>,
     mut players: Query<(&mut Transform, &mut Sprite, &mut WorldPlayerAnimation), With<WorldPlayer>>,
 ) {
@@ -190,6 +192,9 @@ fn move_world_player(
     let Some(next) = accepted_destination(current, delta, map_id, &collision) else {
         return;
     };
+    if npcs.iter().any(|npc| npc.tile_position() == next) {
+        return;
+    }
     let (Ok(column), Ok(row)) = (u32::try_from(next.x), u32::try_from(next.y)) else {
         return;
     };

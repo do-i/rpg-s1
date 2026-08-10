@@ -15,6 +15,7 @@ use crate::{
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tmx_header::{TmxMapDocument, TmxPropertyValue},
     tsx_atlas_asset::TsxAtlasAsset,
+    world_actor::WorldActorState,
     world_player::WorldPlayerSpawnState,
 };
 
@@ -439,6 +440,7 @@ fn drive_transition_loading(
     destination: Res<TransitionDestinationLoad>,
     render: Res<StaticMapRenderState>,
     player: Res<WorldPlayerSpawnState>,
+    actors: Res<WorldActorState>,
     game: Option<ResMut<GameState>>,
     mut transition: ResMut<WorldTransition>,
 ) {
@@ -449,7 +451,10 @@ fn drive_transition_loading(
         else {
             return;
         };
-        if render.is_spawned_for(map_id) && player.is_spawned_for(map_id) {
+        if render.is_spawned_for(map_id)
+            && player.is_spawned_for(map_id)
+            && actors.is_spawned_for(map_id)
+        {
             transition.destination_published();
         }
         return;
