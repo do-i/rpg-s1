@@ -1,14 +1,14 @@
 //! Strict, renderer-independent metadata from a finite orthogonal TMX document.
 //!
 //! The header-only API intentionally stops after the `<map>` start tag. The owned document API
-//! additionally scans direct external tileset references and finite CSV tile layers; objects
-//! remain uninterpreted.
+//! additionally scans direct external tileset references and finite CSV tile layers, decoding
+//! orthogonal tile transforms from each raw GID; objects remain uninterpreted.
 
 #![cfg_attr(
     not(test),
     expect(
         dead_code,
-        reason = "M4.01-M4.04 establish parser APIs before later M4 map loading consumes them"
+        reason = "M4.01-M4.05 establish parser APIs before later M4 map loading consumes them"
     )
 )]
 
@@ -103,16 +103,91 @@ pub(crate) struct TmxExternalTileset {
     source: ScenarioRelativePath,
 }
 
-/// One finite tile layer with raw Tiled global IDs in row-major order.
-///
-/// Flip bits intentionally remain encoded in each GID until M4.05 gives them a typed form.
+const TILED_HORIZONTAL_FLIP_FLAG: u32 = 0x8000_0000;
+const TILED_VERTICAL_FLIP_FLAG: u32 = 0x4000_0000;
+const TILED_DIAGONAL_FLIP_FLAG: u32 = 0x2000_0000;
+const TILED_120_DEGREE_ROTATION_FLAG: u32 = 0x1000_0000;
+const TILED_TRANSFORM_FLAGS: u32 = TILED_HORIZONTAL_FLIP_FLAG
+    | TILED_VERTICAL_FLIP_FLAG
+    | TILED_DIAGONAL_FLIP_FLAG
+    | TILED_120_DEGREE_ROTATION_FLAG;
+
+/// One decoded orthogonal Tiled global ID and its independent transform flags.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct TmxTileGid {
+    global_id: u32,
+    flip_horizontally: bool,
+    flip_vertically: bool,
+    flip_diagonally: bool,
+}
+
+impl TmxTileGid {
+    fn decode_orthogonal(raw_gid: u32) -> Result<Self, TmxTileGidError> {
+        if raw_gid & TILED_120_DEGREE_ROTATION_FLAG != 0 {
+            return Err(TmxTileGidError::Unsupported120DegreeRotation);
+        }
+        Ok(Self {
+            global_id: raw_gid & !TILED_TRANSFORM_FLAGS,
+            flip_horizontally: raw_gid & TILED_HORIZONTAL_FLIP_FLAG != 0,
+            flip_vertically: raw_gid & TILED_VERTICAL_FLIP_FLAG != 0,
+            flip_diagonally: raw_gid & TILED_DIAGONAL_FLIP_FLAG != 0,
+        })
+    }
+
+    pub(crate) const fn global_id(self) -> u32 {
+        self.global_id
+    }
+
+    pub(crate) const fn is_empty(self) -> bool {
+        self.global_id == 0
+    }
+
+    pub(crate) const fn flip_horizontally(self) -> bool {
+        self.flip_horizontally
+    }
+
+    pub(crate) const fn flip_vertically(self) -> bool {
+        self.flip_vertically
+    }
+
+    pub(crate) const fn flip_diagonally(self) -> bool {
+        self.flip_diagonally
+    }
+
+    #[cfg(test)]
+    const fn raw_gid(self) -> u32 {
+        self.global_id
+            | if self.flip_horizontally {
+                TILED_HORIZONTAL_FLIP_FLAG
+            } else {
+                0
+            }
+            | if self.flip_vertically {
+                TILED_VERTICAL_FLIP_FLAG
+            } else {
+                0
+            }
+            | if self.flip_diagonally {
+                TILED_DIAGONAL_FLIP_FLAG
+            } else {
+                0
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TmxTileGidError {
+    Unsupported120DegreeRotation,
+}
+
+/// One finite tile layer with decoded Tiled global IDs in row-major order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TmxTileLayer {
     id: u32,
     name: String,
     width: u32,
     height: u32,
-    gids: Vec<u32>,
+    gids: Vec<TmxTileGid>,
 }
 
 impl TmxTileLayer {
@@ -132,11 +207,11 @@ impl TmxTileLayer {
         self.height
     }
 
-    pub(crate) fn gids(&self) -> &[u32] {
+    pub(crate) fn gids(&self) -> &[TmxTileGid] {
         &self.gids
     }
 
-    pub(crate) fn gid_at(&self, column: u32, row: u32) -> Option<u32> {
+    pub(crate) fn gid_at(&self, column: u32, row: u32) -> Option<TmxTileGid> {
         if column >= self.width || row >= self.height {
             return None;
         }
@@ -605,7 +680,7 @@ fn parse_csv_gids(
     height: u32,
     offset: u64,
     layer_name: &str,
-) -> Result<Vec<u32>, TmxMapDocumentError> {
+) -> Result<Vec<TmxTileGid>, TmxMapDocumentError> {
     let rows = csv
         .lines()
         .map(str::trim)
@@ -655,6 +730,16 @@ fn parse_csv_gids(
                         column_index + 1
                     ),
                 )
+            })?;
+            let gid = TmxTileGid::decode_orthogonal(gid).map_err(|error| match error {
+                TmxTileGidError::Unsupported120DegreeRotation => TmxMapDocumentError::new(
+                    offset,
+                    format!(
+                        "tile layer `{layer_name}` has unsupported 120-degree rotation flag at row {}, column {}",
+                        row_index + 1,
+                        column_index + 1
+                    ),
+                ),
             })?;
             gids.push(gid);
         }
@@ -962,6 +1047,67 @@ mod tests {
     }
 
     #[test]
+    fn decodes_all_orthogonal_gid_flip_combinations_and_empty_tiles() {
+        const GLOBAL_ID: u32 = 0x0012_3456;
+        for (flags, horizontal, vertical, diagonal) in [
+            (0, false, false, false),
+            (TILED_HORIZONTAL_FLIP_FLAG, true, false, false),
+            (TILED_VERTICAL_FLIP_FLAG, false, true, false),
+            (
+                TILED_HORIZONTAL_FLIP_FLAG | TILED_VERTICAL_FLIP_FLAG,
+                true,
+                true,
+                false,
+            ),
+            (TILED_DIAGONAL_FLIP_FLAG, false, false, true),
+            (
+                TILED_HORIZONTAL_FLIP_FLAG | TILED_DIAGONAL_FLIP_FLAG,
+                true,
+                false,
+                true,
+            ),
+            (
+                TILED_VERTICAL_FLIP_FLAG | TILED_DIAGONAL_FLIP_FLAG,
+                false,
+                true,
+                true,
+            ),
+            (
+                TILED_HORIZONTAL_FLIP_FLAG | TILED_VERTICAL_FLIP_FLAG | TILED_DIAGONAL_FLIP_FLAG,
+                true,
+                true,
+                true,
+            ),
+        ] {
+            let raw_gid = GLOBAL_ID | flags;
+            let gid = TmxTileGid::decode_orthogonal(raw_gid).unwrap();
+            assert_eq!(gid.global_id(), GLOBAL_ID);
+            assert_eq!(gid.flip_horizontally(), horizontal);
+            assert_eq!(gid.flip_vertically(), vertical);
+            assert_eq!(gid.flip_diagonally(), diagonal);
+            assert!(!gid.is_empty());
+            assert_eq!(gid.raw_gid(), raw_gid);
+        }
+
+        let empty = TmxTileGid::decode_orthogonal(0).unwrap();
+        assert!(empty.is_empty());
+        assert_eq!(empty.raw_gid(), 0);
+    }
+
+    #[test]
+    fn rejects_tiled_120_degree_rotation_flag_for_orthogonal_gids() {
+        for raw_gid in [
+            TILED_120_DEGREE_ROTATION_FLAG | 1,
+            TILED_120_DEGREE_ROTATION_FLAG | TILED_HORIZONTAL_FLIP_FLAG | 17,
+        ] {
+            assert_eq!(
+                TmxTileGid::decode_orthogonal(raw_gid),
+                Err(TmxTileGidError::Unsupported120DegreeRotation)
+            );
+        }
+    }
+
+    #[test]
     fn parses_finite_orthogonal_header_without_interpreting_children() {
         assert_eq!(
             parse_tmx_map_header(VALID).unwrap(),
@@ -1071,13 +1217,13 @@ mod tests {
     }
 
     #[test]
-    fn parses_finite_csv_tile_layers_in_source_order_with_raw_gids() {
+    fn parses_finite_csv_tile_layers_in_source_order_with_decoded_gids() {
         let xml = r#"
             <map orientation="orthogonal" width="3" height="2" tilewidth="32" tileheight="32">
                 <layer id="7" name="ground" width="3" height="2" visible="0">
                     <data encoding="csv">
                         0,1,2147483650,
-                        3,4,4294967295
+                        3,4,4026531839
                     </data>
                 </layer>
                 <layer id="8" name="decoration" width="3" height="2">
@@ -1096,12 +1242,35 @@ mod tests {
         assert_eq!(ground.name(), "ground");
         assert_eq!(ground.width(), 3);
         assert_eq!(ground.height(), 2);
-        assert_eq!(ground.gids(), &[0, 1, 2_147_483_650, 3, 4, u32::MAX]);
-        assert_eq!(ground.gid_at(2, 1), Some(u32::MAX));
+        assert_eq!(
+            ground
+                .gids()
+                .iter()
+                .copied()
+                .map(TmxTileGid::raw_gid)
+                .collect::<Vec<_>>(),
+            &[0, 1, 2_147_483_650, 3, 4, 4_026_531_839]
+        );
+        let horizontal = ground.gid_at(2, 0).unwrap();
+        assert_eq!(horizontal.global_id(), 2);
+        assert!(horizontal.flip_horizontally());
+        assert!(!horizontal.flip_vertically());
+        assert!(!horizontal.flip_diagonally());
+        assert_eq!(
+            ground.gid_at(2, 1).map(TmxTileGid::raw_gid),
+            Some(4_026_531_839)
+        );
         assert_eq!(ground.gid_at(3, 1), None);
         assert_eq!(ground.gid_at(0, 2), None);
         assert_eq!(document.tile_layers()[1].name(), "decoration");
-        assert_eq!(document.tile_layers()[1].gids(), &[6, 5, 4, 3, 2, 1]);
+        assert_eq!(
+            document.tile_layers()[1]
+                .gids()
+                .iter()
+                .map(|gid| gid.global_id())
+                .collect::<Vec<_>>(),
+            &[6, 5, 4, 3, 2, 1]
+        );
     }
 
     #[test]
@@ -1157,6 +1326,10 @@ mod tests {
             (
                 "0,,0,\n0,0,0",
                 "invalid GID `` at row 1, column 2; expected u32",
+            ),
+            (
+                "0,268435457,0,\n0,0,0",
+                "unsupported 120-degree rotation flag at row 1, column 2",
             ),
         ] {
             let xml = format!(
@@ -1394,6 +1567,7 @@ mod tests {
 
         let mut layer_count = 0;
         let mut gid_count = 0;
+        let mut flip_combination_counts = [0_usize; 8];
         for path in &files {
             let logical = path
                 .strip_prefix(scenario_root)
@@ -1414,11 +1588,18 @@ mod tests {
                 );
                 layer_count += 1;
                 gid_count += layer.gids().len();
+                for gid in layer.gids() {
+                    let combination = usize::from(gid.flip_horizontally())
+                        | (usize::from(gid.flip_vertically()) << 1)
+                        | (usize::from(gid.flip_diagonally()) << 2);
+                    flip_combination_counts[combination] += 1;
+                }
             }
         }
 
         assert_eq!(files.len(), 47);
         assert_eq!(layer_count, 170);
         assert_eq!(gid_count, 161_066);
+        assert_eq!(flip_combination_counts, [160_864, 10, 2, 0, 0, 189, 1, 0]);
     }
 }
