@@ -27,7 +27,7 @@ From the repository root:
 lazymenu-cli
 ```
 
-Select **Run playable M4 slice**. The initial Bevy build is expected to
+Select **Run playable M5 slice**. The initial Bevy build is expected to
 take longer than later incremental builds. You can also run it directly:
 
 ```sh
@@ -56,9 +56,12 @@ The current playable slice contains:
 - the production Ardel TMX map, visible layer ordering, and collision data;
 - Aric spawning, four/eight-way tile movement, TSX-authored animation, and
   clamped camera behavior;
-- title-to-Ardel BGM replacement; and
+- title-to-map BGM replacement;
+- source-authored NPC presence, occupancy, animation, wandering, and dialogue;
+- atomic faded map portals with a playable Ardel interior and Starting Forest;
+- Elise recruitment, configured signs, and persistent one-time treasure boxes;
+- indexed World interaction sound effects; and
 - automated parser, runtime, production-package, and screenshot checks;
 - build, run, test, lint, format, release, and clean menu actions.
 
-Portals, NPC interactions, saves, field menus, encounters, and combat remain
-later milestones.
+Saves, field menus, encounters, and combat remain later milestones.

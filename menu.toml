@@ -11,12 +11,12 @@ selected_bold = true
 
 [[items]]
 id = "run"
-label = "Run playable M4 slice"
+label = "Run playable M5 slice"
 key = "r"
 command = ["cargo", "run"]
 group = "Play"
-tags = ["run", "play", "game", "ardel", "world"]
-description = "Start a new game and walk around the rendered first town"
+tags = ["run", "play", "game", "ardel", "world", "npc", "portal", "treasure"]
+description = "Play the World interaction slice with NPCs, portals, signs, and treasure"
 favorite = true
 
 [[items]]

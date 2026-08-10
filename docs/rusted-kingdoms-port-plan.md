@@ -253,35 +253,41 @@ and one diagonal tile without runtime asset errors.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M5.01 | [ ] Convert TMX portal rectangles to runtime triggers. | `S` | Ardel's portal bounds and destinations match source data. |
-| M5.02 | [ ] Detect player entry into a portal. | `T` | Entry emits one transition request, not one per frame. |
-| M5.03 | [ ] Add fade-out before map unload. | `S` | Input is locked during the fade. |
-| M5.04 | [ ] Despawn all map-scoped entities. | `S` | No entity or audio leak remains after a map transition. |
-| M5.05 | [ ] Load the destination map and position. | `S` | One Ardel interior round trip succeeds. |
-| M5.06 | [ ] Add fade-in after destination spawn. | `T` | Input unlocks only after the fade completes. |
-| M5.07 | [ ] Record visited maps after successful entry. | `T` | Failed loads do not mark a map visited. |
-| M5.08 | [ ] Spawn one static NPC from map YAML. | `S` | Name, position, facing, and sprite match Ardel data. |
-| M5.09 | [ ] Apply NPC `present` conditions. | `T` | Requires/excludes combinations are tested. |
-| M5.10 | [ ] Add NPC occupancy to movement collision. | `S` | Player and NPC cannot overlap. |
-| M5.11 | [ ] Select the adjacent interactable in facing direction. | `S` | Only the nearest valid target receives interaction. |
-| M5.12 | [ ] Render an NPC dialogue box. | `S` | Speaker, text, continuation marker, and backdrop match the UI policy. |
-| M5.13 | [ ] Implement dialogue typewriter timing. | `T` | Confirm first completes text, then advances. |
-| M5.14 | [ ] Implement linear dialogue progression. | `T` | First/last-line transitions are tested. |
-| M5.15 | [ ] Implement dialogue choice navigation. | `S` | Disabled and conditional choices behave correctly. |
-| M5.16 | [ ] Implement dialogue node jumps. | `S` | Branch and terminal nodes are tested. |
-| M5.17 | [ ] Apply dialogue flag effects. | `T` | Set/unset behavior is idempotent. |
-| M5.18 | [ ] Apply dialogue party-join effects. | `S` | Elise joins once with source-defined initial state. |
-| M5.19 | [ ] Implement static/step NPC animation. | `T` | Timing and idle facing match metadata. |
-| M5.20 | [ ] Implement bounded wander NPC movement. | `S` | Range, collision, and deterministic RNG are tested. |
-| M5.21 | [ ] Detect configured sign tiles. | `S` | Known Ardel sign cells become interactable. |
-| M5.22 | [ ] Route sign interaction to per-map dialogue. | `T` | The correct `sign_<map-id>` file opens. |
-| M5.23 | [ ] Spawn one item box from map data. | `S` | Position, sprite, and stable box ID load. |
-| M5.24 | [ ] Open a box and grant its item. | `S` | Inventory changes once and the opened state persists in memory. |
-| M5.25 | [ ] Render the already-open box state. | `T` | Reinteraction cannot duplicate loot. |
-| M5.26 | [ ] Add interaction SFX routing. | `T` | Confirm, blocked, dialogue, and box sounds resolve through the SFX index. |
+| M5.01 | [x] Convert TMX portal rectangles to runtime triggers. | `S` | Typed runtime portals preserve the exact fractional Ardel bounds, object identity, target map, and target position; production-source tests pin the house and zone exits. |
+| M5.02 | [x] Detect player entry into a portal. | `T` | Contact emits once until exit; destination contact is seeded until the player leaves, preventing the live-found Ardel-house bounce regression. |
+| M5.03 | [x] Add fade-out before map unload. | `S` | The full-canvas black overlay advances to opaque before commit and both movement and interaction input remain locked. |
+| M5.04 | [x] Despawn all map-scoped entities. | `S` | Ground, player, NPC, sign, box, and logical BGM owners react to the atomic map change; live town/interior/forest transitions showed no stale entities or duplicate audio players. |
+| M5.05 | [x] Load the destination map and position. | `S` | Dependencies, visible bundles, collision, and portals validate before `GameState` commits; the final live run completed the Ardel interior round trip and entered Starting Forest. |
+| M5.06 | [x] Add fade-in after destination spawn. | `T` | Fade-in begins only after map, player, NPC, and object publication barriers pass, and input unlocks at transparent. |
+| M5.07 | [x] Record visited maps after successful entry. | `T` | Runtime map movement records the departed map only at the successful atomic commit; a failed destination test leaves location and history unchanged. |
+| M5.08 | [x] Spawn one static NPC from map YAML. | `S` | All present Ardel/interior/forest NPCs load authored name, position, facing, dialogue, and sprite; the real World run rendered them. |
+| M5.09 | [x] Apply NPC `present` conditions. | `T` | Requires/excludes combinations are tested against Elise before and after recruitment. |
+| M5.10 | [x] Add NPC occupancy to movement collision. | `S` | Player movement rejects live NPC tiles and deterministic wander rejects player/NPC occupancy. |
+| M5.11 | [x] Select the adjacent interactable in facing direction. | `S` | One global nearest-facing arbitration covers NPCs, signs, and boxes with deterministic tie priority; focused tests and the Pip/Elise live paths cover selection. |
+| M5.12 | [x] Render an NPC dialogue box. | `S` | The fixed-canvas overlay renders optional speaker, wrapped body, font-supported continuation marker, choices, hints, and opaque backdrop; Elise and the Ardel sign were captured live. |
+| M5.13 | [x] Implement dialogue typewriter timing. | `T` | The session reveals at 60 characters/second; tests prove confirm reveals the current line before advancing. |
+| M5.14 | [x] Implement linear dialogue progression. | `T` | First/middle/last transitions and completion are tested; the five-line Elise conversation completed live. |
+| M5.15 | [x] Implement dialogue choice navigation. | `S` | Visible, hidden, enabled, and disabled choices plus clamped selection are tested in the runtime graph fixture. |
+| M5.16 | [x] Implement dialogue node jumps. | `S` | Valid branch and terminal nodes resolve; duplicate, missing, and looping graph targets fail before a session starts. |
+| M5.17 | [x] Apply dialogue flag effects. | `T` | Set and unset effects apply at completion and remain idempotent under repeat application. |
+| M5.18 | [x] Apply dialogue party-join effects. | `S` | Elise joins once from the source party/balance catalogs with the exact initial runtime state; live presence removal and idempotent state tests cover the effect. |
+| M5.19 | [x] Implement static/step NPC animation. | `T` | Authored facing rows, idle frame, speed-scaled timing, and step frames are tested and rendered live. |
+| M5.20 | [x] Implement bounded wander NPC movement. | `S` | Gameplay RNG selects bounded open targets; movement avoids collision, player, and NPC tiles and is deterministic in focused tests. |
+| M5.21 | [x] Detect configured sign tiles. | `S` | Manifest tileset/local IDs resolve through TMX first-GID ranges; the three known Ardel cells are pinned. |
+| M5.22 | [x] Route sign interaction to per-map dialogue. | `T` | Stable sign entities select `sign_<map-id>`; `Notice Board — Ardel Village` opened live from tile `[16, 4]`. |
+| M5.23 | [x] Spawn one item box from map data. | `S` | Present boxes publish with map-scoped stable IDs, source position/loot, and the manifest-selected two-frame atlas. |
+| M5.24 | [x] Open a box and grant its item. | `S` | Items and magic cores grant once before the stable opened key records; live `forest_box_02` reported `Found potion ×2.` and the exact repository delta is tested. |
+| M5.25 | [x] Render the already-open box state. | `T` | Runtime opened state selects atlas frame 1; same-session reinteraction retained that frame, reported already open, and granted nothing. |
+| M5.26 | [x] Add interaction SFX routing. | `T` | Dialogue/confirm, blocked, box, and cancel events resolve through the source SFX index to copied files; focused resolution tests and the final error-free runtime log cover the boundary. |
 
-**Gate 5:** The Ardel slice supports an interior portal, NPC conversation,
-Elise recruitment, a readable sign, and a one-time treasure box.
+**Gate 5:** Complete. The Ardel slice supports an interior portal, NPC
+conversation, Elise recruitment, a readable sign, and a one-time treasure
+box. Evidence: 357 tests passed with 23 source-checkout-dependent tests ignored,
+Clippy/format/diff/screenshot checks passed, and the final real X11 playthrough
+completed the repaired house round trip plus the first/repeated forest treasure
+flow without asset, loader, audio-path, or panic errors. See
+`docs/m5-manual-play-checklist.md` for captures, hashes, limitations, and the
+live-found portal regression.
 
 ## Milestone 6 — Field menus, party, items, equipment, and spells
 
@@ -553,5 +559,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M5.01**. Convert the parsed TMX portal rectangles to runtime
-triggers and prove Ardel's portal bounds and destinations against source data.
+Continue with **M6.01**. Open and close the field-menu shell while proving
+World input pauses and resumes without map, party, or interaction-state loss.

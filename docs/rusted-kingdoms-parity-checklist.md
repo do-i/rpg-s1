@@ -10,8 +10,9 @@ Source: `../agentic-rpg/README.md` at
 
 Target plan: `docs/rusted-kingdoms-port-plan.md`
 
-Supporting coverage records: `docs/rusted-kingdoms-engine-inventory.md` and
-`docs/rusted-kingdoms-scenario-inventory.md`
+Supporting coverage records: `docs/rusted-kingdoms-engine-inventory.md`,
+`docs/rusted-kingdoms-scenario-inventory.md`, and
+`docs/m5-manual-play-checklist.md`
 
 Automated tests, validators, screenshots, transcripts, and state hashes may
 support a row, but they never replace performing its stated action and
@@ -101,9 +102,9 @@ rows.
 | RK-WLD-010 | `SET-WORLD`, with static and wandering NPCs | Observe for ten seconds, then approach each NPC. | Static/step/wander animations, facing, and bounded movement match metadata without clipping through scenery. | NPC occupancy blocks overlap; deterministic wandering remains within configured bounds. | M5.08-M5.10, M5.19-M5.20 / Gate 5 | Not run |
 | RK-WLD-011 | `SET-WORLD`, at a reversible portal | Walk into the portal, wait through the transition, then use the return portal. | Fade-out locks input, the destination appears at its configured position, fade-in completes, and destination BGM/visuals replace the source map. | Each entry records the visited destination once and the round trip restores valid map state. | M5.01-M5.07 / Gate 5 | Not run |
 | RK-WLD-012 | `SET-WORLD`, facing an NPC with multiple lines | Press Enter and advance the entire conversation. | Speaker, text, backdrop, continuation marker, typewriter timing, and dialogue SFX remain readable and ordered. | Conversation flags/effects apply only at their configured point. | M5.12-M5.17 / Gate 5 | Not run |
-| RK-WLD-013 | `SET-WORLD`, facing a configured sign | Press Enter and close the sign dialogue. | The map-specific sign text appears and closes cleanly. | Reading the sign does not alter unrelated flags or inventory. | M5.21-M5.22 / Gate 5 | Not run |
+| RK-WLD-013 | `SET-WORLD`, facing a configured sign | Press Enter and close the sign dialogue. | The map-specific sign text appears and closes cleanly. | Reading the sign does not alter unrelated flags or inventory. | M5.21-M5.22 / Gate 5 | Pass |
 | RK-WLD-014 | `SET-WORLD`, facing a closed item box | Record inventory count, press Enter once, and dismiss the grant message. | The box opens, the granted item/quantity is named, and one box/confirm SFX plays. | Inventory increases exactly once and the stable box ID becomes opened. | M5.23-M5.24 / Gate 5 | Not run |
-| RK-WLD-015 | Same session after RK-WLD-014 | Interact with the opened box again. | The box remains visibly open and gives already-open feedback. | No item is granted a second time. | M5.25 / Gate 5 | Not run |
+| RK-WLD-015 | Same session after RK-WLD-014 | Interact with the opened box again. | The box remains visibly open and gives already-open feedback. | No item is granted a second time. | M5.25 / Gate 5 | Pass |
 | RK-WLD-016 | Save after RK-WLD-014, then relaunch and load it | Return to the same box and interact. | The box still renders open and gives already-open feedback. | Opened-box state and inventory quantity survive save/load without duplication. | M7.12, M11.20 / Gate 7 | Not run |
 | RK-WLD-017 | `SET-WORLD`, with a visible enemy | Observe the enemy, approach it, and make contact. | The enemy sprite is visible and animates/moves according to data; contact triggers one battle transition. | World input freezes once and the pre-battle map/position/facing context is retained. | M8.05-M8.12 / Gate 8 | Not run |
 

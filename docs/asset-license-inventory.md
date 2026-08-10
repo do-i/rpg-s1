@@ -793,6 +793,1382 @@ status. The required fields are intentionally repeated in each entry.
 | Related port task/wave | M4.24-M4.25 |
 | Notes/blocker | **Release blocker.** Retain this file as local provenance evidence while `ALI-0027` is unresolved, but do not ship it or infer music rights from it without an explicit grant covering the record itself and the associated track. |
 
+### Asset entry: `ALI-0029` — `Storming_the_Citadel.mp3`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0029` |
+| Source path | `rusted_kingdoms/assets/audio/bgm/Storming_the_Citadel.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Storming_the_Citadel.mp3` |
+| Source SHA-256 | `d9e1b4d0147ecec36af88c8fda49fccad6c52a452d243af9b607872b7fed7761` |
+| Destination SHA-256 | `d9e1b4d0147ecec36af88c8fda49fccad6c52a452d243af9b607872b7fed7761` |
+| Asset kind | audio |
+| Title/name | `Storming_the_Citadel.mp3` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0030` — `CREDIT`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0030` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/CREDIT` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT` |
+| Source SHA-256 | `69fa0da996ecd8f098f35b087f570a06e84d3723e5c5c5b80d1223544800dae0` |
+| Destination SHA-256 | `69fa0da996ecd8f098f35b087f570a06e84d3723e5c5c5b80d1223544800dae0` |
+| Asset kind | attribution notice |
+| Title/name | `CREDIT` |
+| Creator/rightsholder | not-applicable; this factual notice identifies the associated sound-effect creator. |
+| Source/evidence | Exact pinned source notice; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; inspected 2026-08-10. |
+| License identifier/name | not-applicable; retained as provenance evidence. |
+| License text/notice location | This destination file is the local creator notice. |
+| Required attribution | Preserve while associated effects remain in the tree. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | yes; preserve with the associated files |
+| Commercial-use permission | yes; the factual notice is not independently exploited artwork |
+| Derivative-work permission | not-applicable; preserve unmodified |
+| Review status | `approved` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | This notice supports, but does not resolve, the exact-file acquisition and redistribution blockers on the associated effects. |
+
+### Asset entry: `ALI-0031` — `013_Confirm_03.mp3`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0031` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3` |
+| Source SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
+| Destination SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
+| Asset kind | audio |
+| Title/name | `013_Confirm_03.mp3` |
+| Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
+| Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
+| License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | **Release blocker.** Obtain the original package/download record for this exact hash and confirmation that embedding it in a distributable game complies with the pack terms; otherwise replace it. |
+
+### Asset entry: `ALI-0032` — `029_Decline_09.mp3`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0032` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/029_Decline_09.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/029_Decline_09.mp3` |
+| Source SHA-256 | `2aec75f16066739d5784eb6e5cdbff881899b89e76b18085797978c706a1b9dc` |
+| Destination SHA-256 | `2aec75f16066739d5784eb6e5cdbff881899b89e76b18085797978c706a1b9dc` |
+| Asset kind | audio |
+| Title/name | `029_Decline_09.mp3` |
+| Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
+| Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
+| License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | **Release blocker.** Obtain the original package/download record for this exact hash and confirmation that embedding it in a distributable game complies with the pack terms; otherwise replace it. |
+
+### Asset entry: `ALI-0033` — `033_Denied_03.mp3`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0033` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/033_Denied_03.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/033_Denied_03.mp3` |
+| Source SHA-256 | `0e10087d9bacf942fdb66ee0cb3fec88401208e55e6f67a2e41c21724e21bf2d` |
+| Destination SHA-256 | `0e10087d9bacf942fdb66ee0cb3fec88401208e55e6f67a2e41c21724e21bf2d` |
+| Asset kind | audio |
+| Title/name | `033_Denied_03.mp3` |
+| Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
+| Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
+| License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | **Release blocker.** Obtain the original package/download record for this exact hash and confirmation that embedding it in a distributable game complies with the pack terms; otherwise replace it. |
+
+### Asset entry: `ALI-0034` — `051_use_item_01.mp3`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0034` |
+| Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/051_use_item_01.mp3` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/051_use_item_01.mp3` |
+| Source SHA-256 | `647c787d41bcdd38a31fb40b557f221f95015fe2cf68fc4ec679184dd3c500fd` |
+| Destination SHA-256 | `647c787d41bcdd38a31fb40b557f221f95015fe2cf68fc4ec679184dd3c500fd` |
+| Asset kind | audio |
+| Title/name | `051_use_item_01.mp3` |
+| Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
+| Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
+| License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | **Release blocker.** Obtain the original package/download record for this exact hash and confirmation that embedding it in a distributable game complies with the pack terms; otherwise replace it. |
+
+### Asset entry: `ALI-0035` — `town_01_ardel_house_01.tmx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0035` |
+| Source path | `rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` |
+| Source SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
+| Destination SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
+| Asset kind | Tiled map |
+| Title/name | `town_01_ardel_house_01.tmx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.01-M5.07 and M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0036` — `zone_01_starting_forest.tmx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0036` |
+| Source path | `rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` |
+| Source SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
+| Destination SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
+| Asset kind | Tiled map |
+| Title/name | `zone_01_starting_forest.tmx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.01-M5.07 and M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0037` — `knight_01.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0037` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/knight_01.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/knight_01.png` |
+| Source SHA-256 | `6369914f762d144ee58b5335fee83216a12fc2ff8bc60df2551adf9b7ae647e6` |
+| Destination SHA-256 | `6369914f762d144ee58b5335fee83216a12fc2ff8bc60df2551adf9b7ae647e6` |
+| Asset kind | image |
+| Title/name | `knight_01.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0038` — `knight_01.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0038` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/knight_01.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/knight_01.tsx` |
+| Source SHA-256 | `7c74a85552fa791256c08dc44e0e8a5d232da5c88d05352080bad3e9d77da90c` |
+| Destination SHA-256 | `7c74a85552fa791256c08dc44e0e8a5d232da5c88d05352080bad3e9d77da90c` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `knight_01.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0039` — `male_old_02.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0039` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/male_old_02.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_old_02.png` |
+| Source SHA-256 | `d454f4a3e85f34a9b1cde126965bf433e0dba8a41423e5f48f4bc8920581fee0` |
+| Destination SHA-256 | `d454f4a3e85f34a9b1cde126965bf433e0dba8a41423e5f48f4bc8920581fee0` |
+| Asset kind | image |
+| Title/name | `male_old_02.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0040` — `male_old_02.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0040` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/male_old_02.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_old_02.tsx` |
+| Source SHA-256 | `4e2b4285ffced6b53d32e8b1050e24a963151f3664a8c574778359957a0ba61b` |
+| Destination SHA-256 | `4e2b4285ffced6b53d32e8b1050e24a963151f3664a8c574778359957a0ba61b` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `male_old_02.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0041` — `male_sword_fighter_axe_fighter.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0041` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.png` |
+| Source SHA-256 | `bede99be95ba589244f21539ed4ea1ec1e7353fe9e0bcc9c2214a79d09caec1d` |
+| Destination SHA-256 | `bede99be95ba589244f21539ed4ea1ec1e7353fe9e0bcc9c2214a79d09caec1d` |
+| Asset kind | image |
+| Title/name | `male_sword_fighter_axe_fighter.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0042` — `male_sword_fighter_axe_fighter.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0042` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.tsx` |
+| Source SHA-256 | `41d6594e437433d6e5df6c5f8303304b1d8cc8d06210d9b6909f4b9d63469312` |
+| Destination SHA-256 | `41d6594e437433d6e5df6c5f8303304b1d8cc8d06210d9b6909f4b9d63469312` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `male_sword_fighter_axe_fighter.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0043` — `teen_halfmessy_01.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0043` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.png` |
+| Source SHA-256 | `72afc55330c9ffc6a3e936035cfb87523eafc2461ab759d02873eff662f7d6ec` |
+| Destination SHA-256 | `72afc55330c9ffc6a3e936035cfb87523eafc2461ab759d02873eff662f7d6ec` |
+| Asset kind | image |
+| Title/name | `teen_halfmessy_01.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0044` — `teen_halfmessy_01.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0044` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.tsx` |
+| Source SHA-256 | `52116e9c6c5eec8d4d73c546517a36778ba966cb4854d96f1a828b2ccbdb80bd` |
+| Destination SHA-256 | `52116e9c6c5eec8d4d73c546517a36778ba966cb4854d96f1a828b2ccbdb80bd` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `teen_halfmessy_01.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0045` — `teen_wiz_01.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0045` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/teen_wiz_01.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_wiz_01.png` |
+| Source SHA-256 | `5ad63590c3a76b022cf586c041d28c3099b1f7d842a6f6d314f74a75a79d32cd` |
+| Destination SHA-256 | `5ad63590c3a76b022cf586c041d28c3099b1f7d842a6f6d314f74a75a79d32cd` |
+| Asset kind | image |
+| Title/name | `teen_wiz_01.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0046` — `teen_wiz_01.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0046` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/teen_wiz_01.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_wiz_01.tsx` |
+| Source SHA-256 | `4ba455e94a22b5d25a1539f3397cb16025d3b5925993c6a3e27a4c8fbbc84879` |
+| Destination SHA-256 | `4ba455e94a22b5d25a1539f3397cb16025d3b5925993c6a3e27a4c8fbbc84879` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `teen_wiz_01.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0047` — `village_female_person_basket_carrier.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0047` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.png` |
+| Source SHA-256 | `f73f271a7aec85a7550e42a26e7a4dd61099500f7c3032f21c73076dcb1167a9` |
+| Destination SHA-256 | `f73f271a7aec85a7550e42a26e7a4dd61099500f7c3032f21c73076dcb1167a9` |
+| Asset kind | image |
+| Title/name | `village_female_person_basket_carrier.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0048` — `village_female_person_basket_carrier.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0048` |
+| Source path | `rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.tsx` |
+| Source SHA-256 | `2718f2e22fbc223cd9de7a22ddf0672c31acf320fbabe80811a6aef978f4d3a3` |
+| Destination SHA-256 | `2718f2e22fbc223cd9de7a22ddf0672c31acf320fbabe80811a6aef978f4d3a3` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `village_female_person_basket_carrier.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0049` — `item_box.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0049` |
+| Source path | `rusted_kingdoms/assets/sprites/objects/item_box.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/objects/item_box.png` |
+| Source SHA-256 | `b2e0c5bb594fcf9ff8fe427922fe22aaf4b4ac85928a84be1d032040beb31ca1` |
+| Destination SHA-256 | `b2e0c5bb594fcf9ff8fe427922fe22aaf4b4ac85928a84be1d032040beb31ca1` |
+| Asset kind | image |
+| Title/name | `item_box.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0050` — `item_box.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0050` |
+| Source path | `rusted_kingdoms/assets/sprites/objects/item_box.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/objects/item_box.tsx` |
+| Source SHA-256 | `d038d160a110c8e1ceeb4a0909775bde713c4777dffffcd265a454dd43077ed5` |
+| Destination SHA-256 | `d038d160a110c8e1ceeb4a0909775bde713c4777dffffcd265a454dd43077ed5` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `item_box.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0051` — `02_elise_walk.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0051` |
+| Source path | `rusted_kingdoms/assets/sprites/party/02_elise_walk.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.png` |
+| Source SHA-256 | `d54dab0913dd5a31714aa0ffea31dd95c19cf65124f4be5263d69a3cacefef9c` |
+| Destination SHA-256 | `d54dab0913dd5a31714aa0ffea31dd95c19cf65124f4be5263d69a3cacefef9c` |
+| Asset kind | image |
+| Title/name | `02_elise_walk.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0052` — `02_elise_walk.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0052` |
+| Source path | `rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx` |
+| Source SHA-256 | `c70c101ff81ac9bec876037f278704f830908787028b32e768dfc5a0afa0d0d4` |
+| Destination SHA-256 | `c70c101ff81ac9bec876037f278704f830908787028b32e768dfc5a0afa0d0d4` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `02_elise_walk.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.08-M5.20 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0053` — `altro.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0053` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/altro.png` |
+| Source SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
+| Destination SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
+| Asset kind | image |
+| Title/name | `altro.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0054` — `altro.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0054` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/altro.tsx` |
+| Source SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
+| Destination SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `altro.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0055` — `cucina.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0055` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/cucina.png` |
+| Source SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
+| Destination SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
+| Asset kind | image |
+| Title/name | `cucina.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0056` — `cucina.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0056` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/cucina.tsx` |
+| Source SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
+| Destination SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `cucina.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0057` — `mensole.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0057` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mensole.png` |
+| Source SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
+| Destination SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
+| Asset kind | image |
+| Title/name | `mensole.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0058` — `mensole.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0058` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mensole.tsx` |
+| Source SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
+| Destination SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `mensole.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0059` — `mobili.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0059` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mobili.png` |
+| Source SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
+| Destination SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
+| Asset kind | image |
+| Title/name | `mobili.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0060` — `mobili.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0060` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mobili.tsx` |
+| Source SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
+| Destination SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `mobili.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0061` — `muro_tileset.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0061` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset.png` |
+| Source SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
+| Destination SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
+| Asset kind | image |
+| Title/name | `muro_tileset.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0062` — `muro_tileset_wall.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0062` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx` |
+| Source SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
+| Destination SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `muro_tileset_wall.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0063` — `scale.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0063` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/scale.png` |
+| Source SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
+| Destination SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
+| Asset kind | image |
+| Title/name | `scale.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0064` — `scale.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0064` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/scale.tsx` |
+| Source SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
+| Destination SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `scale.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0065` — `terreno.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0065` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/terreno.png` |
+| Source SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
+| Destination SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
+| Asset kind | image |
+| Title/name | `terreno.png` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0066` — `terreno.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0066` |
+| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/terreno.tsx` |
+| Source SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
+| Destination SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `terreno.tsx` |
+| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
+| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
+| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.05-M5.06 |
+| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
+
+### Asset entry: `ALI-0067` — `stone_tile_stares_16x16.png`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0067` |
+| Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.png` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.png` |
+| Source SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
+| Destination SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
+| Asset kind | image |
+| Title/name | `stone_tile_stares_16x16.png` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.21-M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0068` — `stone_tile_stares_16x16.tsx`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0068` |
+| Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx` |
+| Source SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
+| Destination SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
+| Asset kind | Tiled TSX metadata |
+| Title/name | `stone_tile_stares_16x16.tsx` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.21-M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0069` — `sfx_index.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0069` |
+| Source path | `rusted_kingdoms/data/audio/sfx_index.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/audio/sfx_index.yaml` |
+| Source SHA-256 | `c85d9b352c7c2e10c8b0c72a903336fca501ab6dc8a1d43601d97e6679183b66` |
+| Destination SHA-256 | `c85d9b352c7c2e10c8b0c72a903336fca501ab6dc8a1d43601d97e6679183b66` |
+| Asset kind | scenario YAML |
+| Title/name | `sfx_index.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.26 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0070` — `ardel_apprentice.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0070` |
+| Source path | `rusted_kingdoms/data/dialogue/ardel_apprentice.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_apprentice.yaml` |
+| Source SHA-256 | `3773c67f880fb3ec1d6f59bfea81ff0035553e419dc9ea134c38bc6609dd81f5` |
+| Destination SHA-256 | `3773c67f880fb3ec1d6f59bfea81ff0035553e419dc9ea134c38bc6609dd81f5` |
+| Asset kind | scenario YAML |
+| Title/name | `ardel_apprentice.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0071` — `ardel_child.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0071` |
+| Source path | `rusted_kingdoms/data/dialogue/ardel_child.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_child.yaml` |
+| Source SHA-256 | `b0d884d8e68d85c4e3f336a254790b1e8d3db264794c3d0408c870dc701ebc2e` |
+| Destination SHA-256 | `b0d884d8e68d85c4e3f336a254790b1e8d3db264794c3d0408c870dc701ebc2e` |
+| Asset kind | scenario YAML |
+| Title/name | `ardel_child.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0072` — `ardel_fisherman.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0072` |
+| Source path | `rusted_kingdoms/data/dialogue/ardel_fisherman.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml` |
+| Source SHA-256 | `6b2318a67c5d0e52c5d8c6567289b2dcee8d082a781b939ab29073f9a23fdd0a` |
+| Destination SHA-256 | `6b2318a67c5d0e52c5d8c6567289b2dcee8d082a781b939ab29073f9a23fdd0a` |
+| Asset kind | scenario YAML |
+| Title/name | `ardel_fisherman.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0073` — `ardel_smith.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0073` |
+| Source path | `rusted_kingdoms/data/dialogue/ardel_smith.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_smith.yaml` |
+| Source SHA-256 | `de600ee9a884189d65b24ac0791f5777db8070855e3ed64edcf327cd2532e389` |
+| Destination SHA-256 | `de600ee9a884189d65b24ac0791f5777db8070855e3ed64edcf327cd2532e389` |
+| Asset kind | scenario YAML |
+| Title/name | `ardel_smith.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0074` — `bridge_guard_zone5.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0074` |
+| Source path | `rusted_kingdoms/data/dialogue/bridge_guard_zone5.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/bridge_guard_zone5.yaml` |
+| Source SHA-256 | `66ffc539b1f59a7fa5420fef63fe32b18354431387fcf57aecafde8a8e5bf329` |
+| Destination SHA-256 | `66ffc539b1f59a7fa5420fef63fe32b18354431387fcf57aecafde8a8e5bf329` |
+| Asset kind | scenario YAML |
+| Title/name | `bridge_guard_zone5.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0075` — `elder_intro.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0075` |
+| Source path | `rusted_kingdoms/data/dialogue/elder_intro.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/elder_intro.yaml` |
+| Source SHA-256 | `1f6e9f269495dd31fd422f8a753154a257bc87b9ff368fd47c436bb2fbc4dffb` |
+| Destination SHA-256 | `1f6e9f269495dd31fd422f8a753154a257bc87b9ff368fd47c436bb2fbc4dffb` |
+| Asset kind | scenario YAML |
+| Title/name | `elder_intro.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0076` — `elise_join.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0076` |
+| Source path | `rusted_kingdoms/data/dialogue/elise_join.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/elise_join.yaml` |
+| Source SHA-256 | `6462df82dc276b9342835663dcb50773715cc2cdbbc0b31351d064f6f542b5fa` |
+| Destination SHA-256 | `6462df82dc276b9342835663dcb50773715cc2cdbbc0b31351d064f6f542b5fa` |
+| Asset kind | scenario YAML |
+| Title/name | `elise_join.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0077` — `guide_ardel.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0077` |
+| Source path | `rusted_kingdoms/data/dialogue/guide_ardel.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/guide_ardel.yaml` |
+| Source SHA-256 | `1930ab11d1c83f48e44ec8957ad2facdc0f8ac6501280c0c88c6782bd0b15362` |
+| Destination SHA-256 | `1930ab11d1c83f48e44ec8957ad2facdc0f8ac6501280c0c88c6782bd0b15362` |
+| Asset kind | scenario YAML |
+| Title/name | `guide_ardel.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0078` — `guide_excuses.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0078` |
+| Source path | `rusted_kingdoms/data/dialogue/guide_excuses.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/guide_excuses.yaml` |
+| Source SHA-256 | `d7193882dc326cf0a88f28e3db3580b3db4ca3ce08cd24d199fc8ed59affa2b6` |
+| Destination SHA-256 | `d7193882dc326cf0a88f28e3db3580b3db4ca3ce08cd24d199fc8ed59affa2b6` |
+| Asset kind | scenario YAML |
+| Title/name | `guide_excuses.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0079` — `sign_town_01_ardel.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0079` |
+| Source path | `rusted_kingdoms/data/dialogue/sign_town_01_ardel.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_01_ardel.yaml` |
+| Source SHA-256 | `1eb180ad4b07a8583db57ef6973f8d4b5179dca48f2367c795c028097283e233` |
+| Destination SHA-256 | `1eb180ad4b07a8583db57ef6973f8d4b5179dca48f2367c795c028097283e233` |
+| Asset kind | scenario YAML |
+| Title/name | `sign_town_01_ardel.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0080` — `sign_zone_01_starting_forest.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0080` |
+| Source path | `rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml` |
+| Source SHA-256 | `8a844f6e7065b48f868f4cb305ef3b8076bf465c690783e80eea96c206964b52` |
+| Destination SHA-256 | `8a844f6e7065b48f868f4cb305ef3b8076bf465c690783e80eea96c206964b52` |
+| Asset kind | scenario YAML |
+| Title/name | `sign_zone_01_starting_forest.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0081` — `stronghold_gate_guard.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0081` |
+| Source path | `rusted_kingdoms/data/dialogue/stronghold_gate_guard.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/stronghold_gate_guard.yaml` |
+| Source SHA-256 | `97896d523e701884dc387aa945359fe1957f7e0302476ff5ea8d61c7054ef999` |
+| Destination SHA-256 | `97896d523e701884dc387aa945359fe1957f7e0302476ff5ea8d61c7054ef999` |
+| Asset kind | scenario YAML |
+| Title/name | `stronghold_gate_guard.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.12-M5.18 and M5.22 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0082` — `town_01_ardel_house_01.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0082` |
+| Source path | `rusted_kingdoms/data/maps/town_01_ardel_house_01.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_house_01.yaml` |
+| Source SHA-256 | `d30a15189a9b0236fc6defbf994aa738175f082bbc5ea51d15ad8d5971f02ead` |
+| Destination SHA-256 | `d30a15189a9b0236fc6defbf994aa738175f082bbc5ea51d15ad8d5971f02ead` |
+| Asset kind | scenario YAML |
+| Title/name | `town_01_ardel_house_01.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.01-M5.07 and M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+### Asset entry: `ALI-0083` — `zone_01_starting_forest.yaml`
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0083` |
+| Source path | `rusted_kingdoms/data/maps/zone_01_starting_forest.yaml` in `../agentic-rpg` at `0897035` |
+| Destination path | `assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml` |
+| Source SHA-256 | `b1e34f9ba943023b668681723698119117c33e596c1d40155270ed074db64dbe` |
+| Destination SHA-256 | `b1e34f9ba943023b668681723698119117c33e596c1d40155270ed074db64dbe` |
+| Asset kind | scenario YAML |
+| Title/name | `zone_01_starting_forest.yaml` |
+| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
+| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | Codex evidence audit, 2026-08-10 |
+| Related port task/wave | M5.01-M5.07 and M5.23-M5.25 |
+| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
+
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather
