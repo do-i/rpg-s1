@@ -50,6 +50,7 @@ mod tsx_metadata;
 mod ui_theme;
 mod world_audio;
 mod world_player;
+mod world_transition;
 
 #[cfg(test)]
 mod test_support;
@@ -78,6 +79,7 @@ use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
 use world_audio::WorldAudioPlugin;
 use world_player::WorldPlayerPlugin;
+use world_transition::WorldTransitionPlugin;
 
 fn main() -> std::process::ExitCode {
     let mut stdout = std::io::stdout();
@@ -128,6 +130,7 @@ fn run_game() {
         .add_plugins(IntroCompletionPlugin)
         .add_plugins(IntroTransitionPlugin)
         .add_plugins(WorldAudioPlugin)
+        .add_plugins(WorldTransitionPlugin)
         .add_plugins(WorldPlayerPlugin)
         .run();
 }
