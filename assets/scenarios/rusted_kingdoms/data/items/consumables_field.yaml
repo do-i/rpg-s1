@@ -1,0 +1,41 @@
+- id: veil_breaker
+  name: Veil Breaker
+  type: consumable
+  use_context: [battle]
+  effect:
+    bypass_barrier: true
+  buy_price: null
+  sell_price: 0
+  description: "Allows attacks to reach barrier-type enemies (Ghost, Wind Elemental)."
+
+- id: tent
+  name: Tent
+  type: consumable
+  use_context: [world_map]
+  effect:
+    restore: [hp, mp]
+    cure: [poison, silence]
+  buy_price: 300
+  sell_price: 150
+  description: "Camp gear for an open-air rest. Restores HP/MP and cures poison and silence."
+
+- id: rest_capsule
+  name: Rest Capsule
+  type: consumable
+  use_context: [world_map, town, dungeon]
+  effect:
+    restore: [hp, mp]
+    cure: [poison, silence]
+  buy_price: 500
+  sell_price: 250
+  description: "An alchemical pod that grants a full night's rest. Usable anywhere."
+
+- id: warp_stone
+  name: Warp Stone
+  type: consumable
+  use_context: [world_map, dungeon]
+  effect:
+    action: warp
+  buy_price: 800
+  sell_price: 400
+  description: "A keyed crystal that whisks the party back to the last town."

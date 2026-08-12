@@ -1,0 +1,21 @@
+- id: phoenix_wing
+  name: Phoenix Wing
+  type: key
+  usable: true              # key item — usable in field, never consumed
+  use_context: [world_map]
+  effect:
+    revive_hp_pct: 0.30
+  sellable: false
+  droppable: false
+  description: "A mystical wing. Revives a fallen ally on the world map. Never consumed."
+
+- id: sky_crystal
+  name: Sky Crystal
+  type: key
+  usable: false
+  use_context: null         # triggers fly unlock via story script
+  effect:
+    unlock_flag: transport_fly_unlocked
+  sellable: false
+  droppable: false
+  description: "A crystal that grants the power of flight across the world map."

@@ -1,0 +1,124 @@
+- id: wooden_stick
+  name: Wooden Stick
+  type: weapon
+  slot_category: staff
+  stats:
+    str: 1
+  buy_price: 30
+  sell_price: 15
+  description: "A sturdy length of wood. Better than bare hands."
+
+- id: short_sword
+  name: Short Sword
+  type: weapon
+  slot_category: short_sword
+  stats:
+    str: 2
+    dex: 1
+  buy_price: 150
+  sell_price: 75
+  description: "A quick, balanced blade favored by skirmishers."
+
+- id: iron_sword
+  name: Iron Sword
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 4
+  buy_price: 350
+  sell_price: 175
+  description: "Standard issue. Reliable iron, decent edge."
+
+- id: dagger
+  name: Dagger
+  type: weapon
+  slot_category: dagger
+  stats:
+    str: 1
+    dex: 2
+  buy_price: 120
+  sell_price: 60
+  description: "A light stabbing blade. Fast but fragile."
+
+- id: steel_axe
+  name: Steel Axe
+  type: weapon
+  slot_category: axe
+  stats:
+    str: 5
+    dex: -1
+  buy_price: 400
+  sell_price: 200
+  description: "A broad-bladed axe. Heavy bite, slow swing."
+
+- id: war_hammer
+  name: War Hammer
+  type: weapon
+  slot_category: hammer
+  stats:
+    str: 6
+    dex: -2
+  buy_price: 500
+  sell_price: 250
+  description: "A crushing weight on a reinforced shaft."
+
+- id: oak_staff
+  name: Oak Staff
+  type: weapon
+  slot_category: staff
+  stats:
+    int: 2
+  buy_price: 180
+  sell_price: 90
+  description: "A channeling staff carved from old oak."
+
+- id: silver_wand
+  name: Silver Wand
+  type: weapon
+  slot_category: wand
+  stats:
+    int: 3
+  buy_price: 300
+  sell_price: 150
+  description: "A slender wand tipped with polished silver."
+
+- id: iron_mace
+  name: Iron Mace
+  type: weapon
+  slot_category: mace
+  stats:
+    str: 3
+  buy_price: 250
+  sell_price: 125
+  description: "A blunt head on a short haft — permitted to the cloth."
+
+- id: short_bow
+  name: Short Bow
+  type: weapon
+  slot_category: bow
+  stats:
+    dex: 3
+  buy_price: 220
+  sell_price: 110
+  description: "A compact hunting bow. Quick to draw."
+
+- id: iron_spear
+  name: Iron Spear
+  type: weapon
+  slot_category: spear
+  stats:
+    str: 4
+    dex: 1
+  buy_price: 320
+  sell_price: 160
+  description: "Long reach and a narrow point."
+
+- id: ritual_rod
+  name: Ritual Rod
+  type: weapon
+  slot_category: rod
+  stats:
+    int: 4
+  buy_price: 450
+  sell_price: 225
+  description: "A rod etched with focusing sigils."

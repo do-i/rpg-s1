@@ -1,6 +1,8 @@
 mod action_input;
 pub mod app_state;
 mod cli;
+mod field_menu;
+mod field_menu_domain;
 pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
@@ -66,6 +68,8 @@ use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
+use field_menu::FieldMenuPlugin;
+use field_menu_domain::FieldMenuDomainPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
 use intro_completion::IntroCompletionPlugin;
@@ -122,6 +126,7 @@ fn run_game() {
         .init_resource::<ScenarioRoot>()
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioNewGameAssetsPlugin)
+        .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(TsxAtlasAssetPlugin)
         .add_plugins(TmxGroundAssetPlugin)
         .init_resource::<Playtime>()
@@ -142,5 +147,6 @@ fn run_game() {
         .add_plugins(WorldTransitionPlugin)
         .add_plugins(WorldInteractionPlugin)
         .add_plugins(WorldPlayerPlugin)
+        .add_plugins(FieldMenuPlugin)
         .run();
 }

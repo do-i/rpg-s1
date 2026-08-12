@@ -1,0 +1,39 @@
+- id: antidote
+  name: Antidote
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    cure: [poison]
+  buy_price: 80
+  sell_price: 40
+  description: "Bitter tincture that purges venom from the blood."
+
+- id: echo_herb
+  name: Echo Herb
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    cure: [silence]
+  buy_price: 80
+  sell_price: 40
+  description: "A pungent leaf chewed to restore a stolen voice."
+
+- id: smelling_salts
+  name: Smelling Salts
+  type: consumable
+  use_context: [battle]
+  effect:
+    cure: [sleep]
+  buy_price: 60
+  sell_price: 30
+  description: "Sharp crystals that snap a sleeping ally awake."
+
+- id: remedy
+  name: Remedy
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    cure: [poison, silence, sleep]
+  buy_price: 300
+  sell_price: 150
+  description: "A broad-spectrum cure for poison, silence, and sleep."

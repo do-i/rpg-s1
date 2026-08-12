@@ -1,0 +1,29 @@
+- id: stealth_cloak
+  name: Stealth Cloak
+  type: accessory
+  equippable: [rogue]
+  stats:
+    encounter_modifier: -0.15
+  buy_price: 800
+  sell_price: 400
+  description: "A muted grey cloak. Hostile eyes pass over its wearer."
+
+- id: lure_charm
+  name: Lure Charm
+  type: accessory
+  equippable: [rogue]
+  stats:
+    encounter_modifier: +0.20
+  buy_price: 600
+  sell_price: 300
+  description: "A pungent token that draws beasts from their dens."
+
+- id: holy_talisman
+  name: Holy Talisman
+  type: accessory
+  equippable: [all]
+  stats:
+    blocks_ability: death_gaze    # Dullahan's instant-death attack
+  buy_price: null
+  sell_price: 0
+  description: "A sacred charm. Blocks Dullahan's Death Gaze."

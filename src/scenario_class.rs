@@ -14,12 +14,13 @@
 
 use crate::scenario_party::PartyRow;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de::Error as _};
 use std::fmt;
 use std::num::NonZeroU32;
 
 /// One mapping-root class YAML document.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct ClassDefinition {
     #[serde(rename = "class", deserialize_with = "deserialize_string")]

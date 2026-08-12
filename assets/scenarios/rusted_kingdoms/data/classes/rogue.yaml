@@ -1,0 +1,87 @@
+# classes/rogue.yaml
+class: rogue
+name: Rogue
+description: "A swift and cunning trickster. Acts first, hits hard with crits, and manipulates the battlefield."
+
+base_hp: 16
+base_mp: 6
+
+default_row: back  # user-swappable; Rogue can be moved to front via status menu
+
+stat_growth:
+  str: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  dex: [4, 3, 4, 3, 4, 3, 4, 3, 4, 3]
+  con: [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+  int: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+exp_curve: quadratic
+exp_base: 90
+exp_factor: 2.0
+
+equipment_slots:
+  weapon: [dagger, short_sword, bow]
+  shield: [buckler]
+  helmet: [hat, hood]
+  body: [leather, light_armor]
+  accessory: [all]
+
+passive_bonuses:
+  encounter_rate_reduction: 0.05
+  flee_success_bonus: 0.25
+  chest_trap_detect: true
+
+abilities:
+  - id: steal
+    name: Steal
+    unlock_level: 1
+    type: utility
+    description: "Attempts to steal an item from one enemy."
+    mp_cost: 0
+    steal_chance: 0.40
+    target: single_enemy
+
+  - id: dual_strike
+    name: Dual Strike
+    unlock_level: 3
+    type: physical
+    attack_range: melee
+    description: "Strikes twice in one turn, each hit at 70% damage."
+    mp_cost: 0
+    hits: 2
+    damage_coeff: 0.70
+    target: single_enemy
+
+  - id: smoke_screen
+    name: Smoke Screen
+    unlock_level: 5
+    type: debuff
+    description: "Blinds all enemies, reducing their hit chance by 30% for 2 turns."
+    mp_cost: 4
+    effect:
+      target: all_enemies
+      stat: hit_chance
+      modifier: 0.70
+      duration_turns: 2
+
+  - id: shadow_step
+    name: Shadow Step
+    unlock_level: 7
+    type: physical
+    attack_range: melee
+    description: "Vanishes and reappears behind the enemy for a guaranteed critical hit at 180% damage."
+    mp_cost: 4
+    damage_coeff: 1.80
+    guaranteed_crit: true
+    target: single_enemy
+
+  - id: assassinate
+    name: Assassinate
+    unlock_level: 10
+    type: physical
+    attack_range: melee
+    description: "A lethal strike at 200% damage with a 20% chance to instantly defeat the target. No effect on bosses."
+    mp_cost: 8
+    damage_coeff: 2.0
+    instant_kill_chance: 0.20
+    instant_kill_blocked_by: [boss]
+    target: single_enemy

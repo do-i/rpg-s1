@@ -7,10 +7,14 @@
 //! Additions retain the source's cap-and-clip behavior, but return [`AdditionOutcome`] so lost
 //! overflow is observable without relying on a log message. Unlike Python's `remove_item`, an
 //! oversized removal is rejected without deleting the stack. This stricter boundary prevents a
-//! caller error from silently consuming more items than requested. Item metadata, loot batches,
-//! locks, transactions, serialization, and UI remain with their later milestones.
+//! caller error from silently consuming more items than requested. M6 also owns session-only
+//! visibility, locks, and latest-loot-batch metadata; serialization remains a later system.
 
-use std::{collections::BTreeMap, error::Error, fmt};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fmt,
+};
 
 use bevy::prelude::Resource;
 
@@ -23,6 +27,10 @@ pub struct RuntimeRepository {
     item_counts: BTreeMap<String, u32>,
     gp_cap: u32,
     item_quantity_cap: u32,
+    hidden_item_ids: BTreeSet<String>,
+    locked_item_ids: BTreeSet<String>,
+    loot_batch_sequence: u64,
+    item_loot_batches: BTreeMap<String, u64>,
 }
 
 impl RuntimeRepository {
@@ -33,6 +41,10 @@ impl RuntimeRepository {
             item_counts: BTreeMap::new(),
             gp_cap: balance.gp_cap.get(),
             item_quantity_cap: balance.item_qty_cap.get(),
+            hidden_item_ids: BTreeSet::new(),
+            locked_item_ids: BTreeSet::new(),
+            loot_batch_sequence: 0,
+            item_loot_batches: BTreeMap::new(),
         }
     }
 
@@ -84,6 +96,70 @@ impl RuntimeRepository {
             .map(|(item_id, quantity)| (item_id.as_str(), *quantity))
     }
 
+    /// Begins a source-compatible loot acquisition batch and returns its stable identifier.
+    pub fn start_loot_batch(&mut self) -> u64 {
+        self.loot_batch_sequence = self.loot_batch_sequence.saturating_add(1);
+        self.loot_batch_sequence
+    }
+
+    pub fn latest_loot_batch(&self) -> Option<u64> {
+        (self.loot_batch_sequence > 0).then_some(self.loot_batch_sequence)
+    }
+
+    pub fn item_loot_batch(&self, item_id: &str) -> Option<u64> {
+        self.item_loot_batches.get(item_id).copied()
+    }
+
+    pub fn is_new_item(&self, item_id: &str) -> bool {
+        self.latest_loot_batch()
+            .is_some_and(|batch| self.item_loot_batch(item_id) == Some(batch))
+    }
+
+    /// Adds an item and stamps it with an existing acquisition batch when any quantity lands.
+    pub fn add_item_in_batch(
+        &mut self,
+        item_id: impl Into<String>,
+        amount: u32,
+        batch: u64,
+    ) -> Result<AdditionOutcome, RepositoryError> {
+        if batch == 0 || batch > self.loot_batch_sequence {
+            return Err(RepositoryError::InvalidLootBatch { batch });
+        }
+        let item_id = item_id.into();
+        let outcome = self.add_item(item_id.clone(), amount)?;
+        if outcome.added > 0 {
+            self.item_loot_batches.insert(item_id, batch);
+        }
+        Ok(outcome)
+    }
+
+    pub fn is_hidden(&self, item_id: &str) -> bool {
+        self.hidden_item_ids.contains(item_id)
+    }
+
+    /// Changes only the current session's presentation filter.
+    pub fn set_hidden(&mut self, item_id: impl Into<String>, hidden: bool) {
+        let item_id = item_id.into();
+        if hidden {
+            self.hidden_item_ids.insert(item_id);
+        } else {
+            self.hidden_item_ids.remove(&item_id);
+        }
+    }
+
+    pub fn is_locked(&self, item_id: &str) -> bool {
+        self.locked_item_ids.contains(item_id)
+    }
+
+    pub fn set_locked(&mut self, item_id: impl Into<String>, locked: bool) {
+        let item_id = item_id.into();
+        if locked {
+            self.locked_item_ids.insert(item_id);
+        } else {
+            self.locked_item_ids.remove(&item_id);
+        }
+    }
+
     /// Adds to one shared stack up to the configured per-item cap.
     pub fn add_item(
         &mut self,
@@ -125,6 +201,7 @@ impl RuntimeRepository {
 
         if amount == available {
             self.item_counts.remove(item_id);
+            self.item_loot_batches.remove(item_id);
         } else {
             let quantity = self
                 .item_counts
@@ -205,6 +282,9 @@ pub enum RepositoryError {
         available: u32,
         requested: u32,
     },
+    InvalidLootBatch {
+        batch: u64,
+    },
 }
 
 impl fmt::Display for RepositoryError {
@@ -230,6 +310,12 @@ impl fmt::Display for RepositoryError {
                 formatter,
                 "cannot remove {requested} of `{item_id}` with only {available} available"
             ),
+            Self::InvalidLootBatch { batch } => {
+                write!(
+                    formatter,
+                    "loot batch {batch} is not active in this repository"
+                )
+            }
         }
     }
 }

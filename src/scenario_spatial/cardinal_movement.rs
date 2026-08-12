@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use crate::{
     action_input::ActionState,
     app_state::AppState,
+    field_menu::FieldMenuState,
     game_state::GameState,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -157,6 +158,7 @@ fn move_world_player(
     collision: Res<ActiveMapCollision>,
     transition: Option<Res<WorldTransition>>,
     interaction: Option<Res<WorldInteractionState>>,
+    field_menu: Option<Res<FieldMenuState>>,
     npcs: Query<&WorldNpc>,
     boxes: Query<&WorldItemBox>,
     game: Option<ResMut<GameState>>,
@@ -179,6 +181,9 @@ fn move_world_player(
         || interaction
             .as_deref()
             .is_some_and(WorldInteractionState::input_locked)
+        || field_menu
+            .as_deref()
+            .is_some_and(FieldMenuState::input_locked)
     {
         let tile_id = player_animation.update(None, delta_time);
         set_atlas_tile(&mut player_sprite, tile_id);

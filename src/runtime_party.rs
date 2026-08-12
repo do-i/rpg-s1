@@ -57,6 +57,12 @@ impl RuntimeParty {
         self.members.iter().find(|member| member.id() == member_id)
     }
 
+    pub(crate) fn member_mut(&mut self, member_id: &str) -> Option<&mut RuntimeMember> {
+        self.members
+            .iter_mut()
+            .find(|member| member.id() == member_id)
+    }
+
     pub fn protagonist(&self) -> Option<&RuntimeMember> {
         self.members.iter().find(|member| member.is_protagonist())
     }

@@ -78,12 +78,10 @@ impl RuntimePortal {
         self.bounds
     }
 
-    #[cfg(test)]
     pub(crate) fn target_map(&self) -> &RuntimeMapId {
         &self.target_map
     }
 
-    #[cfg(test)]
     pub(crate) const fn target_position(&self) -> Position {
         self.target_position
     }
@@ -288,12 +286,22 @@ impl WorldTransition {
     }
 
     pub(crate) fn request(&mut self, portal: &RuntimePortal, facing: CardinalDirection) -> bool {
+        self.request_destination(portal.target_map.clone(), portal.target_position, facing)
+    }
+
+    /// Requests the same transactional fade/load/publish path for a validated non-portal move.
+    pub(crate) fn request_destination(
+        &mut self,
+        target_map: RuntimeMapId,
+        target_position: Position,
+        facing: CardinalDirection,
+    ) -> bool {
         if self.phase != TransitionPhase::Idle {
             return false;
         }
         self.pending = Some(PendingTransition {
-            target_map: portal.target_map.clone(),
-            target_position: portal.target_position,
+            target_map,
+            target_position,
             facing,
         });
         self.failure = None;
@@ -647,6 +655,35 @@ mod tests {
         transition.advance_fade(1.0);
         assert_eq!(transition.phase(), TransitionPhase::Idle);
         assert!(!transition.input_locked());
+    }
+
+    #[test]
+    fn direct_destination_uses_the_same_transaction_and_rejects_while_busy() {
+        let destination = RuntimeMapId::try_new("zone_01_starting_forest").unwrap();
+        let position = Position::new(29, 1);
+        let mut transition = WorldTransition {
+            phase: TransitionPhase::Idle,
+            alpha: 0.0,
+            ..default()
+        };
+
+        assert!(transition.request_destination(
+            destination.clone(),
+            position,
+            CardinalDirection::Down
+        ));
+        assert!(!transition.request_destination(
+            destination.clone(),
+            position,
+            CardinalDirection::Up
+        ));
+        assert_eq!(transition.phase(), TransitionPhase::FadingOut);
+        assert_eq!(transition.pending().unwrap().target_map, destination);
+        assert_eq!(transition.pending().unwrap().target_position, position);
+        assert_eq!(
+            transition.pending().unwrap().facing,
+            CardinalDirection::Down
+        );
     }
 
     #[test]

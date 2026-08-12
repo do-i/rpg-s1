@@ -1,0 +1,329 @@
+# classes/sorcerer.yaml
+class: sorcerer
+name: Sorcerer
+description: "A fragile but devastating elementalist. Masters fire, water, wind, and earth to obliterate foes."
+
+base_hp: 14
+base_mp: 20
+
+default_row: back
+
+stat_growth:
+  str: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  dex: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  con: [1, 1, 1, 2, 1, 1, 1, 2, 1, 1]
+  int: [4, 3, 4, 3, 4, 3, 4, 3, 4, 3]
+
+exp_curve: quadratic
+exp_base: 95
+exp_factor: 2.0
+
+equipment_slots:
+  weapon: [staff, wand, rod]
+  shield: []
+  helmet: [hat, circlet]
+  body: [robe]
+  accessory: [all]
+
+abilities:
+  # ── Fire ──────────────────────────────────────────────
+  - id: fire_bolt
+    name: Fire Bolt
+    unlock_level: 1
+    type: spell
+    element: fire
+    description: "Hurls a bolt of fire at one enemy."
+    mp_cost: 4
+    spell_coeff: 1.0
+    target: single_enemy
+    side_effects: []
+
+  - id: fireball
+    name: Fireball
+    unlock_level: 10
+    type: spell
+    element: fire
+    description: "Launches a fireball at one enemy. 20% chance to burn."
+    mp_cost: 8
+    spell_coeff: 1.4
+    target: single_enemy
+    side_effects:
+      - type: burn
+        chance: 0.20
+        damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
+        duration_turns: 3
+        timing: end_of_turn
+
+  - id: flame_burst
+    name: Flame Burst
+    unlock_level: 22
+    type: spell
+    element: fire
+    description: "Erupts flames across a group of enemies. 40% chance to burn."
+    mp_cost: 14
+    spell_coeff: 1.2
+    target: group_enemies
+    side_effects:
+      - type: burn
+        chance: 0.40
+        damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
+        duration_turns: 3
+        timing: end_of_turn
+
+  - id: flame_wall
+    name: Flame Wall
+    unlock_level: 34
+    type: spell
+    element: fire
+    description: "Raises a wall of fire engulfing all enemies. 70% chance to burn."
+    mp_cost: 20
+    spell_coeff: 1.6
+    target: all_enemies
+    side_effects:
+      - type: burn
+        chance: 0.70
+        damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
+        duration_turns: 3
+        timing: end_of_turn
+
+  - id: meteor
+    name: Meteor
+    unlock_level: 46
+    unlock_flag: story_ultimate_fire
+    type: spell
+    element: fire
+    description: "Calls down a meteor for massive damage to all enemies. Burns guaranteed. 50% chance to stun."
+    mp_cost: 30
+    spell_coeff: 2.5
+    target: all_enemies
+    side_effects:
+      - type: burn
+        chance: 1.0
+        damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
+        duration_turns: 3
+        timing: end_of_turn
+      - type: stun
+        chance: 0.50
+        duration_turns: 1
+
+  # ── Water ─────────────────────────────────────────────
+  - id: aqua_shot
+    name: Aqua Shot
+    unlock_level: 3
+    type: spell
+    element: water
+    description: "Fires a pressurized water shot at one enemy."
+    mp_cost: 4
+    spell_coeff: 1.0
+    target: single_enemy
+    side_effects: []
+
+  - id: ice_bullets
+    name: Ice Bullets
+    unlock_level: 13
+    type: spell
+    element: water
+    description: "Pelts one enemy with shards of ice. 20% chance to freeze."
+    mp_cost: 8
+    spell_coeff: 1.4
+    target: single_enemy
+    side_effects:
+      - type: freeze
+        chance: 0.20
+        duration_turns: 1
+
+  - id: ice_storm
+    name: Ice Storm
+    unlock_level: 25
+    type: spell
+    element: water
+    description: "Unleashes a storm of ice on a group of enemies. 40% chance to freeze."
+    mp_cost: 14
+    spell_coeff: 1.2
+    target: group_enemies
+    side_effects:
+      - type: freeze
+        chance: 0.40
+        duration_turns: 1
+
+  - id: blizzard
+    name: Blizzard
+    unlock_level: 37
+    type: spell
+    element: water
+    description: "Blankets all enemies in a blizzard. 70% chance to freeze."
+    mp_cost: 20
+    spell_coeff: 1.6
+    target: all_enemies
+    side_effects:
+      - type: freeze
+        chance: 0.70
+        duration_turns: 1
+
+  - id: absolute_zero
+    name: Absolute Zero
+    unlock_level: 48
+    unlock_flag: story_ultimate_water
+    type: spell
+    element: water
+    description: "Drops temperature to absolute zero. Massive damage to all enemies. Freeze guaranteed. 70% chance to silence."
+    mp_cost: 30
+    spell_coeff: 2.5
+    target: all_enemies
+    side_effects:
+      - type: freeze
+        chance: 1.0
+        duration_turns: 1
+      - type: silence
+        chance: 0.70
+        duration_turns: 1
+
+  # ── Wind ──────────────────────────────────────────────
+  - id: wind_slash
+    name: Wind Slash
+    unlock_level: 5
+    type: spell
+    element: wind
+    description: "Slashes one enemy with a blade of wind."
+    mp_cost: 4
+    spell_coeff: 1.0
+    target: single_enemy
+    side_effects: []
+
+  - id: wind_blade
+    name: Wind Blade
+    unlock_level: 16
+    type: spell
+    element: wind
+    description: "Hurls a razor wind blade at one enemy. 20% chance to knockback."
+    mp_cost: 8
+    spell_coeff: 1.4
+    target: single_enemy
+    side_effects:
+      - type: knockback
+        chance: 0.20
+        atk_modifier: 0.80
+        duration_turns: 1
+
+  - id: cyclone
+    name: Cyclone
+    unlock_level: 28
+    type: spell
+    element: wind
+    description: "Spawns a cyclone tearing through a group of enemies. 40% chance to knockback."
+    mp_cost: 14
+    spell_coeff: 1.2
+    target: group_enemies
+    side_effects:
+      - type: knockback
+        chance: 0.40
+        atk_modifier: 0.80
+        duration_turns: 1
+
+  - id: vortex
+    name: Vortex
+    unlock_level: 40
+    type: spell
+    element: wind
+    description: "Opens a vortex engulfing all enemies. 70% chance to knockback."
+    mp_cost: 20
+    spell_coeff: 1.6
+    target: all_enemies
+    side_effects:
+      - type: knockback
+        chance: 0.70
+        atk_modifier: 0.80
+        duration_turns: 1
+
+  - id: tornado
+    name: Tornado
+    unlock_level: 50
+    unlock_flag: story_ultimate_wind
+    type: spell
+    element: wind
+    description: "Summons a catastrophic tornado. Massive damage to all enemies. Knockback guaranteed. 50% chance to stun."
+    mp_cost: 30
+    spell_coeff: 2.5
+    target: all_enemies
+    side_effects:
+      - type: knockback
+        chance: 1.0
+        atk_modifier: 0.80
+        duration_turns: 1
+      - type: stun
+        chance: 0.50
+        duration_turns: 1
+
+  # ── Earth ─────────────────────────────────────────────
+  - id: rock_throw
+    name: Rock Throw
+    unlock_level: 7
+    type: spell
+    element: earth
+    description: "Hurls a rock at one enemy."
+    mp_cost: 4
+    spell_coeff: 1.0
+    target: single_enemy
+    side_effects: []
+
+  - id: boulder_crash
+    name: Boulder Crash
+    unlock_level: 19
+    type: spell
+    element: earth
+    description: "Drops a boulder on one enemy. 20% chance to stun."
+    mp_cost: 8
+    spell_coeff: 1.4
+    target: single_enemy
+    side_effects:
+      - type: stun
+        chance: 0.20
+        duration_turns: 1
+
+  - id: terra_spike
+    name: Terra Spike
+    unlock_level: 31
+    type: spell
+    element: earth
+    description: "Drives earth spikes through a group of enemies. 40% chance to stun."
+    mp_cost: 14
+    spell_coeff: 1.2
+    target: group_enemies
+    side_effects:
+      - type: stun
+        chance: 0.40
+        duration_turns: 1
+
+  - id: stone_rain
+    name: Stone Rain
+    unlock_level: 43
+    type: spell
+    element: earth
+    description: "Rains boulders down on all enemies. 70% chance to stun."
+    mp_cost: 20
+    spell_coeff: 1.6
+    target: all_enemies
+    side_effects:
+      - type: stun
+        chance: 0.70
+        duration_turns: 1
+
+  - id: terra_break
+    name: Terra Break
+    unlock_level: 52
+    unlock_flag: story_ultimate_earth
+    type: spell
+    element: earth
+    description: "Shatters the earth beneath all enemies. Massive damage. Stun guaranteed. 30% chance to burn."
+    mp_cost: 30
+    spell_coeff: 2.5
+    target: all_enemies
+    side_effects:
+      - type: stun
+        chance: 1.0
+        duration_turns: 1
+      - type: burn
+        chance: 0.30
+        damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
+        duration_turns: 3
+        timing: end_of_turn

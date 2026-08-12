@@ -9,9 +9,9 @@
 //! The Python runtime represents an empty equipment slot with `""`; runtime Rust state uses
 //! `Option<String>` so absence cannot be confused with an item id. Initial catalog values are
 //! validated rather than silently clamped. Later mutations clamp HP, MP, and EXP at their source
-//! bounds. Level thresholds/growth and repository/equipment transactions remain later systems.
+//! bounds. Level thresholds/growth and serialization remain later systems.
 
-use std::{error::Error, fmt};
+use std::{collections::BTreeSet, error::Error, fmt};
 
 use crate::{
     scenario_balance::ProgressionBalance,
@@ -34,6 +34,7 @@ pub struct RuntimeMember {
     stats: RuntimeMemberStats,
     row: PartyRow,
     equipment: RuntimeEquipment,
+    status_effects: BTreeSet<crate::scenario_item::ItemStatus>,
 }
 
 impl RuntimeMember {
@@ -98,6 +99,7 @@ impl RuntimeMember {
             stats: RuntimeMemberStats::from(&data.stats),
             row: data.row,
             equipment: RuntimeEquipment::from(&data.equipped),
+            status_effects: BTreeSet::new(),
         })
     }
 
@@ -170,6 +172,24 @@ impl RuntimeMember {
         self.health == 0
     }
 
+    pub fn status_effects(
+        &self,
+    ) -> impl ExactSizeIterator<Item = crate::scenario_item::ItemStatus> + '_ {
+        self.status_effects.iter().copied()
+    }
+
+    pub fn has_status(&self, status: crate::scenario_item::ItemStatus) -> bool {
+        self.status_effects.contains(&status)
+    }
+
+    pub fn add_status(&mut self, status: crate::scenario_item::ItemStatus) -> bool {
+        self.status_effects.insert(status)
+    }
+
+    pub fn cure_status(&mut self, status: crate::scenario_item::ItemStatus) -> bool {
+        self.status_effects.remove(&status)
+    }
+
     /// Applies damage, floors health at zero, and returns actual health lost.
     pub fn apply_damage(&mut self, amount: u32) -> u32 {
         let actual = amount.min(self.health);
@@ -188,6 +208,17 @@ impl RuntimeMember {
         let before = self.health;
         self.health = self.health.saturating_add(amount).min(self.max_health);
         self.health - before
+    }
+
+    /// Revives a knocked-out member to the source-authored fraction of maximum health.
+    pub(crate) fn revive(&mut self, fraction: f64) -> u32 {
+        if !self.is_knocked_out() {
+            return 0;
+        }
+        self.health = ((f64::from(self.max_health) * fraction) as u32)
+            .max(1)
+            .min(self.max_health);
+        self.health
     }
 
     /// Spends up to the available mana and returns the actual amount spent.
@@ -344,6 +375,14 @@ pub enum EquipmentSlot {
 }
 
 impl EquipmentSlot {
+    pub const ALL: [Self; 5] = [
+        Self::Weapon,
+        Self::Shield,
+        Self::Helmet,
+        Self::Body,
+        Self::Accessory,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Weapon => "weapon",

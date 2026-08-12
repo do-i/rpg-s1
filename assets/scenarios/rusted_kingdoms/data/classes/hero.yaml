@@ -1,0 +1,98 @@
+# classes/hero.yaml
+class: hero
+name: Hero
+description: "A balanced warrior destined for greatness. Adapts to any challenge with both blade and will."
+
+base_hp: 22
+base_mp: 10
+
+default_row: front
+
+stat_growth:
+  str: [3, 2, 3, 3, 2, 3, 3, 3, 2, 3]
+  dex: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  con: [2, 3, 2, 2, 3, 2, 2, 3, 2, 2]
+  int: [1, 1, 2, 1, 1, 2, 1, 1, 2, 1]
+
+exp_curve: quadratic
+exp_base: 100
+exp_factor: 2.0
+
+equipment_slots:
+  weapon: [sword, axe]
+  shield: [all]
+  helmet: [all]
+  body: [all]
+  accessory: [all]
+
+abilities:
+  - id: power_strike
+    name: Power Strike
+    unlock_level: 2
+    type: physical
+    attack_range: melee
+    description: "A focused blow dealing 150% physical damage to one enemy."
+    mp_cost: 0
+    damage_coeff: 1.5
+    target: single_enemy
+
+  - id: rally
+    name: Rally
+    unlock_level: 4
+    type: buff
+    description: "Boosts the entire party's DEF by 20% for 3 turns."
+    mp_cost: 6
+    effect:
+      target: party
+      stat: def
+      modifier: 1.20
+      duration_turns: 3
+
+  - id: war_cry
+    name: War Cry
+    unlock_level: 6
+    type: debuff
+    description: "Reduces all enemies' ATK by 15% for 2 turns."
+    mp_cost: 5
+    effect:
+      target: all_enemies
+      stat: atk
+      modifier: 0.85
+      duration_turns: 2
+
+  - id: second_wind
+    name: Second Wind
+    unlock_level: 8
+    type: heal
+    description: "Restores 25% of own max HP."
+    mp_cost: 6
+    heal_coeff: 1.0
+    heal_pct: 0.25
+    target: self
+
+  - id: limit_slash
+    name: Limit Slash
+    unlock_level: 10
+    type: physical
+    attack_range: melee
+    description: "A devastating strike dealing 200% physical damage to one enemy."
+    mp_cost: 0
+    damage_coeff: 2.0
+    target: single_enemy
+
+  - id: teleport
+    name: Teleport
+    unlock_level: 1
+    # Story-gated: Aric only learns Teleport once `aric_teleport_unlocked` is
+    # set (a mid-game cutscene). For debugging/testing the flag is currently
+    # listed in manifest.yaml `bootstrap_flags`, so the skill is available from
+    # the start — remove it there to restore the mid-game unlock.
+    unlock_flag: aric_teleport_unlocked
+    type: utility
+    description: "Warp to any town or area you have already visited."
+    mp_cost: 8
+    target: self
+    # `warp: select` marks this utility spell as a field teleport. The field
+    # Spells screen (spell_scene) intercepts it and opens a destination picker
+    # listing the visited overworld locations (see engine/world/warp_logic.py).
+    warp: select

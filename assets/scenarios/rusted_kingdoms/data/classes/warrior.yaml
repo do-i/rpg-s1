@@ -1,0 +1,88 @@
+# classes/warrior.yaml
+class: warrior
+name: Warrior
+description: "An iron-willed fighter built to absorb punishment and protect allies. Slow but nearly unbreakable."
+
+base_hp: 28
+base_mp: 0
+
+default_row: front
+
+stat_growth:
+  str: [3, 3, 3, 2, 3, 3, 3, 2, 3, 3]
+  dex: [1, 1, 1, 2, 1, 1, 1, 2, 1, 1]
+  con: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+  int: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+exp_curve: quadratic
+exp_base: 110
+exp_factor: 2.0
+
+equipment_slots:
+  weapon: [sword, axe, hammer, spear]
+  shield: [all]
+  helmet: [all]
+  body: [all]
+  accessory: [all]
+
+abilities:
+  - id: shield_bash
+    name: Shield Bash
+    unlock_level: 2
+    type: physical
+    attack_range: melee
+    description: "Slams the enemy with a shield. Deals 80% damage and reduces their ATK by 15% for 2 turns."
+    mp_cost: 0
+    damage_coeff: 0.80
+    effect:
+      target: single_enemy
+      stat: atk
+      modifier: 0.85
+      duration_turns: 2
+    target: single_enemy
+
+  - id: taunt
+    name: Taunt
+    unlock_level: 4
+    type: buff
+    description: "Forces all enemies to target the Warrior for 2 turns."
+    mp_cost: 0
+    effect:
+      target: self
+      aggro: all
+      duration_turns: 2
+
+  - id: iron_wall
+    name: Iron Wall
+    unlock_level: 6
+    type: buff
+    description: "Raises own DEF by 40% for 3 turns."
+    mp_cost: 0
+    effect:
+      target: self
+      stat: def
+      modifier: 1.40
+      duration_turns: 3
+
+  - id: cover
+    name: Cover
+    unlock_level: 8
+    type: buff
+    description: "Intercepts attacks aimed at one ally this turn, taking the hit instead."
+    mp_cost: 0
+    effect:
+      target: single_ally
+      redirect_damage_to: self
+      duration_turns: 1
+
+  - id: fortress_stance
+    name: Fortress Stance
+    unlock_level: 10
+    type: buff
+    description: "Reduces all damage taken by 50% for 2 turns. Cannot act while active."
+    mp_cost: 0
+    effect:
+      target: self
+      damage_reduction: 0.50
+      duration_turns: 2
+      restrict_actions: true

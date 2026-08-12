@@ -1,0 +1,60 @@
+- id: potion
+  name: Potion
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_hp: 100
+  buy_price: 100
+  sell_price: 50
+  description: "A simple herbal draught. Restores 100 HP to one ally."
+
+- id: hi_potion
+  name: Hi-Potion
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_hp: 500
+  buy_price: 500
+  sell_price: 250
+  description: "A concentrated brew. Restores 500 HP to one ally."
+
+- id: elixir
+  name: Elixir
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_hp: full
+    restore_mp: full
+  buy_price: null
+  sell_price: 0
+  description: "Legendary panacea. Fully restores HP and MP for one ally."
+
+- id: ether
+  name: Ether
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_mp: 50
+  buy_price: 150
+  sell_price: 75
+  description: "Distilled mana. Restores 50 MP to one ally."
+
+- id: hi_ether
+  name: Hi-Ether
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    restore_mp: 200
+  buy_price: 600
+  sell_price: 300
+  description: "Refined mana essence. Restores 200 MP to one ally."
+
+- id: life_crystal
+  name: Life Crystal
+  type: consumable
+  use_context: [battle, world_map, dungeon]
+  effect:
+    revive_hp_pct: 1.0
+  buy_price: null
+  sell_price: 0
+  description: "A radiant crystal. Fully revives a fallen ally."

@@ -1,0 +1,90 @@
+# classes/cleric.yaml
+class: cleric
+name: Cleric
+description: "A devoted healer who channels earth and holy magic. Keeps the party alive and curses the undead."
+
+base_hp: 18
+base_mp: 18
+
+default_row: back
+
+stat_growth:
+  str: [1, 1, 2, 1, 1, 2, 1, 1, 2, 1]
+  dex: [1, 2, 1, 1, 2, 1, 1, 2, 1, 1]
+  con: [3, 2, 2, 3, 2, 2, 3, 2, 2, 3]
+  int: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+
+exp_curve: quadratic
+exp_base: 95
+exp_factor: 2.0
+
+equipment_slots:
+  weapon: [staff, mace, wand]
+  shield: [buckler, small_shield]
+  helmet: [hat, circlet, helm]
+  body: [robe, light_armor]
+  accessory: [all]
+
+abilities:
+  - id: heal
+    name: Heal
+    unlock_level: 1
+    type: heal
+    element: holy
+    description: "Restores HP to one ally."
+    mp_cost: 4
+    heal_coeff: 1.5
+    target: single_ally
+
+  - id: cure
+    name: Cure
+    unlock_level: 3
+    type: utility
+    description: "Removes all status effects from one ally."
+    mp_cost: 5
+    effect:
+      remove_status: all
+    target: single_ally
+
+  - id: earth_spike
+    name: Earth Spike
+    unlock_level: 4
+    type: spell
+    element: earth
+    description: "Drives a spike of earth through one enemy."
+    mp_cost: 6
+    spell_coeff: 1.0
+    target: single_enemy
+
+  - id: heal_all
+    name: Heal All
+    unlock_level: 6
+    type: heal
+    element: holy
+    description: "Restores HP to all allies."
+    mp_cost: 12
+    heal_coeff: 1.0
+    target: all_allies
+
+  - id: barrier
+    name: Barrier
+    unlock_level: 8
+    type: buff
+    element: holy
+    description: "Raises the entire party's magic resistance by 25% for 3 turns."
+    mp_cost: 10
+    effect:
+      target: party
+      stat: mres
+      modifier: 1.25
+      duration_turns: 3
+
+  - id: revive
+    name: Revive
+    unlock_level: 10
+    type: heal
+    element: holy
+    description: "Brings a fallen ally back with 50% HP."
+    mp_cost: 18
+    revive_hp_pct: 0.50
+    target: single_ally

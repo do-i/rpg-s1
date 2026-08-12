@@ -1,0 +1,42 @@
+- id: cloth_robe
+  name: Cloth Robe
+  type: body
+  slot_category: robe
+  stats:
+    con: 1
+    int: 1
+  buy_price: 70
+  sell_price: 35
+  description: "A plain woven robe. Light, unrestricting."
+
+- id: leather_vest
+  name: Leather Vest
+  type: body
+  slot_category: leather
+  stats:
+    con: 2
+  buy_price: 150
+  sell_price: 75
+  description: "Stitched cowhide. Takes glancing blows."
+
+- id: light_armor
+  name: Light Armor
+  type: body
+  slot_category: light_armor
+  stats:
+    con: 3
+    dex: -1
+  buy_price: 300
+  sell_price: 150
+  description: "Layered leather over cloth. A fieldworker's harness."
+
+- id: chainmail
+  name: Chainmail
+  type: body
+  slot_category: heavy_armor
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 700
+  sell_price: 350
+  description: "Interlocking iron rings. Heavy, but it shrugs off steel."

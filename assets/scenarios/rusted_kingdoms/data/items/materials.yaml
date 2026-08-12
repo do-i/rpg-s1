@@ -1,0 +1,731 @@
+# Zone 1
+- id: wolf_fang
+  name: Wolf Fang
+  type: material
+  sell_price: 20
+  description: "A curved canine torn from a wild wolf. Useful for charms and tooling."
+
+- id: wolf_pelt
+  name: Wolf Pelt
+  type: material
+  sell_price: 15
+  description: "A coarse grey hide. Tanners pay fair coin for clean specimens."
+
+- id: bat_wing
+  name: Bat Wing
+  type: material
+  sell_price: 12
+  description: "A leathery membrane. Apothecaries grind it for night-sight tinctures."
+
+- id: small_fang
+  name: Small Fang
+  type: material
+  sell_price: 10
+  description: "A modest tooth from a lesser beast. Sold by the handful."
+
+- id: spider_silk
+  name: Spider Silk
+  type: material
+  sell_price: 18
+  description: "A skein of strong, sticky thread spun by forest spiders."
+
+- id: venom_sac
+  name: Venom Sac
+  type: material
+  sell_price: 25
+  description: "A taut gland from a venomous creature. Handle with care."
+
+- id: bark_shard
+  name: Bark Shard
+  type: material
+  sell_price: 10
+  description: "A flake of toughened bark. Useful kindling and crafting filler."
+
+- id: ancient_root
+  name: Ancient Root
+  type: material
+  sell_price: 30
+  description: "A gnarled root pulled from old soil. Faintly warm to the touch."
+
+- id: rat_tail
+  name: Rat Tail
+  type: material
+  sell_price: 8
+  description: "A scrawny tail. Bounty offices pay a coin per dozen."
+
+- id: rat_hide
+  name: Rat Hide
+  type: material
+  sell_price: 10
+  description: "A scrap of greasy fur. Cheap leather for cheap repairs."
+
+# Zone 2
+- id: sharp_claw
+  name: Sharp Claw
+  type: material
+  sell_price: 35
+  description: "A keen claw still flecked with bone. Edges hold a working point."
+
+- id: rabbit_horn
+  name: Rabbit Horn
+  type: material
+  sell_price: 30
+  description: "A small spiral horn. Curiosity dealers prize the matched pairs."
+
+- id: soft_fur
+  name: Soft Fur
+  type: material
+  sell_price: 20
+  description: "A patch of unusually fine fur. Lining for fancy garments."
+
+- id: serpent_scale
+  name: Serpent Scale
+  type: material
+  sell_price: 28
+  description: "A glossy scale shed by a hill snake. Tough and pliable."
+
+- id: venom_gland
+  name: Venom Gland
+  type: material
+  sell_price: 32
+  description: "A swollen gland thick with toxin. Worth more intact."
+
+# Zone 3
+- id: frog_leg
+  name: Frog Leg
+  type: material
+  sell_price: 30
+  description: "A muscled leg from a marsh-frog. Edible — and a reagent."
+
+- id: poison_mucus
+  name: Poison Mucus
+  type: material
+  sell_price: 40
+  description: "A vial of acrid slime scraped from toxic skin."
+
+- id: leech_oil
+  name: Leech Oil
+  type: material
+  sell_price: 28
+  description: "Pressed essence of swamp leech. Used in field medicine."
+
+- id: dark_fluid
+  name: Dark Fluid
+  type: material
+  sell_price: 45
+  description: "An inky humor of unclear origin. Stains everything it touches."
+
+- id: mandrake_root
+  name: Mandrake Root
+  type: material
+  sell_price: 50
+  description: "A root said to scream when uprooted. Potent in tonics."
+
+- id: rare_herb
+  name: Rare Herb
+  type: material
+  sell_price: 60
+  description: "An uncommon medicinal leaf. Apothecaries ask after it by name."
+
+- id: water_crystal
+  name: Water Crystal
+  type: material
+  sell_price: 55
+  description: "A clear shard that beads moisture from open air."
+
+- id: mana_droplet
+  name: Mana Droplet
+  type: material
+  sell_price: 65
+  description: "A bead of condensed mana. Used to refine etheric draughts."
+
+- id: crab_shell
+  name: Crab Shell
+  type: material
+  sell_price: 35
+  description: "A thick chitin plate. Light armor cores are cut from these."
+
+- id: crab_claw
+  name: Crab Claw
+  type: material
+  sell_price: 40
+  description: "A heavy pincer. Smiths braze them onto club hafts."
+
+- id: plague_sample
+  name: Plague Sample
+  type: material
+  sell_price: 45
+  description: "A sealed phial of diseased tissue. Studied by alchemists."
+
+# Zone 4
+- id: bone_shard
+  name: Bone Shard
+  type: material
+  sell_price: 50
+  description: "A jagged splinter of bone. Cheap reagent, sharp by accident."
+
+- id: old_sword
+  name: Old Sword
+  type: material
+  sell_price: 80
+  description: "A pitted blade scavenged from a battlefield. Sold for scrap steel."
+
+- id: stone_fragment
+  name: Stone Fragment
+  type: material
+  sell_price: 45
+  description: "A chip of carved stone. Masons sometimes pay for matching grain."
+
+- id: gargoyle_wing
+  name: Gargoyle Wing
+  type: material
+  sell_price: 60
+  description: "A heavy stone wing. Faintly warm at the joints."
+
+- id: ectoplasm
+  name: Ectoplasm
+  type: material
+  sell_price: 70
+  description: "A jar of restless spectral residue. Refuses to settle."
+
+- id: spirit_orb
+  name: Spirit Orb
+  type: material
+  sell_price: 90
+  description: "A pale orb that hums in cold rooms. The bound dead, in glass."
+
+- id: mimic_key
+  name: Mimic Key
+  type: material
+  sell_price: 120
+  description: "A wrought key recovered from inside a mimic. Opens nothing — yet."
+
+- id: rare_coin
+  name: Rare Coin
+  type: material
+  sell_price: 100
+  description: "An old coin from a forgotten realm. Collectors bid high."
+
+- id: wisp_flame
+  name: Wisp Flame
+  type: material
+  sell_price: 80
+  description: "A flickering ember bottled from a will-o'-wisp. Cold to the skin."
+
+- id: silence_dust
+  name: Silence Dust
+  type: material
+  sell_price: 75
+  description: "A pinch of grey powder that smothers sound."
+
+- id: arrow_bundle
+  name: Arrow Bundle
+  type: material
+  sell_price: 40
+  description: "A tied sheaf of serviceable arrows. Fletchers re-fletch what's left."
+
+- id: zombie_flesh
+  name: Zombie Flesh
+  type: material
+  sell_price: 35
+  description: "A clammy strip of dead muscle. Required by certain dark recipes."
+
+# Zone 5
+- id: golem_core
+  name: Golem Core
+  type: material
+  sell_price: 110
+  description: "A rune-etched stone heart. Slow, steady warmth lingers in it."
+
+- id: stone_chunk
+  name: Stone Chunk
+  type: material
+  sell_price: 60
+  description: "A heavy block of dense rock. Useful raw material."
+
+- id: iron_plate
+  name: Iron Plate
+  type: material
+  sell_price: 90
+  description: "A flat sheet of beaten iron. Smiths refit it for cuirasses."
+
+- id: hard_claw
+  name: Hard Claw
+  type: material
+  sell_price: 80
+  description: "A claw nearly as hard as steel. Resistant to nick and stain."
+
+- id: worm_hide
+  name: Worm Hide
+  type: material
+  sell_price: 70
+  description: "A length of thick, ribbed hide pulled from a sand-worm."
+
+- id: sand_crystal
+  name: Sand Crystal
+  type: material
+  sell_price: 100
+  description: "A wind-polished crystal grown deep in dune country."
+
+- id: wind_crystal
+  name: Wind Crystal
+  type: material
+  sell_price: 120
+  description: "A weightless shard that hums faintly in moving air."
+
+- id: gale_feather
+  name: Gale Feather
+  type: material
+  sell_price: 110
+  description: "A long feather that stirs without a breeze."
+
+# Zone 6
+- id: frost_pelt
+  name: Frost Pelt
+  type: material
+  sell_price: 130
+  description: "A pelt rimed with permanent frost. Cold to the bone."
+
+- id: ice_fang
+  name: Ice Fang
+  type: material
+  sell_price: 140
+  description: "A fang of clear blue ice. Refuses to melt at room warmth."
+
+- id: harpy_feather
+  name: Harpy Feather
+  type: material
+  sell_price: 125
+  description: "A wide black feather. Fletchers swear it cuts truer flight."
+
+- id: talon_shard
+  name: Talon Shard
+  type: material
+  sell_price: 120
+  description: "A sliver from a raptor's talon. Sharp on every edge."
+
+- id: dark_armor_shard
+  name: Dark Armor Shard
+  type: material
+  sell_price: 160
+  description: "A piece of black plate. Heavy beyond its size."
+
+- id: cursed_blade
+  name: Cursed Blade
+  type: material
+  sell_price: 180
+  description: "A broken sword that hums when handled. Best left wrapped."
+
+- id: griffon_feather
+  name: Griffon Feather
+  type: material
+  sell_price: 135
+  description: "A magnificent banded feather. Trophy and reagent both."
+
+- id: beak_shard
+  name: Beak Shard
+  type: material
+  sell_price: 115
+  description: "A piece of horn-hard beak. Fits a heavy arrowhead."
+
+- id: iron_wing
+  name: Iron Wing
+  type: material
+  sell_price: 145
+  description: "A wing of overlapping metal scales. Surprisingly light."
+
+- id: gargoyle_core
+  name: Gargoyle Core
+  type: material
+  sell_price: 170
+  description: "A stone heart still warm with bound spirit."
+
+# Zone 7
+- id: cave_crystal
+  name: Cave Crystal
+  type: material
+  sell_price: 190
+  description: "A dim crystal grown in lightless deeps."
+
+- id: blood_vial
+  name: Blood Vial
+  type: material
+  sell_price: 200
+  description: "A sealed phial of dark blood. Required by old magics."
+
+- id: dark_bone
+  name: Dark Bone
+  type: material
+  sell_price: 180
+  description: "A bone stained black through marrow. Bites of cold cling to it."
+
+- id: shadow_shard
+  name: Shadow Shard
+  type: material
+  sell_price: 210
+  description: "A sliver of solidified shadow. Casts none of its own."
+
+- id: spore_dust
+  name: Spore Dust
+  type: material
+  sell_price: 170
+  description: "A pouch of fungal dust. Inhaling unwisely is unwise."
+
+- id: toxic_cap
+  name: Toxic Cap
+  type: material
+  sell_price: 195
+  description: "The cap of a poisonous mushroom. A staple of deadly draughts."
+
+# Zone 8
+- id: shadow_pelt
+  name: Shadow Pelt
+  type: material
+  sell_price: 230
+  description: "A pelt that swallows lamplight. Tailors hesitate to cut it."
+
+- id: dark_fang
+  name: Dark Fang
+  type: material
+  sell_price: 240
+  description: "A blackened fang that drinks color from nearby cloth."
+
+- id: blighted_bark
+  name: Blighted Bark
+  type: material
+  sell_price: 220
+  description: "Bark from a sickened tree. Smells of wet ash."
+
+- id: cursed_root
+  name: Cursed Root
+  type: material
+  sell_price: 235
+  description: "A root that twitches when touched. Used in forbidden brews."
+
+- id: phantom_veil
+  name: Phantom Veil
+  type: material
+  sell_price: 260
+  description: "A scrap of gauze pulled from a wraith. Weighs nothing."
+
+- id: imp_horn
+  name: Imp Horn
+  type: material
+  sell_price: 270
+  description: "A short curving horn. Sells well to demonologists."
+
+- id: dark_crystal
+  name: Dark Crystal
+  type: material
+  sell_price: 280
+  description: "A crystal black as polished obsidian, faintly cold."
+
+- id: wraith_cloth
+  name: Wraith Cloth
+  type: material
+  sell_price: 255
+  description: "A length of grave-shroud, eerily intact."
+
+- id: soul_fragment
+  name: Soul Fragment
+  type: material
+  sell_price: 290
+  description: "A shard of an unraveled spirit. Used in binding work."
+
+- id: rot_sample
+  name: Rot Sample
+  type: material
+  sell_price: 215
+  description: "A jar of fungal rot. Stinks even sealed."
+
+- id: cursed_stone
+  name: Cursed Stone
+  type: material
+  sell_price: 245
+  description: "A stone heavy with old hexes. Buyers wear gloves."
+
+- id: banshee_veil
+  name: Banshee Veil
+  type: material
+  sell_price: 275
+  description: "A wisp of mourning shroud. Hums when the wind catches it."
+
+- id: wail_crystal
+  name: Wail Crystal
+  type: material
+  sell_price: 285
+  description: "A crystal that resonates with distant cries."
+
+# Zone 9
+- id: lava_scale
+  name: Lava Scale
+  type: material
+  sell_price: 310
+  description: "A scale that holds heat from a drake's furnace blood."
+
+- id: fire_gland
+  name: Fire Gland
+  type: material
+  sell_price: 320
+  description: "A gland that simmers long after harvest. Highly flammable."
+
+- id: magma_core
+  name: Magma Core
+  type: material
+  sell_price: 350
+  description: "A glowing core of molten stone, still warm in iron tongs."
+
+- id: obsidian_shard
+  name: Obsidian Shard
+  type: material
+  sell_price: 330
+  description: "A wickedly sharp glass-stone shard. Knappers love them."
+
+- id: fire_crystal
+  name: Fire Crystal
+  type: material
+  sell_price: 360
+  description: "A crystal that flickers with caged flame."
+
+- id: ember_core
+  name: Ember Core
+  type: material
+  sell_price: 370
+  description: "A heart of perpetual ember, hot to the touch."
+
+- id: heat_sac
+  name: Heat Sac
+  type: material
+  sell_price: 305
+  description: "A sealed sac that radiates a furnace warmth."
+
+- id: hellhound_fang
+  name: Hellhound Fang
+  type: material
+  sell_price: 390
+  description: "A fang scorched black from infernal jaws."
+
+- id: brimstone_collar
+  name: Brimstone Collar
+  type: material
+  sell_price: 400
+  description: "A studded collar reeking of sulfur."
+
+- id: vile_essence
+  name: Vile Essence
+  type: material
+  sell_price: 375
+  description: "A bitter distillate of malice. Strong reagent in dark work."
+
+- id: chimera_mane
+  name: Chimera Mane
+  type: material
+  sell_price: 410
+  description: "Coarse hair from a chimera's mane. Three strands per beast."
+
+- id: beast_core
+  name: Beast Core
+  type: material
+  sell_price: 420
+  description: "The heart-stone of a great beast. Pulses faintly in the hand."
+
+# Zone 10
+- id: ancient_core
+  name: Ancient Core
+  type: material
+  sell_price: 480
+  description: "A core older than any standing kingdom. Quietly humming."
+
+- id: rune_fragment
+  name: Rune Fragment
+  type: material
+  sell_price: 460
+  description: "A broken piece of inscribed stone. Half a word remains."
+
+- id: lich_staff
+  name: Lich Staff
+  type: material
+  sell_price: 520
+  description: "A sundered staff. The skull-jewel still watches."
+
+- id: soul_crystal
+  name: Soul Crystal
+  type: material
+  sell_price: 540
+  description: "A crystal cold with caught spirit. Whispers when shaken."
+
+- id: chaos_crystal
+  name: Chaos Crystal
+  type: material
+  sell_price: 560
+  description: "A shard that refuses to choose a color. Strange to handle."
+
+- id: void_shard
+  name: Void Shard
+  type: material
+  sell_price: 550
+  description: "A black sliver that drinks light from its edges."
+
+- id: specter_veil
+  name: Specter Veil
+  type: material
+  sell_price: 490
+  description: "A near-invisible cloth. Difficult to fold; harder to lose."
+
+- id: death_blade
+  name: Death Blade
+  type: material
+  sell_price: 530
+  description: "A broken edge from a reaper's scythe. Still hungry."
+
+- id: angel_feather
+  name: Angel Feather
+  type: material
+  sell_price: 570
+  description: "A pristine white feather. Light gathers around it."
+
+- id: divine_shard
+  name: Divine Shard
+  type: material
+  sell_price: 580
+  description: "A fragment of holy stone. Warm to faithful hands."
+
+- id: guard_emblem
+  name: Guard Emblem
+  type: material
+  sell_price: 510
+  description: "A worn emblem of a vanished order. Worth more melted, sadly."
+
+- id: demon_core
+  name: Demon Core
+  type: material
+  sell_price: 590
+  description: "The cooled heart-stone of a greater demon."
+
+# Boss drops
+- id: giant_spider_silk
+  name: Giant Spider Silk
+  type: material
+  sell_price: 150
+  description: "A skein of cable-thick silk from a matriarch's loom."
+
+- id: queen_venom_sac
+  name: Queen Venom Sac
+  type: material
+  sell_price: 180
+  description: "A swollen reservoir of royal venom. Lethal in trace amounts."
+
+- id: bear_pelt
+  name: Bear Pelt
+  type: material
+  sell_price: 200
+  description: "A massive bearskin. Lined, it warms a winter camp."
+
+- id: bear_claw
+  name: Bear Claw
+  type: material
+  sell_price: 220
+  description: "A great curved claw. Trophy hunters bid against smiths."
+
+- id: king_crab_shell
+  name: King Crab Shell
+  type: material
+  sell_price: 300
+  description: "A shell wide enough for shield work. Salt-crusted and tough."
+
+- id: royal_claw
+  name: Royal Claw
+  type: material
+  sell_price: 320
+  description: "A pincer from a tyrant crab. Snaps a haft like kindling."
+
+- id: ancient_plague_sample
+  name: Ancient Plague Sample
+  type: material
+  sell_price: 380
+  description: "A sealed phial of an old disease. Plague-doctors pay handsomely."
+
+- id: cursed_relic
+  name: Cursed Relic
+  type: material
+  sell_price: 420
+  description: "A tainted heirloom. Buyers wear gloves and ask few questions."
+
+- id: wyvern_scale
+  name: Wyvern Scale
+  type: material
+  sell_price: 500
+  description: "A scale tougher than plate. Reserved for fine armor."
+
+- id: wyvern_wing
+  name: Wyvern Wing
+  type: material
+  sell_price: 520
+  description: "A vast leathery wing. Stretchers cut sail-cloth from these."
+
+- id: frost_dragon_scale
+  name: Frost Dragon Scale
+  type: material
+  sell_price: 700
+  description: "A scale rimed with eternal frost. Cools the air around it."
+
+- id: ice_dragon_horn
+  name: Ice Dragon Horn
+  type: material
+  sell_price: 720
+  description: "A spiraled horn of glacial ice. Refuses to thaw."
+
+- id: stone_dragon_scale
+  name: Stone Dragon Scale
+  type: material
+  sell_price: 900
+  description: "A scale of layered granite. Heavy as it looks."
+
+- id: petrified_horn
+  name: Petrified Horn
+  type: material
+  sell_price: 920
+  description: "A horn turned to stone over ages. Rings like flint when struck."
+
+- id: succubus_veil
+  name: Succubus Veil
+  type: material
+  sell_price: 1100
+  description: "A scrap of enchanted gauze. Faintly perfumed; faintly dangerous."
+
+- id: charm_crystal
+  name: Charm Crystal
+  type: material
+  sell_price: 1150
+  description: "A rosy crystal that warms with held attention."
+
+- id: flame_dragon_scale
+  name: Flame Dragon Scale
+  type: material
+  sell_price: 1400
+  description: "A scale that radiates a forge's heat. Cooled blacksmiths only."
+
+- id: inferno_horn
+  name: Inferno Horn
+  type: material
+  sell_price: 1450
+  description: "A horn of true fire. Glows even in the dark."
+
+- id: dullahan_helm
+  name: Dullahan Helm
+  type: material
+  sell_price: 1800
+  description: "An empty helm. It still turns toward sound."
+
+- id: headless_blade
+  name: Headless Blade
+  type: material
+  sell_price: 2000
+  description: "A black sword carried by a headless rider. No smith dares reforge it."
+
+# Crafting herbs
+- id: herb_red
+  name: Red Herb
+  type: material
+  sell_price: 10
+  description: "A common red-leafed herb. Apothecaries buy it in bunches."

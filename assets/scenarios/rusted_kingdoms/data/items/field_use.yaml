@@ -1,0 +1,80 @@
+# data/items/field_use.yaml
+# Declares items usable outside battle (world_map / town / dungeon).
+# Battle-only items are omitted — they are greyed out in ItemScene.
+#
+# effect values:
+#   restore_hp    — restore fixed amount of HP
+#   restore_mp    — restore fixed amount of MP
+#   restore_full  — restore HP + MP to max (+ optional cure)
+#   cure          — remove status effects listed in cures[]
+#   revive        — revive KO'd member to revive_hp_pct of max HP
+#
+# target values:
+#   single_alive  — one alive member (opens TargetSelectOverlay)
+#   single_ko     — one KO'd member  (opens TargetSelectOverlay, filters to KO)
+#   all_alive     — all alive members, no picker (confirm if use_aoe_confirm enabled)
+
+- id: potion
+  effect: restore_hp
+  amount: 100
+  target: single_alive
+
+- id: hi_potion
+  effect: restore_hp
+  amount: 500
+  target: single_alive
+
+- id: elixir
+  effect: restore_full
+  target: single_alive
+
+- id: ether
+  effect: restore_mp
+  amount: 50
+  target: single_alive
+
+- id: hi_ether
+  effect: restore_mp
+  amount: 200
+  target: single_alive
+
+- id: antidote
+  effect: cure
+  cures: [poison]
+  target: single_alive
+
+- id: echo_herb
+  effect: cure
+  cures: [silence]
+  target: single_alive
+
+- id: smelling_salts
+  effect: cure
+  cures: [sleep]
+  target: single_alive
+
+- id: remedy
+  effect: cure
+  cures: [poison, silence, sleep]
+  target: single_alive
+
+- id: tent
+  effect: restore_full
+  cures: [poison, silence]
+  target: all_alive
+
+- id: rest_capsule
+  effect: restore_full
+  cures: [poison, silence]
+  target: all_alive
+
+- id: life_crystal
+  effect: revive
+  revive_hp_pct: 1.0
+  target: single_ko
+
+- id: phoenix_wing
+  effect: revive
+  revive_hp_pct: 0.30
+  target: single_ko
+  consumable: false

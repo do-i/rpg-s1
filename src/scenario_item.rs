@@ -12,12 +12,13 @@
 
 use crate::scenario_class::UnitInterval;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::num::NonZeroU32;
 
 /// One list-root metadata catalog beneath `data/items/`, excluding `field_use.yaml`.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(transparent)]
 pub struct ItemCatalogFile(pub Vec<ItemDefinition>);
 
@@ -421,7 +422,7 @@ pub enum RecoveryPool {
     Mp,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemStatus {
     Poison,
@@ -484,7 +485,7 @@ impl serde::de::Visitor<'_> for SignedUnitIntervalVisitor {
 }
 
 /// The separate list-root `field_use.yaml` catalog.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(transparent)]
 pub struct FieldUseCatalogFile(pub Vec<FieldUseDefinition>);
 

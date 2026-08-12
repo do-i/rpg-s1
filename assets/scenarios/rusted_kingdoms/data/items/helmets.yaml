@@ -1,0 +1,39 @@
+- id: cloth_hood
+  name: Cloth Hood
+  type: helmet
+  slot_category: hood
+  stats:
+    con: 1
+  buy_price: 40
+  sell_price: 20
+  description: "A pulled-up hood. Hides the face, warms the ears."
+
+- id: leather_hat
+  name: Leather Hat
+  type: helmet
+  slot_category: hat
+  stats:
+    con: 1
+  buy_price: 60
+  sell_price: 30
+  description: "A simple hat of boiled leather."
+
+- id: iron_helm
+  name: Iron Helm
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 3
+  buy_price: 260
+  sell_price: 130
+  description: "A full iron helm. Solid weight on the neck."
+
+- id: silver_circlet
+  name: Silver Circlet
+  type: helmet
+  slot_category: circlet
+  stats:
+    int: 2
+  buy_price: 300
+  sell_price: 150
+  description: "A thin silver band that focuses thought."

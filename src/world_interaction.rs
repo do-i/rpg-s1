@@ -12,6 +12,7 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    field_menu::FieldMenuState,
     game_state::GameState,
     runtime_member::RuntimeMember,
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
@@ -129,6 +130,7 @@ fn request_npc_dialogue(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
     transition: Res<WorldTransition>,
+    field_menu: Res<FieldMenuState>,
     game: Option<ResMut<GameState>>,
     npcs: Query<&WorldNpc>,
     signs: Query<&WorldSign>,
@@ -136,6 +138,7 @@ fn request_npc_dialogue(
     mut state: ResMut<WorldInteractionState>,
 ) {
     if state.input_locked()
+        || field_menu.input_locked()
         || transition.input_locked()
         || !actions.just_pressed(AppAction::Confirm)
     {
@@ -284,8 +287,17 @@ fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcom
     }
 
     let mut grants = Vec::new();
+    let batch = (!item_box.loot().items.is_empty() || !item_box.loot().magic_cores.is_empty())
+        .then(|| game.repository_mut().start_loot_batch());
     for item in &item_box.loot().items {
-        let _outcome = game.repository_mut().add_item(&item.id, item.qty.get());
+        let _outcome = game
+            .repository_mut()
+            .add_item_in_batch(
+                &item.id,
+                item.qty.get(),
+                batch.expect("nonempty item-box loot started a batch"),
+            )
+            .expect("validated item-box loot uses a current batch");
         grants.push(format!("{} ×{}", item.id, item.qty));
     }
     for core in &item_box.loot().magic_cores {
@@ -297,7 +309,14 @@ fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcom
             MagicCoreSize::Xl => "xl",
         };
         let id = format!("mc_{size}");
-        let _outcome = game.repository_mut().add_item(&id, core.qty.get());
+        let _outcome = game
+            .repository_mut()
+            .add_item_in_batch(
+                &id,
+                core.qty.get(),
+                batch.expect("nonempty item-box loot started a batch"),
+            )
+            .expect("validated item-box core uses a current batch");
         grants.push(format!("{id} ×{}", core.qty));
     }
     game.opened_boxes_mut().record(key);
@@ -511,10 +530,16 @@ fn apply_dialogue_actions(
     balance: Option<&BalanceData>,
 ) -> Result<(), DialogueActionError> {
     apply_flag_actions(actions, game.flags_mut());
+    let gift_batch =
+        (!actions.give_items.is_empty()).then(|| game.repository_mut().start_loot_batch());
     for gift in &actions.give_items {
         let _outcome = game
             .repository_mut()
-            .add_item(&gift.id, gift.qty.get())
+            .add_item_in_batch(
+                &gift.id,
+                gift.qty.get(),
+                gift_batch.expect("nonempty dialogue gift list started a batch"),
+            )
             .map_err(|error| DialogueActionError::Item(error.to_string()))?;
     }
     let Some(member_id) = actions.join_party.as_deref() else {

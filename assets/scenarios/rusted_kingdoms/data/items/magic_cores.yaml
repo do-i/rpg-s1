@@ -1,0 +1,34 @@
+- id: mc_xl
+  name: "Magic Core (XL)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 10000
+  description: "An immense crystallized soul. Exchanged for spells of the highest order."
+
+- id: mc_l
+  name: "Magic Core (L)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 1000
+  description: "A large crystallized soul. Exchanged for major spells at the apothecary."
+
+- id: mc_m
+  name: "Magic Core (M)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 100
+  description: "A medium crystallized soul. Exchanged for mid-tier spells."
+
+- id: mc_s
+  name: "Magic Core (S)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 10
+  description: "A small crystallized soul. Exchanged for basic spells."
+
+- id: mc_xs
+  name: "Magic Core (XS)"
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: 1
+  description: "A faint crystallized soul. The smallest unit of magical exchange."

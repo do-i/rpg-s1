@@ -1,0 +1,41 @@
+- id: buckler
+  name: Buckler
+  type: shield
+  slot_category: buckler
+  stats:
+    con: 1
+  buy_price: 90
+  sell_price: 45
+  description: "A small round shield. Good for parries, not walls."
+
+- id: small_shield
+  name: Small Shield
+  type: shield
+  slot_category: small_shield
+  stats:
+    con: 2
+  buy_price: 180
+  sell_price: 90
+  description: "A sturdy round shield, light enough for most hands."
+
+- id: kite_shield
+  name: Kite Shield
+  type: shield
+  slot_category: kite_shield
+  stats:
+    con: 4
+    dex: -1
+  buy_price: 400
+  sell_price: 200
+  description: "A tall teardrop shield covering leg to shoulder."
+
+- id: tower_shield
+  name: Tower Shield
+  type: shield
+  slot_category: tower_shield
+  stats:
+    con: 6
+    dex: -2
+  buy_price: 650
+  sell_price: 325
+  description: "A wall of iron. You will not be moved."
