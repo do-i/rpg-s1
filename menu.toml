@@ -11,12 +11,12 @@ selected_bold = true
 
 [[items]]
 id = "run"
-label = "Run playable M5 slice"
+label = "Run playable M6 slice"
 key = "r"
 command = ["cargo", "run"]
 group = "Play"
-tags = ["run", "play", "game", "ardel", "world", "npc", "portal", "treasure"]
-description = "Play the World interaction slice with NPCs, portals, signs, and treasure"
+tags = ["run", "play", "game", "ardel", "world", "menu", "items", "equipment", "spells"]
+description = "Play the Ardel field-menu slice with party, items, equipment, spells, and teleport"
 favorite = true
 
 [[items]]

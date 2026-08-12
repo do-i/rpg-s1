@@ -27,7 +27,7 @@ From the repository root:
 lazymenu-cli
 ```
 
-Select **Run playable M5 slice**. The initial Bevy build is expected to
+Select **Run playable M6 slice**. The initial Bevy build is expected to
 take longer than later incremental builds. You can also run it directly:
 
 ```sh
@@ -39,6 +39,11 @@ confirm. New Game opens name entry; Enter confirms the name. Enter or Space
 advances the intro, while Escape uses the supported intro-skip path. In Ardel,
 tap the Arrow keys to move one tile; perpendicular arrows provide diagonal
 movement. Load Game remains disabled because saves have not been migrated.
+
+In the World, press `M` for the field menu, `I` for Items, or `S` for Status.
+Use Arrow keys to navigate, Enter to confirm, and Escape to return one level.
+The M6 slice includes shared party/status, inventory tabs and item use,
+equipment previews/swaps, learned field spells, and visited-map teleporting.
 
 Run the deterministic Ardel composition check with:
 
@@ -61,7 +66,9 @@ The current playable slice contains:
 - atomic faded map portals with a playable Ardel interior and Starting Forest;
 - Elise recruitment, configured signs, and persistent one-time treasure boxes;
 - indexed World interaction sound effects; and
+- source-authored class/item catalogs with party, status, inventory,
+  equipment, field-item, spell, and teleport screens;
 - automated parser, runtime, production-package, and screenshot checks;
 - build, run, test, lint, format, release, and clean menu actions.
 
-Saves, field menus, encounters, and combat remain later milestones.
+Saves, encounters, and combat remain later milestones.

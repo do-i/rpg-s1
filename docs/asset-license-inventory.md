@@ -2169,6 +2169,44 @@ status. The required fields are intentionally repeated in each entry.
 | Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
 
 
+## M6 class, item, and field-menu backdrop entries
+
+The following byte-identical files were copied from the pinned source revision
+for M6. Each row is a distinct ledger entry. Shared review fields for every row:
+
+- creator/rightsholder: unknown; commit authorship does not establish ownership;
+- source/evidence: exact pinned source file and history through `08970359d6cb03586948625d29b0d3351dbbf785`;
+- license, notice, and required attribution: unknown;
+- modification: unmodified, with identical source and destination SHA-256;
+- redistribution, commercial use, and derivatives: unknown;
+- review: `needs-evidence`, Codex evidence audit, 2026-08-12;
+- related work: M6.05-M6.24 / Gate 6; and
+- blocker: **Release blocker.** Establish exact ownership, provenance, license,
+  attribution, and redistribution permission for each hash before public
+  release; otherwise replace it.
+
+| ID | Source path in `../agentic-rpg` | Destination path | SHA-256 | Kind/name |
+| --- | --- | --- | --- | --- |
+| ALI-0084 | `rusted_kingdoms/data/classes/cleric.yaml` | `assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml` | `8168a37e564be1a6151956b2b49b3733dd91532dbe27588eba518f919a06a650` | scenario YAML / cleric class |
+| ALI-0085 | `rusted_kingdoms/data/classes/hero.yaml` | `assets/scenarios/rusted_kingdoms/data/classes/hero.yaml` | `f91931f90029e63d0449327f6b11c1a2549515280f1520fcb3ba6ad20beec9f6` | scenario YAML / hero class |
+| ALI-0086 | `rusted_kingdoms/data/classes/rogue.yaml` | `assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml` | `1a2d96bf1cb417414d3896b7e21e96421ed6d6f263c0dc04c5806cdfbe18ae4a` | scenario YAML / rogue class |
+| ALI-0087 | `rusted_kingdoms/data/classes/sorcerer.yaml` | `assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml` | `c7774723c8f3ac11719ef7c5c57269b330552e05486bcf897fa1b1b855f5f723` | scenario YAML / sorcerer class |
+| ALI-0088 | `rusted_kingdoms/data/classes/warrior.yaml` | `assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml` | `0d6cca291dd59ec6bef33f645a5e43a643bf266e4c1337883fdb13291a905b33` | scenario YAML / warrior class |
+| ALI-0089 | `rusted_kingdoms/data/items/accessories.yaml` | `assets/scenarios/rusted_kingdoms/data/items/accessories.yaml` | `0f5630eaa1fbe89a0a5370a4b2f7ff81c0a172c3f2e9160209bba1d5e650b075` | scenario YAML / accessories |
+| ALI-0090 | `rusted_kingdoms/data/items/body.yaml` | `assets/scenarios/rusted_kingdoms/data/items/body.yaml` | `5832b5d4382d0e4515417900c81c85c52dff0ac72c06eafd91ea0cf5bc04864a` | scenario YAML / body equipment |
+| ALI-0091 | `rusted_kingdoms/data/items/consumables_battle_throw.yaml` | `assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml` | `dbc9bac385109f6e5869597e2b70f967a52932681b86e32aaacae506a788131f` | scenario YAML / battle consumables |
+| ALI-0092 | `rusted_kingdoms/data/items/consumables_field.yaml` | `assets/scenarios/rusted_kingdoms/data/items/consumables_field.yaml` | `c559775d03ce8139e0747b6505e82d531b165a3ddc23c3bc188c04d3cfa94461` | scenario YAML / field consumables |
+| ALI-0093 | `rusted_kingdoms/data/items/consumables_recovery.yaml` | `assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml` | `c957e03cfed5df7ed587e0efd4e624328a1948812cdff94f96bffbf77f9bcf85` | scenario YAML / recovery consumables |
+| ALI-0094 | `rusted_kingdoms/data/items/consumables_status_cure.yaml` | `assets/scenarios/rusted_kingdoms/data/items/consumables_status_cure.yaml` | `047bc51c0ef6314f46c6c29796df3b79cb87af858dbcb75b2b1d3a4c0b408a4d` | scenario YAML / status consumables |
+| ALI-0095 | `rusted_kingdoms/data/items/field_use.yaml` | `assets/scenarios/rusted_kingdoms/data/items/field_use.yaml` | `2c5888e01d9ca1b24ecad86b1a6295ac08bc134e35a891f70bddfd34729ca0ff` | scenario YAML / field-use dispatch |
+| ALI-0096 | `rusted_kingdoms/data/items/helmets.yaml` | `assets/scenarios/rusted_kingdoms/data/items/helmets.yaml` | `e4414456fe3393431ae3fa3cf85d4c2f1dabb473262cd63712c0cd1857ec9ea4` | scenario YAML / helmets |
+| ALI-0097 | `rusted_kingdoms/data/items/key_items.yaml` | `assets/scenarios/rusted_kingdoms/data/items/key_items.yaml` | `cf0b9e790c0ff077f0b2ff2b643fdecd7885f1c07751de96173af80344b04cdb` | scenario YAML / key items |
+| ALI-0098 | `rusted_kingdoms/data/items/magic_cores.yaml` | `assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml` | `699e9f7cc772039210955b741e1bb8cae546685f91c0c36a266076c95b4e0f50` | scenario YAML / magic cores |
+| ALI-0099 | `rusted_kingdoms/data/items/materials.yaml` | `assets/scenarios/rusted_kingdoms/data/items/materials.yaml` | `f2075beb9f90e328aa8665023c471ac09c1f063cb96da5e077cec4dc813a0423` | scenario YAML / materials |
+| ALI-0100 | `rusted_kingdoms/data/items/shields.yaml` | `assets/scenarios/rusted_kingdoms/data/items/shields.yaml` | `91a30788b08956721faee27ee7e573938d2f930a3dfad2063245f0ea9591672c` | scenario YAML / shields |
+| ALI-0101 | `rusted_kingdoms/data/items/weapons.yaml` | `assets/scenarios/rusted_kingdoms/data/items/weapons.yaml` | `1ae20ab1b6a6d75c13d0aa30032c05c6c73f88f6cea1a70ed6304c707b13e063` | scenario YAML / weapons |
+| ALI-0102 | `rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `9eee6b2ff027e44069abe52de82d6195a3e56d8ee0c2baa373be0a18b5c38f3c` | image / field-menu backdrop |
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather

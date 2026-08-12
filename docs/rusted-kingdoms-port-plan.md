@@ -293,30 +293,30 @@ live-found portal regression.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M6.01 | [ ] Open and close the field-menu shell. | `S` | World input pauses and resumes without state loss. |
-| M6.02 | [ ] Add field-menu command navigation. | `T` | Wrap, confirm, cancel, and disabled rows are tested. |
-| M6.03 | [ ] Render the party summary panel. | `S` | Names, levels, HP/MP, row, and GP display. |
-| M6.04 | [ ] Add the status member selector. | `T` | Cycling members handles a one- and five-member party. |
-| M6.05 | [ ] Render base and derived stats. | `S` | Displayed values agree with Python fixtures. |
-| M6.06 | [ ] Load the item catalog into a runtime resource. | `T` | All current item IDs are addressable. |
-| M6.07 | [ ] Render inventory tabs. | `S` | All/New/Recovery/Status/Battle/Material/Core/Key filters work. |
-| M6.08 | [ ] Add scrollable inventory rows. | `T` | Empty, short, and over-one-page lists behave correctly. |
-| M6.09 | [ ] Add the session-only item visibility filter. | `S` | Hidden items stay out of every tab until restart. |
-| M6.10 | [ ] Track the latest loot batch. | `T` | The New tab matches repository batch semantics. |
-| M6.11 | [ ] Add discard quantity selection. | `T` | Bounds and whole-stack removal are tested. |
-| M6.12 | [ ] Block discard for locked/key items. | `T` | Both rule paths show a reason and preserve inventory. |
-| M6.13 | [ ] Implement one field healing item. | `S` | Targeting, consumption, cap, and invalid-target rules match Python. |
-| M6.14 | [ ] Implement one field status-cure item. | `S` | Only supported status effects clear. |
-| M6.15 | [ ] Load equipment slot compatibility. | `S` | Class restrictions resolve from current class/item data. |
-| M6.16 | [ ] Render equipped items by slot. | `T` | Empty and populated slots display correctly. |
-| M6.17 | [ ] Preview equipment stat deltas. | `S` | Every modified derived stat agrees with Python fixtures. |
-| M6.18 | [ ] Equip an owned compatible item. | `S` | Repository and prior equipment update atomically. |
-| M6.19 | [ ] Reject incompatible equipment. | `T` | State is unchanged and the reason is visible. |
-| M6.20 | [ ] Load class abilities into a spell catalog. | `S` | Level- and flag-gated unlocks resolve. |
-| M6.21 | [ ] Render field-usable spells. | `T` | Battle-only and locked abilities are excluded. |
-| M6.22 | [ ] Cast one field healing spell. | `S` | Target, MP cost, and cap behavior match Python. |
-| M6.23 | [ ] Add the teleport destination picker. | `S` | Only eligible visited maps appear. |
-| M6.24 | [ ] Execute field teleport through the map transition path. | `S` | MP changes only after a valid destination is accepted. |
+| M6.01 | [x] Open and close the field-menu shell. | `S` | World input pauses and resumes without state loss. Evidence: shared movement lock and live X11 `M`/Escape check. |
+| M6.02 | [x] Add field-menu command navigation. | `T` | Wrap, confirm, cancel, and disabled rows are tested. Evidence: reducer fixture and live disabled Save/Quit rows. |
+| M6.03 | [x] Render the party summary panel. | `S` | Names, levels, HP/MP, row, and GP display. Evidence: live Aric summary from `GameState`. |
+| M6.04 | [x] Add the status member selector. | `T` | Cycling members handles a one- and five-member party. Evidence: explicit empty/one/five-member wrap fixtures and indexed view. |
+| M6.05 | [x] Render base and derived stats. | `S` | Displayed values agree with Python fixtures. Evidence: production equipment fixture and live Aric 28/17/28/5 to 32/17/32/5 totals. |
+| M6.06 | [x] Load the item catalog into a runtime resource. | `T` | All current item IDs are addressable. Evidence: typed asset catalog and 172-item/13-effect/5-class fixture. |
+| M6.07 | [x] Render inventory tabs. | `S` | All/New/Recovery/Status/Battle/Material/Core/Key filters work. Evidence: production-catalog tab fixture and live Items controls. |
+| M6.08 | [x] Add scrollable inventory rows. | `T` | Empty, short, and over-one-page lists behave correctly. Evidence: empty-safe selection and explicit 12-row page-boundary fixtures. |
+| M6.09 | [x] Add the session-only item visibility filter. | `S` | Hidden items stay out of every tab until restart. Evidence: repository/filter fixture and Hide action. |
+| M6.10 | [x] Track the latest loot batch. | `T` | The New tab matches repository batch semantics. Evidence: treasure/dialogue acquisition batches and latest-batch fixture. |
+| M6.11 | [x] Add discard quantity selection. | `T` | Bounds and whole-stack removal are tested. Evidence: quantity wrap plus partial/exact-stack fixtures. |
+| M6.12 | [x] Block discard for locked/key items. | `T` | Both rule paths show a reason and preserve inventory. Evidence: atomic rejection fixture and visible reason strings. |
+| M6.13 | [x] Implement one field healing item. | `S` | Targeting, consumption, cap, and invalid-target rules match Python. Evidence: Potion target/cap/consume/retry fixture. |
+| M6.14 | [x] Implement one field status-cure item. | `S` | Only supported status effects clear. Evidence: Antidote poison-only consume/retry fixture. |
+| M6.15 | [x] Load equipment slot compatibility. | `S` | Class restrictions resolve from current class/item data. Evidence: typed class/item gates and blocked Dagger-on-Hero fixture. |
+| M6.16 | [x] Render equipped items by slot. | `T` | Empty and populated slots display correctly. Evidence: live five-slot Status view and `(Empty)` sentinel. |
+| M6.17 | [x] Preview equipment stat deltas. | `S` | Every modified derived stat agrees with Python fixtures. Evidence: all four production totals plus Iron Sword-to-Steel Axe STR/DEX deltas. |
+| M6.18 | [x] Equip an owned compatible item. | `S` | Repository and prior equipment update atomically. Evidence: Steel Axe swap returns Iron Sword once. |
+| M6.19 | [x] Reject incompatible equipment. | `T` | State is unchanged and the reason is visible. Evidence: atomic rejection fixture and picker reason. |
+| M6.20 | [x] Load class abilities into a spell catalog. | `S` | Level- and flag-gated unlocks resolve. Evidence: all five class assets and Teleport flag gate fixture. |
+| M6.21 | [x] Render field-usable spells. | `T` | Battle-only and locked abilities are excluded. Evidence: field-kind filter; Aric shows Teleport while offensive abilities are excluded. |
+| M6.22 | [x] Cast one field healing spell. | `S` | Target, MP cost, and cap behavior match Python. Evidence: Elise Heal spends 4 MP only on a damaged valid target. |
+| M6.23 | [x] Add the teleport destination picker. | `S` | Only eligible visited maps appear. Evidence: metadata/portal-derived catalog plus current/unvisited exclusion fixture. |
+| M6.24 | [x] Execute field teleport through the map transition path. | `S` | MP changes only after a valid destination is accepted. Evidence: standard transition transaction fixture rejects a busy path; MP is spent only after acceptance. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
 spell screens, all operating on the same runtime state.
@@ -559,5 +559,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M6.01**. Open and close the field-menu shell while proving
-World input pauses and resumes without map, party, or interaction-state loss.
+Continue with **M7.01**. Define a versioned Rust save envelope with explicit
+format version, scenario id/version, timestamp, and payload.
