@@ -74,6 +74,27 @@ impl RuntimeMapState {
         }
     }
 
+    /// Restores a complete native save location without inventing transition history.
+    pub(crate) fn try_from_saved(
+        map_id: RuntimeMapId,
+        position: Position,
+        facing: CardinalDirection,
+        visited: impl IntoIterator<Item = RuntimeMapId>,
+    ) -> Result<Self, RuntimeMapStateError> {
+        let mut restored = BTreeSet::new();
+        for id in visited {
+            if !restored.insert(id.clone()) {
+                return Err(RuntimeMapStateError::DuplicateVisitedMap(id));
+            }
+        }
+        Ok(Self {
+            current: Some(map_id),
+            position,
+            facing,
+            visited: restored,
+        })
+    }
+
     /// The currently selected map, or `None` before new-game state has been assembled.
     pub fn current(&self) -> Option<&RuntimeMapId> {
         self.current.as_ref()
@@ -122,6 +143,27 @@ impl RuntimeMapState {
         self.visited.iter()
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum RuntimeMapStateError {
+    DuplicateVisitedMap(RuntimeMapId),
+}
+
+impl fmt::Display for RuntimeMapStateError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DuplicateVisitedMap(id) => {
+                write!(
+                    formatter,
+                    "visited map `{}` appears more than once",
+                    id.as_str()
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for RuntimeMapStateError {}
 
 #[cfg(test)]
 mod tests {

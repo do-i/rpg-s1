@@ -14,6 +14,7 @@ mod name_entry;
 pub mod new_game;
 mod new_game_install;
 pub mod playtime;
+mod python_save_import;
 pub mod runtime_flags;
 pub mod runtime_map;
 pub mod runtime_member;
@@ -21,6 +22,9 @@ pub mod runtime_opened_boxes;
 pub mod runtime_party;
 pub mod runtime_quest;
 pub mod runtime_repository;
+mod save_data;
+mod save_store;
+mod save_ui;
 pub mod scenario_audio;
 pub mod scenario_balance;
 pub mod scenario_battle_background;
@@ -78,6 +82,7 @@ use intro_transition::IntroTransitionPlugin;
 use name_entry::NameEntryPlugin;
 use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
+use save_ui::SaveUiPlugin;
 use scenario_manifest_asset::ScenarioManifestAssetPlugin;
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use scenario_root::ScenarioRoot;
@@ -136,6 +141,7 @@ fn run_game() {
         .add_plugins(ActionInputPlugin)
         .add_plugins(FixedGameplayCanvasPlugin)
         .add_plugins(TitleScreenPlugin)
+        .add_plugins(SaveUiPlugin)
         .add_plugins(NameEntryPlugin)
         .add_plugins(NewGameInstallPlugin)
         .add_plugins(IntroDialoguePlugin)

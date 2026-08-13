@@ -13,6 +13,8 @@ use std::{
 };
 
 use crate::{
+    python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
+    save_store::{SaveStore, resolve_save_directory, unix_timestamp_now},
     scenario_cross_reference::{
         DiagnosticSeverity, ScenarioCatalogCounts, ScenarioDiagnostic, ScenarioLocation,
         ScenarioValidationReport, validate_scenario_directory,
@@ -24,12 +26,22 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n\nValidate defaults to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play,
     Validate(ScenarioRoot),
+    ImportPython(ImportPythonArguments),
     Help,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ImportPythonArguments {
+    input: PathBuf,
+    slot: usize,
+    root: ScenarioRoot,
+    allow_unchecked: bool,
+    replace: bool,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -104,6 +116,34 @@ where
                 result
             }
         }
+        Command::ImportPython(arguments) => match run_python_import(collection_root, &arguments) {
+            Ok(result) => {
+                let _ = writeln!(
+                    stdout,
+                    "Imported Python save into {}",
+                    result
+                        .destination
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("native slot")
+                );
+                if let Some(backup) = result.backup {
+                    let _ = writeln!(
+                        stdout,
+                        "Preserved previous slot as import-backups/{}",
+                        backup
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .unwrap_or("verified backup")
+                    );
+                }
+                EXIT_SUCCESS
+            }
+            Err(error) => {
+                let _ = writeln!(stderr, "error: {error}");
+                EXIT_VALIDATION_FAILED
+            }
+        },
     }
 }
 
@@ -123,6 +163,11 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         [command, flag] if command == "validate-scenario" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
         }
+        [command, flag]
+            if command == "import-python-save" && (flag == "-h" || flag == "--help") =>
+        {
+            Ok(Command::Help)
+        }
         [command] if command == "validate-scenario" => Ok(Command::Validate(
             ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
                 .expect("the default package key is valid"),
@@ -137,8 +182,127 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         [command, ..] if command == "validate-scenario" => Err(UsageError(
             "validate-scenario accepts at most one package key".to_owned(),
         )),
+        [command, rest @ ..] if command == "import-python-save" => {
+            parse_import_python_arguments(rest).map(Command::ImportPython)
+        }
         [command, ..] => Err(UsageError(format!("unknown command `{command}`"))),
     }
+}
+
+fn parse_import_python_arguments(
+    arguments: &[String],
+) -> Result<ImportPythonArguments, UsageError> {
+    let Some(input) = arguments.first() else {
+        return Err(UsageError("import-python-save requires INPUT".to_owned()));
+    };
+    if input.starts_with('-') {
+        return Err(UsageError(
+            "import-python-save INPUT must come first".to_owned(),
+        ));
+    }
+    let mut slot = None;
+    let mut package = DEFAULT_SCENARIO_PACKAGE_KEY.to_owned();
+    let mut allow_unchecked = false;
+    let mut replace = false;
+    let mut index = 1;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--slot" => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--slot requires a value".to_owned()))?;
+                let parsed = value
+                    .parse::<usize>()
+                    .map_err(|_| UsageError("--slot must be an integer in 0..=100".to_owned()))?;
+                if parsed > 100 || slot.replace(parsed).is_some() {
+                    return Err(UsageError(
+                        "--slot must appear once with a value in 0..=100".to_owned(),
+                    ));
+                }
+            }
+            "--package" => {
+                index += 1;
+                package = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--package requires a value".to_owned()))?
+                    .clone();
+            }
+            "--allow-unchecked" if !allow_unchecked => allow_unchecked = true,
+            "--replace" if !replace => replace = true,
+            option => {
+                return Err(UsageError(format!(
+                    "unknown or repeated import-python-save option `{option}`"
+                )));
+            }
+        }
+        index += 1;
+    }
+    let slot = slot.ok_or_else(|| UsageError("import-python-save requires --slot".to_owned()))?;
+    let root = ScenarioRoot::try_for_package_key(package.clone())
+        .map_err(|error| UsageError(format!("invalid package key `{package}`: {error}")))?;
+    Ok(ImportPythonArguments {
+        input: PathBuf::from(input),
+        slot,
+        root,
+        allow_unchecked,
+        replace,
+    })
+}
+
+fn run_python_import(
+    collection_root: &Path,
+    arguments: &ImportPythonArguments,
+) -> Result<crate::python_save_import::ImportInstallResult, String> {
+    let canonical_collection = collection_root
+        .canonicalize()
+        .map_err(|_| "scenario collection is unavailable".to_owned())?;
+    let selected = collection_root.join(arguments.root.package_key());
+    let metadata = fs::symlink_metadata(&selected)
+        .map_err(|_| "selected scenario package is unavailable".to_owned())?;
+    if metadata.file_type().is_symlink() {
+        return Err("selected scenario package must not be a symbolic link".to_owned());
+    }
+    let package = selected
+        .canonicalize()
+        .map_err(|_| "selected scenario package cannot be resolved".to_owned())?;
+    if !package.starts_with(&canonical_collection) || !package.is_dir() {
+        return Err("selected scenario package resolves outside its collection".to_owned());
+    }
+    let source = fs::read(&arguments.input)
+        .map_err(|error| format!("could not read Python save input: {error}"))?;
+    let catalog = PythonImportCatalog::load(&package).map_err(|error| error.to_string())?;
+    let timestamp = unix_timestamp_now().map_err(|error| error.to_string())?;
+    let envelope = convert_python_save(&source, arguments.allow_unchecked, &catalog, timestamp)
+        .map_err(|error| error.to_string())?;
+    let save_root =
+        resolve_save_directory(|name| std::env::var_os(name)).map_err(|error| error.to_string())?;
+    let store = SaveStore::new(save_root);
+    let destination = store
+        .slot_path(arguments.slot)
+        .map_err(|error| error.to_string())?;
+    ensure_distinct_import_paths(&arguments.input, &destination)?;
+    install_python_import(
+        &store,
+        arguments.slot,
+        &envelope,
+        arguments.replace,
+        &catalog.balance,
+    )
+    .map_err(|error| error.to_string())
+}
+
+fn ensure_distinct_import_paths(input: &Path, destination: &Path) -> Result<(), String> {
+    if destination.exists()
+        && let (Ok(input), Ok(destination)) = (input.canonicalize(), destination.canonicalize())
+        && input == destination
+    {
+        return Err(
+            "Python input and native destination must be different files; choose another slot"
+                .to_owned(),
+        );
+    }
+    Ok(())
 }
 
 fn validate_selected_scenario<V>(
@@ -618,6 +782,14 @@ mod tests {
             vec!["unknown".into()],
             vec!["validate-scenario".into(), "../escape".into()],
             vec!["validate-scenario".into(), "one".into(), "two".into()],
+            vec!["import-python-save".into()],
+            vec!["import-python-save".into(), "save.yaml".into()],
+            vec![
+                "import-python-save".into(),
+                "save.yaml".into(),
+                "--slot".into(),
+                "101".into(),
+            ],
         ] {
             let mut stdout = Vec::new();
             let mut stderr = Vec::new();
@@ -633,6 +805,40 @@ mod tests {
             assert!(stdout.is_empty());
             assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
         }
+    }
+
+    #[test]
+    fn python_import_arguments_are_explicit_and_bounded() {
+        let Command::ImportPython(arguments) = parse_command([
+            "import-python-save".into(),
+            "legacy/007.yaml".into(),
+            "--slot".into(),
+            "7".into(),
+            "--package".into(),
+            "rusted_kingdoms".into(),
+            "--allow-unchecked".into(),
+            "--replace".into(),
+        ])
+        .unwrap() else {
+            panic!("import command must select the converter");
+        };
+        assert_eq!(arguments.input, Path::new("legacy/007.yaml"));
+        assert_eq!(arguments.slot, 7);
+        assert_eq!(arguments.root.package_key(), "rusted_kingdoms");
+        assert!(arguments.allow_unchecked);
+        assert!(arguments.replace);
+    }
+
+    #[test]
+    fn python_import_cannot_replace_its_own_input_path() {
+        let temporary = TempCollection::new("paths");
+        let input = temporary.0.join("007.yaml");
+        let other = temporary.0.join("008.yaml");
+        fs::write(&input, b"legacy").unwrap();
+        fs::write(&other, b"native").unwrap();
+
+        assert!(ensure_distinct_import_paths(&input, &input).is_err());
+        assert_eq!(ensure_distinct_import_paths(&input, &other), Ok(()));
     }
 
     #[test]

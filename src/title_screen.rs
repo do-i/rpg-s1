@@ -10,6 +10,7 @@ use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_canvas::fixed_gameplay_camera,
+    save_ui::{SaveSlotCatalog, TitleLoadMenu},
     ui_theme::UiTheme,
     world_audio::LogicalBgmPlayer,
 };
@@ -177,13 +178,15 @@ fn reduce_quit_lifecycle(
 #[derive(Debug, Eq, PartialEq)]
 enum TitleMenuAction {
     NewGame,
+    LoadGame,
     LoadGameDisabled,
     Quit,
 }
 
-fn title_menu_action(selected: usize) -> TitleMenuAction {
+fn title_menu_action(selected: usize, has_valid_save: bool) -> TitleMenuAction {
     match selected {
         0 => TitleMenuAction::NewGame,
+        LOAD_GAME_INDEX if has_valid_save => TitleMenuAction::LoadGame,
         LOAD_GAME_INDEX => TitleMenuAction::LoadGameDisabled,
         2 => TitleMenuAction::Quit,
         _ => unreachable!("menu selection must refer to a title menu entry"),
@@ -243,7 +246,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, th
                             font_size: FontSize::Px(theme.menu_font_size),
                             ..default()
                         },
-                        TextColor(menu_entry_color(&theme, index, 0)),
+                        TextColor(menu_entry_color(&theme, index, 0, false)),
                         TextLayout::justify(Justify::Center),
                         Node {
                             height: px(42),
@@ -294,9 +297,11 @@ fn handle_menu_input(
     mut menu: ResMut<TitleMenu>,
     mut quit: ResMut<QuitLifecycle>,
     time: Res<Time>,
+    catalog: Res<SaveSlotCatalog>,
+    mut load_menu: ResMut<TitleLoadMenu>,
     mut output: TitleMenuInputOutput,
 ) {
-    if !quit.accepts_input() {
+    if !quit.accepts_input() || load_menu.open {
         return;
     }
 
@@ -318,7 +323,7 @@ fn handle_menu_input(
         return;
     }
 
-    match title_menu_action(menu.selected) {
+    match title_menu_action(menu.selected, catalog.has_valid()) {
         TitleMenuAction::NewGame => {
             output.commands.spawn((
                 AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
@@ -329,6 +334,15 @@ fn handle_menu_input(
             output
                 .transitions
                 .write(AppStateTransitionRequest::new(AppState::NameEntry));
+        }
+        TitleMenuAction::LoadGame => {
+            output.commands.spawn((
+                AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
+                PlaybackSettings::DESPAWN,
+                TitleScreenEntity,
+            ));
+            output.status.0.clear();
+            load_menu.open(catalog.slots());
         }
         TitleMenuAction::LoadGameDisabled => {}
         TitleMenuAction::Quit => {
@@ -392,20 +406,21 @@ fn observe_quit_playback(
 
 fn update_menu_colors(
     menu: Res<TitleMenu>,
+    catalog: Res<SaveSlotCatalog>,
     theme: Res<UiTheme>,
     mut entries: Query<(&MenuEntry, &mut TextColor)>,
 ) {
-    if !menu.is_changed() {
+    if !menu.is_changed() && !catalog.is_changed() {
         return;
     }
 
     for (entry, mut color) in &mut entries {
-        color.0 = menu_entry_color(&theme, entry.0, menu.selected);
+        color.0 = menu_entry_color(&theme, entry.0, menu.selected, catalog.has_valid());
     }
 }
 
-fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize) -> Color {
-    if index == LOAD_GAME_INDEX {
+fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize, has_valid_save: bool) -> Color {
+    if index == LOAD_GAME_INDEX && !has_valid_save {
         theme.menu_disabled_color
     } else if index == selected {
         theme.menu_selected_color
@@ -444,7 +459,7 @@ mod tests {
         let mut seen_entries = 0;
         for (entry, font, color) in menu_entries.iter(world) {
             assert_eq!(font.font_size, FontSize::Px(theme.menu_font_size));
-            assert_eq!(color.0, menu_entry_color(&theme, entry.0, 0));
+            assert_eq!(color.0, menu_entry_color(&theme, entry.0, 0, false));
             seen_entries += 1;
         }
         assert_eq!(seen_entries, MENU_LABELS.len());
@@ -517,12 +532,16 @@ mod tests {
 
     #[test]
     fn title_menu_entries_resolve_to_distinct_actions() {
-        assert_eq!(title_menu_action(0), TitleMenuAction::NewGame);
+        assert_eq!(title_menu_action(0, false), TitleMenuAction::NewGame);
         assert_eq!(
-            title_menu_action(LOAD_GAME_INDEX),
+            title_menu_action(LOAD_GAME_INDEX, false),
             TitleMenuAction::LoadGameDisabled
         );
-        assert_eq!(title_menu_action(2), TitleMenuAction::Quit);
+        assert_eq!(
+            title_menu_action(LOAD_GAME_INDEX, true),
+            TitleMenuAction::LoadGame
+        );
+        assert_eq!(title_menu_action(2, false), TitleMenuAction::Quit);
     }
 
     #[test]

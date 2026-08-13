@@ -39,7 +39,7 @@ pub struct GameStateParts {
 }
 
 /// The sole owner of mutable state for one initialized game session.
-#[derive(Debug, Resource)]
+#[derive(Clone, Debug, Eq, PartialEq, Resource)]
 pub struct GameState {
     flags: RuntimeFlags,
     party: RuntimeParty,

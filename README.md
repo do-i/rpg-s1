@@ -27,7 +27,7 @@ From the repository root:
 lazymenu-cli
 ```
 
-Select **Run playable M6 slice**. The initial Bevy build is expected to
+Select **Run playable M7 slice**. The initial Bevy build is expected to
 take longer than later incremental builds. You can also run it directly:
 
 ```sh
@@ -38,12 +38,32 @@ Use the Up and Down arrows to select a title item, then Enter or Space to
 confirm. New Game opens name entry; Enter confirms the name. Enter or Space
 advances the intro, while Escape uses the supported intro-skip path. In Ardel,
 tap the Arrow keys to move one tile; perpendicular arrows provide diagonal
-movement. Load Game remains disabled because saves have not been migrated.
+movement. Load Game is enabled whenever at least one valid native slot exists.
 
 In the World, press `M` for the field menu, `I` for Items, or `S` for Status.
 Use Arrow keys to navigate, Enter to confirm, and Escape to return one level.
 The M6 slice includes shared party/status, inventory tabs and item use,
 equipment previews/swaps, learned field spells, and visited-map teleporting.
+Save opens slots 1-100; empty slots write immediately, while occupied slots
+require explicit overwrite confirmation. Quit asks before returning to title.
+
+Native slots are stored under `$XDG_DATA_HOME/rpg-s1/saves` when
+`XDG_DATA_HOME` is set, otherwise `$HOME/.local/share/rpg-s1/saves`. Set
+`RPG_S1_SAVE_DIR` to use an explicit directory for testing or portable runs.
+Writes use a verified temporary file and atomic replacement.
+
+To convert one save from the pinned Python version into a native slot:
+
+```sh
+cargo run -- import-python-save path/to/007.yaml --slot 7
+```
+
+The converter is explicit and one-way. It does not need Python or a source
+checkout, never scans for old saves, refuses an occupied destination by
+default, and accepts `--replace` only after preserving a verified backup.
+Checksumless input additionally requires `--allow-unchecked`; a checksum
+mismatch is always rejected. Run `cargo run -- import-python-save --help` for
+the complete syntax.
 
 Run the deterministic Ardel composition check with:
 
@@ -68,7 +88,9 @@ The current playable slice contains:
 - indexed World interaction sound effects; and
 - source-authored class/item catalogs with party, status, inventory,
   equipment, field-item, spell, and teleport screens;
+- versioned native save slots, atomic writes, recovery-aware title loading,
+  exact runtime-state restoration, and one-way Python-save conversion;
 - automated parser, runtime, production-package, and screenshot checks;
 - build, run, test, lint, format, release, and clean menu actions.
 
-Saves, encounters, and combat remain later milestones.
+Encounters and combat remain later milestones.

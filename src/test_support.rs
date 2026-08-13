@@ -18,6 +18,7 @@ use crate::{
     name_entry::NameEntryPlugin,
     new_game_install::NewGameInstallPlugin,
     playtime::Playtime,
+    save_ui::{SaveSlotCatalog, TitleLoadMenu},
     scenario_manifest_asset::ScenarioManifestAssetPlugin,
     scenario_new_game_assets::ScenarioNewGameAssetsPlugin,
     scenario_root::ScenarioRoot,
@@ -64,6 +65,8 @@ pub(crate) fn headless_title_app_with_asset_base(
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
         .add_plugins(FixedGameplayCanvasPlugin)
+        .init_resource::<SaveSlotCatalog>()
+        .init_resource::<TitleLoadMenu>()
         .add_plugins(TitleScreenPlugin)
         .add_plugins(NameEntryPlugin)
         .add_plugins(NewGameInstallPlugin)

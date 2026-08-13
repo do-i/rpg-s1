@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::{
     action_input::{ActionState, AppAction},
-    app_state::AppState,
+    app_state::{AppState, AppStateTransitionRequest},
     field_menu_domain::{
         CatalogStatus, FieldMenuCatalog, InventoryTab, can_equip, cast_heal, derived_stats,
         discard_item, equip_item, inventory_ids, item_description, item_name,
@@ -13,6 +13,11 @@ use crate::{
     game_state::GameState,
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
+    save_data::NativeSaveEnvelope,
+    save_store::{
+        FIRST_PLAYER_SLOT, LAST_PLAYER_SLOT, SaveSlotState, SaveStore, unix_timestamp_now,
+    },
+    save_ui::SaveSlotCatalog,
     scenario_class::{Ability, AbilityKind, UtilityAbility},
     scenario_item::ItemDefinition,
     scenario_path::ScenarioRelativePath,
@@ -50,6 +55,7 @@ enum FieldMenuScreen {
     Items,
     Equipment,
     Spells,
+    Save,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -62,6 +68,8 @@ enum FieldMenuMode {
     EquipmentPicker,
     SpellTarget,
     TeleportPicker,
+    SaveConfirm,
+    QuitConfirm,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -124,6 +132,14 @@ impl FieldMenuState {
                 self.quantity = 1;
                 self.message.clear();
             }
+            FieldMenuMode::SaveConfirm => {
+                self.mode = FieldMenuMode::Browse;
+                self.message.clear();
+            }
+            FieldMenuMode::QuitConfirm => {
+                self.mode = FieldMenuMode::Browse;
+                self.message.clear();
+            }
         }
     }
 }
@@ -144,14 +160,23 @@ fn reset_field_menu(mut state: ResMut<FieldMenuState>) {
     state.close();
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the field menu coordinates input, world locks, save storage, session state, and transitions"
+)]
 fn handle_field_menu_input(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
     interaction: Res<WorldInteractionState>,
     mut transition: ResMut<WorldTransition>,
     game: Option<ResMut<GameState>>,
+    store: Res<SaveStore>,
+    mut saves: ResMut<SaveSlotCatalog>,
+    time: Res<Time<Real>>,
     mut state: ResMut<FieldMenuState>,
+    mut transitions: MessageWriter<AppStateTransitionRequest>,
 ) {
     let Some(mut game) = game else { return };
 
@@ -177,7 +202,12 @@ fn handle_field_menu_input(
         state.back();
         return;
     }
-    state.message.clear();
+    if !matches!(
+        state.mode,
+        FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
+    ) {
+        state.message.clear();
+    }
 
     let horizontal = if keys.just_pressed(KeyCode::ArrowLeft) {
         Some(-1)
@@ -194,14 +224,54 @@ fn handle_field_menu_input(
                 state.selected = wrapped(state.selected, MAIN_COMMANDS.len(), delta);
             }
             if actions.just_pressed(AppAction::Confirm) {
-                if let Some(screen) = main_command_screen(state.selected) {
+                if state.selected == 4 {
+                    state.screen = FieldMenuScreen::Save;
+                    state.selected = FIRST_PLAYER_SLOT;
+                } else if state.selected == 5 {
+                    state.mode = FieldMenuMode::QuitConfirm;
+                    state.message =
+                        "Return to the title screen? Unsaved progress will be lost.".to_owned();
+                } else if let Some(screen) = main_command_screen(state.selected) {
                     state.screen = screen;
                     state.selected = 0;
-                } else {
-                    state.message = disabled_main_command_message(state.selected)
-                        .expect("every main command is enabled or visibly disabled")
-                        .to_owned();
                 }
+            }
+        }
+        (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => {
+            if keys.just_pressed(KeyCode::KeyN) {
+                state.mode = FieldMenuMode::Browse;
+                state.message.clear();
+            } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
+                state.close();
+                commands.remove_resource::<GameState>();
+                transitions.write(AppStateTransitionRequest::new(AppState::Title));
+            }
+        }
+        (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
+            if let Some(delta) = vertical {
+                state.selected = (state.selected as isize + delta)
+                    .clamp(FIRST_PLAYER_SLOT as isize, LAST_PLAYER_SLOT as isize)
+                    as usize;
+            }
+            if actions.just_pressed(AppAction::Confirm) {
+                let Some(slot) = saves.slots().get(state.selected) else {
+                    state.message = "Save slots are still loading.".to_owned();
+                    return;
+                };
+                if slot.is_empty() {
+                    save_game(&mut game, &store, &mut saves, &time, &mut state, false);
+                } else {
+                    state.mode = FieldMenuMode::SaveConfirm;
+                    state.message = format!("Overwrite {}?", slot.label());
+                }
+            }
+        }
+        (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => {
+            if keys.just_pressed(KeyCode::KeyN) {
+                state.mode = FieldMenuMode::Browse;
+                state.message.clear();
+            } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
+                save_game(&mut game, &store, &mut saves, &time, &mut state, true);
             }
         }
         (FieldMenuScreen::Status, FieldMenuMode::Browse) => {
@@ -497,6 +567,61 @@ fn state_slot_index(state: &FieldMenuState) -> usize {
     }
 }
 
+fn save_game(
+    game: &mut GameState,
+    store: &SaveStore,
+    saves: &mut SaveSlotCatalog,
+    time: &Time<Real>,
+    state: &mut FieldMenuState,
+    overwrite: bool,
+) {
+    let Some(context) = saves.context() else {
+        state.message = "Scenario data is still loading.".to_owned();
+        return;
+    };
+    let scenario_id = context.scenario_id.to_owned();
+    let scenario_version = context.scenario_version.to_owned();
+    let balance = context.balance.clone();
+    game.playtime_mut().commit_session(time.elapsed());
+    let location = game
+        .map()
+        .current()
+        .map_or("Unknown", RuntimeMapId::as_str)
+        .to_owned();
+    let timestamp = match unix_timestamp_now() {
+        Ok(timestamp) => timestamp,
+        Err(error) => {
+            state.message = error.to_string();
+            return;
+        }
+    };
+    let result = NativeSaveEnvelope::from_game_state(
+        game,
+        scenario_id,
+        scenario_version,
+        timestamp,
+        location,
+    )
+    .map_err(|error| error.to_string())
+    .and_then(|envelope| {
+        store
+            .write(state.selected, &envelope, overwrite, &balance)
+            .map_err(|error| error.to_string())
+    });
+    match result {
+        Ok(_) => {
+            state.mode = FieldMenuMode::Browse;
+            state.message = format!("{} saved.", slot_label(state.selected));
+            saves.request_refresh();
+        }
+        Err(error) => state.message = error,
+    }
+}
+
+fn slot_label(index: usize) -> String {
+    format!("Slot {index:02}")
+}
+
 fn slot_index(slot: EquipmentSlot) -> usize {
     EquipmentSlot::ALL
         .iter()
@@ -572,17 +697,10 @@ fn main_command_screen(index: usize) -> Option<FieldMenuScreen> {
         FieldMenuScreen::Items,
         FieldMenuScreen::Equipment,
         FieldMenuScreen::Spells,
+        FieldMenuScreen::Save,
     ]
     .get(index)
     .copied()
-}
-
-fn disabled_main_command_message(index: usize) -> Option<&'static str> {
-    match index {
-        4 => Some("Save becomes available in Milestone 7."),
-        5 => Some("Return-to-title confirmation becomes available with saves."),
-        _ => None,
-    }
 }
 
 fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
@@ -602,6 +720,7 @@ fn sync_field_menu_overlay(
     theme: Res<UiTheme>,
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
+    saves: Res<SaveSlotCatalog>,
     game: Option<Res<GameState>>,
     roots: Query<Entity, With<FieldMenuRoot>>,
     mut titles: Query<
@@ -644,7 +763,7 @@ fn sync_field_menu_overlay(
         title.0 = screen_title(&state).to_owned();
     }
     if let Ok(mut body) = bodies.single_mut() {
-        body.0 = render_body(&state, &game, &catalog);
+        body.0 = render_body(&state, &game, &catalog, &saves);
     }
     if let Ok(mut hint) = hints.single_mut() {
         hint.0 = render_hint(&state);
@@ -738,10 +857,16 @@ fn screen_title(state: &FieldMenuState) -> &'static str {
         FieldMenuScreen::Items => "Items",
         FieldMenuScreen::Equipment => "Equipment",
         FieldMenuScreen::Spells => "Spells",
+        FieldMenuScreen::Save => "Save Game",
     }
 }
 
-fn render_body(state: &FieldMenuState, game: &GameState, catalog: &FieldMenuCatalog) -> String {
+fn render_body(
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    saves: &SaveSlotCatalog,
+) -> String {
     if catalog.status() == CatalogStatus::Loading {
         return "Loading class and item catalogs...".to_owned();
     }
@@ -757,6 +882,7 @@ fn render_body(state: &FieldMenuState, game: &GameState, catalog: &FieldMenuCata
         FieldMenuScreen::Items => render_items(state, game, catalog),
         FieldMenuScreen::Equipment => render_equipment(state, game, catalog),
         FieldMenuScreen::Spells => render_spells(state, game, catalog),
+        FieldMenuScreen::Save => render_save(state, saves),
     };
     if !state.message.is_empty() {
         text.push_str("\n\n");
@@ -771,8 +897,7 @@ fn render_main(state: &FieldMenuState, game: &GameState) -> String {
         .enumerate()
         .map(|(index, label)| {
             let cursor = if index == state.selected { ">" } else { " " };
-            let disabled = if index >= 4 { " [disabled]" } else { "" };
-            format!("{cursor} {label}{disabled}")
+            format!("{cursor} {label}")
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -1084,8 +1209,55 @@ fn render_targets(state: &FieldMenuState, game: &GameState) -> String {
         .join("\n")
 }
 
+fn render_save(state: &FieldMenuState, saves: &SaveSlotCatalog) -> String {
+    let page_start =
+        ((state.selected.saturating_sub(FIRST_PLAYER_SLOT)) / 7) * 7 + FIRST_PLAYER_SLOT;
+    let rows = saves
+        .slots()
+        .iter()
+        .skip(page_start)
+        .take(7)
+        .map(|slot| {
+            let cursor = if slot.index == state.selected {
+                ">"
+            } else {
+                " "
+            };
+            match (&slot.state, &slot.metadata) {
+                (SaveSlotState::Empty, _) => {
+                    format!("{cursor} {:<8} --- Empty ---", slot.label())
+                }
+                (SaveSlotState::Valid, Some(metadata)) => format!(
+                    "{cursor} {:<8} {} Lv{}  {}  {}",
+                    slot.label(),
+                    metadata.protagonist_name,
+                    metadata.protagonist_level,
+                    crate::playtime::Playtime::format(metadata.playtime_seconds),
+                    metadata.location,
+                ),
+                (SaveSlotState::Corrupt(_), _) => {
+                    format!("{cursor} {:<8} [CORRUPT]", slot.label())
+                }
+                (SaveSlotState::Incompatible(_), _) => {
+                    format!("{cursor} {:<8} [INCOMPATIBLE]", slot.label())
+                }
+                _ => format!("{cursor} {:<8} [INVALID METADATA]", slot.label()),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if rows.is_empty() {
+        "Discovering native save slots...".to_owned()
+    } else {
+        rows
+    }
+}
+
 fn render_hint(state: &FieldMenuState) -> String {
     match (state.screen, state.mode) {
+        (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => {
+            "Y/ENTER return to title  N/ESC cancel"
+        }
         (FieldMenuScreen::Main, _) => "UP/DOWN choose  ENTER open  M/ESC close",
         (FieldMenuScreen::Status, _) => "LEFT/RIGHT or UP/DOWN member  ESC back  M close",
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
@@ -1100,6 +1272,10 @@ fn render_hint(state: &FieldMenuState) -> String {
         (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
             "LEFT/RIGHT member  UP/DOWN spell  ENTER cast  ESC back"
         }
+        (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
+            "UP/DOWN slot  ENTER save  ESC back  M close"
+        }
+        (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => "Y/ENTER overwrite  N/ESC cancel",
         (_, FieldMenuMode::ItemTarget | FieldMenuMode::SpellTarget) => {
             "UP/DOWN target  ENTER confirm  ESC cancel"
         }
@@ -1123,6 +1299,7 @@ fn cleanup_field_menu(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::save_data::tests::fixture_game;
 
     #[test]
     fn wrap_navigation_and_quantity_bounds_are_deterministic() {
@@ -1155,17 +1332,8 @@ mod tests {
     fn main_commands_distinguish_enabled_disabled_and_cancel_paths() {
         assert_eq!(main_command_screen(0), Some(FieldMenuScreen::Status));
         assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Spells));
-        assert!(main_command_screen(4).is_none());
-        assert!(
-            disabled_main_command_message(4)
-                .unwrap()
-                .contains("Milestone 7")
-        );
-        assert!(
-            disabled_main_command_message(5)
-                .unwrap()
-                .contains("confirmation")
-        );
+        assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Save));
+        assert!(main_command_screen(5).is_none());
 
         let mut state = FieldMenuState::default();
         state.open(FieldMenuScreen::Items);
@@ -1174,5 +1342,35 @@ mod tests {
         assert_eq!(state.screen, FieldMenuScreen::Main);
         state.back();
         assert!(!state.open);
+    }
+
+    #[test]
+    fn confirmed_quit_discards_the_session_before_returning_to_title() {
+        let mut app = App::new();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::KeyY);
+        app.insert_resource(keys)
+            .insert_resource(ActionState::default())
+            .insert_resource(FieldMenuCatalog::default())
+            .insert_resource(WorldInteractionState::default())
+            .insert_resource(WorldTransition::default())
+            .insert_resource(fixture_game())
+            .insert_resource(SaveStore::new(
+                std::env::temp_dir().join("rpg-s1-field-menu-quit-test-unused"),
+            ))
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(Time::<Real>::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                mode: FieldMenuMode::QuitConfirm,
+                ..default()
+            })
+            .add_message::<AppStateTransitionRequest>()
+            .add_systems(Update, handle_field_menu_input);
+
+        app.update();
+
+        assert!(!app.world().contains_resource::<GameState>());
+        assert!(!app.world().resource::<FieldMenuState>().open);
     }
 }

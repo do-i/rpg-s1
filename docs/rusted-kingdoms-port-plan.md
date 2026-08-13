@@ -294,7 +294,7 @@ live-found portal regression.
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
 | M6.01 | [x] Open and close the field-menu shell. | `S` | World input pauses and resumes without state loss. Evidence: shared movement lock and live X11 `M`/Escape check. |
-| M6.02 | [x] Add field-menu command navigation. | `T` | Wrap, confirm, cancel, and disabled rows are tested. Evidence: reducer fixture and live disabled Save/Quit rows. |
+| M6.02 | [x] Add field-menu command navigation. | `T` | Wrap, confirm, cancel, and milestone-gated rows are tested. Evidence: reducer fixture and the Gate 6 field-menu playthrough; Save/Quit were enabled by M7. |
 | M6.03 | [x] Render the party summary panel. | `S` | Names, levels, HP/MP, row, and GP display. Evidence: live Aric summary from `GameState`. |
 | M6.04 | [x] Add the status member selector. | `T` | Cycling members handles a one- and five-member party. Evidence: explicit empty/one/five-member wrap fixtures and indexed view. |
 | M6.05 | [x] Render base and derived stats. | `S` | Displayed values agree with Python fixtures. Evidence: production equipment fixture and live Aric 28/17/28/5 to 32/17/32/5 totals. |
@@ -325,25 +325,32 @@ spell screens, all operating on the same runtime state.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M7.01 | [ ] Define a versioned Rust save envelope. | `X` | Format version, scenario id/version, timestamp, and payload are explicit. |
-| M7.02 | [ ] Serialize the root game state. | `S` | A new-game state round-trips without loss. |
-| M7.03 | [ ] Add save-schema golden fixtures. | `T` | Accidental field/name changes fail tests. |
-| M7.04 | [ ] Choose the platform save directory. | `S` | Linux path and override behavior are documented and tested. |
-| M7.05 | [ ] Write saves through a temporary file. | `S` | Interrupted writes cannot replace a valid slot. |
-| M7.06 | [ ] Atomically replace the destination slot. | `S` | Success leaves one valid destination and no stale temporary file. |
-| M7.07 | [ ] Enumerate save slots. | `T` | Empty, valid, corrupt, and incompatible slots are distinguished. |
-| M7.08 | [ ] Render the field save-slot picker. | `T` | Save metadata and empty slots display. |
-| M7.09 | [ ] Add overwrite confirmation. | `T` | Cancel preserves the old file; confirm replaces it. |
-| M7.10 | [ ] Enable Load Game only when a valid save exists. | `T` | Title color/navigation/action update from discovered slots. |
-| M7.11 | [ ] Render the title load-slot picker. | `T` | Valid slots can be selected and corrupt slots explain failure. |
-| M7.12 | [ ] Restore a saved world session. | `S` | Map, position, party, flags, inventory, quests, boxes, RNG, and playtime restore. |
-| M7.13 | [ ] Add unknown-field forward tolerance. | `S` | A fixture with a harmless new field still loads. |
-| M7.14 | [ ] Add explicit old-version rejection/migration routing. | `X` | Unsupported versions never partially load. |
-| M7.15 | [ ] Implement the M0.05 Python-save decision. | `X` | Compatibility fixtures or converter tests cover one real Python save. |
-| M7.16 | [ ] Add a corrupt-save recovery test. | `S` | A bad slot does not block other slots or crash the game. |
+| M7.01 | [x] Define a versioned Rust save envelope. | `X` | Format version, scenario id/version, timestamp, and payload are explicit. Evidence: `NativeSaveEnvelope` v1 and its checked-in YAML golden. |
+| M7.02 | [x] Serialize the root game state. | `S` | A new-game state round-trips without loss. Evidence: complete persisted production-state equality test; explicitly session-only menu visibility is excluded. |
+| M7.03 | [x] Add save-schema golden fixtures. | `T` | Accidental field/name changes fail tests. Evidence: native and converted-native v1 goldens. |
+| M7.04 | [x] Choose the platform save directory. | `S` | Linux path and override behavior are documented and tested. Evidence: XDG/HOME/`RPG_S1_SAVE_DIR` precedence fixture and README. |
+| M7.05 | [x] Write saves through a temporary file. | `S` | Interrupted writes cannot replace a valid slot. Evidence: injected pre-replace interruption preserves exact destination bytes and cleans the temp file. |
+| M7.06 | [x] Atomically replace the destination slot. | `S` | Success leaves one valid destination and no stale temporary file. Evidence: verified same-directory write, rename, directory sync, and filesystem fixture. |
+| M7.07 | [x] Enumerate save slots. | `T` | Empty, valid, corrupt, and incompatible slots are distinguished. Evidence: 101-slot isolation fixture and live mixed-slot picker. |
+| M7.08 | [x] Render the field save-slot picker. | `T` | Save metadata and empty slots display. Evidence: live Slot 01 metadata plus six visible empty rows. |
+| M7.09 | [x] Add overwrite confirmation. | `T` | Cancel preserves the old file; confirm replaces it. Evidence: explicit UI confirmation, identical live pre/post-cancel SHA-256, and atomic overwrite fixture. |
+| M7.10 | [x] Enable Load Game only when a valid save exists. | `T` | Title color/navigation/action update from discovered slots. Evidence: dynamic action/color reducer and live disabled-to-enabled title transition. |
+| M7.11 | [x] Render the title load-slot picker. | `T` | Valid slots can be selected and corrupt slots explain failure. Evidence: live latest selection, corrupt reason, incompatible label, and successful load. |
+| M7.12 | [x] Restore a saved world session. | `S` | Map, position, party, flags, inventory, quests, boxes, RNG, and playtime restore. Evidence: complete persisted-state equality test and quit/process-restart/Ardel reload. |
+| M7.13 | [x] Add unknown-field forward tolerance. | `S` | A fixture with a harmless new field still loads. Evidence: unknown envelope and payload fields decode successfully. |
+| M7.14 | [x] Add explicit old-version rejection/migration routing. | `X` | Unsupported versions never partially load. Evidence: old, unversioned, and wrong-scenario rejection fixtures plus live incompatible slot. |
+| M7.15 | [x] Implement the M0.05 Python-save decision. | `X` | Compatibility fixtures or converter tests cover one real Python save. Evidence: pinned serializer-produced fixture, standalone Rust CLI, provenance/golden tests, verified backup, and live converted Starting Forest load. |
+| M7.16 | [x] Add a corrupt-save recovery test. | `S` | A bad slot does not block other slots or crash the game. Evidence: isolation fixture and live valid/corrupt/incompatible picker with the valid slot still loadable. |
 
 **Gate 7:** A player can save the Ardel slice, quit, restart, load from the
 title screen, and continue with identical state.
+
+Completed on 2026-08-12. The real X11/llvmpipe playthrough moved Aric to
+`town_01_ardel` position `[12, 8]` facing right, saved Slot 01, returned to
+title, quit the process, restarted against the same isolated save root, and
+loaded the slot back into the same playable scene and serialized state. See
+`docs/m7-manual-play-checklist.md` for the recovery, overwrite, and Python
+import checks.
 
 ## Milestone 8 — Encounters and enemy presence
 
@@ -559,5 +566,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M7.01**. Define a versioned Rust save envelope with explicit
-format version, scenario id/version, timestamp, and payload.
+Continue with **M8.01**. Load encounter-zone rules for the current map and
+test zone lookup plus maps with no configured encounters.

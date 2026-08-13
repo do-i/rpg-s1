@@ -1,0 +1,103 @@
+format_version: 1
+scenario_id: my_rpg_story
+scenario_version: 1.0.0
+saved_at_unix_seconds: 1700000100
+metadata:
+  protagonist_name: Imported Aric
+  protagonist_level: 1
+  location: zone_01_starting_forest
+  playtime_seconds: 9876
+payload:
+  flags:
+  - aric_teleport_unlocked
+  - elise_joined
+  - golden_python_flag
+  - story_quest_started
+  party:
+  - id: aric
+    name: Imported Aric
+    protagonist: true
+    class_id: hero
+    level: 1
+    experience: 0
+    experience_next: 400
+    health: 22
+    max_health: 22
+    mana: 12
+    max_mana: 12
+    stats:
+      strength: 28
+      dexterity: 17
+      constitution: 28
+      intelligence: 5
+    row: front
+    equipment:
+      weapon: iron_sword
+      shield: buckler
+      helmet: leather_hat
+      body: leather_vest
+      accessory: null
+    status_effects: []
+  - id: elise
+    name: Elise
+    protagonist: false
+    class_id: cleric
+    level: 1
+    experience: 0
+    experience_next: 380
+    health: 18
+    max_health: 18
+    mana: 18
+    max_mana: 18
+    stats:
+      strength: 26
+      dexterity: 26
+      constitution: 27
+      intelligence: 22
+    row: back
+    equipment:
+      weapon: oak_staff
+      shield: buckler
+      helmet: silver_circlet
+      body: cloth_robe
+      accessory: null
+    status_effects: []
+  repository:
+    gp: 1234
+    items:
+    - id: mc_s
+      quantity: 2
+      tags:
+      - magic_core
+      locked: false
+      is_loot: false
+      loot_batch: 0
+    - id: potion
+      quantity: 7
+      tags:
+      - favorite
+      - recovery
+      locked: true
+      is_loot: true
+      loot_batch: 1
+  map:
+    current: zone_01_starting_forest
+    position:
+    - 29
+    - 1
+    facing: down
+    visited:
+    - town_01_ardel
+  opened_boxes:
+  - map_id: zone_01_starting_forest
+    box_id: forest_chest_01
+  controlled_member_id: elise
+  rng_state: 1733526284301331136
+  playtime_seconds: 9876
+import_provenance:
+  source_kind: python-yaml
+  adapter_commit: 08970359d6cb03586948625d29b0d3351dbbf785
+  source_sha256: 91e9bdda9e65469aecf43ab8538962c931133b7aeea087508b04953c9398abf9
+  original_timestamp: 2026-08-12-15-30-45
+  original_location: zone_01_starting_forest
+  checksum_verified: true

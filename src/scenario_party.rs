@@ -16,7 +16,7 @@ use bevy::{asset::Asset, reflect::TypePath};
 use crate::scenario_path::ScenarioRelativePath;
 use crate::scenario_spatial::Position;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
-use serde::{Deserialize, Deserializer, de::Error as _};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as _};
 
 /// The mapping-root party catalog from `data/party.yaml`.
 #[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
@@ -112,7 +112,7 @@ pub struct PartyRecruit {
 }
 
 /// A party member's initial battle row.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PartyRow {
     Front,

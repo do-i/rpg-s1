@@ -7,8 +7,8 @@
 //! Additions retain the source's cap-and-clip behavior, but return [`AdditionOutcome`] so lost
 //! overflow is observable without relying on a log message. Unlike Python's `remove_item`, an
 //! oversized removal is rejected without deleting the stack. This stricter boundary prevents a
-//! caller error from silently consuming more items than requested. M6 also owns session-only
-//! visibility, locks, and latest-loot-batch metadata; serialization remains a later system.
+//! caller error from silently consuming more items than requested. M7 persists locks, tags,
+//! loot identity, and latest-loot-batch metadata; the explicit Hide command remains session-only.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -29,6 +29,8 @@ pub struct RuntimeRepository {
     item_quantity_cap: u32,
     hidden_item_ids: BTreeSet<String>,
     locked_item_ids: BTreeSet<String>,
+    item_tags: BTreeMap<String, BTreeSet<String>>,
+    loot_item_ids: BTreeSet<String>,
     loot_batch_sequence: u64,
     item_loot_batches: BTreeMap<String, u64>,
 }
@@ -43,9 +45,78 @@ impl RuntimeRepository {
             item_quantity_cap: balance.item_qty_cap.get(),
             hidden_item_ids: BTreeSet::new(),
             locked_item_ids: BTreeSet::new(),
+            item_tags: BTreeMap::new(),
+            loot_item_ids: BTreeSet::new(),
             loot_batch_sequence: 0,
             item_loot_batches: BTreeMap::new(),
         }
+    }
+
+    /// Restores complete persistent repository metadata from a native or converted save.
+    pub(crate) fn try_from_saved(
+        balance: &EconomyBalance,
+        gp: u32,
+        items: impl IntoIterator<Item = RuntimeRepositoryItemParts>,
+    ) -> Result<Self, RepositoryError> {
+        let mut repository = Self::from_balance(balance);
+        if gp > repository.gp_cap {
+            return Err(RepositoryError::GpAboveCap {
+                gp,
+                cap: repository.gp_cap,
+            });
+        }
+        repository.gp = gp;
+        for item in items {
+            require_item_id(&item.id)?;
+            require_positive(item.quantity)?;
+            if item.quantity > repository.item_quantity_cap {
+                return Err(RepositoryError::ItemQuantityAboveCap {
+                    item_id: item.id,
+                    quantity: item.quantity,
+                    cap: repository.item_quantity_cap,
+                });
+            }
+            if repository.item_counts.contains_key(&item.id) {
+                return Err(RepositoryError::DuplicateItemId { item_id: item.id });
+            }
+            if item.tags.iter().any(String::is_empty) {
+                return Err(RepositoryError::EmptyTag { item_id: item.id });
+            }
+            if item.tags.len() > balance.max_tags_per_item as usize {
+                return Err(RepositoryError::TooManyTags {
+                    item_id: item.id,
+                    count: item.tags.len(),
+                    cap: balance.max_tags_per_item,
+                });
+            }
+            if item.loot_batch > 0 {
+                repository.loot_batch_sequence =
+                    repository.loot_batch_sequence.max(item.loot_batch);
+                repository
+                    .item_loot_batches
+                    .insert(item.id.clone(), item.loot_batch);
+            }
+            if item.locked {
+                repository.locked_item_ids.insert(item.id.clone());
+            }
+            if item.is_loot {
+                repository.loot_item_ids.insert(item.id.clone());
+            }
+            if !item.tags.is_empty() {
+                let mut tags = BTreeSet::new();
+                for tag in item.tags {
+                    if !tags.insert(tag.clone()) {
+                        return Err(RepositoryError::DuplicateTag {
+                            item_id: item.id,
+                            tag,
+                        });
+                    }
+                }
+                repository.item_tags.insert(item.id.clone(), tags);
+            }
+            repository.item_counts.insert(item.id, item.quantity);
+        }
+        Ok(repository)
     }
 
     pub fn gp(&self) -> u32 {
@@ -151,6 +222,18 @@ impl RuntimeRepository {
         self.locked_item_ids.contains(item_id)
     }
 
+    pub fn item_tags(&self, item_id: &str) -> impl Iterator<Item = &str> {
+        self.item_tags
+            .get(item_id)
+            .into_iter()
+            .flatten()
+            .map(String::as_str)
+    }
+
+    pub fn is_loot(&self, item_id: &str) -> bool {
+        self.loot_item_ids.contains(item_id)
+    }
+
     pub fn set_locked(&mut self, item_id: impl Into<String>, locked: bool) {
         let item_id = item_id.into();
         if locked {
@@ -202,6 +285,9 @@ impl RuntimeRepository {
         if amount == available {
             self.item_counts.remove(item_id);
             self.item_loot_batches.remove(item_id);
+            self.item_tags.remove(item_id);
+            self.locked_item_ids.remove(item_id);
+            self.loot_item_ids.remove(item_id);
         } else {
             let quantity = self
                 .item_counts
@@ -211,6 +297,16 @@ impl RuntimeRepository {
         }
         Ok(())
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RuntimeRepositoryItemParts {
+    pub id: String,
+    pub quantity: u32,
+    pub tags: Vec<String>,
+    pub locked: bool,
+    pub is_loot: bool,
+    pub loot_batch: u64,
 }
 
 impl Default for RuntimeRepository {
@@ -285,6 +381,30 @@ pub enum RepositoryError {
     InvalidLootBatch {
         batch: u64,
     },
+    GpAboveCap {
+        gp: u32,
+        cap: u32,
+    },
+    ItemQuantityAboveCap {
+        item_id: String,
+        quantity: u32,
+        cap: u32,
+    },
+    DuplicateItemId {
+        item_id: String,
+    },
+    EmptyTag {
+        item_id: String,
+    },
+    DuplicateTag {
+        item_id: String,
+        tag: String,
+    },
+    TooManyTags {
+        item_id: String,
+        count: usize,
+        cap: u32,
+    },
 }
 
 impl fmt::Display for RepositoryError {
@@ -316,6 +436,38 @@ impl fmt::Display for RepositoryError {
                     "loot batch {batch} is not active in this repository"
                 )
             }
+            Self::GpAboveCap { gp, cap } => {
+                write!(formatter, "repository GP {gp} exceeds cap {cap}")
+            }
+            Self::ItemQuantityAboveCap {
+                item_id,
+                quantity,
+                cap,
+            } => write!(
+                formatter,
+                "repository item `{item_id}` quantity {quantity} exceeds cap {cap}"
+            ),
+            Self::DuplicateItemId { item_id } => {
+                write!(
+                    formatter,
+                    "repository contains duplicate item id `{item_id}`"
+                )
+            }
+            Self::EmptyTag { item_id } => {
+                write!(formatter, "repository item `{item_id}` has an empty tag")
+            }
+            Self::DuplicateTag { item_id, tag } => write!(
+                formatter,
+                "repository item `{item_id}` contains duplicate tag `{tag}`"
+            ),
+            Self::TooManyTags {
+                item_id,
+                count,
+                cap,
+            } => write!(
+                formatter,
+                "repository item `{item_id}` has {count} tags, exceeding cap {cap}"
+            ),
         }
     }
 }

@@ -27,6 +27,7 @@ pub struct RuntimeMember {
     class_id: String,
     level: u32,
     experience: u32,
+    experience_next: u32,
     health: u32,
     max_health: u32,
     mana: u32,
@@ -92,6 +93,7 @@ impl RuntimeMember {
             class_id: data.class_id.clone(),
             level: data.level,
             experience: data.exp,
+            experience_next: 0,
             health: data.hp,
             max_health: data.hp_max,
             mana: data.mp,
@@ -100,6 +102,81 @@ impl RuntimeMember {
             row: data.row,
             equipment: RuntimeEquipment::from(&data.equipped),
             status_effects: BTreeSet::new(),
+        })
+    }
+
+    /// Restores one native-save member after applying the same numeric invariants as new game.
+    pub(crate) fn try_from_saved(
+        parts: RuntimeMemberParts,
+        progression: &ProgressionBalance,
+    ) -> Result<Self, RuntimeMemberError> {
+        validate_member_numbers(
+            &parts.id,
+            parts.level,
+            parts.experience,
+            parts.health,
+            parts.max_health,
+            parts.mana,
+            parts.max_mana,
+            progression,
+        )?;
+        if parts.id.is_empty() {
+            return Err(RuntimeMemberError::EmptyId);
+        }
+        if parts.name.is_empty() {
+            return Err(RuntimeMemberError::EmptyName {
+                member_id: parts.id,
+            });
+        }
+        if parts.class_id.is_empty() {
+            return Err(RuntimeMemberError::EmptyClassId {
+                member_id: parts.id,
+            });
+        }
+        for (slot, item) in EquipmentSlot::ALL.into_iter().zip(parts.equipment.iter()) {
+            if item.as_deref() == Some("") {
+                return Err(RuntimeMemberError::EmptyEquipmentId {
+                    member_id: parts.id,
+                    slot,
+                });
+            }
+        }
+        let mut status_effects = BTreeSet::new();
+        for status in parts.status_effects {
+            if !status_effects.insert(status) {
+                return Err(RuntimeMemberError::DuplicateStatusEffect {
+                    member_id: parts.id,
+                    status,
+                });
+            }
+        }
+        Ok(Self {
+            id: parts.id,
+            name: parts.name,
+            protagonist: parts.protagonist,
+            class_id: parts.class_id,
+            level: parts.level,
+            experience: parts.experience,
+            experience_next: parts.experience_next,
+            health: parts.health,
+            max_health: parts.max_health,
+            mana: parts.mana,
+            max_mana: parts.max_mana,
+            stats: RuntimeMemberStats {
+                strength: parts.stats[0],
+                dexterity: parts.stats[1],
+                constitution: parts.stats[2],
+                intelligence: parts.stats[3],
+            },
+            row: parts.row,
+            equipment: RuntimeEquipment {
+                weapon: parts.equipment[0].clone(),
+                shield: parts.equipment[1].clone(),
+                helmet: parts.equipment[2].clone(),
+                body: parts.equipment[3].clone(),
+                accessory: parts.equipment[4].clone(),
+            },
+            status_effects,
         })
     }
 
@@ -130,6 +207,10 @@ impl RuntimeMember {
 
     pub fn experience(&self) -> u32 {
         self.experience
+    }
+
+    pub fn experience_next(&self) -> u32 {
+        self.experience_next
     }
 
     pub fn health(&self) -> u32 {
@@ -273,6 +354,77 @@ impl RuntimeMember {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RuntimeMemberParts {
+    pub id: String,
+    pub name: String,
+    pub protagonist: bool,
+    pub class_id: String,
+    pub level: u32,
+    pub experience: u32,
+    pub experience_next: u32,
+    pub health: u32,
+    pub max_health: u32,
+    pub mana: u32,
+    pub max_mana: u32,
+    pub stats: [u32; 4],
+    pub row: PartyRow,
+    pub equipment: [Option<String>; 5],
+    pub status_effects: Vec<crate::scenario_item::ItemStatus>,
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the validation boundary checks one complete persisted member numeric record"
+)]
+fn validate_member_numbers(
+    member_id: &str,
+    level: u32,
+    experience: u32,
+    health: u32,
+    max_health: u32,
+    mana: u32,
+    max_mana: u32,
+    progression: &ProgressionBalance,
+) -> Result<(), RuntimeMemberError> {
+    let level_cap = progression.level_cap.get();
+    let experience_cap = progression.exp_cap.get();
+    if level == 0 || level > level_cap {
+        return Err(RuntimeMemberError::LevelOutsideBalance {
+            member_id: member_id.to_owned(),
+            level,
+            level_cap,
+        });
+    }
+    if experience > experience_cap {
+        return Err(RuntimeMemberError::ExperienceAboveBalance {
+            member_id: member_id.to_owned(),
+            experience,
+            experience_cap,
+        });
+    }
+    if max_health == 0 {
+        return Err(RuntimeMemberError::ZeroMaxHealth {
+            member_id: member_id.to_owned(),
+        });
+    }
+    if health > max_health {
+        return Err(RuntimeMemberError::HealthAboveMaximum {
+            member_id: member_id.to_owned(),
+            health,
+            max_health,
+        });
+    }
+    if mana > max_mana {
+        return Err(RuntimeMemberError::ManaAboveMaximum {
+            member_id: member_id.to_owned(),
+            mana,
+            max_mana,
+        });
+    }
+    Ok(())
+}
+
 /// Mutable base stats saved by the Python runtime. Equipment-derived totals remain computed.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuntimeMemberStats {
@@ -397,6 +549,21 @@ impl EquipmentSlot {
 /// Invalid authored numeric state at the catalog-to-runtime boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RuntimeMemberError {
+    EmptyId,
+    EmptyName {
+        member_id: String,
+    },
+    EmptyClassId {
+        member_id: String,
+    },
+    EmptyEquipmentId {
+        member_id: String,
+        slot: EquipmentSlot,
+    },
+    DuplicateStatusEffect {
+        member_id: String,
+        status: crate::scenario_item::ItemStatus,
+    },
     LevelOutsideBalance {
         member_id: String,
         level: u32,
@@ -425,6 +592,22 @@ pub enum RuntimeMemberError {
 impl fmt::Display for RuntimeMemberError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::EmptyId => formatter.write_str("member id must not be empty"),
+            Self::EmptyName { member_id } => {
+                write!(formatter, "member `{member_id}` name must not be empty")
+            }
+            Self::EmptyClassId { member_id } => {
+                write!(formatter, "member `{member_id}` class id must not be empty")
+            }
+            Self::EmptyEquipmentId { member_id, slot } => write!(
+                formatter,
+                "member `{member_id}` equipment slot `{}` has an empty item id",
+                slot.as_str()
+            ),
+            Self::DuplicateStatusEffect { member_id, status } => write!(
+                formatter,
+                "member `{member_id}` contains duplicate status effect `{status:?}`"
+            ),
             Self::LevelOutsideBalance {
                 member_id,
                 level,

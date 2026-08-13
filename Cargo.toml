@@ -15,9 +15,11 @@ bevy = { version = "0.19", default-features = false, features = [
     "webp",
 ] }
 quick-xml = "=0.41.0"
+crc32fast = "=1.5.0"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_path_to_error = "=0.1.20"
 serde_yaml_ng = "=0.10.0"
+sha2 = "=0.10.9"
 
 [profile.dev]
 opt-level = 1

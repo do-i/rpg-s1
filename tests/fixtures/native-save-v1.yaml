@@ -1,0 +1,63 @@
+format_version: 1
+scenario_id: my_rpg_story
+scenario_version: 1.0.0
+saved_at_unix_seconds: 1700000000
+metadata:
+  protagonist_name: Golden Aric
+  protagonist_level: 1
+  location: Starting Forest
+  playtime_seconds: 3661
+payload:
+  flags:
+  - aric_teleport_unlocked
+  - golden_quest_complete
+  - story_quest_started
+  party:
+  - id: aric
+    name: Golden Aric
+    protagonist: true
+    class_id: hero
+    level: 1
+    experience: 0
+    experience_next: 0
+    health: 22
+    max_health: 22
+    mana: 12
+    max_mana: 12
+    stats:
+      strength: 28
+      dexterity: 17
+      constitution: 28
+      intelligence: 5
+    row: front
+    equipment:
+      weapon: iron_sword
+      shield: buckler
+      helmet: leather_hat
+      body: leather_vest
+      accessory: null
+    status_effects:
+    - poison
+  repository:
+    gp: 345
+    items:
+    - id: potion
+      quantity: 3
+      tags: []
+      locked: true
+      is_loot: false
+      loot_batch: 1
+  map:
+    current: zone_01_starting_forest
+    position:
+    - 29
+    - 1
+    facing: up
+    visited:
+    - town_01_ardel
+  opened_boxes:
+  - map_id: town_01_ardel
+    box_id: box_01
+  controlled_member_id: aric
+  rng_state: 11400714819323198486
+  playtime_seconds: 3661

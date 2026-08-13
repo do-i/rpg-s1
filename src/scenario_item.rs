@@ -13,7 +13,7 @@
 use crate::scenario_class::UnitInterval;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 use bevy::{asset::Asset, reflect::TypePath};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::num::NonZeroU32;
 
@@ -422,7 +422,7 @@ pub enum RecoveryPool {
     Mp,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemStatus {
     Poison,

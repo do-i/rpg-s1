@@ -9,7 +9,7 @@ pub const DEFAULT_GAMEPLAY_SEED: u64 = 1;
 /// upgrades and platform entropy. Its exact output is part of the save/replay compatibility
 /// contract and is pinned by a golden-vector test below. It is suitable for gameplay simulation,
 /// not cryptography.
-#[derive(Debug, Resource)]
+#[derive(Clone, Debug, Eq, PartialEq, Resource)]
 pub struct GameplayRng {
     state: u64,
 }
@@ -24,6 +24,16 @@ impl GameplayRng {
     /// Starts a deterministic stream at `seed`.
     pub const fn from_seed(seed: u64) -> Self {
         Self { state: seed }
+    }
+
+    /// Restores the exact internal stream position stored in a native save.
+    pub const fn from_state(state: u64) -> Self {
+        Self { state }
+    }
+
+    /// Returns the exact internal stream position for native save/replay continuity.
+    pub const fn state(&self) -> u64 {
+        self.state
     }
 
     /// Restarts this stream at `seed`.

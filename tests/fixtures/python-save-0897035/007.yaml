@@ -1,0 +1,84 @@
+meta:
+  timestamp: 2026-08-12-15-30-45
+  playtime_seconds: 9876
+  location_display: zone_01_starting_forest
+  is_autosave: false
+party:
+- id: aric
+  name: Imported Aric
+  protagonist: true
+  class: hero
+  level: 1
+  exp: 0
+  exp_next: 400
+  hp: 22
+  hp_max: 22
+  mp: 12
+  mp_max: 12
+  str: 28
+  dex: 17
+  con: 28
+  int: 5
+  equipped:
+    weapon: iron_sword
+    shield: buckler
+    helmet: leather_hat
+    body: leather_vest
+    accessory: ''
+  row: front
+- id: elise
+  name: Elise
+  protagonist: false
+  class: cleric
+  level: 1
+  exp: 0
+  exp_next: 380
+  hp: 18
+  hp_max: 18
+  mp: 18
+  mp_max: 18
+  str: 26
+  dex: 26
+  con: 27
+  int: 22
+  equipped:
+    weapon: oak_staff
+    shield: buckler
+    helmet: silver_circlet
+    body: cloth_robe
+    accessory: ''
+  row: back
+controlled_member_id: elise
+party_repository:
+  gp: 1234
+  items:
+  - id: potion
+    qty: 7
+    tags:
+    - favorite
+    - recovery
+    locked: true
+    is_loot: true
+    loot_batch: 1
+  - id: mc_s
+    qty: 2
+    tags:
+    - magic_core
+    locked: false
+    is_loot: false
+    loot_batch: 0
+flags:
+- aric_teleport_unlocked
+- elise_joined
+- golden_python_flag
+- story_quest_started
+map:
+  current: zone_01_starting_forest
+  position:
+  - 29
+  - 1
+  visited:
+  - town_01_ardel
+opened_boxes:
+- zone_01_starting_forest:forest_chest_01
+checksum: 897BA056

@@ -6,6 +6,15 @@
 - Source snapshot: `../agentic-rpg` at
   `08970359d6cb03586948625d29b0d3351dbbf785`
 
+## Implementation status
+
+Implemented in M7 on 2026-08-12. `rpg-s1 import-python-save` now performs the
+one-way conversion described below, and normal runtime enumeration/load reads
+only native versioned slots. The checked-in source-produced input and
+converted-native golden live under `tests/fixtures/python-save-0897035/`.
+Gate 7 and RK-SAV-006 passed through separate live game processes; detailed
+evidence is in `docs/m7-manual-play-checklist.md`.
+
 ## Context
 
 Players may have progress saved by the pinned Python/Pygame game. The Rust
@@ -132,7 +141,7 @@ The converter guarantees preservation of the following Python state:
 | Level, EXP, current/max HP/MP, and STR/DEX/CON/INT | Preserved exactly when valid. Missing `exp_next` is derived by the pinned rule; otherwise it is preserved. |
 | Equipment and row | Equipment is preserved after validation. A missing row uses the member's scenario class default, matching the pinned loader. |
 | Controlled member | Preserved when present and valid; otherwise protagonist, then first member, matching the pinned loader. |
-| Repository GP and item stacks | GP, quantities, tags, lock state, `is_loot`, and `loot_batch` are preserved. Pinned defaults apply only when an older optional field is absent. |
+| Repository GP and item stacks | GP, quantities, tags, lock state, `is_loot`, and `loot_batch` are preserved. Pinned defaults apply only when an older optional field is absent; the loader-derived `magic_core` tag is restored for `mc_*` items. |
 | Flags and quests | Every flag is preserved. Quest state remains derived from flags; no nonexistent Python quest payload is invented. |
 | Map and position | Current map, tile position, and visited maps are preserved and validated. |
 | Facing | Set to Down, matching `MapState.from_dict` in the pinned loader, because Python saves do not contain facing. |

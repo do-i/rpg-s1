@@ -11,13 +11,22 @@ selected_bold = true
 
 [[items]]
 id = "run"
-label = "Run playable M6 slice"
+label = "Run playable M7 slice"
 key = "r"
 command = ["cargo", "run"]
 group = "Play"
-tags = ["run", "play", "game", "ardel", "world", "menu", "items", "equipment", "spells"]
-description = "Play the Ardel field-menu slice with party, items, equipment, spells, and teleport"
+tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells"]
+description = "Play the Ardel slice with native save/load, party, items, equipment, spells, and teleport"
 favorite = true
+
+[[items]]
+id = "import-python-help"
+label = "Show Python save import help"
+key = "i"
+command = ["cargo", "run", "--", "import-python-save", "--help"]
+group = "Save tools"
+tags = ["save", "import", "python", "convert", "migration", "help"]
+description = "Show the explicit one-way Python-to-native save converter syntax"
 
 [[items]]
 id = "check"
