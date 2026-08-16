@@ -28,6 +28,7 @@ pub struct GameplayCanvasCamera;
 pub fn fixed_gameplay_camera() -> impl Bundle {
     (
         Camera2d,
+        Msaa::Off,
         Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::Fixed {
                 width: LOGICAL_CANVAS_WIDTH as f32,
@@ -203,8 +204,8 @@ mod tests {
         app.update();
 
         let world = app.world_mut();
-        let (camera, projection) = world
-            .query_filtered::<(&Camera, &Projection), With<GameplayCanvasCamera>>()
+        let (camera, projection, msaa) = world
+            .query_filtered::<(&Camera, &Projection, &Msaa), With<GameplayCanvasCamera>>()
             .single(world)
             .expect("one gameplay canvas camera");
         let configured_viewport = camera.viewport.as_ref().expect("a nonzero viewport");
@@ -220,6 +221,7 @@ mod tests {
         };
         assert_eq!(width, LOGICAL_CANVAS_WIDTH as f32);
         assert_eq!(height, LOGICAL_CANVAS_HEIGHT as f32);
+        assert_eq!(*msaa, Msaa::Off);
         assert_eq!(world.resource::<UiScale>().0, 0.703125);
     }
 

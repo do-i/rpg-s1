@@ -241,13 +241,16 @@ installed manifest start state; no licensed assets or manual visual play are cla
 | M4.24 | [x] Start Ardel BGM from map metadata. | `T` | World entry loads same-stem map metadata plus the scenario BGM index and starts the resolved `town.default` MP3 once in looping mode; the production package smoke test decodes a real sample. |
 | M4.25 | [x] Stop title BGM before Ardel BGM starts. | `T` | A shared logical-BGM marker and explicit stop barrier remove the title loop first; tests prove one Ardel player remains and unexpected duplicates are retired without restart. |
 | M4.26 | [x] Add a deterministic Ardel screenshot check. | `S` | `scripts/check-ardel-screenshot.sh` renders the copied visible layers and real Aric atlas at `[14, 5]`, excludes collision, applies canvas/Y ordering, and verifies decoded RGBA8 hash `122b47cda515c384cb40a531fb3e86666d28a71676e944639525c8fd4924934c`. |
+| M4.27 | [x] Eliminate moving tile-grid seams. | `S` | TSX images override the default linear sampler with nearest-neighbor filtering and every fixed gameplay camera disables Bevy's default 4x MSAA; focused component/asset tests pin both settings, and the user verified the repair in the real world scene with nearby moving enemies on 2026-08-16. |
 
 **Gate 4:** A player can start a new game and walk around a correctly rendered
 Ardel with collision, animation, camera behavior, and BGM. Evidence: the production-package
 smoke test loads the full New Game asset closure through Bevy, 338 default tests plus eight
 opt-in pinned TMX/TSX/collision/byte audits pass, the deterministic 1280x766 Ardel oracle matches,
 and the 2026-08-10 live playthrough reached Ardel from the title screen before moving one cardinal
-and one diagonal tile without runtime asset errors.
+and one diagonal tile without runtime asset errors. The later M4.27 maintenance
+slice removed the tile-boundary grid that flickered during player and enemy
+movement; its real-scene repair was user-verified on 2026-08-16.
 
 ## Milestone 5 — World interaction vertical slice
 

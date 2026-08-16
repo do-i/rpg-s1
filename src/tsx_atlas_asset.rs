@@ -12,7 +12,7 @@ use std::{error::Error, fmt, path::PathBuf, str};
 
 use bevy::{
     asset::{Asset, AssetApp, AssetLoader, AssetPath, Handle, LoadContext, io::Reader},
-    image::{Image, TextureAtlas, TextureAtlasLayout},
+    image::{Image, ImageLoaderSettings, ImageSampler, TextureAtlas, TextureAtlasLayout},
     math::{URect, UVec2},
     prelude::{App, FromWorld, Plugin, Sprite, World},
     reflect::TypePath,
@@ -136,7 +136,14 @@ impl AssetLoader for TsxAtlasAssetLoader {
             self.scenario_root.resolve(metadata.image().source()),
         ))
         .with_source(load_context.path().source().clone_owned());
-        let image = load_context.load(image_path);
+        // Linear filtering blends adjacent atlas cells at subpixel positions, exposing tile
+        // boundaries as a flickering grid while characters or the camera are moving.
+        let image = load_context
+            .load_builder()
+            .with_settings(|settings: &mut ImageLoaderSettings| {
+                settings.sampler = ImageSampler::nearest();
+            })
+            .load(image_path);
         let layout = load_context.add_labeled_asset(ATLAS_LAYOUT_LABEL, atlas_layout(&metadata));
 
         Ok(TsxAtlasAsset {
@@ -245,7 +252,7 @@ mod tests {
                 meta_check: AssetMetaCheck::Never,
                 ..Default::default()
             })
-            .add_plugins(ImagePlugin::default_nearest())
+            .add_plugins(ImagePlugin::default_linear())
             .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
             .insert_resource(ScenarioRoot::try_for_package_key("invented_atlas").unwrap())
             .add_plugins(TsxAtlasAssetPlugin);
@@ -308,6 +315,7 @@ mod tests {
             .get(atlas.image())
             .expect("PNG dependency should be decoded before recursive load is ready");
         assert_eq!(loaded_image.size(), UVec2::new(6, 4));
+        assert_eq!(loaded_image.sampler, ImageSampler::nearest());
 
         let expected_image = atlas.image().clone();
         let expected_layout = atlas.layout().clone();

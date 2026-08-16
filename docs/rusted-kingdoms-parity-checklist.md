@@ -107,6 +107,7 @@ rows.
 | RK-WLD-015 | Same session after RK-WLD-014 | Interact with the opened box again. | The box remains visibly open and gives already-open feedback. | No item is granted a second time. | M5.25 / Gate 5 | Pass |
 | RK-WLD-016 | Save after RK-WLD-014, then relaunch and load it | Return to the same box and interact. | The box still renders open and gives already-open feedback. | Opened-box state and inventory quantity survive save/load without duplication. | M7.12, M11.20 / Gate 7 | Not run |
 | RK-WLD-017 | `SET-WORLD`, with a visible enemy | Observe the enemy, approach it, and make contact. | The enemy sprite is visible and animates/moves according to data; contact triggers one battle transition. | World input freezes once and the pre-battle map/position/facing context is retained. | M8.05-M8.12 / Gate 8 | Pass |
+| RK-WLD-018 | `SET-WORLD`, with an enemy inside chase range | Keep the player still while the enemy moves, then move the player through the same area. | Tile boundaries remain solid with no horizontal or vertical grid flicker during either enemy or camera motion. | Rendering-only sampler and antialiasing policy does not alter player, enemy, collision, or encounter state. | M4.27 / Gate 4 maintenance | Pass — user-verified real world scene 2026-08-16 |
 
 ## Encounters, battle rules, UI, outcomes, and progression
 
