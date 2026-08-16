@@ -15,7 +15,7 @@ use crate::{
     runtime_member::EquipmentSlot,
     save_data::NativeSaveEnvelope,
     save_store::{
-        FIRST_PLAYER_SLOT, LAST_PLAYER_SLOT, SaveSlotState, SaveStore, unix_timestamp_now,
+        FIRST_PLAYER_SLOT, LAST_PLAYER_SLOT, SaveSlot, SaveSlotState, SaveStore, unix_timestamp_now,
     },
     save_ui::SaveSlotCatalog,
     scenario_class::{Ability, AbilityKind, UtilityAbility},
@@ -56,6 +56,7 @@ impl Plugin for FieldMenuPlugin {
                     sync_items_page,
                     sync_equipment_page,
                     sync_spells_page,
+                    sync_save_page,
                 )
                     .chain()
                     .run_if(in_state(AppState::World)),
@@ -231,6 +232,18 @@ struct SelectedSpellbookRow;
 
 #[derive(Component)]
 struct SpellTargetOverlay;
+
+#[derive(Component)]
+struct FieldMenuSavePage;
+
+#[derive(Component)]
+struct FieldSaveSlotRow;
+
+#[derive(Component)]
+struct SelectedFieldSaveSlotRow;
+
+#[derive(Component)]
+struct SaveOverwriteModal;
 
 #[derive(Component)]
 struct StatusMemberCard;
@@ -993,6 +1006,7 @@ fn sync_custom_field_menu_content_visibility(
                 | FieldMenuScreen::Items
                 | FieldMenuScreen::Equipment
                 | FieldMenuScreen::Spells
+                | FieldMenuScreen::Save
         );
     for mut node in &mut generic_nodes {
         node.display = if show_custom_page {
@@ -2843,6 +2857,443 @@ fn spell_accent(ability: &Ability) -> Color {
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the save page coordinates the shared menu root, live session, and discovered slots"
+)]
+fn sync_save_page(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    state: Res<FieldMenuState>,
+    saves: Res<SaveSlotCatalog>,
+    game: Option<Res<GameState>>,
+    menu_roots: Query<Entity, With<FieldMenuRoot>>,
+    pages: Query<Entity, With<FieldMenuSavePage>>,
+) {
+    let show_save = state.open && state.screen == FieldMenuScreen::Save && game.is_some();
+    if !show_save {
+        for entity in &pages {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    let Ok(menu_root) = menu_roots.single() else {
+        return;
+    };
+    let Some(game) = game else {
+        return;
+    };
+    let rebuild = pages.is_empty() || state.is_changed() || saves.is_changed() || game.is_changed();
+    if !rebuild {
+        return;
+    }
+    for entity in &pages {
+        commands.entity(entity).despawn();
+    }
+
+    let font = asset_server.load(
+        root.resolve(
+            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
+                .expect("save font path"),
+        ),
+    );
+    commands.entity(menu_root).with_children(|parent| {
+        spawn_save_page(parent, &font, &state, &game, &saves);
+    });
+}
+
+fn spawn_save_page(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    saves: &SaveSlotCatalog,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                height: percent(100),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            FieldMenuSavePage,
+            Name::new("Save page"),
+        ))
+        .with_children(|page| {
+            page.spawn((
+                Node {
+                    width: px(760),
+                    height: percent(100),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(10),
+                    padding: UiRect::all(px(18)),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(8)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(22, 22, 28, 240)),
+                BorderColor::all(status_border_active()),
+            ))
+            .with_children(|modal| {
+                spawn_save_header(modal, font, state, game);
+                spawn_section_rule(modal);
+                if saves.slots().is_empty() {
+                    modal
+                        .spawn(Node {
+                            flex_grow: 1.0,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        })
+                        .with_children(|empty| {
+                            spawn_status_text(
+                                empty,
+                                "Discovering native save slots...",
+                                font,
+                                18.0,
+                                status_muted(),
+                            );
+                        });
+                } else {
+                    if let Some(autosave) = saves.slots().first() {
+                        spawn_field_save_slot_row(modal, font, autosave, false, true);
+                    }
+                    spawn_section_rule(modal);
+                    let page_start = save_page_start(state.selected);
+                    for slot in saves.slots().iter().skip(page_start).take(6) {
+                        spawn_field_save_slot_row(
+                            modal,
+                            font,
+                            slot,
+                            slot.index == state.selected,
+                            false,
+                        );
+                    }
+                }
+                modal.spawn(Node {
+                    flex_grow: 1.0,
+                    ..default()
+                });
+                spawn_status_text(
+                    modal,
+                    if state.mode == FieldMenuMode::SaveConfirm {
+                        "ENTER / Y   OVERWRITE      ESC / N   CANCEL"
+                    } else {
+                        "↑/↓   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
+                    },
+                    font,
+                    14.0,
+                    status_muted(),
+                );
+                if !state.message.is_empty() {
+                    spawn_save_inline_message(modal, font, &state.message);
+                }
+            });
+            spawn_save_overwrite_modal(page, font, state, saves);
+        });
+}
+
+fn spawn_save_header(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+) {
+    let page = (state.selected.saturating_sub(FIRST_PLAYER_SLOT) / 6) + 1;
+    let page_count = (LAST_PLAYER_SLOT - FIRST_PLAYER_SLOT + 1).div_ceil(6);
+    parent
+        .spawn(Node {
+            width: percent(100),
+            min_height: px(58),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|header| {
+            header.spawn((
+                Node {
+                    width: px(7),
+                    height: px(42),
+                    margin: UiRect::right(px(3)),
+                    ..default()
+                },
+                BackgroundColor(status_ember()),
+            ));
+            header.spawn((
+                Node {
+                    width: px(2),
+                    height: px(42),
+                    margin: UiRect::right(px(14)),
+                    ..default()
+                },
+                BackgroundColor(status_gold()),
+            ));
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(title, "SAVE GAME", font, 29.0, status_gold());
+                    spawn_status_text(
+                        title,
+                        game.map()
+                            .current()
+                            .map_or("CHOOSE A RECORD".to_owned(), |map| {
+                                format!("{}  /  CHOOSE A RECORD", map.as_str().to_uppercase())
+                            }),
+                        font,
+                        13.0,
+                        status_muted(),
+                    );
+                });
+            spawn_status_text(
+                header,
+                format!("PAGE {page:02} / {page_count:02}"),
+                font,
+                13.0,
+                status_muted(),
+            );
+        });
+}
+
+fn spawn_field_save_slot_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    slot: &SaveSlot,
+    selected: bool,
+    pinned: bool,
+) {
+    let mut row = parent.spawn((
+        Node {
+            width: percent(100),
+            min_height: px(61),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            padding: UiRect::axes(px(12), px(7)),
+            border: UiRect::all(px(if selected { 2 } else { 1 })),
+            border_radius: BorderRadius::all(px(4)),
+            ..default()
+        },
+        BackgroundColor(if selected {
+            Color::srgba_u8(72, 49, 25, 224)
+        } else if pinned {
+            Color::srgba_u8(20, 20, 25, 170)
+        } else {
+            Color::srgba_u8(10, 10, 14, 148)
+        }),
+        BorderColor::all(if selected {
+            status_border_active()
+        } else {
+            Color::srgba_u8(126, 98, 55, if pinned { 65 } else { 95 })
+        }),
+        FieldSaveSlotRow,
+    ));
+    if selected {
+        row.insert(SelectedFieldSaveSlotRow);
+    }
+    row.with_children(|row| {
+        row.spawn(Node {
+            width: px(102),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
+        .with_children(|label| {
+            spawn_status_text(
+                label,
+                slot.label().to_uppercase(),
+                font,
+                15.0,
+                if pinned { status_muted() } else { status_ink() },
+            );
+            if pinned {
+                spawn_status_text(label, "PINNED", font, 10.0, Color::srgb_u8(116, 108, 90));
+            }
+        });
+        row.spawn(Node {
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
+        .with_children(|content| {
+            spawn_save_slot_content(content, font, slot);
+        });
+        spawn_status_text(
+            row,
+            save_slot_state_label(slot),
+            font,
+            11.0,
+            save_slot_state_color(slot),
+        );
+    });
+}
+
+fn spawn_save_slot_content(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    slot: &SaveSlot,
+) {
+    match (&slot.state, &slot.metadata) {
+        (SaveSlotState::Empty, _) => {
+            spawn_status_text(
+                parent,
+                "—  EMPTY  —",
+                font,
+                17.0,
+                Color::srgb_u8(116, 108, 90),
+            );
+        }
+        (SaveSlotState::Valid, Some(metadata)) => {
+            spawn_status_text(
+                parent,
+                format!("{}    ({})", metadata.location, metadata.protagonist_name),
+                font,
+                17.0,
+                status_ink(),
+            );
+            spawn_status_text(
+                parent,
+                format!(
+                    "LV {}      PLAYTIME {}",
+                    metadata.protagonist_level,
+                    crate::playtime::Playtime::format(metadata.playtime_seconds)
+                ),
+                font,
+                12.0,
+                status_muted(),
+            );
+        }
+        (SaveSlotState::Corrupt(reason), _) => {
+            spawn_status_text(parent, "CORRUPT SAVE", font, 16.0, status_ember());
+            spawn_status_text(parent, reason, font, 11.0, status_muted());
+        }
+        (SaveSlotState::Incompatible(reason), _) => {
+            spawn_status_text(parent, "INCOMPATIBLE SAVE", font, 16.0, status_violet());
+            spawn_status_text(parent, reason, font, 11.0, status_muted());
+        }
+        _ => {
+            spawn_status_text(parent, "INVALID METADATA", font, 16.0, status_ember());
+        }
+    }
+}
+
+fn spawn_save_inline_message(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    message: &str,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                justify_content: JustifyContent::Center,
+                padding: UiRect::axes(px(10), px(6)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 180)),
+            BorderColor::all(status_border()),
+        ))
+        .with_children(|message_box| {
+            spawn_status_text(message_box, message, font, 13.0, status_ink());
+        });
+}
+
+fn spawn_save_overwrite_modal(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    saves: &SaveSlotCatalog,
+) {
+    if state.mode != FieldMenuMode::SaveConfirm {
+        return;
+    }
+    let slot = saves.slots().get(state.selected);
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(0),
+                right: px(0),
+                top: px(0),
+                bottom: px(0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(2, 2, 6, 170)),
+        ))
+        .with_children(|overlay| {
+            spawn_status_panel(
+                overlay,
+                Node {
+                    width: px(460),
+                    min_height: px(160),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(12),
+                    padding: UiRect::all(px(18)),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(7)),
+                    ..default()
+                },
+                "OVERWRITE SAVE?",
+                font,
+                |modal| {
+                    modal.spawn(SaveOverwriteModal);
+                    spawn_status_text(
+                        modal,
+                        slot.map_or_else(|| slot_label(state.selected), SaveSlot::label),
+                        font,
+                        23.0,
+                        status_gold(),
+                    );
+                    spawn_status_text(
+                        modal,
+                        "Existing progress in this slot will be replaced.",
+                        font,
+                        15.0,
+                        status_ink(),
+                    );
+                    spawn_status_text(
+                        modal,
+                        "ENTER / Y   CONFIRM      ESC / N   CANCEL",
+                        font,
+                        13.0,
+                        status_muted(),
+                    );
+                },
+            );
+        });
+}
+
+fn save_page_start(selected: usize) -> usize {
+    ((selected.saturating_sub(FIRST_PLAYER_SLOT)) / 6) * 6 + FIRST_PLAYER_SLOT
+}
+
+fn save_slot_state_label(slot: &SaveSlot) -> &'static str {
+    match slot.state {
+        SaveSlotState::Empty => "OPEN",
+        SaveSlotState::Valid => "SAVED",
+        SaveSlotState::Corrupt(_) => "CORRUPT",
+        SaveSlotState::Incompatible(_) => "VERSION",
+    }
+}
+
+fn save_slot_state_color(slot: &SaveSlot) -> Color {
+    match slot.state {
+        SaveSlotState::Empty => status_muted(),
+        SaveSlotState::Valid => status_teal(),
+        SaveSlotState::Corrupt(_) => status_ember(),
+        SaveSlotState::Incompatible(_) => status_violet(),
+    }
+}
+
 fn spawn_status_page(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -4292,6 +4743,34 @@ mod tests {
         });
     }
 
+    fn spawn_fixture_save_page(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+        saves: Res<SaveSlotCatalog>,
+    ) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_save_page(parent, &Handle::<Font>::default(), &state, &game, &saves);
+        });
+    }
+
+    fn spawn_fixture_valid_save_row(mut commands: Commands) {
+        let slot = SaveSlot {
+            index: 3,
+            state: SaveSlotState::Valid,
+            metadata: Some(crate::save_data::SaveMetadata {
+                protagonist_name: "Aric".to_owned(),
+                protagonist_level: 7,
+                location: "Ardel".to_owned(),
+                playtime_seconds: 3_661,
+            }),
+            saved_at_unix_seconds: Some(1_700_000_000),
+        };
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_field_save_slot_row(parent, &Handle::<Font>::default(), &slot, true, false);
+        });
+    }
+
     #[test]
     fn wrap_navigation_and_quantity_bounds_are_deterministic() {
         assert_eq!(wrapped(0, 1, -1), 0);
@@ -4594,6 +5073,96 @@ mod tests {
         assert!(labels.contains(&"CHOOSE A DESTINATION"));
         assert!(labels.contains(&"No eligible visited destinations."));
         assert!(labels.contains(&"SPELLBOOK"));
+    }
+
+    #[test]
+    fn save_page_builds_the_centered_modal_and_loading_state() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Save,
+                selected: FIRST_PLAYER_SLOT,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_save_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&FieldMenuSavePage>().iter(world).count(), 1);
+        assert_eq!(world.query::<&FieldSaveSlotRow>().iter(world).count(), 0);
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"SAVE GAME"));
+        assert!(labels.contains(&"Discovering native save slots..."));
+        assert!(labels.contains(&"PAGE 01 / 17"));
+    }
+
+    #[test]
+    fn save_slot_card_renders_metadata_and_selection() {
+        let mut app = App::new();
+        app.add_systems(Update, spawn_fixture_valid_save_row);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&FieldSaveSlotRow>().iter(world).count(), 1);
+        assert_eq!(
+            world
+                .query::<&SelectedFieldSaveSlotRow>()
+                .iter(world)
+                .count(),
+            1
+        );
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"SLOT 03"));
+        assert!(labels.contains(&"Ardel    (Aric)"));
+        assert!(labels.contains(&"LV 7      PLAYTIME 00d 01h 01m 01s"));
+        assert!(labels.contains(&"SAVED"));
+    }
+
+    #[test]
+    fn save_overwrite_confirmation_uses_a_focused_modal() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Save,
+                mode: FieldMenuMode::SaveConfirm,
+                selected: 4,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_save_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&SaveOverwriteModal>().iter(world).count(), 1);
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"OVERWRITE SAVE?"));
+        assert!(labels.contains(&"Slot 04"));
+    }
+
+    #[test]
+    fn save_pages_keep_every_player_slot_reachable() {
+        assert_eq!(save_page_start(1), 1);
+        assert_eq!(save_page_start(6), 1);
+        assert_eq!(save_page_start(7), 7);
+        assert_eq!(save_page_start(100), 97);
     }
 
     #[test]

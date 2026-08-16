@@ -325,6 +325,7 @@ live-found portal regression.
 | M6.27 | [x] Match the original Items screen presentation. | `T` | Inventory appears as a three-column Pouch, Items, and Detail wizard with focused row cards plus action, discard, and target overlays. Evidence: comparison with the pinned `item_renderer.py`, structural UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 | M6.28 | [x] Match the original Equipment screen presentation. | `T` | Equipment uses the shared portrait party column, five focused slot cards, derived totals, a compatible-inventory picker, and color-coded before/after stat previews. Evidence: comparison with the pinned `equip_renderer.py`, browse/picker UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 | M6.29 | [x] Match the original Spells screen presentation. | `T` | Spells uses the shared portrait caster column plus a focused spellbook/detail layout with MP readiness, typed arts, descriptions, targets, and dedicated party/destination overlays. Evidence: comparison with the pinned `spell_renderer.py`, spellbook/target-overlay UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
+| M6.30 | [x] Match the original field Save presentation. | `T` | Save appears as a centered modal with pinned autosave context, six player-slot cards per page, metadata/state badges, inline feedback, and a focused overwrite confirmation. Evidence: comparison with the pinned `save_modal_scene.py`, loading/metadata/paging/overwrite UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
 spell screens, all operating on the same runtime state. The Status screen also
@@ -332,7 +333,8 @@ matches the original game's portrait-first presentation and verified
 portrait-to-details interaction; Items now uses the original three-column
 pouch/list/detail presentation; Equipment now shares the original party,
 slots, inventory, and stat-preview presentation; Spells now shares the original
-caster, spellbook, detail, and casting-overlay presentation.
+caster, spellbook, detail, and casting-overlay presentation; Save now matches
+the original slot-card modal and overwrite flow.
 
 ## Milestone 7 — Save, load, and recovery
 
