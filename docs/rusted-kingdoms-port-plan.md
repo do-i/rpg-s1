@@ -322,11 +322,13 @@ live-found portal regression.
 | M6.24 | [x] Execute field teleport through the map transition path. | `S` | MP changes only after a valid destination is accepted. Evidence: standard transition transaction fixture rejects a busy path; MP is spent only after acceptance. |
 | M6.25 | [x] Match the original Status screen presentation. | `T` | The selected member appears in a three-column layout with party thumbnails, a full-height portrait, and a profile/loadout panel. Evidence: source-reference screenshots, structure/path regression tests, and user visual verification on 2026-08-16. |
 | M6.26 | [x] Add the Status portrait/details interaction. | `T` | Enter replaces the center portrait with progression, stats, equipment, spells, and position; Escape returns to the portrait before closing Status. Evidence: reducer/UI regression tests and user interaction verification on 2026-08-16. |
+| M6.27 | [x] Match the original Items screen presentation. | `T` | Inventory appears as a three-column Pouch, Items, and Detail wizard with focused row cards plus action, discard, and target overlays. Evidence: comparison with the pinned `item_renderer.py`, structural UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
 spell screens, all operating on the same runtime state. The Status screen also
 matches the original game's portrait-first presentation and verified
-portrait-to-details interaction.
+portrait-to-details interaction; Items now uses the original three-column
+pouch/list/detail presentation.
 
 ## Milestone 7 — Save, load, and recovery
 
