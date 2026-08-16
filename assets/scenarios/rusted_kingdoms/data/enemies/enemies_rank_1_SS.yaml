@@ -1,0 +1,725 @@
+# Rank SS Enemies — Zone 10 Final Stronghold
+---
+id: skeleton_knight_black_knight
+name: Black Knight
+type: undead
+rank: SS
+size: medium
+sprite_scale: 320
+hp: 360
+atk: 55
+def: 44
+mres: 40
+dex: 33
+exp: 425
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: dark_armor_shard
+          weight: 50
+        - item: cursed_blade
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: death_blade
+      weight: 30
+    - action: ability
+      id: dark_aura
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: dark_aura
+      target: all_party
+
+---
+id: skeleton_knight_mace_guard
+name: Mace Guard
+type: undead
+rank: SS
+size: small
+sprite_scale: 320
+hp: 372
+atk: 54
+def: 46
+mres: 39
+dex: 32
+exp: 432
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: dark_armor_shard
+          weight: 55
+        - item: stone_chunk
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: shield_bash
+      weight: 20
+    - action: ability
+      id: ancient_fist
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: vampire_noble_base
+name: Vampire Noble
+type: demon
+rank: SS
+size: small
+sprite_scale: 290
+hp: 320
+atk: 60
+def: 40
+mres: 38
+dex: 40
+exp: 442
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: blood_vial
+          weight: 55
+        - item: dark_crystal
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: blood_drain
+      weight: 35
+    - action: ability
+      id: charm
+      weight: 25
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: blood_drain
+      target: highest_hp
+
+---
+id: vampire_noble_masked_vampire
+name: Masked Vampire
+type: demon
+rank: SS
+size: medium
+sprite_scale: 290
+hp: 325
+atk: 60
+def: 40
+mres: 39
+dex: 40
+exp: 448
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: blood_vial
+          weight: 50
+        - item: shadow_shard
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: dark_drain
+      weight: 30
+    - action: ability
+      id: terror
+      weight: 30
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: dark_drain
+      target: highest_hp
+
+---
+id: vampire_noble_blood_court_duelist
+name: Blood Court Duelist
+type: demon
+rank: SS
+size: small
+sprite_scale: 290
+hp: 332
+atk: 62
+def: 41
+mres: 39
+dex: 41
+exp: 465
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: cursed_blade
+          weight: 50
+        - item: blood_vial
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: shadow_slash
+      weight: 35
+    - action: ability
+      id: triple_bite
+      weight: 25
+targeting:
+  default: random_alive
+
+---
+id: vampire_bat_lord_base
+name: Vampire Bat Lord
+type: demon
+rank: SS
+size: small
+sprite_scale: 280
+hp: 310
+atk: 60
+def: 39
+mres: 38
+dex: 42
+exp: 450
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 50
+        - item: blood_vial
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: blood_drain
+      weight: 35
+    - action: ability
+      id: sonic_screech
+      weight: 25
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: blood_drain
+      target: highest_hp
+
+---
+id: vampire_bat_lord_white_wing_lord
+name: White Wing Lord
+type: demon
+rank: SS
+size: medium
+sprite_scale: 280
+hp: 318
+atk: 61
+def: 39
+mres: 39
+dex: 42
+exp: 458
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 50
+        - item: angel_feather
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: divine_strike
+      weight: 30
+    - action: ability
+      id: holy_seal
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: vampire_bat_lord_blood_saber_lord
+name: Blood Saber Lord
+type: demon
+rank: SS
+size: small
+sprite_scale: 280
+hp: 335
+atk: 63
+def: 41
+mres: 39
+dex: 42
+exp: 470
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: cursed_blade
+          weight: 55
+        - item: blood_vial
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: dark_slash
+      weight: 30
+    - action: ability
+      id: blood_drain
+      weight: 30
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: blood_drain
+      target: highest_hp
+
+---
+id: troll_berserker_stone_troll
+name: Stone Troll
+type: beast
+rank: SS
+size: medium
+sprite_scale: 360
+hp: 380
+atk: 56
+def: 47
+mres: 36
+dex: 33
+exp: 458
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: stone_chunk
+          weight: 55
+        - item: ancient_core
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: rock_throw
+      weight: 25
+    - action: ability
+      id: granite_hide
+      weight: 15
+targeting:
+  default: random_alive
+  overrides:
+    - ability: granite_hide
+      target: self
+
+---
+id: troll_shaman_crystal_sage
+name: Crystal Sage
+type: beast
+rank: SS
+size: medium
+sprite_scale: 320
+hp: 340
+atk: 54
+def: 40
+mres: 41
+dex: 35
+exp: 478
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: chaos_crystal
+          weight: 50
+        - item: rune_fragment
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: chaos_bolt
+      weight: 35
+    - action: ability
+      id: entropy
+      weight: 35
+targeting:
+  default: random_alive
+  overrides:
+    - ability: entropy
+      target: all_party
+
+---
+id: wartotaur_warlord_base
+name: Wartotaur Warlord
+type: beast
+rank: SS
+size: medium
+sprite_scale: 360
+hp: 365
+atk: 60
+def: 46
+mres: 38
+dex: 33
+exp: 485
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: beast_core
+          weight: 50
+        - item: dullahan_helm
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: gore
+      weight: 30
+    - action: ability
+      id: intimidate
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: intimidate
+      target: all_party
+
+---
+id: wartotaur_warlord_bronze_halberdier
+name: Bronze Halberdier
+type: beast
+rank: SS
+size: medium
+sprite_scale: 360
+hp: 372
+atk: 61
+def: 47
+mres: 38
+dex: 34
+exp: 490
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: iron_plate
+          weight: 45
+        - item: cursed_blade
+          weight: 55
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: piercing_arrow
+      weight: 30
+    - action: ability
+      id: dark_slash
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: fallen_angel_base
+name: Fallen Angel
+type: demon
+rank: SS
+size: medium
+sprite_scale: 310
+hp: 322
+atk: 62
+def: 41
+mres: 40
+dex: 41
+exp: 488
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: angel_feather
+          weight: 50
+        - item: divine_shard
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: divine_strike
+      weight: 40
+    - action: ability
+      id: holy_seal
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: fallen_angel_ash_wing
+name: Ash Wing
+type: demon
+rank: SS
+size: medium
+sprite_scale: 310
+hp: 318
+atk: 63
+def: 41
+mres: 40
+dex: 42
+exp: 495
+drops:
+  mc:
+    - size: L
+      qty: 1
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: angel_feather
+          weight: 45
+        - item: ember_core
+          weight: 55
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: flame_breath
+      weight: 35
+    - action: ability
+      id: divine_strike
+      weight: 35
+targeting:
+  default: random_alive
+  overrides:
+    - ability: flame_breath
+      target: all_party
+
+---
+id: alien_invader_base
+name: Alien Invader
+type: demon
+rank: SS
+size: small
+sprite_scale: 290
+hp: 328
+atk: 60
+def: 42
+mres: 41
+dex: 40
+exp: 482
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: void_shard
+          weight: 50
+        - item: chaos_crystal
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: void_touch
+      weight: 30
+    - action: ability
+      id: chaos_bolt
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: alien_invader_night_alien
+name: Night Alien
+type: demon
+rank: SS
+size: medium
+sprite_scale: 290
+hp: 332
+atk: 60
+def: 42
+mres: 41
+dex: 41
+exp: 488
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: void_shard
+          weight: 55
+        - item: shadow_shard
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: dark_wave
+      weight: 35
+    - action: ability
+      id: terror
+      weight: 35
+targeting:
+  default: random_alive
+  overrides:
+    - ability: dark_wave
+      target: all_party
+
+---
+id: alien_invader_red_crystal_invader
+name: Red Crystal Invader
+type: demon
+rank: SS
+size: small
+sprite_scale: 290
+hp: 348
+atk: 62
+def: 43
+mres: 41
+dex: 41
+exp: 505
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: XL
+      qty: 1
+  loot:
+    - pool:
+        - item: chaos_crystal
+          weight: 50
+        - item: void_core
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: chaos_bolt
+      weight: 35
+    - action: ability
+      id: entropy
+      weight: 35
+targeting:
+  default: random_alive
+  overrides:
+    - ability: entropy
+      target: all_party
+
+---
+id: fallen_angel_red_judicator
+name: Red Judicator
+type: demon
+rank: SS
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 380
+hp: 820
+atk: 78
+def: 56
+mres: 54
+dex: 44
+exp: 1250
+drops:
+  mc:
+    - size: XL
+      qty: 2
+    - size: L
+      qty: 2
+  loot:
+    - pool:
+        - item: dullahan_helm
+          weight: 40
+        - item: void_core
+          weight: 60
+ai_ref: boss_move_sets/fallen_angel_red_judicator.yaml

@@ -1,6 +1,8 @@
 mod action_input;
 pub mod app_state;
 mod cli;
+pub mod encounter;
+mod encounter_assets;
 mod field_menu;
 mod field_menu_domain;
 pub mod game_state;
@@ -57,6 +59,7 @@ mod ui_theme;
 mod world_actor;
 mod world_audio;
 mod world_dialogue;
+mod world_encounter;
 mod world_interaction;
 mod world_object;
 mod world_player;
@@ -72,6 +75,7 @@ use bevy::{
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
+use encounter_assets::EncounterAssetPlugin;
 use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
@@ -92,6 +96,7 @@ use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
 use world_actor::WorldActorPlugin;
 use world_audio::WorldAudioPlugin;
+use world_encounter::{BattleEntryPlugin, WorldEncounterPlugin};
 use world_interaction::WorldInteractionPlugin;
 use world_object::WorldObjectPlugin;
 use world_player::WorldPlayerPlugin;
@@ -134,6 +139,7 @@ fn run_game() {
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(TsxAtlasAssetPlugin)
         .add_plugins(TmxGroundAssetPlugin)
+        .add_plugins(EncounterAssetPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)
         .insert_state(AppState::Title)
@@ -151,8 +157,10 @@ fn run_game() {
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)
         .add_plugins(WorldTransitionPlugin)
+        .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldInteractionPlugin)
         .add_plugins(WorldPlayerPlugin)
         .add_plugins(FieldMenuPlugin)
+        .add_plugins(BattleEntryPlugin)
         .run();
 }

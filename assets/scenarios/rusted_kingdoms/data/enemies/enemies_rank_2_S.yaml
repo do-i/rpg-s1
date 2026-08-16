@@ -1,0 +1,937 @@
+# Rank S Enemies — Zone 8 Corrupted Forest + Zone 9 Volcanic Region
+---
+id: dark_fairy_base
+name: Dark Fairy
+type: demon
+rank: S
+size: small
+sprite_scale: 220
+hp: 215
+atk: 44
+def: 28
+mres: 26
+dex: 30
+exp: 285
+drops:
+  mc:
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: dark_crystal
+          weight: 55
+        - item: charm_crystal
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: dark_bolt
+      weight: 35
+    - action: ability
+      id: charm
+      weight: 35
+targeting:
+  default: random_alive
+
+---
+id: dark_fairy_purple_hex_fairy
+name: Purple Hex Fairy
+type: demon
+rank: S
+size: small
+sprite_scale: 220
+hp: 220
+atk: 44
+def: 28
+mres: 27
+dex: 30
+exp: 295
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: dark_crystal
+          weight: 50
+        - item: silence_dust
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: hex
+      weight: 35
+    - action: ability
+      id: void_touch
+      weight: 35
+targeting:
+  default: random_alive
+
+---
+id: dark_fairy_redcap_fairy
+name: Redcap Fairy
+type: demon
+rank: S
+size: medium
+sprite_scale: 220
+hp: 218
+atk: 45
+def: 28
+mres: 26
+dex: 32
+exp: 298
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: charm_crystal
+          weight: 50
+        - item: void_shard
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: dark_bolt
+      weight: 35
+    - action: ability
+      id: dark_drain
+      weight: 35
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: dark_drain
+      target: highest_hp
+
+---
+id: pumpkin_jack_harvest_reaper
+name: Harvest Reaper
+type: demon
+rank: S
+size: medium
+sprite_scale: 270
+hp: 230
+atk: 46
+def: 30
+mres: 27
+dex: 28
+exp: 312
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: wisp_flame
+          weight: 50
+        - item: cursed_relic
+          weight: 50
+        - item: phantom_veil
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: shadow_slash
+      weight: 30
+    - action: ability
+      id: terror
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: sheep_cultist_base
+name: Sheep Cultist
+type: humanoid
+rank: S
+size: small
+sprite_scale: 260
+hp: 210
+atk: 38
+def: 27
+mres: 24
+dex: 25
+exp: 278
+drops:
+  mc:
+    - size: M
+      qty: 2
+  loot:
+    - pool:
+        - item: cursed_relic
+          weight: 60
+        - item: dark_crystal
+          weight: 40
+        - item: soul_fragment
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: curse
+      weight: 30
+    - action: ability
+      id: dark_bolt
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: sheep_cultist_white_robed_cultist
+name: White Robed Cultist
+type: humanoid
+rank: S
+size: small
+sprite_scale: 260
+hp: 222
+atk: 39
+def: 28
+mres: 26
+dex: 25
+exp: 290
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: divine_shard
+          weight: 50
+        - item: spirit_orb
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: divine_strike
+      weight: 40
+    - action: ability
+      id: holy_seal
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: sheep_cultist_crystal_cultist
+name: Crystal Cultist
+type: humanoid
+rank: S
+size: medium
+sprite_scale: 260
+hp: 218
+atk: 40
+def: 28
+mres: 27
+dex: 26
+exp: 302
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: chaos_crystal
+          weight: 55
+        - item: void_shard
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: chaos_bolt
+      weight: 40
+    - action: ability
+      id: entropy
+      weight: 30
+targeting:
+  default: random_alive
+  overrides:
+    - ability: entropy
+      target: all_party
+
+---
+id: troll_berserker_base
+name: Troll Berserker
+type: beast
+rank: S
+size: medium
+sprite_scale: 320
+hp: 250
+atk: 42
+def: 30
+mres: 22
+dex: 24
+exp: 300
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: bear_pelt
+          weight: 50
+        - item: bear_claw
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: maul
+      weight: 25
+    - action: ability
+      id: roar
+      weight: 15
+targeting:
+  default: random_alive
+  overrides:
+    - ability: roar
+      target: all_party
+
+---
+id: troll_berserker_swamp_troll
+name: Swamp Troll
+type: beast
+rank: S
+size: medium
+sprite_scale: 320
+hp: 248
+atk: 41
+def: 30
+mres: 23
+dex: 24
+exp: 305
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: spore_dust
+          weight: 50
+        - item: toxic_cap
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: spore_cloud
+      weight: 30
+    - action: ability
+      id: maul
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: spore_cloud
+      target: all_party
+
+---
+id: troll_shaman_swamp_hexer
+name: Swamp Hexer
+type: beast
+rank: S
+size: medium
+sprite_scale: 300
+hp: 225
+atk: 38
+def: 27
+mres: 27
+dex: 25
+exp: 318
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: cursed_root
+          weight: 50
+        - item: poison_mucus
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 30
+    - action: ability
+      id: blight_spores
+      weight: 35
+    - action: ability
+      id: hex
+      weight: 35
+targeting:
+  default: random_alive
+  overrides:
+    - ability: blight_spores
+      target: all_party
+
+---
+id: troll_shaman_base
+name: Troll Sage
+type: beast
+rank: S
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 360
+hp: 460
+atk: 52
+def: 36
+mres: 38
+dex: 28
+exp: 760
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: XL
+      qty: 1
+  loot:
+    - pool:
+        - item: succubus_veil
+          weight: 50
+        - item: charm_crystal
+          weight: 50
+ai_ref: boss_move_sets/troll_shaman_base.yaml
+
+---
+id: minotaur_brute_base
+name: Minotaur Brute
+type: beast
+rank: S
+size: medium
+sprite_scale: 320
+hp: 260
+atk: 48
+def: 33
+mres: 28
+dex: 30
+exp: 340
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: beast_core
+          weight: 55
+        - item: chimera_mane
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: gore
+      weight: 30
+    - action: ability
+      id: roar
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: roar
+      target: all_party
+
+---
+id: minotaur_brute_club_brute
+name: Club Brute
+type: beast
+rank: S
+size: small
+sprite_scale: 320
+hp: 275
+atk: 49
+def: 35
+mres: 28
+dex: 28
+exp: 350
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: stone_chunk
+          weight: 55
+        - item: beast_core
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: rock_throw
+      weight: 25
+    - action: ability
+      id: maul
+      weight: 15
+targeting:
+  default: random_alive
+
+---
+id: minotaur_brute_armored_minotaur
+name: Armored Minotaur
+type: beast
+rank: S
+size: small
+sprite_scale: 320
+hp: 290
+atk: 48
+def: 38
+mres: 29
+dex: 28
+exp: 365
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: iron_plate
+          weight: 50
+        - item: beast_core
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: iron_fist
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: boarman_berserker_base
+name: Boarman Berserker
+type: beast
+rank: S
+size: medium
+sprite_scale: 300
+hp: 268
+atk: 50
+def: 33
+mres: 28
+dex: 30
+exp: 358
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: hellhound_fang
+          weight: 50
+        - item: bear_claw
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: lunge
+      weight: 25
+    - action: ability
+      id: gore
+      weight: 15
+targeting:
+  default: random_alive
+
+---
+id: boarman_berserker_blackhide_raider
+name: Blackhide Raider
+type: beast
+rank: S
+size: small
+sprite_scale: 300
+hp: 270
+atk: 51
+def: 33
+mres: 28
+dex: 31
+exp: 368
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: shadow_pelt
+          weight: 50
+        - item: dark_fang
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: dark_slash
+      weight: 30
+    - action: ability
+      id: shadow_bite
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: boarman_berserker_tusk_charger
+name: Tusk Charger
+type: beast
+rank: S
+size: medium
+sprite_scale: 300
+hp: 282
+atk: 52
+def: 34
+mres: 28
+dex: 30
+exp: 380
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: chimera_mane
+          weight: 50
+        - item: hellhound_fang
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: gore
+      weight: 35
+    - action: ability
+      id: triple_bite
+      weight: 15
+targeting:
+  default: random_alive
+
+---
+id: pigman_guard_base
+name: Pigman Guard
+type: humanoid
+rank: S
+size: medium
+sprite_scale: 290
+hp: 255
+atk: 43
+def: 35
+mres: 26
+dex: 28
+exp: 332
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: iron_plate
+          weight: 55
+        - item: rusty_blade
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: shield_bash
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: pigman_guard_boar_guard
+name: Boar Guard
+type: humanoid
+rank: S
+size: small
+sprite_scale: 290
+hp: 268
+atk: 44
+def: 36
+mres: 27
+dex: 28
+exp: 345
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: iron_plate
+          weight: 50
+        - item: cursed_blade
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: shield_bash
+      weight: 25
+    - action: ability
+      id: dark_slash
+      weight: 15
+targeting:
+  default: random_alive
+
+---
+id: pigman_guard_halberd_guard
+name: Halberd Guard
+type: humanoid
+rank: S
+size: small
+sprite_scale: 290
+hp: 262
+atk: 46
+def: 35
+mres: 27
+dex: 30
+exp: 358
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: iron_plate
+          weight: 45
+        - item: cursed_blade
+          weight: 55
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: piercing_arrow
+      weight: 25
+    - action: ability
+      id: dark_slash
+      weight: 25
+targeting:
+  default: random_alive
+
+---
+id: lizard_dragon_guard_base
+name: Lizard Dragon Guard
+type: beast
+rank: S
+size: small
+sprite_scale: 320
+hp: 285
+atk: 49
+def: 36
+mres: 32
+dex: 30
+exp: 380
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: lava_scale
+          weight: 55
+        - item: fire_dragon_horn
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: fire_breath
+      weight: 30
+    - action: ability
+      id: gore
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: fire_breath
+      target: all_party
+
+---
+id: lizard_dragon_guard_blue_drake_guard
+name: Blue Drake Guard
+type: beast
+rank: S
+size: small
+sprite_scale: 320
+hp: 290
+atk: 49
+def: 37
+mres: 33
+dex: 31
+exp: 388
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: frost_dragon_scale
+          weight: 50
+        - item: ice_dragon_horn
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: frost_breath
+      weight: 30
+    - action: ability
+      id: ice_fang
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: frost_breath
+      target: all_party
+
+---
+id: lizard_dragon_guard_trident_guard
+name: Trident Guard
+type: beast
+rank: S
+size: small
+sprite_scale: 320
+hp: 295
+atk: 51
+def: 38
+mres: 32
+dex: 32
+exp: 400
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: stone_dragon_scale
+          weight: 50
+        - item: stone_dragon_horn
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: stone_breath
+      weight: 30
+    - action: ability
+      id: piercing_arrow
+      weight: 20
+targeting:
+  default: random_alive
+  overrides:
+    - ability: stone_breath
+      target: all_party
+
+---
+id: wartotaur_warlord_blackhorn_chief
+name: Blackhorn Chief
+type: beast
+rank: S
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 360
+hp: 580
+atk: 62
+def: 44
+mres: 36
+dex: 30
+exp: 920
+drops:
+  mc:
+    - size: L
+      qty: 2
+    - size: XL
+      qty: 1
+  loot:
+    - pool:
+        - item: flame_dragon_scale
+          weight: 50
+        - item: fire_dragon_horn
+          weight: 50
+ai_ref: boss_move_sets/wartotaur_warlord_blackhorn_chief.yaml

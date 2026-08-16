@@ -1,0 +1,1414 @@
+//! Visible World enemies and the transactional World-to-Battle handoff.
+
+use std::collections::BTreeMap;
+
+use bevy::{
+    asset::{AssetServer, Assets, Handle, LoadState},
+    audio::{PlaybackMode, Volume},
+    ecs::schedule::ApplyDeferred,
+    prelude::*,
+};
+
+use crate::{
+    app_state::{AppState, AppStateTransitionRequest},
+    encounter::{
+        BattleEntry, EnemyCatalog, PreBattleReturnContext, SpawnCadence, WorldEnemyReturnState,
+        build_battle_entry, party_encounter_modifiers, pick_weighted_formation,
+    },
+    field_menu_domain::{CatalogStatus, FieldMenuCatalog},
+    game_state::GameState,
+    gameplay_canvas::fixed_gameplay_camera,
+    scenario_audio::{BGM_INDEX_PATH, BgmIndex, SFX_INDEX_PATH, SfxIndex},
+    scenario_balance::BalanceData,
+    scenario_battle_background::BattleBackgroundCatalog,
+    scenario_encounter::EncounterZone,
+    scenario_enemy::EnemyCatalogFile,
+    scenario_map::MapMetadata,
+    scenario_path::ScenarioRelativePath,
+    scenario_root::ScenarioRoot,
+    scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
+    tile_coordinates::tmx_tile_center,
+    tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
+    tsx_atlas_asset::TsxAtlasAsset,
+    world_audio::LogicalBgmPlayer,
+};
+
+const ENEMY_RANK_FILES: [&str; 8] = [
+    "enemies_rank_1_SS.yaml",
+    "enemies_rank_2_S.yaml",
+    "enemies_rank_3_A.yaml",
+    "enemies_rank_4_B.yaml",
+    "enemies_rank_5_C.yaml",
+    "enemies_rank_6_D.yaml",
+    "enemies_rank_7_E.yaml",
+    "enemies_rank_8_F.yaml",
+];
+const TILE_SIZE: u32 = 32;
+const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
+const ENEMY_WALK_ROW_OFFSET: u32 = 8;
+const ENEMY_ATLAS_COLUMNS: u32 = 9;
+const WALK_STEP_SECONDS: f32 = 1.0 / 3.5;
+const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
+const BATTLE_FLASH_SECONDS: f32 = 0.55;
+
+pub(crate) struct WorldEncounterPlugin;
+
+impl Plugin for WorldEncounterPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<WorldEncounterState>()
+            .init_resource::<BattleTransition>()
+            .add_systems(
+                OnEnter(AppState::World),
+                (reset_world_encounters, spawn_battle_flash_overlay).chain(),
+            )
+            .add_systems(
+                Update,
+                (
+                    request_active_encounter_assets,
+                    drive_active_encounter_assets,
+                    ApplyDeferred,
+                    update_world_enemies,
+                    detect_enemy_contact,
+                    advance_battle_transition,
+                    update_battle_flash_overlay,
+                )
+                    .chain()
+                    .run_if(in_state(AppState::World)),
+            )
+            .add_systems(
+                OnExit(AppState::World),
+                (cleanup_world_encounters, cleanup_battle_flash_overlay),
+            );
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum WorldEncounterStatus {
+    #[default]
+    Idle,
+    Loading,
+    NoEncounters,
+    Spawned,
+    Failed,
+}
+
+#[derive(Debug, Default, Resource)]
+pub(crate) struct WorldEncounterState {
+    map_id: Option<String>,
+    metadata: Option<Handle<MapMetadata>>,
+    zone: Option<Handle<EncounterZone>>,
+    enemy_files: Vec<Handle<EnemyCatalogFile>>,
+    backgrounds: Option<Handle<BattleBackgroundCatalog>>,
+    sfx_index: Option<Handle<SfxIndex>>,
+    encounter_sfx: Option<String>,
+    pending: Vec<PendingWorldEnemy>,
+    sprite_handles: BTreeMap<String, Handle<TsxAtlasAsset>>,
+    cadence: Option<SpawnCadence>,
+    status: WorldEncounterStatus,
+    failure: Option<String>,
+}
+
+impl WorldEncounterState {
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "runtime diagnostics are test-facing")
+    )]
+    pub(crate) const fn status(&self) -> WorldEncounterStatus {
+        self.status
+    }
+
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "runtime diagnostics are test-facing")
+    )]
+    pub(crate) fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PendingWorldEnemy {
+    encounter_id: String,
+    formation: Vec<String>,
+    origin: Position,
+    boss: bool,
+    chase_range: u32,
+}
+
+#[derive(Component, Clone, Debug, PartialEq)]
+pub(crate) struct WorldEnemy {
+    encounter_id: String,
+    formation: Vec<String>,
+    origin: Position,
+    position: Position,
+    boss: bool,
+    chase_range: u32,
+    active: bool,
+    engaged: bool,
+    facing: CardinalDirection,
+    frame: u32,
+    step_elapsed: f32,
+    wander_pause: f32,
+    wander_target: Option<Position>,
+}
+
+#[cfg_attr(
+    not(test),
+    allow(
+        dead_code,
+        reason = "runtime inspection accessors support Gate 8 diagnostics"
+    )
+)]
+impl WorldEnemy {
+    pub(crate) fn encounter_id(&self) -> &str {
+        &self.encounter_id
+    }
+
+    pub(crate) const fn tile_position(&self) -> Position {
+        self.position
+    }
+
+    pub(crate) fn formation(&self) -> &[String] {
+        &self.formation
+    }
+
+    pub(crate) const fn is_boss(&self) -> bool {
+        self.boss
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum BattleTransitionPhase {
+    #[default]
+    Idle,
+    Flashing,
+    Requested,
+}
+
+#[derive(Debug, Default, Resource)]
+pub(crate) struct BattleTransition {
+    phase: BattleTransitionPhase,
+    elapsed: f32,
+}
+
+impl BattleTransition {
+    pub(crate) const fn input_locked(&self) -> bool {
+        !matches!(self.phase, BattleTransitionPhase::Idle)
+    }
+
+    fn request(&mut self) -> bool {
+        if self.phase != BattleTransitionPhase::Idle {
+            return false;
+        }
+        self.phase = BattleTransitionPhase::Flashing;
+        self.elapsed = 0.0;
+        true
+    }
+}
+
+#[derive(Component)]
+struct BattleFlashOverlay;
+
+fn reset_world_encounters(
+    mut state: ResMut<WorldEncounterState>,
+    mut battle: ResMut<BattleTransition>,
+) {
+    *state = WorldEncounterState::default();
+    *battle = BattleTransition::default();
+}
+
+fn spawn_battle_flash_overlay(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::ZERO,
+            top: Val::ZERO,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        BackgroundColor(Color::NONE),
+        Visibility::Hidden,
+        GlobalZIndex(11_000),
+        Pickable::IGNORE,
+        BattleFlashOverlay,
+    ));
+}
+
+fn cleanup_battle_flash_overlay(
+    mut commands: Commands,
+    overlays: Query<Entity, With<BattleFlashOverlay>>,
+) {
+    for entity in &overlays {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn request_active_encounter_assets(
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    game: Option<Res<GameState>>,
+    mut state: ResMut<WorldEncounterState>,
+) {
+    let current = game
+        .as_deref()
+        .and_then(|game| game.map().current())
+        .map(|map| map.as_str());
+    if current == state.map_id.as_deref() {
+        return;
+    }
+    *state = WorldEncounterState::default();
+    let Some(map_id) = current else {
+        return;
+    };
+    let Ok(metadata_path) =
+        ScenarioRelativePath::try_from(format!("data/maps/{map_id}.yaml").as_str())
+    else {
+        state.status = WorldEncounterStatus::Failed;
+        state.failure = Some(format!("invalid encounter map id `{map_id}`"));
+        return;
+    };
+    state.map_id = Some(map_id.to_owned());
+    state.metadata = Some(asset_server.load(root.resolve(&metadata_path)));
+    state.status = WorldEncounterStatus::Loading;
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "transactional encounter publication reads each independently typed asset store"
+)]
+fn drive_active_encounter_assets(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    metadata_assets: Res<Assets<MapMetadata>>,
+    zone_assets: Res<Assets<EncounterZone>>,
+    enemy_file_assets: Res<Assets<EnemyCatalogFile>>,
+    background_assets: Res<Assets<BattleBackgroundCatalog>>,
+    sfx_assets: Res<Assets<SfxIndex>>,
+    atlas_assets: Res<Assets<TsxAtlasAsset>>,
+    maps: Res<Assets<TmxGroundAsset>>,
+    render: Res<StaticMapRenderState>,
+    game: Option<ResMut<GameState>>,
+    existing: Query<(), With<WorldEnemy>>,
+    mut state: ResMut<WorldEncounterState>,
+) {
+    if !matches!(state.status, WorldEncounterStatus::Loading) || !existing.is_empty() {
+        return;
+    }
+    let Some(map_id) = state.map_id.clone() else {
+        return;
+    };
+    let Some(metadata_handle) = state.metadata.as_ref() else {
+        return;
+    };
+    if matches!(
+        asset_server.load_state(metadata_handle.id()),
+        LoadState::Failed(_)
+    ) {
+        fail_encounter(
+            &mut state,
+            format!("map metadata for `{map_id}` failed to load"),
+        );
+        return;
+    }
+    let Some(metadata) = metadata_assets.get(metadata_handle) else {
+        return;
+    };
+    let Some(map) = render.map(&maps) else {
+        return;
+    };
+    let regular_spawns = spawn_tiles(map);
+    let boss_spawn = boss_spawn_tile(map);
+    if regular_spawns.is_empty() && boss_spawn.is_none() {
+        state.status = WorldEncounterStatus::NoEncounters;
+        commands.remove_resource::<EnemyCatalog>();
+        return;
+    }
+
+    if state.zone.is_none() {
+        let Ok(zone_path) =
+            ScenarioRelativePath::try_from(format!("data/encount/{map_id}.yaml").as_str())
+        else {
+            fail_encounter(
+                &mut state,
+                format!("invalid encounter-zone path for `{map_id}`"),
+            );
+            return;
+        };
+        state.zone = Some(asset_server.load(root.resolve(&zone_path)));
+        state.enemy_files = ENEMY_RANK_FILES
+            .iter()
+            .map(|filename| {
+                let path =
+                    ScenarioRelativePath::try_from(format!("data/enemies/{filename}").as_str())
+                        .expect("fixed enemy rank path is scenario-relative");
+                asset_server.load(root.resolve(&path))
+            })
+            .collect();
+        let background_path = ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
+            .expect("fixed battle background path is scenario-relative");
+        state.backgrounds = Some(asset_server.load(root.resolve(&background_path)));
+        let sfx_path = ScenarioRelativePath::try_from(SFX_INDEX_PATH)
+            .expect("canonical SFX index path is scenario-relative");
+        state.sfx_index = Some(asset_server.load(root.resolve(&sfx_path)));
+        return;
+    }
+
+    let zone_handle = state.zone.clone().expect("requested above");
+    if matches!(
+        asset_server.load_state(zone_handle.id()),
+        LoadState::Failed(_)
+    ) {
+        fail_encounter(
+            &mut state,
+            format!("encounter zone for `{map_id}` failed to load"),
+        );
+        return;
+    }
+    if state
+        .enemy_files
+        .iter()
+        .any(|handle| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+    {
+        fail_encounter(&mut state, "enemy catalog failed to load".to_owned());
+        return;
+    }
+    let Some(background_handle) = state.backgrounds.clone() else {
+        return;
+    };
+    if matches!(
+        asset_server.load_state(background_handle.id()),
+        LoadState::Failed(_)
+    ) {
+        fail_encounter(
+            &mut state,
+            "battle-background catalog failed to load".to_owned(),
+        );
+        return;
+    }
+    let Some(sfx_handle) = state.sfx_index.clone() else {
+        return;
+    };
+    if matches!(
+        asset_server.load_state(sfx_handle.id()),
+        LoadState::Failed(_)
+    ) {
+        fail_encounter(&mut state, "scenario SFX index failed to load".to_owned());
+        return;
+    }
+    let Some(sfx_index) = sfx_assets.get(&sfx_handle) else {
+        return;
+    };
+    let Some(encounter_sfx) = sfx_index.resolve_key(&root, "encounter") else {
+        fail_encounter(
+            &mut state,
+            "scenario SFX index has no `encounter` event".to_owned(),
+        );
+        return;
+    };
+    state.encounter_sfx = Some(encounter_sfx);
+    let Some(zone) = zone_assets.get(&zone_handle) else {
+        return;
+    };
+    if zone.effective_id(&map_id) != map_id {
+        fail_encounter(
+            &mut state,
+            format!("encounter-zone id does not match active map `{map_id}`"),
+        );
+        return;
+    }
+    let Some(backgrounds) = background_assets.get(&background_handle) else {
+        return;
+    };
+    if !backgrounds
+        .0
+        .iter()
+        .any(|background| background.id == zone.background)
+    {
+        fail_encounter(
+            &mut state,
+            format!(
+                "encounter zone references unknown background `{}`",
+                zone.background
+            ),
+        );
+        return;
+    }
+    let Some(files) = state
+        .enemy_files
+        .iter()
+        .map(|handle| enemy_file_assets.get(handle))
+        .collect::<Option<Vec<_>>>()
+    else {
+        return;
+    };
+    let catalog = match EnemyCatalog::try_from_definitions(
+        files.iter().flat_map(|file| file.entries().iter().cloned()),
+    ) {
+        Ok(catalog) => catalog,
+        Err(error) => {
+            fail_encounter(&mut state, error.to_string());
+            return;
+        }
+    };
+    let Some(mut game) = game else {
+        return;
+    };
+
+    if state.pending.is_empty() {
+        if let (Some(boss), Some(origin)) = (&zone.boss, boss_spawn)
+            && !(boss.once
+                && !boss.completion.set_flag.is_empty()
+                && game.flags().is_set(&boss.completion.set_flag))
+        {
+            state.pending.push(PendingWorldEnemy {
+                encounter_id: format!("{map_id}:boss"),
+                formation: vec![boss.enemy_id.clone()],
+                origin,
+                boss: true,
+                chase_range: 0,
+            });
+        }
+        for (index, origin) in regular_spawns.into_iter().enumerate() {
+            if let Some(formation) = pick_weighted_formation(&zone.entries, game.rng_mut()) {
+                state.pending.push(PendingWorldEnemy {
+                    encounter_id: format!("{map_id}:spawn:{index}"),
+                    formation: formation.enemy_ids.clone(),
+                    origin,
+                    boss: false,
+                    chase_range: formation.chase_range,
+                });
+            }
+        }
+        let sprite_ids = state
+            .pending
+            .iter()
+            .filter_map(|enemy| enemy.formation.first().cloned())
+            .collect::<Vec<_>>();
+        for sprite_id in sprite_ids {
+            if catalog.enemy(&sprite_id).is_none() {
+                fail_encounter(
+                    &mut state,
+                    format!("spawn references unknown enemy `{sprite_id}`"),
+                );
+                return;
+            }
+            let path = ScenarioRelativePath::try_from(
+                format!("assets/sprites/enemies/{sprite_id}.tsx").as_str(),
+            )
+            .expect("validated enemy id produced a scenario-relative sprite path");
+            state
+                .sprite_handles
+                .entry(sprite_id.clone())
+                .or_insert_with(|| asset_server.load(root.resolve(&path)));
+        }
+        commands.insert_resource(catalog);
+        return;
+    }
+
+    if state
+        .sprite_handles
+        .values()
+        .any(|handle| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+    {
+        fail_encounter(&mut state, "world-enemy sprite failed to load".to_owned());
+        return;
+    }
+    if state
+        .sprite_handles
+        .values()
+        .any(|handle| !asset_server.is_loaded_with_dependencies(handle.id()))
+    {
+        return;
+    }
+
+    for pending in &state.pending {
+        let sprite_id = pending
+            .formation
+            .first()
+            .expect("only nonempty formations are pending");
+        let sprite = state
+            .sprite_handles
+            .get(sprite_id)
+            .and_then(|handle| atlas_assets.get(handle))
+            .and_then(|atlas| {
+                atlas
+                    .sprite_for_tile(enemy_tile(CardinalDirection::Down, 0))
+                    .ok()
+            })
+            .unwrap_or_else(|| Sprite::from_color(Color::srgb(0.8, 0.2, 0.2), Vec2::splat(64.0)));
+        let center = tile_center(pending.origin);
+        commands.spawn((
+            sprite,
+            Transform::from_translation(
+                center.extend(world_entity_y_z(center.y, ENEMY_SPRITE_HALF_HEIGHT)),
+            ),
+            WorldEnemy {
+                encounter_id: pending.encounter_id.clone(),
+                formation: pending.formation.clone(),
+                origin: pending.origin,
+                position: pending.origin,
+                boss: pending.boss,
+                chase_range: pending.chase_range,
+                active: true,
+                engaged: false,
+                facing: CardinalDirection::Down,
+                frame: 0,
+                step_elapsed: 0.0,
+                wander_pause: random_pause(game.rng_mut()),
+                wander_target: None,
+            },
+        ));
+    }
+    let interval = metadata
+        .enemy_spawn
+        .as_ref()
+        .map(|spawn| spawn.interval.get() as f32)
+        .or_else(|| zone.spawn_frequency.map(|frequency| frequency.get() as f32))
+        .unwrap_or(DEFAULT_RESPAWN_SECONDS);
+    state.cadence = Some(SpawnCadence::new(interval));
+    state.status = WorldEncounterStatus::Spawned;
+}
+
+fn fail_encounter(state: &mut WorldEncounterState, failure: String) {
+    state.status = WorldEncounterStatus::Failed;
+    state.failure = Some(failure);
+}
+
+fn spawn_tiles(map: &TmxGroundAsset) -> Vec<Position> {
+    let Some(layer) = map
+        .document()
+        .tile_layers()
+        .iter()
+        .find(|layer| layer.name() == "spawn_tile")
+    else {
+        return Vec::new();
+    };
+    layer
+        .gids()
+        .iter()
+        .enumerate()
+        .filter(|(_, gid)| !gid.is_empty())
+        .filter_map(|(index, _)| {
+            let index = u32::try_from(index).ok()?;
+            let x = i32::try_from(index % layer.width()).ok()?;
+            let y = i32::try_from(index / layer.width()).ok()?;
+            Some(Position::new(x, y))
+        })
+        .collect()
+}
+
+fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
+    let object = map
+        .document()
+        .object_groups()
+        .iter()
+        .find(|group| group.name() == "boss_enemy")?
+        .objects()
+        .first()?;
+    Some(Position::new(
+        (object.x() / f64::from(TILE_SIZE)).floor() as i32,
+        (object.y() / f64::from(TILE_SIZE)).floor() as i32,
+    ))
+}
+
+fn update_world_enemies(
+    time: Res<Time>,
+    maps: Res<Assets<TmxGroundAsset>>,
+    render: Res<StaticMapRenderState>,
+    balances: Res<Assets<BalanceData>>,
+    game: Option<ResMut<GameState>>,
+    mut state: ResMut<WorldEncounterState>,
+    mut enemies: Query<(Entity, &mut WorldEnemy, &mut Sprite, &mut Transform)>,
+) {
+    if state.status != WorldEncounterStatus::Spawned {
+        return;
+    }
+    let Some(mut game) = game else {
+        return;
+    };
+    let Some(map) = render.map(&maps) else {
+        return;
+    };
+    let Ok(collision) = CollisionOccupancy::from_tmx_document(map.document()) else {
+        return;
+    };
+    let balance = balances
+        .iter()
+        .next()
+        .map(|(_, balance)| balance)
+        .cloned()
+        .unwrap_or_default();
+    let modifiers = party_encounter_modifiers(game.party(), &balance.spawner);
+    let player = game.map().position();
+    let snapshot = enemies
+        .iter()
+        .map(|(entity, enemy, _, _)| (entity, enemy.position, enemy.active))
+        .collect::<Vec<_>>();
+    let delta = time.delta_secs();
+
+    if let Some(cadence) = state.cadence.as_mut() {
+        let has_inactive = snapshot.iter().any(|(_, _, active)| !active);
+        if cadence.advance(delta, modifiers.interval_multiplier, has_inactive) {
+            let inactive = snapshot
+                .iter()
+                .filter(|(_, _, active)| !active)
+                .map(|(entity, _, _)| *entity)
+                .collect::<Vec<_>>();
+            if !inactive.is_empty() {
+                let index = (game.rng_mut().next_u64() % inactive.len() as u64) as usize;
+                if let Ok((_, mut enemy, _, _)) = enemies.get_mut(inactive[index]) {
+                    enemy.active = true;
+                    enemy.engaged = false;
+                    enemy.position = enemy.origin;
+                    enemy.wander_pause = random_pause(game.rng_mut());
+                }
+            }
+        }
+    }
+
+    for (entity, mut enemy, mut sprite, mut transform) in &mut enemies {
+        if !enemy.active {
+            transform.scale = Vec3::ZERO;
+            continue;
+        }
+        transform.scale = Vec3::ONE;
+        if !enemy.boss {
+            enemy.step_elapsed += delta;
+            if enemy.step_elapsed >= WALK_STEP_SECONDS {
+                enemy.step_elapsed -= WALK_STEP_SECONDS;
+                let effective_chase = enemy
+                    .chase_range
+                    .saturating_sub(modifiers.chase_range_reduction);
+                let distance = (enemy.position.x - player.x)
+                    .abs()
+                    .max((enemy.position.y - player.y).abs()) as u32;
+                if effective_chase > 0 && distance <= effective_chase {
+                    chase_step(&mut enemy, entity, player, &snapshot, &collision);
+                } else {
+                    wander_step(
+                        &mut enemy,
+                        entity,
+                        delta,
+                        &snapshot,
+                        &collision,
+                        game.rng_mut(),
+                    );
+                }
+            }
+        }
+        if let Some(atlas) = sprite.texture_atlas.as_mut() {
+            atlas.index = enemy_tile(enemy.facing, enemy.frame) as usize;
+        }
+        let center = tile_center(enemy.position);
+        transform.translation = center.extend(world_entity_y_z(center.y, ENEMY_SPRITE_HALF_HEIGHT));
+    }
+}
+
+fn chase_step(
+    enemy: &mut WorldEnemy,
+    entity: Entity,
+    player: Position,
+    snapshot: &[(Entity, Position, bool)],
+    collision: &CollisionOccupancy,
+) {
+    let dx = player.x - enemy.position.x;
+    let dy = player.y - enemy.position.y;
+    let (step, facing) = if dx.abs() >= dy.abs() && dx != 0 {
+        (
+            Position::new(dx.signum(), 0),
+            if dx < 0 {
+                CardinalDirection::Left
+            } else {
+                CardinalDirection::Right
+            },
+        )
+    } else if dy != 0 {
+        (
+            Position::new(0, dy.signum()),
+            if dy < 0 {
+                CardinalDirection::Up
+            } else {
+                CardinalDirection::Down
+            },
+        )
+    } else {
+        return;
+    };
+    enemy.facing = facing;
+    let next = Position::new(enemy.position.x + step.x, enemy.position.y + step.y);
+    if collision.is_open(next.x, next.y) == Some(true) && !enemy_occupied(next, entity, snapshot) {
+        enemy.position = next;
+        enemy.frame = next_walk_frame(enemy.frame);
+    }
+}
+
+fn wander_step(
+    enemy: &mut WorldEnemy,
+    entity: Entity,
+    delta: f32,
+    snapshot: &[(Entity, Position, bool)],
+    collision: &CollisionOccupancy,
+    rng: &mut crate::gameplay_rng::GameplayRng,
+) {
+    if enemy.wander_target.is_none() {
+        enemy.wander_pause -= delta;
+        enemy.frame = 0;
+        if enemy.wander_pause <= 0.0 {
+            enemy.wander_target = pick_wander_target(enemy, entity, snapshot, collision, rng);
+            if enemy.wander_target.is_none() {
+                enemy.wander_pause = random_pause(rng);
+            }
+        }
+        return;
+    }
+    let target = enemy.wander_target.expect("checked above");
+    if enemy.position == target {
+        enemy.wander_target = None;
+        enemy.wander_pause = random_pause(rng);
+        enemy.frame = 0;
+        return;
+    }
+    let dx = target.x - enemy.position.x;
+    let dy = target.y - enemy.position.y;
+    let (step, facing) = if dx.abs() >= dy.abs() && dx != 0 {
+        (
+            Position::new(dx.signum(), 0),
+            if dx < 0 {
+                CardinalDirection::Left
+            } else {
+                CardinalDirection::Right
+            },
+        )
+    } else {
+        (
+            Position::new(0, dy.signum()),
+            if dy < 0 {
+                CardinalDirection::Up
+            } else {
+                CardinalDirection::Down
+            },
+        )
+    };
+    enemy.facing = facing;
+    let next = Position::new(enemy.position.x + step.x, enemy.position.y + step.y);
+    if collision.is_open(next.x, next.y) != Some(true) || enemy_occupied(next, entity, snapshot) {
+        enemy.wander_target = None;
+        enemy.wander_pause = random_pause(rng);
+        enemy.frame = 0;
+        return;
+    }
+    enemy.position = next;
+    enemy.frame = next_walk_frame(enemy.frame);
+}
+
+fn pick_wander_target(
+    enemy: &WorldEnemy,
+    entity: Entity,
+    snapshot: &[(Entity, Position, bool)],
+    collision: &CollisionOccupancy,
+    rng: &mut crate::gameplay_rng::GameplayRng,
+) -> Option<Position> {
+    const RANGE: i32 = 4;
+    const SPAN: u64 = 9;
+    for _ in 0..8 {
+        let x = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE;
+        let y = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE;
+        let target = Position::new(enemy.origin.x + x, enemy.origin.y + y);
+        if collision.is_open(target.x, target.y) == Some(true)
+            && !enemy_occupied(target, entity, snapshot)
+        {
+            return Some(target);
+        }
+    }
+    None
+}
+
+fn enemy_occupied(
+    position: Position,
+    entity: Entity,
+    snapshot: &[(Entity, Position, bool)],
+) -> bool {
+    snapshot
+        .iter()
+        .any(|(other, occupied, active)| *other != entity && *active && *occupied == position)
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "contact atomically captures world, data, audio, and transition state"
+)]
+fn detect_enemy_contact(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    game: Option<Res<GameState>>,
+    enemy_catalog: Option<Res<EnemyCatalog>>,
+    item_catalog: Res<FieldMenuCatalog>,
+    zones: Res<Assets<EncounterZone>>,
+    metadata_assets: Res<Assets<MapMetadata>>,
+    mut state: ResMut<WorldEncounterState>,
+    mut battle_transition: ResMut<BattleTransition>,
+    mut enemies: Query<(Entity, &mut WorldEnemy)>,
+) {
+    if state.status != WorldEncounterStatus::Spawned || battle_transition.input_locked() {
+        return;
+    }
+    let (Some(game), Some(enemy_catalog)) = (game, enemy_catalog) else {
+        return;
+    };
+    if item_catalog.status() != CatalogStatus::Ready {
+        if item_catalog.status() == CatalogStatus::Failed {
+            let failure = item_catalog
+                .failure()
+                .unwrap_or("field item catalog failed to load")
+                .to_owned();
+            fail_encounter(&mut state, failure);
+        }
+        return;
+    }
+    let player = game.map().position();
+    let Some((contact_entity, contact)) = enemies
+        .iter()
+        .find(|(_, enemy)| enemy.active && !enemy.engaged && enemy.position == player)
+        .map(|(entity, enemy)| (entity, enemy.clone()))
+    else {
+        return;
+    };
+    let (Some(zone_handle), Some(metadata_handle)) = (state.zone.as_ref(), state.metadata.as_ref())
+    else {
+        return;
+    };
+    let (Some(zone), Some(metadata)) =
+        (zones.get(zone_handle), metadata_assets.get(metadata_handle))
+    else {
+        return;
+    };
+    let Some(map_id) = game.map().current().map(|map| map.as_str().to_owned()) else {
+        return;
+    };
+    let world_enemies = enemies
+        .iter()
+        .map(|(_, enemy)| WorldEnemyReturnState {
+            encounter_id: enemy.encounter_id.clone(),
+            formation: enemy.formation.clone(),
+            origin: enemy.origin,
+            position: enemy.position,
+            facing: enemy.facing,
+            boss: enemy.boss,
+            chase_range: enemy.chase_range,
+            active: enemy.active && enemy.encounter_id != contact.encounter_id,
+        })
+        .collect();
+    let context = PreBattleReturnContext {
+        map_id,
+        position: player,
+        facing: game.map().facing(),
+        world_bgm_key: metadata.bgm.clone(),
+        world_enemies,
+    };
+    let entry = match build_battle_entry(
+        &contact.encounter_id,
+        &contact.formation,
+        zone,
+        &enemy_catalog,
+        &item_catalog,
+        game.party(),
+        game.repository(),
+        contact.boss,
+        context,
+    ) {
+        Ok(entry) => entry,
+        Err(error) => {
+            state.failure = Some(error.to_string());
+            return;
+        }
+    };
+    let Some(encounter_sfx) = state.encounter_sfx.clone() else {
+        state.failure = Some("encounter SFX was not resolved before contact".to_owned());
+        return;
+    };
+    if !battle_transition.request() {
+        return;
+    }
+    commands.spawn((
+        AudioPlayer::new(asset_server.load(encounter_sfx)),
+        PlaybackSettings::DESPAWN,
+    ));
+    let Ok((_, mut enemy)) = enemies.get_mut(contact_entity) else {
+        return;
+    };
+    enemy.engaged = true;
+    enemy.active = false;
+    if let Some(cadence) = state.cadence.as_mut() {
+        cadence.reset();
+    }
+    commands.insert_resource(entry);
+}
+
+fn advance_battle_transition(
+    time: Res<Time>,
+    mut transition: ResMut<BattleTransition>,
+    mut requests: MessageWriter<AppStateTransitionRequest>,
+) {
+    if transition.phase != BattleTransitionPhase::Flashing {
+        return;
+    }
+    transition.elapsed += time.delta_secs();
+    if transition.elapsed >= BATTLE_FLASH_SECONDS {
+        transition.phase = BattleTransitionPhase::Requested;
+        requests.write(AppStateTransitionRequest::new(AppState::Battle));
+    }
+}
+
+fn update_battle_flash_overlay(
+    transition: Res<BattleTransition>,
+    mut overlays: Query<(&mut BackgroundColor, &mut Visibility), With<BattleFlashOverlay>>,
+) {
+    let alpha = if transition.phase == BattleTransitionPhase::Flashing {
+        let progress = (transition.elapsed / BATTLE_FLASH_SECONDS).clamp(0.0, 1.0);
+        (progress * std::f32::consts::PI * 3.0).sin().abs()
+    } else if transition.phase == BattleTransitionPhase::Requested {
+        1.0
+    } else {
+        0.0
+    };
+    for (mut color, mut visibility) in &mut overlays {
+        color.0 = Color::srgba(1.0, 1.0, 1.0, alpha);
+        *visibility = if transition.phase == BattleTransitionPhase::Idle {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        };
+    }
+}
+
+fn cleanup_world_encounters(
+    mut commands: Commands,
+    enemies: Query<Entity, With<WorldEnemy>>,
+    mut state: ResMut<WorldEncounterState>,
+) {
+    for entity in &enemies {
+        commands.entity(entity).despawn();
+    }
+    state.pending.clear();
+    state.sprite_handles.clear();
+}
+
+fn tile_center(position: Position) -> Vec2 {
+    let (Ok(column), Ok(row)) = (u32::try_from(position.x), u32::try_from(position.y)) else {
+        return Vec2::ZERO;
+    };
+    tmx_tile_center(column, row, TILE_SIZE, TILE_SIZE)
+}
+
+const fn enemy_tile(direction: CardinalDirection, frame: u32) -> u32 {
+    let direction_row = match direction {
+        CardinalDirection::Up => 0,
+        CardinalDirection::Left => 1,
+        CardinalDirection::Down => 2,
+        CardinalDirection::Right => 3,
+    };
+    (ENEMY_WALK_ROW_OFFSET + direction_row) * ENEMY_ATLAS_COLUMNS + frame
+}
+
+const fn next_walk_frame(frame: u32) -> u32 {
+    if frame >= 8 { 1 } else { frame + 1 }
+}
+
+fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
+    1.0 + (rng.next_u64() as f64 / u64::MAX as f64 * 2.5) as f32
+}
+
+/// Minimal M8 presentation proving background and battle-BGM selection before M9 owns the loop.
+pub(crate) struct BattleEntryPlugin;
+
+impl Plugin for BattleEntryPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<BattlePresentationState>()
+            .add_systems(OnEnter(AppState::Battle), begin_battle_presentation)
+            .add_systems(
+                Update,
+                drive_battle_audio.run_if(in_state(AppState::Battle)),
+            )
+            .add_systems(OnExit(AppState::Battle), cleanup_battle_presentation);
+    }
+}
+
+#[derive(Debug, Default, Resource)]
+struct BattlePresentationState {
+    bgm_index: Option<Handle<BgmIndex>>,
+    audio_started: bool,
+}
+
+#[derive(Component)]
+struct BattlePresentation;
+
+#[derive(Component)]
+struct BattleBgm;
+
+fn begin_battle_presentation(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    entry: Option<Res<BattleEntry>>,
+    mut state: ResMut<BattlePresentationState>,
+    logical_bgm: Query<Entity, With<LogicalBgmPlayer>>,
+) {
+    *state = BattlePresentationState::default();
+    for entity in &logical_bgm {
+        commands.entity(entity).despawn();
+    }
+    let Some(entry) = entry else {
+        return;
+    };
+    commands.spawn((fixed_gameplay_camera(), BattlePresentation));
+    let Ok(background) = ScenarioRelativePath::try_from(entry.background_asset.as_str()) else {
+        return;
+    };
+    let enemies = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == crate::encounter::BattleSide::Enemy)
+        .map(|participant| format!("{}  HP {}", participant.name, participant.health))
+        .collect::<Vec<_>>()
+        .join("     ");
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::ZERO,
+                top: Val::ZERO,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                ..default()
+            },
+            ImageNode {
+                image: asset_server.load(root.resolve(&background)),
+                image_mode: NodeImageMode::Stretch,
+                ..default()
+            },
+            GlobalZIndex(100),
+            BattlePresentation,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(format!("Encounter\n{enemies}")),
+                TextFont {
+                    font_size: 34.0.into(),
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(32.0),
+                    bottom: Val::Px(32.0),
+                    ..default()
+                },
+            ));
+        });
+    let bgm_index = ScenarioRelativePath::try_from(BGM_INDEX_PATH)
+        .expect("canonical BGM index path is scenario-relative");
+    state.bgm_index = Some(asset_server.load(root.resolve(&bgm_index)));
+}
+
+fn drive_battle_audio(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    indexes: Res<Assets<BgmIndex>>,
+    entry: Option<Res<BattleEntry>>,
+    mut state: ResMut<BattlePresentationState>,
+) {
+    if state.audio_started {
+        return;
+    }
+    let (Some(entry), Some(handle)) = (entry, state.bgm_index.as_ref()) else {
+        return;
+    };
+    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
+        return;
+    }
+    let Some(index) = indexes.get(handle) else {
+        return;
+    };
+    let Some(path) = index.resolve_key(&root, &entry.bgm_key) else {
+        return;
+    };
+    commands.spawn((
+        AudioPlayer::new(asset_server.load(path)),
+        PlaybackSettings {
+            mode: PlaybackMode::Loop,
+            volume: Volume::Linear(0.3),
+            ..default()
+        },
+        LogicalBgmPlayer,
+        BattleBgm,
+        BattlePresentation,
+    ));
+    state.audio_started = true;
+}
+
+fn cleanup_battle_presentation(
+    mut commands: Commands,
+    entities: Query<Entity, With<BattlePresentation>>,
+) {
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{thread, time::Duration};
+
+    use bevy::{
+        asset::AssetApp,
+        image::{CompressedImageFormats, ImageLoader, ImagePlugin},
+        time::TimeUpdateStrategy,
+    };
+
+    use super::*;
+    use crate::{
+        encounter_assets::EncounterAssetPlugin,
+        field_menu_domain::{FieldMenuDomainPlugin, derived_stats},
+        name_entry::NameEntryConfirmed,
+        runtime_map::RuntimeMapId,
+        scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
+        test_support::headless_title_app_with_asset_base,
+        tmx_ground_asset::TmxGroundAssetPlugin,
+        tsx_atlas_asset::TsxAtlasAssetPlugin,
+        world_audio::WorldAudioPlugin,
+        world_interaction::SfxIndexAssetLoader,
+    };
+
+    #[test]
+    fn transition_accepts_exactly_one_request_and_locks_input() {
+        let state = WorldEncounterState::default();
+        assert_eq!(state.status(), WorldEncounterStatus::Idle);
+        assert!(state.failure().is_none());
+        let mut transition = BattleTransition::default();
+        assert!(transition.request());
+        assert!(!transition.request());
+        assert!(transition.input_locked());
+    }
+
+    #[test]
+    fn enemy_walk_tiles_use_the_lpc_rows_eight_through_eleven() {
+        assert_eq!(enemy_tile(CardinalDirection::Up, 0), 72);
+        assert_eq!(enemy_tile(CardinalDirection::Left, 0), 81);
+        assert_eq!(enemy_tile(CardinalDirection::Down, 0), 90);
+        assert_eq!(enemy_tile(CardinalDirection::Right, 8), 107);
+    }
+
+    #[test]
+    fn deterministic_chase_stays_open_and_avoids_other_enemies() {
+        let owner = ScenarioRelativePath::try_from("assets/maps/test.tmx").unwrap();
+        let document = crate::tmx_header::parse_tmx_map_document(
+            "<map version=\"1.10\" orientation=\"orthogonal\" width=\"4\" height=\"3\" tilewidth=\"32\" tileheight=\"32\" infinite=\"0\"><layer id=\"1\" name=\"collision\" width=\"4\" height=\"3\"><data encoding=\"csv\">0,0,0,0,\n0,0,0,0,\n0,0,0,0</data></layer></map>",
+            &owner,
+        )
+        .unwrap();
+        let collision = CollisionOccupancy::from_tmx_document(&document).unwrap();
+        let entity = Entity::from_bits(1);
+        let mut enemy = WorldEnemy {
+            encounter_id: "spawn".to_owned(),
+            formation: vec!["goblin".to_owned()],
+            origin: Position::new(0, 1),
+            position: Position::new(0, 1),
+            boss: false,
+            chase_range: 8,
+            active: true,
+            engaged: false,
+            facing: CardinalDirection::Down,
+            frame: 0,
+            step_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        };
+        chase_step(
+            &mut enemy,
+            entity,
+            Position::new(3, 1),
+            &[(entity, Position::new(0, 1), true)],
+            &collision,
+        );
+        assert_eq!(enemy.position, Position::new(1, 1));
+        assert_eq!(enemy.facing, CardinalDirection::Right);
+    }
+
+    #[test]
+    fn deterministic_wander_target_stays_bounded_open_and_unoccupied() {
+        let owner = ScenarioRelativePath::try_from("assets/maps/test.tmx").unwrap();
+        let document = crate::tmx_header::parse_tmx_map_document(
+            "<map version=\"1.10\" orientation=\"orthogonal\" width=\"10\" height=\"10\" tilewidth=\"32\" tileheight=\"32\" infinite=\"0\"><layer id=\"1\" name=\"collision\" width=\"10\" height=\"10\"><data encoding=\"csv\">0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0</data></layer></map>",
+            &owner,
+        )
+        .unwrap();
+        let collision = CollisionOccupancy::from_tmx_document(&document).unwrap();
+        let entity = Entity::from_bits(1);
+        let other = Entity::from_bits(2);
+        let enemy = WorldEnemy {
+            encounter_id: "spawn".to_owned(),
+            formation: vec!["goblin".to_owned()],
+            origin: Position::new(5, 5),
+            position: Position::new(5, 5),
+            boss: false,
+            chase_range: 0,
+            active: true,
+            engaged: false,
+            facing: CardinalDirection::Down,
+            frame: 0,
+            step_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        };
+        let snapshot = [
+            (entity, Position::new(5, 5), true),
+            (other, Position::new(6, 6), true),
+        ];
+        let mut first = crate::gameplay_rng::GameplayRng::from_seed(77);
+        let mut second = crate::gameplay_rng::GameplayRng::from_seed(77);
+        let a = pick_wander_target(&enemy, entity, &snapshot, &collision, &mut first).unwrap();
+        let b = pick_wander_target(&enemy, entity, &snapshot, &collision, &mut second).unwrap();
+        assert_eq!(a, b);
+        assert!((a.x - enemy.origin.x).abs() <= 4);
+        assert!((a.y - enemy.origin.y).abs() <= 4);
+        assert_ne!(a, Position::new(6, 6));
+        assert_eq!(collision.is_open(a.x, a.y), Some(true));
+    }
+
+    #[test]
+    fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff() {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::NameEntry,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(ImagePlugin::default_nearest())
+            .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .add_plugins(TsxAtlasAssetPlugin)
+            .add_plugins(TmxGroundAssetPlugin)
+            .add_plugins(EncounterAssetPlugin)
+            .add_plugins(FieldMenuDomainPlugin)
+            .add_plugins(WorldAudioPlugin)
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
+            .add_plugins(WorldEncounterPlugin)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+                100,
+            )));
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<ActiveNewGameInputs>().status()
+                == ActiveNewGameInputsStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<ActiveNewGameInputs>().status(),
+            ActiveNewGameInputsStatus::Ready
+        );
+        app.world_mut()
+            .resource_mut::<Messages<NameEntryConfirmed>>()
+            .write(NameEntryConfirmed::for_test("Aric"));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().get_resource::<GameState>().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        let mut game = app.world_mut().resource_mut::<GameState>();
+        game.map_mut().move_to(
+            RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+            Position::new(9, 8),
+            CardinalDirection::Down,
+        );
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::World);
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::Spawned
+                && app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::Spawned,
+            "{:?}",
+            app.world().resource::<WorldEncounterState>().failure()
+        );
+        assert_eq!(app.world().resource::<EnemyCatalog>().len(), 106);
+        let expected_party_stats = {
+            let world = app.world();
+            let member = world
+                .resource::<GameState>()
+                .party()
+                .members()
+                .next()
+                .unwrap();
+            derived_stats(member, world.resource::<FieldMenuCatalog>())
+        };
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
+        assert_eq!(enemies.len(), 6);
+        let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
+        assert_eq!(boss.encounter_id(), "zone_01_starting_forest:boss");
+        assert_eq!(boss.formation(), ["grik_the_grin"]);
+        assert_eq!(boss.tile_position(), Position::new(0, 25));
+        assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
+
+        let boss_position = boss.tile_position();
+        let boss_encounter_id = boss.encounter_id().to_owned();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .set_position(boss_position);
+        for _ in 0..10 {
+            app.update();
+            if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+                break;
+            }
+        }
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Battle
+        );
+        let entry = app.world().resource::<BattleEntry>();
+        let party = entry
+            .participants
+            .iter()
+            .find(|participant| participant.side == crate::encounter::BattleSide::Party)
+            .unwrap();
+        assert_eq!(party.attack, i64::from(expected_party_stats.strength));
+        assert_eq!(party.defense, i64::from(expected_party_stats.constitution));
+        assert_eq!(
+            party.magic_resistance,
+            i64::from(expected_party_stats.intelligence)
+        );
+        assert_eq!(party.dexterity, i64::from(expected_party_stats.dexterity));
+        assert_eq!(entry.encounter_id, boss_encounter_id);
+        assert_eq!(entry.background_id, "zone1-bg-1280x468");
+        assert_eq!(entry.bgm_key, "battle.boss");
+        assert_eq!(
+            entry.boss_completion_flag.as_deref(),
+            Some("boss_zone01_defeated")
+        );
+        assert_eq!(entry.return_context.map_id, "zone_01_starting_forest");
+        assert_eq!(entry.return_context.position, boss_position);
+        assert_eq!(
+            entry.return_context.world_bgm_key.as_deref(),
+            Some("zone.starting_forest")
+        );
+    }
+}

@@ -85,3 +85,16 @@ Scenario assets preserve their source-relative layout beneath
   plausible public asset page but does not prove the exact file's acquisition.
   These working-copy migrations are therefore blocked from public release as
   recorded in the license inventory.
+- The M8 encounter package adds the Starting Forest encounter-zone document,
+  all eight enemy-rank catalogs, the battle-background catalog, six enemy
+  TSX/PNG pairs, the zone-one battle background, normal and boss battle BGM,
+  and the encounter SFX. Their source-relative layout is preserved so the
+  runtime resolves the same authored references as the pinned Python build.
+- The enemy images are described generally by the source repository as LPC
+  generator output, but exact per-file layer credits and license choices were
+  not retained. The battle image and music likewise have no complete
+  redistribution grant in the pinned tree. The encounter SFX credit names
+  Leohpaz but does not grant redistribution rights for the copied file.
+  Consequently every M8 copied asset remains a local parity input and public-
+  release blocker until the evidence recorded in the license inventory is
+  completed or the asset is replaced.

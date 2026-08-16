@@ -1,0 +1,217 @@
+# Rank F Enemies — Zone 1 Starting Forest
+---
+id: goblin
+name: Goblin
+type: humanoid
+rank: F
+size: medium
+sprite_scale: 250
+hp: 25
+atk: 9
+def: 3
+mres: 2
+dex: 12
+exp: 24
+drops:
+  mc:
+    - size: XS
+      qty: 3
+  loot:
+    - pool:
+        - item: goblin_fang
+          weight: 70
+        - item: goblin_ear
+          weight: 30
+        - item: herb_red
+          weight: 35
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: scratch
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: goblin_warrior
+name: Goblin Warrior
+type: humanoid
+rank: F
+size: medium
+sprite_scale: 300
+hp: 35
+atk: 11
+def: 5
+mres: 3
+dex: 10
+exp: 34
+drops:
+  mc:
+    - size: XS
+      qty: 3
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rusty_blade
+          weight: 60
+        - item: goblin_shield
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: shield_bash
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: goblin_scout_base
+name: Goblin Scout
+type: humanoid
+rank: F
+size: medium
+sprite_scale: 250
+hp: 22
+atk: 10
+def: 3
+mres: 2
+dex: 12
+exp: 26
+drops:
+  mc:
+    - size: XS
+      qty: 3
+  loot:
+    - pool:
+        - item: goblin_fang
+          weight: 60
+        - item: rusty_blade
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: scratch
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: goblin_scout_sling_scout
+name: Sling Scout
+type: humanoid
+rank: F
+size: medium
+sprite_scale: 250
+hp: 24
+atk: 11
+def: 4
+mres: 3
+dex: 11
+exp: 28
+drops:
+  mc:
+    - size: XS
+      qty: 3
+  loot:
+    - pool:
+        - item: goblin_fang
+          weight: 50
+        - item: small_fang
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: bone_throw
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: goblin_scout_hooded_goblin
+name: Hooded Goblin
+type: humanoid
+rank: F
+size: small
+sprite_scale: 250
+hp: 28
+atk: 11
+def: 4
+mres: 3
+dex: 12
+exp: 30
+drops:
+  mc:
+    - size: XS
+      qty: 3
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: goblin_ear
+          weight: 60
+        - item: rusty_blade
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: scratch
+      weight: 30
+    - action: ability
+      id: shield_bash
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: grik_the_grin
+name: Grik the Grin
+type: beast
+rank: F
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 300
+hp: 33
+atk: 11
+def: 4
+mres: 3
+dex: 14
+exp: 36
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 60
+        - item: venom_sac
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: venom_bite
+      weight: 40
+targeting:
+  default: random_alive

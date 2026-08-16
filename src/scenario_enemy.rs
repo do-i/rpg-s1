@@ -10,6 +10,8 @@
 //! mixed behavior definitions cannot silently become an empty basic-attack policy. Battle AI,
 //! damage, loot resolution, and cross-reference checks belong to later milestones.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_class::UnitInterval;
 use crate::scenario_path::ScenarioRelativePath;
 use crate::scenario_yaml::{self, deserialize_string};
@@ -17,7 +19,7 @@ use serde::{Deserialize, Deserializer};
 use std::num::NonZeroU32;
 
 /// One source rank file, represented by its ordered YAML document stream.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Asset, Clone, Debug, PartialEq, TypePath)]
 pub struct EnemyCatalogFile(pub Vec<EnemyDefinition>);
 
 impl EnemyCatalogFile {

@@ -356,21 +356,30 @@ import checks.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M8.01 | [ ] Load encounter-zone rules for the current map. | `S` | Zone lookup and no-encounter maps are tested. |
-| M8.02 | [ ] Implement deterministic weighted encounter selection. | `S` | Fixed seeds reproduce Python fixture selections. |
-| M8.03 | [ ] Implement step/cadence encounter checks. | `S` | Standing still cannot trigger random encounters. |
-| M8.04 | [ ] Apply party encounter modifiers. | `T` | Rogue and non-Rogue fixtures produce expected rates. |
-| M8.05 | [ ] Load enemy definitions into a catalog. | `S` | Stats, actions, drops, sprite, and conditions are retained. |
-| M8.06 | [ ] Spawn one visible world enemy. | `S` | Sprite, position, movement mode, and encounter id match data. |
-| M8.07 | [ ] Add deterministic enemy wandering. | `S` | Movement stays in bounds and respects collision. |
-| M8.08 | [ ] Detect player/enemy contact. | `T` | Contact emits exactly one battle request. |
-| M8.09 | [ ] Build battle participants from an encounter. | `S` | Party and enemy combatants copy the correct initial stats. |
-| M8.10 | [ ] Select battle background and BGM. | `T` | Map/encounter metadata resolves the expected assets. |
-| M8.11 | [ ] Add the world-to-battle transition effect. | `S` | World input freezes and entities remain recoverable. |
-| M8.12 | [ ] Persist the pre-battle return context. | `S` | Map, position, facing, and BGM can be restored. |
+| M8.01 | [x] Load encounter-zone rules for the current map. | `S` | Zone lookup and no-encounter maps are tested. |
+| M8.02 | [x] Implement deterministic weighted encounter selection. | `S` | Fixed seeds reproduce Python fixture selections. |
+| M8.03 | [x] Implement step/cadence encounter checks. | `S` | Standing still cannot trigger random encounters. |
+| M8.04 | [x] Apply party encounter modifiers. | `T` | Rogue and non-Rogue fixtures produce expected rates. |
+| M8.05 | [x] Load enemy definitions into a catalog. | `S` | Stats, actions, drops, sprite, and conditions are retained. |
+| M8.06 | [x] Spawn one visible world enemy. | `S` | Sprite, position, movement mode, and encounter id match data. |
+| M8.07 | [x] Add deterministic enemy wandering. | `S` | Movement stays in bounds and respects collision. |
+| M8.08 | [x] Detect player/enemy contact. | `T` | Contact emits exactly one battle request. |
+| M8.09 | [x] Build battle participants from an encounter. | `S` | Party and enemy combatants copy the correct initial stats. |
+| M8.10 | [x] Select battle background and BGM. | `T` | Map/encounter metadata resolves the expected assets. |
+| M8.11 | [x] Add the world-to-battle transition effect. | `S` | World input freezes and entities remain recoverable. |
+| M8.12 | [x] Persist the pre-battle return context. | `S` | Map, position, facing, and BGM can be restored. |
 
 **Gate 8:** Walking in the first encounter zone deterministically enters a
 battle with the expected enemies, background, and audio.
+
+Completed on 2026-08-15. The real X11/llvmpipe playthrough loaded the pinned
+Python Starting Forest save, observed the production visible-enemy pool
+wandering, walked into one goblin, and entered one battle with a configured
+goblin formation, forest background, encounter SFX, and normal battle BGM.
+Focused fixed-seed tests pin the Python fixture's formation buckets and prove
+the no-zone, cadence, Rogue modifier, catalog-retention, collision, boss,
+one-shot transition, participant-copy, and pre-battle restoration cases. See
+`docs/m8-manual-play-checklist.md`.
 
 ## Milestone 9 — Minimum complete battle loop
 
@@ -566,5 +575,5 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M8.01**. Load encounter-zone rules for the current map and
-test zone lookup plus maps with no configured encounters.
+Continue with **M9.01**. Define explicit battle phases and their legal
+transitions before adding the command loop.

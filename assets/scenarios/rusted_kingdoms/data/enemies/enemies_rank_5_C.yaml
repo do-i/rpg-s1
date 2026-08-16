@@ -1,0 +1,438 @@
+# Rank C Enemies — Zone 4 Ancient Ruins
+---
+id: skeleton_monster_base
+name: Skeleton
+type: undead
+rank: C
+size: medium
+sprite_scale: 240
+hp: 88
+atk: 19
+def: 12
+mres: 14
+dex: 14
+exp: 95
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bone_shard
+          weight: 70
+        - item: old_sword
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: bone_throw
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: skeleton_monster_rusted_sword
+name: Rusted Sword Skeleton
+type: undead
+rank: C
+size: medium
+sprite_scale: 240
+hp: 92
+atk: 20
+def: 12
+mres: 14
+dex: 13
+exp: 100
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bone_shard
+          weight: 50
+        - item: old_sword
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: shadow_blade
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: zombie_guard_base
+name: Zombie Guard
+type: undead
+rank: C
+size: medium
+sprite_scale: 250
+hp: 96
+atk: 19
+def: 13
+mres: 13
+dex: 13
+exp: 98
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 60
+        - item: rusty_blade
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: infectious_claw
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: zombie_guard_rusted_sentry
+name: Rusted Sentry
+type: undead
+rank: C
+size: small
+sprite_scale: 250
+hp: 100
+atk: 19
+def: 14
+mres: 13
+dex: 12
+exp: 102
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 50
+        - item: goblin_shield
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 65
+    - action: ability
+      id: shield_bash
+      weight: 35
+targeting:
+  default: random_alive
+
+---
+id: zombie_guard_wounded_guard
+name: Wounded Guard
+type: undead
+rank: C
+size: small
+sprite_scale: 250
+hp: 86
+atk: 18
+def: 12
+mres: 13
+dex: 13
+exp: 90
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 55
+        - item: rot_sample
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: gnaw
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: zombie_monster_base
+name: Shambler
+type: undead
+rank: C
+size: medium
+sprite_scale: 240
+hp: 90
+atk: 18
+def: 11
+mres: 13
+dex: 12
+exp: 92
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 70
+        - item: plague_sample
+          weight: 30
+        - item: ectoplasm
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: infectious_claw
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: zombie_monster_armed_zombie
+name: Armed Shambler
+type: undead
+rank: C
+size: medium
+sprite_scale: 240
+hp: 95
+atk: 20
+def: 12
+mres: 13
+dex: 12
+exp: 100
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 50
+        - item: old_sword
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: shadow_blade
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: zombie_monster_ragged_worker
+name: Ragged Worker
+type: undead
+rank: C
+size: small
+sprite_scale: 240
+hp: 80
+atk: 17
+def: 11
+mres: 12
+dex: 12
+exp: 88
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: zombie_flesh
+          weight: 60
+        - item: rot_sample
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 80
+    - action: ability
+      id: gnaw
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: skeleton_archer_base
+name: Skeleton Archer
+type: undead
+rank: C
+size: medium
+sprite_scale: 240
+hp: 84
+atk: 20
+def: 11
+mres: 14
+dex: 16
+exp: 105
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bone_shard
+          weight: 50
+        - item: arrow_bundle
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: piercing_arrow
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: pumpkin_jack_base
+name: Pumpkin Jack
+type: demon
+rank: C
+size: medium
+sprite_scale: 240
+hp: 78
+atk: 24
+def: 11
+mres: 13
+dex: 18
+exp: 112
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: wisp_flame
+          weight: 55
+        - item: silence_dust
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: hex
+      weight: 30
+    - action: ability
+      id: cold_touch
+      weight: 20
+targeting:
+  default: random_alive
+
+---
+id: bat_demon_red_wing_fiend
+name: Red Wing Fiend
+type: demon
+rank: C
+size: medium
+barrier: true
+requires_item: veil_breaker
+sprite_scale: 220
+hp: 90
+atk: 25
+def: 12
+mres: 15
+dex: 20
+exp: 130
+drops:
+  mc:
+    - size: S
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 50
+        - item: dark_crystal
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: sonic_screech
+      weight: 25
+    - action: ability
+      id: drain
+      weight: 25
+targeting:
+  default: random_alive
+  overrides:
+    - ability: drain
+      target: highest_hp
+
+---
+id: skeleton_knight_base
+name: Skeleton Knight
+type: undead
+rank: C
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 290
+hp: 165
+atk: 27
+def: 18
+mres: 17
+dex: 14
+exp: 295
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: cursed_blade
+          weight: 50
+        - item: dark_armor_shard
+          weight: 50
+ai_ref: boss_move_sets/skeleton_knight_base.yaml

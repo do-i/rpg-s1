@@ -8,6 +8,7 @@
 
 use std::fmt;
 
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer};
 
 use crate::scenario_yaml::deserialize_string;
@@ -16,7 +17,7 @@ use crate::scenario_yaml::deserialize_string;
 ///
 /// Order and duplicate ids are retained as authored. The Python runtime later indexes records by
 /// id; lookup, encounter cross-reference checks, and rendering remain separate concerns.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 #[serde(transparent)]
 pub struct BattleBackgroundCatalog(pub Vec<BattleBackground>);
 

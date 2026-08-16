@@ -1,0 +1,286 @@
+# Rank E Enemies — Zone 2 Open Plains
+---
+id: rabbit_bandit_base
+name: Rabbit Bandit
+type: beast
+rank: E
+size: small
+sprite_scale: 220
+hp: 38
+atk: 12
+def: 5
+mres: 3
+dex: 13
+exp: 40
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rabbit_horn
+          weight: 60
+        - item: soft_fur
+          weight: 40
+        - item: herb_red
+          weight: 35
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: horn_charge
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: rabbit_bandit_brown_rabbit
+name: Brown Rabbit
+type: beast
+rank: E
+size: medium
+sprite_scale: 220
+hp: 36
+atk: 13
+def: 5
+mres: 3
+dex: 14
+exp: 42
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rabbit_horn
+          weight: 50
+        - item: soft_fur
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: horn_charge
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: rabbit_bandit_knife_bandit
+name: Knife Bandit
+type: humanoid
+rank: E
+size: medium
+sprite_scale: 220
+hp: 40
+atk: 14
+def: 6
+mres: 4
+dex: 14
+exp: 48
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rusty_blade
+          weight: 55
+        - item: soft_fur
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: shadow_bite
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: mouse_thief_base
+name: Mouse Thief
+type: beast
+rank: E
+size: medium
+sprite_scale: 200
+hp: 35
+atk: 13
+def: 5
+mres: 4
+dex: 14
+exp: 44
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rat_tail
+          weight: 60
+        - item: rat_hide
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: gnaw
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: mouse_thief_white_mouse
+name: White Mouse
+type: beast
+rank: E
+size: medium
+sprite_scale: 200
+hp: 36
+atk: 13
+def: 5
+mres: 5
+dex: 14
+exp: 46
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rat_tail
+          weight: 50
+        - item: soft_fur
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: gnaw
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: wolf_beast_base
+name: Plains Wolf
+type: beast
+rank: E
+size: medium
+sprite_scale: 240
+hp: 50
+atk: 14
+def: 6
+mres: 4
+dex: 13
+exp: 52
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: wolf_fang
+          weight: 60
+        - item: wolf_pelt
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: lunge
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: wolf_beast_spear_beast
+name: Spear Beast
+type: humanoid
+rank: E
+size: medium
+sprite_scale: 240
+hp: 52
+atk: 15
+def: 7
+mres: 5
+dex: 12
+exp: 56
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: wolf_fang
+          weight: 50
+        - item: rusty_blade
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: lunge
+      weight: 25
+    - action: ability
+      id: shield_bash
+      weight: 15
+targeting:
+  default: random_alive
+
+---
+id: wolf_beast_black_fur
+name: Black Fur Alpha
+type: beast
+rank: E
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 280
+hp: 130
+atk: 22
+def: 11
+mres: 8
+dex: 18
+exp: 180
+drops:
+  mc:
+    - size: S
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: wolf_pelt
+          weight: 50
+        - item: bear_claw
+          weight: 50
+ai_ref: boss_move_sets/wolf_beast_black_fur.yaml

@@ -1,0 +1,59 @@
+# rusted_kingdoms/data/battle_backgrounds.yaml
+#
+# Per-battle-background ground bounding box, in the background image's own
+# 1280x468 pixel space. The engine anchors enemy sprites inside this rect
+# instead of a fixed screen-center offset, so sprites don't float above
+# backgrounds where the visible ground is a small strip (e.g. zone7's cave
+# floor, zone10's short courtyard). Every background id referenced by
+# `background:` in data/encount/*.yaml must have an entry here.
+#
+# Most backgrounds have ground filling the whole frame, so their rect is
+# just the full canvas. zone7 and zone10 are hand-tuned to their actual
+# ground area; re-eyeball/adjust in-game if they still look off.
+
+- id: zone1-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone2-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone3-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone4-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone4-courtyard-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone4-gate-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone4-sanctum-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone5-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone6-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+# Sunken cave: the sandy floor patch is roughly centered and narrower than
+# the frame, with water filling the corners.
+- id: zone7-bg-1280x468
+  # ground_rect: { x: 160, y: 310, width: 960, height: 158 }
+  # y:360 + height:158 = 518, past the 468px canvas bottom — clamped y
+  # back to the max that fits this height (468 - 158 = 310).
+  ground_rect: { x: 120, y: 310, width: 910, height: 158 }
+
+- id: zone8-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+- id: zone9-bg-1280x468
+  ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
+
+# Final stronghold courtyard: nearly full width, but the visible floor is a
+# short strip near the bottom before the gate.
+- id: zone10-bg-1280x468
+  ground_rect: { x: 40, y: 351, width: 1200, height: 117 }
+  # ground_rect: { x: 60, y: 300, width: 1200, height: 117 }

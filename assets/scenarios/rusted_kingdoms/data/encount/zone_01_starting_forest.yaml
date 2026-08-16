@@ -1,0 +1,35 @@
+id: zone_01_starting_forest
+name: Starting Forest
+density: 0.70
+spawn_frequency: 25.0
+background: zone1-bg-1280x468
+
+entries:
+  - formation: [goblin]
+    weight: 25
+    chase_range: 8
+  - formation: [goblin, goblin]
+    weight: 20
+    chase_range: 7
+  - formation: [goblin_scout_base, goblin]
+    weight: 15
+    chase_range: 7
+  - formation: [goblin_scout_sling_scout]
+    weight: 12
+    chase_range: 6
+  - formation: [goblin_scout_hooded_goblin, goblin]
+    weight: 10
+    chase_range: 6
+  - formation: [goblin, goblin, goblin_scout_base]
+    weight: 10
+    chase_range: 6
+  - formation: [goblin_warrior, goblin, goblin]
+    weight: 8
+    chase_range: 10
+
+boss:
+  id: grik_the_grin
+  name: Grik the Grin
+  once: true
+  on_complete:
+    set_flag: boss_zone01_defeated

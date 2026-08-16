@@ -17,6 +17,7 @@ use crate::{
     tile_coordinates::tmx_tile_center,
     tmx_ground_asset::TmxGroundAsset,
     world_actor::WorldNpc,
+    world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
     world_object::WorldItemBox,
     world_player::{WorldPlayer, WorldPlayerAnimation},
@@ -157,6 +158,7 @@ fn move_world_player(
     time: Option<Res<Time>>,
     collision: Res<ActiveMapCollision>,
     transition: Option<Res<WorldTransition>>,
+    battle_transition: Option<Res<BattleTransition>>,
     interaction: Option<Res<WorldInteractionState>>,
     field_menu: Option<Res<FieldMenuState>>,
     npcs: Query<&WorldNpc>,
@@ -178,6 +180,9 @@ fn move_world_player(
     if transition
         .as_deref()
         .is_some_and(WorldTransition::input_locked)
+        || battle_transition
+            .as_deref()
+            .is_some_and(BattleTransition::input_locked)
         || interaction
             .as_deref()
             .is_some_and(WorldInteractionState::input_locked)

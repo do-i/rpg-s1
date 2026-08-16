@@ -1,0 +1,339 @@
+# Rank D Enemies — Zone 3 Marshland
+---
+id: ratkin_cutpurse_base
+name: Ratkin Cutpurse
+type: humanoid
+rank: D
+size: medium
+sprite_scale: 220
+hp: 58
+atk: 15
+def: 8
+mres: 6
+dex: 15
+exp: 65
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rat_tail
+          weight: 55
+        - item: rusty_blade
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: gnaw
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: ratkin_cutpurse_sewer_archer
+name: Sewer Archer
+type: humanoid
+rank: D
+size: medium
+sprite_scale: 220
+hp: 56
+atk: 16
+def: 8
+mres: 6
+dex: 16
+exp: 70
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: arrow_bundle
+          weight: 60
+        - item: rat_hide
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: piercing_arrow
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: ratkin_cutpurse_masked_scavenger
+name: Masked Scavenger
+type: humanoid
+rank: D
+size: small
+sprite_scale: 220
+hp: 62
+atk: 16
+def: 9
+mres: 7
+dex: 14
+exp: 72
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: rat_hide
+          weight: 50
+        - item: plague_sample
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: gnaw
+      weight: 25
+    - action: ability
+      id: shadow_bite
+      weight: 25
+targeting:
+  default: random_alive
+
+---
+id: ratkin_plague_doctor_base
+name: Plague Doctor
+type: humanoid
+rank: D
+size: small
+sprite_scale: 220
+hp: 60
+atk: 16
+def: 8
+mres: 8
+dex: 13
+exp: 75
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: plague_sample
+          weight: 60
+        - item: rare_herb
+          weight: 40
+        - item: mana_droplet
+          weight: 35
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: plague_bite
+      weight: 35
+    - action: ability
+      id: hex
+      weight: 25
+targeting:
+  default: random_alive
+
+---
+id: ratkin_plague_doctor_sewer_physician
+name: Sewer Physician
+type: humanoid
+rank: D
+size: medium
+sprite_scale: 220
+hp: 64
+atk: 17
+def: 9
+mres: 8
+dex: 13
+exp: 80
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: plague_sample
+          weight: 55
+        - item: dark_fluid
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: infectious_claw
+      weight: 35
+    - action: ability
+      id: drain
+      weight: 25
+targeting:
+  default: random_alive
+  overrides:
+    - ability: drain
+      target: highest_hp
+
+---
+id: bat_demon_base
+name: Bat Demon
+type: demon
+rank: D
+size: medium
+sprite_scale: 200
+hp: 55
+atk: 21
+def: 8
+mres: 9
+dex: 18
+exp: 78
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 60
+        - item: dark_fluid
+          weight: 40
+        - item: venom_sac
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: sonic_screech
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: bat_demon_night_fiend
+name: Night Fiend
+type: demon
+rank: D
+size: medium
+sprite_scale: 200
+hp: 58
+atk: 21
+def: 9
+mres: 9
+dex: 19
+exp: 82
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: bat_wing
+          weight: 50
+        - item: dark_crystal
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: sonic_screech
+      weight: 25
+    - action: ability
+      id: drain
+      weight: 25
+targeting:
+  default: random_alive
+  overrides:
+    - ability: drain
+      target: highest_hp
+
+---
+id: mouse_thief_mouse_archer
+name: Mouse Archer
+type: beast
+rank: D
+size: medium
+sprite_scale: 200
+hp: 52
+atk: 17
+def: 7
+mres: 6
+dex: 16
+exp: 70
+drops:
+  mc:
+    - size: XS
+      qty: 2
+    - size: S
+      qty: 1
+  loot:
+    - pool:
+        - item: arrow_bundle
+          weight: 60
+        - item: rat_tail
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: piercing_arrow
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: ratkin_plague_doctor_black_mask_doctor
+name: Black Mask Doctor
+type: humanoid
+rank: D
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 280
+hp: 135
+atk: 24
+def: 14
+mres: 14
+dex: 16
+exp: 235
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: ancient_plague_sample
+          weight: 50
+        - item: cursed_relic
+          weight: 50
+ai_ref: boss_move_sets/ratkin_plague_doctor_black_mask_doctor.yaml

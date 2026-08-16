@@ -12,12 +12,14 @@
 //! absent. Formation selection, boss completion, barrier resolution, and spawning are runtime
 //! concerns reserved for later milestones.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_class::{PositiveFinite, UnitInterval};
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 use serde::{Deserialize, Deserializer};
 
 /// One map-keyed encounter-zone document beneath `data/encount/`.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct EncounterZone {
     /// Authored identity. Missing values use the containing filename stem.

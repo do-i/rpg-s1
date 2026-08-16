@@ -821,7 +821,7 @@ impl fmt::Display for DialogueDocumentAssetError {
 impl Error for DialogueDocumentAssetError {}
 
 #[derive(Default, TypePath)]
-struct SfxIndexAssetLoader;
+pub(crate) struct SfxIndexAssetLoader;
 
 impl AssetLoader for SfxIndexAssetLoader {
     type Asset = SfxIndex;
@@ -849,7 +849,7 @@ impl AssetLoader for SfxIndexAssetLoader {
 }
 
 #[derive(Debug)]
-enum SfxIndexAssetError {
+pub(crate) enum SfxIndexAssetError {
     Io(std::io::Error),
     Utf8(std::str::Utf8Error),
     Yaml(ScenarioYamlError),

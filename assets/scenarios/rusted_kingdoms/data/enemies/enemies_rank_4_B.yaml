@@ -1,0 +1,357 @@
+# Rank B Enemies — Zone 5 Mountain Foothills
+---
+id: goblin_bomber_base
+name: Goblin Bomber
+type: humanoid
+rank: B
+size: small
+sprite_scale: 250
+hp: 105
+atk: 24
+def: 14
+mres: 12
+dex: 18
+exp: 138
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: ember_core
+          weight: 55
+        - item: goblin_fang
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: ember_burst
+      weight: 50
+targeting:
+  default: random_alive
+  overrides:
+    - ability: ember_burst
+      target: all_party
+
+---
+id: goblin_bomber_redcap_bomber
+name: Redcap Bomber
+type: humanoid
+rank: B
+size: small
+sprite_scale: 250
+hp: 110
+atk: 25
+def: 14
+mres: 13
+dex: 19
+exp: 145
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: ember_core
+          weight: 50
+        - item: fire_crystal
+          weight: 50
+        - item: fire_gland
+          weight: 30
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: fire_bolt
+      weight: 30
+    - action: ability
+      id: ember_burst
+      weight: 30
+targeting:
+  default: random_alive
+  overrides:
+    - ability: ember_burst
+      target: all_party
+
+---
+id: goblin_bomber_club_sapper
+name: Club Sapper
+type: humanoid
+rank: B
+size: medium
+sprite_scale: 250
+hp: 120
+atk: 25
+def: 16
+mres: 12
+dex: 16
+exp: 140
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: stone_chunk
+          weight: 55
+        - item: goblin_shield
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: rock_throw
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: goblin_crossbowman_base
+name: Goblin Crossbowman
+type: humanoid
+rank: B
+size: medium
+sprite_scale: 250
+hp: 102
+atk: 25
+def: 13
+mres: 12
+dex: 19
+exp: 142
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: arrow_bundle
+          weight: 60
+        - item: goblin_fang
+          weight: 40
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: piercing_arrow
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: goblin_crossbowman_hooded_marksman
+name: Hooded Marksman
+type: humanoid
+rank: B
+size: medium
+sprite_scale: 250
+hp: 105
+atk: 26
+def: 13
+mres: 13
+dex: 20
+exp: 152
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: arrow_bundle
+          weight: 50
+        - item: rare_coin
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: piercing_arrow
+      weight: 50
+targeting:
+  default: lowest_hp
+
+---
+id: goblin_crossbowman_knife_backup
+name: Knife Backup
+type: humanoid
+rank: B
+size: medium
+sprite_scale: 250
+hp: 108
+atk: 24
+def: 14
+mres: 12
+dex: 18
+exp: 138
+drops:
+  mc:
+    - size: S
+      qty: 2
+  loot:
+    - pool:
+        - item: rusty_blade
+          weight: 55
+        - item: goblin_ear
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: shadow_bite
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: frankenstein_brawler_base
+name: Frankenstein Brawler
+type: construct
+rank: B
+size: medium
+sprite_scale: 290
+hp: 156
+atk: 24
+def: 21
+mres: 10
+dex: 14
+exp: 150
+drops:
+  mc:
+    - size: S
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: golem_core
+          weight: 55
+        - item: iron_plate
+          weight: 45
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 70
+    - action: ability
+      id: iron_fist
+      weight: 30
+targeting:
+  default: random_alive
+
+---
+id: frankenstein_brawler_scarred_construct
+name: Scarred Construct
+type: construct
+rank: B
+size: medium
+sprite_scale: 290
+hp: 165
+atk: 25
+def: 22
+mres: 11
+dex: 14
+exp: 158
+drops:
+  mc:
+    - size: S
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: ancient_core
+          weight: 50
+        - item: rune_fragment
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 60
+    - action: ability
+      id: ancient_fist
+      weight: 40
+targeting:
+  default: random_alive
+
+---
+id: pumpkin_jack_lantern_duelist
+name: Lantern Duelist
+type: demon
+rank: B
+size: medium
+barrier: true
+requires_item: veil_breaker
+sprite_scale: 260
+hp: 115
+atk: 30
+def: 14
+mres: 16
+dex: 22
+exp: 168
+drops:
+  mc:
+    - size: S
+      qty: 2
+    - size: M
+      qty: 1
+  loot:
+    - pool:
+        - item: wisp_flame
+          weight: 50
+        - item: fire_crystal
+          weight: 50
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 40
+    - action: ability
+      id: fire_bolt
+      weight: 35
+    - action: ability
+      id: hex
+      weight: 25
+targeting:
+  default: random_alive
+
+---
+id: titch_the_ticker_171
+name: Titch the Ticker
+type: construct
+rank: B
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 320
+hp: 240
+atk: 30
+def: 28
+mres: 14
+dex: 18
+exp: 380
+drops:
+  mc:
+    - size: M
+      qty: 2
+    - size: L
+      qty: 1
+  loot:
+    - pool:
+        - item: ancient_core
+          weight: 50
+        - item: rune_fragment
+          weight: 50
+ai_ref: boss_move_sets/titch_the_ticker_171.yaml

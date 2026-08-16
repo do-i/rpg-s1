@@ -2207,6 +2207,69 @@ for M6. Each row is a distinct ledger entry. Shared review fields for every row:
 | ALI-0101 | `rusted_kingdoms/data/items/weapons.yaml` | `assets/scenarios/rusted_kingdoms/data/items/weapons.yaml` | `1ae20ab1b6a6d75c13d0aa30032c05c6c73f88f6cea1a70ed6304c707b13e063` | scenario YAML / weapons |
 | ALI-0102 | `rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `9eee6b2ff027e44069abe52de82d6195a3e56d8ee0c2baa373be0a18b5c38f3c` | image / field-menu backdrop |
 
+## M8 encounter, enemy, and battle-presentation entries
+
+The following byte-identical files were copied from the pinned source revision
+for M8. Each row is a distinct ledger entry. Shared review fields for every row
+unless a more specific fact is recorded below:
+
+- creator/rightsholder: unknown; commit authorship does not establish ownership;
+- source/evidence: exact pinned source file and history through
+  `08970359d6cb03586948625d29b0d3351dbbf785`;
+- license, notice, and required attribution: unknown;
+- modification: unmodified, with identical source and destination SHA-256;
+- redistribution, commercial use, and derivatives: unknown;
+- review: `needs-evidence`, Codex evidence audit, 2026-08-15;
+- related work: M8.01-M8.12 / Gate 8; and
+- blocker: **Release blocker.** Establish exact ownership, provenance, license,
+  attribution, and redistribution permission for each hash before public
+  release; otherwise replace it.
+
+| ID | Source path in `../agentic-rpg` | Destination path | SHA-256 | Kind/name |
+| --- | --- | --- | --- | --- |
+| ALI-0103 | `rusted_kingdoms/data/encount/zone_01_starting_forest.yaml` | `assets/scenarios/rusted_kingdoms/data/encount/zone_01_starting_forest.yaml` | `aab41973505ce465ee920edf250f3e9da9c5c14d7cbf52ff4580d0b3a672c4f5` | scenario YAML / Starting Forest encounter zone |
+| ALI-0104 | `rusted_kingdoms/data/enemies/enemies_rank_1_SS.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_1_SS.yaml` | `f4a9cf33e33c9cdbe6da1ce6a194ada6c3c28817f23357e0cbb6ec4f14214994` | scenario YAML / rank SS enemies |
+| ALI-0105 | `rusted_kingdoms/data/enemies/enemies_rank_2_S.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_2_S.yaml` | `c4d0d71d3b471823ad887962224350efdc46b7b99cbfb48c3b89650b35bc687f` | scenario YAML / rank S enemies |
+| ALI-0106 | `rusted_kingdoms/data/enemies/enemies_rank_3_A.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_3_A.yaml` | `de1784cd48b55e9533919a8be750dcf8a501079983e0b142e0e4d30b14af316d` | scenario YAML / rank A enemies |
+| ALI-0107 | `rusted_kingdoms/data/enemies/enemies_rank_4_B.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_4_B.yaml` | `cef4ca3c3305ab44a8c8c11fa05cb92d8e8d09a0161a39f3b90db08779fe00d6` | scenario YAML / rank B enemies |
+| ALI-0108 | `rusted_kingdoms/data/enemies/enemies_rank_5_C.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_5_C.yaml` | `0dab90812780bbf9d78a89630088ca678aac52e40a0d817076d34b617d907e91` | scenario YAML / rank C enemies |
+| ALI-0109 | `rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml` | `fd9284cc19a978355fc15c838084d280b3bc85a1c8da0096ab643cac176fc8ca` | scenario YAML / rank D enemies |
+| ALI-0110 | `rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `62d198d2c9b04d00b785d004d4c93b25468136f189ce966cf672a5adc17b1da2` | scenario YAML / rank E enemies |
+| ALI-0111 | `rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `09d277f1d69e1cde6dfc27d693bf729fccc063087b2c902f588e42be4b65c483` | scenario YAML / rank F enemies |
+| ALI-0112 | `rusted_kingdoms/data/battle_backgrounds.yaml` | `assets/scenarios/rusted_kingdoms/data/battle_backgrounds.yaml` | `483aa5150c74fc5c3acc060b4a7622d012ad1018e6407c346bad186e564ffdee` | scenario YAML / battle-background catalog |
+| ALI-0113 | `rusted_kingdoms/assets/images/battle_bg/zone1-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone1-bg-1280x468.webp` | `b388cb588279b1e6bcdcafd18b850dc8f9baefc383c84dc5ea00a905c35bc80e` | image / zone-one battle background |
+| ALI-0114 | `rusted_kingdoms/assets/audio/bgm/Pixelated_Crusade.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Pixelated_Crusade.mp3` | `6a6c1d757c052e0b23720b5b7f0ca7255265ab74c3d216fee93d5e7f0ef109e4` | audio / normal battle BGM |
+| ALI-0115 | `rusted_kingdoms/assets/audio/bgm/Crimson_Storm_s_Echo.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Crimson_Storm_s_Echo.mp3` | `ecccf83691b31031aaa47dc6ad9ed505d1cf382d0a38caf81824ac14e73d2fd6` | audio / boss battle BGM |
+| ALI-0116 | `rusted_kingdoms/assets/audio/sfx/battle/55_Encounter_02.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/battle/55_Encounter_02.mp3` | `8d6f7e5b52ba81b82e08d10c97fa24e58fa445fef79e24ad88eaecdd619625bd` | audio / encounter SFX |
+| ALI-0117 | `rusted_kingdoms/assets/sprites/enemies/goblin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin.png` | `13a7183f5d5372d5f2ed7db2b2d511feee68af070dd9c6178c964511c21c6f14` | image / Goblin world sprite |
+| ALI-0118 | `rusted_kingdoms/assets/sprites/enemies/goblin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin.tsx` | `7fde2ca3abc890679e901089afa359ded6ca2bcae30135a8247b04c53a1f8303` | Tiled TSX / Goblin world sprite |
+| ALI-0119 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.png` | `590b5b2d6890087e092ad29616f6917ff07773bdca56e4fa8045bf265cd0f40b` | image / Goblin Scout world sprite |
+| ALI-0120 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.tsx` | `c291515bc5d0a4e104a048375d040cbf3ee2a38967ff73aa5c38e4c82fdd5039` | Tiled TSX / Goblin Scout world sprite |
+| ALI-0121 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.png` | `8f3fa3e878c35a23728122621d83d0941338ff35d75442296454036272fc5953` | image / Hooded Goblin world sprite |
+| ALI-0122 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `29e14c2d53ff71d0576ac475d923414c1cf15db7646610da481d2f2caa953649` | Tiled TSX / Hooded Goblin world sprite |
+| ALI-0123 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.png` | `c7010905c160222b0ad571528a50095c8f0b0e5d762fdf29a175c4dbb228293c` | image / Sling Scout world sprite |
+| ALI-0124 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.tsx` | `e4778f7bb41264d35830badaf06e4b75bcd25e35e41e795968c9c472bb08ff65` | Tiled TSX / Sling Scout world sprite |
+| ALI-0125 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_warrior.png` | `c4d573e3aba47317471d954d77616e4d64726dc2549cf3ff678e0e9f72d575b0` | image / Goblin Warrior world sprite |
+| ALI-0126 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_warrior.tsx` | `80c1a9800368465335f1ae30b814512c21dd76beb0082c7da3653f37e485c64d` | Tiled TSX / Goblin Warrior world sprite |
+| ALI-0127 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/grik_the_grin.png` | `8fc2dc90937967a824d0a18552d05cf987e388d6da6ff0c2f47bf757db17bdf0` | image / Grik the Grin boss sprite |
+| ALI-0128 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/grik_the_grin.tsx` | `b6540c7deb52b649ea3863fa47d497807a528f1f9b552a7a6639e3e54cb9fe65` | Tiled TSX / Grik the Grin boss sprite |
+
+Additional evidence boundaries:
+
+- `ALI-0114` and `ALI-0115`: the pinned
+  `rusted_kingdoms/assets/audio/README-audio.md` records titles and generation
+  prompts, but no creator identity or redistribution license for these exact
+  MP3 hashes.
+- `ALI-0116`: the pinned `rusted_kingdoms/assets/audio/sfx/CREDIT` identifies
+  Leohpaz as creator of the source sound-effect collection, but it does not
+  establish the exact acquisition record or redistribution terms for this
+  copied file. Preserve that credit while the file remains in the local parity
+  package.
+- `ALI-0117` through `ALI-0128`: the source README describes character sprites
+  generally as LPC generator assets and links a global credits file, but the
+  pinned tree has no per-file generator credits for these exact images. Exact
+  component creators, license choices, and required attribution remain unknown.
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather
