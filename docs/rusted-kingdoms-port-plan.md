@@ -324,13 +324,15 @@ live-found portal regression.
 | M6.26 | [x] Add the Status portrait/details interaction. | `T` | Enter replaces the center portrait with progression, stats, equipment, spells, and position; Escape returns to the portrait before closing Status. Evidence: reducer/UI regression tests and user interaction verification on 2026-08-16. |
 | M6.27 | [x] Match the original Items screen presentation. | `T` | Inventory appears as a three-column Pouch, Items, and Detail wizard with focused row cards plus action, discard, and target overlays. Evidence: comparison with the pinned `item_renderer.py`, structural UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 | M6.28 | [x] Match the original Equipment screen presentation. | `T` | Equipment uses the shared portrait party column, five focused slot cards, derived totals, a compatible-inventory picker, and color-coded before/after stat previews. Evidence: comparison with the pinned `equip_renderer.py`, browse/picker UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
+| M6.29 | [x] Match the original Spells screen presentation. | `T` | Spells uses the shared portrait caster column plus a focused spellbook/detail layout with MP readiness, typed arts, descriptions, targets, and dedicated party/destination overlays. Evidence: comparison with the pinned `spell_renderer.py`, spellbook/target-overlay UI regression tests, and the full 2026-08-16 Rust test/lint suite. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
 spell screens, all operating on the same runtime state. The Status screen also
 matches the original game's portrait-first presentation and verified
 portrait-to-details interaction; Items now uses the original three-column
 pouch/list/detail presentation; Equipment now shares the original party,
-slots, inventory, and stat-preview presentation.
+slots, inventory, and stat-preview presentation; Spells now shares the original
+caster, spellbook, detail, and casting-overlay presentation.
 
 ## Milestone 7 — Save, load, and recovery
 
