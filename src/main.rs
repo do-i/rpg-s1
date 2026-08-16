@@ -1,10 +1,12 @@
 mod action_input;
 pub mod app_state;
+mod battle;
 mod cli;
 pub mod encounter;
 mod encounter_assets;
 mod field_menu;
 mod field_menu_domain;
+mod game_over;
 pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
@@ -70,6 +72,7 @@ mod test_support;
 
 use action_input::ActionInputPlugin;
 use app_state::{AppState, AppStateTransitionPlugin};
+use battle::BattlePlugin;
 use bevy::{
     asset::AssetPlugin,
     prelude::*,
@@ -78,6 +81,7 @@ use bevy::{
 use encounter_assets::EncounterAssetPlugin;
 use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
+use game_over::GameOverPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::GameplayRngPlugin;
 use intro_completion::IntroCompletionPlugin;
@@ -162,5 +166,7 @@ fn run_game() {
         .add_plugins(WorldPlayerPlugin)
         .add_plugins(FieldMenuPlugin)
         .add_plugins(BattleEntryPlugin)
+        .add_plugins(BattlePlugin)
+        .add_plugins(GameOverPlugin)
         .run();
 }

@@ -239,7 +239,7 @@ impl SpawnCadence {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum BattleSide {
     Party,
     Enemy,
@@ -251,6 +251,7 @@ pub struct BattleParticipant {
     pub side: BattleSide,
     pub id: String,
     pub name: String,
+    pub class_id: String,
     pub health: u32,
     pub max_health: u32,
     pub mana: u32,
@@ -362,6 +363,7 @@ pub(crate) fn build_battle_entry(
                 side: BattleSide::Party,
                 id: member.id().to_owned(),
                 name: member.name().to_owned(),
+                class_id: member.class_id().to_owned(),
                 health: member.health(),
                 max_health: member.max_health(),
                 mana: member.mana(),
@@ -424,6 +426,7 @@ fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
         side: BattleSide::Enemy,
         id: enemy.id.clone(),
         name: enemy.name.clone(),
+        class_id: String::new(),
         health: enemy.hp.get(),
         max_health: enemy.hp.get(),
         mana: 0,

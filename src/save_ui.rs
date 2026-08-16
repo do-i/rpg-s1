@@ -40,6 +40,10 @@ impl Plugin for SaveUiPlugin {
     }
 }
 
+/// Requests that the title screen immediately open its native load picker.
+#[derive(Resource)]
+pub(crate) struct OpenTitleLoadPicker;
+
 #[derive(Debug, Default, Resource)]
 pub(crate) struct SaveSlotCatalog {
     slots: Vec<SaveSlot>,
@@ -134,9 +138,18 @@ impl<'w> SaveInputs<'w> {
     }
 }
 
-fn reset_title_save_ui(mut catalog: ResMut<SaveSlotCatalog>, mut load_menu: ResMut<TitleLoadMenu>) {
+fn reset_title_save_ui(
+    mut commands: Commands,
+    mut catalog: ResMut<SaveSlotCatalog>,
+    mut load_menu: ResMut<TitleLoadMenu>,
+    open_picker: Option<Res<OpenTitleLoadPicker>>,
+) {
     catalog.request_refresh();
     *load_menu = TitleLoadMenu::default();
+    if open_picker.is_some() {
+        load_menu.open(catalog.slots());
+        commands.remove_resource::<OpenTitleLoadPicker>();
+    }
 }
 
 fn refresh_save_slots(

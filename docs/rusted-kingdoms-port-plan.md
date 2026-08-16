@@ -385,27 +385,35 @@ one-shot transition, participant-copy, and pre-battle restoration cases. See
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M9.01 | [ ] Define battle phases and phase transitions. | `X` | Start, command, target, resolve, advance, victory, defeat, and flee are explicit. |
-| M9.02 | [ ] Render enemy sprites and party panels. | `S` | HP/MP, row, active member, and KO state display. |
-| M9.03 | [ ] Build the Attack/Spell/Item/Run command menu. | `S` | Availability matches actor state. |
-| M9.04 | [ ] Implement living-enemy target selection. | `T` | Single, wrap, cancel, and no-target cases are tested. |
-| M9.05 | [ ] Implement living-party target selection. | `T` | Ally targeting and KO eligibility are tested. |
-| M9.06 | [ ] Implement turn-order calculation. | `S` | Dexterity ties and deterministic RNG match fixtures. |
-| M9.07 | [ ] Implement physical hit chance. | `S` | Boundary and seeded-roll cases match Python. |
-| M9.08 | [ ] Implement physical damage. | `S` | Attack, defense, row, minimum, and cap rules match fixtures. |
-| M9.09 | [ ] Apply HP damage and KO. | `T` | HP clamps at zero and KO actors cannot act. |
-| M9.10 | [ ] Implement one basic enemy action. | `S` | Target selection and damage use the same resolver path. |
-| M9.11 | [ ] Advance to the next living actor. | `S` | KO and removed actors are skipped. |
-| M9.12 | [ ] Detect enemy-party defeat. | `T` | Victory triggers only after every enemy is defeated. |
-| M9.13 | [ ] Detect player-party defeat. | `T` | Game Over triggers only after every member is KO. |
-| M9.14 | [ ] Implement flee success calculation. | `S` | Rate, Rogue modifier, failure turn cost, and guaranteed restrictions match. |
-| M9.15 | [ ] Restore the world after victory. | `S` | Return context and world BGM resume once. |
-| M9.16 | [ ] Restore the world after successful flee. | `S` | Player receives the source-defined separation/safety behavior. |
-| M9.17 | [ ] Add a Game Over screen. | `S` | Retry/load/title choices route correctly. |
-| M9.18 | [ ] Add a deterministic battle transcript test. | `S` | A fixed seed and action list produce a stable outcome. |
+| M9.01 | [x] Define battle phases and phase transitions. | `X` | Start, command, target, resolve, advance, victory, defeat, and flee are explicit. |
+| M9.02 | [x] Render enemy sprites and party panels. | `S` | HP/MP, row, active member, and KO state display. |
+| M9.03 | [x] Build the Attack/Spell/Item/Run command menu. | `S` | Availability matches actor state. |
+| M9.04 | [x] Implement living-enemy target selection. | `T` | Single, wrap, cancel, and no-target cases are tested. |
+| M9.05 | [x] Implement living-party target selection. | `T` | Ally targeting and KO eligibility are tested. |
+| M9.06 | [x] Implement turn-order calculation. | `S` | Dexterity ties and deterministic RNG match fixtures. |
+| M9.07 | [x] Implement physical hit chance. | `S` | Boundary and seeded-roll cases match Python. |
+| M9.08 | [x] Implement physical damage. | `S` | Attack, defense, row, minimum, and cap rules match fixtures. |
+| M9.09 | [x] Apply HP damage and KO. | `T` | HP clamps at zero and KO actors cannot act. |
+| M9.10 | [x] Implement one basic enemy action. | `S` | Target selection and damage use the same resolver path. |
+| M9.11 | [x] Advance to the next living actor. | `S` | KO and removed actors are skipped. |
+| M9.12 | [x] Detect enemy-party defeat. | `T` | Victory triggers only after every enemy is defeated. |
+| M9.13 | [x] Detect player-party defeat. | `T` | Game Over triggers only after every member is KO. |
+| M9.14 | [x] Implement flee success calculation. | `S` | Rate, Rogue modifier, failure turn cost, and guaranteed restrictions match. |
+| M9.15 | [x] Restore the world after victory. | `S` | Return context and world BGM resume once. |
+| M9.16 | [x] Restore the world after successful flee. | `S` | Player receives the source-defined separation/safety behavior. |
+| M9.17 | [x] Add a Game Over screen. | `S` | Retry/load/title choices route correctly. |
+| M9.18 | [x] Add a deterministic battle transcript test. | `S` | A fixed seed and action list produce a stable outcome. |
 
 **Gate 9:** A player can win, lose, or flee one complete basic battle and
 return to the correct application state.
+
+Completed 2026-08-16. The production X11/llvmpipe replay exercised a two-enemy
+fight, failed and successful flee attempts, a complete victory, a complete
+defeat, Retry, and the Game Over native-load route. The replay also showed
+enemy sprites, target/KO feedback, party HP/MP/row/active state, damage carried
+back after victory, and the engaged world enemy staying inactive after return.
+Focused deterministic tests cover every rule boundary and transcript; see
+`docs/m9-manual-play-checklist.md`.
 
 ## Milestone 10 — Full combat and progression parity
 
@@ -575,5 +583,6 @@ row. Do not silently omit it from a milestone.
 
 ## Next task
 
-Continue with **M9.01**. Define explicit battle phases and their legal
-transitions before adding the command loop.
+Continue with **M10.01**. Add damage numbers and complete the full combat,
+effects, rewards, and progression parity layer on top of the verified minimum
+battle loop.

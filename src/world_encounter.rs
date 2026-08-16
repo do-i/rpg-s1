@@ -140,6 +140,16 @@ struct PendingWorldEnemy {
     origin: Position,
     boss: bool,
     chase_range: u32,
+    position: Position,
+    facing: CardinalDirection,
+    active: bool,
+}
+
+/// One-shot encounter pool restored after a battle outcome.
+#[derive(Clone, Debug, Resource)]
+pub(crate) struct WorldEncounterRestore {
+    pub(crate) map_id: String,
+    pub(crate) enemies: Vec<WorldEnemyReturnState>,
 }
 
 #[derive(Component, Clone, Debug, PartialEq)]
@@ -306,6 +316,7 @@ fn drive_active_encounter_assets(
     atlas_assets: Res<Assets<TsxAtlasAsset>>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
+    restore: Option<Res<WorldEncounterRestore>>,
     game: Option<ResMut<GameState>>,
     existing: Query<(), With<WorldEnemy>>,
     mut state: ResMut<WorldEncounterState>,
@@ -477,7 +488,26 @@ fn drive_active_encounter_assets(
     };
 
     if state.pending.is_empty() {
-        if let (Some(boss), Some(origin)) = (&zone.boss, boss_spawn)
+        let restored = restore
+            .as_deref()
+            .filter(|restore| restore.map_id == map_id)
+            .map(|restore| restore.enemies.clone());
+        let restored_pool = restored.is_some();
+        if let Some(restored) = restored {
+            state
+                .pending
+                .extend(restored.into_iter().map(|enemy| PendingWorldEnemy {
+                    encounter_id: enemy.encounter_id,
+                    formation: enemy.formation,
+                    origin: enemy.origin,
+                    boss: enemy.boss,
+                    chase_range: enemy.chase_range,
+                    position: enemy.position,
+                    facing: enemy.facing,
+                    active: enemy.active,
+                }));
+            commands.remove_resource::<WorldEncounterRestore>();
+        } else if let (Some(boss), Some(origin)) = (&zone.boss, boss_spawn)
             && !(boss.once
                 && !boss.completion.set_flag.is_empty()
                 && game.flags().is_set(&boss.completion.set_flag))
@@ -488,17 +518,25 @@ fn drive_active_encounter_assets(
                 origin,
                 boss: true,
                 chase_range: 0,
+                position: origin,
+                facing: CardinalDirection::Down,
+                active: true,
             });
         }
-        for (index, origin) in regular_spawns.into_iter().enumerate() {
-            if let Some(formation) = pick_weighted_formation(&zone.entries, game.rng_mut()) {
-                state.pending.push(PendingWorldEnemy {
-                    encounter_id: format!("{map_id}:spawn:{index}"),
-                    formation: formation.enemy_ids.clone(),
-                    origin,
-                    boss: false,
-                    chase_range: formation.chase_range,
-                });
+        if !restored_pool {
+            for (index, origin) in regular_spawns.into_iter().enumerate() {
+                if let Some(formation) = pick_weighted_formation(&zone.entries, game.rng_mut()) {
+                    state.pending.push(PendingWorldEnemy {
+                        encounter_id: format!("{map_id}:spawn:{index}"),
+                        formation: formation.enemy_ids.clone(),
+                        origin,
+                        boss: false,
+                        chase_range: formation.chase_range,
+                        position: origin,
+                        facing: CardinalDirection::Down,
+                        active: true,
+                    });
+                }
             }
         }
         let sprite_ids = state
@@ -558,7 +596,7 @@ fn drive_active_encounter_assets(
                     .ok()
             })
             .unwrap_or_else(|| Sprite::from_color(Color::srgb(0.8, 0.2, 0.2), Vec2::splat(64.0)));
-        let top_left = enemy_top_left(pending.origin);
+        let top_left = enemy_top_left(pending.position);
         commands.spawn((
             sprite,
             Transform::from_translation(enemy_world_translation(top_left)),
@@ -566,13 +604,13 @@ fn drive_active_encounter_assets(
                 encounter_id: pending.encounter_id.clone(),
                 formation: pending.formation.clone(),
                 origin: pending.origin,
-                position: pending.origin,
+                position: pending.position,
                 top_left,
                 boss: pending.boss,
                 chase_range: pending.chase_range,
-                active: true,
+                active: pending.active,
                 engaged: false,
-                facing: CardinalDirection::Down,
+                facing: pending.facing,
                 frame: 0,
                 frame_elapsed: 0.0,
                 wander_pause: random_pause(game.rng_mut()),
@@ -1139,54 +1177,10 @@ fn begin_battle_presentation(
     for entity in &logical_bgm {
         commands.entity(entity).despawn();
     }
-    let Some(entry) = entry else {
+    let Some(_entry) = entry else {
         return;
     };
     commands.spawn((fixed_gameplay_camera(), BattlePresentation));
-    let Ok(background) = ScenarioRelativePath::try_from(entry.background_asset.as_str()) else {
-        return;
-    };
-    let enemies = entry
-        .participants
-        .iter()
-        .filter(|participant| participant.side == crate::encounter::BattleSide::Enemy)
-        .map(|participant| format!("{}  HP {}", participant.name, participant.health))
-        .collect::<Vec<_>>()
-        .join("     ");
-    commands
-        .spawn((
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::ZERO,
-                top: Val::ZERO,
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                ..default()
-            },
-            ImageNode {
-                image: asset_server.load(root.resolve(&background)),
-                image_mode: NodeImageMode::Stretch,
-                ..default()
-            },
-            GlobalZIndex(100),
-            BattlePresentation,
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Text::new(format!("Encounter\n{enemies}")),
-                TextFont {
-                    font_size: 34.0.into(),
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-                Node {
-                    position_type: PositionType::Absolute,
-                    left: Val::Px(32.0),
-                    bottom: Val::Px(32.0),
-                    ..default()
-                },
-            ));
-        });
     let bgm_index = ScenarioRelativePath::try_from(BGM_INDEX_PATH)
         .expect("canonical BGM index path is scenario-relative");
     state.bgm_index = Some(asset_server.load(root.resolve(&bgm_index)));
