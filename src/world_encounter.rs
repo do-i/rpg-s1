@@ -27,10 +27,14 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
-    tile_coordinates::tmx_tile_center,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tsx_atlas_asset::TsxAtlasAsset,
     world_audio::LogicalBgmPlayer,
+    world_player::{
+        CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
+        CHARACTER_COLLISION_WIDTH, CHARACTER_SPRITE_SIZE, CharacterCollisionRect, WorldPlayer,
+        WorldPlayerMotion,
+    },
 };
 
 const ENEMY_RANK_FILES: [&str; 8] = [
@@ -47,7 +51,9 @@ const TILE_SIZE: u32 = 32;
 const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
 const ENEMY_WALK_ROW_OFFSET: u32 = 8;
 const ENEMY_ATLAS_COLUMNS: u32 = 9;
-const WALK_STEP_SECONDS: f32 = 1.0 / 3.5;
+const ENEMY_MOVE_SPEED_PIXELS_PER_SECOND: f32 = TILE_SIZE as f32 * 3.5;
+const ENEMY_FRAME_SECONDS: f32 = 0.15;
+const MAX_ENEMY_DELTA_SECONDS: f32 = 0.1;
 const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
 const BATTLE_FLASH_SECONDS: f32 = 0.55;
 
@@ -65,6 +71,7 @@ impl Plugin for WorldEncounterPlugin {
                 Update,
                 (
                     request_active_encounter_assets,
+                    ApplyDeferred,
                     drive_active_encounter_assets,
                     ApplyDeferred,
                     update_world_enemies,
@@ -141,15 +148,16 @@ pub(crate) struct WorldEnemy {
     formation: Vec<String>,
     origin: Position,
     position: Position,
+    top_left: Vec2,
     boss: bool,
     chase_range: u32,
     active: bool,
     engaged: bool,
     facing: CardinalDirection,
     frame: u32,
-    step_elapsed: f32,
+    frame_elapsed: f32,
     wander_pause: f32,
-    wander_target: Option<Position>,
+    wander_target: Option<Vec2>,
 }
 
 #[cfg_attr(
@@ -174,6 +182,10 @@ impl WorldEnemy {
 
     pub(crate) const fn is_boss(&self) -> bool {
         self.boss
+    }
+
+    fn collision_rect(&self) -> CharacterCollisionRect {
+        enemy_collision_rect(self.top_left)
     }
 }
 
@@ -245,9 +257,11 @@ fn cleanup_battle_flash_overlay(
 }
 
 fn request_active_encounter_assets(
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
     game: Option<Res<GameState>>,
+    enemies: Query<Entity, With<WorldEnemy>>,
     mut state: ResMut<WorldEncounterState>,
 ) {
     let current = game
@@ -256,6 +270,9 @@ fn request_active_encounter_assets(
         .map(|map| map.as_str());
     if current == state.map_id.as_deref() {
         return;
+    }
+    for entity in &enemies {
+        commands.entity(entity).despawn();
     }
     *state = WorldEncounterState::default();
     let Some(map_id) = current else {
@@ -315,6 +332,9 @@ fn drive_active_encounter_assets(
     let Some(metadata) = metadata_assets.get(metadata_handle) else {
         return;
     };
+    if !render.is_spawned_for(&map_id) {
+        return;
+    }
     let Some(map) = render.map(&maps) else {
         return;
     };
@@ -538,24 +558,23 @@ fn drive_active_encounter_assets(
                     .ok()
             })
             .unwrap_or_else(|| Sprite::from_color(Color::srgb(0.8, 0.2, 0.2), Vec2::splat(64.0)));
-        let center = tile_center(pending.origin);
+        let top_left = enemy_top_left(pending.origin);
         commands.spawn((
             sprite,
-            Transform::from_translation(
-                center.extend(world_entity_y_z(center.y, ENEMY_SPRITE_HALF_HEIGHT)),
-            ),
+            Transform::from_translation(enemy_world_translation(top_left)),
             WorldEnemy {
                 encounter_id: pending.encounter_id.clone(),
                 formation: pending.formation.clone(),
                 origin: pending.origin,
                 position: pending.origin,
+                top_left,
                 boss: pending.boss,
                 chase_range: pending.chase_range,
                 active: true,
                 engaged: false,
                 facing: CardinalDirection::Down,
                 frame: 0,
-                step_elapsed: 0.0,
+                frame_elapsed: 0.0,
                 wander_pause: random_pause(game.rng_mut()),
                 wander_target: None,
             },
@@ -613,12 +632,17 @@ fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
     ))
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "continuous enemy simulation reads independent map, player, balance, and render state"
+)]
 fn update_world_enemies(
     time: Res<Time>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     balances: Res<Assets<BalanceData>>,
     game: Option<ResMut<GameState>>,
+    players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
     mut enemies: Query<(Entity, &mut WorldEnemy, &mut Sprite, &mut Transform)>,
 ) {
@@ -641,12 +665,15 @@ fn update_world_enemies(
         .cloned()
         .unwrap_or_default();
     let modifiers = party_encounter_modifiers(game.party(), &balance.spawner);
-    let player = game.map().position();
+    let player_top_left = players
+        .single()
+        .map(|motion| motion.top_left())
+        .unwrap_or_else(|_| enemy_top_left(game.map().position()));
     let snapshot = enemies
         .iter()
-        .map(|(entity, enemy, _, _)| (entity, enemy.position, enemy.active))
+        .map(|(entity, enemy, _, _)| (entity, enemy.collision_rect(), enemy.active))
         .collect::<Vec<_>>();
-    let delta = time.delta_secs();
+    let delta = time.delta_secs().min(MAX_ENEMY_DELTA_SECONDS);
 
     if let Some(cadence) = state.cadence.as_mut() {
         let has_inactive = snapshot.iter().any(|(_, _, active)| !active);
@@ -662,6 +689,8 @@ fn update_world_enemies(
                     enemy.active = true;
                     enemy.engaged = false;
                     enemy.position = enemy.origin;
+                    enemy.top_left = enemy_top_left(enemy.origin);
+                    enemy.wander_target = None;
                     enemy.wander_pause = random_pause(game.rng_mut());
                 }
             }
@@ -675,83 +704,73 @@ fn update_world_enemies(
         }
         transform.scale = Vec3::ONE;
         if !enemy.boss {
-            enemy.step_elapsed += delta;
-            if enemy.step_elapsed >= WALK_STEP_SECONDS {
-                enemy.step_elapsed -= WALK_STEP_SECONDS;
-                let effective_chase = enemy
-                    .chase_range
-                    .saturating_sub(modifiers.chase_range_reduction);
-                let distance = (enemy.position.x - player.x)
-                    .abs()
-                    .max((enemy.position.y - player.y).abs()) as u32;
-                if effective_chase > 0 && distance <= effective_chase {
-                    chase_step(&mut enemy, entity, player, &snapshot, &collision);
-                } else {
-                    wander_step(
-                        &mut enemy,
-                        entity,
-                        delta,
-                        &snapshot,
-                        &collision,
-                        game.rng_mut(),
-                    );
-                }
+            let effective_chase = enemy
+                .chase_range
+                .saturating_sub(modifiers.chase_range_reduction);
+            let distance_tiles =
+                (player_top_left - enemy.top_left).abs().max_element() / TILE_SIZE as f32;
+            let moved = if effective_chase > 0 && distance_tiles <= effective_chase as f32 {
+                chase_enemy(
+                    &mut enemy,
+                    entity,
+                    player_top_left,
+                    delta,
+                    &snapshot,
+                    &collision,
+                )
+            } else {
+                wander_enemy(
+                    &mut enemy,
+                    entity,
+                    delta,
+                    &snapshot,
+                    &collision,
+                    game.rng_mut(),
+                )
+            };
+            if moved {
+                advance_enemy_frame(&mut enemy, delta);
             }
         }
         if let Some(atlas) = sprite.texture_atlas.as_mut() {
             atlas.index = enemy_tile(enemy.facing, enemy.frame) as usize;
         }
-        let center = tile_center(enemy.position);
-        transform.translation = center.extend(world_entity_y_z(center.y, ENEMY_SPRITE_HALF_HEIGHT));
+        transform.translation = enemy_world_translation(enemy.top_left);
     }
 }
 
-fn chase_step(
+fn chase_enemy(
     enemy: &mut WorldEnemy,
     entity: Entity,
-    player: Position,
-    snapshot: &[(Entity, Position, bool)],
+    player_top_left: Vec2,
+    delta: f32,
+    snapshot: &[(Entity, CharacterCollisionRect, bool)],
     collision: &CollisionOccupancy,
-) {
-    let dx = player.x - enemy.position.x;
-    let dy = player.y - enemy.position.y;
-    let (step, facing) = if dx.abs() >= dy.abs() && dx != 0 {
-        (
-            Position::new(dx.signum(), 0),
-            if dx < 0 {
-                CardinalDirection::Left
-            } else {
-                CardinalDirection::Right
-            },
-        )
-    } else if dy != 0 {
-        (
-            Position::new(0, dy.signum()),
-            if dy < 0 {
-                CardinalDirection::Up
-            } else {
-                CardinalDirection::Down
-            },
-        )
-    } else {
-        return;
-    };
-    enemy.facing = facing;
-    let next = Position::new(enemy.position.x + step.x, enemy.position.y + step.y);
-    if collision.is_open(next.x, next.y) == Some(true) && !enemy_occupied(next, entity, snapshot) {
-        enemy.position = next;
-        enemy.frame = next_walk_frame(enemy.frame);
+) -> bool {
+    let toward_player = player_top_left - enemy.top_left;
+    let distance = toward_player.length();
+    if distance < 1.0 {
+        return false;
     }
+    enemy.facing = direction_toward(enemy.top_left, player_top_left);
+    let step = (ENEMY_MOVE_SPEED_PIXELS_PER_SECOND * delta).min(distance);
+    try_move_enemy(
+        enemy,
+        entity,
+        enemy.top_left + toward_player / distance * step,
+        snapshot,
+        collision,
+    )
 }
 
-fn wander_step(
+fn wander_enemy(
     enemy: &mut WorldEnemy,
     entity: Entity,
     delta: f32,
-    snapshot: &[(Entity, Position, bool)],
+    snapshot: &[(Entity, CharacterCollisionRect, bool)],
     collision: &CollisionOccupancy,
     rng: &mut crate::gameplay_rng::GameplayRng,
-) {
+) -> bool {
     if enemy.wander_target.is_none() {
         enemy.wander_pause -= delta;
         enemy.frame = 0;
@@ -761,78 +780,88 @@ fn wander_step(
                 enemy.wander_pause = random_pause(rng);
             }
         }
-        return;
+        return false;
     }
     let target = enemy.wander_target.expect("checked above");
-    if enemy.position == target {
+    let toward_target = target - enemy.top_left;
+    let distance = toward_target.abs().max_element();
+    let move_distance = ENEMY_MOVE_SPEED_PIXELS_PER_SECOND * delta;
+    if distance <= move_distance {
+        let moved = try_move_enemy(enemy, entity, target, snapshot, collision);
         enemy.wander_target = None;
         enemy.wander_pause = random_pause(rng);
         enemy.frame = 0;
-        return;
+        return moved;
     }
-    let dx = target.x - enemy.position.x;
-    let dy = target.y - enemy.position.y;
-    let (step, facing) = if dx.abs() >= dy.abs() && dx != 0 {
-        (
-            Position::new(dx.signum(), 0),
-            if dx < 0 {
-                CardinalDirection::Left
-            } else {
-                CardinalDirection::Right
-            },
-        )
-    } else {
-        (
-            Position::new(0, dy.signum()),
-            if dy < 0 {
-                CardinalDirection::Up
-            } else {
-                CardinalDirection::Down
-            },
-        )
-    };
-    enemy.facing = facing;
-    let next = Position::new(enemy.position.x + step.x, enemy.position.y + step.y);
-    if collision.is_open(next.x, next.y) != Some(true) || enemy_occupied(next, entity, snapshot) {
+    enemy.facing = direction_toward(enemy.top_left, target);
+    let step = Vec2::new(
+        toward_target.x.signum() * move_distance.min(toward_target.x.abs()),
+        toward_target.y.signum() * move_distance.min(toward_target.y.abs()),
+    );
+    if !try_move_enemy(enemy, entity, enemy.top_left + step, snapshot, collision) {
         enemy.wander_target = None;
         enemy.wander_pause = random_pause(rng);
         enemy.frame = 0;
-        return;
+        return false;
     }
-    enemy.position = next;
-    enemy.frame = next_walk_frame(enemy.frame);
+    true
 }
 
 fn pick_wander_target(
     enemy: &WorldEnemy,
     entity: Entity,
-    snapshot: &[(Entity, Position, bool)],
+    snapshot: &[(Entity, CharacterCollisionRect, bool)],
     collision: &CollisionOccupancy,
     rng: &mut crate::gameplay_rng::GameplayRng,
-) -> Option<Position> {
-    const RANGE: i32 = 4;
-    const SPAN: u64 = 9;
+) -> Option<Vec2> {
+    const RANGE_PIXELS: i32 = 4 * TILE_SIZE as i32;
+    const SPAN: u64 = (RANGE_PIXELS as u64 * 2) + 1;
+    let origin = enemy_top_left(enemy.origin);
     for _ in 0..8 {
-        let x = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE;
-        let y = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE;
-        let target = Position::new(enemy.origin.x + x, enemy.origin.y + y);
-        if collision.is_open(target.x, target.y) == Some(true)
-            && !enemy_occupied(target, entity, snapshot)
-        {
+        let x = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE_PIXELS;
+        let y = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE_PIXELS;
+        let target = origin + Vec2::new(x as f32, y as f32);
+        if !enemy_blocked(target, entity, snapshot, collision) {
             return Some(target);
         }
     }
     None
 }
 
-fn enemy_occupied(
-    position: Position,
+fn try_move_enemy(
+    enemy: &mut WorldEnemy,
     entity: Entity,
-    snapshot: &[(Entity, Position, bool)],
+    target: Vec2,
+    snapshot: &[(Entity, CharacterCollisionRect, bool)],
+    collision: &CollisionOccupancy,
 ) -> bool {
-    snapshot
-        .iter()
-        .any(|(other, occupied, active)| *other != entity && *active && *occupied == position)
+    if enemy_blocked(target, entity, snapshot, collision) {
+        return false;
+    }
+    enemy.top_left = target;
+    enemy.position = enemy_tile_position(target);
+    true
+}
+
+fn enemy_blocked(
+    top_left: Vec2,
+    entity: Entity,
+    snapshot: &[(Entity, CharacterCollisionRect, bool)],
+    collision: &CollisionOccupancy,
+) -> bool {
+    let rect = enemy_collision_rect(top_left);
+    collision.is_rect_blocked(rect.x, rect.y, rect.width, rect.height)
+        || snapshot.iter().any(|(other, occupied, active)| {
+            *other != entity && *active && rect.overlaps(*occupied)
+        })
+}
+
+fn advance_enemy_frame(enemy: &mut WorldEnemy, delta: f32) {
+    enemy.frame_elapsed += delta;
+    while enemy.frame_elapsed >= ENEMY_FRAME_SECONDS {
+        enemy.frame_elapsed -= ENEMY_FRAME_SECONDS;
+        enemy.frame = next_walk_frame(enemy.frame);
+    }
 }
 
 #[expect(
@@ -847,6 +876,7 @@ fn detect_enemy_contact(
     item_catalog: Res<FieldMenuCatalog>,
     zones: Res<Assets<EncounterZone>>,
     metadata_assets: Res<Assets<MapMetadata>>,
+    players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
     mut battle_transition: ResMut<BattleTransition>,
     mut enemies: Query<(Entity, &mut WorldEnemy)>,
@@ -868,9 +898,15 @@ fn detect_enemy_contact(
         return;
     }
     let player = game.map().position();
+    let player_rect = players
+        .single()
+        .map(|motion| motion.collision_rect())
+        .unwrap_or_else(|_| enemy_collision_rect(enemy_top_left(player)));
     let Some((contact_entity, contact)) = enemies
         .iter()
-        .find(|(_, enemy)| enemy.active && !enemy.engaged && enemy.position == player)
+        .find(|(_, enemy)| {
+            enemy.active && !enemy.engaged && enemy.collision_rect().overlaps(player_rect)
+        })
         .map(|(entity, enemy)| (entity, enemy.clone()))
     else {
         return;
@@ -995,11 +1031,55 @@ fn cleanup_world_encounters(
     state.sprite_handles.clear();
 }
 
-fn tile_center(position: Position) -> Vec2 {
-    let (Ok(column), Ok(row)) = (u32::try_from(position.x), u32::try_from(position.y)) else {
-        return Vec2::ZERO;
-    };
-    tmx_tile_center(column, row, TILE_SIZE, TILE_SIZE)
+fn enemy_top_left(position: Position) -> Vec2 {
+    Vec2::new(
+        position.x as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
+            - (CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0),
+        position.y as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
+            - (CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0),
+    )
+}
+
+fn enemy_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
+    CharacterCollisionRect {
+        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
+        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+        width: CHARACTER_COLLISION_WIDTH,
+        height: CHARACTER_COLLISION_HEIGHT,
+    }
+}
+
+fn enemy_tile_position(top_left: Vec2) -> Position {
+    let rect = enemy_collision_rect(top_left);
+    Position::new(
+        ((rect.x + rect.width / 2.0) / TILE_SIZE as f32).floor() as i32,
+        ((rect.y + rect.height / 2.0) / TILE_SIZE as f32).floor() as i32,
+    )
+}
+
+fn enemy_world_translation(top_left: Vec2) -> Vec3 {
+    let center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
+    let world_y = -center.y;
+    Vec3::new(
+        center.x,
+        world_y,
+        world_entity_y_z(world_y, ENEMY_SPRITE_HALF_HEIGHT),
+    )
+}
+
+fn direction_toward(from: Vec2, to: Vec2) -> CardinalDirection {
+    let delta = to - from;
+    if delta.x.abs() >= delta.y.abs() {
+        if delta.x < 0.0 {
+            CardinalDirection::Left
+        } else {
+            CardinalDirection::Right
+        }
+    } else if delta.y < 0.0 {
+        CardinalDirection::Up
+    } else {
+        CardinalDirection::Down
+    }
 }
 
 const fn enemy_tile(direction: CardinalDirection, frame: u32) -> u32 {
@@ -1216,25 +1296,43 @@ mod tests {
             formation: vec!["goblin".to_owned()],
             origin: Position::new(0, 1),
             position: Position::new(0, 1),
+            top_left: enemy_top_left(Position::new(0, 1)),
             boss: false,
             chase_range: 8,
             active: true,
             engaged: false,
             facing: CardinalDirection::Down,
             frame: 0,
-            step_elapsed: 0.0,
+            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
         };
-        chase_step(
+        let origin = enemy.top_left;
+        let other_rect = enemy_collision_rect(enemy_top_left(Position::new(1, 1)));
+        let snapshot = [
+            (entity, enemy.collision_rect(), true),
+            (Entity::from_bits(2), other_rect, true),
+        ];
+        assert!(chase_enemy(
             &mut enemy,
             entity,
-            Position::new(3, 1),
-            &[(entity, Position::new(0, 1), true)],
+            enemy_top_left(Position::new(3, 1)),
+            0.1,
+            &snapshot,
             &collision,
-        );
-        assert_eq!(enemy.position, Position::new(1, 1));
+        ));
+        assert!((enemy.top_left.x - origin.x - 11.2).abs() < 0.001);
+        assert_eq!(enemy.position, Position::new(0, 1));
         assert_eq!(enemy.facing, CardinalDirection::Right);
+        assert!(!chase_enemy(
+            &mut enemy,
+            entity,
+            enemy_top_left(Position::new(3, 1)),
+            0.1,
+            &snapshot,
+            &collision,
+        ));
+        assert!((enemy.top_left.x - origin.x - 11.2).abs() < 0.001);
     }
 
     #[test]
@@ -1253,29 +1351,35 @@ mod tests {
             formation: vec!["goblin".to_owned()],
             origin: Position::new(5, 5),
             position: Position::new(5, 5),
+            top_left: enemy_top_left(Position::new(5, 5)),
             boss: false,
             chase_range: 0,
             active: true,
             engaged: false,
             facing: CardinalDirection::Down,
             frame: 0,
-            step_elapsed: 0.0,
+            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
         };
         let snapshot = [
-            (entity, Position::new(5, 5), true),
-            (other, Position::new(6, 6), true),
+            (entity, enemy.collision_rect(), true),
+            (
+                other,
+                enemy_collision_rect(enemy_top_left(Position::new(6, 6))),
+                true,
+            ),
         ];
         let mut first = crate::gameplay_rng::GameplayRng::from_seed(77);
         let mut second = crate::gameplay_rng::GameplayRng::from_seed(77);
         let a = pick_wander_target(&enemy, entity, &snapshot, &collision, &mut first).unwrap();
         let b = pick_wander_target(&enemy, entity, &snapshot, &collision, &mut second).unwrap();
         assert_eq!(a, b);
-        assert!((a.x - enemy.origin.x).abs() <= 4);
-        assert!((a.y - enemy.origin.y).abs() <= 4);
-        assert_ne!(a, Position::new(6, 6));
-        assert_eq!(collision.is_open(a.x, a.y), Some(true));
+        assert!((a.x - enemy.top_left.x).abs() <= 4.0 * TILE_SIZE as f32);
+        assert!((a.y - enemy.top_left.y).abs() <= 4.0 * TILE_SIZE as f32);
+        assert!(!enemy_collision_rect(a).overlaps(snapshot[1].1));
+        let rect = enemy_collision_rect(a);
+        assert!(!collision.is_rect_blocked(rect.x, rect.y, rect.width, rect.height));
     }
 
     #[test]
@@ -1370,6 +1474,55 @@ mod tests {
 
         let boss_position = boss.tile_position();
         let boss_encounter_id = boss.encounter_id().to_owned();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("town_01_ardel").unwrap(),
+                Position::new(14, 5),
+                CardinalDirection::Up,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            let enemy_count = {
+                let world = app.world_mut();
+                world.query::<&WorldEnemy>().iter(world).count()
+            };
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::NoEncounters
+                && enemy_count == 0
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::NoEncounters
+        );
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        assert_eq!(query.iter(app.world()).count(), 0);
+
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+                Position::new(9, 8),
+                CardinalDirection::Down,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::Spawned
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        assert_eq!(query.iter(app.world()).count(), 6);
+
         app.world_mut()
             .resource_mut::<GameState>()
             .map_mut()

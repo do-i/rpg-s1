@@ -1,4 +1,4 @@
-//! Fresh-action eight-way grid movement against the active TMX collision layer.
+//! Continuous eight-way movement against the active TMX collision layer.
 
 use std::time::Duration;
 
@@ -12,22 +12,28 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{
-        CardinalDirection, EightWayDirection, Position, collision_occupancy::CollisionOccupancy,
+        CardinalDirection, EightWayDirection, collision_occupancy::CollisionOccupancy,
     },
-    tile_coordinates::tmx_tile_center,
     tmx_ground_asset::TmxGroundAsset,
     world_actor::WorldNpc,
     world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
     world_object::WorldItemBox,
-    world_player::{WorldPlayer, WorldPlayerAnimation},
+    world_player::{
+        CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
+        CHARACTER_COLLISION_WIDTH, CharacterCollisionRect, WorldPlayer, WorldPlayerAnimation,
+        WorldPlayerMotion,
+    },
     world_transition::WorldTransition,
 };
 
 const RUSTED_KINGDOMS_TILE_WIDTH: u32 = 32;
 const RUSTED_KINGDOMS_TILE_HEIGHT: u32 = 32;
+const PLAYER_SPEED_PIXELS_PER_SECOND: f32 = 5.0 * 60.0;
+const MAX_COLLISION_STEP_PIXELS: f32 = 5.0;
+const MAX_MOVEMENT_DELTA_SECONDS: f32 = 0.1;
 
-/// Applies one accepted fresh eight-way action while the app is in the world state.
+/// Applies held eight-way input as smooth source-pixel movement while the app is in the world.
 pub(crate) struct CardinalMovementPlugin;
 
 impl Plugin for CardinalMovementPlugin {
@@ -73,16 +79,6 @@ impl ActiveMapCollision {
             return;
         };
         self.handle = Some(asset_server.load(scenario_root.resolve(&logical)));
-    }
-
-    fn is_open(&self, map_id: &str, position: Position) -> bool {
-        self.map_id.as_deref() == Some(map_id)
-            && !self.failed
-            && self
-                .occupancy
-                .as_ref()
-                .and_then(|occupancy| occupancy.is_open(position.x, position.y))
-                == Some(true)
     }
 }
 
@@ -164,7 +160,15 @@ fn move_world_player(
     npcs: Query<&WorldNpc>,
     boxes: Query<&WorldItemBox>,
     game: Option<ResMut<GameState>>,
-    mut players: Query<(&mut Transform, &mut Sprite, &mut WorldPlayerAnimation), With<WorldPlayer>>,
+    mut players: Query<
+        (
+            &mut Transform,
+            &mut Sprite,
+            &mut WorldPlayerAnimation,
+            &mut WorldPlayerMotion,
+        ),
+        With<WorldPlayer>,
+    >,
 ) {
     let Some(actions) = actions else {
         return;
@@ -172,7 +176,8 @@ fn move_world_player(
     let Some(mut game) = game else {
         return;
     };
-    let Ok((mut player_transform, mut player_sprite, mut player_animation)) = players.single_mut()
+    let Ok((mut player_transform, mut player_sprite, mut player_animation, mut motion)) =
+        players.single_mut()
     else {
         return;
     };
@@ -200,8 +205,6 @@ fn move_world_player(
         return;
     };
 
-    let current = game.map().position();
-    let delta = movement_delta(direction);
     let facing = movement_facing(direction);
     game.map_mut().set_facing(facing);
     let tile_id = player_animation.update(Some(facing), delta_time);
@@ -210,28 +213,36 @@ fn move_world_player(
     let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
         return;
     };
-    let Some(next) = accepted_destination(current, delta, map_id, &collision) else {
+    let Some(occupancy) = collision
+        .occupancy
+        .as_ref()
+        .filter(|_| collision.map_id.as_deref() == Some(map_id) && !collision.failed)
+    else {
         return;
     };
-    if npcs.iter().any(|npc| npc.tile_position() == next)
-        || boxes
-            .iter()
-            .any(|item_box| item_box.tile_position() == next)
-    {
-        return;
+    let direction = movement_vector(direction);
+    let seconds = delta_time.as_secs_f32().min(MAX_MOVEMENT_DELTA_SECONDS);
+    let mut remaining = direction * PLAYER_SPEED_PIXELS_PER_SECOND * seconds;
+    while remaining.abs().max_element() > f32::EPSILON {
+        let fraction = (MAX_COLLISION_STEP_PIXELS / remaining.abs().max_element()).min(1.0);
+        let step = remaining * fraction;
+        let before = motion.top_left();
+        let after = smooth_step(before, step, occupancy, &npcs, &boxes);
+        motion.set_top_left(after);
+        remaining -= step;
+        if after == before {
+            break;
+        }
     }
-    let (Ok(column), Ok(row)) = (u32::try_from(next.x), u32::try_from(next.y)) else {
-        return;
-    };
-    let world_center = tmx_tile_center(
-        column,
-        row,
-        RUSTED_KINGDOMS_TILE_WIDTH,
-        RUSTED_KINGDOMS_TILE_HEIGHT,
-    );
 
-    game.map_mut().set_position(next);
-    player_transform.translation = world_center.extend(player_transform.translation.z);
+    let tile = motion.tile_position();
+    game.map_mut().set_position(tile);
+    let visual_y = -(motion.top_left().y + crate::world_player::CHARACTER_SPRITE_SIZE / 2.0);
+    let z = crate::tmx_ground_asset::world_entity_y_z(
+        visual_y,
+        crate::world_player::CHARACTER_SPRITE_SIZE / 2.0,
+    );
+    player_transform.translation = motion.sprite_center_world(z);
 }
 
 fn set_atlas_tile(sprite: &mut Sprite, tile_id: u32) {
@@ -244,61 +255,97 @@ fn clear_active_map_collision(mut collision: ResMut<ActiveMapCollision>) {
     *collision = ActiveMapCollision::default();
 }
 
-/// Applies Python's smooth-collision order to one grid action.
-///
-/// Continuous Python movement tests the full diagonal rectangle, then X-only, then Y-only. A
-/// whole-tile jump would otherwise tunnel through a closed corner, so the grid adaptation accepts
-/// the full diagonal only when its destination and both side-adjacent cells are open. If not, it
-/// preserves the source's horizontal-then-vertical slide order.
-fn accepted_destination(
-    current: Position,
-    delta: Position,
-    map_id: &str,
-    collision: &ActiveMapCollision,
-) -> Option<Position> {
-    let horizontal = offset_position(current, delta.x, 0);
-    let vertical = offset_position(current, 0, delta.y);
-    if delta.x != 0 && delta.y != 0 {
-        let diagonal = offset_position(current, delta.x, delta.y);
-        if horizontal.is_some_and(|position| collision.is_open(map_id, position))
-            && vertical.is_some_and(|position| collision.is_open(map_id, position))
-            && diagonal.is_some_and(|position| collision.is_open(map_id, position))
-        {
-            return diagonal;
-        }
-        if horizontal.is_some_and(|position| collision.is_open(map_id, position)) {
-            return horizontal;
-        }
-        if vertical.is_some_and(|position| collision.is_open(map_id, position)) {
-            return vertical;
-        }
-        return None;
+fn smooth_step(
+    current: Vec2,
+    delta: Vec2,
+    collision: &CollisionOccupancy,
+    npcs: &Query<&WorldNpc>,
+    boxes: &Query<&WorldItemBox>,
+) -> Vec2 {
+    let full = clamp_top_left(current + delta, collision);
+    if dynamic_collision(full, npcs, boxes) {
+        return current;
+    }
+    if !tile_collision(full, collision) {
+        return full;
     }
 
-    let destination = if delta.x != 0 { horizontal } else { vertical };
-    destination.filter(|position| collision.is_open(map_id, *position))
+    let horizontal = clamp_top_left(current + Vec2::new(delta.x, 0.0), collision);
+    if !dynamic_collision(horizontal, npcs, boxes) && !tile_collision(horizontal, collision) {
+        return horizontal;
+    }
+    let vertical = clamp_top_left(current + Vec2::new(0.0, delta.y), collision);
+    if !dynamic_collision(vertical, npcs, boxes) && !tile_collision(vertical, collision) {
+        return vertical;
+    }
+    current
 }
 
-const fn offset_position(current: Position, dx: i32, dy: i32) -> Option<Position> {
-    let Some(x) = current.x.checked_add(dx) else {
-        return None;
-    };
-    let Some(y) = current.y.checked_add(dy) else {
-        return None;
-    };
-    Some(Position::new(x, y))
+fn clamp_top_left(position: Vec2, collision: &CollisionOccupancy) -> Vec2 {
+    Vec2::new(
+        position.x.clamp(
+            -CHARACTER_COLLISION_OFFSET_X,
+            collision.width() as f32 * RUSTED_KINGDOMS_TILE_WIDTH as f32
+                - CHARACTER_COLLISION_OFFSET_X
+                - CHARACTER_COLLISION_WIDTH,
+        ),
+        position.y.clamp(
+            -CHARACTER_COLLISION_OFFSET_Y,
+            collision.height() as f32 * RUSTED_KINGDOMS_TILE_HEIGHT as f32
+                - CHARACTER_COLLISION_OFFSET_Y
+                - CHARACTER_COLLISION_HEIGHT,
+        ),
+    )
 }
 
-const fn movement_delta(direction: EightWayDirection) -> Position {
+fn tile_collision(top_left: Vec2, collision: &CollisionOccupancy) -> bool {
+    let rect = player_rect(top_left);
+    collision.is_rect_blocked(rect.x, rect.y, rect.width, rect.height)
+}
+
+fn dynamic_collision(
+    top_left: Vec2,
+    npcs: &Query<&WorldNpc>,
+    boxes: &Query<&WorldItemBox>,
+) -> bool {
+    let rect = player_rect(top_left);
+    npcs.iter().any(|npc| rect.overlaps(npc.collision_rect()))
+        || boxes.iter().any(|item_box| {
+            let tile = item_box.tile_position();
+            rect.overlaps(CharacterCollisionRect {
+                x: tile.x as f32 * RUSTED_KINGDOMS_TILE_WIDTH as f32,
+                y: tile.y as f32 * RUSTED_KINGDOMS_TILE_HEIGHT as f32,
+                width: RUSTED_KINGDOMS_TILE_WIDTH as f32,
+                height: RUSTED_KINGDOMS_TILE_HEIGHT as f32,
+            })
+        })
+}
+
+fn player_rect(top_left: Vec2) -> CharacterCollisionRect {
+    CharacterCollisionRect {
+        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
+        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+        width: CHARACTER_COLLISION_WIDTH,
+        height: CHARACTER_COLLISION_HEIGHT,
+    }
+}
+
+fn movement_vector(direction: EightWayDirection) -> Vec2 {
     match direction {
-        EightWayDirection::Up => Position::new(0, -1),
-        EightWayDirection::UpRight => Position::new(1, -1),
-        EightWayDirection::Right => Position::new(1, 0),
-        EightWayDirection::DownRight => Position::new(1, 1),
-        EightWayDirection::Down => Position::new(0, 1),
-        EightWayDirection::DownLeft => Position::new(-1, 1),
-        EightWayDirection::Left => Position::new(-1, 0),
-        EightWayDirection::UpLeft => Position::new(-1, -1),
+        EightWayDirection::Up => Vec2::new(0.0, -1.0),
+        EightWayDirection::UpRight => Vec2::new(
+            std::f32::consts::FRAC_1_SQRT_2,
+            -std::f32::consts::FRAC_1_SQRT_2,
+        ),
+        EightWayDirection::Right => Vec2::new(1.0, 0.0),
+        EightWayDirection::DownRight => Vec2::splat(std::f32::consts::FRAC_1_SQRT_2),
+        EightWayDirection::Down => Vec2::new(0.0, 1.0),
+        EightWayDirection::DownLeft => Vec2::new(
+            -std::f32::consts::FRAC_1_SQRT_2,
+            std::f32::consts::FRAC_1_SQRT_2,
+        ),
+        EightWayDirection::Left => Vec2::new(-1.0, 0.0),
+        EightWayDirection::UpLeft => Vec2::splat(-std::f32::consts::FRAC_1_SQRT_2),
     }
 }
 
@@ -319,7 +366,7 @@ const fn movement_facing(direction: EightWayDirection) -> CardinalDirection {
 mod tests {
     use std::time::Duration;
 
-    use bevy::{image::TextureAtlas, state::app::StatesPlugin};
+    use bevy::{image::TextureAtlas, state::app::StatesPlugin, time::TimeUpdateStrategy};
 
     use super::*;
     use crate::{
@@ -329,7 +376,7 @@ mod tests {
         scenario_manifest::Manifest,
         scenario_party::{PartyCatalog, PartyMember},
         scenario_path::ScenarioRelativePath,
-        scenario_spatial::aric_atlas::AricAtlasLayout,
+        scenario_spatial::{Position, aric_atlas::AricAtlasLayout},
         scenario_yaml,
         tmx_header::parse_tmx_map_document,
         tsx_metadata::parse_tsx_tileset_metadata,
@@ -424,6 +471,9 @@ mod tests {
             .insert_state(state)
             .add_plugins(ActionInputPlugin)
             .add_plugins(CardinalMovementPlugin);
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
+            1.0 / 60.0,
+        )));
         if with_session {
             let mut game = game_state();
             game.map_mut().set_position(Position::new(2, 2));
@@ -435,12 +485,13 @@ mod tests {
             });
         }
         for _ in 0..player_count {
-            let center = tmx_tile_center(2, 2, 32, 32);
+            let motion = WorldPlayerMotion::from_tile(Position::new(2, 2));
             app.world_mut().spawn((
                 WorldPlayer,
-                Transform::from_translation(center.extend(PLAYER_Z)),
+                Transform::from_translation(motion.sprite_center_world(PLAYER_Z)),
                 player_sprite(),
                 player_animation(),
+                motion,
             ));
         }
         app.update();
@@ -474,184 +525,211 @@ mod tests {
     }
 
     #[test]
-    fn each_fresh_cardinal_action_moves_exactly_one_tile_and_updates_facing() {
-        for (key, direction, expected_position, expected_frame) in [
+    fn held_cardinal_input_moves_five_pixels_per_frame_and_updates_facing() {
+        for (key, direction, expected_delta, expected_frame) in [
             (
                 KeyCode::ArrowUp,
                 CardinalDirection::Up,
-                Position::new(2, 1),
+                Vec2::new(0.0, -5.0),
                 1,
             ),
             (
                 KeyCode::ArrowLeft,
                 CardinalDirection::Left,
-                Position::new(1, 2),
+                Vec2::new(-5.0, 0.0),
                 10,
             ),
             (
                 KeyCode::ArrowDown,
                 CardinalDirection::Down,
-                Position::new(2, 3),
+                Vec2::new(0.0, 5.0),
                 19,
             ),
             (
                 KeyCode::ArrowRight,
                 CardinalDirection::Right,
-                Position::new(3, 2),
+                Vec2::new(5.0, 0.0),
                 28,
             ),
         ] {
             let mut app = movement_app(AppState::World, true, 1, &[]);
+            let start = app
+                .world_mut()
+                .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+                .single(app.world())
+                .unwrap()
+                .top_left();
             press(&mut app, &[key]);
             app.update();
 
             let game = app.world().resource::<GameState>();
-            assert_eq!(game.map().position(), expected_position);
+            assert_eq!(game.map().position(), Position::new(2, 2));
             assert_eq!(game.map().facing(), direction);
-            assert_eq!(
-                player_translation(&mut app),
-                tmx_tile_center(
-                    expected_position.x as u32,
-                    expected_position.y as u32,
-                    32,
-                    32,
-                )
-                .extend(PLAYER_Z)
-            );
+            let moved = app
+                .world_mut()
+                .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+                .single(app.world())
+                .unwrap()
+                .top_left();
+            assert!((moved - (start + expected_delta)).length() < 0.01);
             assert_eq!(player_frame(&mut app), expected_frame);
         }
     }
 
     #[test]
-    fn all_four_diagonals_move_one_grid_step_and_use_vertical_facing() {
-        for (keys, direction, expected_position, expected_frame) in [
+    fn all_four_diagonals_are_normalized_and_use_vertical_facing() {
+        for (keys, direction, signs, expected_frame) in [
             (
                 [KeyCode::ArrowUp, KeyCode::ArrowRight],
                 CardinalDirection::Up,
-                Position::new(3, 1),
+                Vec2::new(1.0, -1.0),
                 1,
             ),
             (
                 [KeyCode::ArrowDown, KeyCode::ArrowRight],
                 CardinalDirection::Down,
-                Position::new(3, 3),
+                Vec2::new(1.0, 1.0),
                 19,
             ),
             (
                 [KeyCode::ArrowDown, KeyCode::ArrowLeft],
                 CardinalDirection::Down,
-                Position::new(1, 3),
+                Vec2::new(-1.0, 1.0),
                 19,
             ),
             (
                 [KeyCode::ArrowUp, KeyCode::ArrowLeft],
                 CardinalDirection::Up,
-                Position::new(1, 1),
+                Vec2::new(-1.0, -1.0),
                 1,
             ),
         ] {
             let mut app = movement_app(AppState::World, true, 1, &[]);
+            let start = app
+                .world_mut()
+                .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+                .single(app.world())
+                .unwrap()
+                .top_left();
             press(&mut app, &keys);
             app.update();
 
             let game = app.world().resource::<GameState>();
-            assert_eq!(game.map().position(), expected_position);
+            assert_eq!(game.map().position(), Position::new(2, 2));
             assert_eq!(game.map().facing(), direction);
-            assert_eq!(
-                player_translation(&mut app),
-                tmx_tile_center(
-                    expected_position.x as u32,
-                    expected_position.y as u32,
-                    32,
-                    32,
-                )
-                .extend(PLAYER_Z)
-            );
+            let moved = app
+                .world_mut()
+                .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+                .single(app.world())
+                .unwrap()
+                .top_left()
+                - start;
+            let expected = signs * (5.0 * std::f32::consts::FRAC_1_SQRT_2);
+            assert!((moved - expected).length() < 0.01);
             assert_eq!(player_frame(&mut app), expected_frame);
         }
     }
 
     #[test]
-    fn diagonal_grid_collision_preserves_python_full_then_x_then_y_order() {
-        // The grid adaptation forbids tunneling through a corner: full diagonal requires both
-        // side cells and the destination. When full movement is blocked, Python smooth collision
-        // tries X-only before Y-only, which these cases preserve exactly.
-        for (blocked, expected_position) in [
-            (vec![Position::new(3, 1)], Position::new(3, 2)),
-            (vec![Position::new(3, 2)], Position::new(2, 1)),
-            (vec![Position::new(2, 1)], Position::new(3, 2)),
-            (
-                vec![Position::new(3, 2), Position::new(2, 1)],
-                Position::new(2, 2),
-            ),
-        ] {
-            let mut app = movement_app(AppState::World, true, 1, &blocked);
-            press(&mut app, &[KeyCode::ArrowUp, KeyCode::ArrowRight]);
+    fn diagonal_collision_slides_along_a_wall_instead_of_stopping_or_teleporting() {
+        let mut app = movement_app(
+            AppState::World,
+            true,
+            1,
+            &[Position::new(3, 2), Position::new(3, 1)],
+        );
+        let start = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        press(&mut app, &[KeyCode::ArrowUp, KeyCode::ArrowRight]);
+        for _ in 0..8 {
             app.update();
-
-            let game = app.world().resource::<GameState>();
-            assert_eq!(game.map().position(), expected_position);
-            assert_eq!(game.map().facing(), CardinalDirection::Up);
-            assert_eq!(player_frame(&mut app), 1);
         }
+        let moved = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        assert!(moved.y < start.y - 20.0);
+        assert!(moved.x < start.x + 10.0);
+        assert_eq!(
+            app.world().resource::<GameState>().map().facing(),
+            CardinalDirection::Up
+        );
     }
 
     #[test]
-    fn authored_walk_frame_stays_visible_for_its_tsx_duration_then_idles() {
+    fn authored_walk_cycle_advances_while_moving_and_idles_on_release() {
         let mut animation = player_animation();
 
         assert_eq!(
             animation.update(Some(CardinalDirection::Right), Duration::ZERO),
             28
         );
-        assert_eq!(animation.update(None, Duration::from_millis(99)), 28);
-        assert_eq!(animation.update(None, Duration::from_millis(1)), 27);
-
-        // A later grid action continues the walk cycle instead of flashing frame one repeatedly.
         assert_eq!(
-            animation.update(Some(CardinalDirection::Right), Duration::ZERO),
+            animation.update(Some(CardinalDirection::Right), Duration::from_millis(99)),
+            28
+        );
+        assert_eq!(
+            animation.update(Some(CardinalDirection::Right), Duration::from_millis(1)),
             29
         );
-        assert_eq!(animation.update(None, Duration::from_millis(100)), 27);
+        assert_eq!(animation.update(None, Duration::ZERO), 27);
 
-        // Direction changes select the same next walk column in the new authored row, and the
-        // eventual idle frame retains that last facing.
+        // A later movement resumes at the next walk column instead of flashing frame one.
         assert_eq!(
             animation.update(Some(CardinalDirection::Up), Duration::ZERO),
             3
         );
-        assert_eq!(animation.update(None, Duration::from_millis(100)), 0);
+        assert_eq!(animation.update(None, Duration::ZERO), 0);
     }
 
     #[test]
-    fn held_key_does_not_retrigger_until_released_and_pressed_again() {
+    fn held_key_continues_moving_until_released() {
         let mut app = movement_app(AppState::World, true, 1, &[]);
+        let start = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
         press(&mut app, &[KeyCode::ArrowRight]);
         app.update();
-        assert_eq!(
-            app.world().resource::<GameState>().map().position(),
-            Position::new(3, 2)
-        );
+        let first = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        assert!((first.x - start.x - 5.0).abs() < 0.01);
 
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
             .clear();
         app.update();
-        assert_eq!(
-            app.world().resource::<GameState>().map().position(),
-            Position::new(3, 2)
-        );
+        let second = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        assert!((second.x - first.x - 5.0).abs() < 0.01);
 
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
             .release(KeyCode::ArrowRight);
         app.update();
-        press(&mut app, &[KeyCode::ArrowRight]);
-        app.update();
-        assert_eq!(
-            app.world().resource::<GameState>().map().position(),
-            Position::new(4, 2)
-        );
+        let released = app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        assert_eq!(released, second);
     }
 
     #[test]
@@ -696,35 +774,29 @@ mod tests {
     }
 
     #[test]
-    fn collision_rejects_each_cardinal_destination_and_only_updates_facing() {
-        for (key, direction, blocked) in [
-            (KeyCode::ArrowUp, CardinalDirection::Up, Position::new(2, 1)),
-            (
-                KeyCode::ArrowLeft,
-                CardinalDirection::Left,
-                Position::new(1, 2),
-            ),
-            (
-                KeyCode::ArrowDown,
-                CardinalDirection::Down,
-                Position::new(2, 3),
-            ),
-            (
-                KeyCode::ArrowRight,
-                CardinalDirection::Right,
-                Position::new(3, 2),
-            ),
-        ] {
-            let mut app = movement_app(AppState::World, true, 1, &[blocked]);
-            let initial_transform = player_translation(&mut app);
-            press(&mut app, &[key]);
+    fn collision_rectangle_can_approach_grass_edge_but_cannot_enter_blocked_tile() {
+        let mut app = movement_app(AppState::World, true, 1, &[Position::new(3, 2)]);
+        press(&mut app, &[KeyCode::ArrowRight]);
+        for _ in 0..12 {
             app.update();
-
-            let game = app.world().resource::<GameState>();
-            assert_eq!(game.map().position(), Position::new(2, 2));
-            assert_eq!(game.map().facing(), direction);
-            assert_eq!(player_translation(&mut app), initial_transform);
         }
+        let motion = *app
+            .world_mut()
+            .query_filtered::<&WorldPlayerMotion, With<WorldPlayer>>()
+            .single(app.world())
+            .unwrap();
+        let rect = motion.collision_rect();
+        assert!(rect.x + rect.width <= 96.0);
+        assert!(
+            motion.top_left().x
+                > WorldPlayerMotion::from_tile(Position::new(2, 2))
+                    .top_left()
+                    .x
+        );
+        assert_eq!(
+            app.world().resource::<GameState>().map().facing(),
+            CardinalDirection::Right
+        );
     }
 
     #[test]
@@ -753,17 +825,5 @@ mod tests {
                 Position::new(2, 2)
             );
         }
-
-        let mut app = movement_app(AppState::World, true, 1, &[]);
-        app.world_mut()
-            .resource_mut::<GameState>()
-            .map_mut()
-            .set_position(Position::new(4, 2));
-        press(&mut app, &[KeyCode::ArrowRight]);
-        app.update();
-        assert_eq!(
-            app.world().resource::<GameState>().map().position(),
-            Position::new(4, 2)
-        );
     }
 }

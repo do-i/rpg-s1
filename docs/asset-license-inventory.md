@@ -976,7 +976,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` |
 | Source SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
-| Destination SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
+| Destination SHA-256 | `eff9b31c2da8e8a1703dc90a3acbe604d392643d1d58d120f193e78c3b340f12` |
 | Asset kind | Tiled map |
 | Title/name | `zone_01_starting_forest.tmx` |
 | Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
@@ -984,7 +984,7 @@ status. The required fields are intentionally repeated in each entry.
 | License identifier/name | unknown |
 | License text/notice location | unknown |
 | Required attribution | unknown |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Modification status/details | Modified locally on 2026-08-16: the gameplay-only `spawn_tile` layer is explicitly hidden so its five editor markers are not rendered in play. Tile data and encounter spawn semantics are unchanged. |
 | Redistribution permission | unknown |
 | Commercial-use permission | unknown |
 | Derivative-work permission | unknown |

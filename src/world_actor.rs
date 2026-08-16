@@ -10,9 +10,13 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
-    tile_coordinates::tmx_tile_center,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tsx_atlas_asset::TsxAtlasAsset,
+    world_player::{
+        CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
+        CHARACTER_COLLISION_WIDTH, CHARACTER_SPRITE_SIZE, CharacterCollisionRect,
+        WorldPlayerMotion,
+    },
 };
 
 const TILE_SIZE: u32 = 32;
@@ -77,6 +81,7 @@ pub(crate) struct WorldNpc {
     dialogue_id: String,
     origin: Position,
     position: Position,
+    top_left: Vec2,
     facing: CardinalDirection,
     default_facing: CardinalDirection,
     mode: NpcAnimationMode,
@@ -86,7 +91,7 @@ pub(crate) struct WorldNpc {
     frame: u32,
     frame_elapsed: f32,
     wander_pause: f32,
-    wander_target: Option<Position>,
+    wander_target: Option<Vec2>,
 }
 
 #[allow(dead_code, reason = "M5.11 interaction consumes these accessors next")]
@@ -113,6 +118,15 @@ impl WorldNpc {
 
     pub(crate) const fn facing(&self) -> CardinalDirection {
         self.facing
+    }
+
+    pub(crate) fn collision_rect(&self) -> CharacterCollisionRect {
+        CharacterCollisionRect {
+            x: self.top_left.x + CHARACTER_COLLISION_OFFSET_X,
+            y: self.top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+            width: CHARACTER_COLLISION_WIDTH,
+            height: CHARACTER_COLLISION_HEIGHT,
+        }
     }
 
     pub(crate) fn interaction_range(&self) -> f32 {
@@ -257,7 +271,8 @@ fn drive_world_actor_load(
             .unwrap_or_else(|| {
                 Sprite::from_color(Color::srgb(0.31, 0.63, 0.86), Vec2::splat(64.0))
             });
-        let center = tile_center(npc.position);
+        let top_left = character_top_left(npc.position);
+        let center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
         let actor = WorldNpc {
             map_id: map_id.to_owned(),
             id: npc.id.clone(),
@@ -265,6 +280,7 @@ fn drive_world_actor_load(
             dialogue_id: npc.effective_dialogue_id().to_owned(),
             origin: npc.position,
             position: npc.position,
+            top_left,
             facing: npc.default_facing,
             default_facing: npc.default_facing,
             mode: npc.animation.mode,
@@ -278,9 +294,11 @@ fn drive_world_actor_load(
         };
         commands.spawn((
             sprite,
-            Transform::from_translation(
-                center.extend(world_entity_y_z(center.y, SPRITE_HALF_HEIGHT)),
-            ),
+            Transform::from_translation(Vec3::new(
+                center.x,
+                -center.y,
+                world_entity_y_z(-center.y, SPRITE_HALF_HEIGHT),
+            )),
             actor,
         ));
     }
@@ -303,6 +321,7 @@ fn update_world_npcs(
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     game: Option<ResMut<GameState>>,
+    players: Query<&WorldPlayerMotion>,
     mut actors: Query<(Entity, &mut WorldNpc, &mut Sprite, &mut Transform)>,
 ) {
     let Some(mut game) = game else {
@@ -314,17 +333,26 @@ fn update_world_npcs(
     let Ok(collision) = CollisionOccupancy::from_tmx_document(map.document()) else {
         return;
     };
-    let player = game.map().position();
+    let player_tile = game.map().position();
+    let player_motion = players
+        .single()
+        .copied()
+        .unwrap_or_else(|_| WorldPlayerMotion::from_tile(player_tile));
+    let player_rect = player_motion.collision_rect();
     let snapshot = actors
         .iter()
-        .map(|(entity, actor, _, _)| (entity, actor.position))
+        .map(|(entity, actor, _, _)| (entity, actor.collision_rect()))
         .collect::<Vec<_>>();
     let delta = time.delta_secs();
 
     for (entity, mut actor, mut sprite, mut transform) in &mut actors {
-        let near = is_near(actor.position, player, actor.interaction_range);
+        let near = is_near(
+            actor.top_left,
+            player_motion.top_left(),
+            actor.interaction_range * TILE_SIZE as f32,
+        );
         if near {
-            actor.facing = direction_toward(actor.position, player);
+            actor.facing = direction_toward(actor.top_left, player_motion.top_left());
             actor.frame = 0;
             actor.wander_target = None;
             actor.wander_pause = random_pause(game.rng_mut());
@@ -339,7 +367,7 @@ fn update_world_npcs(
                     &mut actor,
                     delta,
                     entity,
-                    player,
+                    player_rect,
                     &snapshot,
                     &collision,
                     game.rng_mut(),
@@ -349,8 +377,12 @@ fn update_world_npcs(
         if let Some(atlas) = sprite.texture_atlas.as_mut() {
             atlas.index = direction_frame(actor.facing, actor.frame) as usize;
         }
-        let center = tile_center(actor.position);
-        transform.translation = center.extend(world_entity_y_z(center.y, SPRITE_HALF_HEIGHT));
+        let center = actor.top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
+        transform.translation = Vec3::new(
+            center.x,
+            -center.y,
+            world_entity_y_z(-center.y, SPRITE_HALF_HEIGHT),
+        );
     }
 }
 
@@ -358,12 +390,11 @@ fn update_wander(
     actor: &mut WorldNpc,
     delta: f32,
     entity: Entity,
-    player: Position,
-    snapshot: &[(Entity, Position)],
+    player: CharacterCollisionRect,
+    snapshot: &[(Entity, CharacterCollisionRect)],
     collision: &CollisionOccupancy,
     rng: &mut GameplayRng,
 ) {
-    actor.frame_elapsed += delta;
     if actor.wander_target.is_none() {
         actor.wander_pause -= delta;
         actor.frame = 0;
@@ -377,66 +408,80 @@ fn update_wander(
         }
         return;
     }
-    let step_seconds = BASE_FRAME_SECONDS / actor.speed.max(0.1);
-    if actor.frame_elapsed < step_seconds {
-        return;
-    }
-    actor.frame_elapsed -= step_seconds;
     let target = actor.wander_target.expect("checked above");
-    if actor.position == target {
-        actor.wander_target = None;
-        actor.wander_pause = random_pause(rng);
-        actor.frame = 0;
-        return;
-    }
-    let dx = target.x - actor.position.x;
-    let dy = target.y - actor.position.y;
-    let (step, facing) = if dx.abs() >= dy.abs() && dx != 0 {
-        (
-            Position::new(dx.signum(), 0),
-            if dx < 0 {
-                CardinalDirection::Left
-            } else {
-                CardinalDirection::Right
-            },
-        )
+    let delta_to_target = target - actor.top_left;
+    let distance = delta_to_target.abs().max_element();
+    let speed = TILE_SIZE as f32 * 1.5 * actor.speed;
+    let next = if distance <= speed * delta {
+        target
     } else {
-        (
-            Position::new(0, dy.signum()),
-            if dy < 0 {
-                CardinalDirection::Up
-            } else {
-                CardinalDirection::Down
-            },
-        )
+        let step = speed * delta;
+        actor.top_left
+            + Vec2::new(
+                if delta_to_target.x == 0.0 {
+                    0.0
+                } else {
+                    delta_to_target.x.signum() * step
+                },
+                if delta_to_target.y == 0.0 {
+                    0.0
+                } else {
+                    delta_to_target.y.signum() * step
+                },
+            )
     };
-    actor.facing = facing;
-    let next = Position::new(actor.position.x + step.x, actor.position.y + step.y);
-    if occupied(next, entity, player, snapshot) || collision.is_open(next.x, next.y) != Some(true) {
+    actor.facing = if delta_to_target.x.abs() >= delta_to_target.y.abs() && delta_to_target.x != 0.0
+    {
+        if delta_to_target.x < 0.0 {
+            CardinalDirection::Left
+        } else {
+            CardinalDirection::Right
+        }
+    } else if delta_to_target.y < 0.0 {
+        CardinalDirection::Up
+    } else {
+        CardinalDirection::Down
+    };
+    let next_rect = character_collision_rect(next);
+    if collision.is_rect_blocked(next_rect.x, next_rect.y, next_rect.width, next_rect.height)
+        || occupied(next_rect, entity, player, snapshot)
+    {
         actor.wander_target = None;
         actor.wander_pause = random_pause(rng);
         actor.frame = 0;
         return;
     }
-    actor.position = next;
-    actor.frame = if actor.frame >= 8 { 1 } else { actor.frame + 1 };
+    actor.top_left = next;
+    actor.position = tile_from_top_left(next);
+    advance_frame(actor, delta);
+    if next == target {
+        actor.wander_target = None;
+        actor.wander_pause = random_pause(rng);
+        actor.frame = 0;
+    }
 }
 
 fn pick_wander_target(
     actor: &WorldNpc,
     entity: Entity,
-    player: Position,
-    snapshot: &[(Entity, Position)],
+    player: CharacterCollisionRect,
+    snapshot: &[(Entity, CharacterCollisionRect)],
     collision: &CollisionOccupancy,
     rng: &mut GameplayRng,
-) -> Option<Position> {
-    let span = u64::try_from(actor.range.saturating_mul(2).saturating_add(1)).ok()?;
+) -> Option<Vec2> {
+    let max_offset = actor.range.saturating_mul(TILE_SIZE as i32);
+    let span = u64::try_from(max_offset.saturating_mul(2).saturating_add(1)).ok()?;
     for _ in 0..8 {
-        let x = i32::try_from(rng.next_u64() % span).ok()? - actor.range;
-        let y = i32::try_from(rng.next_u64() % span).ok()? - actor.range;
-        let target = Position::new(actor.origin.x + x, actor.origin.y + y);
-        if collision.is_open(target.x, target.y) == Some(true)
-            && !occupied(target, entity, player, snapshot)
+        let x = i32::try_from(rng.next_u64() % span).ok()? - max_offset;
+        let y = i32::try_from(rng.next_u64() % span).ok()? - max_offset;
+        let target = character_top_left(actor.origin) + Vec2::new(x as f32, y as f32);
+        let target_rect = character_collision_rect(target);
+        if !collision.is_rect_blocked(
+            target_rect.x,
+            target_rect.y,
+            target_rect.width,
+            target_rect.height,
+        ) && !occupied(target_rect, entity, player, snapshot)
         {
             return Some(target);
         }
@@ -445,15 +490,15 @@ fn pick_wander_target(
 }
 
 fn occupied(
-    position: Position,
+    rect: CharacterCollisionRect,
     entity: Entity,
-    player: Position,
-    snapshot: &[(Entity, Position)],
+    player: CharacterCollisionRect,
+    snapshot: &[(Entity, CharacterCollisionRect)],
 ) -> bool {
-    position == player
+    rect.overlaps(player)
         || snapshot
             .iter()
-            .any(|(other, occupied)| *other != entity && *occupied == position)
+            .any(|(other, occupied)| *other != entity && rect.overlaps(*occupied))
 }
 
 fn advance_frame(actor: &mut WorldNpc, delta: f32) {
@@ -480,32 +525,49 @@ fn direction_frame(direction: CardinalDirection, frame: u32) -> u32 {
     row * 9 + frame
 }
 
-fn direction_toward(from: Position, to: Position) -> CardinalDirection {
+fn direction_toward(from: Vec2, to: Vec2) -> CardinalDirection {
     let dx = to.x - from.x;
     let dy = to.y - from.y;
     if dy.abs() >= dx.abs() {
-        if dy < 0 {
+        if dy < 0.0 {
             CardinalDirection::Up
         } else {
             CardinalDirection::Down
         }
-    } else if dx < 0 {
+    } else if dx < 0.0 {
         CardinalDirection::Left
     } else {
         CardinalDirection::Right
     }
 }
 
-fn is_near(npc: Position, player: Position, range: f32) -> bool {
-    (npc.x - player.x).abs() as f32 <= range && (npc.y - player.y).abs() as f32 <= range
+fn is_near(npc: Vec2, player: Vec2, range: f32) -> bool {
+    (npc.x - player.x).abs() <= range && (npc.y - player.y).abs() <= range
 }
 
-fn tile_center(position: Position) -> Vec2 {
-    tmx_tile_center(
-        u32::try_from(position.x).unwrap_or_default(),
-        u32::try_from(position.y).unwrap_or_default(),
-        TILE_SIZE,
-        TILE_SIZE,
+fn character_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
+    CharacterCollisionRect {
+        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
+        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+        width: CHARACTER_COLLISION_WIDTH,
+        height: CHARACTER_COLLISION_HEIGHT,
+    }
+}
+
+fn tile_from_top_left(top_left: Vec2) -> Position {
+    let rect = character_collision_rect(top_left);
+    Position::new(
+        ((rect.x + rect.width / 2.0) / TILE_SIZE as f32).floor() as i32,
+        ((rect.y + rect.height / 2.0) / TILE_SIZE as f32).floor() as i32,
+    )
+}
+
+fn character_top_left(position: Position) -> Vec2 {
+    Vec2::new(
+        position.x as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
+            - (CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0),
+        position.y as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
+            - (CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0),
     )
 }
 
@@ -530,6 +592,18 @@ mod tests {
             "../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml"
         ))
         .unwrap()
+    }
+
+    fn open_collision() -> CollisionOccupancy {
+        let rows = std::iter::repeat_n("0,0,0,0,0,0,0,0,0", 9)
+            .collect::<Vec<_>>()
+            .join(",\n");
+        let xml = format!(
+            r#"<map orientation="orthogonal" width="9" height="9" tilewidth="32" tileheight="32"><layer id="1" name="collision" width="9" height="9"><data encoding="csv">{rows}</data></layer></map>"#
+        );
+        let owner = ScenarioRelativePath::try_from("assets/maps/invented.tmx").unwrap();
+        let document = crate::tmx_header::parse_tmx_map_document(&xml, &owner).unwrap();
+        CollisionOccupancy::from_tmx_document(&document).unwrap()
     }
 
     #[test]
@@ -560,20 +634,7 @@ mod tests {
 
     #[test]
     fn deterministic_wander_targets_stay_bounded_and_avoid_occupants() {
-        let xml = r#"<map orientation="orthogonal" width="9" height="9" tilewidth="32" tileheight="32"><layer id="1" name="collision" width="9" height="9"><data encoding="csv">
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0
-</data></layer></map>"#;
-        let owner = ScenarioRelativePath::try_from("assets/maps/invented.tmx").unwrap();
-        let document = crate::tmx_header::parse_tmx_map_document(xml, &owner).unwrap();
-        let collision = CollisionOccupancy::from_tmx_document(&document).unwrap();
+        let collision = open_collision();
         let mut actor = WorldNpc {
             map_id: "invented".into(),
             id: "npc".into(),
@@ -581,6 +642,7 @@ mod tests {
             dialogue_id: "npc".into(),
             origin: Position::new(4, 4),
             position: Position::new(4, 4),
+            top_left: character_top_left(Position::new(4, 4)),
             facing: CardinalDirection::Down,
             default_facing: CardinalDirection::Down,
             mode: NpcAnimationMode::Wander,
@@ -595,34 +657,71 @@ mod tests {
         let entity = Entity::from_bits(1);
         let occupied_entity = Entity::from_bits(2);
         let snapshot = [
-            (entity, actor.position),
-            (occupied_entity, Position::new(5, 5)),
+            (entity, actor.collision_rect()),
+            (
+                occupied_entity,
+                character_collision_rect(character_top_left(Position::new(5, 5))),
+            ),
         ];
+        let player = character_collision_rect(character_top_left(Position::new(4, 5)));
         let mut first = GameplayRng::from_seed(77);
         let mut second = GameplayRng::from_seed(77);
-        let a = pick_wander_target(
-            &actor,
-            entity,
-            Position::new(4, 5),
-            &snapshot,
-            &collision,
-            &mut first,
-        )
-        .unwrap();
-        let b = pick_wander_target(
-            &actor,
-            entity,
-            Position::new(4, 5),
-            &snapshot,
-            &collision,
-            &mut second,
-        )
-        .unwrap();
+        let a =
+            pick_wander_target(&actor, entity, player, &snapshot, &collision, &mut first).unwrap();
+        let b =
+            pick_wander_target(&actor, entity, player, &snapshot, &collision, &mut second).unwrap();
         assert_eq!(a, b);
-        assert!((a.x - actor.origin.x).abs() <= actor.range);
-        assert!((a.y - actor.origin.y).abs() <= actor.range);
-        assert_ne!(a, Position::new(4, 5));
-        assert_ne!(a, Position::new(5, 5));
+        let origin = character_top_left(actor.origin);
+        assert!((a.x - origin.x).abs() <= (actor.range * TILE_SIZE as i32) as f32);
+        assert!((a.y - origin.y).abs() <= (actor.range * TILE_SIZE as i32) as f32);
+        assert!(!character_collision_rect(a).overlaps(player));
         actor.wander_target = Some(a);
+    }
+
+    #[test]
+    fn wandering_npc_moves_fractionally_toward_target_instead_of_teleporting() {
+        let collision = open_collision();
+        let mut actor = WorldNpc {
+            map_id: "invented".into(),
+            id: "npc".into(),
+            name: "Npc".into(),
+            dialogue_id: "npc".into(),
+            origin: Position::new(4, 4),
+            position: Position::new(4, 4),
+            top_left: character_top_left(Position::new(4, 4)),
+            facing: CardinalDirection::Down,
+            default_facing: CardinalDirection::Down,
+            mode: NpcAnimationMode::Wander,
+            speed: 1.0,
+            range: 2,
+            interaction_range: 1.5,
+            frame: 0,
+            frame_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        };
+        let start = actor.top_left;
+        actor.wander_target = Some(start + Vec2::new(TILE_SIZE as f32, 0.0));
+        let entity = Entity::from_bits(1);
+        let snapshot = [(entity, actor.collision_rect())];
+        let player = character_collision_rect(character_top_left(Position::new(8, 8)));
+        let mut rng = GameplayRng::from_seed(9);
+
+        update_wander(
+            &mut actor,
+            1.0 / 60.0,
+            entity,
+            player,
+            &snapshot,
+            &collision,
+            &mut rng,
+        );
+
+        assert!(actor.top_left.x > start.x);
+        assert!(actor.top_left.x < start.x + TILE_SIZE as f32);
+        assert_eq!(actor.top_left.y, start.y);
+        assert_eq!(actor.position, Position::new(4, 4));
+        assert_eq!(actor.facing, CardinalDirection::Right);
+        assert!(actor.wander_target.is_some());
     }
 }

@@ -14,9 +14,10 @@ selected another platform.
 
 The composition contract is the fixed 1280x766 gameplay canvas with the
 30x20, 32-pixel Ardel map centered over the shared `(10, 10, 30)` clear color.
-It omits the reserved `collision` layer, preserves the visible background
-layers, applies the M4 bottom-edge split to decoration, and overlays TSX tile
-18 (Aric's down-idle frame) at new-game tile `[14, 5]`. The oracle hashes the
+It preserves every authored visible layer in TMX source order, including the
+`collision` layer whose tiles also provide Ardel's building and fence artwork,
+then overlays TSX tile 18 (Aric's down-idle frame) with its feet-aligned collision
+rectangle centered at new-game tile `[14, 5]`. The oracle hashes the
 decoded 8-bit RGBA pixels rather than PNG file bytes, avoiding differences in
 compression or metadata.
 

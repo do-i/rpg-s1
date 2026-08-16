@@ -83,7 +83,6 @@ impl ActionMap {
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
     just_pressed: [bool; 4],
-    movement_just_pressed: [bool; 4],
     movement_pressed: [bool; 4],
 }
 
@@ -108,22 +107,12 @@ impl ActionState {
         }
     }
 
-    /// Resolves one fresh source-compatible eight-way movement action.
+    /// Resolves the currently held source-compatible eight-way movement input.
     ///
-    /// At least one direction must have begun this frame, preserving the milestone's one-tile
-    /// action contract. The vector itself uses every currently held direction, so pressing a
-    /// second perpendicular key while the first remains held produces a diagonal action exactly
-    /// as Python's summed key state does. Opposite directions cancel.
+    /// World movement is continuous, so held directions remain active every frame. The vector
+    /// uses every held direction exactly as Python's summed key state does; opposites cancel.
     pub(crate) fn movement(&self) -> Option<crate::scenario_spatial::EightWayDirection> {
         use crate::scenario_spatial::EightWayDirection;
-
-        if !self
-            .movement_just_pressed
-            .into_iter()
-            .any(|pressed| pressed)
-        {
-            return None;
-        }
 
         let horizontal = i8::from(self.movement_pressed[MovementAction::Right.index()])
             - i8::from(self.movement_pressed[MovementAction::Left.index()]);
@@ -165,10 +154,6 @@ fn update_action_state(
             .any(|key| keys.just_pressed(*key));
     }
     for action in MovementAction::ALL {
-        actions.movement_just_pressed[action.index()] = map
-            .movement_bindings(action)
-            .iter()
-            .any(|key| keys.just_pressed(*key));
         actions.movement_pressed[action.index()] = map
             .movement_bindings(action)
             .iter()
@@ -353,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn newly_pressed_direction_combines_with_an_already_held_direction_once() {
+    fn held_direction_remains_active_and_combines_with_a_second_direction() {
         use crate::scenario_spatial::EightWayDirection;
 
         let mut app = action_app();
@@ -371,7 +356,10 @@ mod tests {
             .resource_mut::<ButtonInput<KeyCode>>()
             .clear();
         app.update();
-        assert_eq!(app.world().resource::<ActionState>().movement(), None);
+        assert_eq!(
+            app.world().resource::<ActionState>().movement(),
+            Some(EightWayDirection::Up)
+        );
 
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
@@ -386,7 +374,10 @@ mod tests {
             .resource_mut::<ButtonInput<KeyCode>>()
             .clear();
         app.update();
-        assert_eq!(app.world().resource::<ActionState>().movement(), None);
+        assert_eq!(
+            app.world().resource::<ActionState>().movement(),
+            Some(EightWayDirection::UpRight)
+        );
     }
 
     #[test]

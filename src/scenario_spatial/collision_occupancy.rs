@@ -17,6 +17,8 @@ use crate::tmx_header::TmxMapDocument;
 pub(crate) struct CollisionOccupancy {
     width: u32,
     height: u32,
+    tile_width: u32,
+    tile_height: u32,
     blocked: Vec<bool>,
 }
 
@@ -62,6 +64,8 @@ impl CollisionOccupancy {
         Ok(Self {
             width,
             height,
+            tile_width: document.header().tile_width(),
+            tile_height: document.header().tile_height(),
             blocked: layer.gids().iter().map(|gid| !gid.is_empty()).collect(),
         })
     }
@@ -88,6 +92,20 @@ impl CollisionOccupancy {
     /// Returns `None` outside the finite map and otherwise whether the cell is open.
     pub(crate) fn is_open(&self, column: i32, row: i32) -> Option<bool> {
         self.is_blocked(column, row).map(|blocked| !blocked)
+    }
+
+    /// Checks the four corners of a source-pixel collision rectangle.
+    pub(crate) fn is_rect_blocked(&self, x: f32, y: f32, width: f32, height: f32) -> bool {
+        let right = x + width - 1.0;
+        let bottom = y + height - 1.0;
+        [[x, y], [right, y], [x, bottom], [right, bottom]]
+            .into_iter()
+            .any(|[px, py]| {
+                self.is_blocked(
+                    (px / self.tile_width as f32).floor() as i32,
+                    (py / self.tile_height as f32).floor() as i32,
+                ) != Some(false)
+            })
     }
 }
 
@@ -178,6 +196,8 @@ mod tests {
         assert_eq!(occupancy.is_blocked(1, 1), Some(true));
         assert_eq!(occupancy.is_open(0, 0), Some(false));
         assert_eq!(occupancy.is_open(1, 0), Some(true));
+        assert!(!occupancy.is_rect_blocked(36.0, 4.0, 20.0, 18.0));
+        assert!(occupancy.is_rect_blocked(20.0, 20.0, 20.0, 18.0));
     }
 
     #[test]

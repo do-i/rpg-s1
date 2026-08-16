@@ -15,13 +15,18 @@ use bevy::{
 use crate::{
     app_state::AppState, game_state::GameState, gameplay_canvas::camera_follow::CameraFollowTarget,
     scenario_path::ScenarioRelativePath, scenario_root::ScenarioRoot,
-    scenario_spatial::aric_atlas::AricAtlasLayout, tile_coordinates::tmx_tile_center,
-    tmx_ground_asset::world_entity_y_z, tsx_atlas_asset::TsxAtlasAsset,
+    scenario_spatial::aric_atlas::AricAtlasLayout, tmx_ground_asset::world_entity_y_z,
+    tsx_atlas_asset::TsxAtlasAsset,
 };
 
 const ARIC_TSX_PATH: &str = "assets/sprites/party/01_aric_walk.tsx";
 const MAP_TILE_WIDTH: u32 = 32;
 const MAP_TILE_HEIGHT: u32 = 32;
+pub(crate) const CHARACTER_SPRITE_SIZE: f32 = 64.0;
+pub(crate) const CHARACTER_COLLISION_WIDTH: f32 = 20.0;
+pub(crate) const CHARACTER_COLLISION_HEIGHT: f32 = 18.0;
+pub(crate) const CHARACTER_COLLISION_OFFSET_X: f32 = 22.0;
+pub(crate) const CHARACTER_COLLISION_OFFSET_Y: f32 = 41.0;
 const PLAYER_SPRITE_HALF_HEIGHT: f32 = 32.0;
 
 /// Loads and owns the one visible World player for the active session.
@@ -49,6 +54,84 @@ impl Plugin for WorldPlayerPlugin {
 /// Marks the single player sprite owned by the World state.
 #[derive(Component)]
 pub(crate) struct WorldPlayer;
+
+/// Continuous source-pixel position for the player's 64x64 sprite.
+///
+/// [`GameState`] retains the containing tile for saves and tile-authored interactions, while
+/// movement and collision use this top-left pixel coordinate and the source's feet-aligned
+/// 20x18 collision rectangle.
+#[derive(Clone, Copy, Component, Debug, PartialEq)]
+pub(crate) struct WorldPlayerMotion {
+    top_left: Vec2,
+}
+
+impl WorldPlayerMotion {
+    pub(crate) fn from_tile(tile: crate::scenario_spatial::Position) -> Self {
+        let collision_center = Vec2::new(
+            tile.x as f32 * MAP_TILE_WIDTH as f32 + MAP_TILE_WIDTH as f32 / 2.0,
+            tile.y as f32 * MAP_TILE_HEIGHT as f32 + MAP_TILE_HEIGHT as f32 / 2.0,
+        );
+        Self {
+            top_left: collision_center
+                - Vec2::new(
+                    CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0,
+                    CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0,
+                ),
+        }
+    }
+
+    pub(crate) const fn top_left(self) -> Vec2 {
+        self.top_left
+    }
+
+    pub(crate) fn set_top_left(&mut self, top_left: Vec2) {
+        self.top_left = top_left;
+    }
+
+    pub(crate) fn tile_position(self) -> crate::scenario_spatial::Position {
+        let center = self.collision_center();
+        crate::scenario_spatial::Position::new(
+            (center.x / MAP_TILE_WIDTH as f32).floor() as i32,
+            (center.y / MAP_TILE_HEIGHT as f32).floor() as i32,
+        )
+    }
+
+    pub(crate) fn collision_rect(self) -> CharacterCollisionRect {
+        CharacterCollisionRect {
+            x: self.top_left.x + CHARACTER_COLLISION_OFFSET_X,
+            y: self.top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+            width: CHARACTER_COLLISION_WIDTH,
+            height: CHARACTER_COLLISION_HEIGHT,
+        }
+    }
+
+    pub(crate) fn sprite_center_world(self, z: f32) -> Vec3 {
+        let center = self.top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
+        Vec3::new(center.x, -center.y, z)
+    }
+
+    fn collision_center(self) -> Vec2 {
+        let rect = self.collision_rect();
+        Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct CharacterCollisionRect {
+    pub(crate) x: f32,
+    pub(crate) y: f32,
+    pub(crate) width: f32,
+    pub(crate) height: f32,
+}
+
+impl CharacterCollisionRect {
+    pub(crate) fn overlaps(self, other: Self) -> bool {
+        self.x < other.x + other.width
+            && self.x + self.width > other.x
+            && self.y < other.y + other.height
+            && self.y + self.height > other.y
+    }
+}
 
 /// Authored TSX walk-cycle state for the one World player.
 ///
@@ -78,12 +161,7 @@ impl WorldPlayerAnimation {
         }
     }
 
-    /// Starts one visible grid-step pose or advances its authored hold time toward idle.
-    ///
-    /// Python can remain movement-active across many continuous pixel updates. The grid port
-    /// commits a tile immediately, so each fresh action selects the next authored walk frame and
-    /// holds it for that frame's TSX duration before settling to idle. This keeps a one-tile tap
-    /// visibly meaningful without changing its logical displacement.
+    /// Advances the authored walk cycle while movement is held and idles immediately on release.
     pub(crate) fn update(
         &mut self,
         movement_facing: Option<crate::scenario_spatial::CardinalDirection>,
@@ -93,27 +171,33 @@ impl WorldPlayerAnimation {
             self.direction = direction;
             let frame_count = self.layout.walk_frames(direction).len();
             debug_assert!(frame_count > 0, "validated TSX animations are nonempty");
-            let current = self.next_walk_frame % frame_count;
+            let current = if let Some(mut current) = self.current_walk_frame {
+                self.elapsed = self.elapsed.saturating_add(delta);
+                loop {
+                    let duration = Duration::from_millis(u64::from(
+                        self.layout.walk_frames(direction)[current].duration_ms(),
+                    ));
+                    if self.elapsed < duration {
+                        break;
+                    }
+                    self.elapsed = self.elapsed.saturating_sub(duration);
+                    current = following_frame(current, frame_count);
+                    self.next_walk_frame = following_frame(current, frame_count);
+                }
+                current
+            } else {
+                let current = self.next_walk_frame % frame_count;
+                self.current_walk_frame = Some(current);
+                self.next_walk_frame = following_frame(current, frame_count);
+                self.elapsed = Duration::ZERO;
+                current
+            };
             self.current_walk_frame = Some(current);
-            self.next_walk_frame = following_frame(current, frame_count);
-            self.elapsed = Duration::ZERO;
             return self.layout.walk_frames(direction)[current].tile_id();
         }
-
-        let Some(current) = self.current_walk_frame else {
-            return self.layout.base_frame(self.direction).tile_id();
-        };
-        self.elapsed = self.elapsed.saturating_add(delta);
-        let duration = Duration::from_millis(u64::from(
-            self.layout.walk_frames(self.direction)[current].duration_ms(),
-        ));
-        if self.elapsed >= duration {
-            self.current_walk_frame = None;
-            self.elapsed = Duration::ZERO;
-            return self.layout.base_frame(self.direction).tile_id();
-        }
-
-        self.layout.walk_frames(self.direction)[current].tile_id()
+        self.current_walk_frame = None;
+        self.elapsed = Duration::ZERO;
+        self.layout.base_frame(self.direction).tile_id()
     }
 }
 
@@ -314,7 +398,7 @@ fn spawn_world_player(
         return;
     }
     let tile = game.map().position();
-    let Ok(column) = u32::try_from(tile.x) else {
+    if tile.x < 0 || tile.y < 0 {
         fail_spawn(
             &mut state,
             WorldPlayerSpawnFailure::NegativeTilePosition {
@@ -323,17 +407,7 @@ fn spawn_world_player(
             },
         );
         return;
-    };
-    let Ok(row) = u32::try_from(tile.y) else {
-        fail_spawn(
-            &mut state,
-            WorldPlayerSpawnFailure::NegativeTilePosition {
-                x: tile.x,
-                y: tile.y,
-            },
-        );
-        return;
-    };
+    }
     let base_frame = layout.base_frame(game.map().facing());
     let sprite = match atlas.sprite_for_tile(base_frame.tile_id()) {
         Ok(sprite) => sprite,
@@ -345,8 +419,10 @@ fn spawn_world_player(
             return;
         }
     };
-    let center = tmx_tile_center(column, row, MAP_TILE_WIDTH, MAP_TILE_HEIGHT);
-    let translation = center.extend(world_entity_y_z(center.y, PLAYER_SPRITE_HALF_HEIGHT));
+    let motion = WorldPlayerMotion::from_tile(tile);
+    let visual_y = -(motion.top_left().y + CHARACTER_SPRITE_SIZE / 2.0);
+    let translation =
+        motion.sprite_center_world(world_entity_y_z(visual_y, PLAYER_SPRITE_HALF_HEIGHT));
 
     // Publish only after the atlas, image dependency, strict Aric profile, runtime map, selected
     // base frame, and world position have all succeeded.
@@ -360,6 +436,7 @@ fn spawn_world_player(
         sprite,
         Transform::from_translation(translation),
         WorldPlayer,
+        motion,
         CameraFollowTarget,
         animation,
     ));
@@ -601,7 +678,7 @@ mod tests {
         wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
 
         let (entity, transform, atlas_index) = one_player(&mut app);
-        assert_eq!(transform.translation, Vec3::new(464.0, -176.0, 10.208));
+        assert_eq!(transform.translation, Vec3::new(464.0, -158.0, 10.19));
         assert_eq!(atlas_index, 18);
         assert_eq!(player_count(&mut app), 1);
         assert_eq!(
@@ -635,7 +712,7 @@ mod tests {
         wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
 
         let (_, transform, atlas_index) = one_player(&mut app);
-        assert_eq!(transform.translation, Vec3::new(112.0, -240.0, 10.272));
+        assert_eq!(transform.translation, Vec3::new(112.0, -222.0, 10.254));
         assert_eq!(atlas_index, 9);
     }
 

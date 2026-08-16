@@ -188,6 +188,7 @@ pub(crate) struct TmxTileLayer {
     name: String,
     width: u32,
     height: u32,
+    visible: bool,
     gids: Vec<TmxTileGid>,
 }
 
@@ -296,6 +297,10 @@ impl TmxTileLayer {
 
     pub(crate) const fn height(&self) -> u32 {
         self.height
+    }
+
+    pub(crate) const fn visible(&self) -> bool {
+        self.visible
     }
 
     pub(crate) fn gids(&self) -> &[TmxTileGid] {
@@ -1419,6 +1424,16 @@ fn parse_tile_layer(
     }
     let width = positive_document_u32(&attributes, "width", offset)?;
     let height = positive_document_u32(&attributes, "height", offset)?;
+    let visible = match attributes.get("visible").map(String::as_str) {
+        None | Some("1") => true,
+        Some("0") => false,
+        Some(value) => {
+            return Err(TmxMapDocumentError::new(
+                offset,
+                format!("invalid `visible` attribute `{value}`; expected `0` or `1`"),
+            ));
+        }
+    };
     if width != map_header.width || height != map_header.height {
         return Err(TmxMapDocumentError::new(
             offset,
@@ -1482,6 +1497,7 @@ fn parse_tile_layer(
                     name: name.to_owned(),
                     width,
                     height,
+                    visible,
                     gids,
                 });
             }
@@ -2591,6 +2607,7 @@ mod tests {
         assert_eq!(ground.name(), "ground");
         assert_eq!(ground.width(), 3);
         assert_eq!(ground.height(), 2);
+        assert!(!ground.visible());
         assert_eq!(
             ground
                 .gids()
@@ -2612,6 +2629,7 @@ mod tests {
         assert_eq!(ground.gid_at(3, 1), None);
         assert_eq!(ground.gid_at(0, 2), None);
         assert_eq!(document.tile_layers()[1].name(), "decoration");
+        assert!(document.tile_layers()[1].visible());
         assert_eq!(
             document.tile_layers()[1]
                 .gids()
@@ -2638,6 +2656,11 @@ mod tests {
             (
                 r#"<layer id="1" name="ground" width="3" height="2"/>"#,
                 "must contain one CSV `data` element",
+            ),
+            (
+                r#"<layer id="1" name="ground" width="3" height="2" visible="false"><data encoding="csv">0,0,0,
+0,0,0</data></layer>"#,
+                "invalid `visible` attribute `false`; expected `0` or `1`",
             ),
             (
                 r#"<layer id="1" name="ground" width="3" height="2"><data encoding="base64">AAAA</data></layer>"#,

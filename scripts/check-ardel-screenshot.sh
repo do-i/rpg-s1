@@ -22,30 +22,15 @@ trap 'rm -rf -- "$work_dir"' EXIT
 
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
-# Match the runtime's reserved collision-layer exclusion and background policy.
-tmxrasterizer \
-    --hide-layer collision \
-    --hide-layer decoration \
-    "$map" "$work_dir/background.png"
-tmxrasterizer \
-    --hide-layer collision \
-    --hide-layer ground \
-    --hide-layer terrain \
-    "$map" "$work_dir/decoration.png"
+# PyTMX and the native runtime both render every authored visible tile layer in source order.
+# Ardel intentionally uses visible collision tiles for its buildings and fences.
+tmxrasterizer "$map" "$work_dir/map.png"
 
-# M4's fixed spawn is tile [14, 5], facing down. The Bevy sprite is centered on
-# that 32px tile, so the 64px idle frame (TSX tile 18) starts at [432, 144].
-# Rows 0-5 of decoration sort behind its 208px bottom edge; rows 6+ sort ahead.
+# The source's feet-aligned 20x18 collision rectangle is centered on spawn tile [14, 5],
+# placing the 64px down-idle frame (TSX tile 18) at top-left [432, 126].
 magick "$aric" -crop 64x64+0+128 +repage "$work_dir/aric-down-idle.png"
-magick "$work_dir/decoration.png" \
-    -crop 960x192+0+0 +repage "$work_dir/decoration-behind.png"
-magick "$work_dir/decoration.png" \
-    -crop 960x448+0+192 +repage "$work_dir/decoration-ahead.png"
-
-magick "$work_dir/background.png" \
-    "$work_dir/decoration-behind.png" -geometry +0+0 -compose over -composite \
-    "$work_dir/aric-down-idle.png" -geometry +432+144 -compose over -composite \
-    "$work_dir/decoration-ahead.png" -geometry +0+192 -compose over -composite \
+magick "$work_dir/map.png" \
+    "$work_dir/aric-down-idle.png" -geometry +432+126 -compose over -composite \
     "$work_dir/map-composite.png"
 
 # Ardel is 960x640, smaller than the 1280x766 logical canvas on both axes.

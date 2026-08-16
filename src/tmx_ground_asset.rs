@@ -49,8 +49,6 @@ const GROUND_Z: f32 = 0.0;
 const LAYER_Z_STEP: f32 = 1.0;
 const Y_SORT_Z_BASE: f32 = 10.0;
 const Y_SORT_Z_PER_PIXEL: f32 = 0.001;
-const Y_SORT_SOURCE_TIE: f32 = 0.000_01;
-const FOREGROUND_Z_BASE: f32 = 900.0;
 
 /// Registers the project-owned `.tmx` static-map asset loader.
 pub(crate) struct TmxGroundAssetPlugin;
@@ -143,7 +141,11 @@ impl TmxGroundAsset {
         self.bundles_for_layers(loaded_atlases, &[self.ground_layer_index])
     }
 
-    /// Projects all non-empty, non-collision cells in authored layer and row-major order.
+    /// Projects all non-empty tile cells in authored layer and row-major order.
+    ///
+    /// `collision` is a gameplay role, not a visibility flag. Rusted Kingdoms deliberately
+    /// paints Ardel's buildings and fences in that visible layer while also using its non-empty
+    /// cells for collision, matching PyTMX's rendering of every visible tile layer.
     pub(crate) fn visible_bundles(
         &self,
         loaded_atlases: &Assets<TsxAtlasAsset>,
@@ -178,7 +180,6 @@ impl TmxGroundAsset {
 
         for &layer_index in layer_indices {
             let layer = &self.document.tile_layers()[layer_index];
-            debug_assert_ne!(layer.name(), COLLISION_LAYER_NAME);
             for row in 0..layer.height() {
                 for column in 0..layer.width() {
                     let gid = layer
@@ -211,7 +212,7 @@ impl TmxGroundAsset {
                     let rotation = apply_tiled_transform(&mut sprite, resolved.gid());
                     let center =
                         tmx_tile_center(column, row, header.tile_width(), header.tile_height());
-                    let z = static_tile_z(layer.name(), layer_index, row, header.tile_height());
+                    let z = static_tile_z(layer_index);
                     bundles.push(StaticMapTileBundle {
                         tile: StaticMapTile {
                             layer_index,
@@ -290,16 +291,8 @@ pub(crate) fn world_entity_y_z(world_y: f32, sprite_half_height: f32) -> f32 {
     Y_SORT_Z_BASE + (-world_y + sprite_half_height) * Y_SORT_Z_PER_PIXEL
 }
 
-fn static_tile_z(layer_name: &str, layer_index: usize, row: u32, tile_height: u32) -> f32 {
-    if layer_name == "ground" || layer_name == "terrain" {
-        return GROUND_Z + layer_index as f32 * LAYER_Z_STEP;
-    }
-    if layer_name == "top" || layer_name.ends_with("_top") {
-        return FOREGROUND_Z_BASE + layer_index as f32 * Y_SORT_SOURCE_TIE;
-    }
-
-    let screen_bottom = row.saturating_add(1) as f32 * tile_height as f32;
-    Y_SORT_Z_BASE + screen_bottom * Y_SORT_Z_PER_PIXEL + layer_index as f32 * Y_SORT_SOURCE_TIE
+fn static_tile_z(layer_index: usize) -> f32 {
+    GROUND_Z + layer_index as f32 * LAYER_Z_STEP
 }
 
 fn apply_tiled_transform(sprite: &mut Sprite, gid: crate::tmx_header::TmxTileGid) -> Quat {
@@ -541,7 +534,7 @@ fn visible_layer_indices(document: &TmxMapDocument) -> Vec<usize> {
         .tile_layers()
         .iter()
         .enumerate()
-        .filter_map(|(index, layer)| (layer.name() != COLLISION_LAYER_NAME).then_some(index))
+        .filter_map(|(index, layer)| layer.visible().then_some(index))
         .collect()
 }
 
@@ -696,6 +689,10 @@ mod tests {
         "scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx";
     const ICONS_TSX_ASSET_PATH: &str =
         "scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx";
+    const STONE_TSX_ASSET_PATH: &str =
+        "scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx";
+    const WALL_TSX_ASSET_PATH: &str =
+        "scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx";
     const WINDOWS_TSX_ASSET_PATH: &str =
         "scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx";
 
@@ -745,6 +742,37 @@ mod tests {
     }
 
     #[test]
+    fn starting_forest_keeps_spawn_markers_semantic_and_out_of_visible_projection() {
+        let mut app = ground_app();
+        let handle = load_map(&mut app, "assets/maps/zone_01_starting_forest.tmx");
+        let maps = app.world().resource::<Assets<TmxGroundAsset>>();
+        let map = maps.get(&handle).unwrap();
+        let spawn = map
+            .document()
+            .tile_layers()
+            .iter()
+            .find(|layer| layer.name() == "spawn_tile")
+            .unwrap();
+
+        assert!(!spawn.visible());
+        assert_eq!(spawn.gids().iter().filter(|gid| !gid.is_empty()).count(), 5);
+        assert_eq!(
+            map.visible_layer_indices
+                .iter()
+                .map(|&index| map.document().tile_layers()[index].name())
+                .collect::<Vec<_>>(),
+            ["ground", "collision", "decoration"]
+        );
+        let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
+        assert!(
+            map.visible_bundles(atlases)
+                .unwrap()
+                .iter()
+                .all(|bundle| bundle.tile.layer_id() != 6)
+        );
+    }
+
+    #[test]
     fn ardel_house_loads_all_visible_dependencies_and_applies_tiled_transforms() {
         let mut app = ground_app();
         let handle = load_map(&mut app, "assets/maps/town_01_ardel_house_01.tmx");
@@ -757,7 +785,7 @@ mod tests {
             ),
             (25, 13)
         );
-        assert_eq!(map.atlas_handles().len(), 4);
+        assert_eq!(map.atlas_handles().len(), 7);
         let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
         let bundles = map.visible_bundles(atlases).unwrap();
         let transformed = bundles
@@ -804,7 +832,9 @@ mod tests {
                 atlas_paths,
                 [
                     GRASS_TSX_ASSET_PATH.to_owned(),
+                    STONE_TSX_ASSET_PATH.to_owned(),
                     ICONS_TSX_ASSET_PATH.to_owned(),
+                    WALL_TSX_ASSET_PATH.to_owned(),
                     WINDOWS_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
                 ]
@@ -855,7 +885,7 @@ mod tests {
     }
 
     #[test]
-    fn real_ardel_visible_projection_preserves_source_order_and_never_draws_collision() {
+    fn real_ardel_visible_projection_preserves_every_authored_tile_layer_in_source_order() {
         let mut app = ground_app();
         let map_handle = load_ardel(&mut app);
 
@@ -867,7 +897,12 @@ mod tests {
                     .iter()
                     .map(|&index| (index, map.document().tile_layers()[index].name()))
                     .collect::<Vec<_>>(),
-                [(0, "ground"), (1, "terrain"), (3, "decoration")]
+                [
+                    (0, "ground"),
+                    (1, "terrain"),
+                    (2, "collision"),
+                    (3, "decoration")
+                ]
             );
             let collision = map
                 .document()
@@ -879,7 +914,7 @@ mod tests {
             assert!(collision.gids().iter().any(|gid| !gid.is_empty()));
             assert!(
                 collision.gids().iter().any(|gid| gid.flip_horizontally()),
-                "the excluded layer deliberately includes a transformed tile"
+                "the visible collision layer deliberately includes a transformed tile"
             );
 
             let expected_count = map
@@ -891,7 +926,7 @@ mod tests {
             let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
             let bundles = map.visible_bundles(atlases).unwrap();
             assert_eq!(bundles.len(), expected_count);
-            assert!(bundles.iter().all(|bundle| bundle.tile.layer_id() != 4));
+            assert!(bundles.iter().any(|bundle| bundle.tile.layer_id() == 4));
             assert!(
                 bundles
                     .windows(2)
@@ -914,28 +949,20 @@ mod tests {
         let mut query = world.query::<(&StaticMapTile, &Sprite, &Transform)>();
         let rendered = query.iter(world).collect::<Vec<_>>();
         assert_eq!(rendered.len(), expected_count);
-        assert!(rendered.iter().all(|(tile, _, _)| tile.layer_id() != 4));
+        assert!(rendered.iter().any(|(tile, _, _)| tile.layer_id() == 4));
         assert_eq!(
             rendered
                 .iter()
                 .map(|(tile, _, _)| tile.layer_index())
                 .collect::<std::collections::BTreeSet<_>>(),
-            [0, 1, 3].into_iter().collect()
+            [0, 1, 2, 3].into_iter().collect()
         );
         for (tile, sprite, transform) in rendered {
             let expected = tmx_tile_center(tile.column(), tile.row(), 32, 32);
             assert_eq!(transform.translation.x, expected.x);
             assert_eq!(transform.translation.y, expected.y);
-            let layer_name = match tile.layer_index() {
-                0 => "ground",
-                1 => "terrain",
-                3 => "decoration",
-                index => panic!("unexpected rendered layer index {index}"),
-            };
-            assert_eq!(
-                transform.translation.z,
-                static_tile_z(layer_name, tile.layer_index(), tile.row(), 32)
-            );
+            assert!(tile.layer_index() < 4);
+            assert_eq!(transform.translation.z, static_tile_z(tile.layer_index()));
             assert_eq!(
                 sprite.texture_atlas.as_ref().unwrap().index,
                 tile.local_id() as usize
@@ -984,17 +1011,14 @@ mod tests {
     }
 
     #[test]
-    fn y_sort_band_orders_player_around_decoration_and_keeps_static_source_ties() {
+    fn authored_tile_layers_stay_below_y_sorted_world_entities() {
         let player_row_five = world_entity_y_z(-176.0, 32.0);
-        let decoration_above = static_tile_z("decoration", 3, 4, 32);
-        let decoration_below = static_tile_z("decoration", 3, 6, 32);
 
-        assert!(static_tile_z("ground", 0, 19, 32) < player_row_five);
-        assert!(static_tile_z("terrain", 1, 19, 32) < player_row_five);
-        assert!(decoration_above < player_row_five);
-        assert!(player_row_five < decoration_below);
-        assert!(static_tile_z("decoration", 3, 5, 32) < static_tile_z("over_ground", 4, 5, 32));
-        assert!(player_row_five < static_tile_z("top", 5, 0, 32));
+        assert_eq!(static_tile_z(0), 0.0);
+        assert_eq!(static_tile_z(1), 1.0);
+        assert_eq!(static_tile_z(2), 2.0);
+        assert_eq!(static_tile_z(3), 3.0);
+        assert!(static_tile_z(3) < player_row_five);
     }
 
     #[test]
