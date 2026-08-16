@@ -1,0 +1,29 @@
+# data/dialogue/frostholm_king.yaml
+#
+# The king of Frostholm — three centuries on the throne under the pact with
+# the Deep Cold (Sub-Epic 5). Carries the "king's offer" beat: stay, give up
+# the journey, and never rust.
+id: frostholm_king
+type: npc
+
+entries:
+  # Act 4 — the party pressed on; the pact is cracking
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "You refused me. Do you hear the palace settle at night now? That is the sound of time remembering us."
+      - "My court calls it a curse. The young ones call it weather."
+      - "Go and finish what you carry, Vessel. One of us should be allowed to end."
+
+  # Act 3 — the offer
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Three hundred winters I have kept this kingdom exactly as it was. No rust. No decline. No graves."
+      - "Stay, ember-bearer. Set down the flame and the road both. Frostholm does not age, and neither would you."
+      - "Every guest who climbs this far is tired. I am only offering you what tired people want."
+
+  # Early visit
+  - lines:
+      - "Few climb the foothills without a reason. Fewer still are owed an audience."
+      - "Warm yourself and move on."

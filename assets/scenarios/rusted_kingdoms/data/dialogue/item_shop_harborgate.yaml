@@ -1,0 +1,7 @@
+# data/dialogue/item_shop_harborgate.yaml
+id: item_shop_harborgate
+entries:
+  - lines:
+      - "Ship goods, salvage, sundries. If the quarantine hasn't seized it, I sell it."
+    on_complete:
+      open_shop: item

@@ -1,0 +1,23 @@
+name: Ravine Crossing
+warp_order: 135
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0
+item_boxes:
+  - id: pass_02_chest_01
+    position: [38, 12]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+        - id: antidote
+          qty: 1
+  - id: pass_02_chest_02
+    position: [18, 27]
+    loot:
+      magic_cores:
+        - size: l
+          qty: 2

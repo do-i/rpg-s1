@@ -1,0 +1,8 @@
+# data/dialogue/sign_town_04_frostholm.yaml
+id: sign_town_04_frostholm
+type: board
+entries:
+  - lines:
+      - "Notice Board — Frostholm"
+      - "The kingdom that never changed. The king has reigned three hundred winters, and no one here grows old."
+      - "Beautiful, and wrong. The royal vault is sealed to outsiders — and the cold remembers every visitor."

@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_05_mountain_foothills_02.yaml
+id: sign_zone_05_mountain_foothills_02
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Windcut Shelf"
+      - "A narrow ledge scoured bare by the mountain wind. Hold to the rock face; the drop does not forgive."
+      - "The frozen kingdom is closer now. So is the cold that keeps it."

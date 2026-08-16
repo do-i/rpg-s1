@@ -1,0 +1,15 @@
+id: town_05_ashenveil_oracle_sanctum
+name: Oracle Sanctum
+bgm: town.default
+
+npcs:
+  - id: ashenveil_oracle
+    name: "Ashenveil Oracle"
+    dialogue: ashenveil_oracle_hint
+    position: [8, 4]
+    sprite: assets/sprites/npc/village_female_person_elder_matron.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.4

@@ -1,0 +1,10 @@
+# data/dialogue/weapon_shop_ashenveil.yaml
+#
+# Veyra, weapon dealer in Ashenveil.
+id: weapon_shop_ashenveil
+type: npc
+entries:
+  - lines:
+      - "Everything here is second-hand from the old capital. The blades remember. That's not a flaw."
+    on_complete:
+      open_shop: weapon

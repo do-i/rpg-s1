@@ -1,0 +1,31 @@
+# data/dialogue/harborgate_priestess.yaml
+#
+# Priestess-in-exile tending the quarantined sick (Sub-Epic 3). Carries the
+# "iron lung quarantine is a guild fabrication" beat and is the first NPC to
+# speak the Vessel doctrine aloud. Note: production placed the joinable
+# priestess companion (Reiya) in Millhaven, so Maren is a witness here, not
+# a recruit.
+id: harborgate_priestess
+type: npc
+
+entries:
+  # Act 3+ — quarantine beat resolved, doctrine echo
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "The guild calls the quarantine lifted, as if it were weather and not a choice they made."
+      - "The sick are mending. The lie took longer to cure than the lung ever did."
+      - "Walk carefully, flame-bearer. My order burned for teaching what you are."
+
+  # Act 2 — the lie is live; she names the fabrication
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "Iron lung, they call it. Conveniently it only afflicts ships the guild wants seized."
+      - "I have nursed every soul on this floor. Not one caught anything but hunger and salt rot."
+      - "My order had a word for what you carry. We were destroyed for saying it aloud, so forgive me if I only whisper: Vessel."
+
+  # Default — early wandering
+  - lines:
+      - "If you are well, give me your hands — there are poultices to grind."
+      - "If you are sick, lie down. The guild's paperwork can claim you later."

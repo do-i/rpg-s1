@@ -1,0 +1,44 @@
+# story_content/dialogue/kael_join.yaml
+id: kael_join
+type: npc
+entries:
+  - condition:
+      requires: [npc_kael_joined, boss_zone06_defeated]
+    lines:
+      - "The pass is open. That does not make it kind."
+      - "Beyond Frostholm, every oath gets tested. Keep yours simple."
+
+  - condition:
+      requires: [npc_kael_joined]
+    lines:
+      - "Frostholm survives by refusing to move."
+      - "Do not mistake that for strength."
+
+  - condition:
+      requires: [story_act4_started]
+      excludes: [npc_kael_joined]
+    lines:
+      - "That emblem on your pack. Where did you get it."
+      - "The Lost Flame. I was there the night they issued the burn order."
+      - "I refused. They called it treason. I called it the only decent thing I'd ever done."
+      - "I've been waiting in this frozen town for two years wondering if it meant anything."
+      - "Looks like it did."
+      - "I'm in. Don't thank me. Just don't waste it."
+    on_complete:
+      set_flag: npc_kael_joined
+      join_party: kael
+
+  - condition:
+      requires: [story_act3_started]
+      excludes: [npc_kael_joined]
+    lines:
+      - "The foothills are not a road. They're a warning."
+      - "If you still mean to climb, settle your business first."
+
+  # Fallback — the player reached Frostholm before the story pointed them here.
+  # Flavor only; recruiting Kael stays gated behind the captain (story_act4_started).
+  - condition:
+      excludes: [npc_kael_joined]
+    lines:
+      - "Cold has a way of sorting people. Most don't last up here."
+      - "You're still chasing something. Come back when it catches up to you."

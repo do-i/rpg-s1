@@ -1,0 +1,41 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 35
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: shadow_slash      # 150% physical, single target
+      weight: 25
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: death_gaze        # blocked by holy_talisman; otherwise HP → 1
+      weight: 20
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: dark_wave         # all party, 120% physical
+      weight: 50
+    - condition:
+        turn_mod:
+          every: 4
+      action: ability
+      id: soul_barrier      # MRES up 40% + DEF up 20% self, 2 turns
+      weight: 100
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: death_gaze
+      target: random_alive
+      blocked_by_accessory: holy_talisman
+      on_blocked: no_effect
+      on_hit: hp_to_1
+    - ability: dark_wave
+      target: all_party
+    - ability: soul_barrier
+      target: self

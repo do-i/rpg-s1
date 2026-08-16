@@ -1,0 +1,45 @@
+# data/dialogue/ashenveil_widow.yaml
+#
+# Sub-quest giver: a widow in Ashenveil. She wants her husband's name spoken
+# into the oracle's remembrance, but the sanctum keeper (ashenveil_keeper)
+# turned her away at the door. Relay her plea. Reward: 2 Hi-Ethers.
+id: ashenveil_widow
+type: npc
+
+entries:
+  # Complete
+  - condition:
+      requires: [sq_remembrance_done]
+    lines:
+      - "They spoke his name into the ash this morning. I heard it carry on the wind."
+      - "I've nothing to give but what he left me. Take it — he'd have wanted a traveler to have it."
+
+  # Keeper agreed — reward
+  - condition:
+      requires: [sq_remembrance_relayed]
+      excludes: [sq_remembrance_done]
+    lines:
+      - "The keeper will add him? After all my begging at that door?"
+      - "You said it plainer than my grief ever let me. Thank you — truly."
+    on_complete:
+      set_flag: sq_remembrance_done
+      give_items:
+        - id: hi_ether
+          qty: 2
+
+  # Started, not relayed
+  - condition:
+      requires: [sq_remembrance_started]
+      excludes: [sq_remembrance_relayed]
+    lines:
+      - "The keeper is at the sanctum steps. Tell him a name should never go unspoken."
+
+  # First meeting
+  - condition:
+      excludes: [sq_remembrance_started]
+    lines:
+      - "My husband went into the ash three winters past. The oracle's keeper won't add his name to the remembrance."
+      - "Says the rolls are full, that there's no room left for the common dead."
+      - "You move freely where I'm turned away. Would you ask him again, for me?"
+    on_complete:
+      set_flag: sq_remembrance_started

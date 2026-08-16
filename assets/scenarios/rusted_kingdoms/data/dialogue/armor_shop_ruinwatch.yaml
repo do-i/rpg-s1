@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_ruinwatch.yaml
+#
+# Iona, armorer in Ruinwatch.
+id: armor_shop_ruinwatch
+type: npc
+entries:
+  - lines:
+      - "Pilgrims buy relics. Smart ones buy a helm first. The ruins don't care which you are."
+    on_complete:
+      open_shop: armor

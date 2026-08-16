@@ -1,0 +1,38 @@
+id: zone_05_mountain_foothills_02
+name: Mountain Foothills - Windcut Shelf
+background: zone5-bg-1280x468
+density: 0.14
+
+entries:
+  - formation: [goblin_bomber_base, goblin_bomber_base]
+    weight: 22
+    chase_range: 0
+  - formation: [goblin_bomber_redcap_bomber]
+    weight: 15
+    chase_range: 0
+  - formation: [goblin_bomber_club_sapper, goblin_bomber_base]
+    weight: 12
+    chase_range: 0
+  - formation: [goblin_crossbowman_base, goblin_crossbowman_base]
+    weight: 15
+    chase_range: 0
+  - formation: [goblin_crossbowman_hooded_marksman]
+    weight: 10
+    chase_range: 0
+  - formation: [goblin_crossbowman_knife_backup, goblin_crossbowman_base]
+    weight: 10
+    chase_range: 0
+  - formation: [frankenstein_brawler_base]
+    weight: 8
+    chase_range: 0
+  - formation: [frankenstein_brawler_scarred_construct]
+    weight: 5
+    chase_range: 0
+  - formation: [pumpkin_jack_lantern_duelist]
+    weight: 3
+    chase_range: 0
+
+barrier_enemies:
+  - id: pumpkin_jack_lantern_duelist
+    requires_item: veil_breaker
+    blocked_message: "A mysterious force blocks your attack."

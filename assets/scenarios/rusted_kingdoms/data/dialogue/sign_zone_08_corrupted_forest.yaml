@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_08_corrupted_forest.yaml
+id: sign_zone_08_corrupted_forest
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Corrupted Forest"
+      - "The rust runs thickest here, where even the wind tastes of iron. The trees remember being green and resent it."
+      - "Press through. Whatever waits at the heart has been waiting a long time."

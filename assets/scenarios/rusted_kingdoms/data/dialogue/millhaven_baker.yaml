@@ -1,0 +1,46 @@
+# data/dialogue/millhaven_baker.yaml
+#
+# Sub-quest giver: Senna the baker. Her ovens won't hold heat and she blames
+# the flour. Relay her worry to the granary keeper (millhaven_granary) and
+# bring word back. Ties into the mill's failing Flame fragment (see
+# millhaven_miller). Reward: a Hi-Potion.
+id: millhaven_baker
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_flour_done]
+    lines:
+      - "Half-batches it is, then. Better small bread than no bread."
+      - "Take this — I overstocked on remedies before the contracts dried up."
+
+  # Granary keeper answered — reward
+  - condition:
+      requires: [sq_flour_relayed]
+      excludes: [sq_flour_done]
+    lines:
+      - "Old grain, he says? After three good harvests? That's no answer, that's a cover."
+      - "It's the mill, I'd stake the bakery on it. But thank you for asking. Here."
+    on_complete:
+      set_flag: sq_flour_done
+      give_items:
+        - id: hi_potion
+          qty: 1
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_flour_started]
+      excludes: [sq_flour_relayed]
+    lines:
+      - "The granary's by the east stores. Ask him why my flour bakes cold."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_flour_started]
+    lines:
+      - "Twenty years I've baked here, and suddenly my ovens won't hold heat."
+      - "The flour bakes cold, like the warmth's been drained out of the grain itself."
+      - "Would you ask the granary keeper what he's storing? He won't give ME a straight word."
+    on_complete:
+      set_flag: sq_flour_started

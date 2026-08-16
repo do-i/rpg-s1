@@ -1,0 +1,10 @@
+# data/dialogue/weapon_shop_ruinwatch.yaml
+#
+# Garrick, weapon dealer in Ruinwatch.
+id: weapon_shop_ruinwatch
+type: npc
+entries:
+  - lines:
+      - "Half my stock's dug from the ruins and reforged. The dead kept their edges better than the living do."
+    on_complete:
+      open_shop: weapon

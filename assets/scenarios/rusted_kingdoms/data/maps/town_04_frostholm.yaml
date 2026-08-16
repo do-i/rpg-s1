@@ -1,0 +1,83 @@
+id: town_04_frostholm
+name: Frostholm
+warp_order: 120
+bgm: town.bamboo
+inn:
+  cost: 450
+  position: [8, 5]
+
+shop:
+  items:
+    - id: hi_potion
+      qty: 5
+      buy_price: 500
+      unlock_flag: story_act2_started
+    - id: hi_ether
+      qty: 3
+      buy_price: 600
+      unlock_flag: story_act3_started
+    - id: remedy
+      qty: 5
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: smelling_salts
+      qty: 5
+      buy_price: 60
+      unlock_flag: story_act2_started
+    - id: rest_capsule
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_act3_started
+
+npcs:
+  - id: frostholm_captain
+    name: "Captain Roark"
+    dialogue: frostholm_captain_hint
+    position: [18, 27]
+    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    default_facing: down
+  - id: kael
+    name: "Kael"
+    dialogue: kael_join
+    position: [21, 27]
+    sprite: assets/sprites/party/05_kael_walk.tsx
+    default_facing: left
+    present:
+      excludes: [npc_kael_joined]
+    animation:
+      mode: still
+
+  - id: frostholm_quartermaster
+    name: "Quartermaster Brida"
+    dialogue: frostholm_quartermaster
+    position: [12, 7]
+    sprite: assets/sprites/npc/female_sword_fighter_base.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.6
+
+  - id: frostholm_sentry
+    name: "Sentry Ulf"
+    dialogue: frostholm_sentry
+    position: [26, 7]
+    sprite: assets/sprites/npc/plate_knight_mace_knight.tsx
+    default_facing: left
+
+  - id: frostholm_courtier
+    name: "Lady Ashwyn"
+    dialogue: frostholm_courtier
+    position: [33, 15]
+    sprite: assets/sprites/npc/merchant_wealthy_bowler.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.3
+      range: 3
+
+  - id: frostholm_beggar
+    name: "Old Skerry"
+    dialogue: frostholm_beggar
+    position: [5, 16]
+    sprite: assets/sprites/npc/village_male_person_quiet_neighbor.tsx
+    default_facing: right

@@ -1,0 +1,17 @@
+id: town_03_ruinwatch_monastery_vaults
+name: Monastery Vaults
+bgm: town.default
+
+npcs:
+  - id: jep
+    name: "Jep"
+    dialogue: jep_join
+    position: [10, 5]
+    sprite: assets/sprites/party/04_jep_walk.tsx
+    default_facing: right
+    present:
+      excludes: [npc_jep_joined]
+    animation:
+      mode: wander
+      speed: 2.0
+      range: 4

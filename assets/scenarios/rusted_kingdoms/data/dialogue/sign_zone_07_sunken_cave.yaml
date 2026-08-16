@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_07_sunken_cave.yaml
+id: sign_zone_07_sunken_cave
+type: board
+entries:
+  - lines:
+      - "Carved Marker — Sunken Cave"
+      - "Water took these tunnels long ago and never gave them back. Mind your footing; the dark holds more than echoes."
+      - "Something glittered in the deep galleries. So did the eyes around it."

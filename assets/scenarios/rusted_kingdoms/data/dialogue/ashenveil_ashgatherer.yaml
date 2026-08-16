@@ -1,0 +1,59 @@
+# data/dialogue/ashenveil_ashgatherer.yaml
+#
+# Flavor NPC: a worker who sweeps the falling ash from Ashenveil's streets.
+#
+# Sub-quest giver: he swept a silver locket out of the ash drifts and wants
+# its owner found. The mourner in the square (ashenveil_mourner) knows every
+# grief in the city. Reward: an Elixir. The epilogue entry stays on top —
+# it outranks the quest.
+id: ashenveil_ashgatherer
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "The ash stopped falling three days ago. First clear sky I've swept under in years."
+      - "Strange work, having nothing to gather. I think I'll learn to like it."
+
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_locket_done]
+    lines:
+      - "The locket rests with the Callows' headstone now, east row. Where it belongs."
+      - "Ash keeps no secrets. It just waits for someone to sweep in the right place."
+
+  # Mourner named the owner — reward
+  - condition:
+      requires: [sq_locket_relayed]
+      excludes: [sq_locket_done]
+    lines:
+      - "The Callow family. Already in the remembrance rolls. So the locket outlived them all."
+      - "I'll lay it at their headstone tonight. Here — take this for carrying a stranger's grief."
+      - "Sealed vial, swept from the drifts years back. Never dared drink it myself."
+    on_complete:
+      set_flag: sq_locket_done
+      give_items:
+        - id: elixir
+          qty: 1
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_locket_started]
+      excludes: [sq_locket_relayed]
+    lines:
+      - "The mourner keeps to the square. Show her the locket — she knows every grief in this city."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_locket_started]
+    lines:
+      - "Swept this out of the drifts this morning. Silver locket, portrait inside, name worn off."
+      - "Somebody's whole heart, sitting in my ash-pan. It shouldn't end in my ash-pan."
+      - "The mourner in the square knows every family's grief. Would you show it to her?"
+    on_complete:
+      set_flag: sq_locket_started
+
+  - lines:
+      - "Sweep at dawn, sweep at dusk, and still the ash comes. It falls from the volcano, they say."
+      - "I don't mind. Ash keeps no secrets. People do."

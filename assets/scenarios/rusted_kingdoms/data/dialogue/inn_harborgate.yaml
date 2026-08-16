@@ -1,0 +1,7 @@
+# data/dialogue/inn_harborgate.yaml
+id: inn_harborgate
+entries:
+  - lines:
+      - "Welcome to the Anchor's Rest. Beds are clean, the harbor noise is free."
+    on_complete:
+      open_inn: true

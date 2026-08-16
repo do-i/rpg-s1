@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_05_mountain_foothills_01.yaml
+id: sign_zone_05_mountain_foothills_01
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Mountain Foothills"
+      - "The land tilts upward here, toward the frozen kingdom above. The air thins; so does the warmth."
+      - "Footing is loose on the climb. Rest when you can — the passes ahead show no mercy."

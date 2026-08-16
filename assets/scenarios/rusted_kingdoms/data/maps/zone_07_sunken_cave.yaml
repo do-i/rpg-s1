@@ -1,0 +1,8 @@
+name: Sunken Cave
+warp_order: 150
+bgm: zone.dark
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0

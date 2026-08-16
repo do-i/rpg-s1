@@ -1,0 +1,52 @@
+# data/dialogue/ruinwatch_digger.yaml
+#
+# Flavor NPC: a relic-hunter who sells ruin scraps in Ruinwatch.
+#
+# Sub-quest giver: one of his dig crew, young Pell, never came back from the
+# ruins. The pilgrim praying at the gate (ruinwatch_pilgrim) sees everyone
+# who passes — ask if she saw him. Reward: 2 Rare Coins.
+id: ruinwatch_digger
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_crew_done]
+    lines:
+      - "Alive and walking south. That's more than the ruins give back, most years."
+      - "If you pass a coast-road camp and see a lad who won't meet your eye — tell him his wages keep."
+
+  # Pilgrim answered — reward
+  - condition:
+      requires: [sq_crew_relayed]
+      excludes: [sq_crew_done]
+    lines:
+      - "She saw him? Walking out at dawn, alive? Then he wasn't taken — he ran."
+      - "Can't say I blame him. Can't say it doesn't sting, either."
+      - "Here. Real mint, pre-rust, dug from the deep vaults. Worth more than my thanks."
+    on_complete:
+      set_flag: sq_crew_done
+      give_items:
+        - id: rare_coin
+          qty: 2
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_crew_started]
+      excludes: [sq_crew_relayed]
+    lines:
+      - "The pilgrim prays at the gate, dawn to dusk. Nobody passes that she doesn't see."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_crew_started]
+    lines:
+      - "Half my dig crew came back wrong. But young Pell didn't come back at all."
+      - "The pilgrim at the gate sees every soul who passes, praying there all hours like she does."
+      - "I can't ask her — took her coin once for a relic that was junk. Would you ask for me?"
+    on_complete:
+      set_flag: sq_crew_started
+
+  - lines:
+      - "Want a genuine relic? Dug it myself. Cursed, probably. Most of them are."
+      - "Careful in the ruins — half my dig crew came back wrong. The other half didn't come back."

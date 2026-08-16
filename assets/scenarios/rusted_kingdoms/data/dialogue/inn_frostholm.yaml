@@ -1,0 +1,7 @@
+# data/dialogue/inn_frostholm.yaml
+id: inn_frostholm
+entries:
+  - lines:
+      - "Welcome to Frostholm. The beds never get cold here — nothing does."
+    on_complete:
+      open_inn: true

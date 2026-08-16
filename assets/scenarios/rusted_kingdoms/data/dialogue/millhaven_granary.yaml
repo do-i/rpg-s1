@@ -1,0 +1,28 @@
+# data/dialogue/millhaven_granary.yaml
+#
+# Granary keeper for the millhaven_baker errand. Deflects, blames old grain.
+id: millhaven_granary
+type: npc
+
+entries:
+  # After relaying
+  - condition:
+      requires: [sq_flour_relayed]
+    lines:
+      - "Tell Senna what you like. The grain's old. That's the whole of it."
+
+  # Quest active — give the deflecting answer
+  - condition:
+      requires: [sq_flour_started]
+      excludes: [sq_flour_relayed]
+    lines:
+      - "Senna sent you? Tell her it's old grain. Last year's, slow to bake."
+      - "...And tell her to stop asking after the lower mill. Barons' orders."
+    on_complete:
+      set_flag: sq_flour_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_flour_started]
+    lines:
+      - "Sacks in, sacks out. I count them, I don't question them."

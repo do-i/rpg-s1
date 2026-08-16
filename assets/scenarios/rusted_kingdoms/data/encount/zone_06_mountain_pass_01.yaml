@@ -1,0 +1,30 @@
+id: zone_06_mountain_pass_01
+name: Mountain Pass
+background: zone6-bg-1280x468
+density: 0.14
+
+entries:
+  - formation: [orc_raider_base, orc_raider_base]
+    weight: 20
+    chase_range: 0
+  - formation: [orc_raider_shield_bruiser, orc_raider_base]
+    weight: 15
+    chase_range: 0
+  - formation: [orc_raider_spear_raider]
+    weight: 12
+    chase_range: 0
+  - formation: [orc_archer_base, orc_archer_base]
+    weight: 15
+    chase_range: 0
+  - formation: [orc_archer_forest_bowman, orc_raider_base]
+    weight: 12
+    chase_range: 0
+  - formation: [orc_archer_greatbow_raider]
+    weight: 10
+    chase_range: 0
+  - formation: [orc_shaman_base, orc_raider_base]
+    weight: 10
+    chase_range: 0
+  - formation: [orc_shaman_bone_caller]
+    weight: 6
+    chase_range: 0

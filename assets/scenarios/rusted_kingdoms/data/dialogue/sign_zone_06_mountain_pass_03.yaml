@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_06_mountain_pass_03.yaml
+id: sign_zone_06_mountain_pass_03
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Shaman Gate"
+      - "Carved wards line this gate, set by hill-shamans against the Deep Cold. Faded now — but not yet silent."
+      - "Past here the old protections end. Step through with care."

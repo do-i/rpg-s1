@@ -1,0 +1,8 @@
+name: Final Stronghold
+warp_order: 180
+bgm: zone.dark
+
+enemy_spawn:
+  init: 5
+  max: 10
+  interval: 20.0

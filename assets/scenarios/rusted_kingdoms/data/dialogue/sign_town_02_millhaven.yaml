@@ -1,0 +1,8 @@
+# data/dialogue/sign_town_02_millhaven.yaml
+id: sign_town_02_millhaven
+type: board
+entries:
+  - lines:
+      - "Notice Board — Millhaven"
+      - "A mill-and-market town, proud of its grain. They say the great wheels never stop turning — ask why, and folk go quiet."
+      - "A traveling scholar named Elise has been asking the same questions. The road west runs down to the coast."

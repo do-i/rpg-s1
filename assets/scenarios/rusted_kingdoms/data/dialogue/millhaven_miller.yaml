@@ -1,0 +1,30 @@
+# data/dialogue/millhaven_miller.yaml
+#
+# Flavor NPC inside the Millhaven mill. Carries the Sub-Epic 2 beat from the
+# story outline: the mills run on a stolen fragment of the old Flame, the
+# fragment is failing, and after the barons are exposed (story_act3_started)
+# the town begins its slow decline.
+id: millhaven_miller
+type: npc
+
+entries:
+  # After Act 3 — the fragment is gone, the mill runs on water again
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Hear that creak? That's the wheel turning on river water alone, first time in three generations."
+      - "The barons called their fragment a trade secret. Cost us half the town's contracts when the truth got out."
+      - "Slower bread is still bread. We'll manage."
+
+  # Act 2 — uneasy; the lower wheel is off-limits
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "Don't go poking around the lower wheel. Barons' orders."
+      - "Thirty years I've worked this floor, and even I've never seen what drives it."
+      - "Grain comes in, flour goes out, and nobody asks why the millstones glow warm at night."
+
+  # Default — before the story reaches Millhaven
+  - lines:
+      - "The mill grinds slower every season, and the barons smile wider every year."
+      - "Strange arithmetic, if you ask me. Which nobody does."

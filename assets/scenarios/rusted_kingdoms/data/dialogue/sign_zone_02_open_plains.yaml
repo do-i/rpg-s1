@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_02_open_plains.yaml
+id: sign_zone_02_open_plains
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Open Plains"
+      - "The long road between Millhaven and the sea. Open ground, open sky — and nowhere to hide from what wanders it."
+      - "Follow the ruts east and you'll smell salt before you see Harborgate."

@@ -79,7 +79,7 @@ rows.
 | RK-CTL-004 | Any enabled menu choice | Highlight the choice and press Enter once. | The choice gives one visible/audible confirmation and opens or applies the selected action. | The action is committed once, even if Enter is held briefly. | M1.06-M1.07, M3.17 / Gate 3 | Not run |
 | RK-CTL-005 | `SET-NEW` | Press M, wait for the field menu, then press M again. | The field menu opens and closes cleanly. | World movement is paused while open and resumes at the unchanged position. | M6.01 / Gate 6 | Pass — X11 2026-08-12 |
 | RK-CTL-006 | `SET-NEW` | Press I from the overworld. | The Items screen opens directly with inventory rows and controls visible. | Party, map, and inventory remain unchanged until an item action is confirmed. | M6.06-M6.08 / Gate 6 | Pass — X11 2026-08-12 |
-| RK-CTL-007 | `SET-NEW` | Press S from the overworld. | The protagonist's character status screen opens directly. | Merely opening status changes no stats or party order. | M6.03-M6.05 / Gate 6 | Pass — X11 2026-08-12 |
+| RK-CTL-007 | `SET-NEW` | Press S from the overworld. | The protagonist's character status screen opens directly. | Merely opening status changes no stats or party order. | M6.03-M6.05, M6.25 / Gate 6 | Pass — X11 2026-08-12; original-style Status visually verified 2026-08-16 |
 | RK-CTL-008 | A submenu nested at least two levels deep | Press Escape once. | The current submenu closes and its parent is visible. | Unconfirmed changes in the closed submenu are discarded. | M1.06, M6.02 / Gate 6 | Pass — X11 2026-08-12 |
 | RK-CTL-009 | A top-level field menu | Press Escape once. | The menu closes and the overworld is visible. | World input resumes without state loss. | M6.01-M6.02 / Gate 6 | Pass — X11 2026-08-12 |
 | RK-CTL-010 | `SET-BATTLE`, at the command menu | Press Escape once to request fleeing. | The battle displays success or failure feedback; the result is accompanied by the proper SFX/transition. | Success returns safely to the stored world context; failure consumes the source-defined turn cost. | M9.14-M9.16 / Gate 9 | Not run |
@@ -164,6 +164,7 @@ rows.
 | RK-PTY-020 | `SET-PARTY` saved in one order/row arrangement supported by source UI | Switch the active/viewed character and any player-editable row/order, save, relaunch, and load. | Party summaries and battle panels show the same five members, ordering, and rows after load. | Party membership/order/rows persist exactly. | M3.03, M7.12 / Gate 7 | Not run |
 | RK-PTY-021 | `SET-PARTY`, member currently in the front row | Open Status, select that member, choose Position, set Back, and inspect Status and the next battle panel. | Position shows Back and the battle panel places/labels the member consistently. | Only the selected member's row changes; it affects physical rules and survives save/load. | M3.03, M6.03-M6.05, M10.03 / Gate 10 | Not run |
 | RK-PTY-022 | `SET-PARTY`, owned small and large magic cores with known GP | Open the magic-core exchange, select a quantity of small cores and confirm; then select a large core, cancel its extra confirmation, and finally confirm it. | Only owned core sizes appear; quantity/rate/total, large-value confirmation, cancel, and exchange feedback are accurate. | Cancel changes nothing; each confirmed exchange removes exactly the chosen cores and adds `quantity × rate` GP atomically. | M11.01 / Gate 11 | Not run |
+| RK-PTY-023 | `SET-PARTY` | Open Status, inspect the selected member's portrait, press Enter, inspect details, then press Escape. | A full-height portrait fills the center column; Enter replaces it with progression, stats, equipment, Spells, and Position; Escape restores the portrait view. | Switching between portrait and details changes no character or party state. | M6.25-M6.26 / Gate 6 | Pass — user visually and interactively verified 2026-08-16 against `status-orig.png` and `status-orig-2.png` |
 
 ## Dialogue, quests, recruitment, shops, inn, and crafting
 
@@ -285,7 +286,7 @@ supporting automated tasks in the plan are not counted as acceptance rows.
 | Shared inventory | RK-WLD-014 through RK-WLD-016, RK-PTY-004 through RK-PTY-012 |
 | Magic cores | RK-PTY-004, RK-PTY-019, RK-PTY-022, RK-SVC-007 |
 | Progression | RK-BTL-019 through RK-BTL-021, RK-PTY-018 |
-| Status screens | RK-CTL-007, RK-PTY-001 through RK-PTY-003 |
+| Status screens | RK-CTL-007, RK-PTY-001 through RK-PTY-003, RK-PTY-023 |
 | Dialogue-driven quests | RK-SVC-001, RK-SVC-003 through RK-SVC-006 |
 | Recruitment | RK-SVC-002, RK-CMP-002 through RK-CMP-005 |
 | Shops | RK-SVC-007 through RK-SVC-011 |

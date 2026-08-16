@@ -1,0 +1,38 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 30
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: charm             # sleep single target, 2 turns
+      weight: 30
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: dark_drain        # steals 15% target HP, heals self
+      weight: 25
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: allure            # sleep all party, 40% chance each
+      weight: 50
+    - condition:
+        turn_mod:
+          every: 4
+      action: ability
+      id: veil_mist         # MRES up 30% self, 2 turns
+      weight: 100
+
+targeting:
+  default: highest_hp
+  overrides:
+    - ability: allure
+      target: all_party
+    - ability: veil_mist
+      target: self
+    - ability: dark_drain
+      target: highest_hp

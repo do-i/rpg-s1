@@ -1,0 +1,10 @@
+# data/dialogue/weapon_shop_ardel.yaml
+#
+# Dagan, weapon dealer in the Ardel general store.
+id: weapon_shop_ardel
+type: npc
+entries:
+  - lines:
+      - "Blades, sticks, and honest iron. Nothing fancy — fancy gets farm boys killed."
+    on_complete:
+      open_shop: weapon

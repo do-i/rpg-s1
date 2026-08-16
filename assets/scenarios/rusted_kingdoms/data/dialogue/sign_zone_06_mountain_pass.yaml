@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_06_mountain_pass.yaml
+id: sign_zone_06_mountain_pass
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Mountain Pass"
+      - "The spine of the range. Cold enough to still the blood, high enough to still the heart."
+      - "Frostholm waits beyond. Travelers who hurry the pass tend to stay in it."

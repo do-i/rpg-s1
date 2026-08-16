@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="8" height="6" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="1">
+ <tileset firstgid="1" source="../tilesets/stone_tile_stares_16x16.tsx"/>
+ <tileset firstgid="257" source="../tilesets/grass_cave_walls_24x14.tsx"/>
+ <tileset firstgid="593" source="../tilesets/sample_01.tsx"/>
+ <layer id="1" name="ground" width="8" height="6">
+  <data encoding="csv">
+131,131,131,131,131,131,131,131,
+131,216,131,131,131,131,131,131,
+131,131,131,131,131,131,131,131,
+131,131,131,131,131,131,131,131,
+131,131,131,131,131,131,131,131,
+131,131,131,131,131,131,131,131
+</data>
+ </layer>
+ <layer id="2" name="collision" width="8" height="6">
+  <data encoding="csv">
+555,577,577,577,577,577,577,556,
+553,0,0,0,0,0,0,553,
+553,0,0,0,789,789,789,553,
+553,0,0,0,808,808,808,553,
+553,0,0,0,0,0,0,553,
+579,577,577,577,577,577,577,580
+</data>
+ </layer>
+</map>

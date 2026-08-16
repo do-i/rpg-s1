@@ -1,0 +1,13 @@
+# data/dialogue/harborgate_patient.yaml
+id: harborgate_patient
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "They say the harbor opens again next week. My boat's long gone, but the sea isn't."
+
+  - lines:
+      - "We came south when the interior rusted. The guild took the ship as a 'plague vessel'."
+      - "Funny thing — the cargo never got sick."

@@ -1,0 +1,38 @@
+# data/dialogue/harborgate_sailor.yaml
+#
+# Flavor NPC: a sailor stranded at Harborgate by the quarantine.
+#
+# Also the relay target for the fishwife's errand (harborgate_fishwife):
+# agrees to sell his sealed hold of salted catch. Quest entries only match
+# inside the quest window, so the flavor lines below still play.
+id: harborgate_sailor
+type: npc
+
+entries:
+  # Fishwife's errand — agrees to sell the hold
+  - condition:
+      requires: [sq_catch_started]
+      excludes: [sq_catch_relayed]
+    lines:
+      - "The fishwife wants my hold? It's under quarantine seal. They'd have my ticket."
+      - "...Then again, my ticket's worth nothing tied to a pier, and salt cod never sickened anyone."
+      - "Tell her dock four, after the watch turns. And tell her my price is fair, not kind."
+    on_complete:
+      set_flag: sq_catch_relayed
+
+  # Between relaying and collecting the fishwife's thanks
+  - condition:
+      requires: [sq_catch_relayed]
+      excludes: [sq_catch_done]
+    lines:
+      - "Dock four, after the watch turns. Go tell her before I remember I'm an honest man."
+
+  - condition:
+      requires: [transport_sail_unlocked]
+    lines:
+      - "So the port master cleared YOU to sail? Lucky. The rest of us rot at anchor."
+      - "Mind the eastern swells. The sea's been wrong since the rot reached the coast."
+
+  - lines:
+      - "Three weeks stuck in port. Quarantine flag won't come down till the sickness does."
+      - "I've counted every plank on this pier. Twice. Ask me anything about planks."

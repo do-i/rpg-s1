@@ -1,0 +1,8 @@
+name: Corrupted Forest
+warp_order: 160
+bgm: zone.dark
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0

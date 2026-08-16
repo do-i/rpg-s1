@@ -1,0 +1,16 @@
+# data/dialogue/millhaven_gossip.yaml
+#
+# Flavor NPC: a townswoman trading rumors at the Millhaven well.
+id: millhaven_gossip
+type: npc
+
+entries:
+  - condition:
+      requires: [npc_reiya_joined]
+    lines:
+      - "So Reiya ran off with adventurers. Her mother will have words."
+      - "Mark me — that girl was always too quick for this slow town."
+
+  - lines:
+      - "The barons bought the old shrine land last winter. Nobody saw coin change hands."
+      - "Money that quiet is money that's hiding something, if you ask me."

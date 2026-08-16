@@ -1,0 +1,84 @@
+id: town_03_ruinwatch
+name: Ruinwatch
+warp_order: 100
+bgm: town.default
+inn:
+  cost: 250
+  position: [8, 5]
+
+shop:
+  items:
+    - id: potion
+      qty: 5
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: hi_potion
+      qty: 5
+      buy_price: 500
+      unlock_flag: story_act2_started
+    - id: antidote
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: remedy
+      qty: 3
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: ether
+      qty: 3
+      buy_price: 150
+      unlock_flag: story_act2_started
+
+npcs:
+  - id: ruinwatch_scholar
+    name: "Emeth"
+    dialogue: ruinwatch_scholar_hint
+    position: [18, 27]
+    sprite: assets/sprites/npc/wizard_blue_robed_mage.tsx
+    default_facing: down
+
+  - id: ruinwatch_archivist
+    name: "Archivist Hesta"
+    dialogue: ruinwatch_archivist
+    position: [12, 7]
+    sprite: assets/sprites/npc/village_female_person_elder_matron.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.5
+
+  - id: ruinwatch_mason
+    name: "Mason Grote"
+    dialogue: ruinwatch_mason
+    position: [26, 7]
+    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    default_facing: left
+    animation:
+      mode: step
+      speed: 0.6
+
+  - id: ruinwatch_pilgrim
+    name: "Sela"
+    dialogue: ruinwatch_pilgrim
+    position: [33, 15]
+    sprite: assets/sprites/npc/village_female_person_long_hair_green_skirt.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.4
+      range: 3
+
+  - id: ruinwatch_digger
+    name: "Ferd"
+    dialogue: ruinwatch_digger
+    position: [3, 22]
+    sprite: assets/sprites/npc/rogue_hooded_rogue.tsx
+    default_facing: right
+    animation:
+      mode: wander
+      speed: 1.6
+      range: 3

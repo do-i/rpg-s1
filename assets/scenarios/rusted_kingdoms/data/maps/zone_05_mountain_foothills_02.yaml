@@ -1,0 +1,23 @@
+name: Windcut Shelf
+warp_order: 120
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0
+item_boxes:
+  - id: foothills_02_chest_01
+    position: [20, 9]
+    loot:
+      items:
+        - id: potion
+          qty: 3
+        - id: antidote
+          qty: 1
+  - id: foothills_02_chest_02
+    position: [5, 17]
+    loot:
+      magic_cores:
+        - size: m
+          qty: 2

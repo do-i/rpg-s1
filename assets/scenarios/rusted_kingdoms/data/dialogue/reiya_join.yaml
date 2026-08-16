@@ -1,0 +1,35 @@
+# story_content/dialogue/reiya_join.yaml
+id: reiya_join
+type: npc
+entries:
+  - condition:
+      requires: [npc_reiya_joined, boss_zone02_defeated]
+    lines:
+      - "The plains are quiet because the false signal is gone."
+      - "That means the real one will be easier to trace. Ashenveil is the next sensible risk."
+
+  - condition:
+      requires: [npc_reiya_joined]
+    lines:
+      - "Millhaven's mills are coughing rust into every ley line under this town."
+      - "Find the source in the plains, remove it, and maybe these people get another harvest."
+
+  - condition:
+      requires: [story_act2_started]
+      excludes: [npc_reiya_joined]
+    lines:
+      - "You described a flame with no heat, no smoke, just light."
+      - "That is not a fire. It is a signal, and Millhaven's stolen fragment is answering it."
+      - "My father spent his life tracing that signature. They took his post, his books, and then his name."
+      - "I still have the notes they missed. You have the thing they were afraid of."
+      - "That makes us useful to each other."
+    on_complete:
+      set_flag: npc_reiya_joined
+      join_party: reiya
+
+  - condition:
+      requires: [story_quest_started]
+      excludes: [npc_reiya_joined]
+    lines:
+      - "If you are looking for charms or fortune work, ask a market reader."
+      - "If you are looking for a rust-signature in the old mills, come back when you know what you carry."

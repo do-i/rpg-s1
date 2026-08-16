@@ -1,0 +1,40 @@
+id: zone_07_sunken_cave
+name: Sunken Cave
+background: zone7-bg-1280x468
+density: 0.15
+
+entries:
+  - formation: [lizard_monster_base, lizard_monster_base]
+    weight: 20
+    chase_range: 0
+  - formation: [lizard_monster_blue_scale_lizard]
+    weight: 14
+    chase_range: 0
+  - formation: [lizard_monster_winged_lizard, lizard_monster_base]
+    weight: 12
+    chase_range: 0
+  - formation: [pirate_captain_base, pirate_captain_base]
+    weight: 14
+    chase_range: 0
+  - formation: [pirate_captain_cutlass_raider, pirate_captain_base]
+    weight: 12
+    chase_range: 0
+  - formation: [skeleton_archer_greatbow_bones]
+    weight: 10
+    chase_range: 0
+  - formation: [skeleton_archer_hooded_archer, skeleton_monster_hooded_bones]
+    weight: 8
+    chase_range: 0
+  - formation: [skeleton_monster_hooded_bones]
+    weight: 6
+    chase_range: 0
+  - formation: [frankenstein_brawler_graveyard_smasher]
+    weight: 4
+    chase_range: 0
+
+boss:
+  id: pirate_captain_eyepatch_captain
+  name: Eyepatch Captain
+  once: true
+  on_complete:
+    set_flag: boss_zone07_defeated

@@ -1,0 +1,52 @@
+# data/dialogue/harborgate_fishwife.yaml
+#
+# Flavor NPC: a fishwife working the Harborgate market.
+#
+# Sub-quest giver: her market stall is going empty under the quarantine.
+# The stranded sailor (harborgate_sailor) has a hold full of salted catch
+# rotting under seal — ask him to sell it to her. Reward: 2 Ice Vials.
+id: harborgate_fishwife
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_catch_done]
+    lines:
+      - "Salt cod on every table in the quarter, and the quarantine can keep its opinion."
+      - "Dock four, after the watch turns. Best arrangement I've made all season."
+
+  # Sailor agreed — reward
+  - condition:
+      requires: [sq_catch_relayed]
+      excludes: [sq_catch_done]
+    lines:
+      - "He'll sell? The whole hold? Love, you've just fed half the lower quarter."
+      - "Take these off my hands — packing ice from his hold, pressed so cold it burns."
+      - "Fling it at something you don't like. Don't hold it."
+    on_complete:
+      set_flag: sq_catch_done
+      give_items:
+        - id: ice_vial
+          qty: 2
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_catch_started]
+      excludes: [sq_catch_relayed]
+    lines:
+      - "The sailor's out on the pier, counting his planks. Ask him about the hold."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_catch_started]
+    lines:
+      - "Stall's near empty. Nothing lands, nothing sells — the quarantine's starving us slow."
+      - "That sailor moping on the pier has a hold full of salted catch going to waste under seal."
+      - "Salt cod never carried a plague in its life. Ask him if he'll sell it to me, would you?"
+    on_complete:
+      set_flag: sq_catch_started
+
+  - lines:
+      - "Fresh catch! Well — fresh as the quarantine lets it be. Nothing leaves this port, fish included."
+      - "The priestess says the sickness came off a ship. So now every ship's a leper. Bad for trade."

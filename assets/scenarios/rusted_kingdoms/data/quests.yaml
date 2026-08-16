@@ -1,0 +1,134 @@
+# Quest registry — drives the Quest Board (field menu).
+#
+# Every entry is required to carry all seven fields. Status is derived from
+# flags at render time: completed_flag set -> Completed; else started_flag
+# set -> In Progress; else Not Started. Main-quest rows use the engine-managed
+# act flags; sub-quest rows use the sq_* flags set by their dialogue files.
+
+- id: main_act1
+  name: "The Ember That Would Not Die"
+  type: main
+  location: Ardel
+  description: "Rustkin razed the forest and the shrine burned. Follow the elder's revelation north to Millhaven, where the scholar Elise asks the questions no one else dares."
+  started_flag: story_quest_started
+  completed_flag: story_act2_started
+
+- id: main_act2
+  name: "The Scholar's Road"
+  type: main
+  location: "Millhaven - Ruinwatch"
+  description: "Fragments of the old Flame are scattered, hoarded, and worshipped across the kingdoms. Trace them through Harborgate's quarantine and the dead monastery of Ruinwatch."
+  started_flag: story_act2_started
+  completed_flag: story_act3_started
+
+- id: main_act3
+  name: "The Kingdom Beneath the Frost"
+  type: main
+  location: "Frostholm - Ashenveil"
+  description: "A Vessel-flame lies in Frostholm's royal vault, held by a king who has frozen his kingdom outside of time. Beyond the mountains, the oracle of Ashenveil keeps the truth."
+  started_flag: story_act3_started
+  completed_flag: story_act4_started
+
+- id: main_act4
+  name: "The Hearth at the End of the World"
+  type: main
+  location: "The Rusted Wastes"
+  description: "Cross the wastes where the Cinder Marshal waits, and descend to the buried Hearth. The Compact itself will ask what you have come to do."
+  started_flag: story_act4_started
+  completed_flag: boss_zone10_defeated
+
+- id: sq_smith
+  name: "The Smith's Whetstone"
+  type: sub
+  location: Ardel
+  description: "Bram the blacksmith lent his good whetstone to his apprentice Tomas and is too proud to ask for it back. Carry word between them."
+  started_flag: sq_smith_started
+  completed_flag: sq_smith_done
+
+- id: sq_stream
+  name: "Blessing for the Stream"
+  type: sub
+  location: Ardel
+  description: "Old Marn's fish are dying in rusted water. He wants the shrine keeper to speak the old water-blessing — but the two haven't traded a word in forty years."
+  started_flag: sq_stream_started
+  completed_flag: sq_stream_done
+
+- id: sq_flour
+  name: "Cold Ovens"
+  type: sub
+  location: Millhaven
+  description: "Senna the baker's flour bakes cold, as if the warmth were drained from the grain. Ask the granary keeper what he is storing."
+  started_flag: sq_flour_started
+  completed_flag: sq_flour_done
+
+- id: sq_millstone
+  name: "The Flat Millstones"
+  type: sub
+  location: "Millhaven - Ruinwatch"
+  description: "Millhaven's millstones are wearing flat, and the only stone-dresser left is the mason in Ruinwatch. Ask him in person — he answers no letters."
+  started_flag: sq_millstone_started
+  completed_flag: sq_millstone_done
+
+- id: sq_manifest
+  name: "The Doctored Manifest"
+  type: sub
+  location: Harborgate
+  description: "A customs clerk's cargo manifest doesn't match what was unloaded. Ask the stevedore who worked the hold what really came ashore."
+  started_flag: sq_manifest_started
+  completed_flag: sq_manifest_done
+
+- id: sq_catch
+  name: "The Sealed Hold"
+  type: sub
+  location: Harborgate
+  description: "The fishwife's market stall is going empty under the quarantine. A stranded sailor has a hold full of salted catch rotting under seal — ask him to sell it."
+  started_flag: sq_catch_started
+  completed_flag: sq_catch_done
+
+- id: sq_glyph
+  name: "The Flame-Glyph Rubbing"
+  type: sub
+  location: Ruinwatch
+  description: "The archivist is too frail to climb to the ruins, but the stonemason took a rubbing of a Flame-glyph. Persuade him to share it with her."
+  started_flag: sq_glyph_started
+  completed_flag: sq_glyph_done
+
+- id: sq_crew
+  name: "The Missing Digger"
+  type: sub
+  location: Ruinwatch
+  description: "Young Pell went into the ruins with the dig crew and never came back. The pilgrim praying at the gate sees every soul who passes."
+  started_flag: sq_crew_started
+  completed_flag: sq_crew_done
+
+- id: sq_watch
+  name: "The Watch-Count"
+  type: sub
+  location: Frostholm
+  description: "The quartermaster cannot release winter rations without the gate sentry's watch-count, and the sentry will not leave his post. Carry it between them."
+  started_flag: sq_watch_started
+  completed_flag: sq_watch_done
+
+- id: sq_alms
+  name: "Alms for the Lower Ward"
+  type: sub
+  location: Frostholm
+  description: "A palace courtier wants her purse carried to the freezing lower ward — quietly. At this court, charity reads as doubting the king's providence."
+  started_flag: sq_alms_started
+  completed_flag: sq_alms_done
+
+- id: sq_remembrance
+  name: "A Name Unspoken"
+  type: sub
+  location: Ashenveil
+  description: "A widow begs the sanctum keeper to speak her husband's name into the oracle's remembrance. The keeper turned her away at the door; he may not turn away you."
+  started_flag: sq_remembrance_started
+  completed_flag: sq_remembrance_done
+
+- id: sq_locket
+  name: "The Silver Locket"
+  type: sub
+  location: Ashenveil
+  description: "The ashgatherer swept a silver locket out of the drifts — somebody's whole heart in an ash-pan. The mourner in the square knows every grief in the city."
+  started_flag: sq_locket_started
+  completed_flag: sq_locket_done

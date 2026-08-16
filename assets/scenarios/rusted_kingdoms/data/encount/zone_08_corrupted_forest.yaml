@@ -1,0 +1,43 @@
+id: zone_08_corrupted_forest
+name: Corrupted Forest
+background: zone8-bg-1280x468
+density: 0.15
+
+entries:
+  - formation: [dark_fairy_base, dark_fairy_base]
+    weight: 18
+    chase_range: 0
+  - formation: [dark_fairy_purple_hex_fairy, dark_fairy_base]
+    weight: 14
+    chase_range: 0
+  - formation: [dark_fairy_redcap_fairy]
+    weight: 10
+    chase_range: 0
+  - formation: [pumpkin_jack_harvest_reaper]
+    weight: 10
+    chase_range: 0
+  - formation: [sheep_cultist_base, sheep_cultist_base]
+    weight: 12
+    chase_range: 0
+  - formation: [sheep_cultist_white_robed_cultist, sheep_cultist_base]
+    weight: 10
+    chase_range: 0
+  - formation: [sheep_cultist_crystal_cultist]
+    weight: 8
+    chase_range: 0
+  - formation: [troll_berserker_base]
+    weight: 8
+    chase_range: 0
+  - formation: [troll_berserker_swamp_troll, troll_shaman_swamp_hexer]
+    weight: 6
+    chase_range: 0
+  - formation: [troll_shaman_swamp_hexer]
+    weight: 4
+    chase_range: 0
+
+boss:
+  id: troll_shaman_base
+  name: Troll Sage
+  once: true
+  on_complete:
+    set_flag: boss_zone08_defeated

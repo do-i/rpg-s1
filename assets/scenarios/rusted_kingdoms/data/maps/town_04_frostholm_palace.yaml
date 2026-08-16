@@ -1,0 +1,15 @@
+id: town_04_frostholm_palace
+name: Frostholm Palace
+bgm: town.bamboo
+
+npcs:
+  - id: frost_king
+    name: "King of Frostholm"
+    dialogue: frostholm_king
+    position: [20, 7]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.3

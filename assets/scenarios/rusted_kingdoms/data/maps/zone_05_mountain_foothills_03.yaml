@@ -1,0 +1,21 @@
+name: Ticker's Ascent
+warp_order: 125
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 3
+  max: 7
+  interval: 24.0
+item_boxes:
+  - id: foothills_03_chest_01
+    position: [26, 12]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  - id: foothills_03_chest_02
+    position: [32, 22]
+    loot:
+      magic_cores:
+        - size: m
+          qty: 3

@@ -1,0 +1,14 @@
+# dialogue/port_master_intro.yaml
+entries:
+  - condition:
+      requires: [story_act2_started]
+      excludes: [transport_sail_unlocked]
+    lines:
+      - "She's seaworthy. Take her where the wind goes."
+    on_complete:
+      set_flag: transport_sail_unlocked
+
+  - condition:
+      requires: [transport_sail_unlocked]
+    lines:
+      - "She's yours. Safe sailing."

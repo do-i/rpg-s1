@@ -1,0 +1,14 @@
+id: town_04_frostholm_vault
+name: Frostholm Vault
+bgm: town.bamboo
+
+npcs:
+  - id: vault_warden
+    name: "Warden Hild"
+    dialogue: frostholm_vault_warden
+    position: [8, 4]
+    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.3

@@ -1,0 +1,11 @@
+id: apothecary_ardel
+type: npc
+entries:
+  - condition:
+      requires: [story_quest_started]
+    lines:
+      - "Welcome to my workshop. Bring me the right materials and I can craft something special."
+    on_complete:
+      open_apothecary: true
+  - lines:
+      - "My workshop isn't quite ready yet. Come back later."

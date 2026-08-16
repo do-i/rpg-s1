@@ -1,0 +1,36 @@
+# data/dialogue/ashenveil_mourner.yaml
+#
+# Also the relay target for the ashgatherer's locket errand
+# (ashenveil_ashgatherer): she names the locket's family. Quest entries only
+# match inside the quest window, so the flavor lines below still play.
+id: ashenveil_mourner
+type: npc
+
+entries:
+  # Ashgatherer's errand — names the locket's owner
+  - condition:
+      requires: [sq_locket_started]
+      excludes: [sq_locket_relayed]
+    lines:
+      - "Show me. ...Ah. This clasp — Callow work. The whole family went into the ash the same winter."
+      - "Their names are in the remembrance rolls already. All the locket wants now is to lie beside them."
+      - "Tell the gatherer: east row, the Callow headstone. He'll know it. He sweeps there gently."
+    on_complete:
+      set_flag: sq_locket_relayed
+
+  # Between naming and the gatherer laying it to rest
+  - condition:
+      requires: [sq_locket_relayed]
+      excludes: [sq_locket_done]
+    lines:
+      - "East row, the Callow headstone. Go tell him — a grief carried too long grows heavier than its owner."
+
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "The oracle has not left her sanctum since you came. She says the veil is thinning."
+      - "We mourn the old capital under our feet. She mourns something older."
+
+  - lines:
+      - "Ashenveil was built on the bones of the first city. Every house here is a headstone."
+      - "If you seek the oracle, her sanctum is the tall hall north of the square."

@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_harborgate.yaml
+#
+# Odessa, armorer in the Harborgate trade hall.
+id: armor_shop_harborgate
+type: npc
+entries:
+  - lines:
+      - "Sea air eats cheap mail in a season. Mine's oiled, fitted, and worth every coin."
+    on_complete:
+      open_shop: armor

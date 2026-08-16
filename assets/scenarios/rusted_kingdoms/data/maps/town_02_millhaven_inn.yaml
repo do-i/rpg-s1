@@ -1,0 +1,18 @@
+id: town_02_millhaven_inn
+name: Millhaven
+bgm: town.bamboo
+inn:
+  cost: 120
+  position: [5, 9]
+
+npcs:
+  - id: inn_keeper
+    name: "Osric"
+    dialogue: inn_millhaven
+    position: [8, 3]
+    sprite: assets/sprites/npc/female_blue_01.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7

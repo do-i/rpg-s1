@@ -1,0 +1,61 @@
+id: zone_10_final_stronghold
+name: Final Stronghold
+background: zone10-bg-1280x468
+density: 0.18
+
+entries:
+  - formation: [skeleton_knight_black_knight, skeleton_knight_mace_guard]
+    weight: 14
+    chase_range: 0
+  - formation: [skeleton_knight_mace_guard, skeleton_knight_mace_guard]
+    weight: 10
+    chase_range: 0
+  - formation: [vampire_noble_base, vampire_bat_lord_base]
+    weight: 12
+    chase_range: 0
+  - formation: [vampire_noble_masked_vampire]
+    weight: 8
+    chase_range: 0
+  - formation: [vampire_bat_lord_white_wing_lord, vampire_noble_base]
+    weight: 8
+    chase_range: 0
+  - formation: [vampire_noble_blood_court_duelist]
+    weight: 5
+    chase_range: 0
+  - formation: [vampire_bat_lord_blood_saber_lord]
+    weight: 5
+    chase_range: 0
+  - formation: [troll_berserker_stone_troll]
+    weight: 8
+    chase_range: 0
+  - formation: [troll_shaman_crystal_sage, troll_berserker_stone_troll]
+    weight: 6
+    chase_range: 0
+  - formation: [wartotaur_warlord_base, wartotaur_warlord_bronze_halberdier]
+    weight: 6
+    chase_range: 0
+  - formation: [wartotaur_warlord_bronze_halberdier]
+    weight: 4
+    chase_range: 0
+  - formation: [fallen_angel_base]
+    weight: 6
+    chase_range: 0
+  - formation: [fallen_angel_ash_wing, fallen_angel_base]
+    weight: 5
+    chase_range: 0
+  - formation: [alien_invader_base]
+    weight: 5
+    chase_range: 0
+  - formation: [alien_invader_night_alien, alien_invader_base]
+    weight: 4
+    chase_range: 0
+  - formation: [alien_invader_red_crystal_invader]
+    weight: 3
+    chase_range: 0
+
+boss:
+  id: fallen_angel_red_judicator
+  name: Red Judicator
+  once: true
+  on_complete:
+    set_flag: boss_zone10_defeated

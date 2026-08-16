@@ -1,0 +1,50 @@
+# data/dialogue/ruinwatch_mason.yaml
+#
+# Stonemason for the ruinwatch_archivist errand. Gruff, but relents.
+# Also the relay target for the Millhaven carter's millstone request
+# (millhaven_carter). The millstone entries sit first because they only
+# match inside their quest window; the glyph entries below linger forever
+# once sq_glyph_relayed is set.
+id: ruinwatch_mason
+type: npc
+
+entries:
+  # Carter's request — relents and agrees to dress the millstones
+  - condition:
+      requires: [sq_millstone_started]
+      excludes: [sq_millstone_relayed]
+    lines:
+      - "Millhaven wants ME now? Their barons left my ruin-stone bid to rot in a drawer."
+      - "...But a millstone's honest work, and honest work's gone scarce."
+      - "Tell the carter I'll come at first thaw. Stones flat enough to burn flour can wait no longer."
+    on_complete:
+      set_flag: sq_millstone_relayed
+
+  # Between relaying and collecting the carter's thanks
+  - condition:
+      requires: [sq_millstone_relayed]
+      excludes: [sq_millstone_done]
+    lines:
+      - "First thaw, like I said. Tell the carter to have the runner stone off its spindle by then."
+
+  # After relaying
+  - condition:
+      requires: [sq_glyph_relayed]
+    lines:
+      - "The old reader can have her rubbing. Just don't let her smudge it."
+
+  # Quest active — relents and agrees
+  - condition:
+      requires: [sq_glyph_started]
+      excludes: [sq_glyph_relayed]
+    lines:
+      - "The archivist sent you? Hmph. She thinks I scratch these for fun."
+      - "...Fine. Tell her she can have the rubbing. The glyph's been itching at me too."
+    on_complete:
+      set_flag: sq_glyph_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_glyph_started]
+    lines:
+      - "Every stone in this town was cut from the ruins. We build with the dead's leavings."

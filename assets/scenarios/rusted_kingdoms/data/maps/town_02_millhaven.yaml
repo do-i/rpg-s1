@@ -1,0 +1,91 @@
+id: town_02_millhaven
+name: Millhaven
+warp_order: 40
+bgm: town.bamboo
+inn:
+  cost: 120
+  position: [8, 5]
+
+shop:
+  items:
+    - id: potion
+      qty: 5
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: antidote
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: tent
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_quest_started
+    - id: hi_potion
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_act2_started
+
+npcs:
+  - id: millhaven_elder
+    name: "Elder Corwin"
+    dialogue: millhaven_elder_hint
+    position: [9, 5]
+    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.6
+  - id: reiya
+    name: "Reiya"
+    dialogue: reiya_join
+    position: [12, 7]
+    sprite: assets/sprites/party/03_reiya_walk.tsx
+    default_facing: left
+    present:
+      excludes: [npc_reiya_joined]
+    animation:
+      mode: wander
+      speed: 1.4
+      range: 3
+
+  - id: millhaven_baker
+    name: "Senna"
+    dialogue: millhaven_baker
+    position: [14, 9]
+    sprite: assets/sprites/npc/village_female_person_apron_keeper.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.6
+
+  - id: millhaven_granary
+    name: "Weck"
+    dialogue: millhaven_granary
+    position: [30, 9]
+    sprite: assets/sprites/npc/village_male_person_field_hand.tsx
+    default_facing: left
+
+  - id: millhaven_carter
+    name: "Hobb"
+    dialogue: millhaven_carter
+    position: [22, 12]
+    sprite: assets/sprites/npc/merchant_traveling_merchant.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.8
+      range: 4
+
+  - id: millhaven_gossip
+    name: "Prue"
+    dialogue: millhaven_gossip
+    position: [6, 16]
+    sprite: assets/sprites/npc/village_female_person_headscarf_neighbor.tsx
+    default_facing: right
+    animation:
+      mode: step
+      speed: 0.7

@@ -1,0 +1,29 @@
+# data/dialogue/harborgate_stevedore.yaml
+#
+# Stevedore for the harborgate_clerk errand. Worked the hold, saw the extra crates.
+id: harborgate_stevedore
+type: npc
+
+entries:
+  # After relaying
+  - condition:
+      requires: [sq_manifest_relayed]
+    lines:
+      - "Glad it's off my back. A man can lose a hand hauling cargo he was told not to count."
+
+  # Quest active — reveals the extra crates
+  - condition:
+      requires: [sq_manifest_started]
+      excludes: [sq_manifest_relayed]
+    lines:
+      - "The clerk wants to know about the crates? Aye. Three more than the paper said."
+      - "No seals, no stamps, stowed below the waterline. The bosun told me to forget I lifted them."
+      - "Tell her plain. I'm done carrying that weight quiet."
+    on_complete:
+      set_flag: sq_manifest_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_manifest_started]
+    lines:
+      - "Backbreak work, the docks. But it's honest. Mostly."

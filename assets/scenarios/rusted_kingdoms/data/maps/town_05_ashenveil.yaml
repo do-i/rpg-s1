@@ -1,0 +1,80 @@
+id: town_05_ashenveil
+name: Ashenveil
+warp_order: 140
+bgm: town.default
+inn:
+  cost: 800
+  position: [8, 5]
+
+shop:
+  items:
+    - id: hi_potion
+      qty: 5
+      buy_price: 500
+      unlock_flag: story_act3_started
+    - id: hi_ether
+      qty: 5
+      buy_price: 600
+      unlock_flag: story_act3_started
+    - id: remedy
+      qty: 5
+      buy_price: 300
+      unlock_flag: story_act3_started
+    - id: rest_capsule
+      qty: 5
+      buy_price: 500
+      unlock_flag: story_act3_started
+    - id: warp_stone
+      qty: 3
+      buy_price: 800
+      unlock_flag: story_act4_started
+
+npcs:
+  - id: ashenveil_mourner
+    name: "Ilsabet"
+    dialogue: ashenveil_mourner
+    position: [18, 27]
+    sprite: assets/sprites/npc/village_female_person_headscarf_neighbor.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.0
+      range: 3
+
+  - id: ashenveil_widow
+    name: "Widow Casse"
+    dialogue: ashenveil_widow
+    position: [12, 7]
+    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.5
+
+  - id: ashenveil_keeper
+    name: "Keeper Voss"
+    dialogue: ashenveil_keeper
+    position: [26, 7]
+    sprite: assets/sprites/npc/wizard_wand_caster.tsx
+    default_facing: left
+
+  - id: ashenveil_ashgatherer
+    name: "Dun"
+    dialogue: ashenveil_ashgatherer
+    position: [33, 15]
+    sprite: assets/sprites/npc/village_male_person_plain_dark_hair.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.5
+      range: 4
+
+  - id: ashenveil_acolyte
+    name: "Acolyte Fen"
+    dialogue: ashenveil_acolyte
+    position: [5, 16]
+    sprite: assets/sprites/npc/female_wiz_01.tsx
+    default_facing: right
+    animation:
+      mode: step
+      speed: 0.7

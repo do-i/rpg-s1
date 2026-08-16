@@ -1,0 +1,46 @@
+# data/dialogue/harborgate_clerk.yaml
+#
+# Sub-quest giver: a customs clerk at Harborgate. The cargo manifest doesn't
+# match what was unloaded — she fears tainted goods slipping past quarantine.
+# Relay to the stevedore (harborgate_stevedore) who worked the hold.
+# Reward: 3 Antidotes.
+id: harborgate_clerk
+type: npc
+
+entries:
+  # Complete
+  - condition:
+      requires: [sq_manifest_done]
+    lines:
+      - "Three crates unlogged, just as I feared. The harbormaster's holding them now."
+      - "You may have stopped a second plague at the dock. Take these — you'll want them inland."
+
+  # Stevedore answered — reward
+  - condition:
+      requires: [sq_manifest_relayed]
+      excludes: [sq_manifest_done]
+    lines:
+      - "Crates with no seal, stowed below the manifest line. He's certain?"
+      - "Then it's smuggling, and through a quarantine port at that. Here — for your honesty."
+    on_complete:
+      set_flag: sq_manifest_done
+      give_items:
+        - id: antidote
+          qty: 3
+
+  # Started, not relayed
+  - condition:
+      requires: [sq_manifest_started]
+      excludes: [sq_manifest_relayed]
+    lines:
+      - "The stevedore who worked the hold is down by the pier. Ask him what he carried up."
+
+  # First meeting
+  - condition:
+      excludes: [sq_manifest_started]
+    lines:
+      - "My count's off. The manifest says forty crates; the dock took on more, I'd swear to it."
+      - "In a quarantine port, an unlogged crate could carry the rot itself past my desk."
+      - "The stevedore won't talk to a clerk with a ledger. Would you ask him plainly?"
+    on_complete:
+      set_flag: sq_manifest_started

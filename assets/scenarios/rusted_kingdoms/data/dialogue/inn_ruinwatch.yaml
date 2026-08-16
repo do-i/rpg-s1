@@ -1,0 +1,7 @@
+# data/dialogue/inn_ruinwatch.yaml
+id: inn_ruinwatch
+entries:
+  - lines:
+      - "Pilgrim rates. The sea air is free and so is the howling."
+    on_complete:
+      open_inn: true

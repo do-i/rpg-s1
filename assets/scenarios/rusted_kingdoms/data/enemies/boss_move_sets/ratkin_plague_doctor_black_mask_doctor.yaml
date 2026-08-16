@@ -1,0 +1,30 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 50
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: claw_crush        # 130% physical, DEF down 20% 2 turns
+      weight: 30
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: bubble_spray      # all party, 80% physical
+      weight: 20
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: iron_shell        # DEF up 40% self, 3 turns
+      weight: 50
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: bubble_spray
+      target: all_party
+    - ability: iron_shell
+      target: self

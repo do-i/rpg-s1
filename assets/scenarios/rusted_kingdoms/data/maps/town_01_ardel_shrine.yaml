@@ -1,0 +1,14 @@
+id: town_01_ardel_shrine
+name: Ardel Shrine
+bgm: town.default
+
+npcs:
+  - id: shrine_keeper
+    name: "Keeper Joss"
+    dialogue: ardel_shrine_keeper
+    position: [8, 4]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.5

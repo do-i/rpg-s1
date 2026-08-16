@@ -320,9 +320,13 @@ live-found portal regression.
 | M6.22 | [x] Cast one field healing spell. | `S` | Target, MP cost, and cap behavior match Python. Evidence: Elise Heal spends 4 MP only on a damaged valid target. |
 | M6.23 | [x] Add the teleport destination picker. | `S` | Only eligible visited maps appear. Evidence: metadata/portal-derived catalog plus current/unvisited exclusion fixture. |
 | M6.24 | [x] Execute field teleport through the map transition path. | `S` | MP changes only after a valid destination is accepted. Evidence: standard transition transaction fixture rejects a busy path; MP is spent only after acceptance. |
+| M6.25 | [x] Match the original Status screen presentation. | `T` | The selected member appears in a three-column layout with party thumbnails, a full-height portrait, and a profile/loadout panel. Evidence: source-reference screenshots, structure/path regression tests, and user visual verification on 2026-08-16. |
+| M6.26 | [x] Add the Status portrait/details interaction. | `T` | Enter replaces the center portrait with progression, stats, equipment, spells, and position; Escape returns to the portrait before closing Status. Evidence: reducer/UI regression tests and user interaction verification on 2026-08-16. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
-spell screens, all operating on the same runtime state.
+spell screens, all operating on the same runtime state. The Status screen also
+matches the original game's portrait-first presentation and verified
+portrait-to-details interaction.
 
 ## Milestone 7 — Save, load, and recovery
 

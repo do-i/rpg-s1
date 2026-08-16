@@ -1,0 +1,28 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 60
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: maul              # 150% physical, single target
+      weight: 25
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: roar              # ATK down 20% all party, 2 turns
+      weight: 15
+    - condition:
+        hp_pct_below: 0.40  # enrage phase
+      action: ability
+      id: maul
+      weight: 60
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: roar
+      target: all_party

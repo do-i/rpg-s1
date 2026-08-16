@@ -1,0 +1,45 @@
+# data/dialogue/frostholm_quartermaster.yaml
+#
+# Sub-quest giver: the Frostholm quartermaster. She can't release winter
+# rations without the gate sentry's watch-count, and the sentry won't abandon
+# his post to bring it. Relay between them. Reward: 2 Remedies.
+id: frostholm_quartermaster
+type: npc
+
+entries:
+  # Complete
+  - condition:
+      requires: [sq_watch_done]
+    lines:
+      - "Rations are moving. Half the lower ward eats tonight because you walked thirty paces."
+      - "Take these — frostbite's the other war we fight up here."
+
+  # Sentry gave the count — reward
+  - condition:
+      requires: [sq_watch_relayed]
+      excludes: [sq_watch_done]
+    lines:
+      - "Forty on the wall, nine sick. That's the number I needed."
+      - "Now the ledger balances and the stores open. Bless you for the legwork."
+    on_complete:
+      set_flag: sq_watch_done
+      give_items:
+        - id: remedy
+          qty: 2
+
+  # Started, not relayed
+  - condition:
+      requires: [sq_watch_started]
+      excludes: [sq_watch_relayed]
+    lines:
+      - "The sentry's at the inner gate. I need his head-count, not his excuses."
+
+  # First meeting
+  - condition:
+      excludes: [sq_watch_started]
+    lines:
+      - "I can't open the winter stores without the gate's watch-count, and that stubborn sentry won't leave his post to bring it."
+      - "Regulations. People freeze and I'm held up by a tally mark."
+      - "Could you fetch his count? You're not bound by my paperwork."
+    on_complete:
+      set_flag: sq_watch_started

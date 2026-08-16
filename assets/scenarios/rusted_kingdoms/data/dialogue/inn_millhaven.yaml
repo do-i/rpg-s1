@@ -1,0 +1,7 @@
+# data/dialogue/inn_millhaven.yaml
+id: inn_millhaven
+entries:
+  - lines:
+      - "Welcome to the Millhaven Inn. Quietest beds on the plains road."
+    on_complete:
+      open_inn: true

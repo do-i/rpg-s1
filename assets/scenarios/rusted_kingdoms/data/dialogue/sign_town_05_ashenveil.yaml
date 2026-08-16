@@ -1,0 +1,8 @@
+# data/dialogue/sign_town_05_ashenveil.yaml
+id: sign_town_05_ashenveil
+type: board
+entries:
+  - lines:
+      - "Notice Board — Ashenveil"
+      - "A city of mourners raised on the old capital's grave. The Oracle sees all who enter."
+      - "This is where the covenant broke. Ask the Oracle your question — but be ready for the answer."

@@ -1,0 +1,10 @@
+# data/dialogue/weapon_shop_harborgate.yaml
+#
+# Rennick, weapon dealer in the Harborgate trade hall.
+id: weapon_shop_harborgate
+type: npc
+entries:
+  - lines:
+      - "Imports from three kingdoms — quarantine can't hold good steel. Don't ask which crate it came off."
+    on_complete:
+      open_shop: weapon

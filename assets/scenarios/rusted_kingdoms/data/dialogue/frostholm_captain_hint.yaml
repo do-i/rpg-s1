@@ -1,0 +1,41 @@
+# data/dialogue/frostholm_captain_hint.yaml
+id: frostholm_captain_hint
+type: npc
+
+entries:
+  # Act 4, zone06 boss cleared — hint toward endgame
+  - condition:
+      requires: [story_act4_started, boss_zone06_defeated]
+      excludes: []
+    lines:
+      - "The mountain pass is quiet for the first time in years."
+      - "Whatever you're after — it's beyond the pass now. There's nothing left to stop you up here."
+      - "Don't come back without finishing it."
+
+  # Act 4, zone06 boss not cleared — nudge toward Mountain Pass
+  - condition:
+      requires: [story_act4_started]
+      excludes: [boss_zone06_defeated]
+    lines:
+      - "The pass to the east is our only route through the mountains."
+      - "A Frost Dragon took up there two winters ago. We've lost three scouting parties."
+      - "No one gets through until that thing is gone."
+
+  # Act 4 not started, zone05 cleared — fires Act 4
+  - condition:
+      requires: [boss_zone05_defeated]
+      excludes: [story_act4_started]
+    lines:
+      - "You came up through the foothills? Impressive."
+      - "Frostholm doesn't get many visitors who survive that climb."
+      - "There's a man here — Kael. Former army. If you're heading further north, talk to him first."
+    on_complete:
+      set_flag: story_act4_started
+
+  # Early visit — Act 3 or earlier
+  - condition:
+      requires: [story_act3_started]
+      excludes: [boss_zone05_defeated]
+    lines:
+      - "You're not dressed for this cold. The foothills will kill you before the monsters do."
+      - "Come back when you've hardened up a bit."

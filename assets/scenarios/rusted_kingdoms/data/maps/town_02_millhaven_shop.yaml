@@ -1,0 +1,107 @@
+id: town_02_millhaven_shop
+name: Millhaven
+bgm: town.bamboo
+
+shop:
+  items:
+    - id: potion
+      qty: 5
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: antidote
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: tent
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_quest_started
+    - id: hi_potion
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_act2_started
+
+npcs:
+  - id: item_shop_keeper
+    name: "Petra"
+    dialogue: item_shop_millhaven
+    position: [6, 3]
+    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+  - id: mc_shop_keeper
+    name: "Tibbs"
+    dialogue: mc_shop_intro
+    position: [10, 3]
+    sprite: assets/sprites/npc/male_blond_01.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.8
+  - id: weapon_shop_keeper
+    name: Corvin
+    dialogue: weapon_shop_millhaven
+    position: [4, 3]
+    sprite: assets/sprites/npc/male_sword_fighter_base.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+  - id: armor_shop_keeper
+    name: Maud
+    dialogue: armor_shop_millhaven
+    position: [12, 3]
+    sprite: assets/sprites/npc/village_female_person_headscarf_neighbor.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+
+weapon_shop:
+  items:
+    - id: dagger
+      buy_price: 120
+      unlock_flag: story_quest_started
+    - id: short_sword
+      buy_price: 150
+      unlock_flag: story_quest_started
+    - id: oak_staff
+      buy_price: 180
+      unlock_flag: story_quest_started
+    - id: short_bow
+      buy_price: 220
+      unlock_flag: story_quest_started
+    - id: iron_mace
+      buy_price: 250
+      unlock_flag: story_quest_started
+    - id: silver_wand
+      buy_price: 300
+      unlock_flag: story_act2_started
+
+armor_shop:
+  items:
+    - id: leather_hat
+      buy_price: 60
+      unlock_flag: story_quest_started
+    - id: buckler
+      buy_price: 90
+      unlock_flag: story_quest_started
+    - id: leather_vest
+      buy_price: 150
+      unlock_flag: story_quest_started
+    - id: small_shield
+      buy_price: 180
+      unlock_flag: story_quest_started
+    - id: light_armor
+      buy_price: 300
+      unlock_flag: story_act2_started

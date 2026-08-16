@@ -1,0 +1,10 @@
+# data/dialogue/mc_shop_intro.yaml
+id: mc_shop_intro
+type: npc
+entries:
+  - condition:
+      requires: [story_quest_started]
+    lines:
+      - "Magic Cores? I'll take them. Fair rates, no questions."
+    on_complete:
+      open_shop: magic_core

@@ -1,0 +1,58 @@
+# data/dialogue/frostholm_courtier.yaml
+#
+# Flavor NPC: a palace courtier in Frostholm.
+#
+# Sub-quest giver: she wants to send alms to the lower ward, but at court
+# charity reads as doubting the king's providence. Carry her purse to the
+# beggar (frostholm_beggar) without naming her. Reward: a Warp Stone.
+id: frostholm_courtier
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_alms_done]
+    lines:
+      - "The lower ward eats tonight, and the court is none the wiser."
+      - "In Frostholm, kindness is done the way theft is done elsewhere. Quietly."
+
+  # Purse delivered — reward
+  - condition:
+      requires: [sq_alms_relayed]
+      excludes: [sq_alms_done]
+    lines:
+      - "Delivered, and no name attached? You'd survive this court, traveler."
+      - "Take this in trade. A warp stone — palace vault surplus that found its way loose."
+      - "The vault-warden owes me more favors than he can count. Don't ask which one this was."
+    on_complete:
+      set_flag: sq_alms_done
+      give_items:
+        - id: warp_stone
+          qty: 1
+
+  # Started, purse not yet delivered
+  - condition:
+      requires: [sq_alms_started]
+      excludes: [sq_alms_relayed]
+    lines:
+      - "The beggar keeps to the lower ward. Remember — if anyone asks, the purse fell from a pilgrim's pocket."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_alms_started]
+    lines:
+      - "You're not of this court, so I'll say it plainly: people are freezing in the lower ward."
+      - "I cannot be seen helping them. Here, charity means doubting the king's providence. Doubt has a price."
+      - "Take this purse to the beggar down there. If anyone asks, it fell from a pilgrim's pocket."
+    on_complete:
+      set_flag: sq_alms_started
+
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "The king sent his own guard south with you. The court hasn't stopped whispering since."
+      - "A throne that gambles its protectors is a throne that's afraid. And it should be."
+
+  - lines:
+      - "Mind your manners near the palace. The king grieves loudly and forgives slowly."
+      - "His daughter was lost to the rot, you know. Don't mention the south wing."

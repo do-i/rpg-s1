@@ -1,0 +1,45 @@
+# data/dialogue/ruinwatch_archivist.yaml
+#
+# Sub-quest giver: the Ruinwatch archivist. Too frail to climb to the ruins,
+# she's heard the stonemason (ruinwatch_mason) took a rubbing of a Flame-glyph.
+# Relay between them and she reads it for you. Reward: 2 Ethers.
+id: ruinwatch_archivist
+type: npc
+
+entries:
+  # Complete
+  - condition:
+      requires: [sq_glyph_done]
+    lines:
+      - "'The flame remembers its first hand.' That's what the glyph reads."
+      - "Whatever that means for you, child — guard it. And take these for your trouble."
+
+  # Mason agreed to share the rubbing — reward + reveal
+  - condition:
+      requires: [sq_glyph_relayed]
+      excludes: [sq_glyph_done]
+    lines:
+      - "He'll share it? Bless that gruff man's heart."
+      - "Bring it by when you can. Old script like this — it may name what you carry."
+    on_complete:
+      set_flag: sq_glyph_done
+      give_items:
+        - id: ether
+          qty: 2
+
+  # Started, not relayed
+  - condition:
+      requires: [sq_glyph_started]
+      excludes: [sq_glyph_relayed]
+    lines:
+      - "The mason works the north end. Ask him about the glyph he copied."
+
+  # First meeting
+  - condition:
+      excludes: [sq_glyph_started]
+    lines:
+      - "My legs won't carry me to the ruins anymore, and the script up there is fading fast."
+      - "The stonemason took a charcoal rubbing of a Flame-glyph last season. He won't lend it to me."
+      - "You have an honest face. Would you ask him to share it? I must read it before it's lost."
+    on_complete:
+      set_flag: sq_glyph_started

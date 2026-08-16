@@ -1,0 +1,28 @@
+# data/dialogue/ashenveil_keeper.yaml
+#
+# Sanctum keeper for the ashenveil_widow errand. Relents when shamed gently.
+id: ashenveil_keeper
+type: npc
+
+entries:
+  # After relaying
+  - condition:
+      requires: [sq_remembrance_relayed]
+    lines:
+      - "The rolls were never full. I was only tired of grief. You reminded me whose door this is."
+
+  # Quest active — relents
+  - condition:
+      requires: [sq_remembrance_started]
+      excludes: [sq_remembrance_relayed]
+    lines:
+      - "The widow sent you. Of course she did."
+      - "...You're right. No name should go unspoken. Bring it to me and I'll add it to the ash."
+    on_complete:
+      set_flag: sq_remembrance_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_remembrance_started]
+    lines:
+      - "The oracle sees forward. The remembrance looks back. Someone must tend both, or the town forgets itself."

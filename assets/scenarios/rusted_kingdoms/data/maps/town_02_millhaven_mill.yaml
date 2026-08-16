@@ -1,0 +1,14 @@
+id: town_02_millhaven_mill
+name: Millhaven
+bgm: town.bamboo
+
+npcs:
+  - id: millhaven_miller
+    name: "Old Havel"
+    dialogue: millhaven_miller
+    position: [5, 6]
+    sprite: assets/sprites/npc/farmer_male_older_farmer.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.5

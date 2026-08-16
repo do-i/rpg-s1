@@ -1,0 +1,129 @@
+# Grouped by unlock phase
+
+# ── Act 1 ─────────────────────────────────────────────
+- id: recipe_antidote_plus
+  scroll_name: "Purging Salve"
+  output: { item: remedy, qty: 1 }
+  inputs:
+    items:
+      - { id: venom_sac, qty: 2 }
+      - { id: herb_red, qty: 1 }
+  gp_cost: 80
+  unlock_flag: story_quest_started
+
+- id: recipe_ether
+  scroll_name: "Arcane Tonic"
+  output: { item: ether, qty: 2 }
+  inputs:
+    mc:
+      - { size: S, qty: 1 }
+    items:
+      - { id: mana_droplet, qty: 1 }
+  gp_cost: 100
+  unlock_flag: story_quest_started
+
+# ── Act 2 ─────────────────────────────────────────────
+- id: recipe_hi_potion
+  scroll_name: "Vital Brew"
+  output: { item: hi_potion, qty: 2 }
+  inputs:
+    mc:
+      - { size: S, qty: 1 }
+    items:
+      - { id: herb_red, qty: 2 }
+      - { id: rare_herb, qty: 1 }
+  gp_cost: 180
+  unlock_flag: story_act2_started
+
+- id: recipe_hi_ether
+  scroll_name: "Clarity Brew"
+  output: { item: hi_ether, qty: 2 }
+  inputs:
+    mc:
+      - { size: M, qty: 1 }
+    items:
+      - { id: mana_droplet, qty: 2 }
+      - { id: water_crystal, qty: 1 }
+  gp_cost: 280
+  unlock_flag: story_act2_started
+
+- id: recipe_veil_breaker
+  scroll_name: "Alchemist's Lens"
+  output: { item: veil_breaker, qty: 1 }
+  unique_output: true           # guard: once player owns one, row stays visible but ungreyed/uncraftable
+  inputs:
+    mc:
+      - { size: M, qty: 1 }
+    items:
+      - { id: spirit_orb, qty: 1 }
+      - { id: ectoplasm, qty: 2 }
+  gp_cost: 400
+  unlock_flag: story_act2_started
+
+- id: recipe_fire_vial
+  scroll_name: "Volatile Concoction"
+  output: { item: fire_vial, qty: 3 }
+  inputs:
+    items:
+      - { id: fire_gland, qty: 1 }
+      - { id: venom_sac, qty: 1 }
+  gp_cost: 120
+  unlock_flag: story_act2_started
+
+# ── Act 3 ─────────────────────────────────────────────
+- id: recipe_holy_water
+  scroll_name: "Sacred Mixture"
+  output: { item: holy_water, qty: 3 }
+  inputs:
+    mc:
+      - { size: S, qty: 2 }
+    items:
+      - { id: spirit_orb, qty: 1 }
+  gp_cost: 200
+  unlock_flag: story_act3_started
+
+- id: recipe_ice_vial
+  scroll_name: "Searing Mixture"
+  output: { item: ice_vial, qty: 3 }
+  inputs:
+    items:
+      - { id: ice_fang, qty: 1 }
+      - { id: wind_crystal, qty: 1 }
+  gp_cost: 150
+  unlock_flag: story_act3_started
+
+- id: recipe_shock_vial
+  scroll_name: "Storm Mixture"
+  output: { item: shock_vial, qty: 3 }
+  inputs:
+    items:
+      - { id: gale_feather, qty: 1 }   # Zone 5 drop (Wind Elemental)
+      - { id: wind_crystal, qty: 1 }   # Zone 5 drop (Wind Elemental)
+  gp_cost: 150
+  unlock_flag: story_act3_started
+
+- id: recipe_life_crystal
+  scroll_name: "Forbidden Brew"
+  output: { item: life_crystal, qty: 1 }
+  inputs:
+    mc:
+      - { size: L, qty: 1 }      # reduced from 2 — Zone 8 accessible
+    items:
+      - { id: soul_fragment, qty: 1 }   # Zone 8 drop (Wraith, Specter)
+      - { id: phantom_veil, qty: 1 }    # Zone 8 drop (Phantom)
+  gp_cost: 800                   # reduced from 1200
+  unlock_flag: story_act3_started
+
+# ── Act 4 / Late ──────────────────────────────────────
+- id: recipe_elixir
+  scroll_name: "Grand Elixir"
+  output: { item: elixir, qty: 1 }
+  inputs:
+    mc:
+      - { size: L, qty: 1 }
+      - { size: M, qty: 2 }
+    items:
+      - { id: rare_herb, qty: 2 }
+      - { id: soul_fragment, qty: 1 }
+  gp_cost: 800
+  unlock_flag: story_act4_started

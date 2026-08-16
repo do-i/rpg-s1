@@ -1,0 +1,23 @@
+name: Shaman Gate
+warp_order: 140
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 3
+  max: 7
+  interval: 24.0
+item_boxes:
+  - id: pass_03_chest_01
+    position: [37, 11]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+  - id: pass_03_chest_02
+    position: [39, 21]
+    loot:
+      magic_cores:
+        - size: l
+          qty: 2
+        - size: m
+          qty: 2

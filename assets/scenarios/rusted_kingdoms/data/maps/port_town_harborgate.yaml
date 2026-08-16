@@ -1,0 +1,62 @@
+id: port_town_harborgate
+name: Harborgate
+warp_order: 60
+bgm: town.default
+
+shop:
+  items:
+    - id: potion
+      qty: 5
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: antidote
+      qty: 5
+      buy_price: 80
+      unlock_flag: story_quest_started
+
+npcs:
+  - id: harborgate_dockhand
+    name: "Cobb"
+    dialogue: harborgate_dockhand
+    position: [21, 14]
+    sprite: assets/sprites/npc/village_male_person_market_runner.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.6
+      range: 4
+
+  - id: harborgate_clerk
+    name: "Clerk Isolde"
+    dialogue: harborgate_clerk
+    position: [12, 7]
+    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    default_facing: down
+    animation:
+      mode: step
+      speed: 0.6
+
+  - id: harborgate_stevedore
+    name: "Brant"
+    dialogue: harborgate_stevedore
+    position: [30, 9]
+    sprite: assets/sprites/npc/male_sword_fighter_base.tsx
+    default_facing: left
+
+  - id: harborgate_sailor
+    name: "Tam"
+    dialogue: harborgate_sailor
+    position: [33, 17]
+    sprite: assets/sprites/npc/man_01.tsx
+    default_facing: down
+    animation:
+      mode: wander
+      speed: 1.4
+      range: 3
+
+  - id: harborgate_fishwife
+    name: "Marla"
+    dialogue: harborgate_fishwife
+    position: [5, 16]
+    sprite: assets/sprites/npc/village_female_person_basket_carrier.tsx
+    default_facing: right

@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_ashenveil.yaml
+#
+# Aldous, armorer in Ashenveil.
+id: armor_shop_ashenveil
+type: npc
+entries:
+  - lines:
+      - "Mourners' plate — polished dark so the ash doesn't show. Practical grief, I call it."
+    on_complete:
+      open_shop: armor

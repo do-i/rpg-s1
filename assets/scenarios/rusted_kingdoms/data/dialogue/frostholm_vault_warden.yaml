@@ -1,0 +1,21 @@
+# data/dialogue/frostholm_vault_warden.yaml
+#
+# Warden of the royal vault said to hold the third Vessel-flame (Sub-Epic 5).
+id: frostholm_vault_warden
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "The pedestal is empty and the king did not have me executed. Both of those are new."
+      - "Whatever you took from this room, the cold has been losing its grip ever since."
+
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Two hundred years I have guarded a light I am forbidden to look at."
+      - "It hums when you stand near, stranger. It has never done that for anyone."
+
+  - lines:
+      - "The vault is sealed by the king's word. Not even dust enters without it."

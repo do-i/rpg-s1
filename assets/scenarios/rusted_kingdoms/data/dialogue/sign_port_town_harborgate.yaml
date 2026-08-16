@@ -1,0 +1,8 @@
+# data/dialogue/sign_port_town_harborgate.yaml
+id: sign_port_town_harborgate
+type: board
+entries:
+  - lines:
+      - "Notice Board — Harborgate"
+      - "Free port, open to all flags and most lies. North passage is closed: quarantine, by order of the harbormaster's guild."
+      - "The sick are tended in the quarantine quarter by a priestess the guild would rather you forget."

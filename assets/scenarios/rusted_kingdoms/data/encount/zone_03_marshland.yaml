@@ -1,0 +1,37 @@
+id: zone_03_marshland
+name: Marshland
+density: 0.53
+background: zone3-bg-1280x468
+
+entries:
+  - formation: [ratkin_cutpurse_base, ratkin_cutpurse_base]
+    weight: 25
+    chase_range: 10
+  - formation: [ratkin_cutpurse_sewer_archer]
+    weight: 15
+    chase_range: 0
+  - formation: [ratkin_cutpurse_masked_scavenger, ratkin_cutpurse_base]
+    weight: 12
+    chase_range: 0
+  - formation: [ratkin_plague_doctor_base]
+    weight: 12
+    chase_range: 0
+  - formation: [ratkin_plague_doctor_sewer_physician, ratkin_cutpurse_base]
+    weight: 10
+    chase_range: 0
+  - formation: [bat_demon_base, bat_demon_base]
+    weight: 10
+    chase_range: 0
+  - formation: [bat_demon_night_fiend]
+    weight: 8
+    chase_range: 0
+  - formation: [mouse_thief_mouse_archer, ratkin_cutpurse_sewer_archer]
+    weight: 8
+    chase_range: 0
+
+boss:
+  id: ratkin_plague_doctor_black_mask_doctor
+  name: Black Mask Doctor
+  once: true
+  on_complete:
+    set_flag: boss_zone03_defeated

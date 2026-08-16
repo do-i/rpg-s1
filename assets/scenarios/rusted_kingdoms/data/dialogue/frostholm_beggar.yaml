@@ -1,0 +1,38 @@
+# data/dialogue/frostholm_beggar.yaml
+#
+# Flavor NPC: a cold-bitten beggar in the lower ward of Frostholm.
+#
+# Also the relay target for the courtier's alms errand (frostholm_courtier).
+# Quest entries only match inside the quest window, so the sq_watch_done
+# and default lines below still play.
+id: frostholm_beggar
+type: npc
+
+entries:
+  # Courtier's errand — receives the purse
+  - condition:
+      requires: [sq_alms_started]
+      excludes: [sq_alms_relayed]
+    lines:
+      - "A purse? For the ward? Fell from a pilgrim's pocket, did it."
+      - "Pilgrims' pockets don't carry palace-minted silver, friend. But I can forget that."
+      - "Tell whoever didn't send this: the lower ward remembers what it's told to forget. Kindly."
+    on_complete:
+      set_flag: sq_alms_relayed
+
+  # Between delivering and collecting the courtier's thanks
+  - condition:
+      requires: [sq_alms_relayed]
+      excludes: [sq_alms_done]
+    lines:
+      - "The coin's already turned to bread and coal. Tell your pilgrim the ward eats tonight."
+
+  - condition:
+      requires: [sq_watch_done]
+    lines:
+      - "The stores opened today. First hot broth I've had since the snows came."
+      - "Whoever shook the quartermaster loose — that was you, wasn't it? Bless your boots."
+
+  - lines:
+      - "Spare a thought for the lower ward, traveler. The palace eats; we wait on its leavings."
+      - "Winter here doesn't kill quick. It just keeps subtracting."

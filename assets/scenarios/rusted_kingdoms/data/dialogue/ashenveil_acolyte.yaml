@@ -1,0 +1,16 @@
+# data/dialogue/ashenveil_acolyte.yaml
+#
+# Flavor NPC: a young acolyte of the Ashenveil oracle.
+id: ashenveil_acolyte
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "The oracle spoke your name in her sleep last night. She won't say what followed it."
+      - "Whatever you're walking toward — she's already seen the end of it. That frightens me."
+
+  - lines:
+      - "The oracle takes no questions before the ash-fall thins. Come back at dusk."
+      - "And don't stare at her veil. The last one who did dreamed in fire for a week."

@@ -1,0 +1,54 @@
+# data/dialogue/ashenveil_oracle_hint.yaml
+id: ashenveil_oracle_hint
+type: npc
+
+entries:
+  # Act 4 started — both zone07 and zone08 cleared, endgame ahead
+  - condition:
+      requires: [story_act4_started, boss_zone08_defeated]
+      excludes: []
+    lines:
+      - "The corruption has lifted. I can see further now."
+      - "The flame you carry has one destination left, and you already know where it waits."
+      - "The stronghold does not hide itself. It dares you to come."
+
+  # Act 4 started, zone08 not cleared — nudge toward Corrupted Forest
+  - condition:
+      requires: [story_act4_started]
+      excludes: [boss_zone08_defeated]
+    lines:
+      - "Something in the forest to the west is blocking my sight."
+      - "A dark presence. Old, hungry, and wearing grief like a crown."
+      - "The corruption will spread if left unchecked."
+
+  # zone07 cleared, act4 not yet started — hint toward act4 trigger
+  - condition:
+      requires: [boss_zone07_defeated]
+      excludes: [story_act4_started]
+    lines:
+      - "The cave below has been silent since you went through it."
+      - "Whatever you are — the flame recognizes you."
+      - "Come back after you have rested. I will have more to tell you."
+
+  # Act 3 started, zone07 not cleared — nudge toward Sunken Cave
+  - condition:
+      requires: [story_act3_started]
+      excludes: [boss_zone07_defeated]
+    lines:
+      - "Ashenveil was abandoned when the cave below flooded with darkness."
+      - "Creatures from the deep have sealed off the lower road."
+      - "Nothing moves forward until someone clears what lurks in the Sunken Cave."
+
+  - condition:
+      requires: [story_quest_started]
+      excludes: [story_act3_started]
+    lines:
+      - "You stand far from the first ash, little Vessel."
+      - "Return when the road has taught you what that word costs."
+
+  # Pre-quest fallback — player has wandered in before the story kicks off
+  - condition:
+      excludes: [story_quest_started]
+    lines:
+      - "The wind here carries no questions you are ready to ask."
+      - "Go back to Ardel. The road begins where you began."

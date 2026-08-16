@@ -1,0 +1,7 @@
+# data/dialogue/item_shop_millhaven.yaml
+id: item_shop_millhaven
+entries:
+  - lines:
+      - "Welcome! Mill trade's been slow, so everything's priced to move."
+    on_complete:
+      open_shop: item

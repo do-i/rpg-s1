@@ -1,0 +1,6 @@
+id: item_shop_ardel
+entries:
+  - lines:
+      - "Welcome! Take a look around."
+    on_complete:
+      open_shop: item

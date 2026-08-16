@@ -1,0 +1,16 @@
+name: Volcanic Region
+warp_order: 170
+bgm: zone.dark
+
+enemy_spawn:
+  init: 5
+  max: 9
+  interval: 20.0
+
+npcs:
+  - id: stronghold_gate_guard
+    name: "Warden Malc"
+    dialogue: stronghold_gate_guard
+    position: [46, 17]
+    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    default_facing: left

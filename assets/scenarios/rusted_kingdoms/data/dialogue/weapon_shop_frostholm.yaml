@@ -1,0 +1,10 @@
+# data/dialogue/weapon_shop_frostholm.yaml
+#
+# Sten, weapon dealer in Frostholm.
+id: weapon_shop_frostholm
+type: npc
+entries:
+  - lines:
+      - "Palace-pattern steel, quenched in meltwater. Three hundred years of the same forge, same edge."
+    on_complete:
+      open_shop: weapon

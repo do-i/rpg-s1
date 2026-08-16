@@ -1,0 +1,51 @@
+# data/dialogue/ardel_shrine_keeper.yaml
+#
+# Caretaker of the burnt shrine in Ardel. The shrine burned the night the
+# forest rusted (intro flare); the high-level outline calls for the camera to
+# rest here in the epilogue, so the keeper's lines track the whole journey.
+#
+# Also the relay target for Old Marn's errand (ardel_fisherman): agrees to
+# speak the water-blessing over the stream. The quest entries only match
+# inside the quest window, so the story-tracking lines below still play.
+id: ardel_shrine_keeper
+type: npc
+
+entries:
+  # Endgame — the epilogue beat
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "Warm, isn't it? First warmth these stones have held since the night they burned."
+      - "Whatever you did out there — the children come to sit here again."
+      - "That's all a shrine ever was, you know. A place to warm your hands."
+
+  # Fisherman's errand — agrees to bless the stream
+  - condition:
+      requires: [sq_stream_started]
+      excludes: [sq_stream_relayed]
+    lines:
+      - "Marn sent you? Marn, who swore the shrine's words were smoke and habit?"
+      - "The blessing was never for the water, you know. It was for the ones who drink it."
+      - "...Tell the old fool I'll come down at dusk. Some words keep, even in a burnt mouth."
+    on_complete:
+      set_flag: sq_stream_relayed
+
+  # Between relaying and collecting the fisherman's thanks
+  - condition:
+      requires: [sq_stream_relayed]
+      excludes: [sq_stream_done]
+    lines:
+      - "I'll be at the stream at dusk. Go tell Marn — he'll want to pretend he didn't ask."
+
+  # After the elder's revelation (Act II onward)
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "So the elder finally told you. Sixteen years she carried that."
+      - "This is where they found you, swaddled in ash, right where the altar stood."
+      - "The fire that took this roof wasn't your fault, {protagonist}. Fires only ever do what we feed them."
+
+  # Default — post-flare grief
+  - lines:
+      - "Mind the beams. Nothing here has been sound since the night the forest rusted."
+      - "Folk say the shrine died that night. I say it's only holding its breath."

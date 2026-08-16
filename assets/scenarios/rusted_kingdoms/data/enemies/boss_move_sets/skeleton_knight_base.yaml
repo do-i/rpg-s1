@@ -1,0 +1,17 @@
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 50
+    - action: ability
+      id: poison_bite       # poison single target
+      weight: 30
+    - action: ability
+      id: web_shot          # DEX down 30%, 2 turns
+      weight: 20
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: web_shot
+      target: highest_dex

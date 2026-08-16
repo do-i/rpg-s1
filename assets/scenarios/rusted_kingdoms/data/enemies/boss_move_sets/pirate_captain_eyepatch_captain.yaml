@@ -1,0 +1,33 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 40
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: frost_breath      # all party, 90% magic, freeze 30%
+      weight: 40
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: blizzard_roar     # all party, 120% magic, freeze 50%
+      weight: 60
+    - condition:
+        turn_mod:
+          every: 3
+      action: ability
+      id: ice_shield        # DEF up 30% self, 2 turns
+      weight: 100
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: frost_breath
+      target: all_party
+    - ability: blizzard_roar
+      target: all_party
+    - ability: ice_shield
+      target: self

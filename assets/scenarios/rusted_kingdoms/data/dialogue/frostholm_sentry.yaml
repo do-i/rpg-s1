@@ -1,0 +1,28 @@
+# data/dialogue/frostholm_sentry.yaml
+#
+# Gate sentry for the frostholm_quartermaster errand. Won't leave his post.
+id: frostholm_sentry
+type: npc
+
+entries:
+  # After relaying
+  - condition:
+      requires: [sq_watch_relayed]
+    lines:
+      - "Stores open? Good. A fed wall holds longer than a hungry one."
+
+  # Quest active — give the count
+  - condition:
+      requires: [sq_watch_started]
+      excludes: [sq_watch_relayed]
+    lines:
+      - "Leave my post? In this cold? The quartermaster knows better than to ask."
+      - "Forty on the wall, nine down with fever. Carry that to her, and my thanks with it."
+    on_complete:
+      set_flag: sq_watch_relayed
+
+  # Before the errand
+  - condition:
+      excludes: [sq_watch_started]
+    lines:
+      - "The pass beyond the gate is white to the horizon. Nothing moves out there but the wind."

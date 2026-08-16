@@ -1,0 +1,43 @@
+# story_content/dialogue/jep_join.yaml
+id: jep_join
+type: npc
+entries:
+  - condition:
+      requires: [npc_jep_joined, boss_zone03_defeated]
+    lines:
+      - "Hear that? No marsh screaming. That's new."
+      - "If the old stones point north, I say we follow them before they change their minds."
+
+  - condition:
+      requires: [npc_jep_joined]
+    lines:
+      - "Lead the way. Or let me lead. Actually let me lead."
+      - "You people have heroic faces, which means you walk into traps with confidence."
+
+  - condition:
+      requires: [story_act3_started]
+      excludes: [npc_jep_joined]
+    lines:
+      - "Okay, okay. I wasn't stealing. I was borrowing. From a ruin. That's basically archaeology."
+      - "Look, you clearly need someone who knows this place."
+      - "I've been through every passage in here. Twice."
+      - "I won't slow you down. I'm fast, I'm quiet, and I can open anything."
+      - "Besides — you're the first people I've seen in three days. I'm coming with you."
+    on_complete:
+      set_flag: npc_jep_joined
+      join_party: jep
+
+  - condition:
+      requires: [story_act2_started]
+      excludes: [npc_jep_joined]
+    lines:
+      - "Ruinwatch? Bad stairs, worse ghosts, excellent locked doors."
+      - "Come back when the ruins start whispering your name. That's usually when things get profitable."
+
+  # Fallback — the player reached the vaults before the story pointed them here.
+  # Flavor only; recruiting Jep stays gated on story_act3_started above.
+  - condition:
+      excludes: [npc_jep_joined]
+    lines:
+      - "Whoa-! ...Okay, you're not a ghost. Good. Ghosts don't haggle."
+      - "I'm just cataloguing. Professionally. Don't mind me."

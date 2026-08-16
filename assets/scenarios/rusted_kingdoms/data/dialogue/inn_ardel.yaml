@@ -1,0 +1,6 @@
+id: inn_ardel
+entries:
+  - lines:
+      - "Welcome to the Ardel Inn."
+    on_complete:
+      open_inn: true

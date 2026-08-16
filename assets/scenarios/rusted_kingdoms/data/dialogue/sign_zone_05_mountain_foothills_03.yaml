@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_05_mountain_foothills_03.yaml
+id: sign_zone_05_mountain_foothills_03
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Ticker's Ascent"
+      - "Named for a tinker who counted every step to the summit and was never seen again."
+      - "Higher still lies the pass. Whatever drove him to climb, the mountain kept it."

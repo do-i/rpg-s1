@@ -1,0 +1,8 @@
+# data/dialogue/sign_town_03_ruinwatch.yaml
+id: sign_town_03_ruinwatch
+type: board
+entries:
+  - lines:
+      - "Notice Board — Ruinwatch"
+      - "A town grown into the bones of a dead monastery, high on the sea-cliff. Relics for pilgrims, and little hope to spare."
+      - "They say the Flame first rusted here. Keep clear of the vaults below — something down there hunts the light."

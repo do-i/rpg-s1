@@ -1,0 +1,35 @@
+id: zone_02_open_plains
+name: Open Plains
+density: 0.65
+spawn_frequency: 20.0
+background: zone2-bg-1280x468
+
+entries:
+  - formation: [rabbit_bandit_base, rabbit_bandit_base]
+    weight: 25
+    chase_range: 3
+  - formation: [rabbit_bandit_brown_rabbit]
+    weight: 15
+    chase_range: 2
+  - formation: [rabbit_bandit_knife_bandit, rabbit_bandit_base]
+    weight: 15
+    chase_range: 3
+  - formation: [mouse_thief_base, mouse_thief_white_mouse]
+    weight: 15
+    chase_range: 2
+  - formation: [mouse_thief_white_mouse]
+    weight: 10
+    chase_range: 1
+  - formation: [wolf_beast_base]
+    weight: 10
+    chase_range: 5
+  - formation: [wolf_beast_spear_beast, wolf_beast_base]
+    weight: 10
+    chase_range: 4
+
+boss:
+  id: wolf_beast_black_fur
+  name: Black Fur Alpha
+  once: true
+  on_complete:
+    set_flag: boss_zone02_defeated

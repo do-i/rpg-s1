@@ -1,0 +1,38 @@
+# data/dialogue/ruinwatch_pilgrim.yaml
+#
+# Flavor NPC: a pilgrim come to pray at the ruins above Ruinwatch.
+#
+# Also the relay target for the digger's errand (ruinwatch_digger): she saw
+# the missing crewman leave town alive. Quest entries only match inside the
+# quest window, so the flavor lines below still play.
+id: ruinwatch_pilgrim
+type: npc
+
+entries:
+  # Digger's errand — she saw Pell leave
+  - condition:
+      requires: [sq_crew_started]
+      excludes: [sq_crew_relayed]
+    lines:
+      - "The young digger? I saw him. Two dawns past, walking out the south gate, quick and quiet."
+      - "Alive, whole, and wouldn't meet my eye. He took the coast road."
+      - "Tell his master gently. The ones who run from the ruins are running from what they saw, not who they left."
+    on_complete:
+      set_flag: sq_crew_relayed
+
+  # Between relaying and collecting the digger's thanks
+  - condition:
+      requires: [sq_crew_relayed]
+      excludes: [sq_crew_done]
+    lines:
+      - "Go and ease the digger's mind. A man half-grieved is worse off than a man who knows."
+
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "They say the Flame's being gathered back, piece by piece. I walked three hundred miles to see it."
+      - "Don't tell me it isn't true. I've nothing else left to walk toward."
+
+  - lines:
+      - "I came to pray at the old sanctum. The monks turned me back — the ruins aren't safe."
+      - "So I pray at the gate instead. The Flame hears gates too, I should think."

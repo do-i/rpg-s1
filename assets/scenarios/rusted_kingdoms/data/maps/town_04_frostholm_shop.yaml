@@ -1,0 +1,98 @@
+id: town_04_frostholm_shop
+name: Frostholm
+bgm: town.bamboo
+
+shop:
+  items:
+    - id: hi_potion
+      qty: 5
+      buy_price: 500
+      unlock_flag: story_act2_started
+    - id: hi_ether
+      qty: 3
+      buy_price: 600
+      unlock_flag: story_act3_started
+    - id: remedy
+      qty: 5
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: smelling_salts
+      qty: 5
+      buy_price: 60
+      unlock_flag: story_act2_started
+    - id: rest_capsule
+      qty: 3
+      buy_price: 500
+      unlock_flag: story_act3_started
+
+npcs:
+  - id: item_shop_keeper
+    name: "Ingrid"
+    dialogue: item_shop_frostholm
+    position: [6, 3]
+    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+  - id: mc_shop_keeper
+    name: "Halvar"
+    dialogue: mc_shop_intro
+    position: [10, 3]
+    sprite: assets/sprites/npc/wizard_base.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.8
+  - id: weapon_shop_keeper
+    name: Sten
+    dialogue: weapon_shop_frostholm
+    position: [4, 3]
+    sprite: assets/sprites/npc/plate_knight_mace_knight.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+  - id: armor_shop_keeper
+    name: Ylva
+    dialogue: armor_shop_frostholm
+    position: [12, 3]
+    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+
+weapon_shop:
+  items:
+    - id: iron_sword
+      buy_price: 350
+      unlock_flag: story_act2_started
+    - id: steel_axe
+      buy_price: 400
+      unlock_flag: story_act2_started
+    - id: ritual_rod
+      buy_price: 450
+      unlock_flag: story_act3_started
+    - id: war_hammer
+      buy_price: 500
+      unlock_flag: story_act2_started
+
+armor_shop:
+  items:
+    - id: silver_circlet
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: kite_shield
+      buy_price: 400
+      unlock_flag: story_act2_started
+    - id: tower_shield
+      buy_price: 650
+      unlock_flag: story_act3_started
+    - id: chainmail
+      buy_price: 700
+      unlock_flag: story_act3_started

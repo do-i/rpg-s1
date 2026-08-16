@@ -1,0 +1,40 @@
+# data/dialogue/ruinwatch_scholar_hint.yaml
+id: ruinwatch_scholar_hint
+type: npc
+
+entries:
+  # Act 4 started — look further ahead
+  - condition:
+      requires: [story_act4_started]
+      excludes: []
+    lines:
+      - "The ruins here are a footnote compared to what lies beyond Frostholm."
+      - "Whatever drove people from this place — it started at the source."
+      - "You already know that, don't you."
+
+  # Act 3 started, zone03 boss cleared — hint toward Act 4 / Frostholm
+  - condition:
+      requires: [story_act3_started, boss_zone03_defeated]
+      excludes: [story_act4_started]
+    lines:
+      - "The marsh has calmed. Travelers are talking again."
+      - "The inscriptions here point north — Frostholm sits on something old."
+      - "Whoever built these ruins didn't stop here. Follow the stonework."
+
+  # Act 3 started, zone03 boss not cleared — nudge toward marshland
+  - condition:
+      requires: [story_act3_started]
+      excludes: [boss_zone03_defeated]
+    lines:
+      - "I can't make sense of these glyphs with that noise coming from the marsh."
+      - "Something large has been disturbing the wetlands to the south."
+      - "The ruins won't give up their secrets until things quiet down out there."
+
+  # Act 2, pre-Act 3 — early visit, Jep not yet found
+  - condition:
+      requires: [story_act2_started]
+      excludes: [story_act3_started]
+    lines:
+      - "Ruinwatch used to be a trading post before the excavations started."
+      - "Now half the town is gone and the other half won't go near the old dig site."
+      - "There's supposedly a boy living in the ruins. No one's bothered to check."

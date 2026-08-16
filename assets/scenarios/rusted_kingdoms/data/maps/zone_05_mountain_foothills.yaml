@@ -1,0 +1,23 @@
+name: Mountain Foothills
+warp_order: 110
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0
+item_boxes:
+  - id: foothills_chest_01
+    position: [58, 7]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 1
+        - id: potion
+          qty: 2
+  - id: foothills_chest_02
+    position: [28, 18]
+    loot:
+      magic_cores:
+        - size: m
+          qty: 2

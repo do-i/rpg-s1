@@ -1,0 +1,19 @@
+# data/dialogue/harborgate_dockhand.yaml
+id: harborgate_dockhand
+type: npc
+
+entries:
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Quarantine's done and the cranes are turning again."
+      - "First honest cargo in a season. Mind the ropes."
+
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "Harbor's locked down. Iron lung, they say — though the guild men on the gate look healthy enough to me."
+      - "The harbormaster keeps his office in the blue house, south end. Good luck getting a straight answer."
+
+  - lines:
+      - "Marsh road traffic only. Nothing sails, nothing docks, nobody pays me."

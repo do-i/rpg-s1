@@ -1,0 +1,7 @@
+# data/dialogue/inn_ashenveil.yaml
+id: inn_ashenveil
+entries:
+  - lines:
+      - "A bed in Ashenveil costs dear — mourners pay for silence, and we have the most of it."
+    on_complete:
+      open_inn: true

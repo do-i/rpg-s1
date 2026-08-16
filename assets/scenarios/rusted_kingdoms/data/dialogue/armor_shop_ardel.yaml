@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_ardel.yaml
+#
+# Hetta, armorer in the Ardel general store.
+id: armor_shop_ardel
+type: npc
+entries:
+  - lines:
+      - "Cloth and leather, stitched to last. A farmhand's hide deserves keeping too."
+    on_complete:
+      open_shop: armor

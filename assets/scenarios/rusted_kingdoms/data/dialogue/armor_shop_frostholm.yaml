@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_frostholm.yaml
+#
+# Ylva, armorer in Frostholm.
+id: armor_shop_frostholm
+type: npc
+entries:
+  - lines:
+      - "Cold kills more travelers than claws do. Heavy plate, warm padding — dress for both."
+    on_complete:
+      open_shop: armor

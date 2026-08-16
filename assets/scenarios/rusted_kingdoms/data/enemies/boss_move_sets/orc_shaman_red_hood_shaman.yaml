@@ -1,0 +1,31 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 50
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: plague_touch      # poison + silence, single target
+      weight: 30
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: miasma            # poison all party
+      weight: 20
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: reanimate         # recover 10% max HP, once per battle
+      weight: 40
+      once: true
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: miasma
+      target: all_party
+    - ability: reanimate
+      target: self

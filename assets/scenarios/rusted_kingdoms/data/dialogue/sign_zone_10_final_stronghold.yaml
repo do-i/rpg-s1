@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_10_final_stronghold.yaml
+id: sign_zone_10_final_stronghold
+type: board
+entries:
+  - lines:
+      - "Worn Marker — The Hearth"
+      - "Beneath the dead capital lies the buried heart of the Flame. The way down is the way back through everything you've carried."
+      - "What waits here asks only one question. Be sure of your answer before you descend."

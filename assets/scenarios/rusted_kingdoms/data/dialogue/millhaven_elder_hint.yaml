@@ -1,0 +1,43 @@
+# data/dialogue/millhaven_elder_hint.yaml
+id: millhaven_elder_hint
+type: npc
+
+entries:
+  # After Act 3 started — acknowledge progress, hint forward
+  - condition:
+      requires: [story_act3_started]
+      excludes: []
+    lines:
+      - "The mills are slowing, but the town is breathing again."
+      - "That is more mercy than Millhaven earned."
+      - "The ruins east of here hold older secrets than our stolen fragment ever did."
+      - "Whatever you are chasing, it was old before this kingdom had a name."
+
+  # Act 2 underway, zone02 boss cleared — fires Act 3
+  - condition:
+      requires: [story_act2_started, boss_zone02_defeated]
+      excludes: [story_act3_started]
+    lines:
+      - "The plains have quieted since you passed through."
+      - "The barons are suddenly eager to call the fragment a bad investment."
+      - "I call it evidence, and evidence has a way of burning hands."
+      - "Travelers mention strange lights near the old ruins to the east."
+      - "Ashenveil has been abandoned for good reason. If you go — go prepared."
+    on_complete:
+      set_flag: story_act3_started
+
+  # Act 2 started, boss not yet cleared — nudge toward zone02
+  - condition:
+      requires: [story_act2_started]
+      excludes: [boss_zone02_defeated]
+    lines:
+      - "Millhaven used to trade with the eastern villages. Not anymore."
+      - "Something in the open plains has been driving travelers off the roads, and the mill barons want everyone looking elsewhere."
+      - "If the roads are to reopen, someone has to deal with whatever is out there."
+
+  - condition:
+      requires: [story_quest_started]
+      excludes: [story_act2_started]
+    lines:
+      - "You have the look of someone sent here with half a truth."
+      - "Ardel's elder keeps her silences carefully. Ask her what she knows before you ask Millhaven for answers."

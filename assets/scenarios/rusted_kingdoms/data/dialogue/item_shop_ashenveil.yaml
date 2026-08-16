@@ -1,0 +1,7 @@
+# data/dialogue/item_shop_ashenveil.yaml
+id: item_shop_ashenveil
+entries:
+  - lines:
+      - "Pilgrim supplies and grave goods. Around here those are the same shelf."
+    on_complete:
+      open_shop: item

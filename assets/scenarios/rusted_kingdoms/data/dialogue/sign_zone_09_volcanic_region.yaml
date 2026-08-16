@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_09_volcanic_region.yaml
+id: sign_zone_09_volcanic_region
+type: board
+entries:
+  - lines:
+      - "Scorched Marker — Volcanic Region"
+      - "The rusted wastes, where old battles left more iron than bones. Heat above, ash below, no shelter between."
+      - "Someone keeps a camp ahead among the graves. He is not hiding. He is waiting for you."

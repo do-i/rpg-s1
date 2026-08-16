@@ -1,0 +1,33 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 35
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: flame_breath      # all party, 100% magic fire, burn 40%
+      weight: 40
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: inferno           # all party, 150% magic fire, burn 70%
+      weight: 60
+    - condition:
+        turn_mod:
+          every: 3
+      action: ability
+      id: heat_scale        # ATK up 20% self, 2 turns
+      weight: 100
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: flame_breath
+      target: all_party
+    - ability: inferno
+      target: all_party
+    - ability: heat_scale
+      target: self

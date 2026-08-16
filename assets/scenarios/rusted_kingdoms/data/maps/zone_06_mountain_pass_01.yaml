@@ -1,0 +1,23 @@
+name: Mountain Pass
+warp_order: 130
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 4
+  max: 8
+  interval: 22.0
+item_boxes:
+  - id: pass_chest_01
+    position: [17, 10]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  - id: pass_chest_02
+    position: [50, 18]
+    loot:
+      magic_cores:
+        - size: l
+          qty: 1
+        - size: m
+          qty: 2

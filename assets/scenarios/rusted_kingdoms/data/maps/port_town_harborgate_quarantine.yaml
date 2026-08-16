@@ -1,0 +1,24 @@
+id: port_town_harborgate_quarantine
+name: Harborgate
+bgm: town.default
+
+npcs:
+  - id: quarantine_priestess
+    name: "Priestess Maren"
+    dialogue: harborgate_priestess
+    position: [8, 3]
+    sprite: assets/sprites/npc/village_female_person_apron_keeper.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.6
+  - id: quarantine_patient
+    name: "Edda"
+    dialogue: harborgate_patient
+    position: [14, 5]
+    sprite: assets/sprites/npc/village_male_person_quiet_neighbor.tsx
+    default_facing: left
+    animation:
+      mode: step
+      speed: 0.4

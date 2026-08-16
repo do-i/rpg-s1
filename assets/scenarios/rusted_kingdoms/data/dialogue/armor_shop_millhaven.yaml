@@ -1,0 +1,10 @@
+# data/dialogue/armor_shop_millhaven.yaml
+#
+# Maud, armorer in the Millhaven market.
+id: armor_shop_millhaven
+type: npc
+entries:
+  - lines:
+      - "Good boiled leather and a shield that holds. Ask the caravan guards who they buy from."
+    on_complete:
+      open_shop: armor

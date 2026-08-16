@@ -1,6 +1,6 @@
 //! In-world field-menu shell over the shared M6 runtime domain.
 
-use bevy::prelude::*;
+use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use crate::{
     action_input::{ActionState, AppAction},
@@ -31,6 +31,11 @@ use crate::{
 const INVENTORY_PAGE_ROWS: usize = 12;
 const MAIN_COMMANDS: [&str; 6] = ["Status", "Items", "Equipment", "Spells", "Save", "Quit"];
 
+const STATUS_PARTY_WIDTH: f32 = 316.0;
+const STATUS_DETAIL_WIDTH: f32 = 404.0;
+const STATUS_COLUMN_GAP: f32 = 18.0;
+const STATUS_CATEGORIES: [&str; 2] = ["Spells", "Position"];
+
 pub(crate) struct FieldMenuPlugin;
 
 impl Plugin for FieldMenuPlugin {
@@ -39,7 +44,11 @@ impl Plugin for FieldMenuPlugin {
             .add_systems(OnEnter(AppState::World), reset_field_menu)
             .add_systems(
                 Update,
-                (handle_field_menu_input, sync_field_menu_overlay)
+                (
+                    handle_field_menu_input,
+                    sync_field_menu_overlay,
+                    sync_status_page,
+                )
                     .chain()
                     .run_if(in_state(AppState::World)),
             )
@@ -72,6 +81,13 @@ enum FieldMenuMode {
     QuitConfirm,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum StatusPage {
+    #[default]
+    Roster,
+    Details,
+}
+
 #[derive(Debug, Default, Resource)]
 pub(crate) struct FieldMenuState {
     open: bool,
@@ -79,6 +95,7 @@ pub(crate) struct FieldMenuState {
     mode: FieldMenuMode,
     selected: usize,
     member_index: usize,
+    status_page: StatusPage,
     tab_index: usize,
     quantity: u32,
     pending_id: Option<String>,
@@ -103,6 +120,12 @@ impl FieldMenuState {
     }
 
     fn back(&mut self) {
+        if self.screen == FieldMenuScreen::Status && self.status_page == StatusPage::Details {
+            self.status_page = StatusPage::Roster;
+            self.selected = 0;
+            self.message.clear();
+            return;
+        }
         match self.mode {
             FieldMenuMode::Browse => {
                 if self.screen == FieldMenuScreen::Main {
@@ -156,6 +179,51 @@ struct FieldMenuBody;
 #[derive(Component)]
 struct FieldMenuHint;
 
+#[derive(Component)]
+struct FieldMenuGenericContent;
+
+#[derive(Component)]
+struct FieldMenuStatusPage;
+
+#[derive(Component)]
+struct StatusMemberCard;
+
+#[derive(Component)]
+struct SelectedStatusMemberCard;
+
+#[derive(Default)]
+struct StatusPortraitAssets {
+    profiles: std::collections::BTreeMap<String, Handle<Image>>,
+    large: std::collections::BTreeMap<String, Handle<Image>>,
+}
+
+impl StatusPortraitAssets {
+    fn load(asset_server: &AssetServer, root: &ScenarioRoot, game: &GameState) -> Self {
+        let mut portraits = Self::default();
+        for member in game.party().members() {
+            if let Some(handle) =
+                load_status_image(asset_server, root, &profile_portrait_path(member.id()))
+            {
+                portraits.profiles.insert(member.id().to_owned(), handle);
+            }
+            if let Some(handle) =
+                load_status_image(asset_server, root, &large_status_portrait_path(member.id()))
+            {
+                portraits.large.insert(member.id().to_owned(), handle);
+            }
+        }
+        portraits
+    }
+
+    fn profile(&self, member_id: &str) -> Option<Handle<Image>> {
+        self.profiles.get(member_id).cloned()
+    }
+
+    fn large(&self, member_id: &str) -> Option<Handle<Image>> {
+        self.large.get(member_id).cloned()
+    }
+}
+
 fn reset_field_menu(mut state: ResMut<FieldMenuState>) {
     state.close();
 }
@@ -202,10 +270,12 @@ fn handle_field_menu_input(
         state.back();
         return;
     }
-    if !matches!(
-        state.mode,
-        FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
-    ) {
+    if !state.message.is_empty()
+        && !matches!(
+            state.mode,
+            FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
+        )
+    {
         state.message.clear();
     }
 
@@ -275,8 +345,16 @@ fn handle_field_menu_input(
             }
         }
         (FieldMenuScreen::Status, FieldMenuMode::Browse) => {
-            if let Some(delta) = horizontal.or(vertical) {
-                cycle_member(&mut state, game.party().len(), delta);
+            if state.status_page == StatusPage::Roster {
+                if let Some(delta) = horizontal.or(vertical) {
+                    cycle_member(&mut state, game.party().len(), delta);
+                }
+                if actions.just_pressed(AppAction::Confirm) && !game.party().is_empty() {
+                    state.status_page = StatusPage::Details;
+                    state.selected = 0;
+                }
+            } else if let Some(delta) = vertical {
+                state.selected = wrapped(state.selected, STATUS_CATEGORIES.len(), delta);
             }
         }
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
@@ -820,6 +898,7 @@ fn spawn_field_menu_overlay(
                 },
                 TextColor(theme.name_entry_input_color),
                 FieldMenuTitle,
+                FieldMenuGenericContent,
             ));
             panel.spawn((
                 Text::new(""),
@@ -836,6 +915,7 @@ fn spawn_field_menu_overlay(
                     ..default()
                 },
                 FieldMenuBody,
+                FieldMenuGenericContent,
             ));
             panel.spawn((
                 Text::new(""),
@@ -846,8 +926,933 @@ fn spawn_field_menu_overlay(
                 },
                 TextColor(theme.name_entry_hint_color),
                 FieldMenuHint,
+                FieldMenuGenericContent,
             ));
         });
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the status page coordinates the shared menu root, loaded scenario data, and UI assets"
+)]
+fn sync_status_page(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    state: Res<FieldMenuState>,
+    catalog: Res<FieldMenuCatalog>,
+    game: Option<Res<GameState>>,
+    menu_roots: Query<Entity, With<FieldMenuRoot>>,
+    pages: Query<Entity, With<FieldMenuStatusPage>>,
+    mut generic_nodes: Query<&mut Node, With<FieldMenuGenericContent>>,
+) {
+    let show_status = state.open
+        && state.screen == FieldMenuScreen::Status
+        && catalog.status() == CatalogStatus::Ready
+        && game.is_some();
+
+    for mut node in &mut generic_nodes {
+        node.display = if show_status {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+
+    if !show_status {
+        for entity in &pages {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    let Ok(menu_root) = menu_roots.single() else {
+        return;
+    };
+    let Some(game) = game else {
+        return;
+    };
+    let rebuild =
+        pages.is_empty() || state.is_changed() || catalog.is_changed() || game.is_changed();
+    if !rebuild {
+        return;
+    }
+    for entity in &pages {
+        commands.entity(entity).despawn();
+    }
+
+    let font = asset_server.load(
+        root.resolve(
+            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
+                .expect("status font path"),
+        ),
+    );
+    let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
+    commands.entity(menu_root).with_children(|parent| {
+        spawn_status_page(parent, &font, &state, &game, &catalog, &portraits);
+    });
+}
+
+fn spawn_status_page(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                height: percent(100),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(14),
+                ..default()
+            },
+            FieldMenuStatusPage,
+            Name::new("Status page"),
+        ))
+        .with_children(|page| {
+            spawn_status_header(page, font, state.member_index, game.party().len());
+
+            page.spawn(Node {
+                width: percent(100),
+                flex_grow: 1.0,
+                flex_direction: FlexDirection::Row,
+                column_gap: px(STATUS_COLUMN_GAP),
+                ..default()
+            })
+            .with_children(|columns| {
+                spawn_party_column(columns, font, state, game, catalog, portraits);
+                spawn_member_column(columns, font, state, game, catalog, portraits);
+                spawn_profile_column(columns, font, state, game, catalog);
+            });
+
+            spawn_status_text(
+                page,
+                if state.status_page == StatusPage::Roster {
+                    "↑/↓   SELECT MEMBER      ENTER   STATS      ESC   BACK"
+                } else {
+                    "↑/↓   SELECT ACTION      ESC   PORTRAIT      M   CLOSE"
+                },
+                font,
+                15.0,
+                status_muted(),
+            );
+        });
+}
+
+fn spawn_status_header(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    member_index: usize,
+    party_len: usize,
+) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            height: px(64),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|header| {
+            header.spawn((
+                Node {
+                    width: px(7),
+                    height: px(46),
+                    margin: UiRect::right(px(3)),
+                    ..default()
+                },
+                BackgroundColor(status_ember()),
+            ));
+            header.spawn((
+                Node {
+                    width: px(2),
+                    height: px(46),
+                    margin: UiRect::right(px(15)),
+                    ..default()
+                },
+                BackgroundColor(status_gold()),
+            ));
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(title, "STATUS", font, 31.0, status_ink());
+                    spawn_status_text(title, "PARTY ROSTER AND GROWTH", font, 14.0, status_muted());
+                });
+            spawn_status_text(
+                header,
+                format!(
+                    "{:02}  /  {:02}",
+                    member_index.saturating_add(1).min(party_len.max(1)),
+                    party_len
+                ),
+                font,
+                16.0,
+                status_gold(),
+            );
+        });
+}
+
+fn spawn_party_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
+) {
+    spawn_status_panel(
+        parent,
+        Node {
+            width: px(STATUS_PARTY_WIDTH),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(10),
+            padding: UiRect::all(px(14)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        "PARTY",
+        font,
+        |panel| {
+            for (index, member) in game.party().members().enumerate() {
+                let selected = index == state.member_index;
+                let mut card = panel.spawn((
+                    Node {
+                        width: percent(100),
+                        min_height: px(84),
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        column_gap: px(12),
+                        padding: UiRect::all(px(10)),
+                        border: UiRect::all(px(if selected { 2 } else { 1 })),
+                        border_radius: BorderRadius::all(px(5)),
+                        ..default()
+                    },
+                    BackgroundColor(if selected {
+                        Color::srgba_u8(79, 51, 38, 214)
+                    } else {
+                        Color::srgba_u8(30, 30, 38, 164)
+                    }),
+                    BorderColor::all(if selected {
+                        status_border_active()
+                    } else {
+                        status_border()
+                    }),
+                    StatusMemberCard,
+                    Name::new(format!("Party card: {}", member.name())),
+                ));
+                if selected {
+                    card.insert(SelectedStatusMemberCard);
+                }
+                card.with_children(|card| {
+                    spawn_portrait_frame(
+                        card,
+                        font,
+                        member.name(),
+                        portraits.profile(member.id()),
+                        56.0,
+                        56.0,
+                        selected,
+                        "Party portrait",
+                    );
+                    card.spawn(Node {
+                        flex_grow: 1.0,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(2),
+                        ..default()
+                    })
+                    .with_children(|summary| {
+                        spawn_status_text(
+                            summary,
+                            format!("{}     LV {}", member.name(), member.level()),
+                            font,
+                            18.0,
+                            status_ink(),
+                        );
+                        spawn_status_text(
+                            summary,
+                            class_name(member.class_id(), catalog).to_uppercase(),
+                            font,
+                            13.0,
+                            status_gold(),
+                        );
+                        spawn_status_text(
+                            summary,
+                            format!(
+                                "HP {:>3}/{:<3}     MP {:>3}/{:<3}",
+                                member.health(),
+                                member.max_health(),
+                                member.mana(),
+                                member.max_mana()
+                            ),
+                            font,
+                            13.0,
+                            status_muted(),
+                        );
+                    });
+                });
+            }
+        },
+    );
+}
+
+fn spawn_member_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
+) {
+    if state.status_page == StatusPage::Roster {
+        spawn_full_portrait_column(parent, font, state, game, portraits);
+    } else {
+        spawn_member_details_column(parent, font, state, game, catalog);
+    }
+}
+
+fn spawn_full_portrait_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    portraits: &StatusPortraitAssets,
+) {
+    let Some(member) = member_at(game, state.member_index) else {
+        return;
+    };
+    parent
+        .spawn((
+            Node {
+                width: px(STATUS_DETAIL_WIDTH),
+                height: percent(100),
+                flex_shrink: 0.0,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                padding: UiRect::all(px(5)),
+                border: UiRect::all(px(2)),
+                border_radius: BorderRadius::all(px(6)),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(8, 8, 12, 210)),
+            BorderColor::all(status_border_active()),
+            Name::new("Full status portrait"),
+        ))
+        .with_children(|portrait_panel| {
+            if let Some(portrait) = portraits.large(member.id()) {
+                portrait_panel.spawn((
+                    ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
+                    Node {
+                        height: percent(100),
+                        aspect_ratio: Some(418.0 / 570.0),
+                        max_width: percent(100),
+                        ..default()
+                    },
+                ));
+            } else {
+                spawn_status_text(
+                    portrait_panel,
+                    member_emblem(member.name()),
+                    font,
+                    42.0,
+                    status_gold(),
+                );
+            }
+        });
+}
+
+fn spawn_member_details_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) {
+    let Some(member) = member_at(game, state.member_index) else {
+        return;
+    };
+    let stats = derived_stats(member, catalog);
+    let equipment = EquipmentSlot::ALL
+        .into_iter()
+        .map(|slot| {
+            let name = member
+                .equipment()
+                .get(slot)
+                .and_then(|id| catalog.item(id))
+                .map_or("—", item_name);
+            format!("{:<5}  {name}", status_slot_label(slot))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    spawn_status_panel(
+        parent,
+        Node {
+            width: px(STATUS_DETAIL_WIDTH),
+            height: percent(100),
+            flex_shrink: 0.0,
+            flex_direction: FlexDirection::Column,
+            row_gap: px(8),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        member.name(),
+        font,
+        |panel| {
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    ..default()
+                })
+                .with_children(|level| {
+                    spawn_status_text(
+                        level,
+                        format!("LV {}", member.level()),
+                        font,
+                        16.0,
+                        status_ink(),
+                    );
+                    spawn_status_text(
+                        level,
+                        format!("EXP {} / {}", member.experience(), member.experience_next()),
+                        font,
+                        14.0,
+                        status_muted(),
+                    );
+                });
+
+            spawn_meter(
+                panel,
+                "EXP",
+                member.experience(),
+                member.experience_next(),
+                font,
+                status_violet(),
+            );
+            spawn_meter(
+                panel,
+                "HP",
+                member.health(),
+                member.max_health(),
+                font,
+                if member.health().saturating_mul(4) < member.max_health() {
+                    status_ember()
+                } else {
+                    Color::srgb_u8(132, 196, 111)
+                },
+            );
+            spawn_meter(
+                panel,
+                "MP",
+                member.mana(),
+                member.max_mana(),
+                font,
+                status_teal(),
+            );
+
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    row_gap: px(4),
+                    ..default()
+                })
+                .with_children(|grid| {
+                    for (label, value) in [
+                        ("STR", stats.strength),
+                        ("DEX", stats.dexterity),
+                        ("CON", stats.constitution),
+                        ("INT", stats.intelligence),
+                    ] {
+                        grid.spawn(Node {
+                            width: percent(50),
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(14),
+                            ..default()
+                        })
+                        .with_children(|attribute| {
+                            spawn_status_text(attribute, label, font, 14.0, status_muted());
+                            spawn_status_text(
+                                attribute,
+                                format!("{value:03}"),
+                                font,
+                                16.0,
+                                status_ink(),
+                            );
+                        });
+                    }
+                });
+
+            spawn_status_text(panel, equipment, font, 14.0, status_ink());
+
+            panel.spawn(Node {
+                flex_grow: 1.0,
+                ..default()
+            });
+            spawn_section_rule(panel);
+            for (index, label) in STATUS_CATEGORIES.into_iter().enumerate() {
+                let selected = index == state.selected;
+                panel
+                    .spawn((
+                        Node {
+                            width: percent(100),
+                            height: px(52),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            column_gap: px(12),
+                            padding: UiRect::axes(px(10), px(7)),
+                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                            border_radius: BorderRadius::all(px(5)),
+                            ..default()
+                        },
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(79, 51, 38, 214)
+                        } else {
+                            Color::srgba_u8(30, 30, 38, 164)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            status_border()
+                        }),
+                    ))
+                    .with_children(|category| {
+                        category
+                            .spawn((
+                                Node {
+                                    width: px(34),
+                                    height: px(34),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    border: UiRect::all(px(1)),
+                                    border_radius: BorderRadius::all(percent(50)),
+                                    ..default()
+                                },
+                                BackgroundColor(if index == 0 {
+                                    status_violet()
+                                } else {
+                                    Color::srgb_u8(100, 180, 95)
+                                }),
+                                BorderColor::all(status_ink()),
+                            ))
+                            .with_children(|icon| {
+                                spawn_status_text(icon, "C", font, 15.0, Color::BLACK);
+                            });
+                        spawn_status_text(category, label, font, 18.0, status_ink());
+                        category.spawn(Node {
+                            flex_grow: 1.0,
+                            ..default()
+                        });
+                        if index == 1 {
+                            spawn_status_text(
+                                category,
+                                format!("{:?}", member.row()),
+                                font,
+                                14.0,
+                                status_muted(),
+                            );
+                        }
+                    });
+            }
+        },
+    );
+}
+
+fn spawn_profile_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) {
+    let Some(member) = member_at(game, state.member_index) else {
+        return;
+    };
+    let description = catalog
+        .class(member.class_id())
+        .map_or("No class profile is available.", |class| {
+            class.description.as_str()
+        });
+    let equipment = EquipmentSlot::ALL
+        .into_iter()
+        .map(|slot| {
+            let name = member
+                .equipment()
+                .get(slot)
+                .and_then(|id| catalog.item(id))
+                .map_or("—", item_name);
+            format!("{:<10}  {name}", slot.as_str().to_uppercase())
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let abilities = learned_field_abilities(member, game, catalog)
+        .into_iter()
+        .map(|ability| format!("•  {}", ability.name))
+        .collect::<Vec<_>>();
+    let statuses = member
+        .status_effects()
+        .map(|effect| format!("{effect:?}"))
+        .collect::<Vec<_>>();
+
+    spawn_status_panel(
+        parent,
+        Node {
+            height: percent(100),
+            flex_basis: px(0),
+            flex_grow: 0.92,
+            flex_direction: FlexDirection::Column,
+            row_gap: px(10),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        "PROFILE & LOADOUT",
+        font,
+        |panel| {
+            spawn_status_text(panel, "PROFILE", font, 14.0, status_gold());
+            spawn_status_text(panel, description, font, 16.0, status_ink());
+
+            spawn_section_rule(panel);
+            spawn_status_text(panel, "EQUIPMENT", font, 14.0, status_gold());
+            panel
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        padding: UiRect::all(px(10)),
+                        border: UiRect::all(px(1)),
+                        border_radius: BorderRadius::all(px(4)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba_u8(10, 10, 14, 150)),
+                    BorderColor::all(status_border()),
+                ))
+                .with_children(|box_node| {
+                    spawn_status_text(box_node, &equipment, font, 14.0, status_ink());
+                });
+
+            spawn_section_rule(panel);
+            spawn_status_text(panel, "FIELD ARTS", font, 14.0, status_gold());
+            spawn_status_text(
+                panel,
+                if abilities.is_empty() {
+                    "None learned".to_owned()
+                } else {
+                    abilities.join("\n")
+                },
+                font,
+                15.0,
+                status_teal(),
+            );
+            spawn_status_text(
+                panel,
+                format!(
+                    "STATUS    {}",
+                    if statuses.is_empty() {
+                        "CLEAR".to_owned()
+                    } else {
+                        statuses.join(", ").to_uppercase()
+                    }
+                ),
+                font,
+                14.0,
+                if statuses.is_empty() {
+                    Color::srgb_u8(132, 196, 111)
+                } else {
+                    status_ember()
+                },
+            );
+        },
+    );
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the shared portrait frame keeps profile and status art styling identical"
+)]
+fn spawn_portrait_frame(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    member_name: &str,
+    portrait: Option<Handle<Image>>,
+    width: f32,
+    height: f32,
+    selected: bool,
+    label: &'static str,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(width),
+                height: px(height),
+                flex_shrink: 0.0,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                border_radius: BorderRadius::all(px(5)),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 188)),
+            BorderColor::all(if selected {
+                status_border_active()
+            } else {
+                status_border()
+            }),
+            Name::new(label),
+        ))
+        .with_children(|frame| {
+            spawn_status_text(
+                frame,
+                member_emblem(member_name),
+                font,
+                if height > 100.0 { 34.0 } else { 18.0 },
+                if selected {
+                    status_gold()
+                } else {
+                    status_ink()
+                },
+            );
+            if let Some(portrait) = portrait {
+                frame.spawn((
+                    ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: px(0),
+                        top: px(0),
+                        width: percent(100),
+                        height: percent(100),
+                        ..default()
+                    },
+                ));
+            }
+        });
+}
+
+fn load_status_image(
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    relative: &str,
+) -> Option<Handle<Image>> {
+    let relative = ScenarioRelativePath::try_from(relative).ok()?;
+    Some(asset_server.load(root.resolve(&relative)))
+}
+
+fn profile_portrait_path(member_id: &str) -> String {
+    format!("assets/images/{member_id}_profile.png")
+}
+
+fn large_status_portrait_path(member_id: &str) -> String {
+    format!("assets/images/party_portraits_large/{member_id}_status_portrait.webp")
+}
+
+fn spawn_status_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    node: Node,
+    title: &str,
+    font: &Handle<Font>,
+    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
+) {
+    parent
+        .spawn((
+            node,
+            BackgroundColor(Color::srgba_u8(22, 22, 28, 228)),
+            BorderColor::all(status_border()),
+        ))
+        .with_children(|panel| {
+            spawn_status_text(panel, title, font, 14.0, status_gold());
+            panel.spawn((
+                Node {
+                    width: percent(100),
+                    height: px(1),
+                    margin: UiRect::bottom(px(2)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
+            ));
+            content(panel);
+        });
+}
+
+fn spawn_meter(
+    parent: &mut ChildSpawnerCommands<'_>,
+    label: &str,
+    value: u32,
+    maximum: u32,
+    font: &Handle<Font>,
+    fill: Color,
+) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(3),
+            ..default()
+        })
+        .with_children(|meter| {
+            meter
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    ..default()
+                })
+                .with_children(|label_row| {
+                    spawn_status_text(label_row, label, font, 13.0, status_muted());
+                    spawn_status_text(
+                        label_row,
+                        format!("{value} / {maximum}"),
+                        font,
+                        13.0,
+                        status_ink(),
+                    );
+                });
+            meter
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(8),
+                        border_radius: BorderRadius::all(px(4)),
+                        overflow: Overflow::clip(),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(17, 17, 22)),
+                ))
+                .with_children(|track| {
+                    track.spawn((
+                        Node {
+                            width: percent(meter_percent(value, maximum)),
+                            height: percent(100),
+                            border_radius: BorderRadius::all(px(4)),
+                            ..default()
+                        },
+                        BackgroundColor(fill),
+                    ));
+                });
+        });
+}
+
+fn spawn_section_rule(parent: &mut ChildSpawnerCommands<'_>) {
+    parent.spawn((
+        Node {
+            width: percent(100),
+            height: px(1),
+            margin: UiRect::axes(px(0), px(2)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba_u8(126, 98, 55, 100)),
+    ));
+}
+
+fn spawn_status_text(
+    parent: &mut ChildSpawnerCommands<'_>,
+    text: impl Into<String>,
+    font: &Handle<Font>,
+    size: f32,
+    color: Color,
+) {
+    parent.spawn((
+        Text::new(text),
+        TextFont {
+            font: font.clone().into(),
+            font_size: FontSize::Px(size),
+            ..default()
+        },
+        TextColor(color),
+        TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
+    ));
+}
+
+fn meter_percent(value: u32, maximum: u32) -> f32 {
+    if maximum == 0 {
+        0.0
+    } else {
+        (value as f32 / maximum as f32 * 100.0).clamp(0.0, 100.0)
+    }
+}
+
+fn member_emblem(name: &str) -> String {
+    let words = name.split_whitespace().collect::<Vec<_>>();
+    let letters = if words.len() > 1 {
+        words
+            .iter()
+            .filter_map(|word| word.chars().next())
+            .take(2)
+            .collect::<String>()
+    } else {
+        name.chars()
+            .filter(|character| !character.is_whitespace())
+            .take(2)
+            .collect()
+    };
+    let emblem = letters.to_uppercase();
+    if emblem.is_empty() {
+        "?".to_owned()
+    } else {
+        emblem
+    }
+}
+
+fn class_name<'a>(class_id: &'a str, catalog: &'a FieldMenuCatalog) -> &'a str {
+    catalog
+        .class(class_id)
+        .map_or(class_id, |class| class.name.as_str())
+}
+
+fn status_slot_label(slot: EquipmentSlot) -> &'static str {
+    match slot {
+        EquipmentSlot::Weapon => "WPN",
+        EquipmentSlot::Shield => "SHLD",
+        EquipmentSlot::Helmet => "HELM",
+        EquipmentSlot::Body => "BODY",
+        EquipmentSlot::Accessory => "ACC",
+    }
+}
+
+fn status_ink() -> Color {
+    Color::srgb_u8(242, 236, 211)
+}
+
+fn status_muted() -> Color {
+    Color::srgb_u8(184, 174, 142)
+}
+
+fn status_gold() -> Color {
+    Color::srgb_u8(231, 184, 86)
+}
+
+fn status_ember() -> Color {
+    Color::srgb_u8(203, 82, 47)
+}
+
+fn status_teal() -> Color {
+    Color::srgb_u8(67, 166, 160)
+}
+
+fn status_violet() -> Color {
+    Color::srgb_u8(126, 101, 204)
+}
+
+fn status_border() -> Color {
+    Color::srgb_u8(126, 98, 55)
+}
+
+fn status_border_active() -> Color {
+    Color::srgb_u8(235, 190, 89)
 }
 
 fn screen_title(state: &FieldMenuState) -> &'static str {
@@ -1259,7 +2264,10 @@ fn render_hint(state: &FieldMenuState) -> String {
             "Y/ENTER return to title  N/ESC cancel"
         }
         (FieldMenuScreen::Main, _) => "UP/DOWN choose  ENTER open  M/ESC close",
-        (FieldMenuScreen::Status, _) => "LEFT/RIGHT or UP/DOWN member  ESC back  M close",
+        (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Roster => {
+            "UP/DOWN member  ENTER stats  ESC back  M close"
+        }
+        (FieldMenuScreen::Status, _) => "UP/DOWN action  ESC portrait  M close",
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
             "LEFT/RIGHT tab  UP/DOWN item  ENTER actions  ESC back"
         }
@@ -1301,6 +2309,24 @@ mod tests {
     use super::*;
     use crate::save_data::tests::fixture_game;
 
+    fn spawn_fixture_status_page(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+        catalog: Res<FieldMenuCatalog>,
+    ) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_status_page(
+                parent,
+                &Handle::<Font>::default(),
+                &state,
+                &game,
+                &catalog,
+                &StatusPortraitAssets::default(),
+            );
+        });
+    }
+
     #[test]
     fn wrap_navigation_and_quantity_bounds_are_deterministic() {
         assert_eq!(wrapped(0, 1, -1), 0);
@@ -1326,6 +2352,101 @@ mod tests {
             INVENTORY_PAGE_ROWS..INVENTORY_PAGE_ROWS * 2
         );
         assert_eq!(inventory_page_range(25, 24), 24..25);
+    }
+
+    #[test]
+    fn status_visual_helpers_handle_empty_names_and_meter_bounds() {
+        assert_eq!(member_emblem("Aric"), "AR");
+        assert_eq!(member_emblem("Aric Vale"), "AV");
+        assert_eq!(member_emblem("  "), "?");
+        assert_eq!(meter_percent(3, 0), 0.0);
+        assert_eq!(meter_percent(25, 100), 25.0);
+        assert_eq!(meter_percent(125, 100), 100.0);
+        assert_eq!(
+            profile_portrait_path("aric"),
+            "assets/images/aric_profile.png"
+        );
+        assert_eq!(
+            large_status_portrait_path("aric"),
+            "assets/images/party_portraits_large/aric_status_portrait.webp"
+        );
+    }
+
+    #[test]
+    fn status_page_builds_one_card_per_member_and_one_selection() {
+        let game = fixture_game();
+        let party_len = game.party().len();
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(FieldMenuCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Status,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_status_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let cards = world.query::<&StatusMemberCard>().iter(world).count();
+        let selected = world
+            .query::<&SelectedStatusMemberCard>()
+            .iter(world)
+            .count();
+        assert_eq!(cards, party_len);
+        assert_eq!(selected, usize::from(party_len > 0));
+    }
+
+    #[test]
+    fn status_back_returns_from_details_before_leaving_status() {
+        let mut state = FieldMenuState::default();
+        state.open(FieldMenuScreen::Status);
+        state.status_page = StatusPage::Details;
+        state.selected = 1;
+
+        state.back();
+
+        assert!(state.open);
+        assert_eq!(state.screen, FieldMenuScreen::Status);
+        assert_eq!(state.status_page, StatusPage::Roster);
+        assert_eq!(state.selected, 0);
+
+        state.back();
+        assert_eq!(state.screen, FieldMenuScreen::Main);
+    }
+
+    #[test]
+    fn status_details_replace_portrait_with_stats_and_categories() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Status,
+                status_page: StatusPage::Details,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_status_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "EXP"));
+        assert!(labels.iter().any(|label| label == "HP"));
+        assert!(labels.iter().any(|label| label == "Spells"));
+        assert!(labels.iter().any(|label| label == "Position"));
+        assert!(
+            world
+                .query::<&Name>()
+                .iter(world)
+                .all(|name| name.as_str() != "Full status portrait")
+        );
     }
 
     #[test]

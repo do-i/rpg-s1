@@ -1,0 +1,30 @@
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 50
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: poison_tail       # 120% physical + poison, single target
+      weight: 25
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: wing_slash        # all party, 80% physical
+      weight: 25
+    - condition:
+        hp_pct_below: 0.40
+      action: ability
+      id: dive_bomb         # 200% physical, single target
+      weight: 60
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: wing_slash
+      target: all_party
+    - ability: dive_bomb
+      target: lowest_hp

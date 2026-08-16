@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="18" height="11" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="3">
+ <tileset firstgid="1" source="../tilesets/astralpixels/muro_tileset_wall.tsx"/>
+ <tileset firstgid="145" source="../tilesets/sample_01.tsx"/>
+ <tileset firstgid="886" source="../tilesets/astralpixels/altro.tsx"/>
+ <tileset firstgid="911" source="../tilesets/astralpixels/mensole.tsx"/>
+ <tileset firstgid="936" source="../tilesets/astralpixels/finestre.tsx"/>
+ <tileset firstgid="961" source="../tilesets/icon_table_stage_14x9.tsx"/>
+ <tileset firstgid="1087" source="../tilesets/stone_tile_stares_16x16.tsx"/>
+ <tileset firstgid="1343" source="../tilesets/astralpixels/terreno.tsx"/>
+ <objectgroup id="4" name="portals">
+  <object id="1" name="town_04_frostholm" x="160.242" y="349.003" width="31.6364" height="3.32955">
+   <properties>
+    <property name="target_map" value="town_04_frostholm"/>
+    <property name="target_position_x" type="int" value="9"/>
+    <property name="target_position_y" type="int" value="25"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <layer id="3" name="ground" width="18" height="11">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,1263,1247,0,1247,1247,0,1263,1247,1247,1247,0,0,0,0,0,0,0,
+0,1263,1247,0,0,0,0,1263,1247,1247,1247,0,1263,1247,0,0,1247,0,
+0,1263,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,1247,0,
+0,0,0,0,0,1247,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1247,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1263,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1263,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="1" name="collision" width="18" height="11">
+  <data encoding="csv">
+40,29,29,29,29,29,29,29,29,29,29,41,29,29,29,29,29,42,
+55,38,38,38,38,38,38,38,38,38,38,55,38,38,38,38,38,55,
+55,50,50,50,50,50,50,50,50,50,50,55,50,50,50,50,50,55,
+55,62,62,62,62,62,62,62,62,62,62,98,269,62,62,62,62,55,
+55,907,0,1181,0,0,1181,0,0,0,907,110,288,893,904,905,893,55,
+55,0,0,1181,1181,1181,1181,0,0,0,0,122,0,0,909,910,0,55,
+55,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,55,
+64,29,29,29,30,0,28,29,29,29,29,29,29,29,29,29,29,66,
+37,38,38,38,39,0,37,38,38,38,38,38,38,38,38,38,38,39,
+49,50,50,50,51,0,49,50,50,50,50,50,50,50,50,50,50,51,
+61,62,62,62,63,0,61,62,62,62,62,62,62,62,62,62,62,63
+</data>
+ </layer>
+ <layer id="2" name="decoration" width="18" height="11">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,915,229,0,0,229,0,914,0,0,0,0,914,230,230,915,0,
+0,0,0,248,0,0,248,0,0,0,0,0,0,0,249,249,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,1197,1197,1197,1197,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+</map>

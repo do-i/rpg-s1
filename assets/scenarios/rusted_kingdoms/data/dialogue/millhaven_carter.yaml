@@ -1,0 +1,59 @@
+# data/dialogue/millhaven_carter.yaml
+#
+# Flavor NPC: a cart driver who hauls flour to the other towns.
+#
+# Sub-quest giver (cross-town): Millhaven's millstones are wearing flat and
+# the only stone-dresser left is the mason in Ruinwatch (ruinwatch_mason),
+# who won't answer letters. Carry the request east and bring word back.
+# Reward: a Tent.
+id: millhaven_carter
+type: npc
+
+entries:
+  # Complete — repeatable thanks
+  - condition:
+      requires: [sq_millstone_done]
+    lines:
+      - "The mason's booked for the first thaw. Millhaven grinds another year."
+      - "Every loaf in three towns owes you a crumb, friend."
+
+  # Mason agreed — reward
+  - condition:
+      requires: [sq_millstone_relayed]
+      excludes: [sq_millstone_done]
+    lines:
+      - "He said yes? To Millhaven? After the barons left his ruin-stone bid to rot?"
+      - "Then the stones get dressed and my routes stay open. Here — my old road tent."
+      - "I sleep in the cart these days anyway. It'll serve you better than it serves me."
+    on_complete:
+      set_flag: sq_millstone_done
+      give_items:
+        - id: tent
+          qty: 1
+
+  # Started, not yet relayed
+  - condition:
+      requires: [sq_millstone_started]
+      excludes: [sq_millstone_relayed]
+    lines:
+      - "The mason works the yard in Ruinwatch, east past the plains. Stubborn as his stone."
+
+  # First meeting — offer the errand
+  - condition:
+      excludes: [sq_millstone_started]
+    lines:
+      - "Hear that grinding? That's the millstones wearing flat. Flat stones burn the flour."
+      - "Only man left who can dress a millstone proper is the mason out in Ruinwatch."
+      - "He won't answer letters. If your road runs east, would you ask him in person?"
+    on_complete:
+      set_flag: sq_millstone_started
+
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Half my routes are cancelled. Nobody wants 'fragment flour' now the truth's out."
+      - "Honest river-milled bread, I tell them. They still won't load the cart."
+
+  - lines:
+      - "I run flour east to Ruinwatch and back. Heavy work, light pay."
+      - "Roads have been twitchy lately. Keep your blade loose past the plains."

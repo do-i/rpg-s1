@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_06_mountain_pass_02.yaml
+id: sign_zone_06_mountain_pass_02
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Ravine Crossing"
+      - "A bridge of old stone over a cut too deep to see the bottom. Cross one at a time, and quickly."
+      - "The wind down the ravine carries voices. Don't answer them."
