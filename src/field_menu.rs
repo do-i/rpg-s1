@@ -28,7 +28,10 @@ use crate::{
     world_transition::WorldTransition,
 };
 
-const INVENTORY_PAGE_ROWS: usize = 12;
+const INVENTORY_PAGE_ROWS: usize = 10;
+const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
+const SPELLBOOK_VISIBLE_ROWS: usize = 7;
+const SAVE_VISIBLE_ROWS: usize = 6;
 const MAIN_COMMANDS: [&str; 6] = ["Status", "Items", "Equipment", "Spells", "Save", "Quit"];
 
 const STATUS_PARTY_WIDTH: f32 = 316.0;
@@ -2122,7 +2125,7 @@ fn spawn_equipment_picker(
 ) {
     let candidates = equipment_candidates(game, catalog, slot);
     let total = candidates.len() + 1;
-    let visible_rows = 6;
+    let visible_rows = EQUIPMENT_PICKER_VISIBLE_ROWS;
     let first = state
         .selected
         .saturating_sub(visible_rows - 1)
@@ -2526,7 +2529,7 @@ fn spawn_spell_list(
                 );
                 return;
             }
-            let visible_rows = 8;
+            let visible_rows = SPELLBOOK_VISIBLE_ROWS;
             let first = selected_index
                 .saturating_sub(visible_rows - 1)
                 .min(abilities.len().saturating_sub(visible_rows));
@@ -2929,8 +2932,8 @@ fn spawn_save_page(
                     width: px(760),
                     height: percent(100),
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(10),
-                    padding: UiRect::all(px(18)),
+                    row_gap: px(6),
+                    padding: UiRect::all(px(14)),
                     border: UiRect::all(px(2)),
                     border_radius: BorderRadius::all(px(8)),
                     ..default()
@@ -2964,7 +2967,12 @@ fn spawn_save_page(
                     }
                     spawn_section_rule(modal);
                     let page_start = save_page_start(state.selected);
-                    for slot in saves.slots().iter().skip(page_start).take(6) {
+                    for slot in saves
+                        .slots()
+                        .iter()
+                        .skip(page_start)
+                        .take(SAVE_VISIBLE_ROWS)
+                    {
                         spawn_field_save_slot_row(
                             modal,
                             font,
@@ -3003,12 +3011,12 @@ fn spawn_save_header(
     state: &FieldMenuState,
     game: &GameState,
 ) {
-    let page = (state.selected.saturating_sub(FIRST_PLAYER_SLOT) / 6) + 1;
-    let page_count = (LAST_PLAYER_SLOT - FIRST_PLAYER_SLOT + 1).div_ceil(6);
+    let page = (state.selected.saturating_sub(FIRST_PLAYER_SLOT) / SAVE_VISIBLE_ROWS) + 1;
+    let page_count = (LAST_PLAYER_SLOT - FIRST_PLAYER_SLOT + 1).div_ceil(SAVE_VISIBLE_ROWS);
     parent
         .spawn(Node {
             width: percent(100),
-            min_height: px(58),
+            min_height: px(52),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             ..default()
@@ -3072,7 +3080,7 @@ fn spawn_field_save_slot_row(
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(61),
+            min_height: px(54),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             padding: UiRect::axes(px(12), px(7)),
@@ -3273,7 +3281,8 @@ fn spawn_save_overwrite_modal(
 }
 
 fn save_page_start(selected: usize) -> usize {
-    ((selected.saturating_sub(FIRST_PLAYER_SLOT)) / 6) * 6 + FIRST_PLAYER_SLOT
+    ((selected.saturating_sub(FIRST_PLAYER_SLOT)) / SAVE_VISIBLE_ROWS) * SAVE_VISIBLE_ROWS
+        + FIRST_PLAYER_SLOT
 }
 
 fn save_slot_state_label(slot: &SaveSlot) -> &'static str {
@@ -4795,7 +4804,22 @@ mod tests {
             inventory_page_range(25, INVENTORY_PAGE_ROWS),
             INVENTORY_PAGE_ROWS..INVENTORY_PAGE_ROWS * 2
         );
-        assert_eq!(inventory_page_range(25, 24), 24..25);
+        let final_page_start = (24 / INVENTORY_PAGE_ROWS) * INVENTORY_PAGE_ROWS;
+        assert_eq!(inventory_page_range(25, 24), final_page_start..25);
+    }
+
+    #[test]
+    fn custom_menu_row_budgets_fit_the_baseline_canvas() {
+        let items_rows = INVENTORY_PAGE_ROWS * 40 + (INVENTORY_PAGE_ROWS - 1) * 5 + 15;
+        let equipment_rows =
+            EQUIPMENT_PICKER_VISIBLE_ROWS * 52 + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8 + 180;
+        let spell_rows = SPELLBOOK_VISIBLE_ROWS * 58 + (SPELLBOOK_VISIBLE_ROWS - 1) * 7;
+        let save_rows = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 206;
+
+        assert!(items_rows <= 480);
+        assert!(equipment_rows <= 480);
+        assert!(spell_rows <= 480);
+        assert!(save_rows <= 632);
     }
 
     #[test]
