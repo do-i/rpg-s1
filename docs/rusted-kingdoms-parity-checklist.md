@@ -85,6 +85,7 @@ rows.
 | RK-CTL-010 | `SET-BATTLE`, at the command menu | Press Escape once to request fleeing. | The battle displays success or failure feedback; the result is accompanied by the proper SFX/transition. | Success returns safely to the stored world context; failure consumes the source-defined turn cost. | M9.14-M9.16 / Gate 9 | Not run |
 | RK-CTL-011 | A context with extra controls, such as target selection or quantity choice | Open that context and inspect the bottom of the screen before acting. | Context-specific key hints are readable, accurate, and not clipped. | Following each displayed hint performs the stated action. | M3-M11 UI / Gate 11 | Not run |
 | RK-CTL-012 | Any dialogue line still typing | Press Enter once, then press Enter again after the full line appears. | The first press reveals the complete current line; the second advances exactly one line. | No line, choice, or completion effect is skipped or applied twice. | M5.13-M5.14 / Gate 5 | Not run |
+| RK-CTL-013 | `SET-WORLD`, with the field menu open | Select Quit, inspect the prompt, then confirm. | The original-style command deck dims behind an opaque `Quit Game?` modal with desktop-exit and unsaved-progress copy. | Confirm emits exactly one successful application exit and does not return to the title screen; Escape/N cancels without state loss. | M6.31 / Gate 6 | Pass — two muted X11 desktop-exit playthroughs plus focused reducer/UI tests 2026-08-16 |
 
 ## New game, TMX world, camera, movement, and interactions
 

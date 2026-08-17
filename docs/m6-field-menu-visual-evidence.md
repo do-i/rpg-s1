@@ -32,13 +32,28 @@ command list, and captures its primary and secondary states.
 | Save overwrite prompt | PASS | Enter on occupied Slot 07 opens a centered, focused overwrite modal with explicit destructive copy and confirm/cancel controls. Escape canceled the prompt; the isolated save was not changed. Capture: `/tmp/rpg-s1-save-overwrite.png`, SHA-256 `e100bb488b44a86fc4c71dcf5de0eb91f0c1a4434a3ad708f8c985e9993c20b3`. |
 | Runtime diagnostics | PASS | The run produced no panic, missing asset, loader failure, or field-menu error. The only runtime notices were the known XSETTINGS warning, llvmpipe software-rendering warning, and one nonfatal unsupported ID3 metadata frame. The process exited by Ctrl-C after capture. |
 
+## Top-level command-deck follow-up
+
+Runtime revision: `f0c3025`
+
+The follow-up runs used
+`RPG_S1_MUTE_AUDIO=1 RPG_S1_SAVE_DIR=/tmp/rpg-s1-m8-saves cargo run`.
+The mute flag configures Bevy's global volume to `0.0`; normal launches remain
+at the default global volume.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Field-menu command deck | PASS | The top-level menu now follows the pinned `field_menu_scene.py`: `FIELD MENU` / `PARTY COMMAND DECK` header, centered `COMMANDS` panel, source-ordered Status, Spells, Items, Equipment, Save, and Quit rows, compact colored badges, source descriptions, focused gold row, and readable controls. Capture: `/tmp/rpg-s1-field-menu-original-style.png`, SHA-256 `3470546e0139c1ca4a948aba34ac60a4e422e25fc436b2e88407c2019b2121eb`. |
+| Quit confirmation | PASS after repair | The first live capture exposed command text bleeding through the shared translucent panel. The final modal uses an opaque surface, keeps the command deck dimmed behind it, and shows explicit desktop-exit and unsaved-progress copy. Capture: `/tmp/rpg-s1-field-menu-quit-modal-fixed.png`, SHA-256 `78b09dcacb5ef8d60cbd1c481ce105de79247fa0b5eb693d859d40af962ec8f4`. |
+| Desktop exit | PASS | Confirming Quit emitted Bevy `AppExit::Success`; the real process terminated with exit code 0 instead of removing the session and returning to the title screen. This was repeated after the opaque-modal repair. Escape/N cancellation and exactly-one exit emission are covered by the focused reducer/UI tests. |
+| Silent runtime diagnostics | PASS | Both runs stayed muted through title, load, world, menu navigation, and Quit confirmation. They produced no panic, missing asset, loader failure, or field-menu error; only the known XSETTINGS/llvmpipe notices and one nonfatal unsupported ID3 metadata frame appeared. |
+
 ## Automated companion
 
 The final revision passed:
 
-- `cargo test --all-targets`: 434 passed, 23 source-checkout-dependent ignored,
+- `cargo test --all-targets`: 436 passed, 23 source-checkout-dependent ignored,
   0 failed;
 - `cargo clippy --all-targets -- -D warnings`;
 - `cargo fmt --all -- --check`; and
 - `git diff --check`.
-

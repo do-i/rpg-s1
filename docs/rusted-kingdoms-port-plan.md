@@ -326,6 +326,7 @@ live-found portal regression.
 | M6.28 | [x] Match the original Equipment screen presentation. | `T` | Equipment uses the shared portrait party column, five focused slot cards, derived totals, a compatible-inventory picker, and color-coded before/after stat previews. Evidence: comparison with the pinned `equip_renderer.py`, browse/picker UI regression tests, the full Rust test/lint suite, and live slot/picker captures in `docs/m6-field-menu-visual-evidence.md`. |
 | M6.29 | [x] Match the original Spells screen presentation. | `T` | Spells uses the shared portrait caster column plus a focused spellbook/detail layout with MP readiness, typed arts, descriptions, targets, and dedicated party/destination overlays. Evidence: comparison with the pinned `spell_renderer.py`, spellbook/target-overlay UI regression tests, the full Rust test/lint suite, and live spellbook/Teleport captures in `docs/m6-field-menu-visual-evidence.md`. |
 | M6.30 | [x] Match the original field Save presentation. | `T` | Save appears as a centered modal with pinned autosave context, six player-slot cards per page, metadata/state badges, inline feedback, and a focused overwrite confirmation. Evidence: comparison with the pinned `save_modal_scene.py`, loading/metadata/paging/overwrite UI regression tests, the full Rust test/lint suite, and live page/metadata/overwrite captures in `docs/m6-field-menu-visual-evidence.md`. |
+| M6.31 | [x] Match the original top-level field-menu command deck and Quit behavior. | `T` | The source-ordered implemented commands appear as a centered icon-row panel with descriptions and focused styling; Quit opens an opaque desktop-exit confirmation and emits `AppExit::Success` instead of returning to the title screen. Evidence: comparison with pinned `field_menu_scene.py`, reducer/UI tests, and two muted live 1280x766 exit playthroughs recorded in `docs/m6-field-menu-visual-evidence.md`. |
 
 **Gate 6:** The Ardel slice has useful party, status, inventory, equipment, and
 spell screens, all operating on the same runtime state. The Status screen also
@@ -334,7 +335,8 @@ portrait-to-details interaction; Items now uses the original three-column
 pouch/list/detail presentation; Equipment now shares the original party,
 slots, inventory, and stat-preview presentation; Spells now shares the original
 caster, spellbook, detail, and casting-overlay presentation; Save now matches
-the original slot-card modal and overwrite flow.
+the original slot-card modal and overwrite flow. The top-level shell now uses
+the original command-deck presentation and its Quit flow exits to desktop.
 
 ## Milestone 7 — Save, load, and recovery
 
