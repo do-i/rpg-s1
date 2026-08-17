@@ -75,6 +75,7 @@ use app_state::{AppState, AppStateTransitionPlugin};
 use battle::BattlePlugin;
 use bevy::{
     asset::AssetPlugin,
+    audio::{AudioPlugin, GlobalVolume, Volume},
     prelude::*,
     window::{PresentMode, WindowPlugin},
 };
@@ -121,6 +122,16 @@ fn run_game() {
     App::new()
         .add_plugins(
             DefaultPlugins
+                .set(AudioPlugin {
+                    global_volume: GlobalVolume::new(
+                        if std::env::var_os("RPG_S1_MUTE_AUDIO").is_some() {
+                            Volume::Linear(0.0)
+                        } else {
+                            Volume::Linear(1.0)
+                        },
+                    ),
+                    ..default()
+                })
                 .set(AssetPlugin {
                     file_path: cli::production_asset_base().to_string_lossy().into_owned(),
                     ..default()

@@ -4,7 +4,7 @@ use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use crate::{
     action_input::{ActionState, AppAction},
-    app_state::{AppState, AppStateTransitionRequest},
+    app_state::AppState,
     field_menu_domain::{
         CatalogStatus, FieldMenuCatalog, InventoryTab, can_equip, cast_heal, derived_stats,
         discard_item, equip_item, inventory_ids, item_description, item_name,
@@ -32,7 +32,55 @@ const INVENTORY_PAGE_ROWS: usize = 10;
 const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 const SPELLBOOK_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
-const MAIN_COMMANDS: [&str; 6] = ["Status", "Items", "Equipment", "Spells", "Save", "Quit"];
+const SAVE_COMMAND_INDEX: usize = 4;
+const QUIT_COMMAND_INDEX: usize = 5;
+
+#[derive(Clone, Copy)]
+struct MainCommand {
+    label: &'static str,
+    badge: &'static str,
+    description: &'static str,
+    screen: Option<FieldMenuScreen>,
+}
+
+const MAIN_COMMANDS: [MainCommand; 6] = [
+    MainCommand {
+        label: "Status",
+        badge: "ST",
+        description: "review health, rows, and growth",
+        screen: Some(FieldMenuScreen::Status),
+    },
+    MainCommand {
+        label: "Spells",
+        badge: "SP",
+        description: "cast field magic and utilities",
+        screen: Some(FieldMenuScreen::Spells),
+    },
+    MainCommand {
+        label: "Items",
+        badge: "IT",
+        description: "use, sort, and inspect supplies",
+        screen: Some(FieldMenuScreen::Items),
+    },
+    MainCommand {
+        label: "Equipment",
+        badge: "EQ",
+        description: "tune gear and compare stats",
+        screen: Some(FieldMenuScreen::Equipment),
+    },
+    MainCommand {
+        label: "Save",
+        badge: "SV",
+        description: "record the current journey",
+        screen: Some(FieldMenuScreen::Save),
+    },
+    MainCommand {
+        label: "Quit",
+        badge: "QT",
+        description: "exit the game to desktop",
+        screen: None,
+    },
+];
 
 const STATUS_PARTY_WIDTH: f32 = 316.0;
 const STATUS_DETAIL_WIDTH: f32 = 404.0;
@@ -55,6 +103,7 @@ impl Plugin for FieldMenuPlugin {
                     handle_field_menu_input,
                     sync_field_menu_overlay,
                     sync_custom_field_menu_content_visibility,
+                    sync_main_menu_page,
                     sync_status_page,
                     sync_items_page,
                     sync_equipment_page,
@@ -195,6 +244,18 @@ struct FieldMenuHint;
 struct FieldMenuGenericContent;
 
 #[derive(Component)]
+struct FieldMenuMainPage;
+
+#[derive(Component)]
+struct MainCommandRow;
+
+#[derive(Component)]
+struct SelectedMainCommandRow;
+
+#[derive(Component)]
+struct FieldMenuQuitModal;
+
+#[derive(Component)]
 struct FieldMenuStatusPage;
 
 #[derive(Component)]
@@ -296,7 +357,6 @@ fn reset_field_menu(mut state: ResMut<FieldMenuState>) {
     reason = "the field menu coordinates input, world locks, save storage, session state, and transitions"
 )]
 fn handle_field_menu_input(
-    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
@@ -307,7 +367,7 @@ fn handle_field_menu_input(
     mut saves: ResMut<SaveSlotCatalog>,
     time: Res<Time<Real>>,
     mut state: ResMut<FieldMenuState>,
-    mut transitions: MessageWriter<AppStateTransitionRequest>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     let Some(mut game) = game else { return };
 
@@ -357,13 +417,12 @@ fn handle_field_menu_input(
                 state.selected = wrapped(state.selected, MAIN_COMMANDS.len(), delta);
             }
             if actions.just_pressed(AppAction::Confirm) {
-                if state.selected == 4 {
+                if state.selected == SAVE_COMMAND_INDEX {
                     state.screen = FieldMenuScreen::Save;
                     state.selected = FIRST_PLAYER_SLOT;
-                } else if state.selected == 5 {
+                } else if state.selected == QUIT_COMMAND_INDEX {
                     state.mode = FieldMenuMode::QuitConfirm;
-                    state.message =
-                        "Return to the title screen? Unsaved progress will be lost.".to_owned();
+                    state.message = "Exit to desktop? Unsaved progress will be lost.".to_owned();
                 } else if let Some(screen) = main_command_screen(state.selected) {
                     state.screen = screen;
                     state.selected = 0;
@@ -376,8 +435,7 @@ fn handle_field_menu_input(
                 state.message.clear();
             } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
                 state.close();
-                commands.remove_resource::<GameState>();
-                transitions.write(AppStateTransitionRequest::new(AppState::Title));
+                exit.write(AppExit::Success);
             }
         }
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
@@ -833,15 +891,7 @@ fn wrapped_quantity(current: u32, max: u32, delta: isize) -> u32 {
 }
 
 fn main_command_screen(index: usize) -> Option<FieldMenuScreen> {
-    [
-        FieldMenuScreen::Status,
-        FieldMenuScreen::Items,
-        FieldMenuScreen::Equipment,
-        FieldMenuScreen::Spells,
-        FieldMenuScreen::Save,
-    ]
-    .get(index)
-    .copied()
+    MAIN_COMMANDS.get(index).and_then(|command| command.screen)
 }
 
 fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
@@ -1001,22 +1051,314 @@ fn sync_custom_field_menu_content_visibility(
     mut generic_nodes: Query<&mut Node, With<FieldMenuGenericContent>>,
 ) {
     let show_custom_page = state.open
-        && catalog.status() == CatalogStatus::Ready
         && game.is_some()
-        && matches!(
-            state.screen,
-            FieldMenuScreen::Status
-                | FieldMenuScreen::Items
-                | FieldMenuScreen::Equipment
-                | FieldMenuScreen::Spells
-                | FieldMenuScreen::Save
-        );
+        && (state.screen == FieldMenuScreen::Main
+            || (catalog.status() == CatalogStatus::Ready
+                && matches!(
+                    state.screen,
+                    FieldMenuScreen::Status
+                        | FieldMenuScreen::Items
+                        | FieldMenuScreen::Equipment
+                        | FieldMenuScreen::Spells
+                        | FieldMenuScreen::Save
+                )));
     for mut node in &mut generic_nodes {
         node.display = if show_custom_page {
             Display::None
         } else {
             Display::Flex
         };
+    }
+}
+
+fn sync_main_menu_page(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    state: Res<FieldMenuState>,
+    game: Option<Res<GameState>>,
+    menu_roots: Query<Entity, With<FieldMenuRoot>>,
+    pages: Query<Entity, With<FieldMenuMainPage>>,
+) {
+    let show_main = state.open && state.screen == FieldMenuScreen::Main && game.is_some();
+    if !show_main {
+        for entity in &pages {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    let Ok(menu_root) = menu_roots.single() else {
+        return;
+    };
+    if !pages.is_empty() && !state.is_changed() {
+        return;
+    }
+    for entity in &pages {
+        commands.entity(entity).despawn();
+    }
+
+    let font = asset_server.load(
+        root.resolve(
+            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
+                .expect("field menu font path"),
+        ),
+    );
+    commands.entity(menu_root).with_children(|parent| {
+        spawn_main_menu_page(parent, &font, &state);
+    });
+}
+
+fn spawn_main_menu_page(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                height: percent(100),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(14),
+                ..default()
+            },
+            FieldMenuMainPage,
+            Name::new("Original-style field menu page"),
+        ))
+        .with_children(|page| {
+            spawn_main_menu_header(page, font);
+            page.spawn(Node {
+                width: percent(100),
+                flex_grow: 1.0,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            })
+            .with_children(|body| {
+                spawn_main_commands_panel(body, font, state);
+            });
+            spawn_status_text(
+                page,
+                "UP/DOWN   SELECT      ENTER   CONFIRM      M / ESC   CLOSE",
+                font,
+                15.0,
+                status_muted(),
+            );
+
+            if state.mode == FieldMenuMode::QuitConfirm {
+                spawn_field_menu_quit_modal(page, font);
+            }
+        });
+}
+
+fn spawn_main_menu_header(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            height: px(64),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|header| {
+            header.spawn((
+                Node {
+                    width: px(7),
+                    height: px(46),
+                    margin: UiRect::right(px(3)),
+                    ..default()
+                },
+                BackgroundColor(status_ember()),
+            ));
+            header.spawn((
+                Node {
+                    width: px(2),
+                    height: px(46),
+                    margin: UiRect::right(px(15)),
+                    ..default()
+                },
+                BackgroundColor(status_gold()),
+            ));
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(title, "FIELD MENU", font, 31.0, status_ink());
+                    spawn_status_text(title, "PARTY COMMAND DECK", font, 14.0, status_muted());
+                });
+            spawn_status_text(
+                header,
+                format!("{:02} COMMANDS", MAIN_COMMANDS.len()),
+                font,
+                16.0,
+                status_gold(),
+            );
+        });
+}
+
+fn spawn_main_commands_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+) {
+    spawn_status_panel(
+        parent,
+        Node {
+            width: px(460),
+            height: px(468),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(8),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(2)),
+            border_radius: BorderRadius::all(px(7)),
+            ..default()
+        },
+        "COMMANDS",
+        font,
+        |panel| {
+            for (index, command) in MAIN_COMMANDS.iter().enumerate() {
+                spawn_main_command_row(panel, font, command, index, index == state.selected);
+            }
+        },
+    );
+}
+
+fn spawn_main_command_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    command: &MainCommand,
+    index: usize,
+    selected: bool,
+) {
+    let accent = main_command_accent(index);
+    let mut row = parent.spawn((
+        Node {
+            width: percent(100),
+            height: px(58),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: px(12),
+            padding: UiRect::axes(px(10), px(7)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(4)),
+            ..default()
+        },
+        BackgroundColor(if selected {
+            Color::srgba_u8(83, 55, 31, 238)
+        } else {
+            Color::srgba_u8(15, 15, 21, 205)
+        }),
+        BorderColor::all(if selected {
+            status_border_active()
+        } else {
+            status_border()
+        }),
+        MainCommandRow,
+        Name::new(format!("{} command", command.label)),
+    ));
+    if selected {
+        row.insert(SelectedMainCommandRow);
+    }
+    row.with_children(|row| {
+        row.spawn((
+            Node {
+                width: px(42),
+                height: px(42),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(25, 24, 31, 235)),
+            BorderColor::all(accent),
+        ))
+        .with_children(|badge| {
+            spawn_status_text(badge, command.badge, font, 14.0, accent);
+        });
+        row.spawn(Node {
+            flex_direction: FlexDirection::Column,
+            flex_grow: 1.0,
+            ..default()
+        })
+        .with_children(|copy| {
+            spawn_status_text(copy, command.label, font, 19.0, status_ink());
+            spawn_status_text(copy, command.description, font, 12.0, status_muted());
+        });
+        if selected {
+            spawn_status_text(row, "ENTER", font, 12.0, status_gold());
+        }
+    });
+}
+
+fn spawn_field_menu_quit_modal(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(0),
+                top: px(0),
+                width: percent(100),
+                height: percent(100),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.01, 0.01, 0.03, 0.72)),
+            FieldMenuQuitModal,
+            Name::new("Quit game modal"),
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: px(410),
+                        min_height: px(170),
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(12),
+                        padding: UiRect::all(px(18)),
+                        border: UiRect::all(px(2)),
+                        border_radius: BorderRadius::all(px(7)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(22, 22, 28)),
+                    BorderColor::all(status_border_active()),
+                ))
+                .with_children(|modal| {
+                    spawn_status_text(modal, "QUIT GAME?", font, 14.0, status_gold());
+                    spawn_section_rule(modal);
+                    spawn_status_text(modal, "Exit to desktop?", font, 20.0, status_ink());
+                    spawn_status_text(
+                        modal,
+                        "Unsaved progress will be lost.",
+                        font,
+                        14.0,
+                        status_muted(),
+                    );
+                    spawn_section_rule(modal);
+                    spawn_status_text(
+                        modal,
+                        "ENTER / Y   CONFIRM      ESC / N   CANCEL",
+                        font,
+                        14.0,
+                        status_gold(),
+                    );
+                });
+        });
+}
+
+fn main_command_accent(index: usize) -> Color {
+    match index {
+        0 => status_teal(),
+        1 => status_violet(),
+        2 => status_ember(),
+        3 => status_gold(),
+        4 => Color::srgb_u8(91, 143, 183),
+        _ => Color::srgb_u8(190, 72, 66),
     }
 }
 
@@ -4278,9 +4620,9 @@ fn render_main(state: &FieldMenuState, game: &GameState) -> String {
     let commands = MAIN_COMMANDS
         .iter()
         .enumerate()
-        .map(|(index, label)| {
+        .map(|(index, command)| {
             let cursor = if index == state.selected { ">" } else { " " };
-            format!("{cursor} {label}")
+            format!("{cursor} {}", command.label)
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -4639,7 +4981,7 @@ fn render_save(state: &FieldMenuState, saves: &SaveSlotCatalog) -> String {
 fn render_hint(state: &FieldMenuState) -> String {
     match (state.screen, state.mode) {
         (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => {
-            "Y/ENTER return to title  N/ESC cancel"
+            "Y/ENTER exit to desktop  N/ESC cancel"
         }
         (FieldMenuScreen::Main, _) => "UP/DOWN choose  ENTER open  M/ESC close",
         (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Roster => {
@@ -4686,6 +5028,12 @@ fn cleanup_field_menu(
 mod tests {
     use super::*;
     use crate::save_data::tests::fixture_game;
+
+    fn spawn_fixture_main_page(mut commands: Commands, state: Res<FieldMenuState>) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_main_menu_page(parent, &Handle::<Font>::default(), &state);
+        });
+    }
 
     fn spawn_fixture_status_page(
         mut commands: Commands,
@@ -5243,7 +5591,9 @@ mod tests {
     #[test]
     fn main_commands_distinguish_enabled_disabled_and_cancel_paths() {
         assert_eq!(main_command_screen(0), Some(FieldMenuScreen::Status));
-        assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Spells));
+        assert_eq!(main_command_screen(1), Some(FieldMenuScreen::Spells));
+        assert_eq!(main_command_screen(2), Some(FieldMenuScreen::Items));
+        assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Equipment));
         assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Save));
         assert!(main_command_screen(5).is_none());
 
@@ -5257,7 +5607,67 @@ mod tests {
     }
 
     #[test]
-    fn confirmed_quit_discards_the_session_before_returning_to_title() {
+    fn main_page_matches_the_source_command_deck_structure() {
+        assert_eq!(
+            MAIN_COMMANDS.map(|command| command.label),
+            ["Status", "Spells", "Items", "Equipment", "Save", "Quit"]
+        );
+
+        let mut app = App::new();
+        app.insert_resource(FieldMenuState {
+            open: true,
+            selected: 1,
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_main_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&FieldMenuMainPage>().iter(world).count(), 1);
+        assert_eq!(world.query::<&MainCommandRow>().iter(world).count(), 6);
+        assert_eq!(
+            world.query::<&SelectedMainCommandRow>().iter(world).count(),
+            1
+        );
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"FIELD MENU"));
+        assert!(labels.contains(&"PARTY COMMAND DECK"));
+        assert!(labels.contains(&"cast field magic and utilities"));
+        assert!(labels.contains(&"exit the game to desktop"));
+    }
+
+    #[test]
+    fn quit_confirmation_is_a_focused_desktop_exit_modal() {
+        let mut app = App::new();
+        app.insert_resource(FieldMenuState {
+            open: true,
+            selected: QUIT_COMMAND_INDEX,
+            mode: FieldMenuMode::QuitConfirm,
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_main_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&FieldMenuQuitModal>().iter(world).count(), 1);
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"QUIT GAME?"));
+        assert!(labels.contains(&"Exit to desktop?"));
+        assert!(labels.contains(&"ENTER / Y   CONFIRM      ESC / N   CANCEL"));
+    }
+
+    #[test]
+    fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
         let mut app = App::new();
         let mut keys = ButtonInput::<KeyCode>::default();
         keys.press(KeyCode::KeyY);
@@ -5277,12 +5687,20 @@ mod tests {
                 mode: FieldMenuMode::QuitConfirm,
                 ..default()
             })
-            .add_message::<AppStateTransitionRequest>()
+            .add_message::<AppExit>()
             .add_systems(Update, handle_field_menu_input);
+
+        let mut exit_cursor = app.world().resource::<Messages<AppExit>>().get_cursor();
 
         app.update();
 
-        assert!(!app.world().contains_resource::<GameState>());
+        assert!(app.world().contains_resource::<GameState>());
         assert!(!app.world().resource::<FieldMenuState>().open);
+        assert_eq!(
+            exit_cursor
+                .read(app.world().resource::<Messages<AppExit>>())
+                .collect::<Vec<_>>(),
+            [&AppExit::Success]
+        );
     }
 }
