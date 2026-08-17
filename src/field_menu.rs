@@ -1163,9 +1163,9 @@ fn spawn_items_page(
             });
 
             let hint = if state.mode == FieldMenuMode::Browse {
-                "←/→   CHANGE POUCH      ↑/↓   BROWSE      ENTER   ACTIONS      ESC   BACK"
+                "LEFT/RIGHT   CHANGE POUCH      UP/DOWN   BROWSE      ENTER   ACTIONS      ESC   BACK"
             } else {
-                "↑/↓   CHOOSE      ENTER   CONFIRM      ESC   CANCEL      I   CLOSE"
+                "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   CANCEL      I   CLOSE"
             };
             spawn_status_text(page, hint, font, 15.0, status_muted());
             if !state.message.is_empty() {
@@ -1344,7 +1344,7 @@ fn spawn_item_list_column(
                 spawn_status_text(panel, "Pouch is empty.", font, 18.0, status_muted());
                 spawn_status_text(
                     panel,
-                    "Use ←/→ to inspect another pouch.",
+                    "Use LEFT/RIGHT to inspect another pouch.",
                     font,
                     14.0,
                     Color::srgb_u8(116, 108, 90),
@@ -1518,7 +1518,7 @@ fn spawn_item_detail_column(
             spawn_status_text(panel, item_description(item), font, 16.0, status_ink());
             spawn_section_rule(panel);
             spawn_item_chips(panel, font, game, catalog, id, item);
-            spawn_status_text(panel, "ENTER  →  ACTIONS", font, 14.0, status_muted());
+            spawn_status_text(panel, "ENTER  -  ACTIONS", font, 14.0, status_muted());
         },
     );
 }
@@ -1678,7 +1678,7 @@ fn spawn_item_modal(
                             );
                             spawn_status_text(
                                 modal,
-                                "← one    → whole stack    ↑/↓ adjust",
+                                "LEFT one    RIGHT whole stack    UP/DOWN adjust",
                                 font,
                                 14.0,
                                 status_muted(),
@@ -1833,9 +1833,9 @@ fn spawn_equipment_page(
             spawn_status_text(
                 page,
                 if state.mode == FieldMenuMode::EquipmentPicker {
-                    "↑/↓   PREVIEW ITEM      ENTER   EQUIP      ESC   SLOTS      M   CLOSE"
+                    "UP/DOWN   PREVIEW ITEM      ENTER   EQUIP      ESC   SLOTS      M   CLOSE"
                 } else {
-                    "←/→   CHANGE MEMBER      ↑/↓   SELECT SLOT      ENTER   INVENTORY      ESC   BACK"
+                    "LEFT/RIGHT   CHANGE MEMBER      UP/DOWN   SELECT SLOT      ENTER   INVENTORY      ESC   BACK"
                 },
                 font,
                 15.0,
@@ -2235,7 +2235,7 @@ fn spawn_equipment_preview(
                     ))
                     .with_children(|stat| {
                         spawn_status_text(stat, label, font, 11.0, status_muted());
-                        spawn_status_text(stat, format!("{old}→{new}"), font, 14.0, color);
+                        spawn_status_text(stat, format!("{old} -> {new}"), font, 14.0, color);
                     });
             }
         });
@@ -2260,7 +2260,7 @@ fn equipment_preview_summary(
     ]
     .into_iter()
     .filter(|(_, old, new)| old != new)
-    .map(|(label, old, new)| format!("{label} {old}→{new}"))
+    .map(|(label, old, new)| format!("{label} {old} -> {new}"))
     .collect::<Vec<_>>()
     .join("    ")
 }
@@ -2366,9 +2366,9 @@ fn spawn_spells_page(
                     state.mode,
                     FieldMenuMode::SpellTarget | FieldMenuMode::TeleportPicker
                 ) {
-                    "↑/↓   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
+                    "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
                 } else {
-                    "←/→   CHANGE CASTER      ↑/↓   SELECT SPELL      ENTER   CAST      ESC   BACK"
+                    "LEFT/RIGHT   CHANGE CASTER      UP/DOWN   SELECT SPELL      ENTER   CAST      ESC   BACK"
                 },
                 font,
                 15.0,
@@ -2677,7 +2677,7 @@ fn spawn_spell_detail(
             );
             spawn_status_text(
                 detail,
-                "ENTER  →  CAST",
+                "ENTER  -  CAST",
                 font,
                 14.0,
                 if affordable {
@@ -2991,7 +2991,7 @@ fn spawn_save_page(
                     if state.mode == FieldMenuMode::SaveConfirm {
                         "ENTER / Y   OVERWRITE      ESC / N   CANCEL"
                     } else {
-                        "↑/↓   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
+                        "UP/DOWN   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
                     },
                     font,
                     14.0,
@@ -3342,9 +3342,9 @@ fn spawn_status_page(
             spawn_status_text(
                 page,
                 if state.status_page == StatusPage::Roster {
-                    "↑/↓   SELECT MEMBER      ENTER   STATS      ESC   BACK"
+                    "UP/DOWN   SELECT MEMBER      ENTER   STATS      ESC   BACK"
                 } else {
-                    "↑/↓   SELECT ACTION      ESC   PORTRAIT      M   CLOSE"
+                    "UP/DOWN   SELECT ACTION      ESC   PORTRAIT      M   CLOSE"
                 },
                 font,
                 15.0,
