@@ -313,6 +313,7 @@ fn update_world_npcs(
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion>,
     mut actors: Query<(Entity, &mut WorldNpc, &mut Sprite, &mut Transform)>,
+    mut snapshot: Local<Vec<(Entity, CharacterCollisionRect)>>,
 ) {
     let Some(mut game) = game else {
         return;
@@ -332,10 +333,12 @@ fn update_world_npcs(
         .copied()
         .unwrap_or_else(|_| WorldPlayerMotion::from_tile(player_tile));
     let player_rect = player_motion.collision_rect();
-    let snapshot = actors
-        .iter()
-        .map(|(entity, actor, _, _)| (entity, actor.collision_rect()))
-        .collect::<Vec<_>>();
+    snapshot.clear();
+    snapshot.extend(
+        actors
+            .iter()
+            .map(|(entity, actor, _, _)| (entity, actor.collision_rect())),
+    );
     let delta = time.delta_secs();
 
     for (entity, mut actor, mut sprite, mut transform) in &mut actors {
@@ -361,7 +364,7 @@ fn update_world_npcs(
                     delta,
                     entity,
                     player_rect,
-                    &snapshot,
+                    snapshot.as_slice(),
                     collision,
                     game.rng_mut(),
                 ),

@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use bevy::{
     asset::{AssetServer, Assets, Handle, LoadState},
     audio::{PlaybackMode, Volume},
-    ecs::schedule::ApplyDeferred,
+    ecs::{schedule::ApplyDeferred, system::SystemParam},
     prelude::*,
 };
 
@@ -673,14 +673,20 @@ fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
     ))
 }
 
+#[derive(SystemParam)]
+struct EnemySimulationAssets<'w> {
+    collision: Option<Res<'w, WorldCollision>>,
+    balances: Res<'w, Assets<BalanceData>>,
+}
+
 fn update_world_enemies(
     time: Res<Time>,
-    collision: Option<Res<WorldCollision>>,
-    balances: Res<Assets<BalanceData>>,
+    assets: EnemySimulationAssets,
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
     mut enemies: Query<(Entity, &mut WorldEnemy, &mut Sprite, &mut Transform)>,
+    mut snapshot: Local<Vec<(Entity, CharacterCollisionRect, bool)>>,
 ) {
     if state.status != WorldEncounterStatus::Spawned {
         return;
@@ -688,7 +694,7 @@ fn update_world_enemies(
     let Some(mut game) = game else {
         return;
     };
-    let Some(collision) = collision.as_deref() else {
+    let Some(collision) = assets.collision.as_deref() else {
         return;
     };
     let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
@@ -697,21 +703,24 @@ fn update_world_enemies(
     let Some(collision) = collision.occupancy_for(map_id) else {
         return;
     };
-    let balance = balances
+    let modifiers = assets
+        .balances
         .iter()
         .next()
-        .map(|(_, balance)| balance)
-        .cloned()
-        .unwrap_or_default();
-    let modifiers = party_encounter_modifiers(game.party(), &balance.spawner);
+        .map(|(_, balance)| party_encounter_modifiers(game.party(), &balance.spawner))
+        .unwrap_or_else(|| {
+            party_encounter_modifiers(game.party(), &BalanceData::default().spawner)
+        });
     let player_top_left = players
         .single()
         .map(|motion| motion.top_left())
         .unwrap_or_else(|_| enemy_top_left(game.map().position()));
-    let snapshot = enemies
-        .iter()
-        .map(|(entity, enemy, _, _)| (entity, enemy.collision_rect(), enemy.active))
-        .collect::<Vec<_>>();
+    snapshot.clear();
+    snapshot.extend(
+        enemies
+            .iter()
+            .map(|(entity, enemy, _, _)| (entity, enemy.collision_rect(), enemy.active)),
+    );
     let delta = time.delta_secs().min(MAX_ENEMY_DELTA_SECONDS);
 
     if let Some(cadence) = state.cadence.as_mut() {
@@ -754,7 +763,7 @@ fn update_world_enemies(
                     entity,
                     player_top_left,
                     delta,
-                    &snapshot,
+                    snapshot.as_slice(),
                     collision,
                 )
             } else {
@@ -762,7 +771,7 @@ fn update_world_enemies(
                     &mut enemy,
                     entity,
                     delta,
-                    &snapshot,
+                    snapshot.as_slice(),
                     collision,
                     game.rng_mut(),
                 )

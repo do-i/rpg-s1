@@ -82,8 +82,6 @@ fn enemy_target_selection_handles_single_wrap_cancel_and_no_target() {
     let mut single = TargetSelector::new(TargetGroup::Enemy, &one, false).unwrap();
     single.navigate(1);
     assert_eq!(single.selected(), CombatantKey::enemy(0));
-    // Cancellation is represented by dropping the selector and returning to Command.
-    assert_eq!(BattlePhase::Command, BattlePhase::Command);
 }
 
 #[test]
