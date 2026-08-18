@@ -7,7 +7,7 @@ use crate::{
     game_state::GameState,
     scenario_balance::BalanceData,
     scenario_party::PartyRow,
-    scenario_path::ScenarioRelativePath,
+    scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     tsx_atlas_asset::TsxAtlasAsset,
     world_encounter::WorldEncounterRestore,
@@ -21,7 +21,8 @@ use super::{
     rules::{flee_chance, phase_after_flee_confirmation, roll_flee, wrap_index},
 };
 
-const BATTLE_IDLE_TILE: u32 = 8 * 9;
+const LPC_COLUMNS: u32 = 9;
+const BATTLE_IDLE_TILE: u32 = 2 * LPC_COLUMNS;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
     BattleCommand::Spell,
@@ -67,6 +68,14 @@ struct BattleAssetState {
     atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
 }
 
+fn battle_enemy_atlas_path(
+    sprite_id: &str,
+) -> Result<ScenarioRelativePath, ScenarioRelativePathError> {
+    ScenarioRelativePath::try_from(
+        format!("assets/sprites/enemies/{sprite_id}_battle.tsx").as_str(),
+    )
+}
+
 fn enter_battle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -82,11 +91,9 @@ fn enter_battle(
         .iter()
         .filter(|participant| participant.side == BattleSide::Enemy)
         .map(|participant| {
-            ScenarioRelativePath::try_from(
-                format!("assets/sprites/enemies/{}.tsx", participant.sprite_id).as_str(),
-            )
-            .ok()
-            .map(|path| asset_server.load(root.resolve(&path)))
+            battle_enemy_atlas_path(&participant.sprite_id)
+                .ok()
+                .map(|path| asset_server.load(root.resolve(&path)))
         })
         .collect::<Vec<_>>();
     let background = ScenarioRelativePath::try_from(entry.background_asset.as_str())
@@ -543,4 +550,22 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
     }
     commands.remove_resource::<BattleState>();
     commands.remove_resource::<BattleAssetState>();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn battle_idle_frame_faces_down() {
+        assert_eq!(BATTLE_IDLE_TILE, 18);
+    }
+
+    #[test]
+    fn battle_uses_dedicated_enemy_sheet() {
+        assert_eq!(
+            battle_enemy_atlas_path("goblin").unwrap().as_str(),
+            "assets/sprites/enemies/goblin_battle.tsx"
+        );
+    }
 }
