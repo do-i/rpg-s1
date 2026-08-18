@@ -76,10 +76,8 @@ impl WorldActorState {
 
 /// One live, present NPC. Tile occupancy is authoritative for grid interaction and collision.
 #[derive(Component, Debug)]
-#[allow(dead_code, reason = "M5.11 interaction consumes these fields next")]
 pub(crate) struct WorldNpc {
     map_id: String,
-    id: String,
     name: String,
     dialogue_id: String,
     origin: Position,
@@ -97,14 +95,9 @@ pub(crate) struct WorldNpc {
     wander_target: Option<Vec2>,
 }
 
-#[allow(dead_code, reason = "M5.11 interaction consumes these accessors next")]
 impl WorldNpc {
     pub(crate) fn map_id(&self) -> &str {
         &self.map_id
-    }
-
-    pub(crate) fn id(&self) -> &str {
-        &self.id
     }
 
     pub(crate) fn name(&self) -> &str {
@@ -117,10 +110,6 @@ impl WorldNpc {
 
     pub(crate) const fn tile_position(&self) -> Position {
         self.position
-    }
-
-    pub(crate) const fn facing(&self) -> CardinalDirection {
-        self.facing
     }
 
     pub(crate) fn collision_rect(&self) -> CharacterCollisionRect {
@@ -278,7 +267,6 @@ fn drive_world_actor_load(
         let center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
         let actor = WorldNpc {
             map_id: map_id.to_owned(),
-            id: npc.id.clone(),
             name: npc.name.clone(),
             dialogue_id: npc.effective_dialogue_id().to_owned(),
             origin: npc.position,
@@ -642,7 +630,6 @@ mod tests {
         let collision = open_collision();
         let mut actor = WorldNpc {
             map_id: "invented".into(),
-            id: "npc".into(),
             name: "Npc".into(),
             dialogue_id: "npc".into(),
             origin: Position::new(4, 4),
@@ -688,7 +675,6 @@ mod tests {
         let collision = open_collision();
         let mut actor = WorldNpc {
             map_id: "invented".into(),
-            id: "npc".into(),
             name: "Npc".into(),
             dialogue_id: "npc".into(),
             origin: Position::new(4, 4),

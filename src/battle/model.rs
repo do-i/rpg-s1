@@ -63,7 +63,7 @@ impl CombatantKey {
         not(test),
         expect(
             dead_code,
-            reason = "M9 ally-target contract is exercised before M10 effects"
+            reason = "M10 ally effects will construct party target keys"
         )
     )]
     pub(super) const fn party(index: usize) -> Self {
@@ -138,7 +138,7 @@ pub(super) enum TargetGroup {
         not(test),
         expect(
             dead_code,
-            reason = "M9 verifies ally eligibility before M10 effects consume it"
+            reason = "M10 healing, status, and revive actions target allies"
         )
     )]
     Ally,

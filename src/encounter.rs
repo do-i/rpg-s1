@@ -289,10 +289,6 @@ pub struct WorldEnemyReturnState {
     pub active: bool,
 }
 
-#[cfg_attr(
-    not(test),
-    allow(dead_code, reason = "M9 consumes the verified M8 return boundary")
-)]
 pub(crate) fn restore_pre_battle_context(
     game: &mut crate::game_state::GameState,
     context: &PreBattleReturnContext,
