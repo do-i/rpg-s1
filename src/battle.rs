@@ -892,6 +892,9 @@ fn sync_battle_ui(
     >,
 ) {
     let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
     let active = state.active_key();
     if let Ok(mut text) = party_text.single_mut() {
         text.0 = state

@@ -1,6 +1,9 @@
 //! In-world field-menu shell over the shared M6 runtime domain.
 
-use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
+use bevy::{
+    ecs::{hierarchy::ChildSpawnerCommands, schedule::ApplyDeferred},
+    prelude::*,
+};
 
 use crate::{
     action_input::{ActionState, AppAction},
@@ -101,7 +104,9 @@ impl Plugin for FieldMenuPlugin {
                 Update,
                 (
                     handle_field_menu_input,
-                    sync_field_menu_overlay,
+                    sync_field_menu_overlay_lifecycle,
+                    ApplyDeferred,
+                    sync_field_menu_generic_text,
                     sync_custom_field_menu_content_visibility,
                     sync_main_menu_page,
                     sync_status_page,
@@ -899,21 +904,32 @@ fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
     start..(start + INVENTORY_PAGE_ROWS).min(len)
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    reason = "the overlay updates three independently styled text roles"
-)]
-fn sync_field_menu_overlay(
+fn sync_field_menu_overlay_lifecycle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
     theme: Res<UiTheme>,
     state: Res<FieldMenuState>,
+    roots: Query<Entity, With<FieldMenuRoot>>,
+) {
+    if !state.open {
+        for entity in &roots {
+            commands.entity(entity).despawn();
+        }
+    } else if roots.is_empty() {
+        spawn_field_menu_overlay(&mut commands, &asset_server, &root, &theme);
+    }
+}
+
+#[expect(
+    clippy::type_complexity,
+    reason = "the overlay updates three independently styled text roles"
+)]
+fn sync_field_menu_generic_text(
+    state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     saves: Res<SaveSlotCatalog>,
     game: Option<Res<GameState>>,
-    roots: Query<Entity, With<FieldMenuRoot>>,
     mut titles: Query<
         &mut Text,
         (
@@ -940,13 +956,13 @@ fn sync_field_menu_overlay(
     >,
 ) {
     if !state.open {
-        for entity in &roots {
-            commands.entity(entity).despawn();
-        }
         return;
     }
-    if roots.is_empty() {
-        spawn_field_menu_overlay(&mut commands, &asset_server, &root, &theme);
+    if uses_custom_field_menu_page(&state, &catalog, game.is_some()) {
+        return;
+    }
+    let game_changed = game.as_ref().is_some_and(|game| game.is_changed());
+    if !state.is_changed() && !catalog.is_changed() && !saves.is_changed() && !game_changed {
         return;
     }
     let Some(game) = game else { return };
@@ -1050,8 +1066,27 @@ fn sync_custom_field_menu_content_visibility(
     game: Option<Res<GameState>>,
     mut generic_nodes: Query<&mut Node, With<FieldMenuGenericContent>>,
 ) {
-    let show_custom_page = state.open
-        && game.is_some()
+    let game_changed = game.as_ref().is_some_and(|game| game.is_changed());
+    if !state.is_changed() && !catalog.is_changed() && !game_changed {
+        return;
+    }
+    let show_custom_page = uses_custom_field_menu_page(&state, &catalog, game.is_some());
+    for mut node in &mut generic_nodes {
+        node.display = if show_custom_page {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+}
+
+fn uses_custom_field_menu_page(
+    state: &FieldMenuState,
+    catalog: &FieldMenuCatalog,
+    has_game: bool,
+) -> bool {
+    state.open
+        && has_game
         && (state.screen == FieldMenuScreen::Main
             || (catalog.status() == CatalogStatus::Ready
                 && matches!(
@@ -1061,14 +1096,7 @@ fn sync_custom_field_menu_content_visibility(
                         | FieldMenuScreen::Equipment
                         | FieldMenuScreen::Spells
                         | FieldMenuScreen::Save
-                )));
-    for mut node in &mut generic_nodes {
-        node.display = if show_custom_page {
-            Display::None
-        } else {
-            Display::Flex
-        };
-    }
+                )))
 }
 
 fn sync_main_menu_page(
