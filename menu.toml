@@ -13,10 +13,10 @@ selected_bold = true
 id = "run"
 label = "Run playable M7 slice"
 key = "r"
-command = ["cargo", "run"]
+command = ["env", "RPG_S1_MUTE_AUDIO=1", "cargo", "run"]
 group = "Play"
 tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells"]
-description = "Play the Ardel slice with native save/load, party, items, equipment, spells, and teleport"
+description = "Play the Ardel slice with sound disabled, native save/load, party, items, equipment, spells, and teleport"
 favorite = true
 
 [[items]]
