@@ -1,8 +1,10 @@
 use super::{
+    action::{BattleAction, BattleEvent},
     model::{
         BattleCombatant, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
         TargetSelector,
     },
+    resolver::resolve_action,
     rules::{
         calculate_turn_order, flee_chance, phase_after_flee_confirmation, physical_damage,
         physical_hit_chance, roll_flee, roll_succeeds,
@@ -198,6 +200,34 @@ fn physical_damage_applies_attack_defense_rows_minimum_and_health_cap() {
     back_party.row = PartyRow::Back;
     let enemy_attacker = actor(BattleSide::Enemy, 0, 1, 50);
     assert_eq!(physical_damage(&enemy_attacker, &back_party), 3);
+}
+
+#[test]
+fn resolving_an_action_is_pure_until_its_typed_event_is_applied() {
+    let mut state = state_with(vec![
+        actor(BattleSide::Party, 0, 100, 20),
+        actor(BattleSide::Enemy, 0, 1, 20),
+    ]);
+    let action = BattleAction::Physical {
+        attacker: CombatantKey::party(0),
+        target: CombatantKey::enemy(0),
+    };
+    let before = state.combatants[1].health;
+    let event = resolve_action(&state, action, &mut GameplayRng::from_seed(9)).unwrap();
+
+    assert_eq!(state.combatants[1].health, before);
+    assert_eq!(
+        event,
+        BattleEvent::Damage {
+            action,
+            amount: 7,
+            knocked_out: false,
+        }
+    );
+
+    state.apply_event(event);
+    assert_eq!(state.combatants[1].health, before - 7);
+    assert_eq!(state.phase, BattlePhase::Resolve);
 }
 
 #[test]

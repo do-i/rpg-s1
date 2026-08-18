@@ -4,6 +4,7 @@ use crate::{
 };
 
 use super::{
+    action::{BattleAction, BattleEvent},
     model::{BattleCombatant, BattleCommand, BattlePhase, BattleState, CombatantKey},
     rules::{calculate_turn_order, physical_damage, physical_hit_chance, roll_succeeds},
 };
@@ -118,43 +119,64 @@ impl BattleState {
         attacker_key: CombatantKey,
         target_key: CombatantKey,
         rng: &mut GameplayRng,
-    ) {
-        let Some(attacker) = self.actor(attacker_key).cloned() else {
+    ) -> Option<BattleEvent> {
+        let event = resolve_action(
+            self,
+            BattleAction::Physical {
+                attacker: attacker_key,
+                target: target_key,
+            },
+            rng,
+        )?;
+        self.apply_event(event);
+        Some(event)
+    }
+
+    pub(super) fn apply_event(&mut self, event: BattleEvent) {
+        let action = match event {
+            BattleEvent::Miss { action } | BattleEvent::Damage { action, .. } => action,
+        };
+        let attacker_key = action.attacker();
+        let target_key = action.target();
+        let Some((attacker_id, attacker_name)) = self
+            .actor(attacker_key)
+            .map(|actor| (actor.id.clone(), actor.name.clone()))
+        else {
             return;
         };
-        let Some(defender) = self.actor(target_key).cloned() else {
-            return;
-        };
-        let chance = physical_hit_chance(attacker.dexterity, defender.dexterity);
-        if !roll_succeeds(rng, chance) {
-            self.message = format!("{} attacks {}, but misses.", attacker.name, defender.name);
-            self.transcript
-                .push(format!("MISS {} -> {}", attacker.id, defender.id));
-            self.phase = BattlePhase::Resolve;
-            return;
-        }
-        let raw = physical_damage(&attacker, &defender);
-        let actual = self
-            .actor_mut(target_key)
-            .map(|target| target.apply_damage(raw))
-            .unwrap_or(0);
-        let knocked_out = self
+        let Some((target_id, target_name)) = self
             .actor(target_key)
-            .is_some_and(|target| !target.is_alive());
-        self.message = format!(
-            "{} attacks {} for {} damage.{}",
-            attacker.name,
-            defender.name,
-            actual,
-            if knocked_out { " KO!" } else { "" }
-        );
-        self.transcript.push(format!(
-            "HIT {} -> {} {}{}",
-            attacker.id,
-            defender.id,
-            actual,
-            if knocked_out { " KO" } else { "" }
-        ));
+            .map(|actor| (actor.id.clone(), actor.name.clone()))
+        else {
+            return;
+        };
+
+        match event {
+            BattleEvent::Miss { .. } => {
+                self.message = format!("{attacker_name} attacks {target_name}, but misses.");
+                self.transcript
+                    .push(format!("MISS {attacker_id} -> {target_id}"));
+            }
+            BattleEvent::Damage {
+                amount,
+                knocked_out,
+                ..
+            } => {
+                let actual = self
+                    .actor_mut(target_key)
+                    .map(|target| target.apply_damage(amount))
+                    .unwrap_or(0);
+                debug_assert_eq!(actual, amount);
+                self.message = format!(
+                    "{attacker_name} attacks {target_name} for {actual} damage.{}",
+                    if knocked_out { " KO!" } else { "" }
+                );
+                self.transcript.push(format!(
+                    "HIT {attacker_id} -> {target_id} {actual}{}",
+                    if knocked_out { " KO" } else { "" }
+                ));
+            }
+        }
         self.phase = BattlePhase::Resolve;
     }
 
@@ -185,6 +207,29 @@ impl BattleState {
                 break;
             }
             self.active_turn = (self.active_turn + 1) % self.turn_order.len();
+        }
+    }
+}
+
+pub(super) fn resolve_action(
+    state: &BattleState,
+    action: BattleAction,
+    rng: &mut GameplayRng,
+) -> Option<BattleEvent> {
+    match action {
+        BattleAction::Physical { attacker, target } => {
+            let attacker_actor = state.actor(attacker)?;
+            let defender_actor = state.actor(target)?;
+            let chance = physical_hit_chance(attacker_actor.dexterity, defender_actor.dexterity);
+            if !roll_succeeds(rng, chance) {
+                return Some(BattleEvent::Miss { action });
+            }
+            let amount = physical_damage(attacker_actor, defender_actor);
+            Some(BattleEvent::Damage {
+                action,
+                amount,
+                knocked_out: amount >= defender_actor.health,
+            })
         }
     }
 }
