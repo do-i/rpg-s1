@@ -35,7 +35,10 @@ pub(crate) struct WorldPlayerPlugin;
 impl Plugin for WorldPlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WorldPlayerSpawnState>()
-            .add_plugins(crate::scenario_spatial::cardinal_movement::CardinalMovementPlugin)
+            .add_plugins((
+                crate::scenario_spatial::world_collision::WorldCollisionPlugin,
+                crate::scenario_spatial::cardinal_movement::CardinalMovementPlugin,
+            ))
             .add_systems(OnEnter(AppState::World), begin_world_player_load)
             .add_systems(
                 Update,

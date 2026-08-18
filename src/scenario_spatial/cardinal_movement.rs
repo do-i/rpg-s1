@@ -9,12 +9,10 @@ use crate::{
     app_state::AppState,
     field_menu::FieldMenuState,
     game_state::GameState,
-    scenario_path::ScenarioRelativePath,
-    scenario_root::ScenarioRoot,
     scenario_spatial::{
         CardinalDirection, EightWayDirection, collision_occupancy::CollisionOccupancy,
+        world_collision::WorldCollision,
     },
-    tmx_ground_asset::TmxGroundAsset,
     world_actor::WorldNpc,
     world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
@@ -38,110 +36,7 @@ pub(crate) struct CardinalMovementPlugin;
 
 impl Plugin for CardinalMovementPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ActiveMapCollision>()
-            .add_systems(
-                Update,
-                (load_active_map_collision, move_world_player)
-                    .chain()
-                    .run_if(in_state(AppState::World)),
-            )
-            .add_systems(OnExit(AppState::World), clear_active_map_collision);
-    }
-}
-
-/// Collision data paired with the logical map id that produced it.
-///
-/// The cache is deliberately private to movement. Rendering and collision share the parsed
-/// [`TmxGroundAsset`], while an input can never reuse occupancy from a previously active map.
-#[derive(Resource, Default)]
-struct ActiveMapCollision {
-    map_id: Option<String>,
-    handle: Option<Handle<TmxGroundAsset>>,
-    occupancy: Option<CollisionOccupancy>,
-    failed: bool,
-}
-
-impl ActiveMapCollision {
-    fn reset_for_map(
-        &mut self,
-        map_id: &str,
-        asset_server: &AssetServer,
-        scenario_root: &ScenarioRoot,
-    ) {
-        self.map_id = Some(map_id.to_owned());
-        self.handle = None;
-        self.occupancy = None;
-        self.failed = false;
-
-        let logical = format!("assets/maps/{map_id}.tmx");
-        let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
-            self.failed = true;
-            return;
-        };
-        self.handle = Some(asset_server.load(scenario_root.resolve(&logical)));
-    }
-}
-
-fn load_active_map_collision(
-    asset_server: Option<Res<AssetServer>>,
-    scenario_root: Option<Res<ScenarioRoot>>,
-    maps: Option<Res<Assets<TmxGroundAsset>>>,
-    game: Option<Res<GameState>>,
-    mut collision: ResMut<ActiveMapCollision>,
-) {
-    let Some(game) = game else {
-        *collision = ActiveMapCollision::default();
-        return;
-    };
-    let Some(current) = game.map().current() else {
-        *collision = ActiveMapCollision::default();
-        return;
-    };
-    let map_id = current.as_str();
-    let asset_server = asset_server.as_deref();
-    let scenario_root = scenario_root.as_deref();
-    let maps = maps.as_deref();
-
-    if collision.map_id.as_deref() != Some(map_id) {
-        let (Some(asset_server), Some(scenario_root), Some(_)) =
-            (asset_server, scenario_root, maps)
-        else {
-            // Headless callers may install collision data directly. Production fails closed until
-            // all asset resources exist and the active TMX can be requested.
-            *collision = ActiveMapCollision {
-                map_id: Some(map_id.to_owned()),
-                ..default()
-            };
-            return;
-        };
-        collision.reset_for_map(map_id, asset_server, scenario_root);
-    }
-    if collision.failed || collision.occupancy.is_some() {
-        return;
-    }
-
-    let Some(handle) = collision.handle.as_ref() else {
-        return;
-    };
-    let Some(asset_server) = asset_server else {
-        return;
-    };
-    if matches!(
-        asset_server.load_state(handle.id()),
-        bevy::asset::LoadState::Failed(_)
-    ) {
-        collision.failed = true;
-        return;
-    }
-    let Some(maps) = maps else {
-        return;
-    };
-    let Some(map) = maps.get(handle) else {
-        return;
-    };
-    match CollisionOccupancy::from_tmx_document(map.document()) {
-        Ok(occupancy) => collision.occupancy = Some(occupancy),
-        Err(_) => collision.failed = true,
+        app.add_systems(Update, move_world_player.run_if(in_state(AppState::World)));
     }
 }
 
@@ -152,7 +47,7 @@ fn load_active_map_collision(
 fn move_world_player(
     actions: Option<Res<ActionState>>,
     time: Option<Res<Time>>,
-    collision: Res<ActiveMapCollision>,
+    collision: Res<WorldCollision>,
     transition: Option<Res<WorldTransition>>,
     battle_transition: Option<Res<BattleTransition>>,
     interaction: Option<Res<WorldInteractionState>>,
@@ -213,11 +108,7 @@ fn move_world_player(
     let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
         return;
     };
-    let Some(occupancy) = collision
-        .occupancy
-        .as_ref()
-        .filter(|_| collision.map_id.as_deref() == Some(map_id) && !collision.failed)
-    else {
+    let Some(occupancy) = collision.occupancy_for(map_id) else {
         return;
     };
     let direction = movement_vector(direction);
@@ -249,10 +140,6 @@ fn set_atlas_tile(sprite: &mut Sprite, tile_id: u32) {
     if let Some(atlas) = sprite.texture_atlas.as_mut() {
         atlas.index = tile_id as usize;
     }
-}
-
-fn clear_active_map_collision(mut collision: ResMut<ActiveMapCollision>) {
-    *collision = ActiveMapCollision::default();
 }
 
 fn smooth_step(
@@ -470,7 +357,10 @@ mod tests {
             .init_resource::<ButtonInput<KeyCode>>()
             .insert_state(state)
             .add_plugins(ActionInputPlugin)
-            .add_plugins(CardinalMovementPlugin);
+            .add_plugins((
+                crate::scenario_spatial::world_collision::WorldCollisionPlugin,
+                CardinalMovementPlugin,
+            ));
         app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
             1.0 / 60.0,
         )));
@@ -478,11 +368,10 @@ mod tests {
             let mut game = game_state();
             game.map_mut().set_position(Position::new(2, 2));
             app.insert_resource(game);
-            app.insert_resource(ActiveMapCollision {
-                map_id: Some("town_01_ardel".to_owned()),
-                occupancy: Some(occupancy(blocked)),
-                ..default()
-            });
+            app.insert_resource(WorldCollision::loaded_for(
+                "town_01_ardel",
+                occupancy(blocked),
+            ));
         }
         for _ in 0..player_count {
             let motion = WorldPlayerMotion::from_tile(Position::new(2, 2));
@@ -802,13 +691,13 @@ mod tests {
     #[test]
     fn missing_stale_or_out_of_bounds_collision_data_fails_closed() {
         for collision in [
-            ActiveMapCollision::default(),
-            ActiveMapCollision {
+            WorldCollision::default(),
+            WorldCollision {
                 map_id: Some("different_map".to_owned()),
                 occupancy: Some(occupancy(&[])),
                 ..default()
             },
-            ActiveMapCollision {
+            WorldCollision {
                 map_id: Some("town_01_ardel".to_owned()),
                 failed: true,
                 occupancy: Some(occupancy(&[])),

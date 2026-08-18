@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) mod aric_atlas;
 pub(crate) mod cardinal_movement;
 pub(crate) mod collision_occupancy;
+pub(crate) mod world_collision;
 
 /// An immutable two-dimensional integer coordinate serialized as source-shaped `[x, y]` YAML.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]

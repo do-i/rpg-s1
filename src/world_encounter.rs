@@ -26,7 +26,10 @@ use crate::{
     scenario_map::MapMetadata,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
-    scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
+    scenario_spatial::{
+        CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
+        world_collision::WorldCollision,
+    },
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tsx_atlas_asset::TsxAtlasAsset,
     world_audio::LogicalBgmPlayer,
@@ -670,14 +673,9 @@ fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
     ))
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "continuous enemy simulation reads independent map, player, balance, and render state"
-)]
 fn update_world_enemies(
     time: Res<Time>,
-    maps: Res<Assets<TmxGroundAsset>>,
-    render: Res<StaticMapRenderState>,
+    collision: Option<Res<WorldCollision>>,
     balances: Res<Assets<BalanceData>>,
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
@@ -690,10 +688,13 @@ fn update_world_enemies(
     let Some(mut game) = game else {
         return;
     };
-    let Some(map) = render.map(&maps) else {
+    let Some(collision) = collision.as_deref() else {
         return;
     };
-    let Ok(collision) = CollisionOccupancy::from_tmx_document(map.document()) else {
+    let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
+        return;
+    };
+    let Some(collision) = collision.occupancy_for(map_id) else {
         return;
     };
     let balance = balances
@@ -754,7 +755,7 @@ fn update_world_enemies(
                     player_top_left,
                     delta,
                     &snapshot,
-                    &collision,
+                    collision,
                 )
             } else {
                 wander_enemy(
@@ -762,7 +763,7 @@ fn update_world_enemies(
                     entity,
                     delta,
                     &snapshot,
-                    &collision,
+                    collision,
                     game.rng_mut(),
                 )
             };

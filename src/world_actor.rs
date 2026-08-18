@@ -9,8 +9,11 @@ use crate::{
     scenario_map::{MapMetadata, NpcAnimationMode, NpcMetadata},
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
-    scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
-    tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
+    scenario_spatial::{
+        CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
+        world_collision::WorldCollision,
+    },
+    tmx_ground_asset::world_entity_y_z,
     tsx_atlas_asset::TsxAtlasAsset,
     world_player::{
         CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
@@ -318,8 +321,7 @@ fn present_npcs<'a>(
 
 fn update_world_npcs(
     time: Res<Time>,
-    maps: Res<Assets<TmxGroundAsset>>,
-    render: Res<StaticMapRenderState>,
+    collision: Option<Res<WorldCollision>>,
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion>,
     mut actors: Query<(Entity, &mut WorldNpc, &mut Sprite, &mut Transform)>,
@@ -327,13 +329,16 @@ fn update_world_npcs(
     let Some(mut game) = game else {
         return;
     };
-    let Some(map) = render.map(&maps) else {
-        return;
-    };
-    let Ok(collision) = CollisionOccupancy::from_tmx_document(map.document()) else {
+    let Some(collision) = collision.as_deref() else {
         return;
     };
     let player_tile = game.map().position();
+    let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
+        return;
+    };
+    let Some(collision) = collision.occupancy_for(map_id) else {
+        return;
+    };
     let player_motion = players
         .single()
         .copied()
@@ -369,7 +374,7 @@ fn update_world_npcs(
                     entity,
                     player_rect,
                     &snapshot,
-                    &collision,
+                    collision,
                     game.rng_mut(),
                 ),
             }
