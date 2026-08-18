@@ -13,7 +13,7 @@ use crate::{
     runtime_repository::RuntimeRepository,
     scenario_balance::SpawnerBalance,
     scenario_encounter::{EncounterFormation, EncounterZone},
-    scenario_enemy::{EnemyDefinition, EnemyDrops},
+    scenario_enemy::{EnemyDefinition, EnemyDrops, EnemySize},
     scenario_party::PartyRow,
     scenario_spatial::{CardinalDirection, Position},
 };
@@ -262,6 +262,7 @@ pub struct BattleParticipant {
     pub dexterity: i64,
     pub row: PartyRow,
     pub boss: bool,
+    pub enemy_size: Option<EnemySize>,
     pub sprite_id: String,
     pub sprite_scale_percent: u32,
     pub drops: Option<EnemyDrops>,
@@ -370,6 +371,7 @@ pub(crate) fn build_battle_entry(
                 dexterity: i64::from(stats.dexterity),
                 row: member.row(),
                 boss: false,
+                enemy_size: None,
                 sprite_id: String::new(),
                 sprite_scale_percent: 100,
                 drops: None,
@@ -433,6 +435,7 @@ fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
         dexterity: i64::from(enemy.dexterity.get()),
         row: PartyRow::Front,
         boss: enemy.boss,
+        enemy_size: Some(enemy.size),
         sprite_id: enemy.sprite_id().to_owned(),
         sprite_scale_percent: enemy.sprite_scale_percent.get(),
         drops: Some(enemy.drops.clone()),
@@ -646,6 +649,7 @@ mod tests {
         .unwrap();
         let party = &entry.participants[0];
         assert_eq!(party.side, BattleSide::Party);
+        assert_eq!(party.enemy_size, None);
         assert_eq!(
             party.health,
             game.party().members().next().unwrap().health()
@@ -657,6 +661,7 @@ mod tests {
             .unwrap();
         assert_eq!(enemy.id, "moss_hare");
         assert_eq!(enemy.health, 12);
+        assert_eq!(enemy.enemy_size, Some(EnemySize::Small));
         assert_eq!(entry.background_id, "moss-track-bg-1280x468");
         assert_eq!(
             entry.background_asset,

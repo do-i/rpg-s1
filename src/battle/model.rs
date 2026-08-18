@@ -59,13 +59,6 @@ pub(super) struct CombatantKey {
 }
 
 impl CombatantKey {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "M10 ally effects will construct party target keys"
-        )
-    )]
     pub(super) const fn party(index: usize) -> Self {
         Self {
             side: BattleSide::Party,

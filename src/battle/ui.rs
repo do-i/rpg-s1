@@ -6,7 +6,7 @@ use crate::{
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     game_state::GameState,
     scenario_balance::BalanceData,
-    scenario_party::PartyRow,
+    scenario_enemy::EnemySize,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     tsx_atlas_asset::TsxAtlasAsset,
@@ -23,6 +23,11 @@ use super::{
 
 const LPC_COLUMNS: u32 = 9;
 const BATTLE_IDLE_TILE: u32 = 2 * LPC_COLUMNS;
+const ENEMY_AREA_HEIGHT: f32 = 468.0;
+const PARTY_PORTRAIT_SIZE: f32 = 100.0;
+const PARTY_CARD_WIDTH: f32 = 108.0;
+const PARTY_CARD_GAP: f32 = 10.0;
+const PANEL_PADDING: f32 = 16.0;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
     BattleCommand::Spell,
@@ -37,7 +42,16 @@ impl Plugin for BattlePlugin {
         app.add_systems(OnEnter(AppState::Battle), enter_battle)
             .add_systems(
                 Update,
-                (drive_battle_assets, handle_battle_input, sync_battle_ui)
+                (
+                    drive_battle_assets,
+                    handle_battle_input,
+                    sync_party_cards,
+                    sync_party_meters,
+                    sync_battle_commands,
+                    sync_battle_message,
+                    sync_enemy_cards,
+                    sync_enemy_meters,
+                )
                     .chain()
                     .run_if(in_state(AppState::Battle)),
             )
@@ -55,13 +69,62 @@ struct BattleEnemyImage(usize);
 struct BattleEnemyLabel(usize);
 
 #[derive(Component)]
-struct BattlePartyText;
+struct BattleEnemyCard(usize);
 
 #[derive(Component)]
-struct BattleCommandText;
+struct BattleEnemyFrame(usize);
+
+#[derive(Component)]
+struct BattleEnemyHpFill(usize);
+
+#[derive(Component)]
+struct BattlePartyCard(usize);
+
+#[derive(Component)]
+struct BattlePartyPortrait(usize);
+
+#[derive(Component)]
+struct BattlePartyName(usize);
+
+#[derive(Clone, Copy, Component)]
+struct BattlePartyMeter {
+    index: usize,
+    kind: BattleMeterKind,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BattleMeterKind {
+    Health,
+    Mana,
+}
+
+#[derive(Component)]
+struct BattlePartyMeterFill(BattlePartyMeter);
+
+#[derive(Component)]
+struct BattlePartyMeterText(BattlePartyMeter);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BattlePanelKind {
+    Party,
+    Command,
+    Log,
+}
+
+#[derive(Component)]
+struct BattlePanelTitle(BattlePanelKind);
+
+#[derive(Component)]
+struct BattleCommandRow(usize);
+
+#[derive(Component)]
+struct BattleCommandLabel(usize);
 
 #[derive(Component)]
 struct BattleMessageText;
+
+#[derive(Component)]
+struct BattleTargetText;
 
 #[derive(Debug, Resource)]
 struct BattleAssetState {
@@ -113,124 +176,591 @@ fn enter_battle(
                 width: percent(100),
                 height: percent(100),
                 flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::SpaceBetween,
-                padding: UiRect::all(px(24)),
                 ..default()
             },
-            ImageNode::new(background).with_mode(NodeImageMode::Stretch),
-            BackgroundColor(Color::srgb(0.03, 0.03, 0.08)),
+            BackgroundColor(battle_floor()),
             GlobalZIndex(200),
             Pickable::IGNORE,
             BattleUi,
         ))
         .with_children(|root_node| {
-            root_node
-                .spawn(Node {
-                    width: percent(100),
-                    height: px(390),
-                    justify_content: JustifyContent::SpaceEvenly,
-                    align_items: AlignItems::Center,
-                    ..default()
-                })
-                .with_children(|row| {
-                    for (index, participant) in entry
-                        .participants
-                        .iter()
-                        .filter(|participant| participant.side == BattleSide::Enemy)
-                        .enumerate()
-                    {
-                        row.spawn(Node {
-                            width: px(180),
-                            height: px(240),
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            row_gap: px(8),
-                            ..default()
-                        })
-                        .with_children(|card| {
-                            card.spawn((
-                                ImageNode::solid_color(Color::srgba(0.7, 0.1, 0.1, 0.7)),
-                                Node {
-                                    width: px(128),
-                                    height: px(128),
-                                    ..default()
-                                },
-                                BattleEnemyImage(index),
-                            ));
-                            card.spawn((
-                                Text::new(participant.name.clone()),
-                                TextFont {
-                                    font: font.clone().into(),
-                                    font_size: FontSize::Px(22.0),
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                                BattleEnemyLabel(index),
-                            ));
-                        });
-                    }
-                });
-            root_node
-                .spawn((
-                    Node {
-                        width: percent(100),
-                        height: px(285),
-                        flex_direction: FlexDirection::Row,
-                        padding: UiRect::all(px(18)),
-                        column_gap: px(28),
-                        border_radius: BorderRadius::all(px(12)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(0.015, 0.02, 0.09, 0.92)),
-                ))
-                .with_children(|panel| {
-                    panel.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font: font.clone().into(),
-                            font_size: FontSize::Px(19.0),
-                            ..default()
-                        },
-                        TextColor(Color::srgb_u8(235, 225, 190)),
-                        Node {
-                            width: percent(48),
-                            ..default()
-                        },
-                        BattlePartyText,
-                    ));
-                    panel.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font: font.clone().into(),
-                            font_size: FontSize::Px(20.0),
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                        Node {
-                            width: percent(20),
-                            ..default()
-                        },
-                        BattleCommandText,
-                    ));
-                    panel.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font: font.into(),
-                            font_size: FontSize::Px(19.0),
-                            ..default()
-                        },
-                        TextColor(Color::srgb_u8(117, 220, 214)),
-                        Node {
-                            flex_grow: 1.0,
-                            ..default()
-                        },
-                        BattleMessageText,
-                    ));
-                });
+            spawn_enemy_area(root_node, &entry, background, &font);
+            spawn_battle_panels(root_node, &entry, &asset_server, &root, &font);
         });
     commands.insert_resource(BattleAssetState { atlases });
     commands.insert_resource(state);
+}
+
+fn spawn_enemy_area(
+    parent: &mut ChildSpawnerCommands<'_>,
+    entry: &BattleEntry,
+    background: Handle<Image>,
+    font: &Handle<Font>,
+) {
+    let enemies = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Enemy)
+        .collect::<Vec<_>>();
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                height: px(ENEMY_AREA_HEIGHT),
+                flex_shrink: 0.0,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            ImageNode::new(background).with_mode(NodeImageMode::Stretch),
+        ))
+        .with_children(|area| {
+            area.spawn(Node {
+                width: px(560),
+                height: px(300),
+                position_type: PositionType::Relative,
+                ..default()
+            })
+            .with_children(|battlefield| {
+                for (index, participant) in enemies.iter().enumerate() {
+                    let sprite_size = enemy_sprite_size(participant);
+                    let card_width = sprite_size.max(80.0);
+                    let (offset_x, offset_y) = enemy_layout_offset(enemies.len(), index);
+                    battlefield
+                        .spawn((
+                            Node {
+                                position_type: PositionType::Absolute,
+                                left: px(280.0 + offset_x - card_width / 2.0),
+                                top: px(130.0 + offset_y - sprite_size / 2.0),
+                                width: px(card_width),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BattleEnemyCard(index),
+                        ))
+                        .with_children(|card| {
+                            card.spawn((
+                                Node {
+                                    width: px(sprite_size + 4.0),
+                                    height: px(sprite_size + 4.0),
+                                    border: UiRect::all(px(2)),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    border_radius: BorderRadius::all(px(5)),
+                                    ..default()
+                                },
+                                BorderColor::all(Color::NONE),
+                                BattleEnemyFrame(index),
+                            ))
+                            .with_children(|frame| {
+                                frame.spawn((
+                                    ImageNode::solid_color(Color::srgba_u8(42, 58, 90, 210)),
+                                    Node {
+                                        width: px(sprite_size),
+                                        height: px(sprite_size),
+                                        ..default()
+                                    },
+                                    BattleEnemyImage(index),
+                                ));
+                            });
+                            card.spawn((
+                                Node {
+                                    position_type: PositionType::Relative,
+                                    width: percent(100),
+                                    height: px(22),
+                                    margin: UiRect::top(px(4)),
+                                    border: UiRect::all(px(1)),
+                                    border_radius: BorderRadius::all(px(4)),
+                                    overflow: Overflow::clip(),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb_u8(42, 42, 42)),
+                                BorderColor::all(Color::srgb_u8(205, 198, 178)),
+                            ))
+                            .with_children(|bar| {
+                                bar.spawn((
+                                    Node {
+                                        position_type: PositionType::Absolute,
+                                        left: px(0),
+                                        width: percent(100),
+                                        height: percent(100),
+                                        ..default()
+                                    },
+                                    BackgroundColor(enemy_health()),
+                                    BattleEnemyHpFill(index),
+                                ));
+                                spawn_battle_text(
+                                    bar,
+                                    participant.name.clone(),
+                                    font,
+                                    12.0,
+                                    Color::WHITE,
+                                    Justify::Center,
+                                )
+                                .insert(BattleEnemyLabel(index));
+                            });
+                        });
+                }
+            });
+        });
+}
+
+fn spawn_battle_panels(
+    parent: &mut ChildSpawnerCommands<'_>,
+    entry: &BattleEntry,
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    font: &Handle<Font>,
+) {
+    let party = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Party)
+        .collect::<Vec<_>>();
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            min_height: px(260),
+            padding: UiRect::all(px(8)),
+            column_gap: px(8),
+            ..default()
+        })
+        .with_children(|panels| {
+            spawn_battle_panel(
+                panels,
+                Node {
+                    width: px(party_panel_width(party.len())),
+                    height: percent(100),
+                    flex_shrink: 0.0,
+                    ..default()
+                },
+                "Party",
+                BattlePanelKind::Party,
+                false,
+                font,
+                |panel| spawn_party_cards(panel, &party, asset_server, root, font),
+            );
+            panels
+                .spawn(Node {
+                    height: percent(100),
+                    flex_grow: 1.0,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|right| {
+                    spawn_battle_panel(
+                        right,
+                        Node {
+                            width: percent(45),
+                            height: percent(100),
+                            min_width: px(220),
+                            ..default()
+                        },
+                        "Command",
+                        BattlePanelKind::Command,
+                        true,
+                        font,
+                        |panel| spawn_command_rows(panel, font),
+                    );
+                    spawn_battle_panel(
+                        right,
+                        Node {
+                            height: percent(100),
+                            flex_grow: 1.0,
+                            ..default()
+                        },
+                        "Log",
+                        BattlePanelKind::Log,
+                        false,
+                        font,
+                        |panel| spawn_message_log(panel, font),
+                    );
+                });
+        });
+}
+
+fn spawn_battle_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    mut node: Node,
+    title: &str,
+    kind: BattlePanelKind,
+    active: bool,
+    font: &Handle<Font>,
+    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
+) {
+    node.flex_direction = FlexDirection::Column;
+    node.padding = UiRect::all(px(PANEL_PADDING));
+    node.row_gap = px(8);
+    node.border = UiRect::all(px(if active { 2 } else { 1 }));
+    node.border_radius = BorderRadius::all(px(6));
+    parent
+        .spawn((
+            node,
+            BackgroundColor(battle_panel()),
+            BorderColor::all(if active {
+                battle_border_active()
+            } else {
+                battle_border()
+            }),
+        ))
+        .with_children(|panel| {
+            spawn_battle_text(panel, title, font, 18.0, battle_gold(), Justify::Left)
+                .insert(BattlePanelTitle(kind));
+            panel.spawn((
+                Node {
+                    width: percent(100),
+                    height: px(1),
+                    flex_shrink: 0.0,
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
+            ));
+            content(panel);
+        });
+}
+
+fn spawn_party_cards(
+    parent: &mut ChildSpawnerCommands<'_>,
+    party: &[&crate::encounter::BattleParticipant],
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    font: &Handle<Font>,
+) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            column_gap: px(PARTY_CARD_GAP),
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|row| {
+            for (index, participant) in party.iter().enumerate() {
+                let portrait = ScenarioRelativePath::try_from(
+                    format!("assets/images/{}_profile.png", participant.id).as_str(),
+                )
+                .ok()
+                .map(|path| asset_server.load(root.resolve(&path)))
+                .unwrap_or_default();
+                row.spawn((
+                    Node {
+                        width: px(PARTY_CARD_WIDTH),
+                        height: px(202),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        padding: UiRect::all(px(4)),
+                        row_gap: px(4),
+                        border: UiRect::all(px(1)),
+                        border_radius: BorderRadius::all(px(5)),
+                        ..default()
+                    },
+                    BackgroundColor(battle_row()),
+                    BorderColor::all(battle_row_border()),
+                    BattlePartyCard(index),
+                ))
+                .with_children(|card| {
+                    card.spawn((
+                        ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
+                        Node {
+                            width: px(PARTY_PORTRAIT_SIZE),
+                            height: px(PARTY_PORTRAIT_SIZE),
+                            flex_shrink: 0.0,
+                            border_radius: BorderRadius::all(px(4)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb_u8(24, 24, 31)),
+                        BattlePartyPortrait(index),
+                    ));
+                    spawn_battle_text(
+                        card,
+                        participant.name.clone(),
+                        font,
+                        17.0,
+                        battle_ink(),
+                        Justify::Center,
+                    )
+                    .insert(BattlePartyName(index));
+                    spawn_party_meter(
+                        card,
+                        index,
+                        BattleMeterKind::Health,
+                        participant.health,
+                        participant.max_health,
+                        font,
+                    );
+                    if participant.max_mana > 0 {
+                        spawn_party_meter(
+                            card,
+                            index,
+                            BattleMeterKind::Mana,
+                            participant.mana,
+                            participant.max_mana,
+                            font,
+                        );
+                    }
+                });
+            }
+        });
+}
+
+fn spawn_party_meter(
+    parent: &mut ChildSpawnerCommands<'_>,
+    index: usize,
+    kind: BattleMeterKind,
+    value: u32,
+    maximum: u32,
+    font: &Handle<Font>,
+) {
+    let marker = BattlePartyMeter { index, kind };
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Relative,
+                width: percent(100),
+                height: px(18),
+                flex_shrink: 0.0,
+                overflow: Overflow::clip(),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border_radius: BorderRadius::all(px(3)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb_u8(17, 17, 22)),
+        ))
+        .with_children(|bar| {
+            bar.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(0),
+                    width: percent(meter_percent(value, maximum)),
+                    height: percent(100),
+                    ..default()
+                },
+                BackgroundColor(meter_color(kind, value, maximum)),
+                BattlePartyMeterFill(marker),
+            ));
+            spawn_battle_text(
+                bar,
+                meter_label(kind, value, maximum),
+                font,
+                12.0,
+                battle_ink(),
+                Justify::Center,
+            )
+            .insert(BattlePartyMeterText(marker));
+        });
+}
+
+fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            row_gap: px(6),
+            justify_content: JustifyContent::Center,
+            ..default()
+        })
+        .with_children(|list| {
+            for (index, command) in COMMANDS.iter().enumerate() {
+                list.spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(36),
+                        padding: UiRect::axes(px(12), px(6)),
+                        border: UiRect::all(px(1)),
+                        border_radius: BorderRadius::all(px(5)),
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(battle_row()),
+                    BorderColor::all(battle_row_border()),
+                    BattleCommandRow(index),
+                ))
+                .with_children(|row| {
+                    spawn_battle_text(
+                        row,
+                        command.label(),
+                        font,
+                        18.0,
+                        battle_ink(),
+                        Justify::Left,
+                    )
+                    .insert(BattleCommandLabel(index));
+                });
+            }
+        });
+}
+
+fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::SpaceBetween,
+            ..default()
+        })
+        .with_children(|log| {
+            spawn_battle_text(log, "", font, 18.0, battle_teal(), Justify::Left)
+                .insert(BattleMessageText);
+            spawn_battle_text(log, "", font, 15.0, battle_violet(), Justify::Left)
+                .insert(BattleTargetText);
+        });
+}
+
+fn spawn_battle_text<'a>(
+    parent: &'a mut ChildSpawnerCommands<'_>,
+    text: impl Into<String>,
+    font: &Handle<Font>,
+    size: f32,
+    color: Color,
+    justify: Justify,
+) -> EntityCommands<'a> {
+    parent.spawn((
+        Text::new(text),
+        TextFont {
+            font: font.clone().into(),
+            font_size: FontSize::Px(size),
+            ..default()
+        },
+        TextColor(color),
+        TextLayout::new(justify, LineBreak::WordOrCharacter),
+    ))
+}
+
+fn party_panel_width(member_count: usize) -> f32 {
+    let count = member_count.max(1) as f32;
+    count * PARTY_CARD_WIDTH + (count - 1.0) * PARTY_CARD_GAP + PANEL_PADDING * 2.0
+}
+
+fn enemy_sprite_size(participant: &crate::encounter::BattleParticipant) -> f32 {
+    let base = if participant.boss {
+        96.0
+    } else {
+        match participant.enemy_size.unwrap_or(EnemySize::Medium) {
+            EnemySize::Small => 52.0,
+            EnemySize::Medium => 64.0,
+            EnemySize::Large => 80.0,
+            EnemySize::Boss => 96.0,
+        }
+    };
+    base * participant.sprite_scale_percent as f32 / 100.0
+}
+
+fn enemy_layout_offset(count: usize, index: usize) -> (f32, f32) {
+    const ONE: [(f32, f32); 1] = [(0.0, 0.0)];
+    const TWO: [(f32, f32); 2] = [(-80.0, 0.0), (80.0, 0.0)];
+    const THREE: [(f32, f32); 3] = [(-110.0, -30.0), (0.0, 20.0), (110.0, -20.0)];
+    const FOUR: [(f32, f32); 4] = [(-140.0, -20.0), (-45.0, 20.0), (45.0, -20.0), (140.0, 20.0)];
+    const FIVE: [(f32, f32); 5] = [
+        (-160.0, -30.0),
+        (-80.0, 20.0),
+        (0.0, -10.0),
+        (80.0, 20.0),
+        (160.0, -30.0),
+    ];
+    let offsets = match count {
+        1 => &ONE[..],
+        2 => &TWO[..],
+        3 => &THREE[..],
+        4 => &FOUR[..],
+        _ => &FIVE[..],
+    };
+    offsets.get(index).copied().unwrap_or_default()
+}
+
+fn meter_percent(value: u32, maximum: u32) -> f32 {
+    if maximum == 0 {
+        0.0
+    } else {
+        (value as f32 / maximum as f32 * 100.0).clamp(0.0, 100.0)
+    }
+}
+
+fn meter_label(kind: BattleMeterKind, value: u32, maximum: u32) -> String {
+    let label = match kind {
+        BattleMeterKind::Health => "HP",
+        BattleMeterKind::Mana => "MP",
+    };
+    format!("{label} {value}/{maximum}")
+}
+
+fn meter_color(kind: BattleMeterKind, value: u32, maximum: u32) -> Color {
+    match kind {
+        BattleMeterKind::Health if meter_percent(value, maximum) <= 25.0 => battle_ember(),
+        BattleMeterKind::Health => battle_health(),
+        BattleMeterKind::Mana => battle_mana(),
+    }
+}
+
+fn battle_ink() -> Color {
+    Color::srgb_u8(242, 236, 211)
+}
+
+fn battle_dim() -> Color {
+    Color::srgb_u8(101, 96, 88)
+}
+
+fn battle_gold() -> Color {
+    Color::srgb_u8(231, 184, 86)
+}
+
+fn battle_ember() -> Color {
+    Color::srgb_u8(203, 82, 47)
+}
+
+fn battle_teal() -> Color {
+    Color::srgb_u8(67, 166, 160)
+}
+
+fn battle_violet() -> Color {
+    Color::srgb_u8(126, 101, 204)
+}
+
+fn battle_panel() -> Color {
+    Color::srgba_u8(22, 22, 28, 228)
+}
+
+fn battle_floor() -> Color {
+    Color::srgb_u8(17, 17, 40)
+}
+
+fn battle_border() -> Color {
+    Color::srgb_u8(126, 98, 55)
+}
+
+fn battle_border_active() -> Color {
+    Color::srgb_u8(235, 190, 89)
+}
+
+fn battle_row() -> Color {
+    Color::srgba_u8(30, 30, 38, 210)
+}
+
+fn battle_row_active() -> Color {
+    Color::srgba_u8(79, 51, 38, 230)
+}
+
+fn battle_row_border() -> Color {
+    Color::srgb_u8(82, 70, 50)
+}
+
+fn battle_health() -> Color {
+    Color::srgb_u8(52, 104, 82)
+}
+
+fn enemy_health() -> Color {
+    Color::srgb_u8(68, 170, 68)
+}
+
+fn battle_mana() -> Color {
+    Color::srgb_u8(88, 72, 138)
 }
 
 fn drive_battle_assets(
@@ -409,138 +939,220 @@ fn restore_world(commands: &mut Commands, game: &mut GameState, entry: &BattleEn
     }
 }
 
-#[expect(
-    clippy::type_complexity,
-    reason = "disjoint UI marker filters prevent mutable Text query overlap"
-)]
-fn sync_battle_ui(
+fn sync_party_cards(
     state: Option<Res<BattleState>>,
-    mut party_text: Query<
-        &mut Text,
-        (
-            With<BattlePartyText>,
-            Without<BattleCommandText>,
-            Without<BattleEnemyLabel>,
-        ),
-    >,
-    mut command_text: Query<
-        &mut Text,
-        (
-            With<BattleCommandText>,
-            Without<BattlePartyText>,
-            Without<BattleMessageText>,
-            Without<BattleEnemyLabel>,
-        ),
-    >,
-    mut message_text: Query<
-        &mut Text,
-        (
-            With<BattleMessageText>,
-            Without<BattlePartyText>,
-            Without<BattleCommandText>,
-            Without<BattleEnemyLabel>,
-        ),
-    >,
-    mut enemy_images: Query<(&BattleEnemyImage, &mut ImageNode)>,
-    mut enemy_labels: Query<
-        (&BattleEnemyLabel, &mut Text, &mut TextColor),
-        (
-            Without<BattlePartyText>,
-            Without<BattleCommandText>,
-            Without<BattleMessageText>,
-        ),
-    >,
+    mut cards: Query<(&BattlePartyCard, &mut BackgroundColor, &mut BorderColor)>,
+    mut portraits: Query<(&BattlePartyPortrait, &mut ImageNode)>,
+    mut names: Query<(&BattlePartyName, &mut TextColor)>,
 ) {
     let Some(state) = state else { return };
     if !state.is_changed() {
         return;
     }
     let active = state.active_key();
-    if let Ok(mut text) = party_text.single_mut() {
+    for (marker, mut background, mut border) in &mut cards {
+        let key = CombatantKey::party(marker.0);
+        let Some(actor) = state.actor(key) else {
+            continue;
+        };
+        let is_active = active == Some(key) && actor.is_alive();
+        background.0 = if is_active {
+            battle_row_active()
+        } else {
+            battle_row()
+        };
+        border.set_all(if is_active {
+            battle_border_active()
+        } else {
+            battle_row_border()
+        });
+    }
+    for (marker, mut portrait) in &mut portraits {
+        let Some(actor) = state.actor(CombatantKey::party(marker.0)) else {
+            continue;
+        };
+        portrait.color = if actor.is_alive() {
+            Color::WHITE
+        } else {
+            Color::srgba(0.28, 0.28, 0.28, 0.72)
+        };
+    }
+    for (marker, mut color) in &mut names {
+        let Some(actor) = state.actor(CombatantKey::party(marker.0)) else {
+            continue;
+        };
+        color.0 = if actor.is_alive() {
+            battle_ink()
+        } else {
+            battle_dim()
+        };
+    }
+}
+
+fn sync_party_meters(
+    state: Option<Res<BattleState>>,
+    mut fills: Query<(&BattlePartyMeterFill, &mut Node, &mut BackgroundColor)>,
+    mut labels: Query<(&BattlePartyMeterText, &mut Text)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    for (marker, mut node, mut color) in &mut fills {
+        let Some(actor) = state.actor(CombatantKey::party(marker.0.index)) else {
+            continue;
+        };
+        let (value, maximum) = match marker.0.kind {
+            BattleMeterKind::Health => (actor.health, actor.max_health),
+            BattleMeterKind::Mana => (actor.mana, actor.max_mana),
+        };
+        node.width = percent(meter_percent(value, maximum));
+        color.0 = meter_color(marker.0.kind, value, maximum);
+    }
+    for (marker, mut text) in &mut labels {
+        let Some(actor) = state.actor(CombatantKey::party(marker.0.index)) else {
+            continue;
+        };
+        let (value, maximum) = match marker.0.kind {
+            BattleMeterKind::Health => (actor.health, actor.max_health),
+            BattleMeterKind::Mana => (actor.mana, actor.max_mana),
+        };
+        text.0 = meter_label(marker.0.kind, value, maximum);
+    }
+}
+
+fn sync_battle_commands(
+    state: Option<Res<BattleState>>,
+    mut titles: Query<(&BattlePanelTitle, &mut Text), Without<BattleCommandLabel>>,
+    mut rows: Query<(&BattleCommandRow, &mut BackgroundColor, &mut BorderColor)>,
+    mut labels: Query<(&BattleCommandLabel, &mut Text, &mut TextColor), Without<BattlePanelTitle>>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    for (marker, mut text) in &mut titles {
+        if marker.0 == BattlePanelKind::Command {
+            text.0 = state
+                .active_key()
+                .and_then(|key| state.actor(key))
+                .map_or_else(
+                    || "Command".to_owned(),
+                    |actor| format!("{}'s Turn", actor.name),
+                );
+        }
+    }
+    for (marker, mut background, mut border) in &mut rows {
+        let selected = state.phase == BattlePhase::Command && marker.0 == state.command_index;
+        background.0 = if selected {
+            battle_row_active()
+        } else {
+            battle_row()
+        };
+        border.set_all(if selected {
+            battle_border_active()
+        } else {
+            battle_row_border()
+        });
+    }
+    for (marker, mut text, mut color) in &mut labels {
+        let command = COMMANDS[marker.0];
+        let available = state.command_available(command);
+        text.0 = if available {
+            command.label().to_owned()
+        } else {
+            format!("{}  --", command.label())
+        };
+        color.0 = if available {
+            battle_ink()
+        } else {
+            battle_dim()
+        };
+    }
+}
+
+fn sync_battle_message(
+    state: Option<Res<BattleState>>,
+    mut messages: Query<(&mut Text, &mut TextColor), With<BattleMessageText>>,
+    mut targets: Query<&mut Text, (With<BattleTargetText>, Without<BattleMessageText>)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    if let Ok((mut text, mut color)) = messages.single_mut() {
+        text.0.clone_from(&state.message);
+        color.0 = match state.active_key().map(|key| key.side) {
+            Some(BattleSide::Enemy) => battle_ember(),
+            _ => battle_teal(),
+        };
+    }
+    if let Ok(mut text) = targets.single_mut() {
         text.0 = state
-            .combatants
-            .iter()
-            .filter(|actor| actor.key.side == BattleSide::Party)
-            .map(|actor| {
-                format!(
-                    "{}{}\n  HP {}/{}  MP {}/{}  {}{}",
-                    if active == Some(actor.key) {
-                        "> "
-                    } else {
-                        "  "
-                    },
-                    actor.name,
-                    actor.health,
-                    actor.max_health,
-                    actor.mana,
-                    actor.max_mana,
-                    match actor.row {
-                        PartyRow::Front => "Front",
-                        PartyRow::Back => "Back",
-                    },
-                    if actor.is_alive() { "" } else { "  KO" },
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n");
-    }
-    if let Ok(mut text) = command_text.single_mut() {
-        text.0 = COMMANDS
-            .iter()
-            .enumerate()
-            .map(|(index, command)| {
-                let selected = state.phase == BattlePhase::Command && index == state.command_index;
-                let available = state.command_available(*command);
-                format!(
-                    "{}{}{}",
-                    if selected { "> " } else { "  " },
-                    command.label(),
-                    if available { "" } else { " [--]" }
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n");
-    }
-    if let Ok(mut text) = message_text.single_mut() {
-        let target = state
             .target
             .as_ref()
             .and_then(|selector| state.actor(selector.selected()))
-            .map(|actor| format!("\n\nTarget: {}", actor.name))
+            .map(|actor| format!("Target  {}", actor.name))
             .unwrap_or_default();
-        text.0 = format!("{:?}\n\n{}{}", state.phase, state.message, target);
+    }
+}
+
+fn sync_enemy_cards(
+    state: Option<Res<BattleState>>,
+    mut cards: Query<(&BattleEnemyCard, &mut Node)>,
+    mut frames: Query<(&BattleEnemyFrame, &mut BorderColor)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
     }
     let selected_target = state.target.as_ref().map(TargetSelector::selected);
-    for (marker, mut image) in &mut enemy_images {
-        let key = CombatantKey::enemy(marker.0);
-        let Some(enemy) = state.actor(key) else {
+    for (marker, mut node) in &mut cards {
+        let Some(enemy) = state.actor(CombatantKey::enemy(marker.0)) else {
             continue;
         };
-        image.color = if !enemy.is_alive() {
-            Color::srgba(0.3, 0.3, 0.3, 0.45)
-        } else if selected_target == Some(key) {
-            Color::srgb(1.0, 0.85, 0.35)
+        node.display = if enemy.is_alive() {
+            Display::Flex
         } else {
-            Color::WHITE
+            Display::None
         };
     }
-    for (marker, mut text, mut color) in &mut enemy_labels {
+    for (marker, mut border) in &mut frames {
         let key = CombatantKey::enemy(marker.0);
-        let Some(enemy) = state.actor(key) else {
+        border.set_all(if selected_target == Some(key) {
+            Color::srgb_u8(204, 170, 255)
+        } else {
+            Color::NONE
+        });
+    }
+}
+
+fn sync_enemy_meters(
+    state: Option<Res<BattleState>>,
+    mut fills: Query<(&BattleEnemyHpFill, &mut Node, &mut BackgroundColor)>,
+    mut labels: Query<(&BattleEnemyLabel, &mut Text)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    for (marker, mut node, mut color) in &mut fills {
+        let Some(enemy) = state.actor(CombatantKey::enemy(marker.0)) else {
             continue;
         };
-        text.0 = format!(
-            "{}  HP {}/{}{}",
-            enemy.name,
-            enemy.health,
-            enemy.max_health,
-            if enemy.is_alive() { "" } else { "  KO" }
-        );
-        color.0 = if selected_target == Some(key) {
-            Color::srgb_u8(255, 220, 90)
+        let health_percent = meter_percent(enemy.health, enemy.max_health);
+        node.width = percent(health_percent);
+        color.0 = if health_percent <= 25.0 {
+            battle_ember()
         } else {
-            Color::WHITE
+            enemy_health()
         };
+    }
+    for (marker, mut text) in &mut labels {
+        let Some(enemy) = state.actor(CombatantKey::enemy(marker.0)) else {
+            continue;
+        };
+        text.0.clone_from(&enemy.name);
     }
 }
 
@@ -567,5 +1179,48 @@ mod tests {
             battle_enemy_atlas_path("goblin").unwrap().as_str(),
             "assets/sprites/enemies/goblin_battle.tsx"
         );
+    }
+
+    #[test]
+    fn original_battle_layout_spacing_is_preserved() {
+        assert_eq!(enemy_layout_offset(1, 0), (0.0, 0.0));
+        assert_eq!(enemy_layout_offset(3, 0), (-110.0, -30.0));
+        assert_eq!(enemy_layout_offset(3, 1), (0.0, 20.0));
+        assert_eq!(enemy_layout_offset(5, 4), (160.0, -30.0));
+    }
+
+    #[test]
+    fn party_panel_expands_by_one_portrait_card_per_member() {
+        assert_eq!(party_panel_width(1), 140.0);
+        assert_eq!(party_panel_width(5), 612.0);
+    }
+
+    #[test]
+    fn meters_clamp_and_switch_to_low_health_color() {
+        assert_eq!(meter_percent(50, 100), 50.0);
+        assert_eq!(meter_percent(200, 100), 100.0);
+        assert_eq!(meter_percent(1, 0), 0.0);
+        assert_eq!(
+            meter_color(BattleMeterKind::Health, 25, 100),
+            battle_ember()
+        );
+    }
+
+    #[test]
+    fn battle_ui_sync_systems_have_disjoint_component_access() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins).add_systems(
+            Update,
+            (
+                sync_party_cards,
+                sync_party_meters,
+                sync_battle_commands,
+                sync_battle_message,
+                sync_enemy_cards,
+                sync_enemy_meters,
+            )
+                .chain(),
+        );
+        app.update();
     }
 }
