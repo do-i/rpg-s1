@@ -6,6 +6,7 @@ use crate::{
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     game_state::GameState,
     scenario_balance::BalanceData,
+    scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
     scenario_enemy::EnemySize,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
@@ -24,6 +25,13 @@ use super::{
 const LPC_COLUMNS: u32 = 9;
 const BATTLE_IDLE_TILE: u32 = 2 * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
+const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
+const ENEMY_GROUND_NUDGE: f32 = 10.0;
+const ENEMY_BAR_RESERVE: f32 = 32.0;
+const BREATH_TOP_FRACTION: f32 = 0.60;
+const BREATH_MAX_SQUASH: f32 = 2.0;
+const BREATH_PERIOD_SECONDS: f32 = 1.4;
+const BREATH_PHASE_OFFSET: f32 = 0.6;
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
 const PARTY_CARD_GAP: f32 = 10.0;
@@ -44,6 +52,8 @@ impl Plugin for BattlePlugin {
                 Update,
                 (
                     drive_battle_assets,
+                    position_enemy_cards,
+                    animate_enemy_breathing,
                     handle_battle_input,
                     sync_party_cards,
                     sync_party_meters,
@@ -62,8 +72,24 @@ impl Plugin for BattlePlugin {
 #[derive(Component)]
 struct BattleUi;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EnemySpritePart {
+    Upper,
+    Lower,
+}
+
 #[derive(Component)]
-struct BattleEnemyImage(usize);
+struct BattleEnemyImage {
+    index: usize,
+    part: EnemySpritePart,
+    split_fraction: f32,
+}
+
+#[derive(Component)]
+struct BattleEnemyUpperBody {
+    index: usize,
+    base_height: f32,
+}
 
 #[derive(Component)]
 struct BattleEnemyLabel(usize);
@@ -129,6 +155,7 @@ struct BattleTargetText;
 #[derive(Debug, Resource)]
 struct BattleAssetState {
     atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
+    backgrounds: Handle<BattleBackgroundCatalog>,
 }
 
 fn battle_enemy_atlas_path(
@@ -163,6 +190,12 @@ fn enter_battle(
         .ok()
         .map(|path| asset_server.load(root.resolve(&path)))
         .unwrap_or_default();
+    let backgrounds = asset_server.load(
+        root.resolve(
+            &ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
+                .expect("battle background catalog path"),
+        ),
+    );
     let font = asset_server.load(
         root.resolve(
             &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
@@ -187,7 +220,10 @@ fn enter_battle(
             spawn_enemy_area(root_node, &entry, background, &font);
             spawn_battle_panels(root_node, &entry, &asset_server, &root, &font);
         });
-    commands.insert_resource(BattleAssetState { atlases });
+    commands.insert_resource(BattleAssetState {
+        atlases,
+        backgrounds,
+    });
     commands.insert_resource(state);
 }
 
@@ -217,8 +253,8 @@ fn spawn_enemy_area(
         ))
         .with_children(|area| {
             area.spawn(Node {
-                width: px(560),
-                height: px(300),
+                width: px(ENEMY_CANVAS_WIDTH),
+                height: px(ENEMY_AREA_HEIGHT),
                 position_type: PositionType::Relative,
                 ..default()
             })
@@ -226,13 +262,19 @@ fn spawn_enemy_area(
                 for (index, participant) in enemies.iter().enumerate() {
                     let sprite_size = enemy_sprite_size(participant);
                     let card_width = sprite_size.max(80.0);
-                    let (offset_x, offset_y) = enemy_layout_offset(enemies.len(), index);
+                    let (left, top) = enemy_card_position(
+                        full_enemy_ground(),
+                        sprite_size,
+                        card_width,
+                        enemies.len(),
+                        index,
+                    );
                     battlefield
                         .spawn((
                             Node {
                                 position_type: PositionType::Absolute,
-                                left: px(280.0 + offset_x - card_width / 2.0),
-                                top: px(130.0 + offset_y - sprite_size / 2.0),
+                                left: px(left),
+                                top: px(top),
                                 width: px(card_width),
                                 flex_direction: FlexDirection::Column,
                                 align_items: AlignItems::Center,
@@ -255,15 +297,55 @@ fn spawn_enemy_area(
                                 BattleEnemyFrame(index),
                             ))
                             .with_children(|frame| {
-                                frame.spawn((
-                                    ImageNode::solid_color(Color::srgba_u8(42, 58, 90, 210)),
-                                    Node {
+                                let top_height = (sprite_size * BREATH_TOP_FRACTION).floor();
+                                let split_fraction = top_height / sprite_size;
+                                frame
+                                    .spawn(Node {
+                                        position_type: PositionType::Relative,
                                         width: px(sprite_size),
                                         height: px(sprite_size),
                                         ..default()
-                                    },
-                                    BattleEnemyImage(index),
-                                ));
+                                    })
+                                    .with_children(|sprite| {
+                                        sprite.spawn((
+                                            ImageNode::solid_color(Color::srgba_u8(
+                                                42, 58, 90, 210,
+                                            )),
+                                            Node {
+                                                position_type: PositionType::Absolute,
+                                                top: px(0),
+                                                width: percent(100),
+                                                height: px(top_height),
+                                                ..default()
+                                            },
+                                            BattleEnemyImage {
+                                                index,
+                                                part: EnemySpritePart::Upper,
+                                                split_fraction,
+                                            },
+                                            BattleEnemyUpperBody {
+                                                index,
+                                                base_height: top_height,
+                                            },
+                                        ));
+                                        sprite.spawn((
+                                            ImageNode::solid_color(Color::srgba_u8(
+                                                42, 58, 90, 210,
+                                            )),
+                                            Node {
+                                                position_type: PositionType::Absolute,
+                                                top: px(top_height),
+                                                width: percent(100),
+                                                height: px(sprite_size - top_height),
+                                                ..default()
+                                            },
+                                            BattleEnemyImage {
+                                                index,
+                                                part: EnemySpritePart::Lower,
+                                                split_fraction,
+                                            },
+                                        ));
+                                    });
                             });
                             card.spawn((
                                 Node {
@@ -650,7 +732,7 @@ fn enemy_sprite_size(participant: &crate::encounter::BattleParticipant) -> f32 {
             EnemySize::Boss => 96.0,
         }
     };
-    base * participant.sprite_scale_percent as f32 / 100.0
+    (base * participant.sprite_scale_percent as f32 / 100.0).floor()
 }
 
 fn enemy_layout_offset(count: usize, index: usize) -> (f32, f32) {
@@ -673,6 +755,51 @@ fn enemy_layout_offset(count: usize, index: usize) -> (f32, f32) {
         _ => &FIVE[..],
     };
     offsets.get(index).copied().unwrap_or_default()
+}
+
+fn full_enemy_ground() -> GroundRect {
+    GroundRect {
+        x: 0,
+        y: 0,
+        width: ENEMY_CANVAS_WIDTH as i32,
+        height: ENEMY_AREA_HEIGHT as i32,
+    }
+}
+
+fn enemy_card_position(
+    ground: GroundRect,
+    sprite_size: f32,
+    card_width: f32,
+    enemy_count: usize,
+    index: usize,
+) -> (f32, f32) {
+    let ground = if ground.width > 0 && ground.height > 0 {
+        ground
+    } else {
+        full_enemy_ground()
+    };
+    let (offset_x, offset_y) = enemy_layout_offset(enemy_count, index);
+    let ground_left = ground.x as f32;
+    let ground_top = ground.y as f32;
+    let ground_right = ground_left + ground.width as f32;
+    let ground_bottom = ground_top + ground.height as f32;
+
+    let minimum_x = ground_left + sprite_size / 2.0;
+    let maximum_x = (ground_right - sprite_size / 2.0).max(minimum_x);
+    let center_x = (ENEMY_CANVAS_WIDTH / 2.0 + offset_x).clamp(minimum_x, maximum_x);
+
+    let center_y = ground_top + ground.height as f32 / 2.0 + ENEMY_GROUND_NUDGE + offset_y;
+    let minimum_feet = ground_top;
+    let maximum_feet = (ground_bottom - ENEMY_BAR_RESERVE).max(minimum_feet);
+    let feet = (center_y + sprite_size / 2.0).clamp(minimum_feet, maximum_feet);
+
+    (center_x - card_width / 2.0, feet - sprite_size - 2.0)
+}
+
+fn breath_squash(elapsed_seconds: f32, index: usize) -> f32 {
+    let phase = elapsed_seconds * std::f32::consts::TAU / BREATH_PERIOD_SECONDS
+        + index as f32 * BREATH_PHASE_OFFSET;
+    (BREATH_MAX_SQUASH * (0.5 - 0.5 * phase.cos())).round()
 }
 
 fn meter_percent(value: u32, maximum: u32) -> f32 {
@@ -771,7 +898,7 @@ fn drive_battle_assets(
 ) {
     let Some(assets) = assets else { return };
     for (marker, mut image) in &mut images {
-        let Some(Some(handle)) = assets.atlases.get(marker.0) else {
+        let Some(Some(handle)) = assets.atlases.get(marker.index) else {
             continue;
         };
         if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
@@ -783,8 +910,67 @@ fn drive_battle_assets(
         if let Ok(sprite) = atlas.sprite_for_tile(BATTLE_IDLE_TILE) {
             image.image = sprite.image;
             image.texture_atlas = sprite.texture_atlas;
+            let source_width = atlas.metadata().tile_width() as f32;
+            let source_height = atlas.metadata().tile_height() as f32;
+            let split = source_height * marker.split_fraction;
+            image.rect = Some(match marker.part {
+                EnemySpritePart::Upper => Rect::new(0.0, 0.0, source_width, split),
+                EnemySpritePart::Lower => Rect::new(0.0, split, source_width, source_height),
+            });
+            image.image_mode = NodeImageMode::Stretch;
             image.color = Color::WHITE;
         }
+    }
+}
+
+fn position_enemy_cards(
+    catalogs: Res<Assets<BattleBackgroundCatalog>>,
+    assets: Option<Res<BattleAssetState>>,
+    entry: Option<Res<BattleEntry>>,
+    mut cards: Query<(&BattleEnemyCard, &mut Node)>,
+) {
+    let (Some(assets), Some(entry)) = (assets, entry) else {
+        return;
+    };
+    let ground = catalogs
+        .get(&assets.backgrounds)
+        .and_then(|catalog| {
+            catalog
+                .0
+                .iter()
+                .find(|background| background.id == entry.background_id)
+        })
+        .map_or_else(full_enemy_ground, |background| background.ground_rect);
+    let enemies = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Enemy)
+        .collect::<Vec<_>>();
+    for (marker, mut node) in &mut cards {
+        let Some(participant) = enemies.get(marker.0) else {
+            continue;
+        };
+        let sprite_size = enemy_sprite_size(participant);
+        let (left, top) = enemy_card_position(
+            ground,
+            sprite_size,
+            sprite_size.max(80.0),
+            enemies.len(),
+            marker.0,
+        );
+        node.left = px(left);
+        node.top = px(top);
+    }
+}
+
+fn animate_enemy_breathing(
+    time: Res<Time>,
+    mut upper_bodies: Query<(&BattleEnemyUpperBody, &mut Node)>,
+) {
+    for (marker, mut node) in &mut upper_bodies {
+        let squash = breath_squash(time.elapsed_secs(), marker.index);
+        node.top = px(squash);
+        node.height = px((marker.base_height - squash).max(1.0));
     }
 }
 
@@ -1187,6 +1373,42 @@ mod tests {
         assert_eq!(enemy_layout_offset(3, 0), (-110.0, -30.0));
         assert_eq!(enemy_layout_offset(3, 1), (0.0, 20.0));
         assert_eq!(enemy_layout_offset(5, 4), (160.0, -30.0));
+    }
+
+    #[test]
+    fn enemy_feet_are_anchored_to_the_authored_ground() {
+        assert_eq!(
+            enemy_card_position(full_enemy_ground(), 64.0, 80.0, 1, 0),
+            (600.0, 210.0)
+        );
+        let cave_ground = GroundRect {
+            x: 120,
+            y: 310,
+            width: 910,
+            height: 158,
+        };
+        assert_eq!(
+            enemy_card_position(cave_ground, 64.0, 80.0, 1, 0),
+            (600.0, 365.0)
+        );
+        let courtyard_ground = GroundRect {
+            x: 40,
+            y: 351,
+            width: 1200,
+            height: 117,
+        };
+        assert_eq!(
+            enemy_card_position(courtyard_ground, 64.0, 80.0, 1, 0),
+            (600.0, 370.0)
+        );
+    }
+
+    #[test]
+    fn breathing_squashes_only_two_pixels_per_cycle() {
+        assert_eq!(breath_squash(0.0, 0), 0.0);
+        assert_eq!(breath_squash(BREATH_PERIOD_SECONDS / 2.0, 0), 2.0);
+        assert_eq!(breath_squash(BREATH_PERIOD_SECONDS, 0), 0.0);
+        assert!((0.0..=BREATH_MAX_SQUASH).contains(&breath_squash(0.3, 4)));
     }
 
     #[test]
