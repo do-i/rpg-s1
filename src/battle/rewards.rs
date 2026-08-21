@@ -163,6 +163,20 @@ pub(super) fn apply_rewards(
         staged.flags_mut().set(flag);
         rewards.boss_flag = Some(flag.to_owned());
     }
+    for actor in state
+        .combatants
+        .iter_mut()
+        .filter(|actor| actor.key.side == BattleSide::Party)
+    {
+        let member = staged
+            .party()
+            .member(&actor.id)
+            .expect("reward party members validated before commit");
+        actor.health = member.health();
+        actor.max_health = member.max_health();
+        actor.mana = member.mana();
+        actor.max_mana = member.max_mana();
+    }
     *game = staged;
     state.rewards = Some(rewards.clone());
     Ok(rewards)
@@ -192,26 +206,9 @@ impl BattleRewards {
             .filter_map(|member| {
                 let first = member.level_ups.first()?;
                 let last = member.level_ups.last()?;
-                let sum = |pick: fn(&RuntimeLevelUp) -> u32| {
-                    member.level_ups.iter().map(pick).sum::<u32>()
-                };
                 Some(format!(
-                    "{} Lv {}>{} HP +{}={} MP +{}={} STR +{}={} DEX +{}={} CON +{}={} INT +{}={}",
-                    member.member_name,
-                    first.old_level,
-                    last.new_level,
-                    sum(|level| level.health),
-                    last.max_health,
-                    sum(|level| level.mana),
-                    last.max_mana,
-                    sum(|level| level.strength),
-                    last.total_strength,
-                    sum(|level| level.dexterity),
-                    last.total_dexterity,
-                    sum(|level| level.constitution),
-                    last.total_constitution,
-                    sum(|level| level.intelligence),
-                    last.total_intelligence,
+                    "{} Lv {}>{}",
+                    member.member_name, first.old_level, last.new_level,
                 ))
             })
             .collect::<Vec<_>>()
@@ -256,6 +253,44 @@ impl BattleRewards {
                 .collect::<Vec<_>>()
                 .join("  "),
         ]
+    }
+
+    pub(super) fn detail_message(&self) -> String {
+        let details = self
+            .members
+            .iter()
+            .filter_map(|member| {
+                let first = member.level_ups.first()?;
+                let last = member.level_ups.last()?;
+                let sum = |pick: fn(&RuntimeLevelUp) -> u32| {
+                    member.level_ups.iter().map(pick).sum::<u32>()
+                };
+                Some(format!(
+                    "{} Lv {}>{}\nHP +{}={}  MP +{}={}\nSTR +{}={}  DEX +{}={}  CON +{}={}  INT +{}={}",
+                    member.member_name,
+                    first.old_level,
+                    last.new_level,
+                    sum(|level| level.health),
+                    last.max_health,
+                    sum(|level| level.mana),
+                    last.max_mana,
+                    sum(|level| level.strength),
+                    last.total_strength,
+                    sum(|level| level.dexterity),
+                    last.total_dexterity,
+                    sum(|level| level.constitution),
+                    last.total_constitution,
+                    sum(|level| level.intelligence),
+                    last.total_intelligence,
+                ))
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        if details.is_empty() {
+            "Rewards applied. Press Enter to continue.".to_owned()
+        } else {
+            format!("{details}\n\nPress Enter to continue.")
+        }
     }
 }
 

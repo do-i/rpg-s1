@@ -25,12 +25,94 @@ use crate::{
     runtime_repository::RuntimeRepository,
     scenario_balance::BalanceData,
     scenario_class::{Ability, ClassDefinition},
-    scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyType},
+    scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyDrops, EnemyType},
     scenario_item::{ConsumableItem, ItemCatalogFile, ItemDefinition},
     scenario_manifest::Manifest,
     scenario_party::{PartyCatalog, PartyRow},
     scenario_yaml,
+    test_support::{assert_clean_pinned_python_source, pinned_python_source},
 };
+
+const PYTHON_BATTLE_PARITY_ORACLE: &str = r#"
+from engine.battle.action_resolver import resolve_action
+from engine.battle.battle_logic import attempt_flee
+from engine.battle.battle_rewards import RewardCalculator
+from engine.battle.battle_state import BattleState
+from engine.battle.combatant import ActiveStatus, Combatant, StatusEffect
+from engine.item.item_effect_handler import FieldItemDef, ItemEffectHandler
+from engine.party.member_state import MemberState
+from engine.party.party_state import PartyState
+from engine.party.repository_state import RepositoryState
+from engine.util.pseudo_random import PseudoRandom
+
+def actor(name, *, hp=100, hp_max=100, mp=50, mp_max=50, atk=20, defense=5,
+          mres=10, dex=10, enemy=False, row="front", boss=False, exp=0, drops=None):
+    return Combatant(id=name.lower(), name=name, hp=hp, hp_max=hp_max,
+        mp=mp, mp_max=mp_max, atk=atk, def_=defense, mres=mres, dex=dex,
+        is_enemy=enemy, row=row, boss=boss, exp_yield=exp, drops=drops or {})
+
+def physical(attacker_row="front", defender_row="front"):
+    source = actor("Hero", row=attacker_row)
+    target = actor("Goblin", hp=100, hp_max=100, enemy=True, row=defender_row)
+    state = BattleState(party=[source], enemies=[target])
+    state.pending_action = {"type": "attack", "source": source, "targets": [target]}
+    resolve_action(state, 1280)
+    return 100 - target.hp
+
+print(f"PHYSICAL front={physical()} back_attack={physical('back')} "
+      f"back_defend={physical(defender_row='back')} both={physical('back', 'back')}")
+
+caster = actor("Mage", mp=30, mp_max=30, mres=15)
+target = actor("Goblin", hp=50, hp_max=50, mres=3, enemy=True)
+state = BattleState(party=[caster], enemies=[target])
+state.pending_action = {"type": "spell", "source": caster, "targets": [target],
+    "data": {"name": "Fire Bolt", "type": "spell", "spell_coeff": 1.0, "mp_cost": 4}}
+resolve_action(state, 1280)
+print(f"SPELL fire_bolt damage={50 - target.hp} mp={caster.mp}")
+
+handler = ItemEffectHandler.__new__(ItemEffectHandler)
+handler._defs = {"potion": FieldItemDef(id="potion", effect="restore_hp",
+    target="single_alive", amount=100)}
+repository = RepositoryState()
+repository.add_item("potion", 5)
+source = actor("Hero")
+target = actor("Ally", hp=50, hp_max=200)
+state = BattleState(party=[source, target], enemies=[actor("Goblin", enemy=True)])
+state.pending_action = {"type": "item", "source": source, "targets": [target],
+    "data": {"id": "potion"}}
+resolve_action(state, 1280, effect_handler=handler, repository=repository)
+print(f"ITEM potion hp={target.hp} qty={repository.get_item('potion').qty}")
+
+target = actor("Hero", hp=7, hp_max=7)
+target.add_status(ActiveStatus(effect=StatusEffect.BURN, duration_turns=1, damage_per_turn=4))
+damage = target.tick_end_of_turn()
+print(f"STATUS burn damage={damage} hp={target.hp} active={str(target.has_status(StatusEffect.BURN)).lower()}")
+
+boss = actor("Boss", enemy=True, boss=True)
+state = BattleState(party=[actor("Hero")], enemies=[boss])
+blocked, _ = attempt_flee(state, None, PseudoRandom(1))
+print(f"BOSS flee={'Success' if blocked else 'Blocked'}")
+
+growth = {"exp_base": 100, "exp_factor": 2.0, "stat_growth": {
+    "str": [1] * 10, "dex": [1] * 10, "con": [1] * 10, "int": [1] * 10}}
+def member(name, hp):
+    value = MemberState(member_id=name.lower(), name=name, protagonist=name == "A",
+        class_name="hero", level=1, exp=0, hp=hp, hp_max=50, mp=20, mp_max=20,
+        str_=10, dex=8, con=9, int_=6, equipped={})
+    value.load_stat_growth(growth)
+    return value
+party = PartyState()
+for value in [member("A", 50), member("B", 50), member("KO", 0)]:
+    party.add_member(value)
+enemy = actor("Slime", enemy=True, exp=7, drops={"mc": [{"size": "XS", "qty": 2}],
+    "loot": [{"pool": [{"item": "rat_tail", "weight": 1}]}]})
+rewards = RewardCalculator(PseudoRandom(17)).calculate([enemy], party)
+awards = ",".join(str(value.exp_gained) for value in sorted(
+    rewards.member_results, key=lambda value: value.exp_gained))
+loot = [f"mc_{value['size'].lower()}:{value['qty']}" for value in rewards.loot.mc_drops]
+loot += [f"{value['id']}:{value['qty']}" for value in rewards.loot.item_drops]
+print(f"REWARD exp={rewards.total_exp} awards={awards} loot={','.join(sorted(loot))}")
+"#;
 
 fn ability(id: &str) -> Ability {
     [
@@ -1089,6 +1171,15 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     let member = game.party().member("aric").unwrap();
     assert_eq!((member.level(), member.experience()), (2, 400));
     assert_eq!((member.health(), member.mana()), (59, 24));
+    assert_eq!(
+        (
+            state.actor(CombatantKey::party(0)).unwrap().health,
+            state.actor(CombatantKey::party(0)).unwrap().max_health,
+            state.actor(CombatantKey::party(0)).unwrap().mana,
+            state.actor(CombatantKey::party(0)).unwrap().max_mana,
+        ),
+        (59, 59, 24, 24)
+    );
     assert_eq!(rewards.members[0].learned_abilities, ["Power Strike"]);
     assert!(game.flags().is_set("boss_zone01_defeated"));
     assert_eq!(game.repository().item_count("mc_xs"), 2);
@@ -1104,9 +1195,12 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     assert_eq!(summary[1], "Aric +400 EXP");
     assert!(summary[2].contains("Magic Core (XS) x2"));
     assert!(summary[2].contains("Magic Core (S) x1"));
-    assert!(summary[3].contains("Aric Lv 1>2 HP +37=59 MP +12=24"));
+    assert!(summary[3].contains("Aric Lv 1>2"));
     assert!(summary[3].contains("Aric learned Power Strike"));
     assert!(summary[3].contains("Boss cleared (boss_zone01_defeated)"));
+    let detail = rewards.detail_message();
+    assert!(detail.contains("Aric Lv 1>2\nHP +37=59  MP +12=24"));
+    assert!(detail.contains("STR +2=30  DEX +2=19  CON +3=31  INT +1=6"));
 
     let after = game.clone();
     assert!(matches!(
@@ -1143,6 +1237,173 @@ fn configured_boss_flag_is_ignored_for_a_regular_enemy_victory() {
 
     assert_eq!(rewards.boss_flag, None);
     assert!(!game.flags().is_set("should_not_set"));
+}
+
+fn full_battle_parity_transcript() -> Vec<String> {
+    let mut attacker = actor(BattleSide::Party, 0, 10, 100);
+    attacker.attack = 20;
+    let mut defender = actor(BattleSide::Enemy, 0, 5, 100);
+    defender.defense = 5;
+    let front = physical_damage(&attacker, &defender);
+    attacker.row = PartyRow::Back;
+    let back_attack = physical_damage(&attacker, &defender);
+    attacker.row = PartyRow::Front;
+    defender.key = CombatantKey::party(1);
+    defender.row = PartyRow::Back;
+    let back_defend = physical_damage(&attacker, &defender);
+    attacker.row = PartyRow::Back;
+    let both = physical_damage(&attacker, &defender);
+
+    let mut caster = actor(BattleSide::Party, 0, 10, 100);
+    caster.id = "mage".to_owned();
+    caster.magic_resistance = 15;
+    caster.mana = 30;
+    caster.max_mana = 30;
+    caster.abilities = vec![ability("fire_bolt")];
+    let mut spell_target = actor(BattleSide::Enemy, 0, 5, 50);
+    spell_target.magic_resistance = 3;
+    let mut spell_state = state_with(vec![caster, spell_target]);
+    resolve_ability(
+        &mut spell_state,
+        CombatantKey::party(0),
+        0,
+        &[CombatantKey::enemy(0)],
+        &mut GameplayRng::from_seed(2),
+    )
+    .unwrap();
+    let spell_damage = 50 - spell_state.actor(CombatantKey::enemy(0)).unwrap().health;
+    let spell_mana = spell_state.actor(CombatantKey::party(0)).unwrap().mana;
+
+    let (_, balance) = reward_game();
+    let mut repository = RuntimeRepository::from_balance(&balance.economy);
+    let _ = repository.add_item("potion", 5).unwrap();
+    let source = actor(BattleSide::Party, 0, 10, 100);
+    let mut item_target = actor(BattleSide::Party, 1, 9, 200);
+    item_target.health = 50;
+    let mut item_state = state_with(vec![source, item_target]);
+    resolve_battle_item(
+        &mut item_state,
+        CombatantKey::party(0),
+        &consumable("potion"),
+        CombatantKey::party(1),
+        &mut repository,
+    )
+    .unwrap();
+
+    let mut status_target = actor(BattleSide::Party, 0, 10, 7);
+    status_target.add_status(ActiveStatus::damage_over_time(
+        StatusEffect::Burn,
+        Some(1),
+        4,
+    ));
+    let status_tick = status_target.tick_statuses();
+
+    let boss_flee = roll_flee(true, 1.0, &mut GameplayRng::from_seed(1));
+
+    let mut first = actor(BattleSide::Party, 0, 10, 50);
+    first.id = "a".to_owned();
+    let mut second = actor(BattleSide::Party, 1, 9, 50);
+    second.id = "b".to_owned();
+    let mut ko = actor(BattleSide::Party, 2, 8, 50);
+    ko.id = "ko".to_owned();
+    ko.health = 0;
+    let mut enemy = actor(BattleSide::Enemy, 0, 1, 1);
+    enemy.health = 0;
+    enemy.experience_yield = 7;
+    enemy.drops = Some(
+        scenario_yaml::from_str::<EnemyDrops>(
+            "mc: [{size: XS, qty: 2}]\nloot: [{pool: [{item: rat_tail, weight: 1}]}]\n",
+        )
+        .unwrap(),
+    );
+    let reward_state = state_with(vec![first, second, ko, enemy]);
+    let rewards = calculate_rewards(&reward_state, &mut GameplayRng::from_seed(17));
+    let mut awards = rewards
+        .members
+        .iter()
+        .map(|member| member.experience_gained)
+        .collect::<Vec<_>>();
+    awards.sort_unstable();
+    let loot = rewards
+        .loot
+        .iter()
+        .map(|drop| format!("{}:{}", drop.item_id, drop.quantity))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    vec![
+        format!(
+            "PHYSICAL front={front} back_attack={back_attack} back_defend={back_defend} both={both}"
+        ),
+        format!("SPELL fire_bolt damage={spell_damage} mp={spell_mana}"),
+        format!(
+            "ITEM potion hp={} qty={}",
+            item_state.actor(CombatantKey::party(1)).unwrap().health,
+            repository.item_count("potion")
+        ),
+        format!(
+            "STATUS burn damage={} hp={} active={}",
+            status_tick.damage,
+            status_target.health,
+            status_target.has_status(StatusEffect::Burn)
+        ),
+        format!("BOSS flee={boss_flee:?}"),
+        format!(
+            "REWARD exp={} awards={} loot={loot}",
+            rewards.total_experience,
+            awards
+                .iter()
+                .map(u32::to_string)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+    ]
+}
+
+#[test]
+fn full_battle_parity_transcript_is_pinned_without_python_installed() {
+    assert_eq!(
+        full_battle_parity_transcript(),
+        [
+            "PHYSICAL front=15 back_attack=7 back_defend=7 both=3",
+            "SPELL fire_bolt damage=12 mp=26",
+            "ITEM potion hp=150 qty=4",
+            "STATUS burn damage=4 hp=3 active=false",
+            "BOSS flee=Blocked",
+            "REWARD exp=7 awards=0,3,4 loot=mc_xs:2,rat_tail:1",
+        ]
+    );
+}
+
+#[test]
+#[ignore = "requires RPG_S1_PINNED_SOURCE_DIR at the clean pinned Python source checkout"]
+fn full_battle_parity_transcript_matches_the_pinned_python_oracle() {
+    let source = pinned_python_source();
+    assert_clean_pinned_python_source(&source);
+    let python = source.join(".venv/bin/python");
+    assert!(
+        python.is_file(),
+        "pinned source virtualenv Python is missing"
+    );
+    let output = std::process::Command::new(python)
+        .args(["-c", PYTHON_BATTLE_PARITY_ORACLE])
+        .current_dir(&source)
+        .env("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+        .output()
+        .expect("pinned Python battle oracle should run");
+    assert!(
+        output.status.success(),
+        "pinned Python battle oracle failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        full_battle_parity_transcript()
+    );
+    assert_clean_pinned_python_source(&source);
 }
 
 #[test]

@@ -6,6 +6,38 @@ use bevy::{
     state::app::StatesPlugin,
     window::WindowPlugin,
 };
+use std::{path::Path, process::Command};
+
+pub(crate) const PINNED_PYTHON_COMMIT: &str = "08970359d6cb03586948625d29b0d3351dbbf785";
+
+pub(crate) fn pinned_python_source() -> std::path::PathBuf {
+    std::env::var_os("RPG_S1_PINNED_SOURCE_DIR")
+        .map(std::path::PathBuf::from)
+        .expect("set RPG_S1_PINNED_SOURCE_DIR")
+}
+
+pub(crate) fn assert_clean_pinned_python_source(source: &Path) {
+    let query = |args: &[&str], description: &str| {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(source)
+            .args(args)
+            .output()
+            .unwrap_or_else(|error| panic!("{description} should run: {error}"));
+        assert!(output.status.success(), "{description} failed");
+        output.stdout
+    };
+    assert_eq!(
+        String::from_utf8(query(&["rev-parse", "HEAD"], "source HEAD query"))
+            .unwrap()
+            .trim(),
+        PINNED_PYTHON_COMMIT
+    );
+    assert!(
+        query(&["status", "--short"], "source worktree query").is_empty(),
+        "the pinned Python source worktree must be clean"
+    );
+}
 
 use crate::{
     action_input::ActionInputPlugin,

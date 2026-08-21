@@ -1171,7 +1171,7 @@ fn handle_battle_input(
                 Ok(rewards) => {
                     debug_assert_eq!(state.rewards.as_ref(), Some(&rewards));
                     state.phase = BattlePhase::Rewards;
-                    state.message = "Rewards applied. Press Enter to continue.".to_owned();
+                    state.message = rewards.detail_message();
                 }
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
             }

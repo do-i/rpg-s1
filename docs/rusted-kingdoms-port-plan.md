@@ -470,10 +470,18 @@ families merely because they share a renderer.
 | M10.29 | [x] Implement multiple level-ups from one reward. | `S` | Each crossed level applies exactly once. |
 | M10.30 | [x] Render post-battle rewards. | `S` | GP, loot, EXP, levels, and learned abilities display. |
 | M10.31 | [x] Add a boss-defeat flag hook. | `S` | Only configured boss outcomes set managed flags. |
-| M10.32 | [ ] Add full battle parity fixtures. | `X` | Representative physical, spell, item, status, boss, and reward transcripts agree. |
+| M10.32 | [x] Add full battle parity fixtures. | `X` | Representative physical, spell, item, status, boss, and reward transcripts agree. |
 
 **Gate 10:** The first zone's complete enemy roster and boss can be fought with
 all relevant party commands, progression, loot, and feedback.
+
+Gate 10 was completed on 2026-08-21. The ordinary Rust suite and an exact
+pinned-Python transcript cover physical attacks, spells, items, status effects,
+boss restrictions, rewards, deterministic loot, and progression. A production
+X11 replay additionally covered a visible Starting Forest encounter through
+victory, rewards, level-up, learned-ability display, world restoration, and use
+of the new ability in the next battle. See
+`docs/m10-manual-play-checklist.md`.
 
 ## Milestone 11 — Economy, services, and quests
 
