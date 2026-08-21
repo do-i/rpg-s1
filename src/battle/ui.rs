@@ -59,6 +59,8 @@ impl Plugin for BattlePlugin {
                     position_enemy_cards,
                     animate_enemy_breathing,
                     handle_battle_input,
+                    super::fx::route_battle_fx,
+                    super::fx::animate_battle_fx,
                     sync_party_cards,
                     sync_party_meters,
                     sync_battle_commands,
@@ -102,13 +104,13 @@ struct BattleEnemyLabel(usize);
 struct BattleEnemyCard(usize);
 
 #[derive(Component)]
-struct BattleEnemyFrame(usize);
+pub(super) struct BattleEnemyFrame(pub(super) usize);
 
 #[derive(Component)]
 struct BattleEnemyHpFill(usize);
 
 #[derive(Component)]
-struct BattlePartyCard(usize);
+pub(super) struct BattlePartyCard(pub(super) usize);
 
 #[derive(Component)]
 struct BattlePartyPortrait(usize);
@@ -157,9 +159,10 @@ struct BattleMessageText;
 struct BattleTargetText;
 
 #[derive(Debug, Resource)]
-struct BattleAssetState {
+pub(super) struct BattleAssetState {
     atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
     backgrounds: Handle<BattleBackgroundCatalog>,
+    pub(super) font: Handle<Font>,
 }
 
 fn battle_enemy_atlas_path(
@@ -241,7 +244,9 @@ fn enter_battle(
     commands.insert_resource(BattleAssetState {
         atlases,
         backgrounds,
+        font,
     });
+    commands.insert_resource(super::fx::BattleFxRouter::default());
     commands.insert_resource(state);
 }
 
@@ -1616,6 +1621,7 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
     }
     commands.remove_resource::<BattleState>();
     commands.remove_resource::<BattleAssetState>();
+    commands.remove_resource::<super::fx::BattleFxRouter>();
 }
 
 #[cfg(test)]

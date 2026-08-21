@@ -440,7 +440,7 @@ families merely because they share a renderer.
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
 | M10.01 | [x] Implement critical-hit calculation. | `S` | Seeded fixtures match Python. |
-| M10.02 | [ ] Implement miss/critical battle feedback. | `T` | The correct message and animation event emit. |
+| M10.02 | [x] Implement miss/critical battle feedback. | `T` | The correct message and animation event emit. |
 | M10.03 | [x] Implement front/back physical modifiers. | `S` | Attacker and defender row cases are tested. |
 | M10.04 | [x] Implement elemental damage affinity. | `S` | Weak, neutral, and resistant fixtures match. |
 | M10.05 | [x] Implement offensive spell resolution. | `S` | Cost, target shape, damage, and invalid casts match. |
@@ -459,9 +459,9 @@ families merely because they share a renderer.
 | M10.18 | [x] Implement battle throw items. | `S` | Element, target shape, damage, and consumption match. |
 | M10.19 | [x] Implement enemy action selection. | `S` | Weighted, conditional, and fallback actions are deterministic. |
 | M10.20 | [x] Implement boss action restrictions. | `S` | Boss-only rules have focused fixtures. |
-| M10.21 | [ ] Implement damage floats. | `T` | Spawn, rise, fade, and cleanup are bounded. |
-| M10.22 | [ ] Implement hit flash. | `T` | Flash timing restores the original material/color. |
-| M10.23 | [ ] Implement battle FX event routing. | `S` | Resolver logic is independent of animation completion. |
+| M10.21 | [x] Implement damage floats. | `T` | Spawn, rise, fade, and cleanup are bounded. |
+| M10.22 | [x] Implement hit flash. | `T` | Flash timing restores the original material/color. |
+| M10.23 | [x] Implement battle FX event routing. | `S` | Resolver logic is independent of animation completion. |
 | M10.24 | [ ] Calculate GP and EXP rewards. | `S` | Multi-enemy and KO-member fixtures match. |
 | M10.25 | [ ] Calculate deterministic loot drops. | `S` | Seeded rolls and quantity bounds match. |
 | M10.26 | [ ] Apply rewards atomically. | `S` | Caps, loot batch, GP, and EXP update once. |
