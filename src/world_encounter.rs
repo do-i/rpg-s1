@@ -999,6 +999,7 @@ fn detect_enemy_contact(
         &item_catalog,
         game.party(),
         game.repository(),
+        game.flags(),
         contact.boss,
         context,
     ) {

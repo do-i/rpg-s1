@@ -41,9 +41,12 @@ impl BattleState {
             combatants,
             active_turn: 0,
             command_index: 0,
+            ability_index: 0,
+            pending_ability: None,
             target: None,
             message: "Battle start!".to_owned(),
             transcript: vec![format!("START {}", entry.encounter_id)],
+            feedback_events: Vec::new(),
             flee_outcome: None,
         }
     }
@@ -77,8 +80,12 @@ impl BattleState {
         };
         match command {
             BattleCommand::Attack => active.is_alive(),
-            // Spell and item effects enter in M10. They remain visible but explicitly disabled.
-            BattleCommand::Spell | BattleCommand::Item => false,
+            BattleCommand::Spell => {
+                active.is_alive()
+                    && !active.is_silenced()
+                    && active.abilities.iter().any(super::ability::battle_ability)
+            }
+            BattleCommand::Item => false,
             BattleCommand::Run => active.is_alive(),
         }
     }
@@ -90,6 +97,13 @@ impl BattleState {
             return;
         };
         self.transcript.push(format!("TURN {}", active.id));
+        if let Some(effect) = active.skip_turn_reason() {
+            self.message = format!("{} can't move ({effect:?})!", active.name);
+            self.transcript
+                .push(format!("SKIP {} {effect:?}", active.id));
+            self.phase = BattlePhase::Resolve;
+            return;
+        }
         if active.key.side == BattleSide::Party {
             self.phase = BattlePhase::Command;
             self.command_index = 0;
@@ -138,6 +152,10 @@ impl BattleState {
     pub(super) fn apply_event(&mut self, event: BattleEvent) {
         let action = match event {
             BattleEvent::Miss { action } | BattleEvent::Damage { action, .. } => action,
+            _ => {
+                self.feedback_events.push(event);
+                return;
+            }
         };
         let attacker_key = action.attacker();
         let target_key = action.target();
@@ -168,7 +186,7 @@ impl BattleState {
             } => {
                 let actual = self
                     .actor_mut(target_key)
-                    .map(|target| target.apply_damage(amount))
+                    .map(|target| target.apply_resolved_damage(amount))
                     .unwrap_or(0);
                 debug_assert_eq!(actual, amount);
                 self.message = format!(
@@ -182,11 +200,14 @@ impl BattleState {
                     if knocked_out { " KO" } else { "" }
                 ));
             }
+            _ => unreachable!("non-physical events return before actor lookup"),
         }
+        self.feedback_events.push(event);
         self.phase = BattlePhase::Resolve;
     }
 
     pub(super) fn assess_result(&mut self) {
+        self.tick_active_statuses();
         if self.all_defeated(BattleSide::Enemy) {
             self.phase = BattlePhase::Victory;
             self.message = "Victory! Press Enter to return to the world.".to_owned();
@@ -197,6 +218,42 @@ impl BattleState {
             self.transcript.push("DEFEAT".to_owned());
         } else {
             self.phase = BattlePhase::Advance;
+        }
+    }
+
+    fn tick_active_statuses(&mut self) {
+        let Some(active) = self.active_key() else {
+            return;
+        };
+        let effect = self.actor(active).and_then(|actor| {
+            actor
+                .has_status(super::status::StatusEffect::Poison)
+                .then_some(super::status::StatusEffect::Poison)
+                .or_else(|| {
+                    actor
+                        .has_status(super::status::StatusEffect::Burn)
+                        .then_some(super::status::StatusEffect::Burn)
+                })
+        });
+        let tick = self
+            .actor_mut(active)
+            .map(BattleCombatant::tick_statuses)
+            .unwrap_or_default();
+        if tick.damage > 0 {
+            let knocked_out = self.actor(active).is_none_or(|actor| !actor.is_alive());
+            self.feedback_events.push(BattleEvent::StatusDamage {
+                target: active,
+                effect: effect.unwrap_or(super::status::StatusEffect::Poison),
+                amount: tick.damage,
+                knocked_out,
+            });
+            self.transcript.push(format!(
+                "STATUS {:?}:{} {}{}",
+                active.side,
+                active.index,
+                tick.damage,
+                if knocked_out { " KO" } else { "" }
+            ));
         }
     }
 
@@ -224,9 +281,21 @@ pub(super) fn resolve_action(
 ) -> Option<BattleEvent> {
     match action {
         BattleAction::Physical { attacker, target } => {
+            let target = state
+                .actor(target)
+                .and_then(BattleCombatant::redirected_target)
+                .filter(|redirect| {
+                    state
+                        .actor(*redirect)
+                        .is_some_and(BattleCombatant::is_alive)
+                })
+                .unwrap_or(target);
+            let action = BattleAction::Physical { attacker, target };
             let attacker_actor = state.actor(attacker)?;
             let defender_actor = state.actor(target)?;
-            let chance = physical_hit_chance(attacker_actor.dexterity, defender_actor.dexterity);
+            let chance = (physical_hit_chance(attacker_actor.dexterity, defender_actor.dexterity)
+                * attacker_actor.hit_chance_multiplier())
+            .clamp(0.05, 0.95);
             if !roll_succeeds(rng, chance) {
                 return Some(BattleEvent::Miss { action });
             }

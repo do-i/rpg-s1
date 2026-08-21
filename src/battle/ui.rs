@@ -15,6 +15,7 @@ use crate::{
 };
 
 use super::{
+    ability::{AbilityError, AbilityTargetPlan, resolve_ability, target_plan},
     model::{
         BattleCommand, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
         TargetSelector,
@@ -1024,14 +1025,40 @@ fn handle_battle_input(
                     BattleCommand::Run => {
                         attempt_flee(&mut state, &balances, &mut game);
                     }
-                    BattleCommand::Spell | BattleCommand::Item => {}
+                    BattleCommand::Spell => {
+                        state.ability_index = 0;
+                        state.pending_ability = None;
+                        state.phase = BattlePhase::Ability;
+                        state.message = "Choose an ability. ESC cancels.".to_owned();
+                    }
+                    BattleCommand::Item => {}
+                }
+            }
+        }
+        BattlePhase::Ability => {
+            let choices = state.battle_ability_indices();
+            if actions.just_pressed(AppAction::Back) {
+                state.phase = BattlePhase::Command;
+                state.message = "Action cancelled.".to_owned();
+            } else {
+                if let Some(movement) = actions.menu_navigation() {
+                    state.ability_index = wrap_index(state.ability_index, movement, choices.len());
+                }
+                if actions.just_pressed(AppAction::Confirm)
+                    && let Some(&ability_index) = choices.get(state.ability_index)
+                {
+                    begin_ability_targeting(&mut state, ability_index, game.rng_mut());
                 }
             }
         }
         BattlePhase::Target => {
             if actions.just_pressed(AppAction::Back) {
                 state.target = None;
-                state.phase = BattlePhase::Command;
+                state.phase = if state.pending_ability.is_some() {
+                    BattlePhase::Ability
+                } else {
+                    BattlePhase::Command
+                };
                 state.message = "Action cancelled.".to_owned();
             } else {
                 if let Some(movement) = actions.menu_navigation()
@@ -1044,7 +1071,17 @@ fn handle_battle_input(
                     let target = state.target.as_ref().map(TargetSelector::selected);
                     state.target = None;
                     if let (Some(attacker), Some(target)) = (attacker, target) {
-                        state.resolve_physical(attacker, target, game.rng_mut());
+                        if let Some(ability) = state.pending_ability.take() {
+                            resolve_selected_ability(
+                                &mut state,
+                                attacker,
+                                ability,
+                                &[target],
+                                game.rng_mut(),
+                            );
+                        } else {
+                            state.resolve_physical(attacker, target, game.rng_mut());
+                        }
                     }
                 }
             }
@@ -1068,6 +1105,74 @@ fn handle_battle_input(
             }
         }
         _ => {}
+    }
+}
+
+fn begin_ability_targeting(
+    state: &mut BattleState,
+    ability_index: usize,
+    rng: &mut crate::gameplay_rng::GameplayRng,
+) {
+    let Some(caster) = state.active_key() else {
+        return;
+    };
+    let Some(ability) = state
+        .actor(caster)
+        .and_then(|actor| actor.abilities.get(ability_index))
+        .cloned()
+    else {
+        return;
+    };
+    if state
+        .actor(caster)
+        .is_none_or(|actor| actor.mana < ability.mp_cost)
+    {
+        state.message = format!("Not enough MP for {}.", ability.name);
+        return;
+    }
+    match target_plan(&ability) {
+        AbilityTargetPlan::Select { group, ko_eligible } => {
+            state.target = TargetSelector::new(group, &state.combatants, ko_eligible);
+            if state.target.is_some() {
+                state.pending_ability = Some(ability_index);
+                state.phase = BattlePhase::Target;
+                state.message = "Choose a target. ESC cancels.".to_owned();
+            } else {
+                state.message = "No valid target.".to_owned();
+            }
+        }
+        AbilityTargetPlan::All { side, ko_eligible } => {
+            let targets = state
+                .combatants
+                .iter()
+                .filter(|actor| actor.key.side == side && actor.is_alive() != ko_eligible)
+                .map(|actor| actor.key)
+                .collect::<Vec<_>>();
+            resolve_selected_ability(state, caster, ability_index, &targets, rng);
+        }
+        AbilityTargetPlan::SelfTarget => {
+            resolve_selected_ability(state, caster, ability_index, &[caster], rng);
+        }
+    }
+}
+
+fn resolve_selected_ability(
+    state: &mut BattleState,
+    caster: CombatantKey,
+    ability_index: usize,
+    targets: &[CombatantKey],
+    rng: &mut crate::gameplay_rng::GameplayRng,
+) {
+    if let Err(error) = resolve_ability(state, caster, ability_index, targets, rng) {
+        state.phase = BattlePhase::Ability;
+        state.message = match error {
+            AbilityError::InsufficientMana => "Not enough MP.".to_owned(),
+            AbilityError::Silenced => "Silence prevents spellcasting.".to_owned(),
+            AbilityError::InvalidTarget => "No valid target.".to_owned(),
+            AbilityError::UnknownCaster
+            | AbilityError::UnknownAbility
+            | AbilityError::Unsupported => "That ability cannot be used here.".to_owned(),
+        };
     }
 }
 
@@ -1219,17 +1324,28 @@ fn sync_battle_commands(
     }
     for (marker, mut text) in &mut titles {
         if marker.0 == BattlePanelKind::Command {
-            text.0 = state
-                .active_key()
-                .and_then(|key| state.actor(key))
-                .map_or_else(
-                    || "Command".to_owned(),
-                    |actor| format!("{}'s Turn", actor.name),
-                );
+            text.0 = if state.phase == BattlePhase::Ability {
+                state.active().map_or_else(
+                    || "Abilities".to_owned(),
+                    |actor| format!("{}'s Abilities", actor.name),
+                )
+            } else {
+                state
+                    .active_key()
+                    .and_then(|key| state.actor(key))
+                    .map_or_else(
+                        || "Command".to_owned(),
+                        |actor| format!("{}'s Turn", actor.name),
+                    )
+            };
         }
     }
+    let ability_choices = state.battle_ability_indices();
+    let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
     for (marker, mut background, mut border) in &mut rows {
-        let selected = state.phase == BattlePhase::Command && marker.0 == state.command_index;
+        let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
+            || (state.phase == BattlePhase::Ability
+                && ability_page + marker.0 == state.ability_index);
         background.0 = if selected {
             battle_row_active()
         } else {
@@ -1242,6 +1358,26 @@ fn sync_battle_commands(
         });
     }
     for (marker, mut text, mut color) in &mut labels {
+        if state.phase == BattlePhase::Ability {
+            let ability = ability_choices
+                .get(ability_page + marker.0)
+                .and_then(|index| state.active()?.abilities.get(*index));
+            let Some(ability) = ability else {
+                text.0.clear();
+                color.0 = battle_dim();
+                continue;
+            };
+            let affordable = state
+                .active()
+                .is_some_and(|actor| actor.mana >= ability.mp_cost);
+            text.0 = format!("{}  {} MP", ability.name, ability.mp_cost);
+            color.0 = if affordable {
+                battle_ink()
+            } else {
+                battle_dim()
+            };
+            continue;
+        }
         let command = COMMANDS[marker.0];
         let available = state.command_available(command);
         text.0 = if available {

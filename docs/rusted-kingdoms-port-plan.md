@@ -441,19 +441,19 @@ families merely because they share a renderer.
 | --- | --- | --- | --- |
 | M10.01 | [x] Implement critical-hit calculation. | `S` | Seeded fixtures match Python. |
 | M10.02 | [ ] Implement miss/critical battle feedback. | `T` | The correct message and animation event emit. |
-| M10.03 | [ ] Implement front/back physical modifiers. | `S` | Attacker and defender row cases are tested. |
-| M10.04 | [ ] Implement elemental damage affinity. | `S` | Weak, neutral, and resistant fixtures match. |
-| M10.05 | [ ] Implement offensive spell resolution. | `S` | Cost, target shape, damage, and invalid casts match. |
-| M10.06 | [ ] Implement healing spell resolution. | `S` | Living/KO target rules and HP caps match. |
-| M10.07 | [ ] Implement buff application. | `S` | Modifier and duration are recorded. |
-| M10.08 | [ ] Implement debuff application. | `S` | Resistance and duration behavior match. |
-| M10.09 | [ ] Tick and expire timed effects. | `S` | Turn-boundary semantics match source tests. |
+| M10.03 | [x] Implement front/back physical modifiers. | `S` | Attacker and defender row cases are tested. |
+| M10.04 | [x] Implement elemental damage affinity. | `S` | Weak, neutral, and resistant fixtures match. |
+| M10.05 | [x] Implement offensive spell resolution. | `S` | Cost, target shape, damage, and invalid casts match. |
+| M10.06 | [x] Implement healing spell resolution. | `S` | Living/KO target rules and HP caps match. |
+| M10.07 | [x] Implement buff application. | `S` | Modifier and duration are recorded. |
+| M10.08 | [x] Implement debuff application. | `S` | Resistance and duration behavior match. |
+| M10.09 | [x] Tick and expire timed effects. | `S` | Turn-boundary semantics match source tests. |
 | M10.10 | [ ] Implement poison. | `T` | Application, tick damage, cure, and KO behavior are tested. |
-| M10.11 | [ ] Implement sleep. | `T` | Turn skipping and wake conditions are tested. |
-| M10.12 | [ ] Implement stun. | `T` | Duration and turn skipping are tested. |
-| M10.13 | [ ] Implement silence. | `T` | Spell command availability updates correctly. |
+| M10.11 | [x] Implement sleep. | `T` | Turn skipping and wake conditions are tested. |
+| M10.12 | [x] Implement stun. | `T` | Duration and turn skipping are tested. |
+| M10.13 | [x] Implement silence. | `T` | Spell command availability updates correctly. |
 | M10.14 | [ ] Implement taunt. | `S` | Enemy targeting honors and expires the effect. |
-| M10.15 | [ ] Implement revive. | `S` | Only KO allies qualify and restore amount matches. |
+| M10.15 | [x] Implement revive. | `S` | Only KO allies qualify and restore amount matches. |
 | M10.16 | [ ] Implement battle recovery items. | `S` | Inventory consumption and target rules match. |
 | M10.17 | [ ] Implement battle status-cure items. | `T` | Supported effects clear and items consume once. |
 | M10.18 | [ ] Implement battle throw items. | `S` | Element, target shape, damage, and consumption match. |

@@ -40,14 +40,14 @@ pub(super) fn critical_damage(damage: u32) -> u32 {
 }
 
 pub(super) fn physical_damage(attacker: &BattleCombatant, defender: &BattleCombatant) -> u32 {
-    let mut damage = (attacker.attack - defender.defense).max(1) as u32;
+    let mut damage = (attacker.effective_attack() - defender.effective_defense()).max(1) as u32;
     if attacker.row == PartyRow::Back {
         damage = (damage / 2).max(1);
     }
     if defender.key.side == BattleSide::Party && defender.row == PartyRow::Back {
         damage = (damage / 2).max(1);
     }
-    damage.min(defender.health)
+    defender.mitigated_damage(damage).min(defender.health)
 }
 
 pub(super) fn roll_succeeds(rng: &mut GameplayRng, chance: f64) -> bool {

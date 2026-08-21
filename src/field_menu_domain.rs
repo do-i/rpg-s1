@@ -113,6 +113,25 @@ impl FieldMenuCatalog {
         self.classes.get(id)
     }
 
+    pub(crate) fn unlocked_abilities(
+        &self,
+        class_id: &str,
+        level: u32,
+        flags: &crate::runtime_flags::RuntimeFlags,
+    ) -> Vec<&Ability> {
+        self.class(class_id)
+            .into_iter()
+            .flat_map(|class| &class.abilities)
+            .filter(|ability| {
+                ability.unlock_level.get() <= level
+                    && ability
+                        .unlock_flag
+                        .as_ref()
+                        .is_none_or(|flag| flags.is_set(flag))
+            })
+            .collect()
+    }
+
     pub(crate) fn eligible_warp_destinations(
         &self,
         map: &RuntimeMapState,
@@ -737,25 +756,17 @@ pub(crate) fn learned_field_abilities<'a>(
     game: &GameState,
     catalog: &'a FieldMenuCatalog,
 ) -> Vec<&'a Ability> {
-    let Some(class) = catalog.class(member.class_id()) else {
-        return Vec::new();
-    };
-    class
-        .abilities
-        .iter()
+    catalog
+        .unlocked_abilities(member.class_id(), member.level(), game.flags())
+        .into_iter()
         .filter(|ability| {
-            ability.unlock_level.get() <= member.level()
-                && ability
-                    .unlock_flag
-                    .as_ref()
-                    .is_none_or(|flag| game.flags().is_set(flag))
-                && matches!(
-                    &ability.kind,
-                    AbilityKind::Heal(_)
-                        | AbilityKind::Buff(_)
-                        | AbilityKind::Utility(UtilityAbility::RemoveStatus { .. })
-                        | AbilityKind::Utility(UtilityAbility::Warp { .. })
-                )
+            matches!(
+                &ability.kind,
+                AbilityKind::Heal(_)
+                    | AbilityKind::Buff(_)
+                    | AbilityKind::Utility(UtilityAbility::RemoveStatus { .. })
+                    | AbilityKind::Utility(UtilityAbility::Warp { .. })
+            )
         })
         .collect()
 }
