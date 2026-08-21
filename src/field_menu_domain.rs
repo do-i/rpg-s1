@@ -106,6 +106,9 @@ impl FieldMenuCatalog {
     pub(crate) fn item(&self, id: &str) -> Option<&ItemDefinition> {
         self.items.get(id)
     }
+    pub(crate) fn ordered_items(&self) -> impl Iterator<Item = &ItemDefinition> {
+        self.item_order.iter().filter_map(|id| self.items.get(id))
+    }
     pub(crate) fn field_use(&self, id: &str) -> Option<&FieldUseDefinition> {
         self.field_uses.get(id)
     }

@@ -2,6 +2,7 @@ use super::{
     ability::{AbilityError, ElementalAffinity, elemental_damage, resolve_ability},
     action::{BattleAction, BattleEvent},
     enemy_ai::{EnemyAction, pick_enemy_action, resolve_targets},
+    item::{ItemUseError, resolve_item as resolve_battle_item},
     model::{
         BattleCombatant, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
         TargetSelector,
@@ -17,9 +18,11 @@ use super::{
 use crate::{
     encounter::BattleSide,
     gameplay_rng::GameplayRng,
+    runtime_repository::RuntimeRepository,
     scenario_balance::BalanceData,
     scenario_class::{Ability, ClassDefinition},
     scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyType},
+    scenario_item::{ConsumableItem, ItemCatalogFile, ItemDefinition},
     scenario_party::PartyRow,
     scenario_yaml,
 };
@@ -59,6 +62,26 @@ fn first_zone_enemy_behavior(id: &str) -> EnemyBehavior {
     .behavior
 }
 
+fn consumable(id: &str) -> ConsumableItem {
+    [
+        include_str!("../../assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml"),
+        include_str!(
+            "../../assets/scenarios/rusted_kingdoms/data/items/consumables_status_cure.yaml"
+        ),
+        include_str!(
+            "../../assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml"
+        ),
+    ]
+    .into_iter()
+    .map(|document| scenario_yaml::from_str::<ItemCatalogFile>(document).unwrap())
+    .flat_map(|catalog| catalog.0)
+    .find_map(|definition| match definition {
+        ItemDefinition::Consumable(item) if item.id == id => Some(item),
+        _ => None,
+    })
+    .unwrap_or_else(|| panic!("missing consumable fixture {id}"))
+}
+
 fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombatant {
     BattleCombatant {
         key: CombatantKey { side, index },
@@ -96,6 +119,9 @@ fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
+        item_index: 0,
+        item_choices: Vec::new(),
+        pending_item: None,
         target: None,
         message: String::new(),
         transcript: Vec::new(),
@@ -111,6 +137,9 @@ fn phase_graph_names_and_bounds_every_minimum_loop_transition() {
     assert!(BattlePhase::Command.allows(BattlePhase::Ability));
     assert!(BattlePhase::Ability.allows(BattlePhase::Target));
     assert!(BattlePhase::Target.allows(BattlePhase::Ability));
+    assert!(BattlePhase::Command.allows(BattlePhase::Item));
+    assert!(BattlePhase::Item.allows(BattlePhase::Target));
+    assert!(BattlePhase::Target.allows(BattlePhase::Item));
     assert!(BattlePhase::Command.allows(BattlePhase::Target));
     assert!(BattlePhase::Target.allows(BattlePhase::Resolve));
     assert!(BattlePhase::Resolve.allows(BattlePhase::Advance));
@@ -470,6 +499,221 @@ fn sleep_wakes_on_damage_stun_skips_and_silence_hides_abilities() {
     assert_eq!(caster.skip_turn_reason(), Some(StatusEffect::Stun));
     assert_eq!(caster.tick_statuses().expired, 1);
     assert!(caster.skip_turn_reason().is_none());
+}
+
+#[test]
+fn recovery_items_cap_pools_consume_once_and_reject_invalid_targets_atomically() {
+    let mut user = actor(BattleSide::Party, 0, 10, 100);
+    user.mana = 10;
+    user.max_mana = 40;
+    let mut ally = actor(BattleSide::Party, 1, 5, 200);
+    ally.health = 150;
+    let enemy = actor(BattleSide::Enemy, 0, 1, 100);
+    let mut state = state_with(vec![user, ally, enemy]);
+    let mut repository = RuntimeRepository::default();
+    let _ = repository.add_item("potion", 2).unwrap();
+    let _ = repository.add_item("ether", 1).unwrap();
+
+    let events = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("potion"),
+        CombatantKey::party(1),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        events.as_slice(),
+        [BattleEvent::Heal { amount: 50, .. }]
+    ));
+    assert_eq!(repository.item_count("potion"), 1);
+
+    assert_eq!(
+        resolve_battle_item(
+            &mut state,
+            CombatantKey::party(0),
+            &consumable("potion"),
+            CombatantKey::enemy(0),
+            &mut repository,
+        ),
+        Err(ItemUseError::InvalidTarget)
+    );
+    assert_eq!(repository.item_count("potion"), 1);
+
+    state.phase = BattlePhase::Item;
+    let events = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("ether"),
+        CombatantKey::party(0),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        events.as_slice(),
+        [BattleEvent::ManaRestored { amount: 30, .. }]
+    ));
+    assert_eq!(repository.item_count("ether"), 0);
+}
+
+#[test]
+fn revive_and_cure_items_apply_authored_effects_and_consume_once() {
+    let user = actor(BattleSide::Party, 0, 10, 100);
+    let mut fallen = actor(BattleSide::Party, 1, 5, 200);
+    fallen.health = 0;
+    fallen.add_status(ActiveStatus::damage_over_time(
+        StatusEffect::Poison,
+        None,
+        4,
+    ));
+    let mut state = state_with(vec![user, fallen, actor(BattleSide::Enemy, 0, 1, 100)]);
+    let mut repository = RuntimeRepository::default();
+    let _ = repository.add_item("life_crystal", 1).unwrap();
+    let _ = repository.add_item("antidote", 1).unwrap();
+
+    let events = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("life_crystal"),
+        CombatantKey::party(1),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        events.as_slice(),
+        [BattleEvent::Heal {
+            amount: 200,
+            revived: true,
+            ..
+        }]
+    ));
+    assert_eq!(repository.item_count("life_crystal"), 0);
+
+    state.phase = BattlePhase::Item;
+    let events = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("antidote"),
+        CombatantKey::party(1),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        events.as_slice(),
+        [BattleEvent::StatusCured {
+            effect: Some(StatusEffect::Poison),
+            ..
+        }]
+    ));
+    assert!(
+        !state
+            .actor(CombatantKey::party(1))
+            .unwrap()
+            .has_status(StatusEffect::Poison)
+    );
+    assert_eq!(repository.item_count("antidote"), 0);
+}
+
+#[test]
+fn elemental_throw_items_damage_one_enemy_and_apply_authored_trait_bonus() {
+    let user = actor(BattleSide::Party, 0, 10, 100);
+    let mut living = actor(BattleSide::Enemy, 0, 1, 400);
+    living.enemy_type = Some(EnemyType::Humanoid);
+    let mut undead = actor(BattleSide::Enemy, 1, 1, 400);
+    undead.enemy_type = Some(EnemyType::Undead);
+    let mut state = state_with(vec![user, living, undead]);
+    let mut repository = RuntimeRepository::default();
+    let _ = repository.add_item("holy_water", 2).unwrap();
+
+    let ordinary = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("holy_water"),
+        CombatantKey::enemy(0),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        ordinary.as_slice(),
+        [BattleEvent::ItemDamage { amount: 200, .. }]
+    ));
+
+    state.phase = BattlePhase::Item;
+    let vulnerable = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("holy_water"),
+        CombatantKey::enemy(1),
+        &mut repository,
+    )
+    .unwrap();
+    assert!(matches!(
+        vulnerable.as_slice(),
+        [BattleEvent::ItemDamage { amount: 300, .. }]
+    ));
+    assert_eq!(repository.item_count("holy_water"), 0);
+}
+
+#[test]
+fn poison_reapplication_refreshes_damage_ticks_can_ko_and_cure_stops_future_ticks() {
+    let mut target = actor(BattleSide::Party, 0, 10, 7);
+    assert!(target.add_status(ActiveStatus::damage_over_time(
+        StatusEffect::Poison,
+        None,
+        2,
+    )));
+    assert!(target.add_status(ActiveStatus::damage_over_time(
+        StatusEffect::Poison,
+        None,
+        4,
+    )));
+    assert_eq!(target.status_effects.len(), 1);
+    assert_eq!(target.tick_statuses().damage, 4);
+    assert_eq!(target.health, 3);
+    assert!(target.remove_status(StatusEffect::Poison));
+    assert_eq!(target.tick_statuses().damage, 0);
+    target.add_status(ActiveStatus::damage_over_time(
+        StatusEffect::Poison,
+        None,
+        4,
+    ));
+    assert_eq!(target.tick_statuses().damage, 3);
+    assert!(!target.is_alive());
+}
+
+#[test]
+fn first_zone_venom_ability_applies_source_scaled_persistent_poison() {
+    let party = actor(BattleSide::Party, 0, 5, 100);
+    let mut boss = actor(BattleSide::Enemy, 0, 100, 100);
+    boss.attack = 20;
+    boss.behavior = Some(enemy_behavior(
+        r#"
+ai:
+  pattern: random
+  moves: [{ action: ability, id: venom_bite, weight: 1 }]
+targeting: { default: random_alive }
+"#,
+    ));
+    let mut state = state_with(vec![party, boss]);
+    state.active_turn = state
+        .turn_order
+        .iter()
+        .position(|key| *key == CombatantKey::enemy(0))
+        .unwrap();
+
+    state.resolve_enemy_action(&mut GameplayRng::from_seed(1));
+
+    let target = state.actor(CombatantKey::party(0)).unwrap();
+    assert!(target.has_status(StatusEffect::Poison));
+    assert_eq!(
+        target
+            .status_effects
+            .iter()
+            .find(|status| status.effect == StatusEffect::Poison)
+            .unwrap()
+            .potency,
+        super::status::StatusPotency::DamagePerTurn(2)
+    );
 }
 
 #[test]
@@ -925,6 +1169,9 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
+        item_index: 0,
+        item_choices: Vec::new(),
+        pending_item: None,
         target: None,
         message: String::new(),
         transcript: Vec::new(),
@@ -951,6 +1198,9 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
+        item_index: 0,
+        item_choices: Vec::new(),
+        pending_item: None,
         target: None,
         message: String::new(),
         transcript: vec![],
@@ -984,6 +1234,9 @@ fn deterministic_basic_battle_transcript_is_stable() {
             command_index: 0,
             ability_index: 0,
             pending_ability: None,
+            item_index: 0,
+            item_choices: Vec::new(),
+            pending_item: None,
             target: None,
             message: String::new(),
             transcript: vec!["START fixture".to_owned()],

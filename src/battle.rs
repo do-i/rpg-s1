@@ -3,6 +3,7 @@
 mod ability;
 mod action;
 mod enemy_ai;
+mod item;
 mod model;
 mod resolver;
 mod rules;

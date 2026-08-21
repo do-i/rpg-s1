@@ -448,15 +448,15 @@ families merely because they share a renderer.
 | M10.07 | [x] Implement buff application. | `S` | Modifier and duration are recorded. |
 | M10.08 | [x] Implement debuff application. | `S` | Resistance and duration behavior match. |
 | M10.09 | [x] Tick and expire timed effects. | `S` | Turn-boundary semantics match source tests. |
-| M10.10 | [ ] Implement poison. | `T` | Application, tick damage, cure, and KO behavior are tested. |
+| M10.10 | [x] Implement poison. | `T` | Application, tick damage, cure, and KO behavior are tested. |
 | M10.11 | [x] Implement sleep. | `T` | Turn skipping and wake conditions are tested. |
 | M10.12 | [x] Implement stun. | `T` | Duration and turn skipping are tested. |
 | M10.13 | [x] Implement silence. | `T` | Spell command availability updates correctly. |
 | M10.14 | [x] Implement taunt. | `S` | Enemy targeting honors and expires the effect. |
 | M10.15 | [x] Implement revive. | `S` | Only KO allies qualify and restore amount matches. |
-| M10.16 | [ ] Implement battle recovery items. | `S` | Inventory consumption and target rules match. |
-| M10.17 | [ ] Implement battle status-cure items. | `T` | Supported effects clear and items consume once. |
-| M10.18 | [ ] Implement battle throw items. | `S` | Element, target shape, damage, and consumption match. |
+| M10.16 | [x] Implement battle recovery items. | `S` | Inventory consumption and target rules match. |
+| M10.17 | [x] Implement battle status-cure items. | `T` | Supported effects clear and items consume once. |
+| M10.18 | [x] Implement battle throw items. | `S` | Element, target shape, damage, and consumption match. |
 | M10.19 | [x] Implement enemy action selection. | `S` | Weighted, conditional, and fallback actions are deterministic. |
 | M10.20 | [x] Implement boss action restrictions. | `S` | Boss-only rules have focused fixtures. |
 | M10.21 | [ ] Implement damage floats. | `T` | Spawn, rise, fade, and cleanup are bounded. |

@@ -11,6 +11,7 @@ use crate::{
 use super::{
     action::BattleEvent,
     model::{BattleCombatant, BattlePhase, BattleState, CombatantKey},
+    status::{ActiveStatus, StatusEffect},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -268,6 +269,21 @@ fn resolve_enemy_ability(
             amount,
             knocked_out: amount >= defender.health,
         });
+        if state.actor(target).is_some_and(BattleCombatant::is_alive) {
+            for status in enemy_ability_statuses(ability_id, source.attack) {
+                if state
+                    .actor_mut(target)
+                    .expect("selected enemy ability target")
+                    .add_status(status)
+                {
+                    events.push(BattleEvent::StatusApplied {
+                        source: source.key,
+                        target,
+                        status,
+                    });
+                }
+            }
+        }
     }
     state.feedback_events.extend(events.iter().copied());
     state.message = format!("{} uses {}!", source.name, display_ability_name(ability_id));
@@ -282,6 +298,27 @@ fn resolve_enemy_ability(
             .join(",")
     ));
     state.phase = BattlePhase::Resolve;
+}
+
+fn enemy_ability_statuses(ability_id: &str, attack: i64) -> Vec<ActiveStatus> {
+    match ability_id {
+        "venom_bite" | "poison_bite" | "poison_tail" | "miasma" => {
+            vec![ActiveStatus::damage_over_time(
+                StatusEffect::Poison,
+                None,
+                (attack.max(0) as u32 / 10).max(1),
+            )]
+        }
+        "plague_touch" => vec![
+            ActiveStatus::damage_over_time(
+                StatusEffect::Poison,
+                None,
+                (attack.max(0) as u32 / 10).max(1),
+            ),
+            ActiveStatus::persistent(StatusEffect::Silence),
+        ],
+        _ => Vec::new(),
+    }
 }
 
 fn blocked_override<'a>(

@@ -44,6 +44,9 @@ impl BattleState {
             command_index: 0,
             ability_index: 0,
             pending_ability: None,
+            item_index: 0,
+            item_choices: Vec::new(),
+            pending_item: None,
             target: None,
             message: "Battle start!".to_owned(),
             transcript: vec![format!("START {}", entry.encounter_id)],
@@ -87,7 +90,7 @@ impl BattleState {
                     && !active.is_silenced()
                     && active.abilities.iter().any(super::ability::battle_ability)
             }
-            BattleCommand::Item => false,
+            BattleCommand::Item => active.is_alive() && !self.item_choices.is_empty(),
             BattleCommand::Run => active.is_alive(),
         }
     }

@@ -1,4 +1,4 @@
-use crate::scenario_class::AbilityElement;
+use crate::{scenario_class::AbilityElement, scenario_item::ItemElement};
 
 use super::{
     model::CombatantKey,
@@ -61,11 +61,17 @@ pub(super) enum BattleEvent {
         amount: u32,
         revived: bool,
     },
-    #[expect(dead_code, reason = "consumed by the M10 battle-item slice")]
     ManaRestored {
         source: CombatantKey,
         target: CombatantKey,
         amount: u32,
+    },
+    ItemDamage {
+        source: CombatantKey,
+        target: CombatantKey,
+        element: ItemElement,
+        amount: u32,
+        knocked_out: bool,
     },
     StatusApplied {
         source: CombatantKey,

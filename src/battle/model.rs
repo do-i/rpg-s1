@@ -17,6 +17,7 @@ pub(super) enum BattlePhase {
     Start,
     Command,
     Ability,
+    Item,
     Target,
     Resolve,
     Advance,
@@ -31,12 +32,13 @@ impl BattlePhase {
             Self::Start => matches!(next, Self::Command | Self::Resolve | Self::Defeat),
             Self::Command => matches!(
                 next,
-                Self::Ability | Self::Target | Self::Victory | Self::Flee
+                Self::Ability | Self::Item | Self::Target | Self::Victory | Self::Flee
             ),
             Self::Ability => matches!(next, Self::Command | Self::Target | Self::Resolve),
+            Self::Item => matches!(next, Self::Command | Self::Target | Self::Resolve),
             Self::Target => matches!(
                 next,
-                Self::Command | Self::Ability | Self::Resolve | Self::Victory
+                Self::Command | Self::Ability | Self::Item | Self::Resolve | Self::Victory
             ),
             Self::Resolve => matches!(next, Self::Advance | Self::Victory | Self::Defeat),
             Self::Advance => matches!(next, Self::Command | Self::Resolve | Self::Defeat),
@@ -195,7 +197,6 @@ impl BattleCombatant {
         self.health - before
     }
 
-    #[expect(dead_code, reason = "consumed by the M10 battle-item slice")]
     pub(super) fn restore_mana(&mut self, amount: u32) -> u32 {
         let before = self.mana;
         self.mana = self.mana.saturating_add(amount).min(self.max_mana);
@@ -445,12 +446,22 @@ pub(super) struct BattleState {
     pub(super) command_index: usize,
     pub(super) ability_index: usize,
     pub(super) pending_ability: Option<usize>,
+    pub(super) item_index: usize,
+    pub(super) item_choices: Vec<BattleItemChoice>,
+    pub(super) pending_item: Option<String>,
     pub(super) target: Option<TargetSelector>,
     pub(super) message: String,
     pub(super) transcript: Vec<String>,
     pub(super) feedback_events: Vec<super::action::BattleEvent>,
     pub(super) used_enemy_moves: HashSet<(CombatantKey, String)>,
     pub(super) flee_outcome: Option<FleeOutcome>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct BattleItemChoice {
+    pub(super) id: String,
+    pub(super) name: String,
+    pub(super) quantity: u32,
 }
 
 impl BattleState {

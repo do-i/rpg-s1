@@ -1,9 +1,11 @@
+use bevy::ecs::system::SystemParam;
 use bevy::{asset::LoadState, prelude::*};
 
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
+    field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
     scenario_balance::BalanceData,
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
@@ -16,9 +18,10 @@ use crate::{
 
 use super::{
     ability::{AbilityError, AbilityTargetPlan, resolve_ability, target_plan},
+    item::{ItemUseError, battle_item, resolve_item, target_plan as item_target_plan},
     model::{
-        BattleCommand, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
-        TargetSelector,
+        BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
+        TargetGroup, TargetSelector,
     },
     rules::{flee_chance, phase_after_flee_confirmation, roll_flee, wrap_index},
 };
@@ -171,12 +174,26 @@ fn enter_battle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    catalog: Res<FieldMenuCatalog>,
+    game: Res<GameState>,
     entry: Option<Res<BattleEntry>>,
 ) {
     let Some(entry) = entry else {
         return;
     };
-    let state = BattleState::from_entry(&entry);
+    let mut state = BattleState::from_entry(&entry);
+    state.item_choices = catalog
+        .ordered_items()
+        .filter_map(battle_item)
+        .filter_map(|item| {
+            let quantity = game.repository().item_count(&item.id);
+            (quantity > 0).then(|| BattleItemChoice {
+                id: item.id.clone(),
+                name: item.name.clone(),
+                quantity,
+            })
+        })
+        .collect();
     let atlases = entry
         .participants
         .iter()
@@ -975,24 +992,38 @@ fn animate_enemy_breathing(
     }
 }
 
+#[derive(SystemParam)]
+struct BattleInputContext<'w> {
+    balances: Res<'w, Assets<BalanceData>>,
+    catalog: Res<'w, FieldMenuCatalog>,
+    game: Option<ResMut<'w, GameState>>,
+    entry: Option<Res<'w, BattleEntry>>,
+}
+
 fn handle_battle_input(
     mut commands: Commands,
     actions: Res<ActionState>,
-    balances: Res<Assets<BalanceData>>,
-    mut game: Option<ResMut<GameState>>,
-    entry: Option<Res<BattleEntry>>,
+    mut context: BattleInputContext,
     state: Option<ResMut<BattleState>>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
 ) {
-    let (Some(entry), Some(mut state), Some(mut game)) = (entry, state, game.take()) else {
+    let Some(entry) = context.entry.as_deref() else {
         return;
     };
+    let Some(mut game) = context.game.take() else {
+        return;
+    };
+    let Some(mut state) = state else {
+        return;
+    };
+    let balances: &Assets<BalanceData> = &context.balances;
+    let catalog: &FieldMenuCatalog = &context.catalog;
     match state.phase {
         BattlePhase::Start => state.begin_active_turn(game.rng_mut()),
         BattlePhase::Advance => state.advance(game.rng_mut()),
         BattlePhase::Command => {
             if actions.just_pressed(AppAction::Back) {
-                attempt_flee(&mut state, &balances, &mut game);
+                attempt_flee(&mut state, balances, &mut game);
                 return;
             }
             if let Some(movement) = actions.menu_navigation() {
@@ -1002,9 +1033,8 @@ fn handle_battle_input(
                 let command = COMMANDS[state.command_index];
                 if !state.command_available(command) {
                     state.message = match command {
-                        BattleCommand::Spell | BattleCommand::Item => {
-                            format!("{} effects unlock in Milestone 10.", command.label())
-                        }
+                        BattleCommand::Spell => "No usable abilities.".to_owned(),
+                        BattleCommand::Item => "No battle items available.".to_owned(),
                         BattleCommand::Run => "Can't escape from a boss!".to_owned(),
                         BattleCommand::Attack => "That action is unavailable.".to_owned(),
                     };
@@ -1023,7 +1053,7 @@ fn handle_battle_input(
                         }
                     }
                     BattleCommand::Run => {
-                        attempt_flee(&mut state, &balances, &mut game);
+                        attempt_flee(&mut state, balances, &mut game);
                     }
                     BattleCommand::Spell => {
                         state.ability_index = 0;
@@ -1031,7 +1061,12 @@ fn handle_battle_input(
                         state.phase = BattlePhase::Ability;
                         state.message = "Choose an ability. ESC cancels.".to_owned();
                     }
-                    BattleCommand::Item => {}
+                    BattleCommand::Item => {
+                        state.item_index = 0;
+                        state.pending_item = None;
+                        state.phase = BattlePhase::Item;
+                        state.message = "Choose an item. ESC cancels.".to_owned();
+                    }
                 }
             }
         }
@@ -1051,11 +1086,29 @@ fn handle_battle_input(
                 }
             }
         }
+        BattlePhase::Item => {
+            if actions.just_pressed(AppAction::Back) {
+                state.phase = BattlePhase::Command;
+                state.message = "Action cancelled.".to_owned();
+            } else {
+                if let Some(movement) = actions.menu_navigation() {
+                    state.item_index =
+                        wrap_index(state.item_index, movement, state.item_choices.len());
+                }
+                if actions.just_pressed(AppAction::Confirm)
+                    && let Some(choice) = state.item_choices.get(state.item_index).cloned()
+                {
+                    begin_item_targeting(&mut state, &choice.id, catalog);
+                }
+            }
+        }
         BattlePhase::Target => {
             if actions.just_pressed(AppAction::Back) {
                 state.target = None;
                 state.phase = if state.pending_ability.is_some() {
                     BattlePhase::Ability
+                } else if state.pending_item.is_some() {
+                    BattlePhase::Item
                 } else {
                     BattlePhase::Command
                 };
@@ -1079,6 +1132,15 @@ fn handle_battle_input(
                                 &[target],
                                 game.rng_mut(),
                             );
+                        } else if let Some(item_id) = state.pending_item.take() {
+                            resolve_selected_item(
+                                &mut state,
+                                attacker,
+                                &item_id,
+                                target,
+                                catalog,
+                                game.repository_mut(),
+                            );
                         } else {
                             state.resolve_physical(attacker, target, game.rng_mut());
                         }
@@ -1088,7 +1150,7 @@ fn handle_battle_input(
         }
         BattlePhase::Resolve if actions.just_pressed(AppAction::Confirm) => state.assess_result(),
         BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) => {
-            apply_victory(&mut commands, &mut game, &entry, &state);
+            apply_victory(&mut commands, &mut game, entry, &state);
             transitions.write(AppStateTransitionRequest::new(AppState::World));
         }
         BattlePhase::Defeat => {
@@ -1097,7 +1159,7 @@ fn handle_battle_input(
         BattlePhase::Flee if actions.just_pressed(AppAction::Confirm) => {
             let outcome = state.flee_outcome.unwrap_or(FleeOutcome::Failed);
             if phase_after_flee_confirmation(outcome).is_none() {
-                restore_world(&mut commands, &mut game, &entry);
+                restore_world(&mut commands, &mut game, entry);
                 transitions.write(AppStateTransitionRequest::new(AppState::World));
             } else {
                 state.phase = phase_after_flee_confirmation(outcome)
@@ -1105,6 +1167,62 @@ fn handle_battle_input(
             }
         }
         _ => {}
+    }
+}
+
+fn begin_item_targeting(state: &mut BattleState, item_id: &str, catalog: &FieldMenuCatalog) {
+    let Some(item) = catalog.item(item_id).and_then(battle_item) else {
+        state.message = "That item cannot be used in battle.".to_owned();
+        return;
+    };
+    let plan = item_target_plan(item);
+    state.target = TargetSelector::new(plan.group, &state.combatants, plan.ko_eligible);
+    if state.target.is_some() {
+        state.pending_item = Some(item_id.to_owned());
+        state.phase = BattlePhase::Target;
+        state.message = "Choose a target. ESC cancels.".to_owned();
+    } else {
+        state.message = "No valid target.".to_owned();
+    }
+}
+
+fn resolve_selected_item(
+    state: &mut BattleState,
+    source: CombatantKey,
+    item_id: &str,
+    target: CombatantKey,
+    catalog: &FieldMenuCatalog,
+    repository: &mut crate::runtime_repository::RuntimeRepository,
+) {
+    let Some(item) = catalog.item(item_id).and_then(battle_item) else {
+        state.phase = BattlePhase::Item;
+        state.message = "That item cannot be used in battle.".to_owned();
+        return;
+    };
+    match resolve_item(state, source, item, target, repository) {
+        Ok(_) => {
+            if let Some(choice) = state
+                .item_choices
+                .iter_mut()
+                .find(|choice| choice.id == item_id)
+            {
+                choice.quantity = choice.quantity.saturating_sub(1);
+            }
+            state.item_choices.retain(|choice| choice.quantity > 0);
+            state.item_index = state
+                .item_index
+                .min(state.item_choices.len().saturating_sub(1));
+        }
+        Err(error) => {
+            state.phase = BattlePhase::Item;
+            state.message = match error {
+                ItemUseError::InvalidTarget => "No valid target.".to_owned(),
+                ItemUseError::Unavailable => "That item is no longer available.".to_owned(),
+                ItemUseError::UnknownSource | ItemUseError::Unsupported => {
+                    "That item cannot be used here.".to_owned()
+                }
+            };
+        }
     }
 }
 
@@ -1329,6 +1447,8 @@ fn sync_battle_commands(
                     || "Abilities".to_owned(),
                     |actor| format!("{}'s Abilities", actor.name),
                 )
+            } else if state.phase == BattlePhase::Item {
+                "Battle Items".to_owned()
             } else {
                 state
                     .active_key()
@@ -1342,10 +1462,12 @@ fn sync_battle_commands(
     }
     let ability_choices = state.battle_ability_indices();
     let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
+    let item_page = state.item_index / COMMANDS.len() * COMMANDS.len();
     for (marker, mut background, mut border) in &mut rows {
         let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
             || (state.phase == BattlePhase::Ability
-                && ability_page + marker.0 == state.ability_index);
+                && ability_page + marker.0 == state.ability_index)
+            || (state.phase == BattlePhase::Item && item_page + marker.0 == state.item_index);
         background.0 = if selected {
             battle_row_active()
         } else {
@@ -1376,6 +1498,16 @@ fn sync_battle_commands(
             } else {
                 battle_dim()
             };
+            continue;
+        }
+        if state.phase == BattlePhase::Item {
+            let Some(item) = state.item_choices.get(item_page + marker.0) else {
+                text.0.clear();
+                color.0 = battle_dim();
+                continue;
+            };
+            text.0 = format!("{}  x{}", item.name, item.quantity);
+            color.0 = battle_ink();
             continue;
         }
         let command = COMMANDS[marker.0];
