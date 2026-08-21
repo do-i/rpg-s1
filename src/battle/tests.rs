@@ -6,8 +6,9 @@ use super::{
     },
     resolver::resolve_action,
     rules::{
-        calculate_turn_order, flee_chance, phase_after_flee_confirmation, physical_damage,
-        physical_hit_chance, roll_flee, roll_succeeds,
+        calculate_turn_order, critical_damage, critical_hit_chance, flee_chance,
+        phase_after_flee_confirmation, physical_damage, physical_hit_chance, roll_flee,
+        roll_succeeds,
     },
 };
 use crate::{
@@ -219,6 +220,7 @@ fn resolving_an_action_is_pure_until_its_typed_event_is_applied() {
         BattleEvent::Damage {
             action,
             amount: 7,
+            critical: false,
             knocked_out: false,
         }
     );
@@ -226,6 +228,60 @@ fn resolving_an_action_is_pure_until_its_typed_event_is_applied() {
     state.apply_event(event);
     assert_eq!(state.combatants[1].health, before - 7);
     assert_eq!(state.phase, BattlePhase::Resolve);
+}
+
+#[test]
+fn critical_chance_and_damage_match_the_source_formula_boundaries() {
+    assert_eq!(critical_hit_chance(-1), 0.0);
+    assert_eq!(critical_hit_chance(1), 0.02);
+    assert_eq!(critical_hit_chance(10), 0.20);
+    assert_eq!(critical_hit_chance(13), 0.25);
+    assert_eq!(critical_hit_chance(100), 0.25);
+    assert_eq!(critical_damage(1), 1);
+    assert_eq!(critical_damage(7), 10);
+    assert_eq!(critical_damage(20), 30);
+}
+
+#[test]
+fn seeded_physical_resolution_emits_distinct_miss_and_critical_feedback() {
+    let mut critical_state = state_with(vec![
+        actor(BattleSide::Party, 0, 100, 20),
+        actor(BattleSide::Enemy, 0, 1, 20),
+    ]);
+    let action = BattleAction::Physical {
+        attacker: CombatantKey::party(0),
+        target: CombatantKey::enemy(0),
+    };
+    let event = resolve_action(
+        &critical_state,
+        action,
+        &mut GameplayRng::from_seed(7),
+    )
+    .unwrap();
+    assert_eq!(
+        event,
+        BattleEvent::Damage {
+            action,
+            amount: 10,
+            critical: true,
+            knocked_out: false,
+        }
+    );
+    critical_state.apply_event(event);
+    assert!(critical_state.message.starts_with("Critical hit!"));
+    assert_eq!(
+        critical_state.transcript.last().map(String::as_str),
+        Some("CRITICAL Party-0 -> Enemy-0 10")
+    );
+
+    let miss_state = state_with(vec![
+        actor(BattleSide::Party, 0, 1, 20),
+        actor(BattleSide::Enemy, 0, 100, 20),
+    ]);
+    assert_eq!(
+        resolve_action(&miss_state, action, &mut GameplayRng::from_seed(0)),
+        Some(BattleEvent::Miss { action })
+    );
 }
 
 #[test]

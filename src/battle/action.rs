@@ -30,6 +30,7 @@ pub(super) enum BattleEvent {
     Damage {
         action: BattleAction,
         amount: u32,
+        critical: bool,
         knocked_out: bool,
     },
 }

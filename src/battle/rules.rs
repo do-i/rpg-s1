@@ -31,6 +31,14 @@ pub(super) fn physical_hit_chance(attacker_dex: i64, defender_dex: i64) -> f64 {
     (0.70 + (attacker_dex - defender_dex) as f64 * 0.02).clamp(0.05, 0.95)
 }
 
+pub(super) fn critical_hit_chance(attacker_dex: i64) -> f64 {
+    (attacker_dex.max(0) as f64 * 0.02).min(0.25)
+}
+
+pub(super) fn critical_damage(damage: u32) -> u32 {
+    damage.saturating_mul(3) / 2
+}
+
 pub(super) fn physical_damage(attacker: &BattleCombatant, defender: &BattleCombatant) -> u32 {
     let mut damage = (attacker.attack - defender.defense).max(1) as u32;
     if attacker.row == PartyRow::Back {

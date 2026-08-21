@@ -6,7 +6,10 @@ use crate::{
 use super::{
     action::{BattleAction, BattleEvent},
     model::{BattleCombatant, BattleCommand, BattlePhase, BattleState, CombatantKey},
-    rules::{calculate_turn_order, physical_damage, physical_hit_chance, roll_succeeds},
+    rules::{
+        calculate_turn_order, critical_damage, critical_hit_chance, physical_damage,
+        physical_hit_chance, roll_succeeds,
+    },
 };
 
 impl BattleState {
@@ -159,6 +162,7 @@ impl BattleState {
             }
             BattleEvent::Damage {
                 amount,
+                critical,
                 knocked_out,
                 ..
             } => {
@@ -168,11 +172,13 @@ impl BattleState {
                     .unwrap_or(0);
                 debug_assert_eq!(actual, amount);
                 self.message = format!(
-                    "{attacker_name} attacks {target_name} for {actual} damage.{}",
+                    "{}{attacker_name} attacks {target_name} for {actual} damage.{}",
+                    if critical { "Critical hit! " } else { "" },
                     if knocked_out { " KO!" } else { "" }
                 );
                 self.transcript.push(format!(
-                    "HIT {attacker_id} -> {target_id} {actual}{}",
+                    "{} {attacker_id} -> {target_id} {actual}{}",
+                    if critical { "CRITICAL" } else { "HIT" },
                     if knocked_out { " KO" } else { "" }
                 ));
             }
@@ -224,10 +230,17 @@ pub(super) fn resolve_action(
             if !roll_succeeds(rng, chance) {
                 return Some(BattleEvent::Miss { action });
             }
-            let amount = physical_damage(attacker_actor, defender_actor);
+            let critical = roll_succeeds(rng, critical_hit_chance(attacker_actor.dexterity));
+            let amount = if critical {
+                critical_damage(physical_damage(attacker_actor, defender_actor))
+            } else {
+                physical_damage(attacker_actor, defender_actor)
+            }
+            .min(defender_actor.health);
             Some(BattleEvent::Damage {
                 action,
                 amount,
+                critical,
                 knocked_out: amount >= defender_actor.health,
             })
         }

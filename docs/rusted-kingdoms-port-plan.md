@@ -439,7 +439,7 @@ families merely because they share a renderer.
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M10.01 | [ ] Implement critical-hit calculation. | `S` | Seeded fixtures match Python. |
+| M10.01 | [x] Implement critical-hit calculation. | `S` | Seeded fixtures match Python. |
 | M10.02 | [ ] Implement miss/critical battle feedback. | `T` | The correct message and animation event emit. |
 | M10.03 | [ ] Implement front/back physical modifiers. | `S` | Attacker and defender row cases are tested. |
 | M10.04 | [ ] Implement elemental damage affinity. | `S` | Weak, neutral, and resistant fixtures match. |
