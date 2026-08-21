@@ -1,6 +1,7 @@
 use super::{
     ability::{AbilityError, ElementalAffinity, elemental_damage, resolve_ability},
     action::{BattleAction, BattleEvent},
+    enemy_ai::{EnemyAction, pick_enemy_action, resolve_targets},
     model::{
         BattleCombatant, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
         TargetSelector,
@@ -18,7 +19,7 @@ use crate::{
     gameplay_rng::GameplayRng,
     scenario_balance::BalanceData,
     scenario_class::{Ability, ClassDefinition},
-    scenario_enemy::EnemyType,
+    scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyType},
     scenario_party::PartyRow,
     scenario_yaml,
 };
@@ -38,6 +39,26 @@ fn ability(id: &str) -> Ability {
     .unwrap_or_else(|| panic!("missing ability fixture {id}"))
 }
 
+fn enemy_behavior(document: &str) -> EnemyBehavior {
+    let move_set: BossMoveSet = scenario_yaml::from_str(document).unwrap();
+    EnemyBehavior::Inline {
+        ai: move_set.ai,
+        targeting: move_set.targeting,
+    }
+}
+
+fn first_zone_enemy_behavior(id: &str) -> EnemyBehavior {
+    EnemyCatalogFile::from_yaml_stream(include_str!(
+        "../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml"
+    ))
+    .unwrap()
+    .0
+    .into_iter()
+    .find(|enemy| enemy.id == id)
+    .unwrap()
+    .behavior
+}
+
 fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombatant {
     BattleCombatant {
         key: CombatantKey { side, index },
@@ -54,6 +75,7 @@ fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombata
         dexterity: dex,
         abilities: Vec::new(),
         status_effects: Vec::new(),
+        accessory: None,
         row: PartyRow::Front,
         boss: false,
         enemy_type: None,
@@ -70,6 +92,7 @@ fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         turn_order: calculate_turn_order(&combatants),
         combatants,
         active_turn: 0,
+        turn_count: 1,
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
@@ -77,6 +100,7 @@ fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         message: String::new(),
         transcript: Vec::new(),
         feedback_events: Vec::new(),
+        used_enemy_moves: std::collections::HashSet::new(),
         flee_outcome: None,
     }
 }
@@ -449,6 +473,220 @@ fn sleep_wakes_on_damage_stun_skips_and_silence_hides_abilities() {
 }
 
 #[test]
+fn weighted_enemy_actions_repeat_and_stay_within_authored_moves() {
+    let mut enemy = actor(BattleSide::Enemy, 0, 10, 40);
+    enemy.behavior = Some(first_zone_enemy_behavior("goblin"));
+    let state = state_with(vec![actor(BattleSide::Party, 0, 5, 40), enemy.clone()]);
+    let sequence = |seed| {
+        let mut rng = GameplayRng::from_seed(seed);
+        (0..32)
+            .map(|_| pick_enemy_action(&enemy, &state, &mut rng))
+            .collect::<Vec<_>>()
+    };
+    let actions = sequence(91);
+    assert_eq!(actions, sequence(91));
+    assert!(actions.contains(&EnemyAction::Attack));
+    assert!(actions.contains(&EnemyAction::Ability {
+        id: "scratch".to_owned(),
+        once: false,
+    }));
+}
+
+#[test]
+fn conditional_enemy_actions_filter_hp_turn_and_once_per_battle_moves() {
+    let mut enemy = actor(BattleSide::Enemy, 0, 10, 100);
+    enemy.boss = true;
+    enemy.behavior = Some(enemy_behavior(
+        r#"
+ai:
+  pattern: conditional
+  moves:
+    - action: ability
+      id: desperation
+      weight: 1
+      condition: { hp_pct_below: 0.50 }
+    - action: ability
+      id: scripted_once
+      weight: 1
+      condition: { turn_mod: { every: 2 } }
+      once: true
+targeting: { default: random_alive }
+"#,
+    ));
+    let mut state = state_with(vec![actor(BattleSide::Party, 0, 5, 40), enemy.clone()]);
+    state.turn_count = 1;
+    assert_eq!(
+        pick_enemy_action(&enemy, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Attack
+    );
+
+    state.turn_count = 2;
+    assert_eq!(
+        pick_enemy_action(&enemy, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Ability {
+            id: "scripted_once".to_owned(),
+            once: true,
+        }
+    );
+    state
+        .used_enemy_moves
+        .insert((CombatantKey::enemy(0), "scripted_once".to_owned()));
+    assert_eq!(
+        pick_enemy_action(&enemy, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Attack
+    );
+
+    enemy.health = 30;
+    state.turn_count = 3;
+    assert_eq!(
+        pick_enemy_action(&enemy, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Ability {
+            id: "desperation".to_owned(),
+            once: false,
+        }
+    );
+}
+
+#[test]
+fn enemy_targeting_honors_taunt_single_modes_and_all_party_override() {
+    let mut low_hp = actor(BattleSide::Party, 0, 4, 100);
+    low_hp.health = 10;
+    let mut taunter = actor(BattleSide::Party, 1, 20, 100);
+    taunter.health = 80;
+    taunter.add_status(ActiveStatus::timed(StatusEffect::Taunt, 2));
+    let mut enemy = actor(BattleSide::Enemy, 0, 10, 100);
+    enemy.behavior = Some(enemy_behavior(
+        r#"
+ai:
+  pattern: random
+  moves: [{ action: attack, weight: 1 }]
+targeting:
+  default: lowest_hp
+  overrides:
+    - { ability: wave, target: all_party }
+    - { ability: shot, target: highest_dex }
+"#,
+    ));
+    let state = state_with(vec![low_hp, taunter, enemy.clone()]);
+
+    assert_eq!(
+        resolve_targets(&enemy, &state, "", &mut GameplayRng::from_seed(1)),
+        [CombatantKey::party(1)]
+    );
+    assert_eq!(
+        resolve_targets(&enemy, &state, "wave", &mut GameplayRng::from_seed(1)),
+        [CombatantKey::party(0), CombatantKey::party(1)]
+    );
+    assert_eq!(
+        resolve_targets(&enemy, &state, "shot", &mut GameplayRng::from_seed(1)),
+        [CombatantKey::party(1)]
+    );
+}
+
+#[test]
+fn enemy_aoe_ability_damages_every_living_party_member_at_full_row_strength() {
+    let mut front = actor(BattleSide::Party, 0, 5, 100);
+    front.defense = 4;
+    let mut back = actor(BattleSide::Party, 1, 4, 100);
+    back.defense = 4;
+    back.row = PartyRow::Back;
+    let mut enemy = actor(BattleSide::Enemy, 0, 100, 100);
+    enemy.attack = 14;
+    enemy.behavior = Some(enemy_behavior(
+        r#"
+ai:
+  pattern: random
+  moves: [{ action: ability, id: wave, weight: 1 }]
+targeting:
+  default: random_alive
+  overrides: [{ ability: wave, target: all_party }]
+"#,
+    ));
+    let mut state = state_with(vec![front, back, enemy]);
+    state.active_turn = state
+        .turn_order
+        .iter()
+        .position(|key| *key == CombatantKey::enemy(0))
+        .unwrap();
+
+    state.resolve_enemy_action(&mut GameplayRng::from_seed(8));
+
+    assert_eq!(state.actor(CombatantKey::party(0)).unwrap().health, 90);
+    assert_eq!(state.actor(CombatantKey::party(1)).unwrap().health, 90);
+    assert_eq!(
+        state
+            .feedback_events
+            .iter()
+            .filter(|event| matches!(event, BattleEvent::EnemyAbilityDamage { .. }))
+            .count(),
+        2
+    );
+    assert_eq!(state.phase, BattlePhase::Resolve);
+}
+
+#[test]
+fn boss_accessory_override_blocks_or_reduces_target_to_one_hp() {
+    let behavior = enemy_behavior(
+        r#"
+ai:
+  pattern: random
+  moves: [{ action: ability, id: death_gaze, weight: 1 }]
+targeting:
+  default: random_alive
+  overrides:
+    - ability: death_gaze
+      target: random_alive
+      blocked_by_accessory: holy_talisman
+      on_blocked: no_effect
+      on_hit: hp_to_1
+"#,
+    );
+    let battle = |accessory: Option<&str>| {
+        let mut party = actor(BattleSide::Party, 0, 5, 100);
+        party.accessory = accessory.map(str::to_owned);
+        let mut boss = actor(BattleSide::Enemy, 0, 100, 100);
+        boss.boss = true;
+        boss.behavior = Some(behavior.clone());
+        let mut state = state_with(vec![party, boss]);
+        state.active_turn = state
+            .turn_order
+            .iter()
+            .position(|key| *key == CombatantKey::enemy(0))
+            .unwrap();
+        state.resolve_enemy_action(&mut GameplayRng::from_seed(1));
+        state
+    };
+
+    let blocked = battle(Some("holy_talisman"));
+    assert_eq!(blocked.actor(CombatantKey::party(0)).unwrap().health, 100);
+    assert!(matches!(
+        blocked.feedback_events.as_slice(),
+        [BattleEvent::EnemyAbilityBlocked { .. }]
+    ));
+
+    let hit = battle(None);
+    assert_eq!(hit.actor(CombatantKey::party(0)).unwrap().health, 1);
+    assert!(matches!(
+        hit.feedback_events.as_slice(),
+        [BattleEvent::EnemyAbilityDamage { amount: 99, .. }]
+    ));
+}
+
+#[test]
+fn battle_round_counter_increments_only_when_turn_order_wraps() {
+    let party = actor(BattleSide::Party, 0, 10, 100);
+    let enemy = actor(BattleSide::Enemy, 0, 5, 100);
+    let mut state = state_with(vec![party, enemy]);
+    let mut rng = GameplayRng::from_seed(1);
+    assert_eq!(state.turn_count, 1);
+    state.advance(&mut rng);
+    assert_eq!(state.turn_count, 1);
+    state.assess_result();
+    state.advance(&mut rng);
+    assert_eq!(state.turn_count, 2);
+}
+
+#[test]
 fn enemy_target_selection_handles_single_wrap_cancel_and_no_target() {
     let actors = vec![
         actor(BattleSide::Party, 0, 4, 10),
@@ -683,6 +921,7 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
             CombatantKey::enemy(0),
         ],
         active_turn: 0,
+        turn_count: 1,
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
@@ -690,6 +929,7 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         message: String::new(),
         transcript: Vec::new(),
         feedback_events: Vec::new(),
+        used_enemy_moves: std::collections::HashSet::new(),
         flee_outcome: None,
     };
     state.skip_knocked_out();
@@ -707,6 +947,7 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         ],
         turn_order: vec![],
         active_turn: 0,
+        turn_count: 1,
         command_index: 0,
         ability_index: 0,
         pending_ability: None,
@@ -714,6 +955,7 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         message: String::new(),
         transcript: vec![],
         feedback_events: Vec::new(),
+        used_enemy_moves: std::collections::HashSet::new(),
         flee_outcome: None,
     };
     state.assess_result();
@@ -738,6 +980,7 @@ fn deterministic_basic_battle_transcript_is_stable() {
             ],
             turn_order: vec![CombatantKey::party(0), CombatantKey::enemy(0)],
             active_turn: 0,
+            turn_count: 1,
             command_index: 0,
             ability_index: 0,
             pending_ability: None,
@@ -745,6 +988,7 @@ fn deterministic_basic_battle_transcript_is_stable() {
             message: String::new(),
             transcript: vec!["START fixture".to_owned()],
             feedback_events: Vec::new(),
+            used_enemy_moves: std::collections::HashSet::new(),
             flee_outcome: None,
         };
         state.combatants[0].attack = 14;

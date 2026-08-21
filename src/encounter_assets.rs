@@ -11,7 +11,7 @@ use bevy::{
 use crate::{
     scenario_battle_background::BattleBackgroundCatalog,
     scenario_encounter::EncounterZone,
-    scenario_enemy::EnemyCatalogFile,
+    scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_yaml::{self, ScenarioYamlError},
 };
 
@@ -21,9 +21,11 @@ impl Plugin for EncounterAssetPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<EncounterZone>()
             .init_asset::<EnemyCatalogFile>()
+            .init_asset::<BossMoveSet>()
             .init_asset::<BattleBackgroundCatalog>()
             .init_asset_loader::<EncounterZoneLoader>()
             .init_asset_loader::<EnemyCatalogFileLoader>()
+            .init_asset_loader::<BossMoveSetLoader>()
             .init_asset_loader::<BattleBackgroundCatalogLoader>();
     }
 }
@@ -33,6 +35,9 @@ struct EncounterZoneLoader;
 
 #[derive(Default, TypePath)]
 struct EnemyCatalogFileLoader;
+
+#[derive(Default, TypePath)]
+struct BossMoveSetLoader;
 
 #[derive(Default, TypePath)]
 struct BattleBackgroundCatalogLoader;
@@ -78,6 +83,26 @@ impl AssetLoader for EnemyCatalogFileLoader {
         _: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         EnemyCatalogFile::from_yaml_stream(&read_document(reader).await?)
+            .map_err(EncounterAssetLoaderError::Yaml)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["yaml", "yml"]
+    }
+}
+
+impl AssetLoader for BossMoveSetLoader {
+    type Asset = BossMoveSet;
+    type Settings = ();
+    type Error = EncounterAssetLoaderError;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _: &(),
+        _: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        scenario_yaml::from_str(&read_document(reader).await?)
             .map_err(EncounterAssetLoaderError::Yaml)
     }
 

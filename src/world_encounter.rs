@@ -22,7 +22,7 @@ use crate::{
     scenario_balance::BalanceData,
     scenario_battle_background::BattleBackgroundCatalog,
     scenario_encounter::EncounterZone,
-    scenario_enemy::EnemyCatalogFile,
+    scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_map::MapMetadata,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -49,6 +49,17 @@ const ENEMY_RANK_FILES: [&str; 8] = [
     "enemies_rank_6_D.yaml",
     "enemies_rank_7_E.yaml",
     "enemies_rank_8_F.yaml",
+];
+const BOSS_MOVE_SET_FILES: [&str; 9] = [
+    "fallen_angel_red_judicator.yaml",
+    "orc_shaman_red_hood_shaman.yaml",
+    "pirate_captain_eyepatch_captain.yaml",
+    "ratkin_plague_doctor_black_mask_doctor.yaml",
+    "skeleton_knight_base.yaml",
+    "titch_the_ticker_171.yaml",
+    "troll_shaman_base.yaml",
+    "wartotaur_warlord_blackhorn_chief.yaml",
+    "wolf_beast_black_fur.yaml",
 ];
 const TILE_SIZE: u32 = 32;
 const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
@@ -108,6 +119,7 @@ pub(crate) struct WorldEncounterState {
     metadata: Option<Handle<MapMetadata>>,
     zone: Option<Handle<EncounterZone>>,
     enemy_files: Vec<Handle<EnemyCatalogFile>>,
+    boss_move_sets: Vec<(String, Handle<BossMoveSet>)>,
     backgrounds: Option<Handle<BattleBackgroundCatalog>>,
     sfx_index: Option<Handle<SfxIndex>>,
     encounter_sfx: Option<String>,
@@ -314,6 +326,7 @@ fn drive_active_encounter_assets(
     metadata_assets: Res<Assets<MapMetadata>>,
     zone_assets: Res<Assets<EncounterZone>>,
     enemy_file_assets: Res<Assets<EnemyCatalogFile>>,
+    boss_move_set_assets: Res<Assets<BossMoveSet>>,
     background_assets: Res<Assets<BattleBackgroundCatalog>>,
     sfx_assets: Res<Assets<SfxIndex>>,
     atlas_assets: Res<Assets<TsxAtlasAsset>>,
@@ -380,6 +393,16 @@ fn drive_active_encounter_assets(
                 asset_server.load(root.resolve(&path))
             })
             .collect();
+        state.boss_move_sets = BOSS_MOVE_SET_FILES
+            .iter()
+            .map(|filename| {
+                let relative = format!("boss_move_sets/{filename}");
+                let path =
+                    ScenarioRelativePath::try_from(format!("data/enemies/{relative}").as_str())
+                        .expect("fixed boss move-set path is scenario-relative");
+                (relative, asset_server.load(root.resolve(&path)))
+            })
+            .collect();
         let background_path = ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
             .expect("fixed battle background path is scenario-relative");
         state.backgrounds = Some(asset_server.load(root.resolve(&background_path)));
@@ -406,6 +429,17 @@ fn drive_active_encounter_assets(
         .any(|handle| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
     {
         fail_encounter(&mut state, "enemy catalog failed to load".to_owned());
+        return;
+    }
+    if state
+        .boss_move_sets
+        .iter()
+        .any(|(_, handle)| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+    {
+        fail_encounter(
+            &mut state,
+            "boss move-set catalog failed to load".to_owned(),
+        );
         return;
     }
     let Some(background_handle) = state.backgrounds.clone() else {
@@ -477,7 +511,19 @@ fn drive_active_encounter_assets(
     else {
         return;
     };
-    let catalog = match EnemyCatalog::try_from_definitions(
+    let Some(move_sets) = state
+        .boss_move_sets
+        .iter()
+        .map(|(path, handle)| {
+            boss_move_set_assets
+                .get(handle)
+                .map(|value| (path.as_str(), value))
+        })
+        .collect::<Option<Vec<_>>>()
+    else {
+        return;
+    };
+    let mut catalog = match EnemyCatalog::try_from_definitions(
         files.iter().flat_map(|file| file.entries().iter().cloned()),
     ) {
         Ok(catalog) => catalog,
@@ -486,6 +532,10 @@ fn drive_active_encounter_assets(
             return;
         }
     };
+    if let Err(error) = catalog.resolve_boss_move_sets(move_sets) {
+        fail_encounter(&mut state, error.to_string());
+        return;
+    }
     let Some(mut game) = game else {
         return;
     };

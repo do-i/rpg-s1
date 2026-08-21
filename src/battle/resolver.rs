@@ -40,6 +40,7 @@ impl BattleState {
             turn_order: calculate_turn_order(&combatants),
             combatants,
             active_turn: 0,
+            turn_count: 1,
             command_index: 0,
             ability_index: 0,
             pending_ability: None,
@@ -47,6 +48,7 @@ impl BattleState {
             message: "Battle start!".to_owned(),
             transcript: vec![format!("START {}", entry.encounter_id)],
             feedback_events: Vec::new(),
+            used_enemy_moves: std::collections::HashSet::new(),
             flee_outcome: None,
         }
     }
@@ -114,21 +116,7 @@ impl BattleState {
     }
 
     pub(super) fn resolve_enemy_action(&mut self, rng: &mut GameplayRng) {
-        let Some(attacker_key) = self.active_key() else {
-            return;
-        };
-        let living = self
-            .combatants
-            .iter()
-            .filter(|actor| actor.key.side == BattleSide::Party && actor.is_alive())
-            .map(|actor| actor.key)
-            .collect::<Vec<_>>();
-        if living.is_empty() {
-            self.phase = BattlePhase::Defeat;
-            return;
-        }
-        let target = living[(rng.next_u64() % living.len() as u64) as usize];
-        self.resolve_physical(attacker_key, target, rng);
+        super::enemy_ai::resolve_enemy_turn(self, rng);
     }
 
     pub(super) fn resolve_physical(
@@ -259,7 +247,7 @@ impl BattleState {
 
     pub(super) fn advance(&mut self, rng: &mut GameplayRng) {
         if !self.turn_order.is_empty() {
-            self.active_turn = (self.active_turn + 1) % self.turn_order.len();
+            self.step_turn();
         }
         self.begin_active_turn(rng);
     }
@@ -269,7 +257,15 @@ impl BattleState {
             if self.active().is_some_and(BattleCombatant::is_alive) {
                 break;
             }
-            self.active_turn = (self.active_turn + 1) % self.turn_order.len();
+            self.step_turn();
+        }
+    }
+
+    fn step_turn(&mut self) {
+        let previous = self.active_turn;
+        self.active_turn = (self.active_turn + 1) % self.turn_order.len();
+        if self.active_turn <= previous {
+            self.turn_count = self.turn_count.saturating_add(1);
         }
     }
 }

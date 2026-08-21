@@ -13,7 +13,7 @@ use crate::{
     runtime_repository::RuntimeRepository,
     scenario_balance::SpawnerBalance,
     scenario_encounter::{EncounterFormation, EncounterZone},
-    scenario_enemy::{EnemyDefinition, EnemyDrops, EnemySize},
+    scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyDefinition, EnemyDrops, EnemySize},
     scenario_party::PartyRow,
     scenario_spatial::{CardinalDirection, Position},
 };
@@ -86,6 +86,30 @@ impl EnemyCatalog {
         self.0.get(id)
     }
 
+    pub fn resolve_boss_move_sets<'a>(
+        &mut self,
+        move_sets: impl IntoIterator<Item = (&'a str, &'a BossMoveSet)>,
+    ) -> Result<(), EnemyCatalogError> {
+        let move_sets = move_sets.into_iter().collect::<BTreeMap<_, _>>();
+        for enemy in self.0.values_mut() {
+            let EnemyBehavior::Referenced { ai_ref } = &enemy.behavior else {
+                continue;
+            };
+            let path = ai_ref.as_str().to_owned();
+            let move_set = move_sets.get(path.as_str()).ok_or_else(|| {
+                EnemyCatalogError::MissingBossMoveSet {
+                    enemy_id: enemy.id.clone(),
+                    path: path.clone(),
+                }
+            })?;
+            enemy.behavior = EnemyBehavior::Inline {
+                ai: move_set.ai.clone(),
+                targeting: move_set.targeting.clone(),
+            };
+        }
+        Ok(())
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -98,12 +122,17 @@ impl EnemyCatalog {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EnemyCatalogError {
     DuplicateEnemyId(String),
+    MissingBossMoveSet { enemy_id: String, path: String },
 }
 
 impl fmt::Display for EnemyCatalogError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::DuplicateEnemyId(id) => write!(formatter, "duplicate enemy id `{id}`"),
+            Self::MissingBossMoveSet { enemy_id, path } => write!(
+                formatter,
+                "enemy `{enemy_id}` references unloaded boss move set `{path}`"
+            ),
         }
     }
 }
@@ -262,6 +291,7 @@ pub struct BattleParticipant {
     pub dexterity: i64,
     pub abilities: Vec<crate::scenario_class::Ability>,
     pub status_effects: Vec<crate::scenario_item::ItemStatus>,
+    pub accessory: Option<String>,
     pub row: PartyRow,
     pub boss: bool,
     pub enemy_type: Option<crate::scenario_enemy::EnemyType>,
@@ -382,6 +412,10 @@ pub(crate) fn build_battle_entry(
                     .cloned()
                     .collect(),
                 status_effects: member.status_effects().collect(),
+                accessory: member
+                    .equipment()
+                    .get(EquipmentSlot::Accessory)
+                    .map(str::to_owned),
                 row: member.row(),
                 boss: false,
                 enemy_type: None,
@@ -452,6 +486,7 @@ fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
         dexterity: i64::from(enemy.dexterity.get()),
         abilities: Vec::new(),
         status_effects: Vec::new(),
+        accessory: None,
         row: PartyRow::Front,
         boss: enemy.boss,
         enemy_type: Some(enemy.enemy_type),

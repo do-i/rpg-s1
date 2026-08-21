@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::Resource;
 
 use crate::{
@@ -101,6 +103,7 @@ pub(super) struct BattleCombatant {
     pub(super) dexterity: i64,
     pub(super) abilities: Vec<crate::scenario_class::Ability>,
     pub(super) status_effects: Vec<ActiveStatus>,
+    pub(super) accessory: Option<String>,
     pub(super) row: PartyRow,
     pub(super) boss: bool,
     pub(super) enemy_type: Option<crate::scenario_enemy::EnemyType>,
@@ -136,6 +139,7 @@ impl BattleCombatant {
                 .map(StatusEffect::from)
                 .map(ActiveStatus::persistent)
                 .collect(),
+            accessory: participant.accessory.clone(),
             row: participant.row,
             boss: participant.boss,
             enemy_type: participant.enemy_type,
@@ -282,7 +286,6 @@ impl BattleCombatant {
         })
     }
 
-    #[expect(dead_code, reason = "consumed by the M10 enemy-AI slice")]
     pub(super) fn is_taunting(&self) -> bool {
         self.has_status(StatusEffect::Taunt)
     }
@@ -438,6 +441,7 @@ pub(super) struct BattleState {
     pub(super) combatants: Vec<BattleCombatant>,
     pub(super) turn_order: Vec<CombatantKey>,
     pub(super) active_turn: usize,
+    pub(super) turn_count: u32,
     pub(super) command_index: usize,
     pub(super) ability_index: usize,
     pub(super) pending_ability: Option<usize>,
@@ -445,6 +449,7 @@ pub(super) struct BattleState {
     pub(super) message: String,
     pub(super) transcript: Vec<String>,
     pub(super) feedback_events: Vec<super::action::BattleEvent>,
+    pub(super) used_enemy_moves: HashSet<(CombatantKey, String)>,
     pub(super) flee_outcome: Option<FleeOutcome>,
 }
 

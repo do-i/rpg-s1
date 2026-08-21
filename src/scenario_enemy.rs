@@ -422,7 +422,7 @@ pub struct EnemyLootEntry {
 }
 
 /// One id-less mapping-root boss move-set document.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(deny_unknown_fields)]
 pub struct BossMoveSet {
     pub ai: EnemyAi,

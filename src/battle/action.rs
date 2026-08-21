@@ -45,6 +45,16 @@ pub(super) enum BattleEvent {
         amount: u32,
         knocked_out: bool,
     },
+    EnemyAbilityDamage {
+        source: CombatantKey,
+        target: CombatantKey,
+        amount: u32,
+        knocked_out: bool,
+    },
+    EnemyAbilityBlocked {
+        source: CombatantKey,
+        target: CombatantKey,
+    },
     Heal {
         source: CombatantKey,
         target: CombatantKey,
