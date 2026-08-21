@@ -25,6 +25,7 @@ use crate::{
 const TILE_SIZE: u32 = 32;
 const SPRITE_HALF_HEIGHT: f32 = 32.0;
 const BASE_FRAME_SECONDS: f32 = 0.15;
+const WANDER_PIXELS_PER_SECOND: f32 = 60.0;
 const WANDER_PAUSE_MIN: f32 = 1.0;
 const WANDER_PAUSE_SPAN: f32 = 2.5;
 
@@ -322,6 +323,7 @@ fn update_world_npcs(
         return;
     };
     let player_tile = game.map().position();
+    let player_facing = game.map().facing();
     let Some(map_id) = game.map().current().map(|map| map.as_str()) else {
         return;
     };
@@ -342,12 +344,14 @@ fn update_world_npcs(
     let delta = time.delta_secs();
 
     for (entity, mut actor, mut sprite, mut transform) in &mut actors {
-        let near = is_near(
+        let notices_player = notices_player(
             actor.top_left,
+            actor.facing,
             player_motion.top_left(),
+            player_facing,
             actor.interaction_range * TILE_SIZE as f32,
         );
-        if near {
+        if notices_player {
             actor.facing = direction_toward(actor.top_left, player_motion.top_left());
             actor.frame = 0;
             actor.wander_target = None;
@@ -407,11 +411,10 @@ fn update_wander(
     let target = actor.wander_target.expect("checked above");
     let delta_to_target = target - actor.top_left;
     let distance = delta_to_target.abs().max_element();
-    let speed = TILE_SIZE as f32 * 1.5 * actor.speed;
-    let next = if distance <= speed * delta {
+    let next = if distance <= WANDER_PIXELS_PER_SECOND * delta {
         target
     } else {
-        let step = speed * delta;
+        let step = WANDER_PIXELS_PER_SECOND * delta;
         actor.top_left
             + Vec2::new(
                 if delta_to_target.x == 0.0 {
@@ -541,6 +544,28 @@ fn is_near(npc: Vec2, player: Vec2, range: f32) -> bool {
     (npc.x - player.x).abs() <= range && (npc.y - player.y).abs() <= range
 }
 
+fn notices_player(
+    npc: Vec2,
+    npc_facing: CardinalDirection,
+    player: Vec2,
+    player_facing: CardinalDirection,
+    range: f32,
+) -> bool {
+    is_near(npc, player, range)
+        && is_facing_toward(npc, player, npc_facing)
+        && is_facing_toward(player, npc, player_facing)
+}
+
+fn is_facing_toward(from: Vec2, to: Vec2, facing: CardinalDirection) -> bool {
+    let delta = to - from;
+    match facing {
+        CardinalDirection::Up => delta.y < 0.0,
+        CardinalDirection::Down => delta.y > 0.0,
+        CardinalDirection::Left => delta.x < 0.0,
+        CardinalDirection::Right => delta.x > 0.0,
+    }
+}
+
 fn character_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
     CharacterCollisionRect {
         x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
@@ -602,6 +627,27 @@ mod tests {
         CollisionOccupancy::from_tmx_document(&document).unwrap()
     }
 
+    fn wandering_actor(speed: f32) -> WorldNpc {
+        WorldNpc {
+            map_id: "invented".into(),
+            name: "Npc".into(),
+            dialogue_id: "npc".into(),
+            origin: Position::new(4, 4),
+            position: Position::new(4, 4),
+            top_left: character_top_left(Position::new(4, 4)),
+            facing: CardinalDirection::Down,
+            default_facing: CardinalDirection::Down,
+            mode: NpcAnimationMode::Wander,
+            speed,
+            range: 2,
+            interaction_range: 1.5,
+            frame: 0,
+            frame_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        }
+    }
+
     #[test]
     fn presence_conditions_select_exact_ardel_elise_state() {
         let metadata = ardel_metadata();
@@ -631,24 +677,7 @@ mod tests {
     #[test]
     fn deterministic_wander_targets_stay_bounded_and_avoid_occupants() {
         let collision = open_collision();
-        let mut actor = WorldNpc {
-            map_id: "invented".into(),
-            name: "Npc".into(),
-            dialogue_id: "npc".into(),
-            origin: Position::new(4, 4),
-            position: Position::new(4, 4),
-            top_left: character_top_left(Position::new(4, 4)),
-            facing: CardinalDirection::Down,
-            default_facing: CardinalDirection::Down,
-            mode: NpcAnimationMode::Wander,
-            speed: 1.0,
-            range: 2,
-            interaction_range: 1.5,
-            frame: 0,
-            frame_elapsed: 0.0,
-            wander_pause: 0.0,
-            wander_target: None,
-        };
+        let mut actor = wandering_actor(1.0);
         let entity = Entity::from_bits(1);
         let occupied_entity = Entity::from_bits(2);
         let snapshot = [
@@ -676,24 +705,7 @@ mod tests {
     #[test]
     fn wandering_npc_moves_fractionally_toward_target_instead_of_teleporting() {
         let collision = open_collision();
-        let mut actor = WorldNpc {
-            map_id: "invented".into(),
-            name: "Npc".into(),
-            dialogue_id: "npc".into(),
-            origin: Position::new(4, 4),
-            position: Position::new(4, 4),
-            top_left: character_top_left(Position::new(4, 4)),
-            facing: CardinalDirection::Down,
-            default_facing: CardinalDirection::Down,
-            mode: NpcAnimationMode::Wander,
-            speed: 1.0,
-            range: 2,
-            interaction_range: 1.5,
-            frame: 0,
-            frame_elapsed: 0.0,
-            wander_pause: 0.0,
-            wander_target: None,
-        };
+        let mut actor = wandering_actor(1.0);
         let start = actor.top_left;
         actor.wander_target = Some(start + Vec2::new(TILE_SIZE as f32, 0.0));
         let entity = Entity::from_bits(1);
@@ -717,5 +729,80 @@ mod tests {
         assert_eq!(actor.position, Position::new(4, 4));
         assert_eq!(actor.facing, CardinalDirection::Right);
         assert!(actor.wander_target.is_some());
+    }
+
+    #[test]
+    fn animation_speed_does_not_accelerate_wander_travel() {
+        let collision = open_collision();
+        let mut normal = wandering_actor(1.0);
+        let mut fast_animation = wandering_actor(2.2);
+        let start = normal.top_left;
+        let target = start + Vec2::new(100.0, 0.0);
+        normal.wander_target = Some(target);
+        fast_animation.wander_target = Some(target);
+        let entity = Entity::from_bits(1);
+        let snapshot = [(entity, normal.collision_rect())];
+        let player = character_collision_rect(character_top_left(Position::new(8, 8)));
+        let mut normal_rng = GameplayRng::from_seed(9);
+        let mut fast_rng = GameplayRng::from_seed(9);
+
+        update_wander(
+            &mut normal,
+            0.1,
+            entity,
+            player,
+            &snapshot,
+            &collision,
+            &mut normal_rng,
+        );
+        update_wander(
+            &mut fast_animation,
+            0.1,
+            entity,
+            player,
+            &snapshot,
+            &collision,
+            &mut fast_rng,
+        );
+
+        assert_eq!(normal.top_left, start + Vec2::new(6.0, 0.0));
+        assert_eq!(fast_animation.top_left, normal.top_left);
+        assert_eq!(normal.frame, 0);
+        assert_eq!(fast_animation.frame, 1);
+    }
+
+    #[test]
+    fn npc_only_notices_a_mutually_facing_player() {
+        let npc = Vec2::new(100.0, 100.0);
+        let player = Vec2::new(100.0, 120.0);
+
+        assert!(notices_player(
+            npc,
+            CardinalDirection::Down,
+            player,
+            CardinalDirection::Up,
+            48.0,
+        ));
+        assert!(!notices_player(
+            npc,
+            CardinalDirection::Up,
+            player,
+            CardinalDirection::Up,
+            48.0,
+        ));
+        assert!(!notices_player(
+            npc,
+            CardinalDirection::Down,
+            player,
+            CardinalDirection::Down,
+            48.0,
+        ));
+        assert!(!notices_player(
+            npc,
+            CardinalDirection::Down,
+            player,
+            CardinalDirection::Up,
+            19.0,
+        ));
     }
 }
