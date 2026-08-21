@@ -52,6 +52,7 @@ impl BattleState {
             transcript: vec![format!("START {}", entry.encounter_id)],
             feedback_events: Vec::new(),
             used_enemy_moves: std::collections::HashSet::new(),
+            rewards: None,
             flee_outcome: None,
         }
     }

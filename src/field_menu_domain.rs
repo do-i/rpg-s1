@@ -149,6 +149,28 @@ impl FieldMenuCatalog {
             })
             .collect()
     }
+
+    #[cfg(test)]
+    pub(crate) fn production_class_fixture() -> Self {
+        let classes = [
+            include_str!("../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+        ]
+        .into_iter()
+        .map(|document| {
+            let class: ClassDefinition = crate::scenario_yaml::from_str(document).unwrap();
+            (class.class_id.clone(), class)
+        })
+        .collect();
+        Self {
+            status: CatalogStatus::Ready,
+            classes,
+            ..default()
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

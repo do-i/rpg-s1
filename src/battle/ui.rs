@@ -23,6 +23,7 @@ use super::{
         BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
         TargetGroup, TargetSelector,
     },
+    rewards::apply_rewards,
     rules::{flee_chance, phase_after_flee_confirmation, roll_flee, wrap_index},
 };
 
@@ -676,7 +677,8 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                 list.spawn((
                     Node {
                         width: percent(100),
-                        height: px(36),
+                        min_height: px(36),
+                        flex_grow: 1.0,
                         padding: UiRect::axes(px(12), px(6)),
                         border: UiRect::all(px(1)),
                         border_radius: BorderRadius::all(px(5)),
@@ -1155,7 +1157,27 @@ fn handle_battle_input(
         }
         BattlePhase::Resolve if actions.just_pressed(AppAction::Confirm) => state.assess_result(),
         BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) => {
-            apply_victory(&mut commands, &mut game, entry, &state);
+            let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
+                state.message = "Battle balance is still loading.".to_owned();
+                return;
+            };
+            match apply_rewards(
+                &mut state,
+                &mut game,
+                catalog,
+                balance,
+                entry.boss_completion_flag.as_deref(),
+            ) {
+                Ok(rewards) => {
+                    debug_assert_eq!(state.rewards.as_ref(), Some(&rewards));
+                    state.phase = BattlePhase::Rewards;
+                    state.message = "Rewards applied. Press Enter to continue.".to_owned();
+                }
+                Err(error) => state.message = format!("Could not apply rewards: {error}"),
+            }
+        }
+        BattlePhase::Rewards if actions.just_pressed(AppAction::Confirm) => {
+            restore_world(&mut commands, &mut game, entry);
             transitions.write(AppStateTransitionRequest::new(AppState::World));
         }
         BattlePhase::Defeat => {
@@ -1320,30 +1342,6 @@ fn attempt_flee(state: &mut BattleState, balances: &Assets<BalanceData>, game: &
     state.transcript.push(format!("FLEE {outcome:?}"));
 }
 
-fn apply_victory(
-    commands: &mut Commands,
-    game: &mut GameState,
-    entry: &BattleEntry,
-    state: &BattleState,
-) {
-    for actor in state
-        .combatants
-        .iter()
-        .filter(|actor| actor.key.side == BattleSide::Party)
-    {
-        if let Some(member) = game.party_mut().member_mut(&actor.id) {
-            member.apply_damage(member.health().saturating_sub(actor.health));
-            member.spend_mana(member.mana().saturating_sub(actor.mana));
-        }
-    }
-    if let Some(flag) = entry.boss_completion_flag.as_deref()
-        && !flag.is_empty()
-    {
-        game.flags_mut().set(flag);
-    }
-    restore_world(commands, game, entry);
-}
-
 fn restore_world(commands: &mut Commands, game: &mut GameState, entry: &BattleEntry) {
     if restore_pre_battle_context(game, &entry.return_context).is_ok() {
         commands.insert_resource(WorldEncounterRestore {
@@ -1454,6 +1452,8 @@ fn sync_battle_commands(
                 )
             } else if state.phase == BattlePhase::Item {
                 "Battle Items".to_owned()
+            } else if state.phase == BattlePhase::Rewards {
+                "Victory Rewards".to_owned()
             } else {
                 state
                     .active_key()
@@ -1468,6 +1468,10 @@ fn sync_battle_commands(
     let ability_choices = state.battle_ability_indices();
     let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
     let item_page = state.item_index / COMMANDS.len() * COMMANDS.len();
+    let reward_lines = state
+        .rewards
+        .as_ref()
+        .map_or_else(Vec::new, super::rewards::BattleRewards::summary_lines);
     for (marker, mut background, mut border) in &mut rows {
         let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
             || (state.phase == BattlePhase::Ability
@@ -1513,6 +1517,15 @@ fn sync_battle_commands(
             };
             text.0 = format!("{}  x{}", item.name, item.quantity);
             color.0 = battle_ink();
+            continue;
+        }
+        if state.phase == BattlePhase::Rewards {
+            text.0 = reward_lines.get(marker.0).cloned().unwrap_or_default();
+            color.0 = if marker.0 == 0 {
+                battle_gold()
+            } else {
+                battle_ink()
+            };
             continue;
         }
         let command = COMMANDS[marker.0];

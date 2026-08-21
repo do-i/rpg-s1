@@ -8,6 +8,7 @@ use super::{
         TargetSelector,
     },
     resolver::resolve_action,
+    rewards::{RewardError, apply_rewards, calculate_rewards},
     rules::{
         calculate_turn_order, critical_damage, critical_hit_chance, flee_chance,
         phase_after_flee_confirmation, physical_damage, physical_hit_chance, roll_flee,
@@ -17,13 +18,17 @@ use super::{
 };
 use crate::{
     encounter::BattleSide,
+    field_menu_domain::FieldMenuCatalog,
+    game_state::GameState,
     gameplay_rng::GameplayRng,
+    new_game::{NewGameScenario, build_new_game_state},
     runtime_repository::RuntimeRepository,
     scenario_balance::BalanceData,
     scenario_class::{Ability, ClassDefinition},
     scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyType},
     scenario_item::{ConsumableItem, ItemCatalogFile, ItemDefinition},
-    scenario_party::PartyRow,
+    scenario_manifest::Manifest,
+    scenario_party::{PartyCatalog, PartyRow},
     scenario_yaml,
 };
 
@@ -82,6 +87,57 @@ fn consumable(id: &str) -> ConsumableItem {
     .unwrap_or_else(|| panic!("missing consumable fixture {id}"))
 }
 
+fn reward_game() -> (GameState, BalanceData) {
+    let manifest: Manifest = scenario_yaml::from_str(include_str!(
+        "../../assets/scenarios/rusted_kingdoms/manifest.yaml"
+    ))
+    .unwrap();
+    let party: PartyCatalog = scenario_yaml::from_str(include_str!(
+        "../../assets/scenarios/rusted_kingdoms/data/party.yaml"
+    ))
+    .unwrap();
+    let balance: BalanceData = scenario_yaml::from_str(include_str!(
+        "../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
+    ))
+    .unwrap();
+    let game = build_new_game_state(
+        NewGameScenario {
+            manifest: &manifest,
+            party: &party,
+            balance: &balance,
+        },
+        std::time::Duration::ZERO,
+    )
+    .unwrap();
+    (game, balance)
+}
+
+fn reward_enemy(id: &str, index: usize) -> BattleCombatant {
+    let definition = EnemyCatalogFile::from_yaml_stream(include_str!(
+        "../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml"
+    ))
+    .unwrap()
+    .0
+    .into_iter()
+    .find(|enemy| enemy.id == id)
+    .unwrap();
+    let mut enemy = actor(
+        BattleSide::Enemy,
+        index,
+        i64::from(definition.dexterity.get()),
+        1,
+    );
+    enemy.id = definition.id;
+    enemy.name = definition.name;
+    enemy.health = 0;
+    enemy.max_health = definition.hp.get();
+    enemy.boss = definition.boss;
+    enemy.enemy_type = Some(definition.enemy_type);
+    enemy.experience_yield = definition.experience.get();
+    enemy.drops = Some(definition.drops);
+    enemy
+}
+
 fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombatant {
     BattleCombatant {
         key: CombatantKey { side, index },
@@ -127,6 +183,7 @@ fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         transcript: Vec::new(),
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
+        rewards: None,
         flee_outcome: None,
     }
 }
@@ -145,10 +202,12 @@ fn phase_graph_names_and_bounds_every_minimum_loop_transition() {
     assert!(BattlePhase::Resolve.allows(BattlePhase::Advance));
     assert!(BattlePhase::Advance.allows(BattlePhase::Command));
     assert!(BattlePhase::Resolve.allows(BattlePhase::Victory));
+    assert!(BattlePhase::Victory.allows(BattlePhase::Rewards));
     assert!(BattlePhase::Resolve.allows(BattlePhase::Defeat));
     assert!(BattlePhase::Command.allows(BattlePhase::Flee));
     assert!(BattlePhase::Flee.allows(BattlePhase::Advance));
     assert!(!BattlePhase::Victory.allows(BattlePhase::Command));
+    assert!(!BattlePhase::Rewards.allows(BattlePhase::Command));
     assert!(!BattlePhase::Defeat.allows(BattlePhase::Advance));
 }
 
@@ -931,6 +990,185 @@ fn battle_round_counter_increments_only_when_turn_order_wraps() {
 }
 
 #[test]
+fn rewards_split_all_exp_only_across_living_members_with_seeded_remainder() {
+    let mut first = actor(BattleSide::Party, 0, 10, 100);
+    first.id = "first".to_owned();
+    let mut second = actor(BattleSide::Party, 1, 9, 100);
+    second.id = "second".to_owned();
+    let mut ko = actor(BattleSide::Party, 2, 8, 100);
+    ko.id = "ko".to_owned();
+    ko.health = 0;
+    let mut enemy_a = actor(BattleSide::Enemy, 0, 2, 1);
+    enemy_a.experience_yield = 4;
+    enemy_a.health = 0;
+    let mut enemy_b = actor(BattleSide::Enemy, 1, 1, 1);
+    enemy_b.experience_yield = 3;
+    enemy_b.health = 0;
+    let state = state_with(vec![first, second, ko, enemy_a, enemy_b]);
+
+    let rewards = calculate_rewards(&state, &mut GameplayRng::from_seed(17));
+    assert_eq!(rewards.total_experience, 7);
+    assert_eq!(
+        rewards
+            .members
+            .iter()
+            .map(|member| member.experience_gained)
+            .sum::<u32>(),
+        7
+    );
+    assert_eq!(
+        rewards
+            .members
+            .iter()
+            .find(|member| member.member_id == "ko")
+            .unwrap()
+            .experience_gained,
+        0
+    );
+    assert_eq!(
+        rewards,
+        calculate_rewards(&state, &mut GameplayRng::from_seed(17))
+    );
+}
+
+#[test]
+fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
+    let state = state_with(vec![
+        actor(BattleSide::Party, 0, 10, 100),
+        reward_enemy("goblin", 0),
+        reward_enemy("grik_the_grin", 1),
+    ]);
+    let rewards = calculate_rewards(&state, &mut GameplayRng::from_seed(31));
+    let quantity = |id: &str| {
+        rewards
+            .loot
+            .iter()
+            .find(|loot| loot.item_id == id)
+            .map_or(0, |loot| loot.quantity)
+    };
+    assert_eq!(quantity("mc_xs"), 5);
+    assert_eq!(quantity("mc_s"), 1);
+    assert_eq!(
+        rewards
+            .loot
+            .iter()
+            .filter(|loot| !loot.magic_core)
+            .map(|loot| loot.quantity)
+            .sum::<u32>(),
+        2
+    );
+    assert_eq!(
+        rewards,
+        calculate_rewards(&state, &mut GameplayRng::from_seed(31))
+    );
+}
+
+#[test]
+fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
+    let (mut game, balance) = reward_game();
+    let catalog = FieldMenuCatalog::production_class_fixture();
+    let mut aric = actor(BattleSide::Party, 0, 10, 22);
+    aric.id = "aric".to_owned();
+    aric.name = "Aric".to_owned();
+    aric.class_id = "hero".to_owned();
+    aric.health = 12;
+    aric.mana = 2;
+    aric.max_mana = 12;
+    let mut boss = reward_enemy("grik_the_grin", 0);
+    boss.experience_yield = 400;
+    let mut state = state_with(vec![aric, boss]);
+
+    let rewards = apply_rewards(
+        &mut state,
+        &mut game,
+        &catalog,
+        &balance,
+        Some("boss_zone01_defeated"),
+    )
+    .unwrap();
+    let member = game.party().member("aric").unwrap();
+    assert_eq!((member.level(), member.experience()), (2, 400));
+    assert_eq!((member.health(), member.mana()), (59, 24));
+    assert_eq!(rewards.members[0].learned_abilities, ["Power Strike"]);
+    assert!(game.flags().is_set("boss_zone01_defeated"));
+    assert_eq!(game.repository().item_count("mc_xs"), 2);
+    assert_eq!(game.repository().item_count("mc_s"), 1);
+    assert!(game.repository().is_loot("mc_xs"));
+    assert_eq!(
+        game.repository().item_tags("mc_xs").collect::<Vec<_>>(),
+        ["magic_core"]
+    );
+    assert_eq!(rewards.gp_gained, 0);
+    let summary = rewards.summary_lines();
+    assert_eq!(summary[0], "EXP 400  GP 0");
+    assert_eq!(summary[1], "Aric +400 EXP");
+    assert!(summary[2].contains("Magic Core (XS) x2"));
+    assert!(summary[2].contains("Magic Core (S) x1"));
+    assert!(summary[3].contains("Aric Lv 1>2 HP +37=59 MP +12=24"));
+    assert!(summary[3].contains("Aric learned Power Strike"));
+    assert!(summary[3].contains("Boss cleared (boss_zone01_defeated)"));
+
+    let after = game.clone();
+    assert!(matches!(
+        apply_rewards(
+            &mut state,
+            &mut game,
+            &catalog,
+            &balance,
+            Some("boss_zone01_defeated"),
+        ),
+        Err(RewardError::AlreadyApplied)
+    ));
+    assert_eq!(game, after);
+}
+
+#[test]
+fn configured_boss_flag_is_ignored_for_a_regular_enemy_victory() {
+    let (mut game, balance) = reward_game();
+    let catalog = FieldMenuCatalog::production_class_fixture();
+    let mut aric = actor(BattleSide::Party, 0, 10, 22);
+    aric.id = "aric".to_owned();
+    aric.class_id = "hero".to_owned();
+    let enemy = reward_enemy("goblin", 0);
+    let mut state = state_with(vec![aric, enemy]);
+
+    let rewards = apply_rewards(
+        &mut state,
+        &mut game,
+        &catalog,
+        &balance,
+        Some("should_not_set"),
+    )
+    .unwrap();
+
+    assert_eq!(rewards.boss_flag, None);
+    assert!(!game.flags().is_set("should_not_set"));
+}
+
+#[test]
+fn reward_application_rolls_back_every_change_when_a_later_member_is_invalid() {
+    let (mut game, balance) = reward_game();
+    let catalog = FieldMenuCatalog::production_class_fixture();
+    let mut aric = actor(BattleSide::Party, 0, 10, 22);
+    aric.id = "aric".to_owned();
+    aric.class_id = "hero".to_owned();
+    let mut missing = actor(BattleSide::Party, 1, 9, 10);
+    missing.id = "not_in_runtime_party".to_owned();
+    missing.class_id = "hero".to_owned();
+    let mut enemy = reward_enemy("goblin", 0);
+    enemy.experience_yield = 800;
+    let mut state = state_with(vec![aric, missing, enemy]);
+    let before = game.clone();
+
+    assert!(matches!(
+        apply_rewards(&mut state, &mut game, &catalog, &balance, None),
+        Err(RewardError::MissingPartyMember(id)) if id == "not_in_runtime_party"
+    ));
+    assert_eq!(game, before);
+    assert_eq!(state.rewards, None);
+}
+
+#[test]
 fn enemy_target_selection_handles_single_wrap_cancel_and_no_target() {
     let actors = vec![
         actor(BattleSide::Party, 0, 4, 10),
@@ -1177,6 +1415,7 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         transcript: Vec::new(),
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
+        rewards: None,
         flee_outcome: None,
     };
     state.skip_knocked_out();
@@ -1206,6 +1445,7 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         transcript: vec![],
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
+        rewards: None,
         flee_outcome: None,
     };
     state.assess_result();
@@ -1242,6 +1482,7 @@ fn deterministic_basic_battle_transcript_is_stable() {
             transcript: vec!["START fixture".to_owned()],
             feedback_events: Vec::new(),
             used_enemy_moves: std::collections::HashSet::new(),
+            rewards: None,
             flee_outcome: None,
         };
         state.combatants[0].attack = 14;

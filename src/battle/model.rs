@@ -22,6 +22,7 @@ pub(super) enum BattlePhase {
     Resolve,
     Advance,
     Victory,
+    Rewards,
     Defeat,
     Flee,
 }
@@ -42,7 +43,8 @@ impl BattlePhase {
             ),
             Self::Resolve => matches!(next, Self::Advance | Self::Victory | Self::Defeat),
             Self::Advance => matches!(next, Self::Command | Self::Resolve | Self::Defeat),
-            Self::Victory | Self::Defeat => false,
+            Self::Victory => matches!(next, Self::Rewards),
+            Self::Rewards | Self::Defeat => false,
             Self::Flee => matches!(next, Self::Advance),
         }
     }
@@ -454,6 +456,7 @@ pub(super) struct BattleState {
     pub(super) transcript: Vec<String>,
     pub(super) feedback_events: Vec<super::action::BattleEvent>,
     pub(super) used_enemy_moves: HashSet<(CombatantKey, String)>,
+    pub(super) rewards: Option<super::rewards::BattleRewards>,
     pub(super) flee_outcome: Option<FleeOutcome>,
 }
 

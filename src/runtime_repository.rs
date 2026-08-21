@@ -27,6 +27,7 @@ pub struct RuntimeRepository {
     item_counts: BTreeMap<String, u32>,
     gp_cap: u32,
     item_quantity_cap: u32,
+    max_tags_per_item: u32,
     hidden_item_ids: BTreeSet<String>,
     locked_item_ids: BTreeSet<String>,
     item_tags: BTreeMap<String, BTreeSet<String>>,
@@ -43,6 +44,7 @@ impl RuntimeRepository {
             item_counts: BTreeMap::new(),
             gp_cap: balance.gp_cap.get(),
             item_quantity_cap: balance.item_qty_cap.get(),
+            max_tags_per_item: balance.max_tags_per_item,
             hidden_item_ids: BTreeSet::new(),
             locked_item_ids: BTreeSet::new(),
             item_tags: BTreeMap::new(),
@@ -200,6 +202,39 @@ impl RuntimeRepository {
         let outcome = self.add_item(item_id.clone(), amount)?;
         if outcome.added > 0 {
             self.item_loot_batches.insert(item_id, batch);
+        }
+        Ok(outcome)
+    }
+
+    pub(crate) fn add_loot_item_in_batch(
+        &mut self,
+        item_id: impl Into<String>,
+        amount: u32,
+        batch: u64,
+        tags: impl IntoIterator<Item = String>,
+    ) -> Result<AdditionOutcome, RepositoryError> {
+        let item_id = item_id.into();
+        let tags = tags.into_iter().collect::<BTreeSet<_>>();
+        if tags.iter().any(String::is_empty) {
+            return Err(RepositoryError::EmptyTag { item_id });
+        }
+        let existing = self.item_tags.get(&item_id);
+        let tag_count = existing.map_or(0, BTreeSet::len)
+            + tags
+                .iter()
+                .filter(|tag| existing.is_none_or(|current| !current.contains(*tag)))
+                .count();
+        if tag_count > self.max_tags_per_item as usize {
+            return Err(RepositoryError::TooManyTags {
+                item_id,
+                count: tag_count,
+                cap: self.max_tags_per_item,
+            });
+        }
+        let outcome = self.add_item_in_batch(item_id.clone(), amount, batch)?;
+        if outcome.added > 0 {
+            self.loot_item_ids.insert(item_id.clone());
+            self.item_tags.entry(item_id).or_default().extend(tags);
         }
         Ok(outcome)
     }
@@ -629,5 +664,38 @@ mod tests {
         assert!(!repository.contains_item("potion"));
         assert_eq!(repository.item_count("potion"), 0);
         assert_eq!(repository.item_counts().count(), 0);
+    }
+
+    #[test]
+    fn loot_addition_stamps_batch_and_tags_only_after_all_metadata_validates() {
+        let mut rules = balance(10, 5);
+        rules.max_tags_per_item = 1;
+        let mut repository = RuntimeRepository::from_balance(&rules);
+        let batch = repository.start_loot_batch();
+        let before = repository.clone();
+
+        assert!(matches!(
+            repository.add_loot_item_in_batch("mc_xs", 2, batch, [String::new()]),
+            Err(RepositoryError::EmptyTag { .. })
+        ));
+        assert_eq!(repository, before);
+
+        let added = repository
+            .add_loot_item_in_batch("mc_xs", 2, batch, ["magic_core".to_owned()])
+            .unwrap();
+        assert_eq!(added.added(), 2);
+        assert!(repository.is_loot("mc_xs"));
+        assert!(repository.is_new_item("mc_xs"));
+        assert_eq!(
+            repository.item_tags("mc_xs").collect::<Vec<_>>(),
+            ["magic_core"]
+        );
+
+        let before = repository.clone();
+        assert!(matches!(
+            repository.add_loot_item_in_batch("mc_xs", 1, batch, ["second".to_owned()]),
+            Err(RepositoryError::TooManyTags { .. })
+        ));
+        assert_eq!(repository, before);
     }
 }

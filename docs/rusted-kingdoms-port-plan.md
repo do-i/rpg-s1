@@ -462,14 +462,14 @@ families merely because they share a renderer.
 | M10.21 | [x] Implement damage floats. | `T` | Spawn, rise, fade, and cleanup are bounded. |
 | M10.22 | [x] Implement hit flash. | `T` | Flash timing restores the original material/color. |
 | M10.23 | [x] Implement battle FX event routing. | `S` | Resolver logic is independent of animation completion. |
-| M10.24 | [ ] Calculate GP and EXP rewards. | `S` | Multi-enemy and KO-member fixtures match. |
-| M10.25 | [ ] Calculate deterministic loot drops. | `S` | Seeded rolls and quantity bounds match. |
-| M10.26 | [ ] Apply rewards atomically. | `S` | Caps, loot batch, GP, and EXP update once. |
-| M10.27 | [ ] Implement EXP thresholds. | `T` | Every class fixture matches its curve. |
-| M10.28 | [ ] Implement one level-up. | `S` | Stats, HP/MP maxima, restore, and ability unlock match. |
-| M10.29 | [ ] Implement multiple level-ups from one reward. | `S` | Each crossed level applies exactly once. |
-| M10.30 | [ ] Render post-battle rewards. | `S` | GP, loot, EXP, levels, and learned abilities display. |
-| M10.31 | [ ] Add a boss-defeat flag hook. | `S` | Only configured boss outcomes set managed flags. |
+| M10.24 | [x] Calculate GP and EXP rewards. | `S` | Multi-enemy and KO-member fixtures match. |
+| M10.25 | [x] Calculate deterministic loot drops. | `S` | Seeded rolls and quantity bounds match. |
+| M10.26 | [x] Apply rewards atomically. | `S` | Caps, loot batch, GP, and EXP update once. |
+| M10.27 | [x] Implement EXP thresholds. | `T` | Every class fixture matches its curve. |
+| M10.28 | [x] Implement one level-up. | `S` | Stats, HP/MP maxima, restore, and ability unlock match. |
+| M10.29 | [x] Implement multiple level-ups from one reward. | `S` | Each crossed level applies exactly once. |
+| M10.30 | [x] Render post-battle rewards. | `S` | GP, loot, EXP, levels, and learned abilities display. |
+| M10.31 | [x] Add a boss-defeat flag hook. | `S` | Only configured boss outcomes set managed flags. |
 | M10.32 | [ ] Add full battle parity fixtures. | `X` | Representative physical, spell, item, status, boss, and reward transcripts agree. |
 
 **Gate 10:** The first zone's complete enemy roster and boss can be fought with

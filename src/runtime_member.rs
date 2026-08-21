@@ -15,6 +15,7 @@ use std::{collections::BTreeSet, error::Error, fmt};
 
 use crate::{
     scenario_balance::ProgressionBalance,
+    scenario_class::ClassDefinition,
     scenario_party::{PartyEquipment, PartyMember, PartyRow, PartyStats},
 };
 
@@ -316,6 +317,11 @@ impl RuntimeMember {
         self.mana - before
     }
 
+    pub(crate) fn sync_battle_pools(&mut self, health: u32, mana: u32) {
+        self.health = health.min(self.max_health);
+        self.mana = mana.min(self.max_mana);
+    }
+
     /// Adds EXP up to the selected scenario cap, without applying level thresholds.
     ///
     /// The source awards no EXP once a member is already at the level cap. M10 owns threshold
@@ -330,6 +336,60 @@ impl RuntimeMember {
             .saturating_add(amount)
             .min(progression.exp_cap.get());
         self.experience.saturating_sub(before)
+    }
+
+    pub(crate) fn apply_experience_progression(
+        &mut self,
+        amount: u32,
+        class: &ClassDefinition,
+        progression: &ProgressionBalance,
+    ) -> ExperienceProgression {
+        let added = self.add_experience(amount, progression);
+        let mut level_ups = Vec::new();
+        while self.level < progression.level_cap.get()
+            && self.experience >= experience_required(class, self.level.saturating_add(1))
+        {
+            let old_level = self.level;
+            self.level += 1;
+            let growth_index =
+                (self.level.saturating_sub(1) as usize) % class.stat_growth.strength.len();
+            let strength = class.stat_growth.strength[growth_index];
+            let dexterity = class.stat_growth.dex[growth_index];
+            let constitution = class.stat_growth.con[growth_index];
+            let intelligence = class.stat_growth.intelligence[growth_index];
+            self.stats.strength = self.stats.strength.saturating_add(strength);
+            self.stats.dexterity = self.stats.dexterity.saturating_add(dexterity);
+            self.stats.constitution = self.stats.constitution.saturating_add(constitution);
+            self.stats.intelligence = self.stats.intelligence.saturating_add(intelligence);
+            let health = self.stats.constitution.saturating_add(6);
+            let mana = self.stats.intelligence.saturating_add(6);
+            self.max_health = self.max_health.saturating_add(health);
+            self.max_mana = self.max_mana.saturating_add(mana);
+            self.health = self.max_health;
+            self.mana = self.max_mana;
+            level_ups.push(RuntimeLevelUp {
+                old_level,
+                new_level: self.level,
+                health,
+                mana,
+                strength,
+                dexterity,
+                constitution,
+                intelligence,
+                max_health: self.max_health,
+                max_mana: self.max_mana,
+                total_strength: self.stats.strength,
+                total_dexterity: self.stats.dexterity,
+                total_constitution: self.stats.constitution,
+                total_intelligence: self.stats.intelligence,
+            });
+        }
+        self.experience_next = if self.level >= progression.level_cap.get() {
+            0
+        } else {
+            experience_required(class, self.level.saturating_add(1))
+        };
+        ExperienceProgression { added, level_ups }
     }
 
     /// Replaces one slot after a caller has validated inventory ownership and compatibility.
@@ -352,6 +412,34 @@ impl RuntimeMember {
     pub fn unequip(&mut self, slot: EquipmentSlot) -> Option<String> {
         self.equipment.replace(slot, None)
     }
+}
+
+pub(crate) fn experience_required(class: &ClassDefinition, level: u32) -> u32 {
+    (f64::from(class.exp_base.get()) * f64::from(level).powf(class.exp_factor.get())) as u32
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ExperienceProgression {
+    pub(crate) added: u32,
+    pub(crate) level_ups: Vec<RuntimeLevelUp>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RuntimeLevelUp {
+    pub(crate) old_level: u32,
+    pub(crate) new_level: u32,
+    pub(crate) health: u32,
+    pub(crate) mana: u32,
+    pub(crate) strength: u32,
+    pub(crate) dexterity: u32,
+    pub(crate) constitution: u32,
+    pub(crate) intelligence: u32,
+    pub(crate) max_health: u32,
+    pub(crate) max_mana: u32,
+    pub(crate) total_strength: u32,
+    pub(crate) total_dexterity: u32,
+    pub(crate) total_constitution: u32,
+    pub(crate) total_intelligence: u32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -693,6 +781,13 @@ mod tests {
         }
     }
 
+    fn hero_class() -> ClassDefinition {
+        scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"
+        ))
+        .unwrap()
+    }
+
     fn with_data(member: &mut PartyMember, mutate: impl FnOnce(&mut PartyMemberData)) {
         match member {
             PartyMember::Protagonist(data) | PartyMember::Recruit { member: data, .. } => {
@@ -735,6 +830,108 @@ mod tests {
             source, source_before,
             "runtime mutation changed catalog data"
         );
+    }
+
+    #[test]
+    fn class_threshold_and_one_level_growth_match_source_formulas() {
+        let class = hero_class();
+        assert_eq!(experience_required(&class, 2), 400);
+        assert_eq!(experience_required(&class, 3), 900);
+        assert_eq!(experience_required(&class, 10), 10_000);
+
+        let source: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .unwrap();
+        let mut member =
+            RuntimeMember::try_from_catalog(&source.party[0], &progression(100, 1_000_000))
+                .unwrap();
+        member.apply_damage(10);
+        member.spend_mana(10);
+        let result = member.apply_experience_progression(400, &class, &progression(100, 1_000_000));
+
+        assert_eq!(result.added, 400);
+        assert_eq!(result.level_ups.len(), 1);
+        let level = &result.level_ups[0];
+        assert_eq!((level.old_level, level.new_level), (1, 2));
+        assert_eq!(
+            (
+                level.strength,
+                level.dexterity,
+                level.constitution,
+                level.intelligence,
+            ),
+            (2, 2, 3, 1)
+        );
+        assert_eq!((level.health, level.mana), (37, 12));
+        assert_eq!((member.max_health(), member.max_mana()), (59, 24));
+        assert_eq!((member.health(), member.mana()), (59, 24));
+        assert_eq!(member.experience_next(), 900);
+    }
+
+    #[test]
+    fn every_production_class_threshold_curve_matches_the_source_values() {
+        let fixtures = [
+            (
+                include_str!("../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
+                [380, 855, 9_500],
+            ),
+            (
+                include_str!("../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
+                [400, 900, 10_000],
+            ),
+            (
+                include_str!("../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
+                [360, 810, 9_000],
+            ),
+            (
+                include_str!("../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"),
+                [380, 855, 9_500],
+            ),
+            (
+                include_str!("../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+                [440, 990, 11_000],
+            ),
+        ];
+        for (document, expected) in fixtures {
+            let class: ClassDefinition = scenario_yaml::from_str(document).unwrap();
+            assert_eq!(
+                [
+                    experience_required(&class, 2),
+                    experience_required(&class, 3),
+                    experience_required(&class, 10),
+                ],
+                expected,
+                "{} threshold curve",
+                class.class_id
+            );
+        }
+    }
+
+    #[test]
+    fn one_experience_award_applies_every_crossed_level_once() {
+        let class = hero_class();
+        let source: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .unwrap();
+        let mut member =
+            RuntimeMember::try_from_catalog(&source.party[0], &progression(100, 1_000_000))
+                .unwrap();
+
+        let result =
+            member.apply_experience_progression(1_600, &class, &progression(100, 1_000_000));
+
+        assert_eq!(member.level(), 4);
+        assert_eq!(
+            result
+                .level_ups
+                .iter()
+                .map(|growth| (growth.old_level, growth.new_level))
+                .collect::<Vec<_>>(),
+            [(1, 2), (2, 3), (3, 4)]
+        );
+        assert_eq!(member.experience_next(), 2_500);
     }
 
     #[test]
