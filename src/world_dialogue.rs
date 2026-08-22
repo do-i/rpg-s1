@@ -549,6 +549,29 @@ mod tests {
     }
 
     #[test]
+    fn ardel_child_traverses_default_and_elise_joined_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_child.yaml"
+        ));
+        let cases = [
+            (vec![], "Mama says don't go past the well"),
+            (vec!["npc_elise_joined"], "Elise went with YOU?"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ardel_child", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
