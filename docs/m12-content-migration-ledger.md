@@ -74,14 +74,28 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ITEM-`shields` | Ready | Pinned item/equipment audits pass. |
 | C-ITEM-`weapons` | Ready | Pinned item/equipment audits pass. |
 
-The W12.1 dialogue instances are `elise_join`, `guide_ardel`, `ardel_smith`,
-`ardel_apprentice`, `ardel_fisherman`, `ardel_child`, `elder_intro`,
-`mc_shop_intro`, `item_shop_ardel`, `apothecary_ardel`, `weapon_shop_ardel`,
-`armor_shop_ardel`, `inn_ardel`, `ardel_shrine_keeper`,
-`bridge_guard_zone5`, `stronghold_gate_guard`, `sign_town_01_ardel`, and
-`sign_zone_01_starting_forest`. Each is currently Inventory or Ready from the
-pinned schema audit; each will receive a terminal traversal fixture or live
-wave evidence before its C-DIALOGUE instance is marked Complete.
+### Dialogue instances
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-DIALOGUE-`elise_join` | Ready | Source initial-state/idempotence fixture passes; live recruitment remains. |
+| C-DIALOGUE-`guide_ardel` | Inventory | Traverse pre-boss, post-boss, and Act II branches. |
+| C-DIALOGUE-`ardel_smith` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
+| C-DIALOGUE-`ardel_apprentice` | Inventory | Traverse relay branches. |
+| C-DIALOGUE-`ardel_fisherman` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
+| C-DIALOGUE-`ardel_child` | Inventory | Traverse all conditions/terminal lines. |
+| C-DIALOGUE-`elder_intro` | Complete | Production document selects the post-Grik reward branch, sets `npc_elder_reward_given` and `story_act2_started`, grants two Hi-Potions and one Tent exactly once, selects the post-reward branch on repeat, and round-trips the boundary through native save encoding. |
+| C-DIALOGUE-`mc_shop_intro` | Ready | Gate 11 routed its service action; conditional traversal fixture remains. |
+| C-DIALOGUE-`item_shop_ardel` | Ready | Gate 11 live dialogue-to-service handoff passed. |
+| C-DIALOGUE-`apothecary_ardel` | Ready | Gate 11 live dialogue-to-service handoff passed. |
+| C-DIALOGUE-`weapon_shop_ardel` | Ready | Service routing fixture passes; live distinct stock check remains. |
+| C-DIALOGUE-`armor_shop_ardel` | Ready | Gate 11 live distinct service title passed. |
+| C-DIALOGUE-`inn_ardel` | Ready | Service routing fixture passes; live inn traversal remains. |
+| C-DIALOGUE-`ardel_shrine_keeper` | Inventory | Traverse quest relay and story branches. |
+| C-DIALOGUE-`bridge_guard_zone5` | Inventory | Traverse present gate branches without entering later-wave content. |
+| C-DIALOGUE-`stronghold_gate_guard` | Inventory | Traverse present gate branches without entering later-wave content. |
+| C-DIALOGUE-`sign_town_01_ardel` | Ready | Prior production sign replay passed. |
+| C-DIALOGUE-`sign_zone_01_starting_forest` | Inventory | Production sign replay remains. |
 
 Audio instances used at this boundary are `town.default`,
 `zone.starting_forest`, `battle.normal`, `battle.boss`, and their referenced UI,

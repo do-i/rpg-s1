@@ -909,10 +909,24 @@ mod tests {
     use crate::{
         new_game::{NewGameScenario, build_new_game_state},
         runtime_map::RuntimeMapId,
+        save_data::NativeSaveEnvelope,
+        scenario_dialogue::DialogueDocument,
         scenario_manifest::Manifest,
         scenario_map::MapMetadata,
         scenario_yaml,
     };
+
+    fn complete_linear_dialogue(
+        session: &mut DialogueSession,
+        flags: &crate::runtime_flags::RuntimeFlags,
+    ) -> Vec<DialogueActions> {
+        for _ in 0..32 {
+            if let DialogueEvent::Apply(actions) = session.confirm(flags) {
+                return actions;
+            }
+        }
+        panic!("linear dialogue did not complete");
+    }
 
     #[test]
     fn facing_selection_uses_only_nearest_valid_target() {
@@ -990,6 +1004,91 @@ mod tests {
             .unwrap();
         let expected = RuntimeMember::try_from_catalog(source, &balance.progression).unwrap();
         assert_eq!(elise, &expected);
+    }
+
+    #[test]
+    fn first_boss_elder_reward_advances_and_round_trips_the_act_two_boundary_once() {
+        let manifest: Manifest = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/manifest.yaml"
+        ))
+        .unwrap();
+        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .unwrap();
+        let balance: BalanceData = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/balance.yaml"
+        ))
+        .unwrap();
+        let DialogueDocument::Entries(dialogue) = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/elder_intro.yaml"
+        ))
+        .unwrap() else {
+            panic!("elder_intro must remain a field-entry dialogue");
+        };
+        let mut game = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+        game.flags_mut().set("boss_zone01_defeated");
+        let initial_hi_potions = game.repository().item_count("hi_potion");
+        let initial_tents = game.repository().item_count("tent");
+
+        let mut reward = DialogueSession::resolve(
+            "elder_intro",
+            Some("Elder Maeve".to_owned()),
+            dialogue.clone(),
+            game.flags(),
+        )
+        .unwrap()
+        .unwrap();
+        assert!(
+            reward
+                .current_line()
+                .starts_with("The forest breathes easier")
+        );
+        for actions in complete_linear_dialogue(&mut reward, game.flags()) {
+            apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
+        }
+        assert!(game.flags().is_set("npc_elder_reward_given"));
+        assert!(game.flags().is_set("story_act2_started"));
+        assert_eq!(
+            game.repository().item_count("hi_potion"),
+            initial_hi_potions + 2
+        );
+        assert_eq!(game.repository().item_count("tent"), initial_tents + 1);
+
+        let rewarded_repository = game.repository().clone();
+        let mut repeat = DialogueSession::resolve(
+            "elder_intro",
+            Some("Elder Maeve".to_owned()),
+            dialogue,
+            game.flags(),
+        )
+        .unwrap()
+        .unwrap();
+        assert!(repeat.current_line().starts_with("The plains to the east"));
+        for actions in complete_linear_dialogue(&mut repeat, game.flags()) {
+            apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
+        }
+        assert_eq!(game.repository(), &rewarded_repository);
+
+        let encoded =
+            NativeSaveEnvelope::from_game_state(&game, "my_rpg_story", "1.0.0", 1, "Ardel")
+                .unwrap()
+                .encode()
+                .unwrap();
+        let (_, restored) =
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &balance).unwrap();
+        assert!(restored.flags().is_set("boss_zone01_defeated"));
+        assert!(restored.flags().is_set("npc_elder_reward_given"));
+        assert!(restored.flags().is_set("story_act2_started"));
+        assert_eq!(restored.repository(), &rewarded_repository);
     }
 
     #[test]
