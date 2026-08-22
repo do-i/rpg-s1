@@ -342,6 +342,16 @@ mod tests {
         dialogue
     }
 
+    fn complete_linear(session: &mut DialogueSession, flags: &RuntimeFlags) {
+        for _ in 0..32 {
+            if matches!(session.confirm(flags), DialogueEvent::Apply(_)) {
+                assert_eq!(session.phase(), DialoguePhase::Closed);
+                return;
+            }
+        }
+        panic!("linear dialogue did not reach its terminal");
+    }
+
     #[test]
     fn confirm_completes_typewriter_before_advancing_linear_lines() {
         let flags = RuntimeFlags::default();
@@ -362,6 +372,41 @@ mod tests {
         assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
         assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
         assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    #[test]
+    fn guide_ardel_traverses_every_story_branch_to_a_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/guide_ardel.yaml"
+        ));
+        let cases = [
+            (
+                vec!["story_quest_started", "transport_sail_unlocked"],
+                "You've got your sea legs",
+            ),
+            (
+                vec!["story_quest_started", "story_act2_started"],
+                "If you're heading east",
+            ),
+            (
+                vec!["story_quest_started", "boss_zone01_defeated"],
+                "The forest is quiet again",
+            ),
+            (vec!["story_quest_started"], "New to Ardel?"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session = DialogueSession::resolve(
+                "guide_ardel",
+                Some("Ellen".to_owned()),
+                dialogue.clone(),
+                &flags,
+            )
+            .unwrap()
+            .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            complete_linear(&mut session, &flags);
+        }
     }
 
     #[test]
