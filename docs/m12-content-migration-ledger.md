@@ -30,7 +30,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-MAPDATA-`town_01_ardel` | Complete | Pinned metadata audit and strict instance validation pass; the production replay exercised its NPC, service, sign, audio, and forest-link references. |
 | C-MAPDATA-`town_01_ardel_house_01` | Complete | Pinned metadata audit and strict instance validation pass; the production elder document and reward/save fixture resolve its sole NPC reference. |
 | C-MAPDATA-`town_01_ardel_shop_01` | Complete | Pinned metadata audit and strict instance validation pass; Gate 11 exercised every distinct service reference through production routing. |
-| C-MAPDATA-`town_01_ardel_inn_01` | Ready | Content matches pinned source (ignoring final newline); live wave traversal remains. |
+| C-MAPDATA-`town_01_ardel_inn_01` | Complete | Content matches pinned source apart from its recorded trailing-newline delta; strict instance validation and the production inn-service fixture pass. |
 | C-MAPDATA-`town_01_ardel_shrine` | Ready | Pinned metadata audit passes; shrine dialogue traversal remains. |
 | C-MAPDATA-`zone_01_starting_forest` | Ready | Pinned metadata audit passes; boss-to-boundary replay remains. |
 | C-TMX-`town_01_ardel` | Ready | Exact pinned graph and deterministic Ardel screenshot oracle pass. |
