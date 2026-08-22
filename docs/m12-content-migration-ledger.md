@@ -67,7 +67,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ITEM-`consumables_field` | Complete | Pinned item audit, production catalog addressability, and field-use fixtures pass for every field consumable. |
 | C-ITEM-`consumables_recovery` | Complete | Pinned item audit, production catalog addressability, and shop, loot, reward, battle, and field recovery fixtures pass. |
 | C-ITEM-`consumables_status_cure` | Complete | Pinned item audit, production catalog addressability, and battle/field status-cure fixtures pass. |
-| C-ITEM-`helmets` | Ready | Pinned item/equipment audits pass. |
+| C-ITEM-`helmets` | Complete | Pinned item/equipment audits, production catalog addressability, slot compatibility, and equipment fixtures pass. |
 | C-ITEM-`key_items` | Ready | Pinned item/repository audits pass. |
 | C-ITEM-`magic_cores` | Ready | Pinned item audit and Gate 11 exchange fixtures pass. |
 | C-ITEM-`materials` | Ready | Pinned item audit and recipe input fixtures pass. |
