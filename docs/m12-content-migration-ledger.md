@@ -86,7 +86,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`ardel_fisherman` | Complete | Production traversal reaches all four executable quest terminals and verifies the start flag plus one-time `sq_stream_done`/two-Lure-Charm reward. An exhaustive flag fixture proves the two trailing pinned flavor entries are dead under Python-compatible first-match ordering and retains their bytes as accounted source content. |
 | C-DIALOGUE-`ardel_child` | Complete | Production traversal selects and completes both the default and Elise-joined terminals without effects. |
 | C-DIALOGUE-`elder_intro` | Complete | Production document selects the post-Grik reward branch, sets `npc_elder_reward_given` and `story_act2_started`, grants two Hi-Potions and one Tent exactly once, selects the post-reward branch on repeat, and round-trips the boundary through native save encoding. |
-| C-DIALOGUE-`mc_shop_intro` | Ready | Gate 11 routed its service action; conditional traversal fixture remains. |
+| C-DIALOGUE-`mc_shop_intro` | Complete | Production traversal proves there is no pre-story match, then reaches the story-gated terminal and emits the Magic Core shop action; Gate 11 routed that action live. |
 | C-DIALOGUE-`item_shop_ardel` | Ready | Gate 11 live dialogue-to-service handoff passed. |
 | C-DIALOGUE-`apothecary_ardel` | Ready | Gate 11 live dialogue-to-service handoff passed. |
 | C-DIALOGUE-`weapon_shop_ardel` | Ready | Service routing fixture passes; live distinct stock check remains. |

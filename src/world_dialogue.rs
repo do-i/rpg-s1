@@ -572,6 +572,34 @@ mod tests {
     }
 
     #[test]
+    fn ardel_magic_core_intro_opens_only_after_the_story_starts() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/mc_shop_intro.yaml"
+        ));
+        assert!(
+            DialogueSession::resolve(
+                "mc_shop_intro",
+                None,
+                dialogue.clone(),
+                &RuntimeFlags::default(),
+            )
+            .unwrap()
+            .is_none()
+        );
+        let flags = RuntimeFlags::from_bootstrap(["story_quest_started"]);
+        let mut session = DialogueSession::resolve("mc_shop_intro", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(session.current_line().starts_with("Magic Cores?"));
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::MagicCore)
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
