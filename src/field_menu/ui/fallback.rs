@@ -7,6 +7,7 @@ pub(in crate::field_menu) fn screen_title(state: &FieldMenuState) -> &'static st
         FieldMenuScreen::Items => "Items",
         FieldMenuScreen::Equipment => "Equipment",
         FieldMenuScreen::Spells => "Spells",
+        FieldMenuScreen::Quests => "Quest Board",
         FieldMenuScreen::Save => "Save Game",
     }
 }
@@ -32,6 +33,7 @@ pub(in crate::field_menu) fn render_body(
         FieldMenuScreen::Items => render_items(state, game, catalog),
         FieldMenuScreen::Equipment => render_equipment(state, game, catalog),
         FieldMenuScreen::Spells => render_spells(state, game, catalog),
+        FieldMenuScreen::Quests => render_quests(state, game, catalog),
         FieldMenuScreen::Save => render_save(state, saves),
     };
     if !state.message.is_empty() {
@@ -39,6 +41,40 @@ pub(in crate::field_menu) fn render_body(
         text.push_str(&state.message);
     }
     text
+}
+
+pub(in crate::field_menu) fn render_quests(
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) -> String {
+    use crate::runtime_quest::{QuestStatus, quest_status};
+
+    let quests = catalog.quests();
+    let rows = quests
+        .iter()
+        .enumerate()
+        .map(|(index, quest)| {
+            let status = match quest_status(quest, game.flags()) {
+                QuestStatus::Inactive => "INACTIVE",
+                QuestStatus::Active => "ACTIVE",
+                QuestStatus::Completed => "COMPLETE",
+            };
+            format!(
+                "{} [{:<8}] {:<30}  {}",
+                if index == state.selected { ">" } else { " " },
+                status,
+                quest.name,
+                quest.location
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let detail = quests
+        .get(state.selected)
+        .map(|quest| format!("{}\n\n{}", quest.location, quest.description))
+        .unwrap_or_else(|| "No quests are registered.".to_owned());
+    format!("{rows}\n\n{detail}")
 }
 
 pub(in crate::field_menu) fn render_main(state: &FieldMenuState, game: &GameState) -> String {
@@ -440,6 +476,7 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
             "LEFT/RIGHT member  UP/DOWN spell  ENTER cast  ESC back"
         }
+        (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
             "UP/DOWN slot  ENTER save  ESC back  M close"
         }

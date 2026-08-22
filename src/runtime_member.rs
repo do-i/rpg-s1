@@ -272,6 +272,13 @@ impl RuntimeMember {
         self.status_effects.remove(&status)
     }
 
+    /// Applies the pinned inn's full-party recovery semantics, including knocked-out members.
+    pub(crate) fn recover_at_inn(&mut self) {
+        self.health = self.max_health;
+        self.mana = self.max_mana;
+        self.status_effects.clear();
+    }
+
     /// Applies damage, floors health at zero, and returns actual health lost.
     pub fn apply_damage(&mut self, amount: u32) -> u32 {
         let actual = amount.min(self.health);

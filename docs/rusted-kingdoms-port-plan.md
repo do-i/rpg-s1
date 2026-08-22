@@ -487,29 +487,37 @@ of the new ability in the next battle. See
 
 | ID | Task | Model | Done when |
 | --- | --- | --- | --- |
-| M11.01 | [ ] Route dialogue `open_shop` to a service request. | `S` | Item, weapon, armor, and magic-core types remain distinct. |
-| M11.02 | [ ] Filter shop stock by unlock flag. | `T` | Locked entries remain hidden and stock is stateless. |
-| M11.03 | [ ] Render item shop buy rows and details. | `S` | Price, description, balance, and affordability display. |
-| M11.04 | [ ] Buy one item. | `S` | GP and quantity update atomically with caps enforced. |
-| M11.05 | [ ] Render sellable repository rows. | `T` | Locked, key, and zero-value items are excluded/disabled correctly. |
-| M11.06 | [ ] Sell one item. | `S` | Explicit sell price, quantity, and GP cap rules match. |
-| M11.07 | [ ] Add equipment compatibility to shop details. | `S` | Each party member shows compatible/blocked and stat deltas. |
-| M11.08 | [ ] Add inn confirmation and affordability rules. | `T` | Cost and cancel paths preserve state. |
-| M11.09 | [ ] Apply inn recovery. | `S` | GP is charged and eligible HP/MP/status state matches Python. |
-| M11.10 | [ ] Load and classify apothecary recipes. | `T` | Locked, missing-input, ready, and unique-owned states resolve. |
-| M11.11 | [ ] Render the apothecary recipe list. | `S` | Hidden mechanical details and lock icons match state. |
-| M11.12 | [ ] Craft one recipe. | `S` | Inputs and GP are consumed and output granted atomically. |
-| M11.13 | [ ] Block duplicate unique output. | `T` | No resources change on rejection. |
-| M11.14 | [ ] Load quest definitions into a catalog. | `T` | Every current quest is addressable. |
-| M11.15 | [ ] Start a quest from dialogue effects. | `S` | Duplicate starts are idempotent. |
-| M11.16 | [ ] Advance flag-based quest objectives. | `S` | Progress updates only on relevant flag changes. |
-| M11.17 | [ ] Advance item-based quest objectives. | `S` | Quantity thresholds and item removal rules match. |
-| M11.18 | [ ] Complete a quest and grant rewards. | `S` | State and rewards apply once. |
-| M11.19 | [ ] Render the quest board/list. | `S` | Active/completed state and objectives display. |
-| M11.20 | [ ] Add service and quest save-roundtrip tests. | `S` | Mid-shop-independent state and quest progress survive reload. |
+| M11.01 | [x] Route dialogue `open_shop` to a service request. | `S` | Item, weapon, armor, and magic-core types remain distinct. |
+| M11.02 | [x] Filter shop stock by unlock flag. | `T` | Locked entries remain hidden and stock is stateless. |
+| M11.03 | [x] Render item shop buy rows and details. | `S` | Price, description, balance, and affordability display. |
+| M11.04 | [x] Buy one item. | `S` | GP and quantity update atomically with caps enforced. |
+| M11.05 | [x] Render sellable repository rows. | `T` | Locked, key, and zero-value items are excluded/disabled correctly. |
+| M11.06 | [x] Sell one item. | `S` | Explicit sell price, quantity, and GP cap rules match. |
+| M11.07 | [x] Add equipment compatibility to shop details. | `S` | Each party member shows compatible/blocked and stat deltas. |
+| M11.08 | [x] Add inn confirmation and affordability rules. | `T` | Cost and cancel paths preserve state. |
+| M11.09 | [x] Apply inn recovery. | `S` | GP is charged and eligible HP/MP/status state matches Python. |
+| M11.10 | [x] Load and classify apothecary recipes. | `T` | Locked, missing-input, ready, and unique-owned states resolve. |
+| M11.11 | [x] Render the apothecary recipe list. | `S` | Recipe output, ingredients, cost, and availability display. |
+| M11.12 | [x] Craft one recipe. | `S` | Inputs and GP are consumed and output granted atomically. |
+| M11.13 | [x] Block duplicate unique output. | `T` | No resources change on rejection. |
+| M11.14 | [x] Load quest definitions into a catalog. | `T` | Every current quest is addressable. |
+| M11.15 | [x] Start a quest from dialogue effects. | `S` | Duplicate starts are idempotent. |
+| M11.16 | [x] Derive flag-based quest progression. | `S` | Started/completed state changes only with the quest's authored flags; relay flags remain dialogue state. |
+| M11.17 | [x] Audit item-objective and turn-in semantics. | `S` | The pinned schema has no item objectives, quantity thresholds, or removal rules, so the port invents none. |
+| M11.18 | [x] Complete a quest and grant rewards. | `S` | Mutually exclusive dialogue entries set completion flags and grant their authored items once. |
+| M11.19 | [x] Render the quest board/list. | `S` | All quests show inactive/active/completed state, location, and description. |
+| M11.20 | [x] Add service and quest save-roundtrip tests. | `S` | Mid-shop-independent state and quest progress survive reload. |
 
 **Gate 11:** Ardel's shop, inn, apothecary path, equipment economy, and quest
 progression work against shared state and survive save/load.
+
+Gate 11 was completed on 2026-08-22. The pinned quest catalog contains exactly
+seven strings per row and deliberately has no objective or reward sub-schema;
+quest lifecycle, relay state, and rewards are authored as dialogue flags and
+item-grant effects. The port preserves that source shape instead of adding
+generic counters or implicit item removal. Transactional service tests, a
+native save round trip, all pinned-source audits, and a production X11 replay
+cover the gate. See `docs/m11-manual-play-checklist.md`.
 
 ## Milestone 12 — Content migration backlog
 

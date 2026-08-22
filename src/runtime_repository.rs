@@ -265,6 +265,39 @@ impl RuntimeRepository {
             .map(String::as_str)
     }
 
+    /// Adds presentation/category tags to an existing stack without changing its quantity.
+    ///
+    /// Shop-authored tags use the same bounded repository metadata as loot and save restoration.
+    pub(crate) fn add_tags<'a>(
+        &mut self,
+        item_id: &str,
+        tags: impl IntoIterator<Item = &'a str>,
+    ) -> Result<(), RepositoryError> {
+        require_item_id(item_id)?;
+        if self.item_count(item_id) == 0 {
+            return Err(RepositoryError::ItemNotFound {
+                item_id: item_id.to_owned(),
+            });
+        }
+        let tags = tags.into_iter().map(str::to_owned).collect::<BTreeSet<_>>();
+        if tags.iter().any(String::is_empty) {
+            return Err(RepositoryError::EmptyTag {
+                item_id: item_id.to_owned(),
+            });
+        }
+        let current = self.item_tags.entry(item_id.to_owned()).or_default();
+        let count = current.union(&tags).count();
+        if count > self.max_tags_per_item as usize {
+            return Err(RepositoryError::TooManyTags {
+                item_id: item_id.to_owned(),
+                count,
+                cap: self.max_tags_per_item,
+            });
+        }
+        current.extend(tags);
+        Ok(())
+    }
+
     pub fn is_loot(&self, item_id: &str) -> bool {
         self.loot_item_ids.contains(item_id)
     }

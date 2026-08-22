@@ -51,6 +51,8 @@ pub mod scenario_recipe;
 pub mod scenario_root;
 pub mod scenario_spatial;
 pub mod scenario_yaml;
+pub mod service_domain;
+mod service_ui;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;
@@ -95,6 +97,7 @@ use save_ui::SaveUiPlugin;
 use scenario_manifest_asset::ScenarioManifestAssetPlugin;
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use scenario_root::ScenarioRoot;
+use service_ui::ServiceUiPlugin;
 use title_screen::TitleScreenPlugin;
 use tmx_ground_asset::TmxGroundAssetPlugin;
 use tsx_atlas_asset::TsxAtlasAssetPlugin;
@@ -174,6 +177,7 @@ fn run_game() {
         .add_plugins(WorldTransitionPlugin)
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldInteractionPlugin)
+        .add_plugins(ServiceUiPlugin)
         .add_plugins(WorldPlayerPlugin)
         .add_plugins(FieldMenuPlugin)
         .add_plugins(BattleEntryPlugin)

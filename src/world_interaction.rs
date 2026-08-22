@@ -24,10 +24,12 @@ use crate::{
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position},
     scenario_yaml::{self, ScenarioYamlError},
+    service_ui::{ServiceRequest, ServiceUiState},
     ui_theme::UiTheme,
     world_actor::WorldNpc,
     world_dialogue::{DialogueEvent, DialoguePhase, DialogueSession, apply_flag_actions},
     world_object::{WorldItemBox, WorldSign},
+    world_player::{WorldPlayer, WorldPlayerMotion},
     world_transition::WorldTransition,
 };
 
@@ -131,14 +133,17 @@ fn request_npc_dialogue(
     scenario_root: Res<ScenarioRoot>,
     transition: Res<WorldTransition>,
     field_menu: Res<FieldMenuState>,
+    service: Res<ServiceUiState>,
     game: Option<ResMut<GameState>>,
     npcs: Query<&WorldNpc>,
     signs: Query<&WorldSign>,
     boxes: Query<&WorldItemBox>,
+    players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     if state.input_locked()
         || field_menu.input_locked()
+        || service.input_locked()
         || transition.input_locked()
         || !actions.just_pressed(AppAction::Confirm)
     {
@@ -149,7 +154,11 @@ fn request_npc_dialogue(
     };
     let player = game.map().position();
     let facing = game.map().facing();
-    let npc = select_npc(player, facing, npcs.iter()).map(|target| {
+    let player_pixels = players
+        .single()
+        .map(|motion| motion.top_left())
+        .unwrap_or_else(|_| WorldPlayerMotion::from_tile(player).top_left());
+    let npc = select_npc(player_pixels, facing, npcs.iter()).map(|target| {
         (
             distance_squared(player, target.tile_position()),
             0_u8,
@@ -238,16 +247,37 @@ enum InteractionTarget<'a> {
 }
 
 fn select_npc<'a>(
-    player: Position,
+    player_pixels: Vec2,
     facing: CardinalDirection,
     npcs: impl Iterator<Item = &'a WorldNpc>,
 ) -> Option<&'a WorldNpc> {
     npcs.filter(|npc| {
+        let target = npc.source_pixel_position();
         !npc.map_id().is_empty()
-            && is_in_facing_direction(player, npc.tile_position(), facing)
-            && within_range(player, npc.tile_position(), npc.interaction_range())
+            && is_in_facing_direction_pixels(player_pixels, target, facing)
+            && within_pixel_range(player_pixels, target, npc.interaction_range_pixels())
     })
-    .min_by_key(|npc| distance_squared(player, npc.tile_position()))
+    .min_by(|left, right| {
+        player_pixels
+            .distance_squared(left.source_pixel_position())
+            .total_cmp(&player_pixels.distance_squared(right.source_pixel_position()))
+            .then_with(|| left.name().cmp(right.name()))
+    })
+}
+
+fn is_in_facing_direction_pixels(player: Vec2, target: Vec2, facing: CardinalDirection) -> bool {
+    let delta = target - player;
+    match facing {
+        CardinalDirection::Up => delta.y < 0.0 && delta.y.abs() >= delta.x.abs(),
+        CardinalDirection::Down => delta.y > 0.0 && delta.y.abs() >= delta.x.abs(),
+        CardinalDirection::Left => delta.x < 0.0 && delta.x.abs() >= delta.y.abs(),
+        CardinalDirection::Right => delta.x > 0.0 && delta.x.abs() >= delta.y.abs(),
+    }
+}
+
+fn within_pixel_range(player: Vec2, target: Vec2, range: f32) -> bool {
+    let delta = (target - player).abs();
+    delta.x <= range && delta.y <= range
 }
 
 fn is_in_facing_direction(player: Position, target: Position, facing: CardinalDirection) -> bool {
@@ -392,6 +422,7 @@ fn drive_dialogue_session(
     party_assets: Res<Assets<PartyCatalog>>,
     balance_assets: Res<Assets<BalanceData>>,
     game: Option<ResMut<GameState>>,
+    mut service: ResMut<ServiceUiState>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     let Some(mut game) = game else {
@@ -435,6 +466,9 @@ fn drive_dialogue_session(
             .as_ref()
             .and_then(|handle| balance_assets.get(handle));
         for completion in completions {
+            if let Some(request) = ServiceRequest::from_dialogue(&completion) {
+                service.open(request);
+            }
             if let Err(error) = apply_dialogue_actions(&completion, &mut game, party, balance) {
                 state.failure = Some(error.to_string());
             }
@@ -898,6 +932,23 @@ mod tests {
             distance_squared(Position::new(5, 5), Position::new(5, 4))
                 < distance_squared(Position::new(5, 5), Position::new(5, 3))
         );
+    }
+
+    #[test]
+    fn source_pixel_range_reaches_ardel_shopkeepers_across_the_counter() {
+        let player_top_left = Vec2::new(192.0, 151.0);
+        let shopkeeper_source_position = Vec2::new(192.0, 96.0);
+
+        assert!(is_in_facing_direction_pixels(
+            player_top_left,
+            shopkeeper_source_position,
+            CardinalDirection::Up
+        ));
+        assert!(within_pixel_range(
+            player_top_left,
+            shopkeeper_source_position,
+            2.5 * 32.0
+        ));
     }
 
     #[test]

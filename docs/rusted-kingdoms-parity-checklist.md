@@ -12,7 +12,8 @@ Target plan: `docs/rusted-kingdoms-port-plan.md`
 
 Supporting coverage records: `docs/rusted-kingdoms-engine-inventory.md`,
 `docs/rusted-kingdoms-scenario-inventory.md`, and
-`docs/m5-manual-play-checklist.md`
+`docs/m5-manual-play-checklist.md` through
+`docs/m11-manual-play-checklist.md`
 
 Automated tests, validators, screenshots, transcripts, and state hashes may
 support a row, but they never replace performing its stated action and
@@ -46,7 +47,7 @@ report.
 | `SET-BATTLE` | A normal save immediately before a regular encounter containing at least two living enemies; party inventory includes usable battle items and members have offensive, healing, and status abilities. |
 | `SET-BOSS` | A normal save immediately before a source-defined boss, reached without debug state injection. |
 | `SET-SERVICE` | A normal Ardel-area save with known GP, buyable and sellable items, a compatible equipment upgrade, inn damage to recover, recipe ingredients, and at least one locked recipe/stock entry. |
-| `SET-QUEST` | A normal save immediately before a dialogue-started quest with flag and item objectives, recruitment effects, and a reward; the quest has not started. |
+| `SET-QUEST` | A normal save immediately before a dialogue-started quest with an authored relay dialogue and completion reward; the quest has not started. The pinned schema has no objective counters or item-turn-in records. |
 | `SET-SAVES` | Three known slots: one empty, one valid mid-campaign save with distinctive state, and one deliberately corrupt or incompatible fixture; preserve a copy of the valid slot. |
 | `SET-DEBUG` | Debug/authoring build launched through the documented developer menu with a writable temporary scenario copy and recording output directory. |
 | `SET-CONTENT` | Two valid scenario packages with visibly different identity, start map, protagonist, dialogue, art, audio, and balance values; neither requires changing or rebuilding the Rust binary. |
@@ -173,10 +174,10 @@ rows.
 | --- | --- | --- | --- | --- | --- | --- |
 | RK-SVC-001 | NPC conversation with at least two conditional choices | Interact, move the choice selection, cancel once, reopen, and choose each branch from a reset save. | Choices, disabled/conditional choices, branch text, terminal text, and controls are readable. | Only the confirmed branch applies its effects; node jumps terminate without loops or duplicated effects. | M5.15-M5.17 / Gate 5 | Not run |
 | RK-SVC-002 | `SET-QUEST`, immediately before Elise's configured join effect | Complete the recruiting dialogue once, then repeat the conversation. | Recruitment dialogue/feedback occurs on the first completion and does not repeat as a second join. | Elise joins once with source-defined initial state and the membership/flag persists through save/load. | M5.18, M7.12 / Gate 7 | Not run |
-| RK-SVC-003 | `SET-QUEST` | Complete the quest-starting dialogue and open the quest board. | The new quest appears as Active with location, description, and objectives. | Starting is idempotent and does not grant completion rewards. | M11.14-M11.15, M11.19 / Gate 11 | Not run |
-| RK-SVC-004 | Active flag-objective quest | Perform the world/dialogue action that sets the relevant flag, then inspect the quest board. | The objective visibly advances only after the relevant action. | Unrelated flag changes do not advance it; progress persists through save/load. | M11.16, M11.20 / Gate 11 | Not run |
-| RK-SVC-005 | Active item-objective quest | Acquire items below, at, and above the threshold; perform the configured turn-in. | Quest board/turn-in dialogue reports accurate progress at each quantity. | Threshold and item-removal behavior match source and unrelated items remain unchanged. | M11.17 / Gate 11 | Not run |
-| RK-SVC-006 | Quest with every objective satisfied | Complete the quest, inspect rewards/board, then repeat the completion dialogue. | Completion and reward feedback appears once; board marks the quest Completed. | Flags, GP/items/other rewards apply once and survive save/load. | M11.18-M11.20 / Gate 11 | Not run |
+| RK-SVC-003 | `SET-QUEST` | Complete the quest-starting dialogue and open the quest board. | The new quest appears as Active with its authored location and description. | Starting is idempotent and does not grant completion rewards. | M11.14-M11.15, M11.19 / Gate 11 | Not run |
+| RK-SVC-004 | Active relay-based quest | Perform the relevant relay dialogue, then continue to the completion NPC. | Dialogue changes to the authored relay/completion branch; the board remains Active until its completed flag is set. | Unrelated flags do not alter board status; relay and lifecycle flags persist through save/load. | M11.16, M11.20 / Gate 11 | Not run |
+| RK-SVC-005 | Pinned quest catalog and all quest dialogue | Audit quest fields and completion effects. | No item-objective counter, quantity threshold, or implicit turn-in/removal UI appears. | Only authored dialogue `give_items` effects change inventory; the port invents no objective store. | M11.17 / Gate 11 | Pass — clean pinned-corpus schema/dialogue audit, 2026-08-22; see M11 report |
+| RK-SVC-006 | Active quest at its completion dialogue | Complete the quest, inspect rewards/board, then repeat the conversation. | Completion and reward feedback appears once; board marks the quest Completed. | Completion flags and authored item rewards apply once and survive save/load. | M11.18-M11.20 / Gate 11 | Not run |
 | RK-SVC-007 | `SET-SERVICE`, NPCs for item/weapon/armor/magic-core services | Interact with each service NPC and choose the shop action. | Dialogue routes to four visibly distinct service types with correct stock/title/details. | Opening/canceling each service changes no GP or inventory. | M11.01 / Gate 11 | Not run |
 | RK-SVC-008 | `SET-SERVICE`, with locked and unlocked stock | Open each relevant shop and inspect all rows. | Locked stock is hidden as defined; price, description, balance, affordability, and equipment compatibility/deltas are accurate. | Inspecting stock is stateless and does not unlock or purchase it. | M11.02-M11.03, M11.07 / Gate 11 | Not run |
 | RK-SVC-009 | `SET-SERVICE`, affordable item below quantity cap | Buy exactly one item. | Purchase feedback and updated balance/quantity appear once. | GP and shared inventory update atomically by the correct values. | M11.04 / Gate 11 | Not run |

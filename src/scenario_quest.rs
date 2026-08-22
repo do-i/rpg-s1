@@ -12,12 +12,13 @@
 //! validation. Entry identity always comes from the required `id`; the fixed catalog filename does
 //! not supply a fallback id.
 
+use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de};
 
 use crate::scenario_yaml::deserialize_string;
 
 /// The non-empty list-root `data/quests.yaml` document.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Asset, Clone, Debug, Eq, PartialEq, TypePath)]
 pub struct QuestCatalogFile(Vec<QuestDefinition>);
 
 impl QuestCatalogFile {

@@ -26,6 +26,7 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
+    service_ui::ServiceUiState,
     ui_theme::UiTheme,
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
@@ -44,8 +45,8 @@ const INVENTORY_PAGE_ROWS: usize = 10;
 const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 const SPELLBOOK_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
-const SAVE_COMMAND_INDEX: usize = 4;
-const QUIT_COMMAND_INDEX: usize = 5;
+const SAVE_COMMAND_INDEX: usize = 5;
+const QUIT_COMMAND_INDEX: usize = 6;
 
 #[derive(Clone, Copy)]
 struct MainCommand {
@@ -55,7 +56,7 @@ struct MainCommand {
     screen: Option<FieldMenuScreen>,
 }
 
-const MAIN_COMMANDS: [MainCommand; 6] = [
+const MAIN_COMMANDS: [MainCommand; 7] = [
     MainCommand {
         label: "Status",
         badge: "ST",
@@ -79,6 +80,12 @@ const MAIN_COMMANDS: [MainCommand; 6] = [
         badge: "EQ",
         description: "tune gear and compare stats",
         screen: Some(FieldMenuScreen::Equipment),
+    },
+    MainCommand {
+        label: "Quests",
+        badge: "QU",
+        description: "review active and completed quests",
+        screen: Some(FieldMenuScreen::Quests),
     },
     MainCommand {
         label: "Save",
@@ -139,6 +146,7 @@ enum FieldMenuScreen {
     Items,
     Equipment,
     Spells,
+    Quests,
     Save,
 }
 
@@ -375,6 +383,7 @@ fn handle_field_menu_input(
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
     interaction: Res<WorldInteractionState>,
+    service: Option<Res<ServiceUiState>>,
     mut transition: ResMut<WorldTransition>,
     game: Option<ResMut<GameState>>,
     store: Res<SaveStore>,
@@ -386,7 +395,10 @@ fn handle_field_menu_input(
     let Some(mut game) = game else { return };
 
     if !state.open {
-        if interaction.input_locked() || transition.input_locked() {
+        if interaction.input_locked()
+            || service.as_deref().is_some_and(ServiceUiState::input_locked)
+            || transition.input_locked()
+        {
             return;
         }
         if keys.just_pressed(KeyCode::KeyM) {
@@ -395,6 +407,8 @@ fn handle_field_menu_input(
             state.open(FieldMenuScreen::Items);
         } else if keys.just_pressed(KeyCode::KeyS) {
             state.open(FieldMenuScreen::Status);
+        } else if keys.just_pressed(KeyCode::KeyQ) {
+            state.open(FieldMenuScreen::Quests);
         }
         return;
     }
@@ -765,6 +779,11 @@ fn handle_field_menu_input(
                 } else {
                     state.message = "A map transition is already active.".to_owned();
                 }
+            }
+        }
+        (FieldMenuScreen::Quests, FieldMenuMode::Browse) => {
+            if let Some(delta) = vertical {
+                state.selected = wrapped_or_zero(state.selected, catalog.quests().len(), delta);
             }
         }
         _ => {}
@@ -1483,8 +1502,9 @@ mod tests {
         assert_eq!(main_command_screen(1), Some(FieldMenuScreen::Spells));
         assert_eq!(main_command_screen(2), Some(FieldMenuScreen::Items));
         assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Equipment));
-        assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Save));
-        assert!(main_command_screen(5).is_none());
+        assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Quests));
+        assert_eq!(main_command_screen(5), Some(FieldMenuScreen::Save));
+        assert!(main_command_screen(6).is_none());
 
         let mut state = FieldMenuState::default();
         state.open(FieldMenuScreen::Items);
@@ -1499,7 +1519,15 @@ mod tests {
     fn main_page_matches_the_source_command_deck_structure() {
         assert_eq!(
             MAIN_COMMANDS.map(|command| command.label),
-            ["Status", "Spells", "Items", "Equipment", "Save", "Quit"]
+            [
+                "Status",
+                "Spells",
+                "Items",
+                "Equipment",
+                "Quests",
+                "Save",
+                "Quit"
+            ]
         );
 
         let mut app = App::new();
@@ -1514,7 +1542,7 @@ mod tests {
 
         let world = app.world_mut();
         assert_eq!(world.query::<&FieldMenuMainPage>().iter(world).count(), 1);
-        assert_eq!(world.query::<&MainCommandRow>().iter(world).count(), 6);
+        assert_eq!(world.query::<&MainCommandRow>().iter(world).count(), 7);
         assert_eq!(
             world.query::<&SelectedMainCommandRow>().iter(world).count(),
             1

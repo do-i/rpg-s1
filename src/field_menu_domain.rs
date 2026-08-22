@@ -25,6 +25,8 @@ use crate::{
     },
     scenario_map::MapMetadata,
     scenario_path::ScenarioRelativePath,
+    scenario_quest::{QuestCatalogFile, QuestDefinition},
+    scenario_recipe::{RecipeCatalogFile, RecipeDefinition},
     scenario_root::ScenarioRoot,
     scenario_yaml::{self, ScenarioYamlError},
     tmx_ground_asset::TmxGroundAsset,
@@ -58,6 +60,9 @@ const MAP_FILES: [&str; 3] = [
     "town_01_ardel_house_01",
     "zone_01_starting_forest",
 ];
+const SERVICE_MAP_FILES: [&str; 2] = ["town_01_ardel_inn_01", "town_01_ardel_shop_01"];
+const RECIPE_FILE: &str = "data/recipe/all_recipe.yaml";
+const QUEST_FILE: &str = "data/quests.yaml";
 
 pub(crate) struct FieldMenuDomainPlugin;
 
@@ -66,9 +71,13 @@ impl Plugin for FieldMenuDomainPlugin {
         app.init_asset::<ItemCatalogFile>()
             .init_asset::<FieldUseCatalogFile>()
             .init_asset::<ClassDefinition>()
+            .init_asset::<RecipeCatalogFile>()
+            .init_asset::<QuestCatalogFile>()
             .init_asset_loader::<ItemCatalogAssetLoader>()
             .init_asset_loader::<FieldUseCatalogAssetLoader>()
             .init_asset_loader::<ClassDefinitionAssetLoader>()
+            .init_asset_loader::<RecipeCatalogAssetLoader>()
+            .init_asset_loader::<QuestCatalogAssetLoader>()
             .init_resource::<FieldMenuCatalog>()
             .init_resource::<FieldMenuCatalogLoad>()
             .add_systems(OnEnter(AppState::World), begin_catalog_load)
@@ -93,6 +102,9 @@ pub(crate) struct FieldMenuCatalog {
     classes: BTreeMap<String, ClassDefinition>,
     item_order: Vec<String>,
     warp_destinations: Vec<WarpDestination>,
+    maps: BTreeMap<String, MapMetadata>,
+    recipes: Vec<RecipeDefinition>,
+    quests: Vec<QuestDefinition>,
     failure: Option<String>,
 }
 
@@ -114,6 +126,15 @@ impl FieldMenuCatalog {
     }
     pub(crate) fn class(&self, id: &str) -> Option<&ClassDefinition> {
         self.classes.get(id)
+    }
+    pub(crate) fn map(&self, id: &str) -> Option<&MapMetadata> {
+        self.maps.get(id)
+    }
+    pub(crate) fn recipes(&self) -> &[RecipeDefinition] {
+        &self.recipes
+    }
+    pub(crate) fn quests(&self) -> &[QuestDefinition] {
+        &self.quests
     }
 
     pub(crate) fn unlocked_abilities(
@@ -188,6 +209,9 @@ struct FieldMenuCatalogLoad {
     field_use: Option<Handle<FieldUseCatalogFile>>,
     classes: Vec<(String, Handle<ClassDefinition>)>,
     maps: Vec<(String, Handle<MapMetadata>, Handle<TmxGroundAsset>)>,
+    service_maps: Vec<(String, Handle<MapMetadata>)>,
+    recipes: Option<Handle<RecipeCatalogFile>>,
+    quests: Option<Handle<QuestCatalogFile>>,
 }
 
 fn begin_catalog_load(
@@ -240,6 +264,23 @@ fn begin_catalog_load(
             )
         })
         .collect();
+    load.service_maps = SERVICE_MAP_FILES
+        .iter()
+        .map(|stem| {
+            let metadata = ScenarioRelativePath::try_from(format!("data/maps/{stem}.yaml"))
+                .expect("compiled service-map metadata path is valid");
+            (
+                (*stem).to_owned(),
+                asset_server.load(root.resolve(&metadata)),
+            )
+        })
+        .collect();
+    load.recipes = Some(asset_server.load(
+        root.resolve(&ScenarioRelativePath::try_from(RECIPE_FILE).expect("canonical recipe path")),
+    ));
+    load.quests = Some(asset_server.load(
+        root.resolve(&ScenarioRelativePath::try_from(QUEST_FILE).expect("canonical quest path")),
+    ));
 }
 
 #[expect(
@@ -253,10 +294,16 @@ fn track_catalog_load(
     class_assets: Res<Assets<ClassDefinition>>,
     map_assets: Res<Assets<MapMetadata>>,
     tmx_assets: Res<Assets<TmxGroundAsset>>,
+    recipe_assets: Res<Assets<RecipeCatalogFile>>,
+    quest_assets: Res<Assets<QuestCatalogFile>>,
     load: Res<FieldMenuCatalogLoad>,
     mut catalog: ResMut<FieldMenuCatalog>,
 ) {
-    if catalog.status != CatalogStatus::Loading || load.field_use.is_none() {
+    if catalog.status != CatalogStatus::Loading
+        || load.field_use.is_none()
+        || load.recipes.is_none()
+        || load.quests.is_none()
+    {
         return;
     }
     for (path, handle) in &load.items {
@@ -285,10 +332,29 @@ fn track_catalog_load(
             return;
         }
     }
+    for (stem, metadata) in &load.service_maps {
+        if let LoadState::Failed(error) = asset_server.load_state(metadata.id()) {
+            catalog.status = CatalogStatus::Failed;
+            catalog.failure = Some(format!("data/maps/{stem}.yaml: {error}"));
+            return;
+        }
+    }
     let field_handle = load.field_use.as_ref().expect("checked above");
     if let LoadState::Failed(error) = asset_server.load_state(field_handle.id()) {
         catalog.status = CatalogStatus::Failed;
         catalog.failure = Some(format!("data/items/{FIELD_USE_FILE}: {error}"));
+        return;
+    }
+    let recipe_handle = load.recipes.as_ref().expect("checked above");
+    if let LoadState::Failed(error) = asset_server.load_state(recipe_handle.id()) {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some(format!("{RECIPE_FILE}: {error}"));
+        return;
+    }
+    let quest_handle = load.quests.as_ref().expect("checked above");
+    if let LoadState::Failed(error) = asset_server.load_state(quest_handle.id()) {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some(format!("{QUEST_FILE}: {error}"));
         return;
     }
     if load
@@ -303,6 +369,12 @@ fn track_catalog_load(
         || load.maps.iter().any(|(_, metadata, tmx)| {
             map_assets.get(metadata).is_none() || tmx_assets.get(tmx).is_none()
         })
+        || load
+            .service_maps
+            .iter()
+            .any(|(_, metadata)| map_assets.get(metadata).is_none())
+        || recipe_assets.get(recipe_handle).is_none()
+        || quest_assets.get(quest_handle).is_none()
     {
         return;
     }
@@ -331,8 +403,10 @@ fn track_catalog_load(
         })
         .collect();
     let mut warp_destinations = Vec::new();
+    let mut maps = BTreeMap::new();
     for (stem, metadata_handle, _) in &load.maps {
         let metadata = map_assets.get(metadata_handle).expect("all checked");
+        maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
         let Some(order) = metadata.warp_order else {
             continue;
         };
@@ -370,6 +444,10 @@ fn track_catalog_load(
             order,
         });
     }
+    for (stem, metadata_handle) in &load.service_maps {
+        let metadata = map_assets.get(metadata_handle).expect("all checked");
+        maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
+    }
     warp_destinations.sort_by_key(|destination| {
         (
             !destination.town,
@@ -382,6 +460,17 @@ fn track_catalog_load(
     catalog.field_uses = field_uses;
     catalog.classes = classes;
     catalog.warp_destinations = warp_destinations;
+    catalog.maps = maps;
+    catalog.recipes = recipe_assets
+        .get(recipe_handle)
+        .expect("checked")
+        .entries()
+        .to_vec();
+    catalog.quests = quest_assets
+        .get(quest_handle)
+        .expect("checked")
+        .entries()
+        .to_vec();
     catalog.failure = None;
     catalog.status = CatalogStatus::Ready;
 }
@@ -417,6 +506,8 @@ macro_rules! yaml_loader {
 yaml_loader!(ItemCatalogAssetLoader, ItemCatalogFile);
 yaml_loader!(FieldUseCatalogAssetLoader, FieldUseCatalogFile);
 yaml_loader!(ClassDefinitionAssetLoader, ClassDefinition);
+yaml_loader!(RecipeCatalogAssetLoader, RecipeCatalogFile);
+yaml_loader!(QuestCatalogAssetLoader, QuestCatalogFile);
 
 #[derive(Debug)]
 enum CatalogAssetError {
@@ -1045,6 +1136,7 @@ mod tests {
             item_order,
             warp_destinations: Vec::new(),
             failure: None,
+            ..default()
         }
     }
 

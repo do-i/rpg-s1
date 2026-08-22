@@ -113,6 +113,20 @@ impl WorldNpc {
         self.position
     }
 
+    pub(crate) fn source_pixel_position(&self) -> Vec2 {
+        self.top_left
+            + Vec2::new(
+                CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0
+                    - TILE_SIZE as f32 / 2.0,
+                CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0
+                    - TILE_SIZE as f32 / 2.0,
+            )
+    }
+
+    pub(crate) fn interaction_range_pixels(&self) -> f32 {
+        self.interaction_range * TILE_SIZE as f32
+    }
+
     pub(crate) fn collision_rect(&self) -> CharacterCollisionRect {
         CharacterCollisionRect {
             x: self.top_left.x + CHARACTER_COLLISION_OFFSET_X,
@@ -120,10 +134,6 @@ impl WorldNpc {
             width: CHARACTER_COLLISION_WIDTH,
             height: CHARACTER_COLLISION_HEIGHT,
         }
-    }
-
-    pub(crate) fn interaction_range(&self) -> f32 {
-        self.interaction_range
     }
 }
 

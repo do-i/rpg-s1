@@ -98,6 +98,12 @@ impl GameState {
         &mut self.repository
     }
 
+    pub(crate) fn repository_and_party_mut(
+        &mut self,
+    ) -> (&mut RuntimeRepository, &mut RuntimeParty) {
+        (&mut self.repository, &mut self.party)
+    }
+
     pub fn map(&self) -> &RuntimeMapState {
         &self.map
     }

@@ -13,6 +13,7 @@ use crate::{
         CardinalDirection, EightWayDirection, collision_occupancy::CollisionOccupancy,
         world_collision::WorldCollision,
     },
+    service_ui::ServiceUiState,
     world_actor::WorldNpc,
     world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
@@ -52,6 +53,7 @@ fn move_world_player(
     battle_transition: Option<Res<BattleTransition>>,
     interaction: Option<Res<WorldInteractionState>>,
     field_menu: Option<Res<FieldMenuState>>,
+    service: Option<Res<ServiceUiState>>,
     npcs: Query<&WorldNpc>,
     boxes: Query<&WorldItemBox>,
     game: Option<ResMut<GameState>>,
@@ -89,6 +91,7 @@ fn move_world_player(
         || field_menu
             .as_deref()
             .is_some_and(FieldMenuState::input_locked)
+        || service.as_deref().is_some_and(ServiceUiState::input_locked)
     {
         let tile_id = player_animation.update(None, delta_time);
         set_atlas_tile(&mut player_sprite, tile_id);

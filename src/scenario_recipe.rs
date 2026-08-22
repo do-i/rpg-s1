@@ -11,12 +11,14 @@
 //! unlocked. This module records those data-loading defaults only; availability, ownership,
 //! crafting, catalog uniqueness, and cross-reference validation belong to later milestones.
 
+use bevy::{asset::Asset, reflect::TypePath};
+
 use crate::scenario_yaml::deserialize_string;
 use serde::{Deserialize, Deserializer};
 use std::num::NonZeroU32;
 
 /// The list-root `data/recipe/all_recipe.yaml` document.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
 #[serde(transparent)]
 pub struct RecipeCatalogFile(pub Vec<RecipeDefinition>);
 

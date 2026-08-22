@@ -49,6 +49,10 @@ impl RuntimeParty {
         self.members.iter()
     }
 
+    pub(crate) fn members_mut(&mut self) -> impl ExactSizeIterator<Item = &mut RuntimeMember> {
+        self.members.iter_mut()
+    }
+
     pub fn contains(&self, member_id: &str) -> bool {
         self.member(member_id).is_some()
     }
