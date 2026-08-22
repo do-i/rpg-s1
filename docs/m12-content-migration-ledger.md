@@ -34,7 +34,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-MAPDATA-`town_01_ardel_shrine` | Complete | Pinned metadata audit and strict instance validation pass; all Keeper Joss branches reach terminals in the production traversal fixture. |
 | C-MAPDATA-`zone_01_starting_forest` | Complete | Pinned metadata audit and strict instance validation pass; encounter, sign, audio, portal, and transport references all resolve. |
 | C-TMX-`town_01_ardel` | Complete | Exact pinned graph, production loader, referenced-asset resolution, and deterministic Ardel screenshot oracle pass. |
-| C-TMX-`town_01_ardel_house_01` | Ready | Exact pinned graph and production loader fixture pass. |
+| C-TMX-`town_01_ardel_house_01` | Complete | Exact pinned graph, production loader, and all referenced TSX/image path checks pass. |
 | C-TMX-`town_01_ardel_shop_01` | Ready | Exact pinned graph; Gate 11 live entry passed. |
 | C-TMX-`town_01_ardel_inn_01` | Ready | Exact pinned graph; live wave traversal remains. |
 | C-TMX-`town_01_ardel_shrine` | Ready | Exact pinned graph; live wave traversal remains. |
