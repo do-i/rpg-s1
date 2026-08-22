@@ -33,7 +33,7 @@ use crate::{
     world_transition::runtime_portals,
 };
 
-const ITEM_FILES: [&str; 12] = [
+const ITEM_FILES: [&str; 13] = [
     "accessories.yaml",
     "body.yaml",
     "consumables_battle_throw.yaml",
@@ -44,6 +44,7 @@ const ITEM_FILES: [&str; 12] = [
     "key_items.yaml",
     "magic_cores.yaml",
     "materials.yaml",
+    "migration_zone1_drops.yaml",
     "shields.yaml",
     "weapons.yaml",
 ];
@@ -1093,6 +1094,9 @@ mod tests {
             include_str!("../assets/scenarios/rusted_kingdoms/data/items/key_items.yaml"),
             include_str!("../assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml"),
             include_str!("../assets/scenarios/rusted_kingdoms/data/items/materials.yaml"),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
+            ),
             include_str!("../assets/scenarios/rusted_kingdoms/data/items/shields.yaml"),
             include_str!("../assets/scenarios/rusted_kingdoms/data/items/weapons.yaml"),
         ];
@@ -1172,11 +1176,21 @@ mod tests {
     #[test]
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
-        assert_eq!(catalog.items.len(), 172);
-        assert_eq!(catalog.item_order.len(), 172);
+        assert_eq!(catalog.items.len(), 176);
+        assert_eq!(catalog.item_order.len(), 176);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 13);
-        for id in ["potion", "antidote", "iron_sword", "mc_s", "sky_crystal"] {
+        for id in [
+            "potion",
+            "antidote",
+            "iron_sword",
+            "mc_s",
+            "sky_crystal",
+            "goblin_ear",
+            "goblin_fang",
+            "rusty_blade",
+            "goblin_shield",
+        ] {
             assert!(catalog.item(id).is_some(), "missing {id}");
         }
     }

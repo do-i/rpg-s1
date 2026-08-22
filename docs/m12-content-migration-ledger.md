@@ -58,7 +58,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | --- | --- | --- |
 | C-CLASS-`hero` | Ready | Pinned class/progression audits and battle fixtures pass. |
 | C-CLASS-`cleric` | Ready | Pinned class audit and Elise runtime join fixture pass; live recruitment remains. |
-| C-ENEMY-`enemies_rank_8_F` | Blocked | All W12.1 regular enemies and Grik load/fight, but the pinned source itself references undefined `goblin_fang`, `goblin_ear`, `rusty_blade`, and `goblin_shield` drop ids. Resolve as an explicit content decision before marking complete. |
+| C-ENEMY-`enemies_rank_8_F` | Ready | All W12.1 regular enemies and Grik load/fight. The target-authored Zone 1 material repair resolves all four dangling pinned drop ids; live boss victory remains. |
 | C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
 | C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
 | C-ITEM-`accessories` | Ready | Pinned item audit passes. |
@@ -71,6 +71,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ITEM-`key_items` | Ready | Pinned item/repository audits pass. |
 | C-ITEM-`magic_cores` | Ready | Pinned item audit and Gate 11 exchange fixtures pass. |
 | C-ITEM-`materials` | Ready | Pinned item audit and recipe input fixtures pass. |
+| C-ITEM-`migration_zone1_drops` | Complete | Target-authored compatibility catalog defines the pinned-but-missing `goblin_ear`, `goblin_fang`, `rusty_blade`, and `goblin_shield` as non-usable materials with bounded 10-30 GP sale values. Typed catalog and production addressability tests pass; the validator no longer reports any rank-F drop reference. |
 | C-ITEM-`shields` | Ready | Pinned item/equipment audits pass. |
 | C-ITEM-`weapons` | Ready | Pinned item/equipment audits pass. |
 
@@ -117,3 +118,9 @@ than duplicating hundreds of asset rows.
 - The source consumes `transport_warp_unlocked` without producing it. This is
   outside the W12.1 walkable boundary because warp remains locked, but must be
   resolved or recorded before the relevant transport wave closes.
+- The pinned rank-F enemy file references four item ids that do not exist in
+  any pinned item catalog. The target keeps the source enemy probabilities and
+  supplies project-authored material metadata in
+  `data/items/migration_zone1_drops.yaml`. No equipment or use behavior is
+  inferred. This repair reduces strict target validation from 37 errors to 14
+  while increasing the runtime item catalog from 172 to 176 entries.

@@ -301,7 +301,7 @@ live-found portal regression.
 | M6.03 | [x] Render the party summary panel. | `S` | Names, levels, HP/MP, row, and GP display. Evidence: live Aric summary from `GameState`. |
 | M6.04 | [x] Add the status member selector. | `T` | Cycling members handles a one- and five-member party. Evidence: explicit empty/one/five-member wrap fixtures and indexed view. |
 | M6.05 | [x] Render base and derived stats. | `S` | Displayed values agree with Python fixtures. Evidence: production equipment fixture and live Aric 28/17/28/5 to 32/17/32/5 totals. |
-| M6.06 | [x] Load the item catalog into a runtime resource. | `T` | All current item IDs are addressable. Evidence: typed asset catalog and 172-item/13-effect/5-class fixture. |
+| M6.06 | [x] Load the item catalog into a runtime resource. | `T` | All current item IDs are addressable. Evidence: typed asset catalog and 176-item/13-effect/5-class fixture, including the W12.1 dangling-drop repairs. |
 | M6.07 | [x] Render inventory tabs. | `S` | All/New/Recovery/Status/Battle/Material/Core/Key filters work. Evidence: production-catalog tab fixture and live Items controls. |
 | M6.08 | [x] Add scrollable inventory rows. | `T` | Empty, short, and over-one-page lists behave correctly. Evidence: empty-safe selection and explicit 12-row page-boundary fixtures. |
 | M6.09 | [x] Add the session-only item visibility filter. | `S` | Hidden items stay out of every tab until restart. Evidence: repository/filter fixture and Hide action. |

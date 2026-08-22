@@ -1,0 +1,27 @@
+# Milestone 12 compatibility repairs for dangling Zone 1 enemy-drop ids in the
+# pinned Python scenario. These are materials rather than equipment because the
+# source supplies no slot, stat, or use semantics for any of the four ids.
+
+- id: goblin_ear
+  name: Goblin Ear
+  type: material
+  sell_price: 10
+  description: "A notched goblin ear. Ardel's wardens accept it as proof of a cleared threat."
+
+- id: goblin_fang
+  name: Goblin Fang
+  type: material
+  sell_price: 15
+  description: "A yellowed fang from a forest goblin. Apothecaries buy the unbroken ones."
+
+- id: rusty_blade
+  name: Rusty Blade
+  type: material
+  sell_price: 25
+  description: "A corroded goblin weapon, useful only as scrap iron."
+
+- id: goblin_shield
+  name: Goblin Shield
+  type: material
+  sell_price: 30
+  description: "A battered hide-and-wood shield too crude to equip, but worth salvaging."

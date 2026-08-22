@@ -707,6 +707,31 @@ mod tests {
     }
 
     #[test]
+    fn zone_one_migration_drop_repairs_are_bounded_materials() {
+        let catalog: ItemCatalogFile = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
+        ))
+        .unwrap();
+        let materials = catalog
+            .entries()
+            .iter()
+            .map(|item| match item {
+                ItemDefinition::Material(material) => (material.id.as_str(), material.sell_price),
+                _ => panic!("migration drops must not invent equipment or use semantics"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            materials,
+            [
+                ("goblin_ear", 10),
+                ("goblin_fang", 15),
+                ("rusty_blade", 25),
+                ("goblin_shield", 30),
+            ]
+        );
+    }
+
+    #[test]
     fn retains_every_consumable_effect_signature() {
         let mut effects = Vec::new();
         for (_, document, _) in METADATA_FIXTURES

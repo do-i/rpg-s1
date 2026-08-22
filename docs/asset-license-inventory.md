@@ -2207,6 +2207,13 @@ for M6. Each row is a distinct ledger entry. Shared review fields for every row:
 | ALI-0101 | `rusted_kingdoms/data/items/weapons.yaml` | `assets/scenarios/rusted_kingdoms/data/items/weapons.yaml` | `1ae20ab1b6a6d75c13d0aa30032c05c6c73f88f6cea1a70ed6304c707b13e063` | scenario YAML / weapons |
 | ALI-0102 | `rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `9eee6b2ff027e44069abe52de82d6195a3e56d8ee0c2baa373be0a18b5c38f3c` | image / field-menu backdrop |
 
+Target-authored Milestone 12 compatibility data (not copied third-party
+content):
+
+| ID | Source path | Destination path | SHA-256 | Kind/name |
+| --- | --- | --- | --- | --- |
+| M12-0001 | N/A - project-authored repair for dangling pinned enemy-drop ids | `assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml` | `c239b2db128f9a14068e456267343dc0809159b43c578b337d08702109160c01` | scenario YAML / Zone 1 drop metadata |
+
 ## M8 encounter, enemy, and battle-presentation entries
 
 The following byte-identical files were copied from the pinned source revision

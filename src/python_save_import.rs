@@ -36,7 +36,7 @@ const PYTHON_SAVE_SCENARIO_ID: &str = "my_rpg_story";
 const PYTHON_SAVE_SCENARIO_VERSION: &str = "1.0.0";
 const MAX_PYTHON_SAVE_BYTES: usize = 1_048_576;
 static NEXT_IMPORT_TEMPORARY_FILE: AtomicU64 = AtomicU64::new(0);
-const ITEM_FILES: [&str; 12] = [
+const ITEM_FILES: [&str; 13] = [
     "accessories.yaml",
     "body.yaml",
     "consumables_battle_throw.yaml",
@@ -47,6 +47,7 @@ const ITEM_FILES: [&str; 12] = [
     "key_items.yaml",
     "magic_cores.yaml",
     "materials.yaml",
+    "migration_zone1_drops.yaml",
     "shields.yaml",
     "weapons.yaml",
 ];
