@@ -692,6 +692,26 @@ mod tests {
     }
 
     #[test]
+    fn ardel_shop_portal_is_a_reversible_link() {
+        assert_reversible_link(
+            "town_01_ardel",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            "town_01_ardel_shop_01",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
+            ),
+        );
+        let returns = portals_for(
+            "town_01_ardel_shop_01",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
+            ),
+        );
+        assert_eq!(returns.len(), 1);
+        assert_eq!(returns[0].target_position(), Position::new(15, 4));
+    }
+
+    #[test]
     fn entry_detector_emits_once_until_player_leaves_and_reenters() {
         let portals = ardel_portals();
         let mut detector = PortalEntryDetector::default();
