@@ -752,6 +752,40 @@ mod tests {
     }
 
     #[test]
+    fn starting_forest_portals_cover_both_ardel_routes_and_the_reversible_wave_boundary() {
+        let forest_document = include_str!(
+            "../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
+        );
+        let forest = portals_for("zone_01_starting_forest", forest_document);
+        assert_eq!(forest.len(), 3);
+        let destinations = forest
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                ("town_01_ardel", Position::new(27, 12)),
+                ("zone_02_open_plains", Position::new(28, 6)),
+                ("town_01_ardel", Position::new(20, 17)),
+            ]
+        );
+        assert_eq!(
+            ardel_portals()
+                .iter()
+                .filter(|portal| portal.target_map().as_str() == "zone_01_starting_forest")
+                .count(),
+            2
+        );
+        assert_reversible_link(
+            "zone_01_starting_forest",
+            forest_document,
+            "zone_02_open_plains",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx"),
+        );
+    }
+
+    #[test]
     fn entry_detector_emits_once_until_player_leaves_and_reenters() {
         let portals = ardel_portals();
         let mut detector = PortalEntryDetector::default();
