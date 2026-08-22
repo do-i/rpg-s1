@@ -62,7 +62,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
 | C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
 | C-ITEM-`accessories` | Complete | Pinned item audit and production catalog addressability pass for every accessory definition. |
-| C-ITEM-`body` | Ready | Pinned item audit passes. |
+| C-ITEM-`body` | Complete | Pinned item audit and production catalog addressability pass for every body-equipment definition. |
 | C-ITEM-`consumables_battle_throw` | Ready | Pinned item audit and battle usage fixtures pass. |
 | C-ITEM-`consumables_field` | Ready | Pinned item audit and field usage fixtures pass. |
 | C-ITEM-`consumables_recovery` | Ready | Pinned item audit; shop/loot/reward fixtures pass. |
