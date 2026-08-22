@@ -28,7 +28,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | Instance | Status | Evidence / remaining work |
 | --- | --- | --- |
 | C-MAPDATA-`town_01_ardel` | Complete | Pinned metadata audit and strict instance validation pass; the production replay exercised its NPC, service, sign, audio, and forest-link references. |
-| C-MAPDATA-`town_01_ardel_house_01` | Ready | Pinned metadata audit passes; elder reward path remains. |
+| C-MAPDATA-`town_01_ardel_house_01` | Complete | Pinned metadata audit and strict instance validation pass; the production elder document and reward/save fixture resolve its sole NPC reference. |
 | C-MAPDATA-`town_01_ardel_shop_01` | Ready | Pinned metadata audit and Gate 11 service replay pass. |
 | C-MAPDATA-`town_01_ardel_inn_01` | Ready | Content matches pinned source (ignoring final newline); live wave traversal remains. |
 | C-MAPDATA-`town_01_ardel_shrine` | Ready | Pinned metadata audit passes; shrine dialogue traversal remains. |
