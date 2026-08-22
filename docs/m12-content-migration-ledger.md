@@ -89,7 +89,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`mc_shop_intro` | Complete | Production traversal proves there is no pre-story match, then reaches the story-gated terminal and emits the Magic Core shop action; Gate 11 routed that action live. |
 | C-DIALOGUE-`item_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Item shop action; Gate 11 proved the dialogue-to-service handoff live. |
 | C-DIALOGUE-`apothecary_ardel` | Complete | Production traversal reaches the locked and story-available terminals, with only the latter emitting the apothecary action; Gate 11 proved that handoff live. |
-| C-DIALOGUE-`weapon_shop_ardel` | Ready | Service routing fixture passes; live distinct stock check remains. |
+| C-DIALOGUE-`weapon_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Weapon shop action; the distinct service route has its own runtime fixture. |
 | C-DIALOGUE-`armor_shop_ardel` | Ready | Gate 11 live distinct service title passed. |
 | C-DIALOGUE-`inn_ardel` | Ready | Service routing fixture passes; live inn traversal remains. |
 | C-DIALOGUE-`ardel_shrine_keeper` | Inventory | Traverse quest relay and story branches. |
