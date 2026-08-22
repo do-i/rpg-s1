@@ -727,6 +727,30 @@ mod tests {
     }
 
     #[test]
+    fn bridge_guard_zone5_traverses_only_the_authored_act_two_gate() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/bridge_guard_zone5.yaml"
+        ));
+        for flags in [vec![], vec!["story_act2_started", "boss_zone04_defeated"]] {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            assert!(
+                DialogueSession::resolve("bridge_guard_zone5", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        let flags = RuntimeFlags::from_bootstrap(["story_act2_started"]);
+        let mut session = DialogueSession::resolve("bridge_guard_zone5", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(session.current_line().starts_with("The ruins to the south"));
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
