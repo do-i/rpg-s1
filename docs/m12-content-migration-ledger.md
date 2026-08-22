@@ -92,7 +92,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`weapon_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Weapon shop action; the distinct service route has its own runtime fixture. |
 | C-DIALOGUE-`armor_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Armor shop action; Gate 11 proved its distinct live service route. |
 | C-DIALOGUE-`inn_ardel` | Complete | Production traversal reaches its sole terminal and emits the inn action; the service route and cancel/pay/recovery behavior have dedicated Gate 11 fixtures. |
-| C-DIALOGUE-`ardel_shrine_keeper` | Inventory | Traverse quest relay and story branches. |
+| C-DIALOGUE-`ardel_shrine_keeper` | Complete | Production traversal reaches the default, stream relay, post-relay, Act II, and endgame terminals and verifies only the active relay sets `sq_stream_relayed`. |
 | C-DIALOGUE-`bridge_guard_zone5` | Inventory | Traverse present gate branches without entering later-wave content. |
 | C-DIALOGUE-`stronghold_gate_guard` | Inventory | Traverse present gate branches without entering later-wave content. |
 | C-DIALOGUE-`sign_town_01_ardel` | Ready | Prior production sign replay passed. |

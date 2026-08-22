@@ -695,6 +695,38 @@ mod tests {
     }
 
     #[test]
+    fn ardel_shrine_keeper_traverses_quest_and_story_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_shrine_keeper.yaml"
+        ));
+        let cases = [
+            (vec!["boss_zone10_defeated"], "Warm, isn't it?"),
+            (vec!["sq_stream_started"], "Marn sent you?"),
+            (vec!["sq_stream_relayed"], "I'll be at the stream"),
+            (vec!["story_act2_started"], "So the elder finally told you"),
+            (vec![], "Mind the beams"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ardel_shrine_keeper", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 1 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_stream_relayed"]
+                );
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
