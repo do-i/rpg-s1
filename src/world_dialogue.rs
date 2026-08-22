@@ -342,11 +342,14 @@ mod tests {
         dialogue
     }
 
-    fn complete_linear(session: &mut DialogueSession, flags: &RuntimeFlags) {
+    fn complete_linear(
+        session: &mut DialogueSession,
+        flags: &RuntimeFlags,
+    ) -> Vec<DialogueActions> {
         for _ in 0..32 {
-            if matches!(session.confirm(flags), DialogueEvent::Apply(_)) {
+            if let DialogueEvent::Apply(actions) = session.confirm(flags) {
                 assert_eq!(session.phase(), DialoguePhase::Closed);
-                return;
+                return actions;
             }
         }
         panic!("linear dialogue did not reach its terminal");
@@ -405,7 +408,46 @@ mod tests {
             .unwrap()
             .unwrap();
             assert!(session.current_line().starts_with(expected_start));
-            complete_linear(&mut session, &flags);
+            let _actions = complete_linear(&mut session, &flags);
+        }
+    }
+
+    #[test]
+    fn ardel_smith_traverses_start_relay_reward_and_repeat_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_smith.yaml"
+        ));
+        let cases = [
+            (vec!["sq_smith_done"], "An edge like that'll last"),
+            (vec!["sq_smith_relayed"], "Ha! So the boy DID"),
+            (vec!["sq_smith_started"], "Tomas wandered off"),
+            (vec![], "Off to the forest"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ardel_smith", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_smith_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "potion");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 3);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_smith_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
         }
     }
 

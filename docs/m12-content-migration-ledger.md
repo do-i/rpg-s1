@@ -81,7 +81,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | --- | --- | --- |
 | C-DIALOGUE-`elise_join` | Ready | Source initial-state/idempotence fixture passes; live recruitment remains. |
 | C-DIALOGUE-`guide_ardel` | Complete | A production-document fixture selects and traverses the quest-started, post-boss, Act II, and sail-unlocked branches through their terminals. |
-| C-DIALOGUE-`ardel_smith` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
+| C-DIALOGUE-`ardel_smith` | Complete | Production traversal reaches all four terminals and verifies the start flag plus one-time `sq_smith_done`/three-Potion reward action. |
 | C-DIALOGUE-`ardel_apprentice` | Inventory | Traverse relay branches. |
 | C-DIALOGUE-`ardel_fisherman` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
 | C-DIALOGUE-`ardel_child` | Inventory | Traverse all conditions/terminal lines. |
