@@ -43,7 +43,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-PORTAL-`town_01_ardel_house_01` | Complete | Its sole outgoing portal returns to Ardel at `[3, 4]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`town_01_ardel_shop_01` | Complete | Its sole outgoing portal returns to Ardel at `[15, 4]`, and the Ardel entrance supplies the reverse link; Gate 11 also proved live entry. |
 | C-PORTAL-`town_01_ardel_inn_01` | Complete | Its sole outgoing portal returns to Ardel at `[24, 4]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
-| C-PORTAL-`town_01_ardel_shrine` | Inventory | Entrance and return acceptance remain. |
+| C-PORTAL-`town_01_ardel_shrine` | Complete | Its sole outgoing portal returns to Ardel at `[3, 18]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`zone_01_starting_forest` | Inventory | Both Ardel returns and the reversible W12.2 boundary need a graph fixture. |
 | C-PLAY-`town_01_ardel` | Ready | Prior live world/service evidence exists; complete wave route remains. |
 | C-PLAY-`town_01_ardel_house_01` | Inventory | Elder before/after-boss dialogue and reward. |
