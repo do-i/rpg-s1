@@ -61,7 +61,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ENEMY-`enemies_rank_8_F` | Ready | All W12.1 regular enemies and Grik load/fight. The target-authored Zone 1 material repair resolves all four dangling pinned drop ids; live boss victory remains. |
 | C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
 | C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
-| C-ITEM-`accessories` | Ready | Pinned item audit passes. |
+| C-ITEM-`accessories` | Complete | Pinned item audit and production catalog addressability pass for every accessory definition. |
 | C-ITEM-`body` | Ready | Pinned item audit passes. |
 | C-ITEM-`consumables_battle_throw` | Ready | Pinned item audit and battle usage fixtures pass. |
 | C-ITEM-`consumables_field` | Ready | Pinned item audit and field usage fixtures pass. |
