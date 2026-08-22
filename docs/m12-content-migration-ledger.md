@@ -63,7 +63,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
 | C-ITEM-`accessories` | Complete | Pinned item audit and production catalog addressability pass for every accessory definition. |
 | C-ITEM-`body` | Complete | Pinned item audit and production catalog addressability pass for every body-equipment definition. |
-| C-ITEM-`consumables_battle_throw` | Ready | Pinned item audit and battle usage fixtures pass. |
+| C-ITEM-`consumables_battle_throw` | Complete | Pinned item audit, production catalog addressability, and battle-use fixtures pass for every throwable definition. |
 | C-ITEM-`consumables_field` | Ready | Pinned item audit and field usage fixtures pass. |
 | C-ITEM-`consumables_recovery` | Ready | Pinned item audit; shop/loot/reward fixtures pass. |
 | C-ITEM-`consumables_status_cure` | Ready | Pinned item audit and battle/field usage fixtures pass. |
