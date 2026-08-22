@@ -38,7 +38,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-TMX-`town_01_ardel_shop_01` | Complete | Exact pinned graph, production loader, referenced-asset checks, and Gate 11 live entry pass. |
 | C-TMX-`town_01_ardel_inn_01` | Complete | Exact pinned graph, production loader, and all referenced TSX/image path checks pass. |
 | C-TMX-`town_01_ardel_shrine` | Complete | Exact pinned graph, production loader, and all referenced TSX/image path checks pass. |
-| C-TMX-`zone_01_starting_forest` | Ready | Intentional Rust delta hides the semantic `spawn_tile` layer; all other pinned bytes and the runtime projection audit pass. |
+| C-TMX-`zone_01_starting_forest` | Complete | The recorded Rust delta hides only the semantic `spawn_tile` layer; all other pinned bytes, referenced assets, production loading, and runtime projection audit pass. |
 | C-PORTAL-`town_01_ardel` | Complete | All six authored exits parse; house, shop, inn, shrine, and both forest routes have loadable return portals (`world_transition` regression). |
 | C-PORTAL-`town_01_ardel_house_01` | Complete | Its sole outgoing portal returns to Ardel at `[3, 4]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`town_01_ardel_shop_01` | Complete | Its sole outgoing portal returns to Ardel at `[15, 4]`, and the Ardel entrance supplies the reverse link; Gate 11 also proved live entry. |
