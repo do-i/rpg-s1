@@ -564,6 +564,28 @@ mod tests {
         )
     }
 
+    fn assert_reversible_link(
+        source_map: &str,
+        source_document: &str,
+        destination_map: &str,
+        destination_document: &str,
+    ) {
+        let outgoing = portals_for(source_map, source_document);
+        assert!(
+            outgoing
+                .iter()
+                .any(|portal| portal.target_map().as_str() == destination_map),
+            "{source_map} must link to {destination_map}"
+        );
+        let returning = portals_for(destination_map, destination_document);
+        assert!(
+            returning
+                .iter()
+                .any(|portal| portal.target_map().as_str() == source_map),
+            "{destination_map} must link back to {source_map}"
+        );
+    }
+
     #[test]
     fn ardel_runtime_portals_preserve_source_bounds_and_destinations() {
         let portals = ardel_portals();
@@ -647,6 +669,26 @@ mod tests {
                 "{map_id} must have a loadable return portal to Ardel"
             );
         }
+    }
+
+    #[test]
+    fn ardel_house_portal_is_a_reversible_link() {
+        assert_reversible_link(
+            "town_01_ardel",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            "town_01_ardel_house_01",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
+            ),
+        );
+        let returns = portals_for(
+            "town_01_ardel_house_01",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
+            ),
+        );
+        assert_eq!(returns.len(), 1);
+        assert_eq!(returns[0].target_position(), Position::new(3, 4));
     }
 
     #[test]
