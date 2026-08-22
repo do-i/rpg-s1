@@ -72,7 +72,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-ITEM-`magic_cores` | Complete | Pinned item audit, production catalog addressability, and Gate 11 Magic Core exchange fixtures pass. |
 | C-ITEM-`materials` | Complete | Pinned item audit, production catalog addressability, and recipe-input fixtures pass for every source material. |
 | C-ITEM-`migration_zone1_drops` | Complete | Target-authored compatibility catalog defines the pinned-but-missing `goblin_ear`, `goblin_fang`, `rusty_blade`, and `goblin_shield` as non-usable materials with bounded 10-30 GP sale values. Typed catalog and production addressability tests pass; the validator no longer reports any rank-F drop reference. |
-| C-ITEM-`shields` | Ready | Pinned item/equipment audits pass. |
+| C-ITEM-`shields` | Complete | Pinned item/equipment audits, production catalog addressability, slot compatibility, and equipment fixtures pass. |
 | C-ITEM-`weapons` | Ready | Pinned item/equipment audits pass. |
 
 ### Dialogue instances
