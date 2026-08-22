@@ -82,7 +82,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`elise_join` | Ready | Source initial-state/idempotence fixture passes; live recruitment remains. |
 | C-DIALOGUE-`guide_ardel` | Complete | A production-document fixture selects and traverses the quest-started, post-boss, Act II, and sail-unlocked branches through their terminals. |
 | C-DIALOGUE-`ardel_smith` | Complete | Production traversal reaches all four terminals and verifies the start flag plus one-time `sq_smith_done`/three-Potion reward action. |
-| C-DIALOGUE-`ardel_apprentice` | Inventory | Traverse relay branches. |
+| C-DIALOGUE-`ardel_apprentice` | Complete | Production traversal reaches the pre-errand, active relay, and post-relay terminals and verifies the active branch sets `sq_smith_relayed`. |
 | C-DIALOGUE-`ardel_fisherman` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
 | C-DIALOGUE-`ardel_child` | Inventory | Traverse all conditions/terminal lines. |
 | C-DIALOGUE-`elder_intro` | Complete | Production document selects the post-Grik reward branch, sets `npc_elder_reward_given` and `story_act2_started`, grants two Hi-Potions and one Tent exactly once, selects the post-reward branch on repeat, and round-trips the boundary through native save encoding. |
