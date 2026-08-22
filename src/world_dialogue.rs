@@ -791,6 +791,23 @@ mod tests {
     }
 
     #[test]
+    fn starting_forest_trail_marker_traverses_its_authored_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("sign_zone_01_starting_forest", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert_eq!(session.current_line(), "Trail Marker — Starting Forest");
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(

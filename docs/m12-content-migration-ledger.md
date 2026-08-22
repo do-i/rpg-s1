@@ -96,7 +96,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`bridge_guard_zone5` | Complete | Production traversal proves no match before Act II or after the Zone 4 boss, and reaches the sole blocking terminal only inside its authored gate window. |
 | C-DIALOGUE-`stronghold_gate_guard` | Complete | Production traversal proves no match before Act IV or after the Zone 9 boss, and reaches the sole blocking terminal only inside its authored gate window. |
 | C-DIALOGUE-`sign_town_01_ardel` | Complete | Production traversal reaches its three-line terminal without effects; prior runtime sign interaction replay also passed. |
-| C-DIALOGUE-`sign_zone_01_starting_forest` | Inventory | Production sign replay remains. |
+| C-DIALOGUE-`sign_zone_01_starting_forest` | Complete | Production traversal reaches its three-line terminal without effects through the same dialogue-session path used by world signs. |
 
 Audio instances used at this boundary are `town.default`,
 `zone.starting_forest`, `battle.normal`, `battle.boss`, and their referenced UI,
