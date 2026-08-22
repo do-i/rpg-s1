@@ -32,7 +32,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-MAPDATA-`town_01_ardel_shop_01` | Complete | Pinned metadata audit and strict instance validation pass; Gate 11 exercised every distinct service reference through production routing. |
 | C-MAPDATA-`town_01_ardel_inn_01` | Complete | Content matches pinned source apart from its recorded trailing-newline delta; strict instance validation and the production inn-service fixture pass. |
 | C-MAPDATA-`town_01_ardel_shrine` | Complete | Pinned metadata audit and strict instance validation pass; all Keeper Joss branches reach terminals in the production traversal fixture. |
-| C-MAPDATA-`zone_01_starting_forest` | Ready | Pinned metadata audit passes; boss-to-boundary replay remains. |
+| C-MAPDATA-`zone_01_starting_forest` | Complete | Pinned metadata audit and strict instance validation pass; encounter, sign, audio, portal, and transport references all resolve. |
 | C-TMX-`town_01_ardel` | Ready | Exact pinned graph and deterministic Ardel screenshot oracle pass. |
 | C-TMX-`town_01_ardel_house_01` | Ready | Exact pinned graph and production loader fixture pass. |
 | C-TMX-`town_01_ardel_shop_01` | Ready | Exact pinned graph; Gate 11 live entry passed. |
