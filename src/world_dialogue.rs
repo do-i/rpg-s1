@@ -482,6 +482,73 @@ mod tests {
     }
 
     #[test]
+    fn ardel_fisherman_traverses_quest_terminals_and_accounts_for_dead_source_entries() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml"
+        ));
+        let cases = [
+            (vec!["sq_stream_done"], "The keeper came down"),
+            (vec!["sq_stream_relayed"], "He'll come?"),
+            (vec!["sq_stream_started"], "The keeper's up"),
+            (vec![], "The fish swim belly-up some mornings now"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ardel_fisherman", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_stream_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "lure_charm");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 2);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_stream_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+
+        let relevant_flags = [
+            "sq_stream_started",
+            "sq_stream_relayed",
+            "sq_stream_done",
+            "boss_zone01_defeated",
+            "story_quest_started",
+        ];
+        for mask in 0..(1 << relevant_flags.len()) {
+            let flags = RuntimeFlags::from_bootstrap(
+                relevant_flags
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| mask & (1 << index) != 0)
+                    .map(|(_, flag)| *flag),
+            );
+            let session =
+                DialogueSession::resolve("ardel_fisherman", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(
+                session.current < 4,
+                "pinned first-match ordering unexpectedly made a dead entry reachable at mask {mask}"
+            );
+        }
+        assert_eq!(dialogue.entries.len(), 6);
+        assert!(dialogue.entries[4].lines[0].starts_with("Fish came back to the stream"));
+        assert!(dialogue.entries[5].lines[0].starts_with("The fish swim belly-up"));
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(

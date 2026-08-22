@@ -83,7 +83,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`guide_ardel` | Complete | A production-document fixture selects and traverses the quest-started, post-boss, Act II, and sail-unlocked branches through their terminals. |
 | C-DIALOGUE-`ardel_smith` | Complete | Production traversal reaches all four terminals and verifies the start flag plus one-time `sq_smith_done`/three-Potion reward action. |
 | C-DIALOGUE-`ardel_apprentice` | Complete | Production traversal reaches the pre-errand, active relay, and post-relay terminals and verifies the active branch sets `sq_smith_relayed`. |
-| C-DIALOGUE-`ardel_fisherman` | Inventory | Traverse start, relay, completion/reward, and repeat branches. |
+| C-DIALOGUE-`ardel_fisherman` | Complete | Production traversal reaches all four executable quest terminals and verifies the start flag plus one-time `sq_stream_done`/two-Lure-Charm reward. An exhaustive flag fixture proves the two trailing pinned flavor entries are dead under Python-compatible first-match ordering and retains their bytes as accounted source content. |
 | C-DIALOGUE-`ardel_child` | Inventory | Traverse all conditions/terminal lines. |
 | C-DIALOGUE-`elder_intro` | Complete | Production document selects the post-Grik reward branch, sets `npc_elder_reward_given` and `story_act2_started`, grants two Hi-Potions and one Tent exactly once, selects the post-reward branch on repeat, and round-trips the boundary through native save encoding. |
 | C-DIALOGUE-`mc_shop_intro` | Ready | Gate 11 routed its service action; conditional traversal fixture remains. |
@@ -124,3 +124,8 @@ than duplicating hundreds of asset rows.
   `data/items/migration_zone1_drops.yaml`. No equipment or use behavior is
   inferred. This repair reduces strict target validation from 37 errors to 14
   while increasing the runtime item catalog from 172 to 176 entries.
+- `ardel_fisherman.yaml` ends with two flavor entries that are unreachable for
+  every combination of their five relevant flags: the four preceding quest
+  conditions partition all states under the pinned Python engine's first-match
+  rule. The target retains the source bytes and has an exhaustive 32-state
+  regression so the dead content cannot be mistaken for a Rust traversal bug.
