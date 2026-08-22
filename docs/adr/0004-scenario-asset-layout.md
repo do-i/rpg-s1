@@ -230,7 +230,9 @@ Development and release use the same logical AssetServer paths. What changes
 is only the physical base that supplies `assets/`:
 
 - non-packaged development builds derive the repository asset base from the
-  build manifest directory captured by Cargo, not `current_dir()`;
+  build manifest directory captured by Cargo, not `current_dir()`; a repository
+  `target` symlink is resolved so its externally stored binaries remain
+  development builds;
 - tests inject a temporary or fixture asset base explicitly; and
 - an installed release derives its asset base from the executable's package
   directory and expects `assets/` beside the executable.

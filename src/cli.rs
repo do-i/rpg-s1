@@ -484,8 +484,17 @@ fn production_scenario_collection() -> PathBuf {
 
 /// Resolves the Bevy asset base through the same development/installed layout decision as the
 /// filesystem validator's scenario collection.
+///
+/// The repository target directory may resolve outside the repository when it is a symlink. Its
+/// canonical location still identifies that executable as a development build without consulting
+/// the process working directory. A packaged executable copied elsewhere continues to use only
+/// the `assets/` directory beside itself.
 fn asset_base_for_executable(executable: &Path, manifest_directory: &Path) -> PathBuf {
-    if executable.starts_with(manifest_directory) {
+    let development_target_directory = manifest_directory.join("target");
+    let is_development_executable = path_is_within(executable, manifest_directory)
+        || path_is_within(executable, &development_target_directory);
+
+    if is_development_executable {
         manifest_directory.join("assets")
     } else {
         executable
@@ -493,6 +502,14 @@ fn asset_base_for_executable(executable: &Path, manifest_directory: &Path) -> Pa
             .unwrap_or(manifest_directory)
             .join("assets")
     }
+}
+
+fn path_is_within(path: &Path, directory: &Path) -> bool {
+    path.starts_with(directory)
+        || fs::canonicalize(path)
+            .ok()
+            .zip(fs::canonicalize(directory).ok())
+            .is_some_and(|(path, directory)| path.starts_with(directory))
 }
 
 #[cfg(test)]
@@ -596,6 +613,30 @@ mod tests {
         assert_eq!(
             asset_base_for_executable(&executable, &workspace),
             workspace.join("assets")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn development_executable_behind_target_symlink_uses_manifest_assets() {
+        use std::os::unix::fs::symlink;
+
+        let temporary = TempCollection::new("source/rpg-s1");
+        let manifest_directory = temporary.0.join("source/rpg-s1");
+        let external_target = temporary.0.join("cache/target");
+        let external_executable = external_target.join("debug/rpg-s1");
+        fs::create_dir_all(external_executable.parent().unwrap())
+            .expect("external target should be creatable");
+        fs::write(&external_executable, b"invented executable")
+            .expect("external executable should be creatable");
+        symlink(&external_target, manifest_directory.join("target"))
+            .expect("repository target symlink should be creatable");
+        let resolved_executable = fs::canonicalize(manifest_directory.join("target/debug/rpg-s1"))
+            .expect("target executable should resolve through the symlink");
+
+        assert_eq!(
+            asset_base_for_executable(&resolved_executable, &manifest_directory),
+            manifest_directory.join("assets")
         );
     }
 
