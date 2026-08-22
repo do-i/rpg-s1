@@ -751,6 +751,30 @@ mod tests {
     }
 
     #[test]
+    fn stronghold_guard_traverses_only_the_authored_act_four_gate() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/stronghold_gate_guard.yaml"
+        ));
+        for flags in [vec![], vec!["story_act4_started", "boss_zone09_defeated"]] {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            assert!(
+                DialogueSession::resolve("stronghold_gate_guard", None, dialogue.clone(), &flags,)
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        let flags = RuntimeFlags::from_bootstrap(["story_act4_started"]);
+        let mut session = DialogueSession::resolve("stronghold_gate_guard", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(session.current_line().starts_with("The road ahead"));
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
