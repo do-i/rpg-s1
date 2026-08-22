@@ -91,7 +91,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`apothecary_ardel` | Complete | Production traversal reaches the locked and story-available terminals, with only the latter emitting the apothecary action; Gate 11 proved that handoff live. |
 | C-DIALOGUE-`weapon_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Weapon shop action; the distinct service route has its own runtime fixture. |
 | C-DIALOGUE-`armor_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Armor shop action; Gate 11 proved its distinct live service route. |
-| C-DIALOGUE-`inn_ardel` | Ready | Service routing fixture passes; live inn traversal remains. |
+| C-DIALOGUE-`inn_ardel` | Complete | Production traversal reaches its sole terminal and emits the inn action; the service route and cancel/pay/recovery behavior have dedicated Gate 11 fixtures. |
 | C-DIALOGUE-`ardel_shrine_keeper` | Inventory | Traverse quest relay and story branches. |
 | C-DIALOGUE-`bridge_guard_zone5` | Inventory | Traverse present gate branches without entering later-wave content. |
 | C-DIALOGUE-`stronghold_gate_guard` | Inventory | Traverse present gate branches without entering later-wave content. |

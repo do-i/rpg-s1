@@ -676,6 +676,25 @@ mod tests {
     }
 
     #[test]
+    fn ardel_inn_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/inn_ardel.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("inn_ardel", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Welcome to the Ardel Inn")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert!(actions[0].open_inn.is_some());
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
