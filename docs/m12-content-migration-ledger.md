@@ -60,7 +60,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-CLASS-`cleric` | Complete | Pinned class/progression audit, Elise join fixture, and live source-authored recruitment into the active battle party pass. |
 | C-ENEMY-`enemies_rank_8_F` | Ready | All W12.1 regular enemies and Grik load/fight. The target-authored Zone 1 material repair resolves all four dangling pinned drop ids; live boss victory remains. |
 | C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
-| C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
+| C-RECIPE-`all_recipe` | Complete | Every input, output, and flag resolves in the pinned audit; Gate 11 classification and atomic craft fixtures pass against the production catalog. |
 | C-ITEM-`accessories` | Complete | Pinned item audit and production catalog addressability pass for every accessory definition. |
 | C-ITEM-`body` | Complete | Pinned item audit and production catalog addressability pass for every body-equipment definition. |
 | C-ITEM-`consumables_battle_throw` | Complete | Pinned item audit, production catalog addressability, and battle-use fixtures pass for every throwable definition. |
