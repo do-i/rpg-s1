@@ -618,6 +618,28 @@ mod tests {
     }
 
     #[test]
+    fn ardel_apothecary_traverses_locked_and_available_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ardel.yaml"
+        ));
+        let cases = [
+            (vec![], "My workshop isn't quite ready", false),
+            (vec!["story_quest_started"], "Welcome to my workshop", true),
+        ];
+        for (flags, expected_start, opens_apothecary) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("apothecary_ardel", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            assert_eq!(actions[0].open_apothecary.is_some(), opens_apothecary);
+        }
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(

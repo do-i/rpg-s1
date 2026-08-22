@@ -88,7 +88,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-DIALOGUE-`elder_intro` | Complete | Production document selects the post-Grik reward branch, sets `npc_elder_reward_given` and `story_act2_started`, grants two Hi-Potions and one Tent exactly once, selects the post-reward branch on repeat, and round-trips the boundary through native save encoding. |
 | C-DIALOGUE-`mc_shop_intro` | Complete | Production traversal proves there is no pre-story match, then reaches the story-gated terminal and emits the Magic Core shop action; Gate 11 routed that action live. |
 | C-DIALOGUE-`item_shop_ardel` | Complete | Production traversal reaches its sole terminal and emits the Item shop action; Gate 11 proved the dialogue-to-service handoff live. |
-| C-DIALOGUE-`apothecary_ardel` | Ready | Gate 11 live dialogue-to-service handoff passed. |
+| C-DIALOGUE-`apothecary_ardel` | Complete | Production traversal reaches the locked and story-available terminals, with only the latter emitting the apothecary action; Gate 11 proved that handoff live. |
 | C-DIALOGUE-`weapon_shop_ardel` | Ready | Service routing fixture passes; live distinct stock check remains. |
 | C-DIALOGUE-`armor_shop_ardel` | Ready | Gate 11 live distinct service title passed. |
 | C-DIALOGUE-`inn_ardel` | Ready | Service routing fixture passes; live inn traversal remains. |
