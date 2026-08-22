@@ -551,14 +551,17 @@ mod tests {
     use super::*;
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
 
-    fn ardel_portals() -> Vec<RuntimePortal> {
-        let owner = ScenarioRelativePath::try_from("assets/maps/town_01_ardel.tmx").unwrap();
-        let document = parse_tmx_map_document(
-            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
-            &owner,
-        )
-        .unwrap();
+    fn portals_for(map_id: &str, document: &str) -> Vec<RuntimePortal> {
+        let owner = ScenarioRelativePath::try_from(format!("assets/maps/{map_id}.tmx")).unwrap();
+        let document = parse_tmx_map_document(document, &owner).unwrap();
         runtime_portals(&document).unwrap()
+    }
+
+    fn ardel_portals() -> Vec<RuntimePortal> {
+        portals_for(
+            "town_01_ardel",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+        )
     }
 
     #[test]
@@ -581,6 +584,69 @@ mod tests {
         );
         assert_eq!(house.target_map().as_str(), "town_01_ardel_house_01");
         assert_eq!(house.target_position(), Position::new(10, 11));
+    }
+
+    #[test]
+    fn every_ardel_outgoing_destination_has_a_return_portal() {
+        let portals = ardel_portals();
+        let destinations = portals
+            .iter()
+            .map(|portal| portal.target_map().as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                "zone_01_starting_forest",
+                "town_01_ardel_house_01",
+                "town_01_ardel_shop_01",
+                "town_01_ardel_inn_01",
+                "zone_01_starting_forest",
+                "town_01_ardel_shrine",
+            ]
+        );
+
+        let return_documents = [
+            (
+                "town_01_ardel_house_01",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
+                ),
+            ),
+            (
+                "town_01_ardel_shop_01",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
+                ),
+            ),
+            (
+                "town_01_ardel_inn_01",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx"
+                ),
+            ),
+            (
+                "town_01_ardel_shrine",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx"
+                ),
+            ),
+            (
+                "zone_01_starting_forest",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
+                ),
+            ),
+        ];
+        for (map_id, document) in return_documents {
+            let returns_to_ardel = portals_for(map_id, document)
+                .into_iter()
+                .filter(|portal| portal.target_map().as_str() == "town_01_ardel")
+                .count();
+            assert!(
+                returns_to_ardel > 0,
+                "{map_id} must have a loadable return portal to Ardel"
+            );
+        }
     }
 
     #[test]

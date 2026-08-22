@@ -1,0 +1,105 @@
+# Milestone 12 Content Migration Ledger
+
+Source: `../agentic-rpg` at
+`08970359d6cb03586948625d29b0d3351dbbf785`
+
+This ledger instantiates the wildcard task families from
+`docs/rusted-kingdoms-port-plan.md`. A row is Complete only when its individual
+acceptance contract has evidence; merely finding a file in the repository is
+not completion. Content is processed in wave order and committed in small,
+independently validated slices.
+
+## Status vocabulary
+
+| Status | Meaning |
+| --- | --- |
+| Inventory | The pinned source instance and target path are identified. |
+| Ready | The source bytes/schema are present, but instance acceptance is not complete. |
+| Complete | The instance-specific automated and required live checks pass. |
+| Blocked | A concrete source/content decision is required before acceptance can pass. |
+
+## W12.1 — Ardel and Starting Forest
+
+Wave boundary: Ardel, house/shop/inn/shrine, Starting Forest, first boss, elder
+reward, and the resulting `story_act2_started` save/load state.
+
+### Maps, portals, and play checks
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-MAPDATA-`town_01_ardel` | Ready | Pinned metadata audit passes; NPC, service, sign, and dialogue wave check remains. |
+| C-MAPDATA-`town_01_ardel_house_01` | Ready | Pinned metadata audit passes; elder reward path remains. |
+| C-MAPDATA-`town_01_ardel_shop_01` | Ready | Pinned metadata audit and Gate 11 service replay pass. |
+| C-MAPDATA-`town_01_ardel_inn_01` | Ready | Content matches pinned source (ignoring final newline); live wave traversal remains. |
+| C-MAPDATA-`town_01_ardel_shrine` | Ready | Pinned metadata audit passes; shrine dialogue traversal remains. |
+| C-MAPDATA-`zone_01_starting_forest` | Ready | Pinned metadata audit passes; boss-to-boundary replay remains. |
+| C-TMX-`town_01_ardel` | Ready | Exact pinned graph and deterministic Ardel screenshot oracle pass. |
+| C-TMX-`town_01_ardel_house_01` | Ready | Exact pinned graph and production loader fixture pass. |
+| C-TMX-`town_01_ardel_shop_01` | Ready | Exact pinned graph; Gate 11 live entry passed. |
+| C-TMX-`town_01_ardel_inn_01` | Ready | Exact pinned graph; live wave traversal remains. |
+| C-TMX-`town_01_ardel_shrine` | Ready | Exact pinned graph; live wave traversal remains. |
+| C-TMX-`zone_01_starting_forest` | Ready | Intentional Rust delta hides the semantic `spawn_tile` layer; all other pinned bytes and the runtime projection audit pass. |
+| C-PORTAL-`town_01_ardel` | Complete | All six authored exits parse; house, shop, inn, shrine, and both forest routes have loadable return portals (`world_transition` regression). |
+| C-PORTAL-`town_01_ardel_house_01` | Inventory | Exercise entrance and return in the wave replay. |
+| C-PORTAL-`town_01_ardel_shop_01` | Inventory | Gate 11 proved entry; explicit return acceptance remains. |
+| C-PORTAL-`town_01_ardel_inn_01` | Inventory | Entrance and return acceptance remain. |
+| C-PORTAL-`town_01_ardel_shrine` | Inventory | Entrance and return acceptance remain. |
+| C-PORTAL-`zone_01_starting_forest` | Inventory | Both Ardel returns and the reversible W12.2 boundary need a graph fixture. |
+| C-PLAY-`town_01_ardel` | Ready | Prior live world/service evidence exists; complete wave route remains. |
+| C-PLAY-`town_01_ardel_house_01` | Inventory | Elder before/after-boss dialogue and reward. |
+| C-PLAY-`town_01_ardel_shop_01` | Ready | Gate 11 service replay passed. |
+| C-PLAY-`town_01_ardel_inn_01` | Inventory | Portal, inn cancel/pay/recovery, and return. |
+| C-PLAY-`town_01_ardel_shrine` | Inventory | Portal, Keeper Joss branches, and return. |
+| C-PLAY-`zone_01_starting_forest` | Ready | Regular encounter/reward replay passed; first-boss and boundary save remain. |
+
+### Gameplay content instances
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-CLASS-`hero` | Ready | Pinned class/progression audits and battle fixtures pass. |
+| C-CLASS-`cleric` | Ready | Pinned class audit and Elise runtime join fixture pass; live recruitment remains. |
+| C-ENEMY-`enemies_rank_8_F` | Blocked | All W12.1 regular enemies and Grik load/fight, but the pinned source itself references undefined `goblin_fang`, `goblin_ear`, `rusty_blade`, and `goblin_shield` drop ids. Resolve as an explicit content decision before marking complete. |
+| C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
+| C-RECIPE-`all_recipe` | Ready | Gate 11 classification/craft fixture and pinned audit pass; wave service acceptance remains. |
+| C-ITEM-`accessories` | Ready | Pinned item audit passes. |
+| C-ITEM-`body` | Ready | Pinned item audit passes. |
+| C-ITEM-`consumables_battle_throw` | Ready | Pinned item audit and battle usage fixtures pass. |
+| C-ITEM-`consumables_field` | Ready | Pinned item audit and field usage fixtures pass. |
+| C-ITEM-`consumables_recovery` | Ready | Pinned item audit; shop/loot/reward fixtures pass. |
+| C-ITEM-`consumables_status_cure` | Ready | Pinned item audit and battle/field usage fixtures pass. |
+| C-ITEM-`helmets` | Ready | Pinned item/equipment audits pass. |
+| C-ITEM-`key_items` | Ready | Pinned item/repository audits pass. |
+| C-ITEM-`magic_cores` | Ready | Pinned item audit and Gate 11 exchange fixtures pass. |
+| C-ITEM-`materials` | Ready | Pinned item audit and recipe input fixtures pass. |
+| C-ITEM-`shields` | Ready | Pinned item/equipment audits pass. |
+| C-ITEM-`weapons` | Ready | Pinned item/equipment audits pass. |
+
+The W12.1 dialogue instances are `elise_join`, `guide_ardel`, `ardel_smith`,
+`ardel_apprentice`, `ardel_fisherman`, `ardel_child`, `elder_intro`,
+`mc_shop_intro`, `item_shop_ardel`, `apothecary_ardel`, `weapon_shop_ardel`,
+`armor_shop_ardel`, `inn_ardel`, `ardel_shrine_keeper`,
+`bridge_guard_zone5`, `stronghold_gate_guard`, `sign_town_01_ardel`, and
+`sign_zone_01_starting_forest`. Each is currently Inventory or Ready from the
+pinned schema audit; each will receive a terminal traversal fixture or live
+wave evidence before its C-DIALOGUE instance is marked Complete.
+
+Audio instances used at this boundary are `town.default`,
+`zone.starting_forest`, `battle.normal`, `battle.boss`, and their referenced UI,
+world, and battle SFX. Their indexes and materialized assets pass the pinned
+audit; live transition continuity remains part of the wave exit check.
+
+Individual image, sprite, tileset, font, and audio-file C-ASSET instances are
+already identified with source path, destination, license, and hash in
+`docs/asset-license-inventory.md`. This ledger links to that evidence rather
+than duplicating hundreds of asset rows.
+
+## Pinned-source differences affecting W12.1
+
+- `zone_01_starting_forest.tmx` differs only by marking `spawn_tile` invisible
+  and adding a final newline. Python treats this layer as semantic spawn data;
+  the Rust renderer must hide it. A dedicated projection test covers the
+  accepted rendering delta.
+- `town_01_ardel_inn_01.yaml` differs only by a trailing blank line.
+- The source consumes `transport_warp_unlocked` without producing it. This is
+  outside the W12.1 walkable boundary because warp remains locked, but must be
+  resolved or recorded before the relevant transport wave closes.
