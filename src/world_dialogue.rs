@@ -808,6 +808,41 @@ mod tests {
     }
 
     #[test]
+    fn elise_join_traverses_before_join_offer_and_post_join_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/elise_join.yaml"
+        ));
+        let cases = [
+            (
+                vec!["npc_elise_joined", "boss_zone01_defeated"],
+                "The forest changed",
+            ),
+            (vec!["npc_elise_joined"], "I packed bandages"),
+            (vec!["story_quest_started"], "Aric. I saw the flame"),
+            (vec![], "Morning, Aric"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("elise_join", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 2 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["npc_elise_joined"]
+                );
+                assert_eq!(actions[0].join_party.as_deref(), Some("elise"));
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
