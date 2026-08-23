@@ -68,6 +68,21 @@ impl SaveSlotCatalog {
         self.refresh_requested = true;
     }
 
+    #[cfg(test)]
+    pub(crate) fn ready_for_test(
+        scenario_id: impl Into<String>,
+        scenario_version: impl Into<String>,
+        balance: BalanceData,
+    ) -> Self {
+        Self {
+            scenario_id: scenario_id.into(),
+            scenario_version: scenario_version.into(),
+            balance: Some(balance),
+            ready: true,
+            ..Self::default()
+        }
+    }
+
     pub(crate) fn context(&self) -> Option<SaveContext<'_>> {
         Some(SaveContext {
             scenario_id: &self.scenario_id,

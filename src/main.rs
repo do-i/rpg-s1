@@ -1,5 +1,6 @@
 mod action_input;
 pub mod app_state;
+mod autosave;
 mod battle;
 mod cli;
 pub mod encounter;
@@ -78,6 +79,7 @@ mod test_support;
 
 use action_input::ActionInputPlugin;
 use app_state::{AppState, AppStateTransitionPlugin};
+use autosave::AutosavePlugin;
 use battle::BattlePlugin;
 use bevy::{
     asset::AssetPlugin,
@@ -180,6 +182,7 @@ fn run_game() {
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)
         .add_plugins(WorldTransitionPlugin)
+        .add_plugins(AutosavePlugin)
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldInteractionPlugin)
         .add_plugins(ServiceUiPlugin)
