@@ -129,3 +129,16 @@ than duplicating hundreds of asset rows.
   conditions partition all states under the pinned Python engine's first-match
   rule. The target retains the source bytes and has an exhaustive 32-state
   regression so the dead content cannot be mistaken for a Rust traversal bug.
+
+## Pinned-source differences affecting W12.2 (recorded 2026-08-22)
+
+- The pinned source references BGM id `zone.open_plains` from
+  `data/maps/zone_02_open_plains.yaml` but never defines it in
+  `data/audio/bgm_index.yaml` (both files verified byte-identical to source
+  before this change). The target adds
+  `zone: open_plains: bgm/Sun_Kissed_Horizon.mp3`, mapping the id to a shipped
+  track that no map otherwise references, as an intentional improvement over
+  pinned behavior (the source would play Open Plains without its own theme).
+  Strict target validation drops from 14 errors to 13; the BGM index grows
+  from 12 to 13 keys. Inherited-debt triage for the remaining errors is
+  recorded in `docs/adr/0007-inherited-scenario-data-debt.md`.
