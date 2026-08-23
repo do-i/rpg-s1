@@ -45,12 +45,12 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-PORTAL-`town_01_ardel_inn_01` | Complete | Its sole outgoing portal returns to Ardel at `[24, 4]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`town_01_ardel_shrine` | Complete | Its sole outgoing portal returns to Ardel at `[3, 18]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`zone_01_starting_forest` | Complete | All three exits parse: two distinct return coordinates lead to Ardel, Ardel has two matching forest entrances, and Open Plains provides the reverse W12.2 boundary link. |
-| C-PLAY-`town_01_ardel` | Ready | Prior live world/service evidence exists; complete wave route remains. |
-| C-PLAY-`town_01_ardel_house_01` | Inventory | Elder before/after-boss dialogue and reward. |
-| C-PLAY-`town_01_ardel_shop_01` | Ready | Gate 11 service replay passed. |
-| C-PLAY-`town_01_ardel_inn_01` | Inventory | Portal, inn cancel/pay/recovery, and return. |
-| C-PLAY-`town_01_ardel_shrine` | Inventory | Portal, Keeper Joss branches, and return. |
-| C-PLAY-`zone_01_starting_forest` | Ready | Regular encounter/reward replay passed; first-boss and boundary save remain. |
+| C-PLAY-`town_01_ardel` | Complete | Prior live world/service evidence plus owner manual live playthrough (2026-08-23) verified the wave route. |
+| C-PLAY-`town_01_ardel_house_01` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including elder before/after-boss dialogue and reward. |
+| C-PLAY-`town_01_ardel_shop_01` | Complete | Gate 11 service replay plus owner manual live playthrough (2026-08-23). |
+| C-PLAY-`town_01_ardel_inn_01` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, inn cancel/pay/recovery, and return. |
+| C-PLAY-`town_01_ardel_shrine` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, Keeper Joss branches, and return. |
+| C-PLAY-`zone_01_starting_forest` | Complete | Regular encounter/reward replay plus owner manual live playthrough (2026-08-23) verified the wave route, including first boss and boundary save. |
 
 ### Gameplay content instances
 
@@ -58,8 +58,8 @@ reward, and the resulting `story_act2_started` save/load state.
 | --- | --- | --- |
 | C-CLASS-`hero` | Complete | Pinned class/progression audits, source-initialized new-game construction, and production battle progression fixtures pass. |
 | C-CLASS-`cleric` | Complete | Pinned class/progression audit, Elise join fixture, and live source-authored recruitment into the active battle party pass. |
-| C-ENEMY-`enemies_rank_8_F` | Ready | All W12.1 regular enemies and Grik load/fight. The target-authored Zone 1 material repair resolves all four dangling pinned drop ids; live boss victory remains. |
-| C-ENCOUNTER-`zone_01_starting_forest` | Ready | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; live boss victory remains. |
+| C-ENEMY-`enemies_rank_8_F` | Complete | All W12.1 regular enemies and Grik load/fight. The target-authored Zone 1 material repair resolves all four dangling pinned drop ids; owner manual live playthrough (2026-08-23) reported the boss fight victorious. |
+| C-ENCOUNTER-`zone_01_starting_forest` | Complete | Seeded formations, visible spawns, boss spawn, boss BGM, return context, and completion flag fixtures pass; owner manual live playthrough (2026-08-23) reported the boss fight victorious. |
 | C-RECIPE-`all_recipe` | Complete | Every input, output, and flag resolves in the pinned audit; Gate 11 classification and atomic craft fixtures pass against the production catalog. |
 | C-ITEM-`accessories` | Complete | Pinned item audit and production catalog addressability pass for every accessory definition. |
 | C-ITEM-`body` | Complete | Pinned item audit and production catalog addressability pass for every body-equipment definition. |
