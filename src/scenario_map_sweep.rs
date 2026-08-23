@@ -286,7 +286,8 @@ fn check_visible_pipeline(
     let mut metadata = Vec::with_capacity(atlas_references.len());
     for &reference_index in &atlas_references {
         let reference = &document.external_tilesets()[reference_index];
-        let Some(text) = read_file_safely(physical_root, canonical_root, reference.source().as_str())
+        let Some(text) =
+            read_file_safely(physical_root, canonical_root, reference.source().as_str())
         else {
             findings.push(SweepFinding::new(
                 SweepCategory::Tmx,
@@ -365,7 +366,10 @@ fn check_visible_pipeline(
 
 fn check_collision(document: &TmxMapDocument, findings: &mut Vec<SweepFinding>) {
     if let Err(error) = CollisionOccupancy::from_tmx_document(document) {
-        findings.push(SweepFinding::new(SweepCategory::Collision, error.to_string()));
+        findings.push(SweepFinding::new(
+            SweepCategory::Collision,
+            error.to_string(),
+        ));
     }
 }
 
@@ -403,7 +407,10 @@ fn check_portals(
 /// segment TMX family naming it as their parent. Mirrors
 /// [`crate::scenario_map_report::map_id_is_resolvable`], reusing its shared segment-naming rule.
 fn map_id_is_resolvable(id: &str, tmx_stems: &BTreeSet<String>) -> bool {
-    tmx_stems.contains(id) || tmx_stems.iter().any(|candidate| is_numeric_tmx_segment(id, candidate))
+    tmx_stems.contains(id)
+        || tmx_stems
+            .iter()
+            .any(|candidate| is_numeric_tmx_segment(id, candidate))
 }
 
 /// Runs the production sign-tile scan ([`crate::world_object::sign_tiles`]) and checks that a
@@ -480,8 +487,9 @@ fn check_npcs_and_boxes(
 
     let header = document.header();
     let (width, height) = (header.width() as i32, header.height() as i32);
-    let in_bounds =
-        |position: Position| position.x >= 0 && position.x < width && position.y >= 0 && position.y < height;
+    let in_bounds = |position: Position| {
+        position.x >= 0 && position.x < width && position.y >= 0 && position.y < height
+    };
 
     let mut seen_ids = BTreeSet::new();
     for npc in &metadata.npcs {
@@ -508,10 +516,15 @@ fn check_npcs_and_boxes(
     for flags in &states {
         for npc in present_npcs(&metadata, flags) {
             let dialogue_id = npc.effective_dialogue_id();
-            if !dialogue_ids.contains(dialogue_id) && reported_dialogue_missing.insert(npc.id.clone()) {
+            if !dialogue_ids.contains(dialogue_id)
+                && reported_dialogue_missing.insert(npc.id.clone())
+            {
                 findings.push(SweepFinding::new(
                     SweepCategory::Npc,
-                    format!("NPC `{}` references unknown dialogue id `{dialogue_id}`", npc.id),
+                    format!(
+                        "NPC `{}` references unknown dialogue id `{dialogue_id}`",
+                        npc.id
+                    ),
                 ));
             }
             if let Some(excuses) = &npc.excuses
@@ -520,7 +533,10 @@ fn check_npcs_and_boxes(
             {
                 findings.push(SweepFinding::new(
                     SweepCategory::Npc,
-                    format!("NPC `{}` references unknown excuses dialogue id `{excuses}`", npc.id),
+                    format!(
+                        "NPC `{}` references unknown excuses dialogue id `{excuses}`",
+                        npc.id
+                    ),
                 ));
             }
             if !in_bounds(npc.position) && reported_out_of_bounds.insert(npc.id.clone()) {
@@ -590,10 +606,13 @@ fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<Stri
         return out;
     };
     for path in paths {
-        if path.extension().is_some_and(|extension| extension == "yaml")
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "yaml")
             && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
             && let Ok(text) = fs::read_to_string(&path)
-            && let Ok(document) = scenario_yaml::from_str::<crate::scenario_dialogue::DialogueDocument>(&text)
+            && let Ok(document) =
+                scenario_yaml::from_str::<crate::scenario_dialogue::DialogueDocument>(&text)
         {
             out.insert(document.effective_id(stem).to_owned());
         }
@@ -798,7 +817,10 @@ refs:
         let mapped = entry(&report, "ghost_tileset");
         let tmx_findings = findings(mapped, SweepCategory::Tmx);
         assert_eq!(tmx_findings.len(), 1);
-        assert!(tmx_findings[0].contains("could not be read"), "{tmx_findings:?}");
+        assert!(
+            tmx_findings[0].contains("could not be read"),
+            "{tmx_findings:?}"
+        );
     }
 
     #[test]

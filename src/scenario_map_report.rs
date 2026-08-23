@@ -15,14 +15,9 @@ use std::{
 };
 
 use crate::{
-    scenario_dialogue::DialogueDocument,
-    scenario_manifest::Manifest,
-    scenario_map::MapMetadata,
-    scenario_path::ScenarioRelativePath,
-    scenario_spatial::Position,
-    scenario_yaml,
-    tmx_header::parse_tmx_map_document,
-    world_transition::runtime_portals,
+    scenario_dialogue::DialogueDocument, scenario_manifest::Manifest, scenario_map::MapMetadata,
+    scenario_path::ScenarioRelativePath, scenario_spatial::Position, scenario_yaml,
+    tmx_header::parse_tmx_map_document, world_transition::runtime_portals,
 };
 
 /// True when `candidate` names a numbered TMX segment of `parent`: `parent` followed by `_` and
@@ -34,13 +29,18 @@ pub(crate) fn is_numeric_tmx_segment(parent: &str, candidate: &str) -> bool {
     candidate
         .strip_prefix(parent)
         .and_then(|rest| rest.strip_prefix('_'))
-        .is_some_and(|suffix| !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit()))
+        .is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 /// True when `id` resolves to playable map content: either its own same-stem TMX, or a numbered
 /// segment TMX family naming it as their parent.
 fn map_id_is_resolvable(id: &str, tmx_stems: &BTreeSet<String>) -> bool {
-    tmx_stems.contains(id) || tmx_stems.iter().any(|candidate| is_numeric_tmx_segment(id, candidate))
+    tmx_stems.contains(id)
+        || tmx_stems
+            .iter()
+            .any(|candidate| is_numeric_tmx_segment(id, candidate))
 }
 
 /// The complete per-map reachability report for one scenario package.
@@ -322,7 +322,9 @@ fn read_map_yaml_directory(
         return out;
     };
     for path in paths {
-        if path.extension().is_some_and(|extension| extension == "yaml")
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "yaml")
             && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
         {
             let value = fs::read_to_string(&path)
@@ -357,7 +359,9 @@ fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<Stri
         return out;
     };
     for path in paths {
-        if path.extension().is_some_and(|extension| extension == "yaml")
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "yaml")
             && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
             && let Ok(text) = fs::read_to_string(&path)
             && let Ok(document) = scenario_yaml::from_str::<DialogueDocument>(&text)
@@ -521,7 +525,10 @@ refs:
     #[test]
     fn parent_metadata_map_lists_its_numeric_segments_and_is_not_missing() {
         let fixture = TempScenario::new();
-        fixture.write("data/maps/zone_05_mountain_foothills.yaml", "name: Foothills\n");
+        fixture.write(
+            "data/maps/zone_05_mountain_foothills.yaml",
+            "name: Foothills\n",
+        );
         fixture.touch_tmx("zone_05_mountain_foothills_01");
         fixture.touch_tmx("zone_05_mountain_foothills_02");
 
