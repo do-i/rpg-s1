@@ -28,9 +28,10 @@ use crate::{
     scenario_quest::{QuestCatalogFile, QuestDefinition},
     scenario_recipe::{RecipeCatalogFile, RecipeDefinition},
     scenario_root::ScenarioRoot,
+    scenario_spatial::Position,
     scenario_yaml::{self, ScenarioYamlError},
     tmx_ground_asset::TmxGroundAsset,
-    world_transition::runtime_portals,
+    world_transition::{RuntimePortal, runtime_portals},
 };
 
 const ITEM_FILES: [&str; 13] = [
@@ -199,9 +200,118 @@ impl FieldMenuCatalog {
 pub(crate) struct WarpDestination {
     pub(crate) map_id: String,
     pub(crate) name: String,
-    pub(crate) position: crate::scenario_spatial::Position,
+    pub(crate) position: Position,
     town: bool,
     order: u32,
+}
+
+/// A visited, warp-reachable map (top-level, with a known incoming-portal landing tile) whose map
+/// data has no `warp_order`. Mirrors `engine/world/warp_logic.py::_map_order`: the teleport list
+/// ordering is data-driven, so this is a scenario-authoring bug surfaced as a load failure rather
+/// than silently dropping the destination or defaulting its position in the list.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct WarpOrderError {
+    map_id: String,
+}
+
+impl fmt::Display for WarpOrderError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "warp destination `{}` has a known incoming-portal landing tile but no `warp_order` \
+             in its map data; add an integer ordering it within its group (towns / world map), \
+             e.g. `warp_order: 40`",
+            self.map_id
+        )
+    }
+}
+
+impl Error for WarpOrderError {}
+
+/// Resolves the visited-map teleport destination list from every loaded map's metadata and
+/// portals, matching `engine/world/warp_logic.py::warp_destinations` (minus the caller's
+/// visited/current filter, applied later by [`FieldMenuCatalog::eligible_warp_destinations`]):
+///
+/// - A destination is a `source` that is not a *submap* of another `source` — one whose id is
+///   some other source's id followed by `_` (interiors like `..._shop_01`, and numbered segments
+///   like `..._02`, both use this convention; see `warp_logic._is_submap`). Note this is checked
+///   only against the *other loaded sources*, matching Python's check against every map id that
+///   actually has its own TMX — a segment whose bare parent id has no TMX of its own (e.g. the
+///   pinned scenario's `zone_05_mountain_foothills_01/02/03`, which have no
+///   `zone_05_mountain_foothills.tmx`) is therefore *not* excluded as a submap.
+/// - Its landing tile comes from the scenario-wide incoming-portal index: every portal in every
+///   `source` targeting it, preferring a non-submap source, tied broken by source id
+///   (`warp_logic.build_landing_index`). A destination with no incoming portal at all is dropped
+///   (nowhere to land).
+/// - It is categorized `town` when its map data has an `inn` or `shop` block, `world` otherwise.
+/// - It must declare `warp_order`; see [`WarpOrderError`].
+///
+/// Grouped towns-then-world, ordered by `warp_order` within each group.
+fn compute_warp_destinations(
+    sources: &[(&str, &MapMetadata, &[RuntimePortal])],
+) -> Result<Vec<WarpDestination>, WarpOrderError> {
+    let map_ids: Vec<&str> = sources
+        .iter()
+        .map(|(stem, metadata, _)| metadata.effective_id(stem))
+        .collect();
+
+    let mut candidates: BTreeMap<&str, Vec<(bool, &str, Position)>> = BTreeMap::new();
+    for (stem, metadata, portals) in sources {
+        let source_id = metadata.effective_id(stem);
+        for portal in *portals {
+            let target = portal.target_map().as_str();
+            let is_sub = source_id.starts_with(&format!("{target}_"));
+            candidates.entry(target).or_default().push((
+                is_sub,
+                source_id,
+                portal.target_position(),
+            ));
+        }
+    }
+    let mut landing: BTreeMap<&str, Position> = BTreeMap::new();
+    for (destination, mut incoming) in candidates {
+        incoming.sort_by_key(|(is_sub, source_id, _)| (*is_sub, *source_id));
+        if let Some((_, _, position)) = incoming.into_iter().next() {
+            landing.insert(destination, position);
+        }
+    }
+
+    let mut towns = Vec::new();
+    let mut world = Vec::new();
+    for (stem, metadata, _) in sources {
+        let map_id = metadata.effective_id(stem);
+        let is_submap = map_ids
+            .iter()
+            .any(|&other| other != map_id && map_id.starts_with(&format!("{other}_")));
+        if is_submap {
+            continue;
+        }
+        let Some(&position) = landing.get(map_id) else {
+            continue;
+        };
+        let Some(order) = metadata.warp_order else {
+            return Err(WarpOrderError {
+                map_id: map_id.to_owned(),
+            });
+        };
+        let town = metadata.inn.is_some() || metadata.shop.is_some();
+        let destination = WarpDestination {
+            map_id: map_id.to_owned(),
+            name: metadata.name.clone(),
+            position,
+            town,
+            order,
+        };
+        (if town { &mut towns } else { &mut world }).push(destination);
+    }
+    towns.sort_by_key(|destination: &WarpDestination| {
+        (destination.order, destination.map_id.clone())
+    });
+    world.sort_by_key(|destination: &WarpDestination| {
+        (destination.order, destination.map_id.clone())
+    });
+    towns.extend(world);
+    Ok(towns)
 }
 
 #[derive(Debug, Default, Resource)]
@@ -403,59 +513,33 @@ fn track_catalog_load(
             (class.class_id.clone(), class)
         })
         .collect();
-    let mut warp_destinations = Vec::new();
     let mut maps = BTreeMap::new();
-    for (stem, metadata_handle, _) in &load.maps {
+    let mut warp_sources = Vec::with_capacity(load.maps.len());
+    for (stem, metadata_handle, tmx_handle) in &load.maps {
         let metadata = map_assets.get(metadata_handle).expect("all checked");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
-        let Some(order) = metadata.warp_order else {
-            continue;
-        };
-        let map_id = metadata.effective_id(stem);
-        if load
-            .maps
-            .iter()
-            .any(|(other, _, _)| other != stem && map_id.starts_with(&format!("{other}_")))
-        {
-            continue;
-        }
-        let landing = load
-            .maps
-            .iter()
-            .filter_map(|(source_stem, _, tmx_handle)| {
-                let tmx = tmx_assets.get(tmx_handle).expect("all checked");
-                runtime_portals(tmx.document())
-                    .ok()?
-                    .into_iter()
-                    .find(|portal| portal.target_map().as_str() == map_id)
-                    .map(|portal| {
-                        let from_submap = source_stem.starts_with(&format!("{map_id}_"));
-                        (from_submap, source_stem.as_str(), portal.target_position())
-                    })
-            })
-            .min_by_key(|(from_submap, source, _)| (*from_submap, *source));
-        let Some((_, _, position)) = landing else {
-            continue;
-        };
-        warp_destinations.push(WarpDestination {
-            map_id: map_id.to_owned(),
-            name: metadata.name.clone(),
-            position,
-            town: metadata.inn.is_some() || metadata.shop.is_some(),
-            order,
-        });
+        let tmx = tmx_assets.get(tmx_handle).expect("all checked");
+        // A malformed `portals` layer is a TMX-authoring concern outside this catalog's scope;
+        // treat it as "no outgoing portals from this source" rather than failing catalog load.
+        let portals = runtime_portals(tmx.document()).unwrap_or_default();
+        warp_sources.push((stem.as_str(), metadata, portals));
     }
     for (stem, metadata_handle) in &load.service_maps {
         let metadata = map_assets.get(metadata_handle).expect("all checked");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
     }
-    warp_destinations.sort_by_key(|destination| {
-        (
-            !destination.town,
-            destination.order,
-            destination.map_id.clone(),
-        )
-    });
+    let warp_sources_ref: Vec<(&str, &MapMetadata, &[RuntimePortal])> = warp_sources
+        .iter()
+        .map(|(stem, metadata, portals)| (*stem, *metadata, portals.as_slice()))
+        .collect();
+    let warp_destinations = match compute_warp_destinations(&warp_sources_ref) {
+        Ok(destinations) => destinations,
+        Err(error) => {
+            catalog.status = CatalogStatus::Failed;
+            catalog.failure = Some(error.to_string());
+            return;
+        }
+    };
     catalog.items = items;
     catalog.item_order = item_order;
     catalog.field_uses = field_uses;
@@ -1074,7 +1158,18 @@ mod tests {
         scenario_balance::BalanceData,
         scenario_party::PartyCatalog,
         scenario_spatial::{CardinalDirection, Position},
+        tmx_header::parse_tmx_map_document,
     };
+
+    /// Parses one real scenario map's metadata and outgoing portals, for warp-destination parity
+    /// fixtures that compute against actual shipped `rusted_kingdoms` data.
+    fn parsed_map(stem: &str, tmx: &str, yaml: &str) -> (MapMetadata, Vec<RuntimePortal>) {
+        let metadata: MapMetadata = scenario_yaml::from_str(yaml).unwrap();
+        let path = ScenarioRelativePath::try_from(format!("assets/maps/{stem}.tmx")).unwrap();
+        let document = parse_tmx_map_document(tmx, &path).unwrap();
+        let portals = runtime_portals(&document).unwrap();
+        (metadata, portals)
+    }
 
     fn catalog() -> FieldMenuCatalog {
         let item_documents = [
@@ -1457,5 +1552,205 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["town_01_ardel"]
         );
+    }
+
+    // -- Parity fixtures: `compute_warp_destinations` vs the pinned `engine/world/warp_logic.py`
+    // (parity plan P1.1). Expected values below were cross-checked two ways against this exact
+    // scenario copy: by hand from the TMX/YAML, and by running the actual pinned `warp_logic.py`
+    // module (with a real PyYAML available in a sibling checkout) against
+    // `assets/scenarios/rusted_kingdoms`.
+
+    #[test]
+    fn warp_destinations_match_pinned_scenario_for_a_representative_visited_set() {
+        let ardel = parsed_map(
+            "town_01_ardel",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml"),
+        );
+        // Real submap: `town_01_ardel_shop_01` extends `town_01_ardel`'s id with `_`, and
+        // `town_01_ardel` has its own TMX, so `_is_submap` excludes it (warp_logic.py:68-78).
+        let ardel_shop = parsed_map(
+            "town_01_ardel_shop_01",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
+            ),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shop_01.yaml"
+            ),
+        );
+        let forest = parsed_map(
+            "zone_01_starting_forest",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
+            ),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml"
+            ),
+        );
+        let plains = parsed_map(
+            "zone_02_open_plains",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains.yaml"),
+        );
+        let millhaven = parsed_map(
+            "town_02_millhaven",
+            include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven.tmx"),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml"),
+        );
+
+        let sources: Vec<(&str, &MapMetadata, &[RuntimePortal])> = vec![
+            ("town_01_ardel", &ardel.0, &ardel.1),
+            ("town_01_ardel_shop_01", &ardel_shop.0, &ardel_shop.1),
+            ("zone_01_starting_forest", &forest.0, &forest.1),
+            ("zone_02_open_plains", &plains.0, &plains.1),
+            ("town_02_millhaven", &millhaven.0, &millhaven.1),
+        ];
+        let destinations =
+            compute_warp_destinations(&sources).expect("every candidate here has warp_order");
+
+        // The interior is excluded as a submap, not silently missing for some other reason.
+        assert!(
+            !destinations
+                .iter()
+                .any(|destination| destination.map_id == "town_01_ardel_shop_01")
+        );
+
+        // Towns first (by warp_order), then world zones (by warp_order); landing tiles are the
+        // (27, 12) / (29, 1) / (2, 1) / (19, 29) incoming-portal positions authored elsewhere in
+        // the scenario, not each map's own spawn point.
+        assert_eq!(
+            destinations
+                .iter()
+                .map(|destination| (
+                    destination.map_id.as_str(),
+                    destination.town,
+                    destination.order,
+                    destination.position,
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("town_01_ardel", true, 10, Position::new(27, 12)),
+                ("town_02_millhaven", true, 40, Position::new(19, 29)),
+                ("zone_01_starting_forest", false, 20, Position::new(29, 1)),
+                ("zone_02_open_plains", false, 30, Position::new(2, 1)),
+            ]
+        );
+
+        // town_01_ardel's landing also proves the tie-break: zone_01_starting_forest.tmx has two
+        // portals into town_01_ardel, (27, 12) [object id 1] and (20, 17) [object id 9] — the
+        // first one in TMX document order wins over the later one from the same source.
+        assert_eq!(
+            destinations
+                .iter()
+                .find(|destination| destination.map_id == "town_01_ardel")
+                .unwrap()
+                .position,
+            Position::new(27, 12)
+        );
+    }
+
+    #[test]
+    fn warp_destinations_do_not_treat_numbered_zone_segments_as_submaps_of_each_other() {
+        // `zone_05_mountain_foothills_01/02/03` are numbered segments of the conceptual zone
+        // `zone_05_mountain_foothills`, but that parent id has no `.tmx` of its own in the pinned
+        // scenario — only `data/maps/zone_05_mountain_foothills.yaml` (ADR 0007). `_is_submap`
+        // checks each candidate's prefix against `all_ids`, built from `assets/maps/*.tmx` stems
+        // only (warp_logic.py:68-78, 152), so a parent id with no TMX never enters that set and
+        // its segments are *not* submaps of one another under the literal algorithm — confirmed
+        // by running the pinned `warp_logic.py` against this scenario copy. Both are therefore
+        // independent, real warp destinations.
+        let segment_02 = parsed_map(
+            "zone_05_mountain_foothills_02",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_02.tmx"
+            ),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_02.yaml"
+            ),
+        );
+        let segment_03 = parsed_map(
+            "zone_05_mountain_foothills_03",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_03.tmx"
+            ),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_03.yaml"
+            ),
+        );
+
+        let sources: Vec<(&str, &MapMetadata, &[RuntimePortal])> = vec![
+            (
+                "zone_05_mountain_foothills_02",
+                &segment_02.0,
+                &segment_02.1,
+            ),
+            (
+                "zone_05_mountain_foothills_03",
+                &segment_03.0,
+                &segment_03.1,
+            ),
+        ];
+        let destinations =
+            compute_warp_destinations(&sources).expect("both segments declare warp_order");
+
+        assert_eq!(
+            destinations
+                .iter()
+                .map(|destination| (
+                    destination.map_id.as_str(),
+                    destination.order,
+                    destination.position
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                ("zone_05_mountain_foothills_02", 120, Position::new(53, 21)),
+                ("zone_05_mountain_foothills_03", 125, Position::new(2, 20)),
+            ]
+        );
+    }
+
+    #[test]
+    fn warp_destinations_surface_a_missing_warp_order_as_a_scenario_error_not_a_silent_drop() {
+        // The pinned scenario has no `data/maps/zone_05_mountain_foothills_01.yaml` at all
+        // (confirmed against both this repository and the upstream Python source directory) even
+        // though its TMX is real, it has a genuine incoming portal from
+        // `zone_04_ancient_ruins_03_sanctum`, and (per the sibling-segments test above) it is not
+        // excluded as a submap. Under `warp_logic.py::_map_order` a qualifying destination with
+        // no `warp_order` raises rather than being defaulted or dropped
+        // (warp_logic.py:124-139); this is the same scenario-data gap, and this test's
+        // hand-authored metadata (only `name`, standing in for the missing file) isolates that
+        // one behavior.
+        let sanctum = parsed_map(
+            "zone_04_ancient_ruins_03_sanctum",
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx"
+            ),
+            include_str!(
+                "../assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_03_sanctum.yaml"
+            ),
+        );
+        let foothills_01_tmx = include_str!(
+            "../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_01.tmx"
+        );
+        let path = ScenarioRelativePath::try_from("assets/maps/zone_05_mountain_foothills_01.tmx")
+            .unwrap();
+        let document = parse_tmx_map_document(foothills_01_tmx, &path).unwrap();
+        let foothills_01_portals = runtime_portals(&document).unwrap();
+        let foothills_01_metadata: MapMetadata = scenario_yaml::from_str(
+            "name: \"(no data/maps/zone_05_mountain_foothills_01.yaml in the pinned scenario)\"\n",
+        )
+        .unwrap();
+
+        let sources: Vec<(&str, &MapMetadata, &[RuntimePortal])> = vec![
+            ("zone_04_ancient_ruins_03_sanctum", &sanctum.0, &sanctum.1),
+            (
+                "zone_05_mountain_foothills_01",
+                &foothills_01_metadata,
+                &foothills_01_portals,
+            ),
+        ];
+        let error = compute_warp_destinations(&sources)
+            .expect_err("zone_05_mountain_foothills_01 has no warp_order");
+        assert_eq!(error.map_id, "zone_05_mountain_foothills_01");
     }
 }
