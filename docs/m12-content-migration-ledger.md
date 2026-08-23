@@ -46,7 +46,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-PORTAL-`town_01_ardel_shrine` | Complete | Its sole outgoing portal returns to Ardel at `[3, 18]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`zone_01_starting_forest` | Complete | All three exits parse: two distinct return coordinates lead to Ardel, Ardel has two matching forest entrances, and Open Plains provides the reverse W12.2 boundary link. |
 | C-PLAY-`town_01_ardel` | Complete | Prior live world/service evidence plus owner manual live playthrough (2026-08-23) verified the wave route. |
-| C-PLAY-`town_01_ardel_house_01` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including elder before/after-boss dialogue and reward. |
+| C-PLAY-`town_01_ardel_house_01` | Ready | Owner manual live playthrough (2026-08-23) covered the pre-boss elder visit and portal/return. Save-flag inspection on 2026-08-23 showed `boss_zone01_defeated` set without `npc_elder_reward_given`/`story_act2_started`, proving the post-boss reward branch was not actually walked in that pass — this row was closed in error; reopened pending a playthrough that talks to Elder Maeve after Grik. |
 | C-PLAY-`town_01_ardel_shop_01` | Complete | Gate 11 service replay plus owner manual live playthrough (2026-08-23). |
 | C-PLAY-`town_01_ardel_inn_01` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, inn cancel/pay/recovery, and return. |
 | C-PLAY-`town_01_ardel_shrine` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, Keeper Joss branches, and return. |
