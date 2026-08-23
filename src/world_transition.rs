@@ -785,6 +785,149 @@ mod tests {
         );
     }
 
+    fn open_plains_document() -> &'static str {
+        include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx")
+    }
+
+    fn open_plains_portals() -> Vec<RuntimePortal> {
+        portals_for("zone_02_open_plains", open_plains_document())
+    }
+
+    fn millhaven_document() -> &'static str {
+        include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven.tmx")
+    }
+
+    fn millhaven_portals() -> Vec<RuntimePortal> {
+        portals_for("town_02_millhaven", millhaven_document())
+    }
+
+    #[test]
+    fn open_plains_portals_cover_all_four_authored_exits() {
+        let portals = open_plains_portals();
+        let destinations = portals
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                ("zone_02_open_plains_cave_02", Position::new(8, 27)),
+                ("zone_01_starting_forest", Position::new(1, 26)),
+                ("town_02_millhaven", Position::new(19, 29)),
+                ("zone_03_marshland", Position::new(27, 1)),
+            ]
+        );
+    }
+
+    #[test]
+    fn open_plains_cave_chain_links_plains_and_cave_02_and_cave_01_with_no_direct_plains_cave_01_link()
+     {
+        let cave_01_document = include_str!(
+            "../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains_cave_01.tmx"
+        );
+        let cave_02_document = include_str!(
+            "../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains_cave_02.tmx"
+        );
+        let cave_01 = portals_for("zone_02_open_plains_cave_01", cave_01_document);
+        let cave_02 = portals_for("zone_02_open_plains_cave_02", cave_02_document);
+
+        // Cave_01's sole exit leads deeper into cave_02, never directly back to the plains.
+        assert_eq!(cave_01.len(), 1);
+        assert_eq!(
+            cave_01[0].target_map().as_str(),
+            "zone_02_open_plains_cave_02"
+        );
+        assert_eq!(cave_01[0].target_position(), Position::new(58, 19));
+        assert!(
+            !cave_01
+                .iter()
+                .any(|portal| portal.target_map().as_str() == "zone_02_open_plains")
+        );
+
+        // Cave_02 is the hinge: one exit returns to the plains, the other continues to cave_01.
+        assert_eq!(cave_02.len(), 2);
+        let cave_02_destinations = cave_02
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            cave_02_destinations,
+            [
+                ("zone_02_open_plains", Position::new(25, 3)),
+                ("zone_02_open_plains_cave_01", Position::new(1, 3)),
+            ]
+        );
+
+        assert_reversible_link(
+            "zone_02_open_plains",
+            open_plains_document(),
+            "zone_02_open_plains_cave_02",
+            cave_02_document,
+        );
+        assert_reversible_link(
+            "zone_02_open_plains_cave_01",
+            cave_01_document,
+            "zone_02_open_plains_cave_02",
+            cave_02_document,
+        );
+    }
+
+    #[test]
+    fn millhaven_portals_cover_all_four_authored_exits_with_reversible_return_links() {
+        let portals = millhaven_portals();
+        let destinations = portals
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                ("town_02_millhaven_mill", Position::new(10, 11)),
+                ("town_02_millhaven_shop", Position::new(7, 10)),
+                ("town_02_millhaven_inn", Position::new(5, 9)),
+                ("zone_02_open_plains", Position::new(2, 1)),
+            ]
+        );
+
+        let interiors = [
+            (
+                "town_02_millhaven_inn",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx"
+                ),
+                Position::new(9, 25),
+            ),
+            (
+                "town_02_millhaven_mill",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_mill.tmx"
+                ),
+                Position::new(20, 6),
+            ),
+            (
+                "town_02_millhaven_shop",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx"
+                ),
+                Position::new(36, 6),
+            ),
+        ];
+        for (map_id, document, expected_return_position) in interiors {
+            assert_reversible_link("town_02_millhaven", millhaven_document(), map_id, document);
+            let returns = portals_for(map_id, document);
+            assert_eq!(returns.len(), 1);
+            assert_eq!(returns[0].target_map().as_str(), "town_02_millhaven");
+            assert_eq!(returns[0].target_position(), expected_return_position);
+        }
+
+        assert_reversible_link(
+            "town_02_millhaven",
+            millhaven_document(),
+            "zone_02_open_plains",
+            open_plains_document(),
+        );
+    }
+
     #[test]
     fn entry_detector_emits_once_until_player_leaves_and_reenters() {
         let portals = ardel_portals();

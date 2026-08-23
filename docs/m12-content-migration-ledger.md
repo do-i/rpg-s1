@@ -108,6 +108,74 @@ already identified with source path, destination, license, and hash in
 `docs/asset-license-inventory.md`. This ledger links to that evidence rather
 than duplicating hundreds of asset rows.
 
+## W12.2 — Open Plains, caves, and Millhaven
+
+Wave boundary: Open Plains and its two caves, Millhaven with inn/mill/shop,
+Reiya's recruitment (join dialogue `reiya_join` on `town_02_millhaven`, gated on
+`story_act2_started`), and the W12.1↔W12.2 boundary portals.
+
+### Maps, portals, and play checks
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-MAPDATA-`zone_02_open_plains` | Complete | Byte-identical to pinned source; validate-scenario clean. The production `WorldActorPlugin`/`WorldObjectPlugin`/`WorldEncounterPlugin` fixture loads this metadata to `Spawned` and derives the correct enemy formations, boss, and (implicitly, via reaching `Spawned`) its NPC-free and item-box content. |
+| C-MAPDATA-`town_02_millhaven` | Complete | Byte-identical to pinned source; validate-scenario clean. A `world_actor::present_npcs` fixture proves the exact production spawn set (all 6 authored NPCs) under fresh flags, `story_act2_started`, and `npc_reiya_joined`, including Reiya's `[12, 7]` position and her `excludes: [npc_reiya_joined]` presence gate. |
+| C-MAPDATA-`town_02_millhaven_inn` | Ready | Byte-identical to pinned source; validate-scenario clean. |
+| C-MAPDATA-`town_02_millhaven_mill` | Ready | Byte-identical to pinned source; validate-scenario clean. |
+| C-MAPDATA-`town_02_millhaven_shop` | Ready | Byte-identical to pinned source; validate-scenario clean. |
+| C-MAPDATA-`zone_02_open_plains_cave_01` | Complete | No YAML exists; matches pinned source (TMX-only cave definition). A dedicated production fixture proves `world_actor`/`world_object`/`world_encounter` all resolve the missing file as empty metadata (`MapMetadata::empty`, Python `load_yaml_optional` parity) and reach `Spawned`/`NoEncounters` instead of the `Failed` status a Rust port bug previously produced here — see the runtime-divergence note below. |
+| C-MAPDATA-`zone_02_open_plains_cave_02` | Complete | No YAML exists; matches pinned source (TMX-only cave definition). Same production fixture as cave_01; also proves the painted `spawn_tile` layer does not force a metadata load even though 9 tiles are authored. |
+| C-TMX-`zone_02_open_plains` | Complete | Byte-identical to pinned source; map-sweep clean. Production `world_transition::runtime_portals` resolves all four authored exits with correct target positions; the W12.2 encounter fixture also loads and renders this TMX end to end (`TmxGroundAssetPlugin`) with the correct spawn/boss tiles. |
+| C-TMX-`zone_02_open_plains_cave_01` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole exit; the encounter fixture loads and renders this TMX end to end and confirms it has no `spawn_tile`/`boss_enemy` authoring at all. |
+| C-TMX-`zone_02_open_plains_cave_02` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves both exits; the encounter fixture loads and renders this TMX end to end and confirms its 9-tile `spawn_tile` layer without a matching `data/encount/*.yaml`. |
+| C-TMX-`town_02_millhaven` | Complete | Byte-identical to pinned source; map-sweep clean. Production `world_transition::runtime_portals` resolves all four authored exits with correct target positions. |
+| C-TMX-`town_02_millhaven_inn` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-TMX-`town_02_millhaven_mill` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-TMX-`town_02_millhaven_shop` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-PORTAL-`zone_02_open_plains` | Complete | All four authored exits parse and round-trip in a `world_transition` regression: cave_02 entrance at `[8, 27]`, Starting Forest return at `[1, 26]` (reversible, shared with the W12.1 boundary fixture), Millhaven entry at `[19, 29]` (reversible), and the Marshland W12.3 boundary at `[27, 1]` (parses; no reverse-link claim, W12.3 is out of scope). |
+| C-PORTAL-`zone_02_open_plains_cave_01` | Complete | A `world_transition` regression proves its sole outgoing portal leads to cave_02 at `[58, 19]` with a matching reverse link, and that cave_01 has no portal targeting `zone_02_open_plains` directly — the cave chain is plains ↔ cave_02 ↔ cave_01. |
+| C-PORTAL-`zone_02_open_plains_cave_02` | Complete | A `world_transition` regression proves both outgoing portals (Open Plains at `[25, 3]`, cave_01 at `[1, 3]`) have matching reverse links. |
+| C-PORTAL-`town_02_millhaven` | Complete | A `world_transition` regression proves all four authored exits (mill `[10, 11]`, shop `[7, 10]`, inn `[5, 9]`, Open Plains return `[2, 1]`) and that each interior/Open Plains link is reversible with the exact return position. |
+| C-PORTAL-`town_02_millhaven_inn` | Complete | Its sole outgoing portal returns to Millhaven at `[9, 25]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
+| C-PORTAL-`town_02_millhaven_mill` | Complete | Its sole outgoing portal returns to Millhaven at `[20, 6]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
+| C-PORTAL-`town_02_millhaven_shop` | Complete | Its sole outgoing portal returns to Millhaven at `[36, 6]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
+| C-PLAY-`zone_02_open_plains` | Inventory | Awaits owner manual live playthrough to verify zone route, encounter spawns, item box access, and W12.1↔W12.2 boundary save. |
+| C-PLAY-`zone_02_open_plains_cave_01` | Inventory | Awaits owner manual live playthrough to verify cave route and completion. |
+| C-PLAY-`zone_02_open_plains_cave_02` | Inventory | Awaits owner manual live playthrough to verify cave route and completion. |
+| C-PLAY-`town_02_millhaven` | Inventory | Awaits owner manual live playthrough to verify town route, NPC interactions, sign, and portals to inn/mill/shop/forest. |
+| C-PLAY-`town_02_millhaven_inn` | Inventory | Awaits owner manual live playthrough to verify inn portal, service handoff, and recovery behavior. |
+| C-PLAY-`town_02_millhaven_mill` | Inventory | Awaits owner manual live playthrough to verify mill portal and NPC interactions. |
+| C-PLAY-`town_02_millhaven_shop` | Inventory | Awaits owner manual live playthrough to verify shop portal and service handoff. |
+
+### Dialogue instances
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-DIALOGUE-`armor_shop_millhaven` | Complete | Production traversal reaches its sole terminal and emits the Armor shop action. |
+| C-DIALOGUE-`inn_millhaven` | Complete | Production traversal reaches its sole terminal and emits the inn action. |
+| C-DIALOGUE-`item_shop_millhaven` | Complete | Production traversal reaches its sole terminal and emits the Item shop action. |
+| C-DIALOGUE-`millhaven_baker` | Complete | Production traversal reaches all four quest terminals (first meeting, active relay, reward, repeat) and verifies the start flag plus one-time `sq_flour_done`/one-Hi-Potion reward. |
+| C-DIALOGUE-`millhaven_carter` | Complete | Production traversal reaches all four executable quest terminals and verifies the start flag plus one-time `sq_millstone_done`/one-Tent reward. An exhaustive 16-state flag fixture proves the two trailing pinned entries [4, 5] are dead under Python-compatible first-match ordering, mirroring `ardel_fisherman`; moved from new-finding to documented-accepted in `scenario_dialogue_report.rs`'s `DOCUMENTED_DEAD_ENTRIES` and pinned inventory test, consistent with `docs/adr/0007-inherited-scenario-data-debt.md`. |
+| C-DIALOGUE-`millhaven_elder_hint` | Complete | Production traversal selects and completes the pre-story (none), Act II, Act II-with-boss (sets `story_act3_started`), and Act III branches, each reaching its terminal. |
+| C-DIALOGUE-`millhaven_gossip` | Complete | Production traversal selects and completes both the `npc_reiya_joined` and default terminals without effects. |
+| C-DIALOGUE-`millhaven_granary` | Complete | Production traversal reaches the before-errand, active, and after-relay terminals and verifies only the active branch sets `sq_flour_relayed`. |
+| C-DIALOGUE-`millhaven_miller` | Complete | Production traversal reaches the Act III, Act II, and default terminals without effects. |
+| C-DIALOGUE-`reiya_join` | Complete | Production traversal proves there is no pre-`story_quest_started` match, then reaches all four terminals and verifies the offer emits the Reiya join action and `npc_reiya_joined` flag exactly on the `story_act2_started`-gated branch, mirroring the Elise join fixture's idempotent source-initialized recruitment shape. |
+| C-DIALOGUE-`sign_town_02_millhaven` | Complete | Production traversal reaches its three-line terminal without effects. |
+| C-DIALOGUE-`sign_zone_02_open_plains` | Complete | Production traversal reaches its three-line terminal without effects. |
+| C-DIALOGUE-`weapon_shop_millhaven` | Complete | Production traversal reaches its sole terminal and emits the Weapon shop action. |
+
+Audio instances used at this boundary are `town.default` (Millhaven) and
+`zone.open_plains` (Open Plains and caves, registered in
+`data/audio/bgm_index.yaml` per the W12.2 BGM fix). Their indexes and
+materialized assets pass the pinned audit; live transition continuity remains
+part of the wave exit check.
+
+Individual image, sprite, tileset, font, and audio-file C-ASSET instances are
+already identified with source path, destination, license, and hash in
+`docs/asset-license-inventory.md`. This ledger links to that evidence rather
+than duplicating hundreds of asset rows.
+
 ## Pinned-source differences affecting W12.1
 
 - `zone_01_starting_forest.tmx` differs only by marking `spawn_tile` invisible
@@ -142,3 +210,33 @@ than duplicating hundreds of asset rows.
   Strict target validation drops from 14 errors to 13; the BGM index grows
   from 12 to 13 keys. Inherited-debt triage for the remaining errors is
   recorded in `docs/adr/0007-inherited-scenario-data-debt.md`.
+
+## Runtime divergence found and fixed during W12.2 acceptance (recorded 2026-08-23)
+
+- **Port bug, not a source difference.** `zone_02_open_plains_cave_01` and
+  `_cave_02` are TMX-only content (no `data/maps/*.yaml`), matching the pinned
+  source. The pinned Python engine treats a missing per-map YAML as a valid
+  runtime state — `load_yaml_optional(path) or {}`
+  (`engine/world/world_map_init.py`) — and `EncounterManager.set_zone`
+  likewise treats a missing `data/encount/*.yaml` as "encounters disabled"
+  even when spawn tiles are painted (`# towns, inns — encounters disabled`).
+  The Rust port's `world_actor::drive_world_actor_load`,
+  `world_object::drive_world_object_load`, and
+  `world_encounter::drive_active_encounter_assets` instead treated any
+  `LoadState::Failed` on that optional file — including a plain "file not
+  found" — as a fatal, permanent `Failed` status. Because
+  `world_transition::drive_transition_loading`'s `Publishing` barrier
+  requires `WorldActorState`/`WorldObjectState` to reach `Spawned`, this would
+  have soft-locked any portal transition into either cave behind a black
+  fade screen that never clears — a real player-facing regression, not a
+  cosmetic difference.
+  Fix: `scenario_map::MapMetadata::empty()` plus
+  `scenario_map::optional_scenario_asset_is_missing` (which narrows on
+  `AssetLoadError::AssetReaderError(AssetReaderError::NotFound(_))`) let all
+  three systems fall back to empty metadata / disabled encounters exactly
+  like the pinned engine, while any other load failure (a real I/O or parse
+  error) still surfaces as fatal. Covered by
+  `world_encounter::tests::production_open_plains_and_caves_spawn_or_gracefully_skip_encounters_without_metadata_soft_lock`,
+  which drives the full `WorldActorPlugin`/`WorldObjectPlugin`/
+  `WorldEncounterPlugin` stack into both caves and asserts `Spawned`/
+  `NoEncounters` instead of `Failed`.

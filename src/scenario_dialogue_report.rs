@@ -13,17 +13,19 @@
 //! under this rule (`docs/m12-content-migration-ledger.md`, "Pinned-source differences affecting
 //! W12.1"); the target keeps that source content deliberately, and this report marks exactly
 //! those two entries "documented-accepted" rather than surfacing them as a new finding.
+//! `millhaven_carter` carries the identical pattern for W12.2 (`docs/m12-content-migration-ledger.md`,
+//! "Pinned-source differences affecting W12.2") and is accepted the same way.
 //!
 //! Running this report against the shipped scenario turns up the same shape of dead trailing
-//! entry in six more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
-//! `frostholm_courtier`, `harborgate_fishwife`, `millhaven_carter`, `ruinwatch_digger`) — every
-//! one a sub-quest giver whose first four entries already exhaustively partition the relevant
+//! entry in five more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
+//! `frostholm_courtier`, `harborgate_fishwife`, `ruinwatch_digger`) — every one a sub-quest giver
+//! whose first four entries already exhaustively partition the relevant
 //! `sq_*_started`/`_relayed`/`_done` states (or, for `elder_intro`, a reward entry and its own
 //! source-commented "safety fallback" duplicate), leaving the trailing flavor or story-flag entry
 //! unreachable under the pinned first-match rule regardless of any other flag. None of these are
 //! in [`DOCUMENTED_DEAD_ENTRIES`], so they surface as `DialogueReachability::Dead` findings, not
-//! `DeadAccepted` ones; only `docs/m12-content-migration-ledger.md` names `ardel_fisherman`. This
-//! module does not alter the pinned YAML — it reports what is there.
+//! `DeadAccepted` ones; only `docs/m12-content-migration-ledger.md` names `ardel_fisherman` and
+//! `millhaven_carter`. This module does not alter the pinned YAML — it reports what is there.
 //!
 //! Like [`crate::scenario_map_report`], this command is informational only: it never fails the
 //! process, and it deliberately does not repeat the item/flag reference checks
@@ -50,8 +52,9 @@ const MAX_ENUMERATED_FLAGS: usize = 16;
 
 /// The dialogue ids whose dead entries are accepted, deliberately-kept source content rather than
 /// a migration finding. See `docs/m12-content-migration-ledger.md`, "Pinned-source differences
-/// affecting W12.1".
-const DOCUMENTED_DEAD_ENTRIES: &[(&str, &[usize])] = &[("ardel_fisherman", &[4, 5])];
+/// affecting W12.1" (`ardel_fisherman`) and "affecting W12.2" (`millhaven_carter`).
+const DOCUMENTED_DEAD_ENTRIES: &[(&str, &[usize])] =
+    &[("ardel_fisherman", &[4, 5]), ("millhaven_carter", &[4, 5])];
 
 /// The complete dialogue report for one scenario package.
 pub(crate) struct DialogueReport {
@@ -86,7 +89,8 @@ impl DialogueReport {
             .count()
     }
 
-    /// Documents containing only the known-accepted `ardel_fisherman` dead flavor entries.
+    /// Documents containing only known-accepted dead flavor entries (see
+    /// [`DOCUMENTED_DEAD_ENTRIES`]).
     pub(crate) fn documents_with_only_accepted_dead_entries(&self) -> usize {
         self.documents
             .iter()
@@ -182,7 +186,8 @@ pub(crate) struct DialogueReportEntry {
 }
 
 impl DialogueReportEntry {
-    /// True for a dead entry that is not one of the documented-accepted `ardel_fisherman` pair.
+    /// True for a dead entry that is not one of the documented-accepted pairs (see
+    /// [`DOCUMENTED_DEAD_ENTRIES`]).
     pub(crate) fn is_new_dead(&self) -> bool {
         matches!(self.reachability, DialogueReachability::Dead)
     }
@@ -249,7 +254,9 @@ const UNLOCK_KINDS: &[&str] = &["recipe", "spell", "location", "transport"];
 fn classify_unlock_flag(flag: &str) -> Option<(String, String)> {
     let id = flag.strip_suffix("_unlocked")?;
     for kind in UNLOCK_KINDS {
-        if let Some(rest) = id.strip_prefix(kind).and_then(|rest| rest.strip_prefix('_'))
+        if let Some(rest) = id
+            .strip_prefix(kind)
+            .and_then(|rest| rest.strip_prefix('_'))
             && !rest.is_empty()
         {
             return Some(((*kind).to_owned(), rest.to_owned()));
@@ -327,7 +334,10 @@ pub(crate) fn build_dialogue_report(physical_root: &Path) -> DialogueReport {
             load_error: Some("dialogue directory is unavailable".to_owned()),
         };
     };
-    paths.retain(|path| path.extension().is_some_and(|extension| extension == "yaml"));
+    paths.retain(|path| {
+        path.extension()
+            .is_some_and(|extension| extension == "yaml")
+    });
     paths.sort();
 
     let documents = paths
@@ -470,7 +480,12 @@ fn referenced_flags(entries: &[DialogueEntry]) -> Vec<String> {
     let mut seen = BTreeSet::new();
     let mut flags = Vec::new();
     for entry in entries.iter().filter(|entry| entry.node.is_none()) {
-        for flag in entry.condition.requires.iter().chain(&entry.condition.excludes) {
+        for flag in entry
+            .condition
+            .requires
+            .iter()
+            .chain(&entry.condition.excludes)
+        {
             if seen.insert(flag.clone()) {
                 flags.push(flag.clone());
             }
@@ -512,10 +527,7 @@ fn dead_entry_indices(
 
 /// Downgrades entries at documented dead-entry positions from [`DialogueReachability::Dead`] to
 /// [`DialogueReachability::DeadAccepted`] and adjusts their note accordingly.
-fn mark_documented_dead(
-    id: &str,
-    entries: Vec<DialogueReportEntry>,
-) -> Vec<DialogueReportEntry> {
+fn mark_documented_dead(id: &str, entries: Vec<DialogueReportEntry>) -> Vec<DialogueReportEntry> {
     let accepted_indices: &[usize] = DOCUMENTED_DEAD_ENTRIES
         .iter()
         .find(|entry| entry.0 == id)
@@ -553,7 +565,9 @@ fn read_known_item_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<St
     for path in paths {
         // `field_use.yaml` is a dispatch catalog keyed by item id, not an `ItemCatalogFile`; item
         // identity itself always comes from the other list-root metadata files.
-        if path.extension().is_some_and(|extension| extension == "yaml")
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "yaml")
             && path.file_name().and_then(|name| name.to_str()) != Some("field_use.yaml")
             && let Ok(text) = fs::read_to_string(&path)
             && let Ok(catalog) = scenario_yaml::from_str::<ItemCatalogFile>(&text)
@@ -774,9 +788,7 @@ entries:
         let fixture = TempScenario::new();
         fixture.write(
             "data/dialogue/ardel_fisherman.yaml",
-            include_str!(
-                "../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml"
-            ),
+            include_str!("../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml"),
         );
 
         let report = build_dialogue_report(&fixture.0);
@@ -880,10 +892,17 @@ entries:
             "data/dialogue/intro.yaml",
             "id: intro\ntype: cutscene\nlines: [\"Once upon a time.\"]\non_complete: { set_flag: story_started }\n",
         );
-        fixture.write("data/dialogue/excuses.yaml", "lines: [\"Not now.\", \"Busy.\"]\n");
+        fixture.write(
+            "data/dialogue/excuses.yaml",
+            "lines: [\"Not now.\", \"Busy.\"]\n",
+        );
 
         let report = build_dialogue_report(&fixture.0);
-        let cutscene = report.documents.iter().find(|doc| doc.id == "intro").unwrap();
+        let cutscene = report
+            .documents
+            .iter()
+            .find(|doc| doc.id == "intro")
+            .unwrap();
         assert!(matches!(cutscene.shape, DialogueReportShape::Cutscene));
         assert_eq!(cutscene.entries.len(), 1);
         assert_eq!(cutscene.entries[0].effects.set_flags, ["story_started"]);
@@ -906,12 +925,13 @@ entries:
         assert!(report.documents.is_empty());
     }
 
-    /// Pins the exact reachability findings against the shipped scenario. `ardel_fisherman` is
-    /// the only dialogue named in `docs/m12-content-migration-ledger.md`, so it is the only one
-    /// this report accepts as documented; the other six carry the identical pinned-source dead
-    /// trailing-entry pattern (see the module doc comment) and surface as new findings. This test
-    /// exists to catch regressions in the reachability algorithm itself, not to bless the count —
-    /// a real drop in findings (fewer dead entries) is as worth investigating as a rise.
+    /// Pins the exact reachability findings against the shipped scenario. `ardel_fisherman` and
+    /// `millhaven_carter` are the only dialogues named in `docs/m12-content-migration-ledger.md`,
+    /// so they are the only ones this report accepts as documented; the other five carry the
+    /// identical pinned-source dead trailing-entry pattern (see the module doc comment) and
+    /// surface as new findings. This test exists to catch regressions in the reachability
+    /// algorithm itself, not to bless the count — a real drop in findings (fewer dead entries) is
+    /// as worth investigating as a rise.
     #[test]
     fn the_shipped_scenario_matches_the_known_dead_entry_inventory() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/scenarios/rusted_kingdoms");
@@ -920,27 +940,23 @@ entries:
         assert_eq!(report.documents.len(), 91);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
-        assert_eq!(report.documents_with_only_accepted_dead_entries(), 1);
-        let ardel_fisherman = report
-            .documents
-            .iter()
-            .find(|doc| doc.id == "ardel_fisherman")
-            .unwrap();
-        assert_eq!(
-            ardel_fisherman.entries[4].reachability,
-            DialogueReachability::DeadAccepted
-        );
-        assert_eq!(
-            ardel_fisherman.entries[5].reachability,
-            DialogueReachability::DeadAccepted
-        );
+        assert_eq!(report.documents_with_only_accepted_dead_entries(), 2);
+        for (id, dead_indices) in [("ardel_fisherman", [4, 5]), ("millhaven_carter", [4, 5])] {
+            let document = report.documents.iter().find(|doc| doc.id == id).unwrap();
+            for index in dead_indices {
+                assert_eq!(
+                    document.entries[index].reachability,
+                    DialogueReachability::DeadAccepted,
+                    "entry [{index}] in `{id}` should be documented-accepted"
+                );
+            }
+        }
 
         let expected_new_dead: &[(&str, &[usize])] = &[
             ("ashenveil_ashgatherer", &[5]),
             ("elder_intro", &[2]),
             ("frostholm_courtier", &[4, 5]),
             ("harborgate_fishwife", &[4]),
-            ("millhaven_carter", &[4, 5]),
             ("ruinwatch_digger", &[4]),
         ];
         assert_eq!(

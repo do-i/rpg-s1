@@ -582,10 +582,17 @@ fn severity_name(severity: DiagnosticSeverity) -> &'static str {
 /// Renders the informational `map-report` output: every map's TMX pairing (including the
 /// numbered-segment "parent metadata" convention), NPCs, portal targets, referenced dialogue
 /// ids, and any dangling findings, followed by a summary footer.
-fn write_map_report(output: &mut impl Write, root: &ScenarioRoot, report: &MapReport) -> io::Result<()> {
+fn write_map_report(
+    output: &mut impl Write,
+    root: &ScenarioRoot,
+    report: &MapReport,
+) -> io::Result<()> {
     writeln!(output, "Map report")?;
     writeln!(output, "Package: {}", root.package_key())?;
-    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+    match (
+        report.scenario_id.as_deref(),
+        report.scenario_name.as_deref(),
+    ) {
         (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
         _ => writeln!(output, "Scenario: unavailable")?,
     }
@@ -636,7 +643,10 @@ fn write_map_report(output: &mut impl Write, root: &ScenarioRoot, report: &MapRe
                     } else {
                         ""
                     };
-                    writeln!(output, "      excuses dialogue `{excuses}`{excuses_missing}")?;
+                    writeln!(
+                        output,
+                        "      excuses dialogue `{excuses}`{excuses_missing}"
+                    )?;
                 }
             }
         }
@@ -700,7 +710,10 @@ fn write_map_sweep_report(
 ) -> io::Result<()> {
     writeln!(output, "Map sweep")?;
     writeln!(output, "Package: {}", root.package_key())?;
-    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+    match (
+        report.scenario_id.as_deref(),
+        report.scenario_name.as_deref(),
+    ) {
         (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
         _ => writeln!(output, "Scenario: unavailable")?,
     }
@@ -721,7 +734,12 @@ fn write_map_sweep_report(
         } else {
             writeln!(output, "  Findings:")?;
             for finding in &entry.findings {
-                writeln!(output, "    - [{}] {}", finding.category.label(), finding.message)?;
+                writeln!(
+                    output,
+                    "    - [{}] {}",
+                    finding.category.label(),
+                    finding.message
+                )?;
             }
         }
         writeln!(output)?;
@@ -730,7 +748,11 @@ fn write_map_sweep_report(
     writeln!(output, "Summary")?;
     writeln!(output, "Total maps swept: {}", report.entries.len())?;
     writeln!(output, "Fully clean: {}", report.clean_count())?;
-    writeln!(output, "Maps with findings: {}", report.maps_with_findings())?;
+    writeln!(
+        output,
+        "Maps with findings: {}",
+        report.maps_with_findings()
+    )?;
     for category in [
         SweepCategory::Tmx,
         SweepCategory::Collision,
@@ -759,7 +781,10 @@ fn write_dialogue_report(
 ) -> io::Result<()> {
     writeln!(output, "Dialogue report")?;
     writeln!(output, "Package: {}", root.package_key())?;
-    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+    match (
+        report.scenario_id.as_deref(),
+        report.scenario_name.as_deref(),
+    ) {
         (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
         _ => writeln!(output, "Scenario: unavailable")?,
     }
@@ -1254,7 +1279,10 @@ refs:
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
-        assert!(!launched.get(), "map-report must not construct the Bevy app");
+        assert!(
+            !launched.get(),
+            "map-report must not construct the Bevy app"
+        );
         assert!(stderr.is_empty());
         let output = String::from_utf8(stdout).unwrap();
         assert!(output.contains("Map report\n"));
@@ -1263,6 +1291,51 @@ refs:
         assert!(output.contains("Total maps: 0\n"));
         assert!(output.contains("Fully resolvable: 0\n"));
         assert!(output.contains("Maps with findings: 0\n"));
+    }
+
+    /// A TMX-only map (a same-stem TMX with no `data/maps/<id>.yaml`, exactly the shape of
+    /// `zone_02_open_plains_cave_01`/`_cave_02`) must render exactly one "Dialogue refs:" line
+    /// and exactly one "Findings:" line, not a duplicate pair.
+    #[test]
+    fn map_report_renders_a_single_dialogue_refs_and_findings_line_for_a_tmx_only_map() {
+        let collection = TempCollection::new("caves");
+        write_manifest_only_scenario(&collection.0, "caves");
+        fs::create_dir_all(collection.0.join("caves/assets/maps"))
+            .expect("temporary tmx directory should be creatable");
+        fs::write(
+            collection.0.join("caves/assets/maps/cave_only.tmx"),
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="1" height="1" tilewidth="32" tileheight="32" infinite="0" nextlayerid="1" nextobjectid="1">
+</map>
+"#,
+        )
+        .expect("temporary tmx-only map should be writable");
+        let root = ScenarioRoot::try_for_package_key("caves").unwrap();
+        let report = build_map_report(&collection.0.join("caves"));
+
+        let mut stdout = Vec::new();
+        write_map_report(&mut stdout, &root, &report).expect("map report should render");
+        let output = String::from_utf8(stdout).unwrap();
+
+        let block_start = output
+            .find("Map cave_only (no metadata YAML)\n")
+            .expect("tmx-only map heading should be present");
+        let block = &output[block_start..];
+        let block_end = block.find("\n\n").map_or(block.len(), |offset| offset + 1);
+        let block = &block[..block_end];
+
+        assert_eq!(
+            block.matches("  Dialogue refs:").count(),
+            1,
+            "expected exactly one Dialogue refs line in:\n{block}"
+        );
+        assert_eq!(
+            block.matches("  Findings:").count(),
+            1,
+            "expected exactly one Findings line in:\n{block}"
+        );
+        assert!(block.contains("  Dialogue refs: none\n"));
+        assert!(block.contains("  Findings: none\n"));
     }
 
     #[test]
