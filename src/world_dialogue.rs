@@ -843,6 +843,421 @@ mod tests {
     }
 
     #[test]
+    fn reiya_join_traverses_pre_offer_offer_and_post_join_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/reiya_join.yaml"
+        ));
+        assert!(
+            DialogueSession::resolve(
+                "reiya_join",
+                None,
+                dialogue.clone(),
+                &RuntimeFlags::default()
+            )
+            .unwrap()
+            .is_none()
+        );
+        let cases = [
+            (
+                vec!["npc_reiya_joined", "boss_zone02_defeated"],
+                "The plains are quiet because the false signal is gone",
+            ),
+            (
+                vec!["npc_reiya_joined"],
+                "Millhaven's mills are coughing rust",
+            ),
+            (
+                vec!["story_act2_started"],
+                "You described a flame with no heat",
+            ),
+            (vec!["story_quest_started"], "If you are looking for charms"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("reiya_join", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 2 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["npc_reiya_joined"]
+                );
+                assert_eq!(actions[0].join_party.as_deref(), Some("reiya"));
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
+    fn millhaven_baker_traverses_start_relay_reward_and_repeat_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_baker.yaml"
+        ));
+        let cases = [
+            (vec!["sq_flour_done"], "Half-batches it is"),
+            (vec!["sq_flour_relayed"], "Old grain, he says?"),
+            (vec!["sq_flour_started"], "The granary's by the east"),
+            (vec![], "Twenty years I've baked here"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_baker", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_flour_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "hi_potion");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 1);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_flour_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+    }
+
+    #[test]
+    fn millhaven_granary_traverses_before_relay_and_after_relay_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_granary.yaml"
+        ));
+        let cases = [
+            (vec!["sq_flour_relayed"], "Tell Senna what you like"),
+            (vec!["sq_flour_started"], "Senna sent you?"),
+            (vec![], "Sacks in, sacks out"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_granary", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 1 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_flour_relayed"]
+                );
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
+    fn millhaven_miller_traverses_act_three_act_two_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_miller.yaml"
+        ));
+        let cases = [
+            (vec!["story_act3_started"], "Hear that creak?"),
+            (
+                vec!["story_act2_started"],
+                "Don't go poking around the lower wheel",
+            ),
+            (vec![], "The mill grinds slower every season"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_miller", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn millhaven_elder_hint_traverses_every_story_branch_to_a_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_elder_hint.yaml"
+        ));
+        assert!(
+            DialogueSession::resolve(
+                "millhaven_elder_hint",
+                None,
+                dialogue.clone(),
+                &RuntimeFlags::default(),
+            )
+            .unwrap()
+            .is_none()
+        );
+        let cases = [
+            (vec!["story_act3_started"], "The mills are slowing"),
+            (
+                vec!["story_act2_started", "boss_zone02_defeated"],
+                "The plains have quieted",
+            ),
+            (vec!["story_act2_started"], "Millhaven used to trade"),
+            (vec!["story_quest_started"], "You have the look of someone"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_elder_hint", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 1 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["story_act3_started"]
+                );
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
+    fn millhaven_gossip_traverses_reiya_joined_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_gossip.yaml"
+        ));
+        let cases = [
+            (
+                vec!["npc_reiya_joined"],
+                "So Reiya ran off with adventurers",
+            ),
+            (vec![], "The barons bought the old shrine land"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_gossip", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn millhaven_carter_traverses_quest_terminals_and_accounts_for_dead_source_entries() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_carter.yaml"
+        ));
+        let cases = [
+            (
+                vec!["sq_millstone_done"],
+                "The mason's booked for the first thaw",
+            ),
+            (vec!["sq_millstone_relayed"], "He said yes? To Millhaven?"),
+            (
+                vec!["sq_millstone_started"],
+                "The mason works the yard in Ruinwatch",
+            ),
+            (vec![], "Hear that grinding?"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("millhaven_carter", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_millstone_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "tent");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 1);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_millstone_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+
+        // Entries [4] (`story_act3_started`) and [5] (unconditional fallback) are dead: the four
+        // preceding `sq_millstone_started`/`_relayed`/`_done` entries already exhaustively
+        // partition every state via first-match, exactly like `ardel_fisherman`'s trailing pair
+        // (ADR 0007, "Dead trailing dialogue entries in six more dialogues").
+        let relevant_flags = [
+            "sq_millstone_started",
+            "sq_millstone_relayed",
+            "sq_millstone_done",
+            "story_act3_started",
+        ];
+        for mask in 0..(1 << relevant_flags.len()) {
+            let flags = RuntimeFlags::from_bootstrap(
+                relevant_flags
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| mask & (1 << index) != 0)
+                    .map(|(_, flag)| *flag),
+            );
+            let session =
+                DialogueSession::resolve("millhaven_carter", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(
+                session.current < 4,
+                "pinned first-match ordering unexpectedly made a dead entry reachable at mask {mask}"
+            );
+        }
+        assert_eq!(dialogue.entries.len(), 6);
+        assert!(
+            dialogue.entries[4].lines[0]
+                .starts_with("Half my routes are cancelled. Nobody wants 'fragment flour'")
+        );
+        assert!(dialogue.entries[5].lines[0].starts_with("I run flour east to Ruinwatch and back"));
+    }
+
+    #[test]
+    fn millhaven_item_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_millhaven.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("item_shop_millhaven", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Welcome! Mill trade's been slow")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Item)
+        );
+    }
+
+    #[test]
+    fn millhaven_weapon_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_millhaven.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("weapon_shop_millhaven", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Millhaven steel, ground on our own stones")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Weapon)
+        );
+    }
+
+    #[test]
+    fn millhaven_armor_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_millhaven.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("armor_shop_millhaven", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Good boiled leather and a shield that holds")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Armor)
+        );
+    }
+
+    #[test]
+    fn millhaven_inn_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/inn_millhaven.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("inn_millhaven", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Welcome to the Millhaven Inn")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert!(actions[0].open_inn.is_some());
+    }
+
+    #[test]
+    fn millhaven_notice_board_traverses_its_authored_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_02_millhaven.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("sign_town_02_millhaven", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert_eq!(session.current_line(), "Notice Board — Millhaven");
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
+    fn open_plains_trail_marker_traverses_its_authored_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("sign_zone_02_open_plains", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert_eq!(session.current_line(), "Trail Marker — Open Plains");
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
