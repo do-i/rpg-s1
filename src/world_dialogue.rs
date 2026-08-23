@@ -1635,6 +1635,71 @@ mod tests {
     }
 
     #[test]
+    fn ruinwatch_digger_traverses_quest_terminals_and_accounts_for_dead_source_entry() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_digger.yaml"
+        ));
+        let cases = [
+            (vec!["sq_crew_done"], "Alive and walking south."),
+            (vec!["sq_crew_relayed"], "She saw him? Walking out at dawn"),
+            (vec!["sq_crew_started"], "The pilgrim prays at the gate"),
+            (vec![], "Half my dig crew came back wrong."),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ruinwatch_digger", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_crew_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "rare_coin");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 2);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_crew_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+
+        // Entry [4] (the unconditional "Want a genuine relic?" flavor line) is dead for exactly
+        // the reason `harborgate_fishwife`'s trailing entry is: the sq_crew_started/_relayed/_done
+        // ladder plus the excludes-started first-meeting entry already partition every state under
+        // first-match, so nothing ever falls through to it (ADR 0007, "Dead trailing dialogue
+        // entries in six more dialogues"). W12.4 is where this one is documented-accepted.
+        let relevant_flags = ["sq_crew_started", "sq_crew_relayed", "sq_crew_done"];
+        for mask in 0..(1 << relevant_flags.len()) {
+            let flags = RuntimeFlags::from_bootstrap(
+                relevant_flags
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| mask & (1 << index) != 0)
+                    .map(|(_, flag)| *flag),
+            );
+            let session =
+                DialogueSession::resolve("ruinwatch_digger", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(
+                session.current < 4,
+                "pinned first-match ordering unexpectedly made a dead entry reachable at mask {mask}"
+            );
+        }
+        assert_eq!(dialogue.entries.len(), 5);
+        assert!(dialogue.entries[4].lines[0].starts_with("Want a genuine relic?"));
+    }
+
+    #[test]
     fn port_master_intro_gates_the_sail_unlock_on_act_two_and_is_idempotent_after_unlock() {
         let dialogue = dialogue(include_str!(
             "../assets/scenarios/rusted_kingdoms/data/dialogue/port_master_intro.yaml"

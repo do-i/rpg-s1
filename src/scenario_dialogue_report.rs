@@ -16,19 +16,20 @@
 //! `millhaven_carter` carries the identical pattern for W12.2 (`docs/m12-content-migration-ledger.md`,
 //! "Pinned-source differences affecting W12.2") and is accepted the same way. `harborgate_fishwife`
 //! carries it for W12.3 (`docs/m12-content-migration-ledger.md`, W12.3 `C-DIALOGUE-harborgate_fishwife`
-//! and `docs/adr/0007-inherited-scenario-data-debt.md`) and is likewise accepted.
+//! and `docs/adr/0007-inherited-scenario-data-debt.md`) and is likewise accepted. `ruinwatch_digger`
+//! carries it for W12.4 (`docs/m12-content-migration-ledger.md`, W12.4
+//! `C-DIALOGUE-ruinwatch_digger`) and joins them.
 //!
 //! Running this report against the shipped scenario turns up the same shape of dead trailing
-//! entry in four more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
-//! `frostholm_courtier`, `ruinwatch_digger`) — every one a sub-quest giver whose first four
+//! entry in three more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
+//! `frostholm_courtier`) — every one a sub-quest giver whose first four
 //! entries already exhaustively partition the relevant `sq_*_started`/`_relayed`/`_done` states
 //! (or, for `elder_intro`, a reward entry and its own source-commented "safety fallback"
 //! duplicate), leaving the trailing flavor or story-flag entry unreachable under the pinned
 //! first-match rule regardless of any other flag. None of these are in
 //! [`DOCUMENTED_DEAD_ENTRIES`], so they surface as `DialogueReachability::Dead` findings, not
-//! `DeadAccepted` ones; only `docs/m12-content-migration-ledger.md` names `ardel_fisherman`,
-//! `millhaven_carter`, and `harborgate_fishwife`. This module does not alter the pinned YAML — it
-//! reports what is there.
+//! `DeadAccepted` ones; they are accepted only once a wave reaches them and the ledger names
+//! them. This module does not alter the pinned YAML — it reports what is there.
 //!
 //! Like [`crate::scenario_map_report`], this command is informational only: it never fails the
 //! process, and it deliberately does not repeat the item/flag reference checks
@@ -55,13 +56,15 @@ const MAX_ENUMERATED_FLAGS: usize = 16;
 
 /// The dialogue ids whose dead entries are accepted, deliberately-kept source content rather than
 /// a migration finding. See `docs/m12-content-migration-ledger.md`, "Pinned-source differences
-/// affecting W12.1" (`ardel_fisherman`), "affecting W12.2" (`millhaven_carter`), and the W12.3
+/// affecting W12.1" (`ardel_fisherman`), "affecting W12.2" (`millhaven_carter`), the W12.3
 /// `C-DIALOGUE-harborgate_fishwife` row / `docs/adr/0007-inherited-scenario-data-debt.md`
-/// (`harborgate_fishwife`).
+/// (`harborgate_fishwife`), and the W12.4 `C-DIALOGUE-ruinwatch_digger` row
+/// (`ruinwatch_digger`).
 const DOCUMENTED_DEAD_ENTRIES: &[(&str, &[usize])] = &[
     ("ardel_fisherman", &[4, 5]),
     ("millhaven_carter", &[4, 5]),
     ("harborgate_fishwife", &[4]),
+    ("ruinwatch_digger", &[4]),
 ];
 
 /// The complete dialogue report for one scenario package.
@@ -934,13 +937,14 @@ entries:
     }
 
     /// Pins the exact reachability findings against the shipped scenario. `ardel_fisherman`,
-    /// `millhaven_carter`, and `harborgate_fishwife` are the only dialogues named in
-    /// `docs/m12-content-migration-ledger.md` (the latter also in
+    /// `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` are the only dialogues
+    /// named in `docs/m12-content-migration-ledger.md` (the third also in
     /// `docs/adr/0007-inherited-scenario-data-debt.md`), so they are the only ones this report
-    /// accepts as documented; the other four carry the identical pinned-source dead
-    /// trailing-entry pattern (see the module doc comment) and surface as new findings. This test
-    /// exists to catch regressions in the reachability algorithm itself, not to bless the count —
-    /// a real drop in findings (fewer dead entries) is as worth investigating as a rise.
+    /// accepts as documented; the other three carry the identical pinned-source dead
+    /// trailing-entry pattern (see the module doc comment) and surface as new findings until the
+    /// wave that reaches them documents them too. This test exists to catch regressions in the
+    /// reachability algorithm itself, not to bless the count — a real drop in findings (fewer
+    /// dead entries) is as worth investigating as a rise.
     #[test]
     fn the_shipped_scenario_matches_the_known_dead_entry_inventory() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/scenarios/rusted_kingdoms");
@@ -949,11 +953,12 @@ entries:
         assert_eq!(report.documents.len(), 91);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
-        assert_eq!(report.documents_with_only_accepted_dead_entries(), 3);
+        assert_eq!(report.documents_with_only_accepted_dead_entries(), 4);
         let expected_accepted: &[(&str, &[usize])] = &[
             ("ardel_fisherman", &[4, 5]),
             ("millhaven_carter", &[4, 5]),
             ("harborgate_fishwife", &[4]),
+            ("ruinwatch_digger", &[4]),
         ];
         for (id, dead_indices) in expected_accepted {
             let document = report.documents.iter().find(|doc| doc.id == *id).unwrap();
@@ -970,7 +975,6 @@ entries:
             ("ashenveil_ashgatherer", &[5]),
             ("elder_intro", &[2]),
             ("frostholm_courtier", &[4, 5]),
-            ("ruinwatch_digger", &[4]),
         ];
         assert_eq!(
             report.documents_with_new_dead_entries(),
