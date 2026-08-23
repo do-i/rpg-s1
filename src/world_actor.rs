@@ -78,6 +78,30 @@ impl WorldActorState {
 }
 
 /// One live, present NPC. Tile occupancy is authoritative for grid interaction and collision.
+///
+/// # Placement convention
+///
+/// Unlike the player and world-map enemies (`world_player`, `world_encounter`), which place
+/// their sprite's collision-box *center* on the authored tile's center (source
+/// `engine/world/player.py` / `engine/encounter/enemy_sprite.py`, both computing
+/// `tile*ts + ts/2 - collision_offset - collision_size/2`), a source NPC (`engine/world/npc.py`)
+/// stores its pixel origin as the *plain* authored tile corner: `_origin_px = tile_x * tile_size`
+/// with no collision centering at all. `top_left` mirrors that: see `character_top_left`.
+///
+/// One consequence the source embraces: an NPC's `collision_rect` (`_px + 22, _py + 41, 20, 18`)
+/// sits with its center near `(tile+1, tile+1)`, not on the authored tile itself — the NPC's feet
+/// are drawn at the authored tile's corner, so its collision box lands roughly a tile
+/// southeast. `origin` and `position` below give the two tiles that distinction implies:
+///
+/// - `origin` is the *authored anchor* tile (`npc.position` from the map YAML, unconverted). It
+///   never changes after spawn and is what wander target selection re-centers on, matching the
+///   source's `_origin_px/_origin_py` (see `pick_wander_target`).
+/// - `position` is the tile the NPC's collision box *currently occupies* — i.e.
+///   `tile_from_top_left(top_left)`, recomputed the same way at spawn and after every wander
+///   step, so the two call sites can never disagree. For an unmoved NPC this is `origin + (1,
+///   1)`, by the same geometry as `collision_rect` above; it is intentionally not "the authored
+///   tile" once occupancy or interaction distance ties need the box the player can actually
+///   bump into.
 #[derive(Component, Debug)]
 pub(crate) struct WorldNpc {
     map_id: String,
@@ -115,14 +139,12 @@ impl WorldNpc {
         self.position
     }
 
+    /// The pixel position the source uses for interaction facing/range checks
+    /// (`Npc.pixel_position` in `engine/world/npc.py`, i.e. `(self._px, self._py)`). Since
+    /// `top_left` already stores that same uncentered origin (see the type doc), this is just
+    /// `top_left` — no compensating offset needed.
     pub(crate) fn source_pixel_position(&self) -> Vec2 {
         self.top_left
-            + Vec2::new(
-                CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0
-                    - TILE_SIZE as f32 / 2.0,
-                CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0
-                    - TILE_SIZE as f32 / 2.0,
-            )
     }
 
     pub(crate) fn interaction_range_pixels(&self) -> f32 {
@@ -293,7 +315,7 @@ fn drive_world_actor_load(
             name: npc.name.clone(),
             dialogue_id: npc.effective_dialogue_id().to_owned(),
             origin: npc.position,
-            position: npc.position,
+            position: tile_from_top_left(top_left),
             top_left,
             facing: npc.default_facing,
             default_facing: npc.default_facing,
@@ -601,6 +623,8 @@ fn character_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
     }
 }
 
+/// Tile whose center the NPC's collision box currently sits closest to. Used both at spawn and
+/// after every wander step (see the `WorldNpc` type doc for why these must — and do — agree).
 fn tile_from_top_left(top_left: Vec2) -> Position {
     let rect = character_collision_rect(top_left);
     Position::new(
@@ -609,12 +633,18 @@ fn tile_from_top_left(top_left: Vec2) -> Position {
     )
 }
 
+/// An NPC's sprite top-left for an authored tile: the *plain* tile corner, `tile * TILE_SIZE`,
+/// with no collision centering. This matches the source's `Npc.__init__` (`engine/world/npc.py`):
+/// `_origin_px = tile_x * tile_size; _origin_py = tile_y * tile_size`, blitted directly as the
+/// sprite's top-left in `Npc.render`. This is deliberately *not* the player/enemy formula
+/// (`world_player::character_top_left`, `world_encounter::enemy_top_left`), which centers the
+/// collision box on the tile instead — the source's player and NPC classes use two different
+/// placement conventions, and porting the player's formula onto NPCs was the original bug (NPCs
+/// rendering a tile too high/left).
 fn character_top_left(position: Position) -> Vec2 {
     Vec2::new(
-        position.x as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
-            - (CHARACTER_COLLISION_OFFSET_X + CHARACTER_COLLISION_WIDTH / 2.0),
-        position.y as f32 * TILE_SIZE as f32 + TILE_SIZE as f32 / 2.0
-            - (CHARACTER_COLLISION_OFFSET_Y + CHARACTER_COLLISION_HEIGHT / 2.0),
+        position.x as f32 * TILE_SIZE as f32,
+        position.y as f32 * TILE_SIZE as f32,
     )
 }
 
@@ -661,13 +691,16 @@ mod tests {
     }
 
     fn wandering_actor(speed: f32) -> WorldNpc {
+        let top_left = character_top_left(Position::new(4, 4));
         WorldNpc {
             map_id: "invented".into(),
             name: "Npc".into(),
             dialogue_id: "npc".into(),
             origin: Position::new(4, 4),
-            position: Position::new(4, 4),
-            top_left: character_top_left(Position::new(4, 4)),
+            // Occupied tile, derived the same way spawn does — see the `WorldNpc` type doc. For
+            // an unmoved NPC this is `origin + (1, 1)`, not `origin` itself.
+            position: tile_from_top_left(top_left),
+            top_left,
             facing: CardinalDirection::Down,
             default_facing: CardinalDirection::Down,
             mode: NpcAnimationMode::Wander,
@@ -976,7 +1009,9 @@ mod tests {
         assert!(actor.top_left.x > start.x);
         assert!(actor.top_left.x < start.x + TILE_SIZE as f32);
         assert_eq!(actor.top_left.y, start.y);
-        assert_eq!(actor.position, Position::new(4, 4));
+        // Occupied tile is `origin + (1, 1)` under the source-matching convention (see the
+        // `WorldNpc` type doc); the tiny sub-tile move here doesn't cross into a new one.
+        assert_eq!(actor.position, Position::new(5, 5));
         assert_eq!(actor.facing, CardinalDirection::Right);
         assert!(actor.wander_target.is_some());
     }
@@ -1054,5 +1089,65 @@ mod tests {
             CardinalDirection::Up,
             19.0,
         ));
+    }
+
+    /// Pins the source placement convention documented on `WorldNpc`
+    /// (`engine/world/npc.py::Npc.__init__`/`render`/`collision_rect`) against the exact pixel
+    /// values the Python engine computes for an authored NPC tile, verifying render, collision,
+    /// and interaction geometry all agree. This is the regression test for the "NPCs render one
+    /// cell too high" bug: `character_top_left` used to apply the player's collision-centered
+    /// formula to NPCs (`tile*32 - 16, tile*32 - 34`), which shifted the drawn sprite up/left of
+    /// the source.
+    #[test]
+    fn npc_top_left_render_and_collision_match_source_pixel_values() {
+        let tile = Position::new(6, 9);
+        let top_left = character_top_left(tile);
+
+        // `Npc._origin_px = tile_x * tile_size; _origin_py = tile_y * tile_size` — the plain tile
+        // corner, no collision centering.
+        assert_eq!(top_left, Vec2::new(6.0 * 32.0, 9.0 * 32.0));
+
+        // `Npc.render` blits the scaled 64x64 sprite's top-left at `(_px, _py)`, so the sprite
+        // center — what the port's `Transform` uses — is the top-left plus half the sprite size.
+        let render_center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
+        assert_eq!(render_center, top_left + Vec2::new(32.0, 32.0));
+
+        // `Npc.collision_rect = (_px + 22, _py + 41, 20, 18)`.
+        let collision_rect = character_collision_rect(top_left);
+        assert_eq!(collision_rect.x, top_left.x + 22.0);
+        assert_eq!(collision_rect.y, top_left.y + 41.0);
+        assert_eq!(collision_rect.width, 20.0);
+        assert_eq!(collision_rect.height, 18.0);
+
+        // `Npc.pixel_position` (used for interaction facing/range checks, e.g.
+        // `world_map_logic.try_interact`) is `(_px, _py)` — i.e. exactly `top_left`. This is also
+        // the value the *old*, buggy `character_top_left` produced after
+        // `source_pixel_position`'s now-deleted compensating offset (`+16, +34`) was added back
+        // on, so interaction selection is unchanged by this fix even though rendering moved.
+        let npc = WorldNpc {
+            map_id: "invented".into(),
+            name: "Npc".into(),
+            dialogue_id: "npc".into(),
+            origin: tile,
+            position: tile_from_top_left(top_left),
+            top_left,
+            facing: CardinalDirection::Down,
+            default_facing: CardinalDirection::Down,
+            mode: NpcAnimationMode::Still,
+            speed: 1.0,
+            range: 2,
+            interaction_range: 1.5,
+            frame: 0,
+            frame_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        };
+        assert_eq!(npc.source_pixel_position(), top_left);
+
+        // `tile_from_top_left` — the tile the collision box occupies — lands one tile southeast
+        // of the authored anchor for an unmoved NPC, matching the source's own geometry (the
+        // collision rect's center sits near `_px + 32, _py + 50`). `WorldNpc::position` is seeded
+        // with exactly this value at spawn, so it agrees with what wander recomputes later.
+        assert_eq!(npc.tile_position(), Position::new(tile.x + 1, tile.y + 1));
     }
 }
