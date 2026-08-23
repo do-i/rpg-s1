@@ -1728,7 +1728,9 @@ fn is_numeric_tmx_segment(parent: &str, candidate: &str) -> bool {
     candidate
         .strip_prefix(parent)
         .and_then(|rest| rest.strip_prefix('_'))
-        .is_some_and(|suffix| !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit()))
+        .is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 fn probe_path(
