@@ -232,6 +232,101 @@ Audio instance used at Harborgate is `town.default`; its index and materialized 
 
 Individual image, sprite, tileset, font, and audio-file C-ASSET instances are already identified with source path, destination, license, and hash in `docs/asset-license-inventory.md`.
 
+## W12.4 — Ancient Ruins and Ruinwatch
+
+Wave boundary: the three-map Ancient Ruins chain (gate/courtyard/sanctum) with its Zone 4 boss, Ruinwatch with inn/shop/monastery vaults, Jep's recruitment via `jep_join` (sets `npc_jep_joined`, gated on `story_act3_started`), the first live exercise of the `barrier_enemies` mechanic, and the W12.3↔W12.4 boundary portals.
+
+Rows below carry the data-audit evidence only (byte identity against the pinned
+source, `validate-scenario`, `map-report`, `map-sweep`, `dialogue-report`). They
+stay **Ready** until the wave's runtime fixtures land, per the status vocabulary
+above; `C-PLAY` rows stay **Inventory** until owner live play with save evidence.
+
+### Maps, portals, and play checks
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-MAPDATA-`zone_04_ancient_ruins_01_gate` | Ready | Byte-identical to pinned source; `validate-scenario` adds no new diagnostic (13 inherited errors only). No NPCs, no signs, no item boxes. Authors no `bgm:` key at all — same shape as `zone_03_marshland`, so it relies on the W12.2 `world_audio` continuity fix rather than naming an audio instance. Needs a production `world_actor`/`world_encounter` fixture. |
+| C-MAPDATA-`zone_04_ancient_ruins_02_courtyard` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. No NPCs/signs/boxes; authors no `bgm:` key. Needs a production fixture. |
+| C-MAPDATA-`zone_04_ancient_ruins_03_sanctum` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. No NPCs/signs/boxes; authors no `bgm:` key. Carries the wave boss. Needs a production fixture. |
+| C-MAPDATA-`town_03_ruinwatch` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `bgm: town.default`. Declares 5 NPCs — ruinwatch_scholar `[18, 27]`, ruinwatch_archivist `[12, 7]`, ruinwatch_mason `[26, 7]`, ruinwatch_pilgrim `[33, 15]`, ruinwatch_digger `[3, 22]` — none of which authors a `present:` gate. Needs a `world_actor::present_npcs` fixture pinning that spawn set across Act II/III/IV flags. |
+| C-MAPDATA-`town_03_ruinwatch_inn` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `bgm: town.default`. Sole NPC `inn_keeper` at `[8, 3]` -> `inn_ruinwatch`. Needs a production dialogue fixture. |
+| C-MAPDATA-`town_03_ruinwatch_shop` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `bgm: town.default`. Declares the same 4-NPC shop set as Harborgate — item_shop_keeper `[6, 3]`, mc_shop_keeper `[10, 3]`, weapon_shop_keeper `[4, 3]`, armor_shop_keeper `[12, 3]` — none gated. `mc_shop_keeper` reuses the shared `mc_shop_intro` already resolved in W12.1. Needs a `present_npcs` fixture. |
+| C-MAPDATA-`town_03_ruinwatch_monastery_vaults` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `bgm: town.default`. Sole NPC `jep` at `[10, 5]` -> `jep_join`, and it is the wave's only `present:`-gated NPC (`excludes: [npc_jep_joined]`), so the recruit disappears once joined. Needs a `present_npcs` fixture covering both sides of that gate. |
+| C-TMX-`zone_04_ancient_ruins_01_gate` | Ready | Byte-identical to pinned source; `map-sweep` clean (`Findings: none`). 7 painted `spawn_tile` tiles, no `boss_enemy` group. Needs an end-to-end `TmxGroundAssetPlugin` load/render fixture. |
+| C-TMX-`zone_04_ancient_ruins_02_courtyard` | Ready | Byte-identical to pinned source; `map-sweep` clean. 13 painted `spawn_tile` tiles, no `boss_enemy` group. Needs a load/render fixture. |
+| C-TMX-`zone_04_ancient_ruins_03_sanctum` | Ready | Byte-identical to pinned source; `map-sweep` clean. 8 painted `spawn_tile` tiles plus a `boss_enemy` objectgroup holding `skeleton_knight_base` at pixel `(608, 448)` = tile `[19, 14]` on a 38x28 map. Needs a load/render fixture. |
+| C-TMX-`town_03_ruinwatch` | Ready | Byte-identical to pinned source; `map-sweep` clean. 4 portals and 2 painted sign tiles; unlike Marshland's missing `sign_zone_03_marshland`, `sign_town_03_ruinwatch` exists, so these signs must speak rather than stay silent. Needs portal extraction plus a sign-interaction fixture. |
+| C-TMX-`town_03_ruinwatch_inn` | Ready | Byte-identical to pinned source; `map-sweep` clean. Needs portal extraction. |
+| C-TMX-`town_03_ruinwatch_shop` | Ready | Byte-identical to pinned source; `map-sweep` clean. Needs portal extraction. |
+| C-TMX-`town_03_ruinwatch_monastery_vaults` | Ready | Byte-identical to pinned source; `map-sweep` clean. Needs portal extraction. |
+| C-ENCOUNTER-`zone_04_ancient_ruins_01_gate` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `density: 0.13`, background `zone4-gate-bg-1280x468`, no boss. Declares a `barrier_enemies` rule (`bat_demon_red_wing_fiend` requires `veil_breaker`, blocked message "A mysterious force blocks your attack."). Needs a `WorldEncounterPlugin` fixture spawning all 7 authored formations. |
+| C-ENCOUNTER-`zone_04_ancient_ruins_02_courtyard` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. Background `zone4-courtyard-bg-1280x468`, no boss, same `barrier_enemies` rule. Needs a fixture spawning all 13 authored formations. |
+| C-ENCOUNTER-`zone_04_ancient_ruins_03_sanctum` | Ready | Byte-identical to pinned source; `validate-scenario` clean of new diagnostics. `density: 0.13`, background `zone4-sanctum-bg-1280x468`, same `barrier_enemies` rule, and the wave boss `skeleton_knight_base` ("Skeleton Knight", `once: true`, `on_complete.set_flag: boss_zone04_defeated`). Needs a fixture spawning all 8 authored formations plus one full boss contact -> `AppState::Battle` handoff, mirroring the W12.3 Marshland row. |
+| C-PORTAL-`zone_04_ancient_ruins_01_gate` | Ready | All three authored exits extract with targets: courtyard at `[40, 15]`, Marshland return at `[1, 31]` (completes the reverse of the W12.3 boundary already recorded at `[39, 14]`), and Ruinwatch at `[19, 29]`. Needs a `world_transition` reversibility regression. |
+| C-PORTAL-`zone_04_ancient_ruins_02_courtyard` | Ready | Both authored exits extract: gate return at `[1, 12]`, sanctum at `[36, 11]`. Needs a reversibility regression. |
+| C-PORTAL-`zone_04_ancient_ruins_03_sanctum` | Ready | Both authored exits extract: courtyard return at `[1, 16]`, and the W12.5 boundary into `zone_05_mountain_foothills_01` at `[8, 28]` (parses; no reverse-link claim, W12.5 is out of scope). That target has a TMX and a `data/encount` file but no `data/maps` metadata — the same TMX-only shape already accepted for `zone_02_open_plains_cave_01/02` in W12.2, so it resolves as `MapMetadata::empty` rather than failing. Needs a reversibility regression for the courtyard link. |
+| C-PORTAL-`town_03_ruinwatch` | Ready | All four authored exits extract: monastery vaults at `[5, 9]`, shop at `[7, 10]`, inn at `[5, 9]`, and the ruins gate at `[28, 1]`. Each interior supplies a matching return below, so the graph is closed by inspection; needs a `world_transition` regression to prove it. |
+| C-PORTAL-`town_03_ruinwatch_inn` | Ready | Sole outgoing portal returns to Ruinwatch at `[9, 25]`. Needs a reversibility regression. |
+| C-PORTAL-`town_03_ruinwatch_shop` | Ready | Sole outgoing portal returns to Ruinwatch at `[36, 6]`. Needs a reversibility regression. |
+| C-PORTAL-`town_03_ruinwatch_monastery_vaults` | Ready | Sole outgoing portal returns to Ruinwatch at `[20, 6]`. Needs a reversibility regression. |
+| C-PLAY-`zone_04_ancient_ruins_01_gate` | Inventory | Needs a live pass: Marshland boundary crossing both ways, BGM continuity into a `bgm:`-less zone, and encounter spawns. |
+| C-PLAY-`zone_04_ancient_ruins_02_courtyard` | Inventory | Needs a live pass: gate/sanctum links and encounter spawns. |
+| C-PLAY-`zone_04_ancient_ruins_03_sanctum` | Inventory | Needs a live pass: the Skeleton Knight boss fight to `boss_zone04_defeated`, plus a `barrier_enemies` encounter with and without `veil_breaker` held. |
+| C-PLAY-`town_03_ruinwatch` | Inventory | Needs a live pass: town route, all five NPCs reachable, both painted signs speaking, and the four interior portals walked. |
+| C-PLAY-`town_03_ruinwatch_inn` | Inventory | Needs a live pass: inn portal, pay/cancel/recovery, and return. |
+| C-PLAY-`town_03_ruinwatch_shop` | Inventory | Needs a live pass: all four shop counters opened. |
+| C-PLAY-`town_03_ruinwatch_monastery_vaults` | Inventory | Needs a live pass: this wave's story payload — Jep recruited with `npc_jep_joined` set and the NPC gone from the map afterwards. |
+
+### Dialogue instances
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-DIALOGUE-`armor_shop_ruinwatch` | Ready | Single reachable terminal emitting the Armor shop action. Needs a production traversal. |
+| C-DIALOGUE-`inn_ruinwatch` | Ready | Single reachable terminal emitting the inn action. Needs a production traversal. |
+| C-DIALOGUE-`item_shop_ruinwatch` | Ready | Single reachable terminal emitting the Item shop action. Needs a production traversal. |
+| C-DIALOGUE-`jep_join` | Ready | This wave's story payload. All five entries reachable, no dead entries. The recruit branch `[2]` requires `story_act3_started` and excludes `npc_jep_joined`, setting `npc_jep_joined` and `join_party: jep`; `[0]` additionally reads `boss_zone03_defeated`. Needs a production traversal proving pre-Act-III silence on the recruit branch, the one-time join, and post-join idempotence — the `port_master_intro` shape from W12.3. |
+| C-DIALOGUE-`ruinwatch_archivist` | Ready | Four reachable entries driving `sq_glyph`: `[3]` starts it, `[1]` pays the one-time `sq_glyph_done` + 2 Ether reward. Needs a production traversal. |
+| C-DIALOGUE-`ruinwatch_digger` | Ready | Five entries driving `sq_crew`: `[3]` starts it, `[1]` pays the one-time `sq_crew_done` + 2 Rare Coin reward. **`dialogue-report` flags entry `[4]` as a new dead-entry finding** — no assignment of the document's flags lets it win first-match. Resolve it the way `harborgate_fishwife` and `millhaven_carter` were: an exhaustive flag fixture proving unreachability, then move it into `DOCUMENTED_DEAD_ENTRIES` in `scenario_dialogue_report.rs` and the pinned inventory test, consistent with `docs/adr/0007-inherited-scenario-data-debt.md`. |
+| C-DIALOGUE-`ruinwatch_mason` | Ready | Five reachable entries spanning two quests: `[0]` relays the W12.2 `sq_millstone` errand (sets `sq_millstone_relayed`), `[3]` relays `sq_glyph` (sets `sq_glyph_relayed`). Needs a production traversal. |
+| C-DIALOGUE-`ruinwatch_pilgrim` | Ready | Four reachable entries; `[0]` relays `sq_crew` (sets `sq_crew_relayed`), `[2]` is an Act III flavor branch. Needs a production traversal. |
+| C-DIALOGUE-`ruinwatch_scholar_hint` | Ready | Four reachable entries keyed on Act II/III/IV and `boss_zone03_defeated`; the `story_act4_started` branch `[0]` reads a flag produced outside this wave. No effects. Needs a production traversal. |
+| C-DIALOGUE-`sign_town_03_ruinwatch` | Ready | Single reachable three-line terminal, no effects. Backs the map's 2 painted sign tiles. Needs a production traversal. |
+| C-DIALOGUE-`weapon_shop_ruinwatch` | Ready | Single reachable terminal emitting the Weapon shop action. Needs a production traversal. |
+
+Audio instance used across all four Ruinwatch maps is `town.default`, already audited in W12.1/W12.3. None of the three Ancient Ruins zones authors a `bgm:` key, so like Marshland they name no audio instance and depend on the W12.2 `world_audio` continuity fix; live transition continuity across the Marshland->gate boundary is part of the wave exit check.
+
+Individual image, sprite, tileset, font, and audio-file C-ASSET instances are already identified with source path, destination, license, and hash in `docs/asset-license-inventory.md`.
+
+### W12.4 audit findings requiring a decision
+
+- **`party.yaml` Jep linkage is dead metadata, not a blocker.** Two of the 13
+  inherited `validate-scenario` errors belong to this wave:
+  `party[3].join.map` names `dungeon_ruinwatch` and `party[3].recruit.npc`
+  names `jep` on that map, and `dungeon_ruinwatch` exists in neither
+  repository. Nothing in the runtime reads either field — `join.map` and
+  `recruit` are consumed only by `scenario_cross_reference.rs`, while the real
+  recruitment path is the `jep` NPC authored on
+  `town_03_ruinwatch_monastery_vaults` running `jep_join`'s `join_party: jep`
+  action. This is the same dead-data shape already recorded for the `transport:`
+  block, so W12.4 inherits the diagnostics rather than fixing the data.
+- **Jep's recruitment requires backtracking to Millhaven.** `jep_join[2]` gates
+  on `story_act3_started`, which is produced only by `millhaven_elder_hint`
+  (W12.2) once `story_act2_started` and `boss_zone02_defeated` both hold. A
+  player who walks straight from Marshland into the ruins cannot recruit Jep and
+  gets the Act II flavor branch instead. The wave play check must therefore
+  cross the W12.2 hub, not just the W12.3->W12.4 boundary.
+- **`sq_millstone` is a W12.2<->W12.4 loop.** `millhaven_carter` starts it,
+  `ruinwatch_mason` relays it, and `millhaven_carter` pays it out (1 Tent), so
+  closing the quest requires a second Millhaven visit. `sq_glyph` and `sq_crew`
+  are self-contained in Ruinwatch.
+- **W12.4 is the first live exercise of `barrier_enemies`.** All six authored
+  barrier rules live in `zone_04_*` and `zone_05_*`; every earlier wave's
+  encounters have none. The mechanic is already ported in `encounter.rs`
+  (filtering plus `barrier_messages`) and unit-tested by
+  `barrier_filtering_requires_inventory_and_rejects_empty_battles`, but it has
+  never run in a production fixture or live play. The gating item is
+  `veil_breaker`.
+
 ## Pinned-source differences affecting W12.1
 
 - `zone_01_starting_forest.tmx` differs only by marking `spawn_tile` invisible
