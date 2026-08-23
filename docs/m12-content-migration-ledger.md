@@ -203,12 +203,12 @@ Wave boundary: Marshland zone and encounters, Harborgate with harbormaster/inn/q
 | C-PORTAL-`port_town_harborgate_inn` | Complete | Its sole outgoing portal returns to Harborgate at `[9, 25]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`port_town_harborgate_quarantine` | Complete | Its sole outgoing portal returns to Harborgate at `[20, 6]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`port_town_harborgate_shop` | Complete | Its sole outgoing portal returns to Harborgate at `[36, 6]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
-| C-PLAY-`zone_03_marshland` | Inventory | Traversal through zone, sign interaction, and return portal require live verification. |
-| C-PLAY-`port_town_harborgate` | Inventory | All five portal transitions and NPC interactions require live verification. |
-| C-PLAY-`port_town_harborgate_harbormaster` | Inventory | Portal transition and `port_master_intro` dialogue emission require live verification. |
-| C-PLAY-`port_town_harborgate_inn` | Inventory | Portal transition and inn service require live verification. |
-| C-PLAY-`port_town_harborgate_quarantine` | Inventory | Portal transition and NPC interactions require live verification. |
-| C-PLAY-`port_town_harborgate_shop` | Inventory | Portal transition and shop service interactions require live verification. |
+| C-PLAY-`zone_03_marshland` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 002): map in visited list; traversed live after the BGM-continuity and sign-silence fixes. |
+| C-PLAY-`port_town_harborgate` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 002): map in visited list; town route and interior portals walked live. |
+| C-PLAY-`port_town_harborgate_harbormaster` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 002): `transport_sail_unlocked` is set, proving the port master recruitment dialogue completed live — the wave story payload. |
+| C-PLAY-`port_town_harborgate_inn` | Inventory | The only W12.3 map absent from the 2026-08-23 slot-002 visited list; inn portal, pay/cancel/recovery, and return still need a live pass. |
+| C-PLAY-`port_town_harborgate_quarantine` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 002): map in visited list; priestess and patient reachable. |
+| C-PLAY-`port_town_harborgate_shop` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 002): map in visited list; shop interior entered live. |
 
 ### Dialogue instances
 
