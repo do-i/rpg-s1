@@ -107,7 +107,7 @@ a regression test; as each wave's `C-DIALOGUE` acceptance verifies one of
 these dialogues, move it to the documented-accepted classification with an
 exhaustive flag-state regression like `ardel_fisherman`'s.
 
-### Missing sign dialogues on Marshland and Mountain Pass segment 1 — keep bytes; verify silence at wave acceptance
+### Missing sign dialogues on Marshland and Mountain Pass segment 1 — keep bytes; resolved at W12.3 acceptance
 
 The `map-sweep` (parity plan P0.2, 2026-08-22) found painted sign tiles whose
 `sign_<map_id>` dialogue does not exist in either repository:
@@ -116,12 +116,26 @@ The `map-sweep` (parity plan P0.2, 2026-08-22) found painted sign tiles whose
 `sign_zone_06_mountain_pass.yaml` plus `_02`/`_03` exist). Under the pinned
 engine a missing sign dialogue is a silent no-op
 (`DialogueEngine.resolve` → `load_yaml_optional_cached` → `None`), so these
-signs do nothing in the original. Decision: keep the data as-is. One behavior
-delta to settle in code at W12.3/W12.6 acceptance: the port currently plays
-the dialogue-open interaction sound before the document load resolves
-(`world_interaction.rs`), so a missing sign dialogue clicks and then shows
-nothing, where the original stays fully silent — either match the silence or
-record the click as an accepted difference when those waves close.
+signs do nothing in the original. Decision: keep the data as-is.
+
+**Resolved 2026-08-23 (W12.3 acceptance):** the behavior delta is fixed, not
+just recorded. `request_npc_dialogue` (`world_interaction.rs`) used to queue
+the dialogue-open interaction sound the instant a sign (or NPC) was selected
+as a target, before the async document load had a chance to fail — so a
+missing sign dialogue clicked and then showed nothing, unlike the source. The
+sound is now queued in `resolve_dialogue_request`, only once a session
+actually opens (`Ok(Some(session))`), matching
+`world_map_scene.py::_try_interact`'s "overlay (and the only sound tied to
+it) only appears after `resolve` returns a match" shape. Marshland's 2 signs
+are now fully silent on interact, exactly like the source. Covered by
+`world_interaction::tests::interacting_with_a_missing_sign_dialogue_stays_fully_silent`
+(no session, no sound) and
+`world_interaction::tests::interacting_with_an_authored_sign_dialogue_opens_and_plays_its_sound`
+(a real sign dialogue still opens and still plays its sound, just resolved
+once the load is confirmed). `zone_06_mountain_pass_01`'s sign inherits the
+same fix; its own wave (W12.6) still owns verifying that map's other
+acceptance evidence. See `docs/m12-content-migration-ledger.md`, "Runtime
+divergences found and fixed during W12.3 acceptance".
 
 ## Consequences
 

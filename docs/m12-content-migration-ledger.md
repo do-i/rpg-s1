@@ -176,6 +176,62 @@ already identified with source path, destination, license, and hash in
 `docs/asset-license-inventory.md`. This ledger links to that evidence rather
 than duplicating hundreds of asset rows.
 
+## W12.3 — Marshland and Harborgate
+
+Wave boundary: Marshland zone and encounters, Harborgate with harbormaster/inn/quarantine/shop, the sail unlock via `port_master_intro` (sets `transport_sail_unlocked`, gated on `story_act2_started`), and the W12.2↔W12.3 boundary portals.
+
+### Maps, portals, and play checks
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-MAPDATA-`zone_03_marshland` | Complete | Byte-identical to pinned source; validate-scenario clean. Map has no NPCs and authors no `bgm:` key at all (unlike every W12.1/W12.2 map); the production encounter fixture loads this metadata through `WorldEncounterPlugin`/`WorldAudioPlugin` to `Spawned` and its boss battle handoff confirms `return_context.world_bgm_key` resolves to `None` — see the runtime-divergence note below for the `world_audio` fix this exposed. Its 2 painted sign tiles route through `sign_zone_03_marshland`, which exists in neither repository (`docs/adr/0007-inherited-scenario-data-debt.md`); the production interaction fixture proves the port now matches the source's full silence — see the second runtime-divergence note below. |
+| C-MAPDATA-`port_town_harborgate` | Complete | Byte-identical to pinned source; validate-scenario clean. A `world_actor::present_npcs` fixture proves the exact production 5-NPC spawn set (harborgate_dockhand, harborgate_clerk, harborgate_stevedore, harborgate_sailor, harborgate_fishwife — ids, positions, dialogue refs) is stable across fresh, Act II, and Act III flags: none of the five authors a `present:` gate. |
+| C-MAPDATA-`port_town_harborgate_harbormaster` | Complete | Byte-identical to pinned source; validate-scenario clean. The production `port_master_intro` dialogue fixture (pre-Act-II silence, the sail-unlock offer, and post-unlock idempotence) resolves its sole NPC's dialogue reference. |
+| C-MAPDATA-`port_town_harborgate_inn` | Complete | Byte-identical to pinned source; validate-scenario clean. The production `inn_harborgate` dialogue fixture resolves its sole NPC's dialogue reference and emits the inn service action. |
+| C-MAPDATA-`port_town_harborgate_quarantine` | Complete | Byte-identical to pinned source; validate-scenario clean. A `world_actor::present_npcs` fixture proves the exact 2-NPC spawn set (quarantine_priestess, quarantine_patient — ids, positions, dialogue refs) is stable across fresh, Act II, and Act III flags: neither authors a `present:` gate. The `harborgate_priestess`/`harborgate_patient` dialogue fixtures resolve both NPCs' dialogue references. |
+| C-MAPDATA-`port_town_harborgate_shop` | Complete | Byte-identical to pinned source; validate-scenario clean. A `world_actor::present_npcs` fixture proves the exact 4-NPC spawn set (item_shop_keeper, mc_shop_keeper, weapon_shop_keeper, armor_shop_keeper — ids, positions, dialogue refs) is stable across fresh, quest-started, and Act II/III flags: none authors a `present:` gate. The `item_shop_harborgate`/`weapon_shop_harborgate`/`armor_shop_harborgate` dialogue fixtures resolve three of the four NPCs' dialogue references; `mc_shop_keeper`'s shared `mc_shop_intro` reference was already resolved in W12.1. |
+| C-TMX-`zone_03_marshland` | Complete | Byte-identical to pinned source; map-sweep clean. Production `world_transition::runtime_portals` resolves all three authored exits with correct target positions; the production encounter fixture also loads and renders this TMX end to end (`TmxGroundAssetPlugin`) with the correct 18-entry `spawn_tile` layer and `boss_enemy` tile. |
+| C-TMX-`port_town_harborgate` | Complete | Byte-identical to pinned source; map-sweep clean. Production `world_transition::runtime_portals` resolves all five authored exits with correct target positions. |
+| C-TMX-`port_town_harborgate_harbormaster` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-TMX-`port_town_harborgate_inn` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-TMX-`port_town_harborgate_quarantine` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-TMX-`port_town_harborgate_shop` | Complete | Byte-identical to pinned source; map-sweep clean. Production portal extraction resolves its sole return exit. |
+| C-ENCOUNTER-`zone_03_marshland` | Complete | Byte-identical to pinned source; validate-scenario clean. The production `WorldEncounterPlugin` fixture spawns all 18 authored `spawn_tile` formations plus the boss (`ratkin_plague_doctor_black_mask_doctor` at `[0, 31]`), round-trips through a neighboring encounter-free town (`port_town_harborgate`, no `data/encount/*.yaml`) and back, and drives one full boss contact -> `AppState::Battle` handoff: correct party stats, `background_id` `zone3-bg-1280x468`, `bgm_key` `battle.boss`, `boss_completion_flag` `boss_zone03_defeated`, and a `return_context` back to Marshland at the boss tile. |
+| C-PORTAL-`zone_03_marshland` | Complete | All three authored exits parse and round-trip in a `world_transition` regression: Open Plains return at `[3, 18]` (reversible, shared with the W12.2 boundary fixture, exact plains-side arrival at `[27, 1]`), the Ancient Ruins W12.4 boundary at `[39, 14]` (parses; no reverse-link claim, W12.4 is out of scope), and Harborgate entry at `[4, 1]` (reversible). |
+| C-PORTAL-`port_town_harborgate` | Complete | All five authored exits parse and round-trip: quarantine `[5, 9]`, shop `[7, 10]`, inn `[5, 9]`, harbormaster `[10, 11]`, Marshland return `[21, 37]` — a `world_transition` regression proves each interior/Marshland link is reversible with the exact return position. |
+| C-PORTAL-`port_town_harborgate_harbormaster` | Complete | Its sole outgoing portal returns to Harborgate at `[35, 26]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
+| C-PORTAL-`port_town_harborgate_inn` | Complete | Its sole outgoing portal returns to Harborgate at `[9, 25]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
+| C-PORTAL-`port_town_harborgate_quarantine` | Complete | Its sole outgoing portal returns to Harborgate at `[20, 6]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
+| C-PORTAL-`port_town_harborgate_shop` | Complete | Its sole outgoing portal returns to Harborgate at `[36, 6]`; the Harborgate entrance supplies the reverse link (`world_transition` regression). |
+| C-PLAY-`zone_03_marshland` | Inventory | Traversal through zone, sign interaction, and return portal require live verification. |
+| C-PLAY-`port_town_harborgate` | Inventory | All five portal transitions and NPC interactions require live verification. |
+| C-PLAY-`port_town_harborgate_harbormaster` | Inventory | Portal transition and `port_master_intro` dialogue emission require live verification. |
+| C-PLAY-`port_town_harborgate_inn` | Inventory | Portal transition and inn service require live verification. |
+| C-PLAY-`port_town_harborgate_quarantine` | Inventory | Portal transition and NPC interactions require live verification. |
+| C-PLAY-`port_town_harborgate_shop` | Inventory | Portal transition and shop service interactions require live verification. |
+
+### Dialogue instances
+
+| Instance | Status | Evidence / remaining work |
+| --- | --- | --- |
+| C-DIALOGUE-`armor_shop_harborgate` | Complete | Production traversal reaches its sole terminal and emits the Armor shop action. |
+| C-DIALOGUE-`harborgate_clerk` | Complete | Production traversal reaches all four quest terminals (first meeting, waiting on the stevedore, reward, repeat) and verifies the start flag plus the one-time `sq_manifest_done`/3-Antidote reward. |
+| C-DIALOGUE-`harborgate_dockhand` | Complete | Production traversal selects and completes the Act III, Act II, and default terminals without effects. |
+| C-DIALOGUE-`harborgate_fishwife` | Complete | Production traversal reaches its four executable quest terminals (first meeting, active relay, reward, repeat) and verifies the start flag plus the one-time `sq_catch_done`/2-Ice-Vial reward. Entry [4] is a dead flavor fallback, unreachable under Python-compatible first-match ordering; an exhaustive 8-state flag fixture proves it, mirroring `millhaven_carter`'s; moved from new-finding to documented-accepted in `scenario_dialogue_report.rs`'s `DOCUMENTED_DEAD_ENTRIES` and pinned inventory test, consistent with `docs/adr/0007-inherited-scenario-data-debt.md`. |
+| C-DIALOGUE-`harborgate_patient` | Complete | Production traversal selects and completes both the Act III and default terminals without effects. |
+| C-DIALOGUE-`harborgate_priestess` | Complete | Production traversal selects and completes the Act III, Act II, and default terminals without effects. |
+| C-DIALOGUE-`harborgate_sailor` | Complete | Production traversal reaches the fishwife-relay (sets `sq_catch_relayed`), waiting, sail-unlocked, and default terminals, and confirms a completed-but-unsailed quest state falls through to the default flavor entry rather than sticking on a stale branch. |
+| C-DIALOGUE-`harborgate_stevedore` | Complete | Production traversal reaches the before-errand, active (sets `sq_manifest_relayed`), and after-relay terminals without unexpected effects. |
+| C-DIALOGUE-`inn_harborgate` | Complete | Production traversal reaches its sole terminal and emits the inn action. |
+| C-DIALOGUE-`item_shop_harborgate` | Complete | Production traversal reaches its sole terminal and emits the Item shop action. |
+| C-DIALOGUE-`port_master_intro` | Complete | This wave's story payload. Production traversal proves there is no match before `story_act2_started`, reaches the sail-unlock offer branch (sets `transport_sail_unlocked`) once Act II starts, reaches the post-unlock branch once the flag is applied (no repeated flag-set action — idempotent), and proves the post-unlock branch stays reachable on the flag alone, without Act II. |
+| C-DIALOGUE-`sign_port_town_harborgate` | Complete | Production traversal reaches its three-line terminal without effects. |
+| C-DIALOGUE-`weapon_shop_harborgate` | Complete | Production traversal reaches its sole terminal and emits the Weapon shop action. |
+
+Audio instance used at Harborgate is `town.default`; its index and materialized asset pass the pinned audit. Marshland authors no `bgm:` key at all in `data/maps/zone_03_marshland.yaml` (byte-identical to source), so it names no audio instance of its own — a boundary crossing into Marshland leaves whatever World track was already playing running, matching the pinned engine's `if bgm_key: bgm_manager.play_key(bgm_key)` guard; see the runtime-divergence note below for the `world_audio` fix this exposed. Live transition continuity remains part of the wave exit check.
+
+Individual image, sprite, tileset, font, and audio-file C-ASSET instances are already identified with source path, destination, license, and hash in `docs/asset-license-inventory.md`.
+
 ## Pinned-source differences affecting W12.1
 
 - `zone_01_starting_forest.tmx` differs only by marking `spawn_tile` invisible
@@ -240,3 +296,64 @@ than duplicating hundreds of asset rows.
   which drives the full `WorldActorPlugin`/`WorldObjectPlugin`/
   `WorldEncounterPlugin` stack into both caves and asserts `Spawned`/
   `NoEncounters` instead of `Failed`.
+
+## Runtime divergences found and fixed during W12.3 acceptance (recorded 2026-08-23)
+
+- **Port bug: World BGM stopped unconditionally on every map change, before
+  it even knew the destination had a track.** `zone_03_marshland` is the
+  first map in wave order with no `bgm:` field at all
+  (`data/maps/zone_03_marshland.yaml` is two lines — `name` and
+  `warp_order` — byte-identical to the pinned source). The pinned Python
+  engine only calls `bgm_manager.play_key(bgm_key)` when the destination
+  names a key at all (`if bgm_key: bgm_manager.play_key(bgm_key)`,
+  `engine/world/world_map_init.py`); a silent map leaves whatever track was
+  already playing running — `BgmManager` never receives a stop call. The
+  Rust port's `world_audio::drive_world_audio` instead despawned the
+  currently playing logical BGM player the instant any map change was
+  detected, before the destination's metadata had even loaded, so walking
+  from Open Plains into Marshland cut the music to silence every time — a
+  real, easily reachable player-facing difference, not a cosmetic one (every
+  W12.2↔W12.3 boundary crossing hits it). Fix: `drive_world_audio` now only
+  *loads* the destination's metadata on a map change; it stops and replaces
+  the current loop only once that metadata is loaded and confirmed to name a
+  `bgm` key, and leaves an already-playing loop alone when the destination
+  has none. The published `WorldBgmStatus` reflects reality: `Playing` when
+  a previous map's track is still looping through a silent map, `Silent`
+  only when nothing is genuinely playing. Covered by
+  `world_audio::tests::a_map_with_no_authored_bgm_leaves_the_previous_track_playing`,
+  which drives a two-map package (a keyed map into a `bgm`-less one) and
+  proves the same logical player, entity, and asset path survive the
+  crossing. The pre-existing "restart on every keyed-to-keyed transition,
+  even when both maps share one `bgm` key" behavior (e.g. a town and its
+  interiors) is unchanged and out of this fix's scope — it already shipped
+  in W12.1/W12.2 and the ledger's "live transition continuity" note covers
+  it.
+- **Port bug: the sign interaction sound played before the async dialogue
+  load could fail.** `zone_03_marshland` paints 2 sign tiles whose dialogue
+  document, `sign_zone_03_marshland`, exists in neither repository — known,
+  accepted inherited debt (`docs/adr/0007-inherited-scenario-data-debt.md`).
+  The pinned Python engine's `DialogueEngine.resolve` returns `None` for a
+  missing document, and `world_map_scene.py::_try_interact` only creates its
+  dialogue overlay — the only place any sound is tied to the interaction —
+  once `resolve` returns a match, so a missing sign is a fully silent no-op
+  in the source. The Rust port's `request_npc_dialogue` queued the "confirm"
+  interaction sound the instant a sign (or NPC) was selected as a target,
+  synchronously, before the async YAML load even had a chance to fail — so a
+  missing sign clicked and then showed nothing, audibly diverging from the
+  silent original. Fix: the interaction sound is now queued in
+  `resolve_dialogue_request`, only once a session actually opens
+  (`Ok(Some(session))`), never eagerly at target-selection time. As a
+  side effect this also silences the (already rare, previously also
+  incorrect) case of a present NPC/sign whose dialogue loads but has no
+  entry matching the current flags — matching the same Python code path.
+  Covered by two production `WorldInteractionPlugin` fixtures:
+  `world_interaction::tests::interacting_with_a_missing_sign_dialogue_stays_fully_silent`
+  (Marshland's real missing `sign_zone_03_marshland`: no session, no
+  interaction sound at all) and
+  `world_interaction::tests::interacting_with_an_authored_sign_dialogue_opens_and_plays_its_sound`
+  (Harborgate's real `sign_port_town_harborgate`: still opens and still
+  plays exactly one `Dialogue` sound, just resolved once the load is
+  confirmed rather than eagerly). ADR 0007's "Missing sign dialogues on
+  Marshland and Mountain Pass segment 1" entry is updated to record this
+  resolution — the port now matches the source's silence instead of
+  clicking.

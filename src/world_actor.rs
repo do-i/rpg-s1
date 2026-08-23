@@ -744,6 +744,178 @@ mod tests {
         );
     }
 
+    fn harborgate_metadata() -> MapMetadata {
+        scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate.yaml"
+        ))
+        .unwrap()
+    }
+
+    fn harborgate_quarantine_metadata() -> MapMetadata {
+        scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate_quarantine.yaml"
+        ))
+        .unwrap()
+    }
+
+    fn harborgate_shop_metadata() -> MapMetadata {
+        scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate_shop.yaml"
+        ))
+        .unwrap()
+    }
+
+    /// Unlike Millhaven's Reiya (`excludes: [npc_reiya_joined]`), none of the five authored
+    /// Harborgate town NPCs carry a `present:` clause at all — the production spawn set is the
+    /// full authored roster under every flag state. This fixture proves the exact ids, positions,
+    /// and dialogue references `world_actor::present_npcs` resolves, and that the set is stable
+    /// across fresh, Act II, and Act III flags (i.e. no accidental gating slipped into the port).
+    #[test]
+    fn presence_conditions_keep_the_full_harborgate_town_roster_present_across_story_flags() {
+        let metadata = harborgate_metadata();
+        assert_eq!(metadata.npcs.len(), 5);
+
+        let expected = [
+            (
+                "harborgate_dockhand",
+                Position::new(21, 14),
+                "harborgate_dockhand",
+            ),
+            ("harborgate_clerk", Position::new(12, 7), "harborgate_clerk"),
+            (
+                "harborgate_stevedore",
+                Position::new(30, 9),
+                "harborgate_stevedore",
+            ),
+            (
+                "harborgate_sailor",
+                Position::new(33, 17),
+                "harborgate_sailor",
+            ),
+            (
+                "harborgate_fishwife",
+                Position::new(5, 16),
+                "harborgate_fishwife",
+            ),
+        ];
+
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_act2_started"]),
+            RuntimeFlags::from_bootstrap([
+                "story_act2_started",
+                "story_act3_started",
+                "transport_sail_unlocked",
+                "sq_manifest_done",
+                "sq_catch_done",
+            ]),
+        ] {
+            let present = present_npcs(&metadata, &flags);
+            assert_eq!(present.len(), 5);
+            let observed = present
+                .iter()
+                .map(|npc| {
+                    (
+                        npc.id.as_str(),
+                        npc.position,
+                        npc.dialogue.as_deref().unwrap_or_default(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(observed, expected);
+        }
+    }
+
+    /// The quarantine interior's two NPCs (priestess and patient) are likewise ungated: both are
+    /// present under fresh flags and remain present once the story flags they narrate over
+    /// (Act II/III) are set.
+    #[test]
+    fn presence_conditions_keep_both_quarantine_npcs_present_across_story_flags() {
+        let metadata = harborgate_quarantine_metadata();
+        assert_eq!(metadata.npcs.len(), 2);
+
+        let expected = [
+            (
+                "quarantine_priestess",
+                Position::new(8, 3),
+                "harborgate_priestess",
+            ),
+            (
+                "quarantine_patient",
+                Position::new(14, 5),
+                "harborgate_patient",
+            ),
+        ];
+
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_act2_started"]),
+            RuntimeFlags::from_bootstrap(["story_act3_started"]),
+        ] {
+            let present = present_npcs(&metadata, &flags);
+            assert_eq!(present.len(), 2);
+            let observed = present
+                .iter()
+                .map(|npc| {
+                    (
+                        npc.id.as_str(),
+                        npc.position,
+                        npc.dialogue.as_deref().unwrap_or_default(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(observed, expected);
+        }
+    }
+
+    /// The shop interior's four keepers (item, magic-core, weapon, armor) are likewise ungated —
+    /// only their shop inventories carry `unlock_flag` gates (exercised via `open_shop`/service
+    /// routing, not NPC presence). All four spawn under every flag state.
+    #[test]
+    fn presence_conditions_keep_all_four_shop_keepers_present_across_story_flags() {
+        let metadata = harborgate_shop_metadata();
+        assert_eq!(metadata.npcs.len(), 4);
+
+        let expected = [
+            (
+                "item_shop_keeper",
+                Position::new(6, 3),
+                "item_shop_harborgate",
+            ),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            (
+                "weapon_shop_keeper",
+                Position::new(4, 3),
+                "weapon_shop_harborgate",
+            ),
+            (
+                "armor_shop_keeper",
+                Position::new(12, 3),
+                "armor_shop_harborgate",
+            ),
+        ];
+
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_quest_started"]),
+            RuntimeFlags::from_bootstrap(["story_act2_started", "story_act3_started"]),
+        ] {
+            let present = present_npcs(&metadata, &flags);
+            assert_eq!(present.len(), 4);
+            let observed = present
+                .iter()
+                .map(|npc| {
+                    (
+                        npc.id.as_str(),
+                        npc.position,
+                        npc.dialogue.as_deref().unwrap_or_default(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(observed, expected);
+        }
+    }
+
     #[test]
     fn static_and_step_frames_keep_authored_facing_rows() {
         assert_eq!(direction_frame(CardinalDirection::Up, 0), 0);
