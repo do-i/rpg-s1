@@ -1837,4 +1837,202 @@ mod tests {
                 .is_spawned_for("zone_02_open_plains_cave_02")
         );
     }
+
+    /// Covers W12.3's `zone_03_marshland` encounters end to end: the 18 authored `spawn_tile`
+    /// entries plus the boss spawn from `data/encount/zone_03_marshland.yaml` and the TMX
+    /// `spawn_tile`/`boss_enemy` layers, a full respawn round-trip through a neighboring town with
+    /// no encounter zone at all (`port_town_harborgate`, which has no `data/encount/*.yaml`), and
+    /// the boss contact battle handoff. Marshland is also the first map in wave order with no
+    /// `bgm:` field at all (`data/maps/zone_03_marshland.yaml` is two lines: `name` and
+    /// `warp_order`, byte-identical to the pinned source) — `return_context.world_bgm_key` must
+    /// come back `None`, matching `world_encounter::build_battle_entry`'s direct
+    /// `metadata.bgm.clone()` and `world_audio`'s "no authored bgm leaves the previous track
+    /// playing" behavior (see `world_audio::tests`), not a `zone.marshland` key that exists in
+    /// neither the map metadata nor the BGM index.
+    #[test]
+    fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_handoff() {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::NameEntry,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(ImagePlugin::default_nearest())
+            .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .add_plugins(TsxAtlasAssetPlugin)
+            .add_plugins(TmxGroundAssetPlugin)
+            .add_plugins(EncounterAssetPlugin)
+            .add_plugins(FieldMenuDomainPlugin)
+            .add_plugins(WorldAudioPlugin)
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
+            .add_plugins(WorldEncounterPlugin)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+                100,
+            )));
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<ActiveNewGameInputs>().status()
+                == ActiveNewGameInputsStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<ActiveNewGameInputs>().status(),
+            ActiveNewGameInputsStatus::Ready
+        );
+        app.world_mut()
+            .resource_mut::<Messages<NameEntryConfirmed>>()
+            .write(NameEntryConfirmed::for_test("Aric"));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().get_resource::<GameState>().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        let mut game = app.world_mut().resource_mut::<GameState>();
+        game.map_mut().move_to(
+            RuntimeMapId::try_new("zone_03_marshland").unwrap(),
+            // The production arrival tile for the Open Plains -> Marshland portal
+            // (`world_transition::tests::marshland_portals_...`).
+            Position::new(27, 1),
+            CardinalDirection::Down,
+        );
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::World);
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::Spawned
+                && app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::Spawned,
+            "{:?}",
+            app.world().resource::<WorldEncounterState>().failure()
+        );
+        let expected_party_stats = {
+            let world = app.world();
+            let member = world
+                .resource::<GameState>()
+                .party()
+                .members()
+                .next()
+                .unwrap();
+            derived_stats(member, world.resource::<FieldMenuCatalog>())
+        };
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
+        assert_eq!(enemies.len(), 19, "18 spawn_tile entries plus the boss");
+        let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
+        assert_eq!(boss.encounter_id(), "zone_03_marshland:boss");
+        assert_eq!(boss.formation(), ["ratkin_plague_doctor_black_mask_doctor"]);
+        assert_eq!(boss.tile_position(), Position::new(0, 31));
+        assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
+
+        let boss_position = boss.tile_position();
+        let boss_encounter_id = boss.encounter_id().to_owned();
+
+        // Walk into a neighboring map with no `data/encount/*.yaml` at all
+        // (`port_town_harborgate`) and confirm every enemy despawns and the zone goes to
+        // `NoEncounters`, exactly like the W12.1/W12.2 town fixtures.
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("port_town_harborgate").unwrap(),
+                Position::new(21, 37),
+                CardinalDirection::Up,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            let enemy_count = {
+                let world = app.world_mut();
+                world.query::<&WorldEnemy>().iter(world).count()
+            };
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::NoEncounters
+                && enemy_count == 0
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::NoEncounters
+        );
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        assert_eq!(query.iter(app.world()).count(), 0);
+
+        // Return to Marshland: the full 19-enemy spawn set respawns.
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_03_marshland").unwrap(),
+                Position::new(21, 37),
+                CardinalDirection::Down,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::Spawned
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        assert_eq!(query.iter(app.world()).count(), 19);
+
+        // Walk onto the boss tile and confirm the full battle handoff.
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .set_position(boss_position);
+        for _ in 0..10 {
+            app.update();
+            if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+                break;
+            }
+        }
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Battle
+        );
+        let entry = app.world().resource::<BattleEntry>();
+        let party = entry
+            .participants
+            .iter()
+            .find(|participant| participant.side == crate::encounter::BattleSide::Party)
+            .unwrap();
+        assert_eq!(party.attack, i64::from(expected_party_stats.strength));
+        assert_eq!(party.defense, i64::from(expected_party_stats.constitution));
+        assert_eq!(
+            party.magic_resistance,
+            i64::from(expected_party_stats.intelligence)
+        );
+        assert_eq!(party.dexterity, i64::from(expected_party_stats.dexterity));
+        assert_eq!(entry.encounter_id, boss_encounter_id);
+        assert_eq!(entry.background_id, "zone3-bg-1280x468");
+        assert_eq!(entry.bgm_key, "battle.boss");
+        assert_eq!(
+            entry.boss_completion_flag.as_deref(),
+            Some("boss_zone03_defeated")
+        );
+        assert_eq!(entry.return_context.map_id, "zone_03_marshland");
+        assert_eq!(entry.return_context.position, boss_position);
+        assert_eq!(entry.return_context.world_bgm_key, None);
+    }
 }

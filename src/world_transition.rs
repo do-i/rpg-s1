@@ -257,6 +257,23 @@ impl Default for WorldTransition {
 }
 
 impl WorldTransition {
+    /// An already-settled transition (`Idle`, fully unlocked), for tests that exercise
+    /// interaction/movement systems without running the fade-in this resource's `Default` starts
+    /// in — `Default` intentionally begins `FadingIn`/input-locked to match every real World
+    /// entry, which would otherwise leave input permanently locked in a fixture that never drives
+    /// `WorldTransitionPlugin`'s own fade-decay system.
+    #[cfg(test)]
+    pub(crate) fn idle_for_test() -> Self {
+        Self {
+            phase: TransitionPhase::Idle,
+            alpha: 0.0,
+            pending: None,
+            detector: PortalEntryDetector::default(),
+            suppress_entry_until_exit: false,
+            failure: None,
+        }
+    }
+
     #[cfg(test)]
     pub(crate) const fn phase(&self) -> TransitionPhase {
         self.phase
@@ -925,6 +942,131 @@ mod tests {
             millhaven_document(),
             "zone_02_open_plains",
             open_plains_document(),
+        );
+    }
+
+    fn marshland_document() -> &'static str {
+        include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/zone_03_marshland.tmx")
+    }
+
+    fn marshland_portals() -> Vec<RuntimePortal> {
+        portals_for("zone_03_marshland", marshland_document())
+    }
+
+    fn harborgate_document() -> &'static str {
+        include_str!("../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate.tmx")
+    }
+
+    fn harborgate_portals() -> Vec<RuntimePortal> {
+        portals_for("port_town_harborgate", harborgate_document())
+    }
+
+    #[test]
+    fn marshland_portals_cover_all_three_authored_exits_including_the_w12_4_boundary() {
+        let portals = marshland_portals();
+        let destinations = portals
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                ("zone_02_open_plains", Position::new(3, 18)),
+                ("zone_04_ancient_ruins_01_gate", Position::new(39, 14)),
+                ("port_town_harborgate", Position::new(4, 1)),
+            ]
+        );
+
+        // The W12.2 boundary is reversible: the plains' Marshland exit lands back on
+        // this same portal's return position.
+        assert_reversible_link(
+            "zone_03_marshland",
+            marshland_document(),
+            "zone_02_open_plains",
+            open_plains_document(),
+        );
+        let plains_to_marshland = open_plains_portals()
+            .into_iter()
+            .find(|portal| portal.target_map().as_str() == "zone_03_marshland")
+            .unwrap();
+        assert_eq!(plains_to_marshland.target_position(), Position::new(27, 1));
+
+        // The W12.4 boundary (Ancient Ruins) only needs to parse here; the destination
+        // map is out of this wave's scope and asserting a reverse link would be a false
+        // claim about content this wave does not own.
+        assert!(
+            portals
+                .iter()
+                .any(|portal| portal.target_map().as_str() == "zone_04_ancient_ruins_01_gate")
+        );
+    }
+
+    #[test]
+    fn harborgate_portals_cover_all_five_authored_exits_with_reversible_return_links() {
+        let portals = harborgate_portals();
+        let destinations = portals
+            .iter()
+            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            destinations,
+            [
+                ("port_town_harborgate_quarantine", Position::new(5, 9)),
+                ("port_town_harborgate_shop", Position::new(7, 10)),
+                ("port_town_harborgate_inn", Position::new(5, 9)),
+                ("port_town_harborgate_harbormaster", Position::new(10, 11)),
+                ("zone_03_marshland", Position::new(21, 37)),
+            ]
+        );
+
+        let interiors = [
+            (
+                "port_town_harborgate_quarantine",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_quarantine.tmx"
+                ),
+                Position::new(20, 6),
+            ),
+            (
+                "port_town_harborgate_shop",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_shop.tmx"
+                ),
+                Position::new(36, 6),
+            ),
+            (
+                "port_town_harborgate_inn",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_inn.tmx"
+                ),
+                Position::new(9, 25),
+            ),
+            (
+                "port_town_harborgate_harbormaster",
+                include_str!(
+                    "../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_harbormaster.tmx"
+                ),
+                Position::new(35, 26),
+            ),
+        ];
+        for (map_id, document, expected_return_position) in interiors {
+            assert_reversible_link(
+                "port_town_harborgate",
+                harborgate_document(),
+                map_id,
+                document,
+            );
+            let returns = portals_for(map_id, document);
+            assert_eq!(returns.len(), 1);
+            assert_eq!(returns[0].target_map().as_str(), "port_town_harborgate");
+            assert_eq!(returns[0].target_position(), expected_return_position);
+        }
+
+        assert_reversible_link(
+            "port_town_harborgate",
+            harborgate_document(),
+            "zone_03_marshland",
+            marshland_document(),
         );
     }
 

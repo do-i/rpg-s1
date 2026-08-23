@@ -1258,6 +1258,460 @@ mod tests {
     }
 
     #[test]
+    fn harborgate_item_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_harborgate.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("item_shop_harborgate", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Ship goods, salvage, sundries")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Item)
+        );
+    }
+
+    #[test]
+    fn harborgate_weapon_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_harborgate.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("weapon_shop_harborgate", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Imports from three kingdoms")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Weapon)
+        );
+    }
+
+    #[test]
+    fn harborgate_armor_shop_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_harborgate.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("armor_shop_harborgate", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Sea air eats cheap mail")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].open_shop,
+            Some(crate::scenario_dialogue::DialogueShopKind::Armor)
+        );
+    }
+
+    #[test]
+    fn harborgate_inn_dialogue_reaches_its_service_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/inn_harborgate.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("inn_harborgate", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(
+            session
+                .current_line()
+                .starts_with("Welcome to the Anchor's Rest")
+        );
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert!(actions[0].open_inn.is_some());
+    }
+
+    #[test]
+    fn harborgate_notice_board_traverses_its_authored_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/sign_port_town_harborgate.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("sign_port_town_harborgate", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert_eq!(session.current_line(), "Notice Board — Harborgate");
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
+    fn harborgate_dockhand_traverses_act_three_act_two_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_dockhand.yaml"
+        ));
+        let cases = [
+            (
+                vec!["story_act3_started"],
+                "Quarantine's done and the cranes are turning again",
+            ),
+            (vec!["story_act2_started"], "Harbor's locked down"),
+            (vec![], "Marsh road traffic only"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_dockhand", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn harborgate_patient_traverses_act_three_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_patient.yaml"
+        ));
+        let cases = [
+            (
+                vec!["story_act3_started"],
+                "They say the harbor opens again next week",
+            ),
+            (vec![], "We came south when the interior rusted"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_patient", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn harborgate_priestess_traverses_act_three_act_two_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_priestess.yaml"
+        ));
+        let cases = [
+            (
+                vec!["story_act3_started"],
+                "The guild calls the quarantine lifted",
+            ),
+            (vec!["story_act2_started"], "Iron lung, they call it"),
+            (vec![], "If you are well, give me your hands"),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_priestess", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn harborgate_clerk_traverses_quest_terminals_and_rewards_antidotes() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_clerk.yaml"
+        ));
+        let cases = [
+            (vec!["sq_manifest_done"], "Three crates unlogged"),
+            (vec!["sq_manifest_relayed"], "Crates with no seal"),
+            (
+                vec!["sq_manifest_started"],
+                "The stevedore who worked the hold",
+            ),
+            (vec![], "My count's off"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_clerk", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_manifest_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "antidote");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 3);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_manifest_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+    }
+
+    #[test]
+    fn harborgate_stevedore_traverses_before_active_and_relayed_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_stevedore.yaml"
+        ));
+        let cases = [
+            (vec!["sq_manifest_relayed"], "Glad it's off my back"),
+            (
+                vec!["sq_manifest_started"],
+                "The clerk wants to know about the crates",
+            ),
+            (vec![], "Backbreak work, the docks"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_stevedore", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 1 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_manifest_relayed"]
+                );
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
+    fn harborgate_sailor_traverses_relay_reminder_sail_and_default_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_sailor.yaml"
+        ));
+        let cases: [(Vec<&str>, &str, Option<&str>); 5] = [
+            (
+                vec!["sq_catch_started"],
+                "The fishwife wants my hold?",
+                Some("sq_catch_relayed"),
+            ),
+            (
+                vec!["sq_catch_relayed"],
+                "Dock four, after the watch turns",
+                None,
+            ),
+            (
+                vec!["transport_sail_unlocked"],
+                "So the port master cleared YOU to sail?",
+                None,
+            ),
+            (vec![], "Three weeks stuck in port", None),
+            (
+                // A finished quest with no sail unlock still falls through to the
+                // unconditional flavor entry rather than getting stuck on a stale branch.
+                vec!["sq_catch_started", "sq_catch_relayed", "sq_catch_done"],
+                "Three weeks stuck in port",
+                None,
+            ),
+        ];
+        for (flags, expected_start, set_flag) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_sailor", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match set_flag {
+                Some(flag) => {
+                    assert_eq!(actions[0].set_flag.as_ref().unwrap().as_slice(), [flag]);
+                }
+                None => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+    }
+
+    #[test]
+    fn harborgate_fishwife_traverses_quest_terminals_and_accounts_for_dead_source_entry() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_fishwife.yaml"
+        ));
+        let cases = [
+            (
+                vec!["sq_catch_done"],
+                "Salt cod on every table in the quarter",
+            ),
+            (vec!["sq_catch_relayed"], "He'll sell? The whole hold?"),
+            (
+                vec!["sq_catch_started"],
+                "The sailor's out on the pier, counting his planks",
+            ),
+            (vec![], "Stall's near empty"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("harborgate_fishwife", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_catch_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "ice_vial");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 2);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_catch_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+
+        // Entry [4] (the unconditional "Fresh catch!" flavor line) is dead: the three
+        // preceding sq_catch_started/_relayed/_done entries plus the excludes-started
+        // first-meeting entry already exhaustively partition every state via first-match,
+        // exactly like `millhaven_carter`'s trailing pair (ADR 0007, "Dead trailing dialogue
+        // entries in six more dialogues").
+        let relevant_flags = ["sq_catch_started", "sq_catch_relayed", "sq_catch_done"];
+        for mask in 0..(1 << relevant_flags.len()) {
+            let flags = RuntimeFlags::from_bootstrap(
+                relevant_flags
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| mask & (1 << index) != 0)
+                    .map(|(_, flag)| *flag),
+            );
+            let session =
+                DialogueSession::resolve("harborgate_fishwife", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(
+                session.current < 4,
+                "pinned first-match ordering unexpectedly made a dead entry reachable at mask {mask}"
+            );
+        }
+        assert_eq!(dialogue.entries.len(), 5);
+        assert!(dialogue.entries[4].lines[0].starts_with("Fresh catch!"));
+    }
+
+    #[test]
+    fn port_master_intro_gates_the_sail_unlock_on_act_two_and_is_idempotent_after_unlock() {
+        let dialogue = dialogue(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/dialogue/port_master_intro.yaml"
+        ));
+
+        // Before Act II starts, neither authored branch matches — the dialogue does not open
+        // at all, matching every other Act-II-gated NPC in this wave (dockhand, priestess).
+        assert!(
+            DialogueSession::resolve(
+                "port_master_intro",
+                None,
+                dialogue.clone(),
+                &RuntimeFlags::default(),
+            )
+            .unwrap()
+            .is_none()
+        );
+
+        // Act II started, sail not yet unlocked: the offer branch fires and sets the flag.
+        let pre_unlock_flags = RuntimeFlags::from_bootstrap(["story_act2_started"]);
+        let mut session = DialogueSession::resolve(
+            "port_master_intro",
+            None,
+            dialogue.clone(),
+            &pre_unlock_flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(session.current_line().starts_with("She's seaworthy"));
+        let actions = complete_linear(&mut session, &pre_unlock_flags);
+        assert_eq!(actions.len(), 1);
+        assert_eq!(
+            actions[0].set_flag.as_ref().unwrap().as_slice(),
+            ["transport_sail_unlocked"]
+        );
+
+        // Apply the effect exactly as production would, then re-resolve: the post-unlock
+        // branch takes over and never re-fires the flag-set action (idempotent), while the
+        // `story_act2_started` requirement on the offer branch (now excluded) is no longer
+        // reachable.
+        let mut post_unlock_flags = pre_unlock_flags.clone();
+        apply_flag_actions(&actions[0], &mut post_unlock_flags);
+        assert!(post_unlock_flags.is_set("transport_sail_unlocked"));
+        let mut session = DialogueSession::resolve(
+            "port_master_intro",
+            None,
+            dialogue.clone(),
+            &post_unlock_flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(session.current_line().starts_with("She's yours"));
+        assert_eq!(
+            complete_linear(&mut session, &post_unlock_flags),
+            [DialogueActions::default()]
+        );
+
+        // The post-unlock branch only requires the flag itself, not Act II — it stays
+        // reachable even if a save somehow carries the sail flag without the story flag
+        // (defensive: flags are independent bits, and the source imposes no such invariant).
+        let sail_only_flags = RuntimeFlags::from_bootstrap(["transport_sail_unlocked"]);
+        let mut session = DialogueSession::resolve(
+            "port_master_intro",
+            None,
+            dialogue.clone(),
+            &sail_only_flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(session.current_line().starts_with("She's yours"));
+        assert_eq!(
+            complete_linear(&mut session, &sail_only_flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn choices_hide_conditions_retain_disabled_rows_and_jump_to_terminal_node() {
         let flags = RuntimeFlags::from_bootstrap(["show_open", "blocked"]);
         let graph = dialogue(
