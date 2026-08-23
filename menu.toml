@@ -11,12 +11,12 @@ selected_bold = true
 
 [[items]]
 id = "run"
-label = "Run playable M7 slice"
+label = "Run playable M7 slice (debug overlay)"
 key = "r"
-command = ["env", "RPG_S1_MUTE_AUDIO=1", "cargo", "run"]
+command = ["env", "RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "cargo", "run"]
 group = "Play"
-tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells"]
-description = "Play the Ardel slice with sound disabled, native save/load, party, items, equipment, spells, and teleport"
+tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells", "debug", "collision", "portal"]
+description = "Play the Ardel slice with sound disabled and the portal/collision debug overlay on, native save/load, party, items, equipment, spells, and teleport"
 favorite = true
 
 [[items]]
