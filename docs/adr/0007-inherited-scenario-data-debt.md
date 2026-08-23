@@ -107,6 +107,12 @@ a regression test; as each wave's `C-DIALOGUE` acceptance verifies one of
 these dialogues, move it to the documented-accepted classification with an
 exhaustive flag-state regression like `ardel_fisherman`'s.
 
+Promoted so far: `millhaven_carter` at W12.2 acceptance,
+`harborgate_fishwife` at W12.3, and `ruinwatch_digger` at W12.4 — each with an
+exhaustive 8-state first-match regression in `world_dialogue`. Still awaiting
+the wave that reaches them: `ashenveil_ashgatherer` [5], `elder_intro` [2],
+`frostholm_courtier` [4, 5].
+
 ### Missing sign dialogues on Marshland and Mountain Pass segment 1 — keep bytes; resolved at W12.3 acceptance
 
 The `map-sweep` (parity plan P0.2, 2026-08-22) found painted sign tiles whose
