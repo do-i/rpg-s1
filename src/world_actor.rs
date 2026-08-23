@@ -6,7 +6,9 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     gameplay_rng::GameplayRng,
-    scenario_map::{MapMetadata, NpcAnimationMode, NpcMetadata},
+    scenario_map::{
+        MapMetadata, NpcAnimationMode, NpcMetadata, optional_scenario_asset_is_missing,
+    },
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{
@@ -203,15 +205,25 @@ fn drive_world_actor_load(
         state.status = WorldActorStatus::Failed;
         return;
     };
-    if matches!(
-        asset_server.load_state(metadata_handle.id()),
-        LoadState::Failed(_)
-    ) {
-        state.status = WorldActorStatus::Failed;
-        return;
-    }
-    let Some(metadata) = metadata_assets.get(metadata_handle) else {
-        return;
+    // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
+    // engine's `load_yaml_optional`, see `MapMetadata::empty`), not a load failure; only a real
+    // reader/parse error is fatal here.
+    let empty_metadata;
+    let metadata = match asset_server.load_state(metadata_handle.id()) {
+        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
+            empty_metadata = MapMetadata::empty();
+            &empty_metadata
+        }
+        LoadState::Failed(_) => {
+            state.status = WorldActorStatus::Failed;
+            return;
+        }
+        _ => {
+            let Some(metadata) = metadata_assets.get(metadata_handle) else {
+                return;
+            };
+            metadata
+        }
     };
     let Some(mut game) = game else {
         return;
@@ -629,6 +641,13 @@ mod tests {
         .unwrap()
     }
 
+    fn millhaven_metadata() -> MapMetadata {
+        scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml"
+        ))
+        .unwrap()
+    }
+
     fn open_collision() -> CollisionOccupancy {
         let rows = std::iter::repeat_n("0,0,0,0,0,0,0,0,0", 9)
             .collect::<Vec<_>>()
@@ -678,6 +697,51 @@ mod tests {
                 .any(|npc| npc.id == "elise")
         );
         assert_eq!(present_npcs(&metadata, &joined).len(), 5);
+    }
+
+    #[test]
+    fn presence_conditions_select_exact_millhaven_reiya_state() {
+        let metadata = millhaven_metadata();
+        assert_eq!(metadata.npcs.len(), 6);
+
+        // Fresh flags: Reiya's `present` clause only excludes the joined flag, so she is out
+        // wandering town at [12, 7] with no story gate, unlike the ledger's initial assumption.
+        let fresh = RuntimeFlags::default();
+        let fresh_present = present_npcs(&metadata, &fresh);
+        assert_eq!(fresh_present.len(), 6);
+        let reiya = fresh_present
+            .iter()
+            .find(|npc| npc.id == "reiya")
+            .expect("reiya is present under fresh flags");
+        assert_eq!(reiya.position, Position::new(12, 7));
+
+        // Starting Act II does not itself gate Reiya's presence; she stays until recruited.
+        let act2 = RuntimeFlags::from_bootstrap(["story_act2_started"]);
+        assert!(
+            present_npcs(&metadata, &act2)
+                .iter()
+                .any(|npc| npc.id == "reiya")
+        );
+        assert_eq!(present_npcs(&metadata, &act2).len(), 6);
+
+        // Once recruited, Reiya is the only NPC to disappear from the spawn set.
+        let joined = RuntimeFlags::from_bootstrap(["story_act2_started", "npc_reiya_joined"]);
+        let joined_present = present_npcs(&metadata, &joined);
+        assert_eq!(joined_present.len(), 5);
+        assert!(!joined_present.iter().any(|npc| npc.id == "reiya"));
+        assert_eq!(
+            joined_present
+                .iter()
+                .map(|npc| npc.id.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "millhaven_elder",
+                "millhaven_baker",
+                "millhaven_granary",
+                "millhaven_carter",
+                "millhaven_gossip",
+            ]
+        );
     }
 
     #[test]

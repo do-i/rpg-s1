@@ -11,7 +11,10 @@
 
 use std::num::NonZeroU32;
 
-use bevy::{asset::Asset, reflect::TypePath};
+use bevy::{
+    asset::{Asset, AssetLoadError, io::AssetReaderError},
+    reflect::TypePath,
+};
 use serde::{Deserialize, Deserializer};
 
 use crate::scenario_class::{PositiveFinite, UnitInterval};
@@ -57,6 +60,42 @@ impl MapMetadata {
     pub fn effective_id<'a>(&'a self, filename_stem: &'a str) -> &'a str {
         self.id.as_deref().unwrap_or(filename_stem)
     }
+
+    /// Metadata for a `data/maps/<id>.yaml` that legitimately does not exist (a TMX-only map,
+    /// e.g. `zone_02_open_plains_cave_01`).
+    ///
+    /// Mirrors the pinned Python engine's `load_yaml_optional(path) or {}`
+    /// (`engine/world/world_map_init.py`): a missing per-map YAML is a valid runtime state, not a
+    /// load failure, and behaves as an empty map — no name override, no NPCs, no services, no
+    /// item boxes, and no `enemy_spawn` override (regular callers still fall back to the
+    /// encounter zone's own spawn frequency).
+    pub fn empty() -> Self {
+        Self {
+            id: None,
+            name: String::new(),
+            warp_order: None,
+            bgm: None,
+            inn: None,
+            shop: None,
+            weapon_shop: None,
+            armor_shop: None,
+            npcs: Vec::new(),
+            item_boxes: Vec::new(),
+            enemy_spawn: None,
+            transport: None,
+        }
+    }
+}
+
+/// True when a `Handle<MapMetadata>` load failure is exactly a missing `data/maps/<id>.yaml`
+/// file, as opposed to a real I/O or parse error. Callers loading per-map metadata (which the
+/// pinned engine treats as optional, see [`MapMetadata::empty`]) use this to distinguish "no such
+/// file" from a genuine failure that must still surface as a fatal load error.
+pub fn optional_scenario_asset_is_missing(error: &AssetLoadError) -> bool {
+    matches!(
+        error,
+        AssetLoadError::AssetReaderError(AssetReaderError::NotFound(_))
+    )
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
