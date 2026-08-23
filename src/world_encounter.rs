@@ -23,7 +23,7 @@ use crate::{
     scenario_battle_background::BattleBackgroundCatalog,
     scenario_encounter::EncounterZone,
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
-    scenario_map::MapMetadata,
+    scenario_map::{MapMetadata, optional_scenario_asset_is_missing},
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{
@@ -346,18 +346,28 @@ fn drive_active_encounter_assets(
     let Some(metadata_handle) = state.metadata.as_ref() else {
         return;
     };
-    if matches!(
-        asset_server.load_state(metadata_handle.id()),
-        LoadState::Failed(_)
-    ) {
-        fail_encounter(
-            &mut state,
-            format!("map metadata for `{map_id}` failed to load"),
-        );
-        return;
-    }
-    let Some(metadata) = metadata_assets.get(metadata_handle) else {
-        return;
+    // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
+    // engine's `load_yaml_optional`, see `MapMetadata::empty`), not a load failure; only a real
+    // reader/parse error is fatal here.
+    let empty_metadata;
+    let metadata = match asset_server.load_state(metadata_handle.id()) {
+        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
+            empty_metadata = MapMetadata::empty();
+            &empty_metadata
+        }
+        LoadState::Failed(_) => {
+            fail_encounter(
+                &mut state,
+                format!("map metadata for `{map_id}` failed to load"),
+            );
+            return;
+        }
+        _ => {
+            let Some(metadata) = metadata_assets.get(metadata_handle) else {
+                return;
+            };
+            metadata
+        }
     };
     if !render.is_spawned_for(&map_id) {
         return;
@@ -413,10 +423,16 @@ fn drive_active_encounter_assets(
     }
 
     let zone_handle = state.zone.clone().expect("requested above");
-    if matches!(
-        asset_server.load_state(zone_handle.id()),
-        LoadState::Failed(_)
-    ) {
+    if let LoadState::Failed(error) = asset_server.load_state(zone_handle.id()) {
+        if optional_scenario_asset_is_missing(&error) {
+            // Matches the pinned engine's `EncounterManager.set_zone`: a missing
+            // `data/encount/<id>.yaml` disables encounters for this map ("towns, inns —
+            // encounters disabled") even when spawn tiles are painted (e.g.
+            // `zone_02_open_plains_cave_02`), rather than failing to load.
+            state.status = WorldEncounterStatus::NoEncounters;
+            commands.remove_resource::<EnemyCatalog>();
+            return;
+        }
         fail_encounter(
             &mut state,
             format!("encounter zone for `{map_id}` failed to load"),
@@ -1313,8 +1329,10 @@ mod tests {
         test_support::headless_title_app_with_asset_base,
         tmx_ground_asset::TmxGroundAssetPlugin,
         tsx_atlas_asset::TsxAtlasAssetPlugin,
+        world_actor::{WorldActorPlugin, WorldActorState},
         world_audio::WorldAudioPlugin,
         world_interaction::SfxIndexAssetLoader,
+        world_object::{WorldObjectPlugin, WorldObjectState},
     };
 
     #[test]
@@ -1617,6 +1635,206 @@ mod tests {
         assert_eq!(
             entry.return_context.world_bgm_key.as_deref(),
             Some("zone.starting_forest")
+        );
+    }
+
+    /// Covers W12.2 encounters end to end: Open Plains' seeded formations and boss spawn from
+    /// `data/encount/zone_02_open_plains.yaml` and the TMX `spawn_tile`/`boss_enemy` layers, then
+    /// both caves' TMX-only content (no `data/maps/<id>.yaml`). Also runs `WorldActorPlugin` and
+    /// `WorldObjectPlugin` alongside the encounter plugin, because all three read the same
+    /// optional per-map YAML: this is the regression proof that a missing file resolves as empty
+    /// metadata (Python `load_yaml_optional` parity) instead of a permanent `Failed` status that
+    /// would soft-lock any future portal transition into these maps at the `Publishing` barrier
+    /// (`world_transition::drive_transition_loading`).
+    #[test]
+    fn production_open_plains_and_caves_spawn_or_gracefully_skip_encounters_without_metadata_soft_lock()
+     {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::NameEntry,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(ImagePlugin::default_nearest())
+            .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .add_plugins(TsxAtlasAssetPlugin)
+            .add_plugins(TmxGroundAssetPlugin)
+            .add_plugins(EncounterAssetPlugin)
+            .add_plugins(FieldMenuDomainPlugin)
+            .add_plugins(WorldAudioPlugin)
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
+            .add_plugins(WorldEncounterPlugin)
+            .add_plugins(WorldActorPlugin)
+            .add_plugins(WorldObjectPlugin)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+                100,
+            )));
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<ActiveNewGameInputs>().status()
+                == ActiveNewGameInputsStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<ActiveNewGameInputs>().status(),
+            ActiveNewGameInputsStatus::Ready
+        );
+        app.world_mut()
+            .resource_mut::<Messages<NameEntryConfirmed>>()
+            .write(NameEntryConfirmed::for_test("Aric"));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().get_resource::<GameState>().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_02_open_plains").unwrap(),
+                Position::new(2, 2),
+                CardinalDirection::Down,
+            );
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::World);
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::Spawned
+                && app
+                    .world()
+                    .resource::<WorldActorState>()
+                    .is_spawned_for("zone_02_open_plains")
+                && app
+                    .world()
+                    .resource::<WorldObjectState>()
+                    .is_spawned_for("zone_02_open_plains")
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::Spawned,
+            "{:?}",
+            app.world().resource::<WorldEncounterState>().failure()
+        );
+        let mut query = app.world_mut().query::<&WorldEnemy>();
+        let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
+        assert_eq!(enemies.len(), 7, "6 spawn_tile entries plus the boss");
+        assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
+        let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
+        assert_eq!(boss.encounter_id(), "zone_02_open_plains:boss");
+        assert_eq!(boss.formation(), ["wolf_beast_black_fur"]);
+        assert_eq!(boss.tile_position(), Position::new(12, 11));
+
+        // Cave_01: no `data/maps/...yaml`, and no `spawn_tile`/`boss_enemy` authoring at all.
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_02_open_plains_cave_01").unwrap(),
+                Position::new(2, 2),
+                CardinalDirection::Down,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            let enemy_count = {
+                let world = app.world_mut();
+                world.query::<&WorldEnemy>().iter(world).count()
+            };
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::NoEncounters
+                && enemy_count == 0
+                && app
+                    .world()
+                    .resource::<WorldActorState>()
+                    .is_spawned_for("zone_02_open_plains_cave_01")
+                && app
+                    .world()
+                    .resource::<WorldObjectState>()
+                    .is_spawned_for("zone_02_open_plains_cave_01")
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::NoEncounters,
+            "{:?}",
+            app.world().resource::<WorldEncounterState>().failure()
+        );
+        assert!(
+            app.world()
+                .resource::<WorldActorState>()
+                .is_spawned_for("zone_02_open_plains_cave_01")
+        );
+        assert!(
+            app.world()
+                .resource::<WorldObjectState>()
+                .is_spawned_for("zone_02_open_plains_cave_01")
+        );
+
+        // Cave_02: no `data/maps/...yaml` either, but its TMX paints 9 `spawn_tile` gids with no
+        // matching `data/encount/...yaml`. The pinned engine's `EncounterManager.set_zone`
+        // disables encounters whenever the zone file is absent ("towns, inns — encounters
+        // disabled"), regardless of authored spawn tiles, so this must resolve the same way as a
+        // town: `NoEncounters`, not a load failure.
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_02_open_plains_cave_02").unwrap(),
+                Position::new(2, 2),
+                CardinalDirection::Down,
+            );
+        for _ in 0..5_000 {
+            app.update();
+            let enemy_count = {
+                let world = app.world_mut();
+                world.query::<&WorldEnemy>().iter(world).count()
+            };
+            if app.world().resource::<WorldEncounterState>().status()
+                == WorldEncounterStatus::NoEncounters
+                && enemy_count == 0
+                && app
+                    .world()
+                    .resource::<WorldActorState>()
+                    .is_spawned_for("zone_02_open_plains_cave_02")
+                && app
+                    .world()
+                    .resource::<WorldObjectState>()
+                    .is_spawned_for("zone_02_open_plains_cave_02")
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<WorldEncounterState>().status(),
+            WorldEncounterStatus::NoEncounters,
+            "{:?}",
+            app.world().resource::<WorldEncounterState>().failure()
+        );
+        assert!(
+            app.world()
+                .resource::<WorldActorState>()
+                .is_spawned_for("zone_02_open_plains_cave_02")
+        );
+        assert!(
+            app.world()
+                .resource::<WorldObjectState>()
+                .is_spawned_for("zone_02_open_plains_cave_02")
         );
     }
 }
