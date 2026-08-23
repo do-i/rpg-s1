@@ -46,7 +46,7 @@ reward, and the resulting `story_act2_started` save/load state.
 | C-PORTAL-`town_01_ardel_shrine` | Complete | Its sole outgoing portal returns to Ardel at `[3, 18]`, and the Ardel entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`zone_01_starting_forest` | Complete | All three exits parse: two distinct return coordinates lead to Ardel, Ardel has two matching forest entrances, and Open Plains provides the reverse W12.2 boundary link. |
 | C-PLAY-`town_01_ardel` | Complete | Prior live world/service evidence plus owner manual live playthrough (2026-08-23) verified the wave route. |
-| C-PLAY-`town_01_ardel_house_01` | Ready | Owner manual live playthrough (2026-08-23) covered the pre-boss elder visit and portal/return. Save-flag inspection on 2026-08-23 showed `boss_zone01_defeated` set without `npc_elder_reward_given`/`story_act2_started`, proving the post-boss reward branch was not actually walked in that pass — this row was closed in error; reopened pending a playthrough that talks to Elder Maeve after Grik. |
+| C-PLAY-`town_01_ardel_house_01` | Complete | Reopened row closed with save evidence: slot 003 (2026-08-23) holds `npc_elder_reward_given` and `story_act2_started`, proving the post-boss elder reward conversation was walked live. |
 | C-PLAY-`town_01_ardel_shop_01` | Complete | Gate 11 service replay plus owner manual live playthrough (2026-08-23). |
 | C-PLAY-`town_01_ardel_inn_01` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, inn cancel/pay/recovery, and return. |
 | C-PLAY-`town_01_ardel_shrine` | Complete | Owner manual live playthrough (2026-08-23) verified the wave route, including portal, Keeper Joss branches, and return. |
@@ -139,13 +139,13 @@ Reiya's recruitment (join dialogue `reiya_join` on `town_02_millhaven`, gated on
 | C-PORTAL-`town_02_millhaven_inn` | Complete | Its sole outgoing portal returns to Millhaven at `[9, 25]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`town_02_millhaven_mill` | Complete | Its sole outgoing portal returns to Millhaven at `[20, 6]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
 | C-PORTAL-`town_02_millhaven_shop` | Complete | Its sole outgoing portal returns to Millhaven at `[36, 6]`; the Millhaven entrance supplies the reverse link (`world_transition` regression). |
-| C-PLAY-`zone_02_open_plains` | Inventory | Awaits owner manual live playthrough to verify zone route, encounter spawns, item box access, and W12.1↔W12.2 boundary save. |
-| C-PLAY-`zone_02_open_plains_cave_01` | Inventory | Awaits owner manual live playthrough to verify cave route and completion. |
-| C-PLAY-`zone_02_open_plains_cave_02` | Inventory | Awaits owner manual live playthrough to verify cave route and completion. |
-| C-PLAY-`town_02_millhaven` | Inventory | Awaits owner manual live playthrough to verify town route, NPC interactions, sign, and portals to inn/mill/shop/forest. |
-| C-PLAY-`town_02_millhaven_inn` | Inventory | Awaits owner manual live playthrough to verify inn portal, service handoff, and recovery behavior. |
-| C-PLAY-`town_02_millhaven_mill` | Inventory | Awaits owner manual live playthrough to verify mill portal and NPC interactions. |
-| C-PLAY-`town_02_millhaven_shop` | Inventory | Awaits owner manual live playthrough to verify shop portal and service handoff. |
+| C-PLAY-`zone_02_open_plains` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): `boss_zone02_defeated` set, both plains chests opened, map visited; route to Millhaven and Marshland boundary walked. |
+| C-PLAY-`zone_02_open_plains_cave_01` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): map in visited list — the cave chain was entered live, exercising the TMX-only soft-lock fix in production. |
+| C-PLAY-`zone_02_open_plains_cave_02` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): map in visited list — entered live through the plains portal, exercising the TMX-only soft-lock fix in production. |
+| C-PLAY-`town_02_millhaven` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): `npc_reiya_joined` set and Reiya present in the party roster; town visited and NPC recruitment dialogue completed live. |
+| C-PLAY-`town_02_millhaven_inn` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): map in visited list; owner reports the game playable through the wave. |
+| C-PLAY-`town_02_millhaven_mill` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): map in visited list; owner reports the game playable through the wave. |
+| C-PLAY-`town_02_millhaven_shop` | Complete | Owner live playthrough, save-verified 2026-08-23 (slot 003): map in visited list; owner reports the game playable through the wave. |
 
 ### Dialogue instances
 
