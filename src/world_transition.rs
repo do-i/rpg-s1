@@ -17,10 +17,9 @@ use crate::{
     tsx_atlas_asset::TsxAtlasAsset,
     world_actor::WorldActorState,
     world_object::WorldObjectState,
-    world_player::WorldPlayerSpawnState,
+    world_player::{CharacterCollisionRect, WorldPlayer, WorldPlayerMotion, WorldPlayerSpawnState},
 };
 
-const PLAYER_TILE_SIZE: f64 = 32.0;
 const FADE_ALPHA_PER_SECOND: f32 = 300.0 / 255.0;
 
 /// Installs the transition state now consumed by movement and later driven by loaded map assets.
@@ -73,7 +72,8 @@ impl RuntimePortal {
         self.name.as_deref()
     }
 
-    #[cfg(test)]
+    /// The portal's source-pixel rectangle, e.g. for the `RPG_S1_DEBUG_COLLISION` overlay
+    /// (`world_debug_overlay`), which mirrors the source's `_render_portal_debug`.
     pub(crate) const fn bounds(&self) -> PortalBounds {
         self.bounds
     }
@@ -97,13 +97,18 @@ pub(crate) struct PortalBounds {
 }
 
 impl PortalBounds {
-    fn overlaps_tile(self, tile: Position) -> bool {
-        let tile_x = f64::from(tile.x) * PLAYER_TILE_SIZE;
-        let tile_y = f64::from(tile.y) * PLAYER_TILE_SIZE;
-        tile_x < self.x + self.width
-            && tile_x + PLAYER_TILE_SIZE > self.x
-            && tile_y < self.y + self.height
-            && tile_y + PLAYER_TILE_SIZE > self.y
+    /// Mirrors the source's `Portal.is_triggered_by` (`engine/world/portal_data.py`): the player's
+    /// live pixel collision rect against this portal's pixel rect, inclusive on all four edges —
+    /// so a zero-size point portal (`width`/`height` both 0) still triggers on exact touch.
+    fn is_triggered_by(self, rect: CharacterCollisionRect) -> bool {
+        let rect_x = f64::from(rect.x);
+        let rect_y = f64::from(rect.y);
+        let rect_w = f64::from(rect.width);
+        let rect_h = f64::from(rect.height);
+        rect_x <= self.x + self.width
+            && rect_x + rect_w >= self.x
+            && rect_y <= self.y + self.height
+            && rect_y + rect_h >= self.y
     }
 }
 
@@ -199,11 +204,11 @@ impl PortalEntryDetector {
     pub(crate) fn entered<'a>(
         &mut self,
         portals: &'a [RuntimePortal],
-        player_tile: Position,
+        player_rect: CharacterCollisionRect,
     ) -> Option<&'a RuntimePortal> {
         let now = portals
             .iter()
-            .filter(|portal| portal.bounds.overlaps_tile(player_tile))
+            .filter(|portal| portal.bounds.is_triggered_by(player_rect))
             .map(RuntimePortal::object_id)
             .collect::<BTreeSet<_>>();
         let entered = portals.iter().find(|portal| {
@@ -369,12 +374,12 @@ impl WorldTransition {
     fn suppress_destination_overlap(
         &mut self,
         portals: &[RuntimePortal],
-        player_tile: Position,
+        player_rect: CharacterCollisionRect,
     ) -> bool {
         if !self.suppress_entry_until_exit {
             return false;
         }
-        let _ignored_entry = self.detector.entered(portals, player_tile);
+        let _ignored_entry = self.detector.entered(portals, player_rect);
         if self.detector.overlapping.is_empty() {
             self.suppress_entry_until_exit = false;
         }
@@ -427,6 +432,7 @@ fn detect_portal_entry(
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     game: Option<Res<GameState>>,
+    players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut transition: ResMut<WorldTransition>,
 ) {
     if transition.phase != TransitionPhase::Idle {
@@ -441,13 +447,19 @@ fn detect_portal_entry(
     let Ok(portals) = runtime_portals(map.document()) else {
         return;
     };
-    if transition.suppress_destination_overlap(&portals, game.map().position()) {
+    // Prefer the player's live smoothly-moved pixel collision rect, matching the source's
+    // per-frame `Portal.is_triggered_by(col.x, col.y, COLLISION_W, COLLISION_H)` check against the
+    // player's actual position. The tile-derived fallback (same formula as
+    // `WorldPlayerMotion::from_tile`) only applies in the narrow window before the World player
+    // entity has spawned, which `TransitionPhase::Idle` above should already rule out in practice.
+    let player_rect = players
+        .single()
+        .map(|motion| motion.collision_rect())
+        .unwrap_or_else(|_| WorldPlayerMotion::from_tile(game.map().position()).collision_rect());
+    if transition.suppress_destination_overlap(&portals, player_rect) {
         return;
     }
-    let entered = transition
-        .detector
-        .entered(&portals, game.map().position())
-        .cloned();
+    let entered = transition.detector.entered(&portals, player_rect).cloned();
     if let Some(portal) = entered {
         transition.request(&portal, game.map().facing());
     }
@@ -1070,21 +1082,42 @@ mod tests {
         );
     }
 
+    /// A player collision rect (the live 20x18 source-pixel size) at an arbitrary top-left.
+    fn collision_rect(x: f32, y: f32) -> CharacterCollisionRect {
+        rect(x, y, 20.0, 18.0)
+    }
+
+    /// A collision rect of an arbitrary size, for boundary-touching assertions that need a size
+    /// other than the player's own 20x18.
+    fn rect(x: f32, y: f32, width: f32, height: f32) -> CharacterCollisionRect {
+        CharacterCollisionRect {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
     #[test]
     fn entry_detector_emits_once_until_player_leaves_and_reenters() {
         let portals = ardel_portals();
         let mut detector = PortalEntryDetector::default();
+        // town_01_ardel's "house" portal is the pixel rect x:[69.4546, 123.3561],
+        // y:[124.818, 134.416]; this rect overlaps only that portal among Ardel's six.
+        let on_house = collision_rect(100.0, 120.0);
+        // Far from every authored Ardel portal (shop/inn/hole/shrine/to_zone_01 included).
+        let away = collision_rect(300.0, 300.0);
         assert_eq!(
             detector
-                .entered(&portals, Position::new(2, 3))
+                .entered(&portals, on_house)
                 .map(RuntimePortal::object_id),
             Some(7)
         );
-        assert!(detector.entered(&portals, Position::new(3, 3)).is_none());
-        assert!(detector.entered(&portals, Position::new(4, 4)).is_none());
+        assert!(detector.entered(&portals, away).is_none());
+        assert!(detector.entered(&portals, away).is_none());
         assert_eq!(
             detector
-                .entered(&portals, Position::new(2, 3))
+                .entered(&portals, on_house)
                 .map(RuntimePortal::object_id),
             Some(7)
         );
@@ -1109,17 +1142,50 @@ mod tests {
 
         transition.destination_published();
         transition.phase = TransitionPhase::Idle;
-        assert!(transition.suppress_destination_overlap(&portals, Position::new(3, 4)));
-        assert!(transition.suppress_destination_overlap(&portals, Position::new(3, 4)));
-        assert!(transition.suppress_destination_overlap(&portals, Position::new(4, 4)));
-        assert!(!transition.suppress_destination_overlap(&portals, Position::new(4, 4)));
+        let on_house = collision_rect(100.0, 120.0);
+        let away = collision_rect(300.0, 300.0);
+        assert!(transition.suppress_destination_overlap(&portals, on_house));
+        assert!(transition.suppress_destination_overlap(&portals, on_house));
+        assert!(transition.suppress_destination_overlap(&portals, away));
+        assert!(!transition.suppress_destination_overlap(&portals, away));
         assert_eq!(
             transition
                 .detector
-                .entered(&portals, Position::new(3, 4))
+                .entered(&portals, on_house)
                 .map(RuntimePortal::object_id),
             Some(house.object_id())
         );
+    }
+
+    /// Pins `PortalBounds::is_triggered_by` against the source's `Portal.is_triggered_by`
+    /// (`engine/world/portal_data.py`): edges are inclusive, and a zero-size point portal (a
+    /// Tiled point object, `width`/`height` both 0) still triggers on exact touch.
+    #[test]
+    fn portal_trigger_matches_source_inclusive_edge_and_point_portal_semantics() {
+        let point = PortalBounds {
+            x: 100.0,
+            y: 100.0,
+            width: 0.0,
+            height: 0.0,
+        };
+        // Rect's bottom-right corner lands exactly on the point: touches, so it triggers.
+        assert!(point.is_triggered_by(rect(90.0, 90.0, 10.0, 10.0)));
+        // One pixel short on each axis: no longer reaches the point.
+        assert!(!point.is_triggered_by(rect(89.0, 89.0, 10.0, 10.0)));
+
+        let portal = PortalBounds {
+            x: 50.0,
+            y: 50.0,
+            width: 20.0,
+            height: 20.0,
+        };
+        // Rect's left edge lands exactly on the portal's right edge (x = 70): the source's
+        // `<=`/`>=` comparison counts this as a trigger, unlike a strict-inequality tile-box test.
+        assert!(portal.is_triggered_by(rect(70.0, 55.0, 10.0, 10.0)));
+        // Symmetric case on the portal's left edge (x = 50).
+        assert!(portal.is_triggered_by(rect(30.0, 55.0, 20.0, 10.0)));
+        // Half a pixel further out no longer touches either edge.
+        assert!(!portal.is_triggered_by(rect(70.5, 55.0, 10.0, 10.0)));
     }
 
     #[test]
