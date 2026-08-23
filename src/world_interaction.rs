@@ -237,7 +237,15 @@ fn request_npc_dialogue(
         speaker,
         handle: asset_server.load(scenario_root.resolve(&logical)),
     });
-    state.pending_sounds.push(InteractionSound::Dialogue);
+    // The interaction sound plays once `resolve_dialogue_request` confirms a session actually
+    // opens, not here. The pinned Python engine only creates its dialogue overlay after
+    // `DialogueEngine.resolve` returns a match (`engine/world/world_map_scene.py::_try_interact`),
+    // so a target whose dialogue document is missing (e.g. the two painted `zone_03_marshland`
+    // sign tiles — no `sign_zone_03_marshland` document exists in either repository, see
+    // `docs/adr/0007-inherited-scenario-data-debt.md`) or whose entries don't match the current
+    // flags never makes a sound in the original. Queuing the sound eagerly here, before the async
+    // load even resolves, used to make a missing sign click and then show nothing — this player
+    // audible difference is what ADR 0007 flagged as needing a decision at W12.3 acceptance.
     state.failure = None;
 }
 
@@ -405,6 +413,7 @@ fn resolve_dialogue_request(
             state.suppress_confirm = true;
             state.request = None;
             state.failure = None;
+            state.pending_sounds.push(InteractionSound::Dialogue);
         }
         Ok(None) => {
             state.request = None;
@@ -903,7 +912,7 @@ impl Error for SfxIndexAssetError {}
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{thread, time::Duration};
 
     use super::*;
     use crate::{
@@ -914,7 +923,9 @@ mod tests {
         scenario_manifest::Manifest,
         scenario_map::MapMetadata,
         scenario_yaml,
+        test_support::headless_title_app_with_asset_base,
     };
+    use bevy::input::ButtonInput;
 
     fn complete_linear_dialogue(
         session: &mut DialogueSession,
@@ -1089,6 +1100,144 @@ mod tests {
         assert!(restored.flags().is_set("npc_elder_reward_given"));
         assert!(restored.flags().is_set("story_act2_started"));
         assert_eq!(restored.repository(), &rewarded_repository);
+    }
+
+    /// Builds a headless World app wired for interaction, with a fresh game session standing at
+    /// `player_position` inside `map_id`, facing down.
+    fn interaction_app(map_id: &str, player_position: Position) -> App {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::World,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(WorldInteractionPlugin)
+            .insert_resource(WorldTransition::idle_for_test())
+            .init_resource::<FieldMenuState>()
+            .init_resource::<ServiceUiState>();
+
+        let manifest: Manifest = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/manifest.yaml"
+        ))
+        .unwrap();
+        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .unwrap();
+        let balance: BalanceData = scenario_yaml::from_str(include_str!(
+            "../assets/scenarios/rusted_kingdoms/data/balance.yaml"
+        ))
+        .unwrap();
+        let mut game = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+        game.map_mut().move_to(
+            RuntimeMapId::try_new(map_id).unwrap(),
+            player_position,
+            CardinalDirection::Down,
+        );
+        app.insert_resource(game);
+        app
+    }
+
+    /// Presses Confirm for exactly one simulated input frame (this harness has no
+    /// `bevy::input::InputPlugin` to auto-clear `just_pressed` every frame, so it must be cleared
+    /// by hand or every later frame would see the same press and endlessly reopen/close the
+    /// dialogue), then waits for the resulting interaction request to settle (either a session
+    /// opened, or the load failed and nothing did) and gives `play_interaction_sfx` a few more
+    /// frames to spawn whatever sound was queued.
+    fn press_confirm_and_settle(app: &mut App) {
+        for _ in 0..10 {
+            app.update();
+        }
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear_just_pressed(KeyCode::Enter);
+        for _ in 0..5_000 {
+            if app
+                .world()
+                .resource::<WorldInteractionState>()
+                .request
+                .is_none()
+            {
+                break;
+            }
+            app.update();
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert!(
+            app.world()
+                .resource::<WorldInteractionState>()
+                .request
+                .is_none(),
+            "interaction request never settled"
+        );
+        for _ in 0..5 {
+            app.update();
+        }
+    }
+
+    /// Regression for the behavior delta ADR 0007 flagged for W12.3 acceptance: the pinned Python
+    /// engine's `DialogueEngine.resolve` returns `None` for a missing dialogue document
+    /// (`load_yaml_optional_cached`), and `world_map_scene.py::_try_interact` only opens its
+    /// dialogue overlay — the only place a sound is tied to interaction — once `resolve` returns a
+    /// match. A missing sign document is therefore a fully silent no-op in the original. Marshland
+    /// paints two sign tiles whose dialogue (`sign_zone_03_marshland`) exists in neither
+    /// repository. Before this fix, `request_npc_dialogue` queued the "confirm" interaction sound
+    /// the instant a sign was selected as a target, before the async asset load even had a chance
+    /// to fail — so a missing sign clicked and then showed nothing, unlike the source.
+    #[test]
+    fn interacting_with_a_missing_sign_dialogue_stays_fully_silent() {
+        let mut app = interaction_app("zone_03_marshland", Position::new(5, 5));
+        app.world_mut().spawn(WorldSign::for_test(
+            "marsh_sign",
+            "sign_zone_03_marshland",
+            Position::new(5, 6),
+        ));
+
+        press_confirm_and_settle(&mut app);
+
+        let state = app.world().resource::<WorldInteractionState>();
+        assert!(state.session.is_none(), "a missing sign must not open");
+        assert!(state.pending_sounds.is_empty());
+        let mut sfx = app.world_mut().query::<&WorldInteractionSfx>();
+        assert_eq!(
+            sfx.iter(app.world()).count(),
+            0,
+            "a missing sign dialogue must play no interaction sound at all"
+        );
+    }
+
+    /// Positive control for the fix above: a sign whose dialogue document does exist still opens
+    /// and still plays exactly one `Dialogue` interaction sound, just resolved one (or a few)
+    /// frames later than before, once the async load actually confirms a match — never eagerly.
+    #[test]
+    fn interacting_with_an_authored_sign_dialogue_opens_and_plays_its_sound() {
+        let mut app = interaction_app("port_town_harborgate", Position::new(5, 5));
+        app.world_mut().spawn(WorldSign::for_test(
+            "harborgate_sign",
+            "sign_port_town_harborgate",
+            Position::new(5, 6),
+        ));
+
+        press_confirm_and_settle(&mut app);
+
+        let state = app.world().resource::<WorldInteractionState>();
+        assert!(state.failure.is_none(), "{:?}", state.failure);
+        assert!(state.session.is_some(), "an authored sign must open");
+        let mut sfx = app.world_mut().query::<&WorldInteractionSfx>();
+        let sounds = sfx.iter(app.world()).collect::<Vec<_>>();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].logical_event, InteractionSound::Dialogue);
     }
 
     #[test]

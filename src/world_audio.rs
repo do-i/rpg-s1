@@ -3,6 +3,12 @@
 //! World entry loads the current map's same-stem YAML metadata and the scenario BGM index through
 //! Bevy's asset boundary. The resolved track is spawned only after every previously marked BGM
 //! entity has been despawned, so title-to-world handoff can never leave two logical players alive.
+//!
+//! A map transition only stops and replaces the currently playing loop once the destination's
+//! metadata is loaded *and* names a `bgm` key. A map with no `bgm` field at all (e.g.
+//! `zone_03_marshland`) leaves whatever was already playing running, matching the pinned Python
+//! engine's `if bgm_key: bgm_manager.play_key(bgm_key)` guard (`engine/world/world_map_init.py`) —
+//! it never stops on a silent map, only when it has somewhere new to send the loop.
 
 use std::{error::Error, fmt};
 
@@ -130,6 +136,10 @@ struct WorldBgmRequest {
     map_id: String,
     metadata: Handle<MapMetadata>,
     index: Handle<BgmIndex>,
+    /// Set once this map's BGM decision (play a resolved track, or stay silent) has been made, so
+    /// a map with no authored `bgm` key is not re-evaluated — and does not retroactively stop
+    /// whatever is already playing — on every subsequent frame.
+    resolved: bool,
 }
 
 /// Stable failure classes that avoid exposing the host AssetServer base path.
@@ -220,15 +230,14 @@ fn drive_world_audio(
         .as_ref()
         .is_none_or(|request| request.map_id != map_id)
     {
-        stop_logical_players(&mut commands, &logical_players);
-        state.player = None;
-        state.failure = None;
-        state.status = if logical_players.is_empty() {
-            WorldBgmStatus::Loading
-        } else {
-            WorldBgmStatus::StoppingPrevious
-        };
-
+        // A new map is current. Only *load* its metadata here — do not touch any already-playing
+        // loop yet. The pinned Python engine (`engine/world/world_map_init.py`) only calls
+        // `bgm_manager.play_key` when the destination map authors a `bgm` key at all
+        // (`if bgm_key: bgm_manager.play_key(bgm_key)`); a map with no `bgm` field at all (e.g.
+        // `zone_03_marshland`) leaves whatever track was already playing running, untouched.
+        // Stopping playback unconditionally on every map change — as this system used to, before
+        // it knew whether the destination even named a track — would silence music the pinned
+        // source keeps playing across such a boundary.
         let metadata_path = match ScenarioRelativePath::try_from(format!("data/maps/{map_id}.yaml"))
         {
             Ok(path) => path,
@@ -249,61 +258,78 @@ fn drive_world_audio(
             index: assets
                 .server
                 .load(assets.scenario_root.resolve(&bgm_index_path)),
+            resolved: false,
         });
-        // This frame is an explicit stop barrier. Even already-cached YAML cannot publish the new
-        // loop until commands despawning a title or previous-map BGM have been applied.
+        state.failure = None;
+        state.status = WorldBgmStatus::Loading;
         return;
     }
 
-    if let Some(player) = state.player {
-        if logical_players.get(player).is_ok() {
-            // If an unrelated state or system introduced another BGM, retire it while preserving
-            // this map's already-playing loop. The query is rechecked on every World update.
-            let mut removed_extra = false;
-            for entity in &logical_players {
-                if entity != player {
-                    commands.entity(entity).despawn();
-                    removed_extra = true;
+    if state.request.as_ref().expect("checked above").resolved {
+        if let Some(player) = state.player {
+            if logical_players.get(player).is_ok() {
+                // If an unrelated state or system introduced another BGM, retire it while
+                // preserving this map's already-playing loop. Rechecked every World update.
+                let mut removed_extra = false;
+                for entity in &logical_players {
+                    if entity != player {
+                        commands.entity(entity).despawn();
+                        removed_extra = true;
+                    }
                 }
-            }
-            if removed_extra {
+                if removed_extra {
+                    return;
+                }
+                state.status = WorldBgmStatus::Playing;
+                state.failure = None;
                 return;
             }
-            state.status = WorldBgmStatus::Playing;
+            // The tracked entity vanished outside this system's own decision path; this map's
+            // already-finalized decision has nothing left to resume.
+            state.player = None;
+            state.status = WorldBgmStatus::Silent;
             state.failure = None;
             return;
         }
-        state.player = None;
-        state.status = WorldBgmStatus::Loading;
-    }
-
-    if !logical_players.is_empty() {
-        stop_logical_players(&mut commands, &logical_players);
-        state.status = WorldBgmStatus::StoppingPrevious;
+        // This map's resolved decision was "stay silent" (no authored `bgm`). A stray logical
+        // player here was not spawned by this decision, so retire it defensively — the plugin's
+        // "at most one logical player" invariant still holds even in the silent case.
+        if !logical_players.is_empty() {
+            stop_logical_players(&mut commands, &logical_players);
+            state.status = WorldBgmStatus::StoppingPrevious;
+            state.failure = None;
+            return;
+        }
+        state.status = WorldBgmStatus::Silent;
         state.failure = None;
         return;
     }
 
-    let request = state
-        .request
-        .as_ref()
-        .expect("a matching request was established above");
+    let request = state.request.as_ref().expect("checked above");
     if matches!(
         assets.server.load_state(request.metadata.id()),
         LoadState::Failed(_)
     ) {
-        state.status = WorldBgmStatus::Failed;
-        state.failure = Some(WorldBgmFailure::MapMetadataLoad {
-            map_id: map_id.to_owned(),
-        });
+        fail(
+            &mut state,
+            WorldBgmFailure::MapMetadataLoad {
+                map_id: map_id.to_owned(),
+            },
+            &mut commands,
+            &logical_players,
+        );
         return;
     }
     if matches!(
         assets.server.load_state(request.index.id()),
         LoadState::Failed(_)
     ) {
-        state.status = WorldBgmStatus::Failed;
-        state.failure = Some(WorldBgmFailure::BgmIndexLoad);
+        fail(
+            &mut state,
+            WorldBgmFailure::BgmIndexLoad,
+            &mut commands,
+            &logical_players,
+        );
         return;
     }
 
@@ -318,26 +344,53 @@ fn drive_world_audio(
 
     let effective_id = metadata.effective_id(map_id);
     if effective_id != map_id {
-        state.status = WorldBgmStatus::Failed;
-        state.failure = Some(WorldBgmFailure::MapIdMismatch {
-            expected: map_id.to_owned(),
-            actual: effective_id.to_owned(),
-        });
+        fail(
+            &mut state,
+            WorldBgmFailure::MapIdMismatch {
+                expected: map_id.to_owned(),
+                actual: effective_id.to_owned(),
+            },
+            &mut commands,
+            &logical_players,
+        );
         return;
     }
     let Some(key) = metadata.bgm.as_deref() else {
-        state.status = WorldBgmStatus::Silent;
+        // No authored `bgm`: resolve this map's decision without touching whatever loop is
+        // already playing (see the comment on the map-change branch above). The observable status
+        // reflects reality — if a previous map's track is still looping, that is `Playing`, not
+        // `Silent`; `Silent` is reserved for when nothing is actually playing.
+        state.request.as_mut().expect("checked above").resolved = true;
         state.failure = None;
+        state.status = match state.player {
+            Some(player) if logical_players.get(player).is_ok() => WorldBgmStatus::Playing,
+            _ => {
+                state.player = None;
+                WorldBgmStatus::Silent
+            }
+        };
         return;
     };
     let Some(asset_path) = index.resolve_key(&assets.scenario_root, key) else {
-        state.status = WorldBgmStatus::Failed;
-        state.failure = Some(WorldBgmFailure::UnknownBgmKey {
-            map_id: map_id.to_owned(),
-            key: key.to_owned(),
-        });
+        fail(
+            &mut state,
+            WorldBgmFailure::UnknownBgmKey {
+                map_id: map_id.to_owned(),
+                key: key.to_owned(),
+            },
+            &mut commands,
+            &logical_players,
+        );
         return;
     };
+
+    if !logical_players.is_empty() {
+        stop_logical_players(&mut commands, &logical_players);
+        state.player = None;
+        state.status = WorldBgmStatus::StoppingPrevious;
+        state.failure = None;
+        return;
+    }
 
     let player = commands
         .spawn((
@@ -356,6 +409,7 @@ fn drive_world_audio(
         ))
         .id();
     state.player = Some(player);
+    state.request.as_mut().expect("checked above").resolved = true;
     state.status = WorldBgmStatus::Playing;
     state.failure = None;
 }
@@ -480,10 +534,12 @@ mod tests {
     use crate::{
         name_entry::NameEntryConfirmed,
         new_game::{NewGameScenario, build_new_game_state},
+        runtime_map::RuntimeMapId,
         scenario_balance::BalanceData,
         scenario_manifest::Manifest,
         scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
         scenario_party::PartyCatalog,
+        scenario_spatial::{CardinalDirection, Position},
         test_support::headless_title_app_with_asset_base,
         tmx_ground_asset::{StaticMapTile, TmxGroundAssetPlugin},
         tsx_atlas_asset::TsxAtlasAssetPlugin,
@@ -503,6 +559,12 @@ mod tests {
 
     impl TestPackage {
         fn new(map_metadata: &str, bgm_index: &str) -> Self {
+            Self::with_maps(&[("town_01_ardel", map_metadata)], bgm_index)
+        }
+
+        /// Writes several map metadata documents into one invented scenario package, so a test
+        /// can drive `GameState::map_mut().move_to(...)` between them.
+        fn with_maps(maps: &[(&str, &str)], bgm_index: &str) -> Self {
             let asset_base = std::env::temp_dir().join(format!(
                 "rpg-s1-world-audio-{}-{}",
                 std::process::id(),
@@ -511,7 +573,13 @@ mod tests {
             let scenario = asset_base.join("scenarios/invented");
             fs::create_dir_all(scenario.join("data/maps")).unwrap();
             fs::create_dir_all(scenario.join("data/audio")).unwrap();
-            fs::write(scenario.join("data/maps/town_01_ardel.yaml"), map_metadata).unwrap();
+            for (map_id, map_metadata) in maps {
+                fs::write(
+                    scenario.join(format!("data/maps/{map_id}.yaml")),
+                    map_metadata,
+                )
+                .unwrap();
+            }
             fs::write(scenario.join("data/audio/bgm_index.yaml"), bgm_index).unwrap();
             Self { asset_base }
         }
@@ -656,6 +724,67 @@ mod tests {
             app.world().resource::<WorldBgmState>().status(),
             WorldBgmStatus::Playing
         );
+    }
+
+    /// Regression for a real runtime divergence found while fixturing W12.3 (Marshland has no
+    /// `bgm` field at all, unlike every W12.1/W12.2 map). The pinned Python engine only calls
+    /// `bgm_manager.play_key` when the destination names a `bgm` key
+    /// (`engine/world/world_map_init.py`); a silent map leaves whatever was already playing
+    /// running. Before this fix, `drive_world_audio` stopped the previous loop unconditionally on
+    /// every map change, before it even knew whether the destination had a track to switch to —
+    /// so stepping onto a `bgm`-less map cut the music instead of leaving it alone.
+    #[test]
+    fn a_map_with_no_authored_bgm_leaves_the_previous_track_playing() {
+        let package = TestPackage::with_maps(
+            &[
+                (
+                    "town_01_ardel",
+                    "id: town_01_ardel\nname: Ardel Village\nbgm: town.default\n",
+                ),
+                ("zone_03_marshland", "name: Marshland\nwarp_order: 50\n"),
+            ],
+            include_str!("../tests/fixtures/audio-bgm-index.yaml"),
+        );
+        let mut app = app(&package, AppState::World);
+        wait_for_status(&mut app, WorldBgmStatus::Playing);
+        let [ardel_player] = logical_players(&mut app)[..] else {
+            panic!("Ardel must own exactly one logical BGM player once Playing");
+        };
+        let asset_path = app
+            .world()
+            .get::<WorldBgmPlayer>(ardel_player)
+            .unwrap()
+            .asset_path()
+            .to_owned();
+
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_03_marshland").unwrap(),
+                Position::new(4, 1),
+                CardinalDirection::Down,
+            );
+        // The map change is detected and re-enters `Loading` while Marshland's own (bgm-less)
+        // metadata resolves, then settles back on `Playing` once the decision is made — the
+        // Ardel loop never stops in between.
+        wait_for_status(&mut app, WorldBgmStatus::Loading);
+        assert_eq!(logical_players(&mut app), [ardel_player]);
+        wait_for_status(&mut app, WorldBgmStatus::Playing);
+
+        assert_eq!(logical_players(&mut app), [ardel_player]);
+        let still_playing = app.world().get::<WorldBgmPlayer>(ardel_player).unwrap();
+        assert_eq!(still_playing.map_id(), "town_01_ardel");
+        assert_eq!(still_playing.asset_path(), asset_path);
+
+        for _ in 0..10 {
+            app.update();
+            assert_eq!(logical_players(&mut app), [ardel_player]);
+            assert_eq!(
+                app.world().resource::<WorldBgmState>().status(),
+                WorldBgmStatus::Playing
+            );
+        }
     }
 
     #[test]

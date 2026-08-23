@@ -79,6 +79,19 @@ pub(crate) struct WorldSign {
 }
 
 impl WorldSign {
+    #[cfg(test)]
+    pub(crate) fn for_test(
+        id: impl Into<String>,
+        dialogue_id: impl Into<String>,
+        position: Position,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            dialogue_id: dialogue_id.into(),
+            position,
+        }
+    }
+
     pub(crate) fn id(&self) -> &str {
         &self.id
     }
