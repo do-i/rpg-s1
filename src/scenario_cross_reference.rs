@@ -856,7 +856,15 @@ impl<'a> Validator<'a> {
                 probe_path(self.physical_root, self.canonical_root.as_deref(), &path)
                     != ScenarioPathProbeResult::File
             });
-            if tmx_missing {
+            // A same-stem-less map YAML is genuinely unmatched unless numbered segment TMX
+            // files (`<stem>_01.tmx`, `<stem>_02.tmx`, ...) name it as their parent: that is the
+            // pinned source's multi-segment convention (mirrors Python's `_is_submap` in
+            // `engine/world/warp_logic.py`), not missing content, so no warning is raised for it.
+            let has_segment_tmx = index
+                .maps
+                .iter()
+                .any(|candidate| is_numeric_tmx_segment(&file.stem, candidate));
+            if tmx_missing && !has_segment_tmx {
                 self.warning(
                     "source.unmatched_map_metadata",
                     &file.path,
@@ -1709,6 +1717,18 @@ fn file_stem(path: &str) -> &str {
         .file_stem()
         .and_then(|stem| stem.to_str())
         .unwrap_or(path)
+}
+
+/// True when `candidate` names a numbered TMX segment of `parent`: `parent` followed by `_` and
+/// one or more ASCII digits, e.g. `zone_05_mountain_foothills_02` under
+/// `zone_05_mountain_foothills`. Kept in sync with the identical helper in
+/// `scenario_map_report`, which reports the same convention in detail; duplicated rather than
+/// shared because it is a single pure predicate and the two modules otherwise have no coupling.
+fn is_numeric_tmx_segment(parent: &str, candidate: &str) -> bool {
+    candidate
+        .strip_prefix(parent)
+        .and_then(|rest| rest.strip_prefix('_'))
+        .is_some_and(|suffix| !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit()))
 }
 
 fn probe_path(
@@ -2972,7 +2992,10 @@ npcs:
             37,
             "pinned disagreements changed:\n{errors:#?}"
         );
-        assert_eq!(warnings.len(), 1, "pinned warnings changed:\n{warnings:#?}");
+        // zone_05_mountain_foothills has no same-stem TMX, but its numbered segment TMX files
+        // (`zone_05_mountain_foothills_01.tmx`, `_02.tmx`, `_03.tmx`) name it as their parent
+        // metadata, so the former `source.unmatched_map_metadata` warning for it is suppressed.
+        assert_eq!(warnings.len(), 0, "pinned warnings changed:\n{warnings:#?}");
         assert_eq!(
             report
                 .errors()
@@ -3041,10 +3064,6 @@ npcs:
             errors
                 .iter()
                 .any(|error| error.contains("dungeon_ruinwatch"))
-        );
-        assert_eq!(
-            warnings[0],
-            "data/maps/zone_05_mountain_foothills.yaml:$same_stem_tmx: source.unmatched_map_metadata: no same-stem TMX file exists at `assets/maps/zone_05_mountain_foothills.tmx`"
         );
     }
 }

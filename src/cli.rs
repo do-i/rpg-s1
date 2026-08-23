@@ -19,6 +19,12 @@ use crate::{
         DiagnosticSeverity, ScenarioCatalogCounts, ScenarioDiagnostic, ScenarioLocation,
         ScenarioValidationReport, validate_scenario_directory,
     },
+    scenario_dialogue_report::{
+        DialogueReachability, DialogueReport, DialogueReportEntry, DialogueReportShape,
+        build_dialogue_report,
+    },
+    scenario_map_report::{MapReport, build_map_report},
+    scenario_map_sweep::{MapSweepReport, SweepCategory, build_map_sweep},
     scenario_path::ScenarioRelativePath,
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, SCENARIO_MANIFEST_PATH, ScenarioRoot},
 };
@@ -26,11 +32,14 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play,
     Validate(ScenarioRoot),
+    MapReport(ScenarioRoot),
+    MapSweep(ScenarioRoot),
+    DialogueReport(ScenarioRoot),
     ImportPython(ImportPythonArguments),
     Help,
 }
@@ -116,6 +125,42 @@ where
                 result
             }
         }
+        Command::MapReport(root) => {
+            let report = match select_scenario_package(collection_root, &root) {
+                Ok(selected) => build_map_report(&selected),
+                Err(error) => MapReport::with_load_error(error.message),
+            };
+            // Informational: findings are described in the body, not through the exit code.
+            if write_map_report(stdout, &root, &report).is_err() {
+                EXIT_USAGE
+            } else {
+                EXIT_SUCCESS
+            }
+        }
+        Command::MapSweep(root) => {
+            let report = match select_scenario_package(collection_root, &root) {
+                Ok(selected) => build_map_sweep(&selected),
+                Err(error) => MapSweepReport::with_load_error(error.message),
+            };
+            // Informational: findings are described in the body, not through the exit code.
+            if write_map_sweep_report(stdout, &root, &report).is_err() {
+                EXIT_USAGE
+            } else {
+                EXIT_SUCCESS
+            }
+        }
+        Command::DialogueReport(root) => {
+            let report = match select_scenario_package(collection_root, &root) {
+                Ok(selected) => build_dialogue_report(&selected),
+                Err(error) => DialogueReport::with_load_error(error.message),
+            };
+            // Informational: findings are described in the body, not through the exit code.
+            if write_dialogue_report(stdout, &root, &report).is_err() {
+                EXIT_USAGE
+            } else {
+                EXIT_SUCCESS
+            }
+        }
         Command::ImportPython(arguments) => match run_python_import(collection_root, &arguments) {
             Ok(result) => {
                 let _ = writeln!(
@@ -163,6 +208,15 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         [command, flag] if command == "validate-scenario" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
         }
+        [command, flag] if command == "map-report" && (flag == "-h" || flag == "--help") => {
+            Ok(Command::Help)
+        }
+        [command, flag] if command == "dialogue-report" && (flag == "-h" || flag == "--help") => {
+            Ok(Command::Help)
+        }
+        [command, flag] if command == "map-sweep" && (flag == "-h" || flag == "--help") => {
+            Ok(Command::Help)
+        }
         [command, flag]
             if command == "import-python-save" && (flag == "-h" || flag == "--help") =>
         {
@@ -181,6 +235,48 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         }
         [command, ..] if command == "validate-scenario" => Err(UsageError(
             "validate-scenario accepts at most one package key".to_owned(),
+        )),
+        [command] if command == "map-report" => Ok(Command::MapReport(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command, package_key] if command == "map-report" => {
+            ScenarioRoot::try_for_package_key(package_key.clone())
+                .map(Command::MapReport)
+                .map_err(|error| {
+                    UsageError(format!("invalid package key `{package_key}`: {error}"))
+                })
+        }
+        [command, ..] if command == "map-report" => Err(UsageError(
+            "map-report accepts at most one package key".to_owned(),
+        )),
+        [command] if command == "map-sweep" => Ok(Command::MapSweep(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command, package_key] if command == "map-sweep" => {
+            ScenarioRoot::try_for_package_key(package_key.clone())
+                .map(Command::MapSweep)
+                .map_err(|error| {
+                    UsageError(format!("invalid package key `{package_key}`: {error}"))
+                })
+        }
+        [command, ..] if command == "map-sweep" => Err(UsageError(
+            "map-sweep accepts at most one package key".to_owned(),
+        )),
+        [command] if command == "dialogue-report" => Ok(Command::DialogueReport(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command, package_key] if command == "dialogue-report" => {
+            ScenarioRoot::try_for_package_key(package_key.clone())
+                .map(Command::DialogueReport)
+                .map_err(|error| {
+                    UsageError(format!("invalid package key `{package_key}`: {error}"))
+                })
+        }
+        [command, ..] if command == "dialogue-report" => Err(UsageError(
+            "dialogue-report accepts at most one package key".to_owned(),
         )),
         [command, rest @ ..] if command == "import-python-save" => {
             parse_import_python_arguments(rest).map(Command::ImportPython)
@@ -313,59 +409,72 @@ fn validate_selected_scenario<V>(
 where
     V: FnOnce(&ScenarioRoot, &Path) -> ScenarioValidationReport,
 {
+    match select_scenario_package(collection_root, root) {
+        Ok(selected) => validator(root, &selected),
+        Err(error) => selection_failure(root, error.code, error.message),
+    }
+}
+
+/// Why a package key could not be resolved to a usable scenario package directory.
+struct PackageSelectionError {
+    code: &'static str,
+    message: &'static str,
+}
+
+/// Resolves `root`'s package key to a scenario package directory beneath `collection_root`,
+/// rejecting anything that escapes the collection (a symlinked or `..`-traversing package key)
+/// before any command reads from it. Shared by every scenario command so `validate-scenario` and
+/// `map-report` reject the same package layouts the same way.
+fn select_scenario_package(
+    collection_root: &Path,
+    root: &ScenarioRoot,
+) -> Result<PathBuf, PackageSelectionError> {
     let Ok(canonical_collection) = collection_root.canonicalize() else {
-        return selection_failure(
-            root,
-            "scenario.collection_unavailable",
-            "scenario collection is unavailable",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.collection_unavailable",
+            message: "scenario collection is unavailable",
+        });
     };
     if !canonical_collection.is_dir() {
-        return selection_failure(
-            root,
-            "scenario.collection_unavailable",
-            "scenario collection is not a directory",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.collection_unavailable",
+            message: "scenario collection is not a directory",
+        });
     }
 
     let selected = collection_root.join(root.package_key());
     let Ok(metadata) = fs::symlink_metadata(&selected) else {
-        return selection_failure(
-            root,
-            "scenario.package_unavailable",
-            "selected scenario package is unavailable",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.package_unavailable",
+            message: "selected scenario package is unavailable",
+        });
     };
     if metadata.file_type().is_symlink() {
-        return selection_failure(
-            root,
-            "scenario.package_escape",
-            "selected scenario package must not be a symbolic link",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.package_escape",
+            message: "selected scenario package must not be a symbolic link",
+        });
     }
     let Ok(canonical_selected) = selected.canonicalize() else {
-        return selection_failure(
-            root,
-            "scenario.package_unavailable",
-            "selected scenario package cannot be resolved",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.package_unavailable",
+            message: "selected scenario package cannot be resolved",
+        });
     };
     if !canonical_selected.starts_with(&canonical_collection) {
-        return selection_failure(
-            root,
-            "scenario.package_escape",
-            "selected scenario package resolves outside the scenario collection",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.package_escape",
+            message: "selected scenario package resolves outside the scenario collection",
+        });
     }
     if !canonical_selected.is_dir() {
-        return selection_failure(
-            root,
-            "scenario.package_unavailable",
-            "selected scenario package is not a directory",
-        );
+        return Err(PackageSelectionError {
+            code: "scenario.package_unavailable",
+            message: "selected scenario package is not a directory",
+        });
     }
 
-    validator(root, &canonical_selected)
+    Ok(canonical_selected)
 }
 
 fn selection_failure(
@@ -468,6 +577,327 @@ fn severity_name(severity: DiagnosticSeverity) -> &'static str {
         DiagnosticSeverity::Error => "error",
         DiagnosticSeverity::Warning => "warning",
     }
+}
+
+/// Renders the informational `map-report` output: every map's TMX pairing (including the
+/// numbered-segment "parent metadata" convention), NPCs, portal targets, referenced dialogue
+/// ids, and any dangling findings, followed by a summary footer.
+fn write_map_report(output: &mut impl Write, root: &ScenarioRoot, report: &MapReport) -> io::Result<()> {
+    writeln!(output, "Map report")?;
+    writeln!(output, "Package: {}", root.package_key())?;
+    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+        (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
+        _ => writeln!(output, "Scenario: unavailable")?,
+    }
+    if let Some(error) = &report.load_error {
+        writeln!(output, "Load error: {error}")?;
+    }
+    writeln!(output)?;
+
+    let mut maps_with_findings = 0usize;
+    for entry in &report.entries {
+        let heading = match &entry.name {
+            Some(name) => format!("Map {} ({name})", entry.id),
+            None => format!("Map {} (no metadata YAML)", entry.id),
+        };
+        writeln!(output, "{heading}")?;
+
+        if entry.has_same_stem_tmx {
+            writeln!(output, "  same-stem TMX: yes")?;
+        } else if entry.segments.is_empty() {
+            writeln!(output, "  same-stem TMX: no")?;
+        } else {
+            writeln!(
+                output,
+                "  same-stem TMX: no (parent metadata; segments: {})",
+                entry.segments.join(", ")
+            )?;
+        }
+
+        if entry.npcs.is_empty() {
+            writeln!(output, "  NPCs: none")?;
+        } else {
+            writeln!(output, "  NPCs:")?;
+            for npc in &entry.npcs {
+                let gated = if npc.gated { " [gated]" } else { "" };
+                let missing = if npc.dialogue_missing {
+                    " [MISSING]"
+                } else {
+                    ""
+                };
+                writeln!(
+                    output,
+                    "    {} at ({}, {}) -> dialogue `{}`{missing}{gated}",
+                    npc.id, npc.position.x, npc.position.y, npc.dialogue_id
+                )?;
+                if let Some(excuses) = &npc.excuses {
+                    let excuses_missing = if npc.excuses_missing {
+                        " [MISSING]"
+                    } else {
+                        ""
+                    };
+                    writeln!(output, "      excuses dialogue `{excuses}`{excuses_missing}")?;
+                }
+            }
+        }
+
+        if entry.portals.is_empty() {
+            writeln!(output, "  Portals: none")?;
+        } else {
+            writeln!(output, "  Portals:")?;
+            for portal in &entry.portals {
+                let status = if portal.target_resolvable {
+                    ""
+                } else {
+                    " [DANGLING]"
+                };
+                writeln!(
+                    output,
+                    "    -> {} at ({}, {}){status}",
+                    portal.target_map, portal.target_position.x, portal.target_position.y
+                )?;
+            }
+        }
+
+        let dialogue_ids = entry.dialogue_ids();
+        if dialogue_ids.is_empty() {
+            writeln!(output, "  Dialogue refs: none")?;
+        } else {
+            writeln!(
+                output,
+                "  Dialogue refs: {}",
+                dialogue_ids.into_iter().collect::<Vec<_>>().join(", ")
+            )?;
+        }
+
+        let findings = entry.findings();
+        if findings.is_empty() {
+            writeln!(output, "  Findings: none")?;
+        } else {
+            maps_with_findings += 1;
+            writeln!(output, "  Findings:")?;
+            for finding in &findings {
+                writeln!(output, "    - {finding}")?;
+            }
+        }
+        writeln!(output)?;
+    }
+
+    writeln!(output, "Summary")?;
+    writeln!(output, "Total maps: {}", report.entries.len())?;
+    writeln!(output, "Fully resolvable: {}", report.resolvable_count())?;
+    writeln!(output, "Maps with findings: {maps_with_findings}")?;
+    Ok(())
+}
+
+/// Renders the informational `map-sweep` output: every TMX actually run through the production
+/// TMX/TSX pipeline, collision projection, portal extraction, NPC spawn-set derivation, and
+/// sign/item-box structural load, followed by a per-category finding summary footer.
+fn write_map_sweep_report(
+    output: &mut impl Write,
+    root: &ScenarioRoot,
+    report: &MapSweepReport,
+) -> io::Result<()> {
+    writeln!(output, "Map sweep")?;
+    writeln!(output, "Package: {}", root.package_key())?;
+    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+        (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
+        _ => writeln!(output, "Scenario: unavailable")?,
+    }
+    if let Some(error) = &report.load_error {
+        writeln!(output, "Load error: {error}")?;
+    }
+    writeln!(output)?;
+
+    for entry in &report.entries {
+        writeln!(output, "Map {}", entry.id)?;
+        writeln!(
+            output,
+            "  portals={} signs={} item_boxes={} npc_flag_states={}",
+            entry.portal_count, entry.sign_count, entry.item_box_count, entry.npc_flag_states
+        )?;
+        if entry.findings.is_empty() {
+            writeln!(output, "  Findings: none")?;
+        } else {
+            writeln!(output, "  Findings:")?;
+            for finding in &entry.findings {
+                writeln!(output, "    - [{}] {}", finding.category.label(), finding.message)?;
+            }
+        }
+        writeln!(output)?;
+    }
+
+    writeln!(output, "Summary")?;
+    writeln!(output, "Total maps swept: {}", report.entries.len())?;
+    writeln!(output, "Fully clean: {}", report.clean_count())?;
+    writeln!(output, "Maps with findings: {}", report.maps_with_findings())?;
+    for category in [
+        SweepCategory::Tmx,
+        SweepCategory::Collision,
+        SweepCategory::Npc,
+        SweepCategory::Portal,
+        SweepCategory::Object,
+    ] {
+        writeln!(
+            output,
+            "Findings ({}): {}",
+            category.label(),
+            report.category_count(category)
+        )?;
+    }
+    Ok(())
+}
+
+/// Renders the informational `dialogue-report` output: every dialogue's entries with their
+/// requires/excludes condition, reachability under the pinned Python engine's first-match rule,
+/// line count, and side-effect inventory, followed by a summary footer. The two documented-dead
+/// `ardel_fisherman` flavor entries are called out as accepted rather than as findings.
+fn write_dialogue_report(
+    output: &mut impl Write,
+    root: &ScenarioRoot,
+    report: &DialogueReport,
+) -> io::Result<()> {
+    writeln!(output, "Dialogue report")?;
+    writeln!(output, "Package: {}", root.package_key())?;
+    match (report.scenario_id.as_deref(), report.scenario_name.as_deref()) {
+        (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
+        _ => writeln!(output, "Scenario: unavailable")?,
+    }
+    if let Some(error) = &report.load_error {
+        writeln!(output, "Load error: {error}")?;
+    }
+    writeln!(output)?;
+
+    for document in &report.documents {
+        let shape = match &document.shape {
+            DialogueReportShape::Cutscene => "cutscene".to_owned(),
+            DialogueReportShape::Entries(Some(kind)) => format!("{kind:?}").to_lowercase(),
+            DialogueReportShape::Entries(None) => "entries (untyped)".to_owned(),
+            DialogueReportShape::LinePool => "line pool".to_owned(),
+        };
+        writeln!(output, "Dialogue {} ({shape})", document.id)?;
+
+        if let Some(pool_lines) = document.pool_line_count {
+            writeln!(output, "  Lines: {pool_lines}")?;
+        } else {
+            writeln!(
+                output,
+                "  Entries: {} ({} flag(s) referenced{})",
+                document.entries.len(),
+                document.referenced_flag_count,
+                if document.too_many_flags {
+                    ", too many to enumerate"
+                } else {
+                    ""
+                }
+            )?;
+            for entry in &document.entries {
+                write_dialogue_entry(output, entry)?;
+            }
+        }
+
+        let notes = document.notes();
+        if notes.is_empty() {
+            writeln!(output, "  Notes: none")?;
+        } else {
+            writeln!(output, "  Notes:")?;
+            for note in &notes {
+                writeln!(output, "    - {note}")?;
+            }
+        }
+        writeln!(output)?;
+    }
+
+    writeln!(output, "Summary")?;
+    writeln!(output, "Total dialogues: {}", report.documents.len())?;
+    writeln!(output, "Fully clean: {}", report.clean_count())?;
+    writeln!(
+        output,
+        "Dialogues with dead entries (documented-accepted): {}",
+        report.documents_with_only_accepted_dead_entries()
+    )?;
+    writeln!(
+        output,
+        "Dialogues with dead entries (new finding): {}",
+        report.documents_with_new_dead_entries()
+    )?;
+    writeln!(
+        output,
+        "Dialogues with zero-line entries: {}",
+        report.documents_with_zero_line_entries()
+    )?;
+    writeln!(
+        output,
+        "Dialogues with informational notes: {}",
+        report.documents_with_notes()
+    )?;
+    Ok(())
+}
+
+fn write_dialogue_entry(output: &mut impl Write, entry: &DialogueReportEntry) -> io::Result<()> {
+    let status = match entry.reachability {
+        DialogueReachability::Reachable => "reachable".to_owned(),
+        DialogueReachability::Dead => "DEAD".to_owned(),
+        DialogueReachability::DeadAccepted => "dead (documented-accepted)".to_owned(),
+        DialogueReachability::GraphNode => "graph node".to_owned(),
+        DialogueReachability::Unknown => "unknown (too many flags)".to_owned(),
+    };
+    let node = entry
+        .node
+        .as_deref()
+        .map(|node| format!(" node=`{node}`"))
+        .unwrap_or_default();
+    writeln!(
+        output,
+        "    [{}]{node} requires={:?} excludes={:?} lines={} {status}",
+        entry.index, entry.requires, entry.excludes, entry.line_count
+    )?;
+
+    let effects = &entry.effects;
+    if !effects.is_empty() {
+        let mut parts = Vec::new();
+        if !effects.set_flags.is_empty() {
+            parts.push(format!("set_flag={}", effects.set_flags.join(",")));
+        }
+        if !effects.unset_flags.is_empty() {
+            parts.push(format!("unset_flag={}", effects.unset_flags.join(",")));
+        }
+        if !effects.unlock_flags.is_empty() {
+            let unlocks = effects
+                .unlock_flags
+                .iter()
+                .map(|(kind, id)| format!("{kind}:{id}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            parts.push(format!("unlock={unlocks}"));
+        }
+        if !effects.give_items.is_empty() {
+            let items = effects
+                .give_items
+                .iter()
+                .map(|(id, qty)| format!("{id}x{qty}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            parts.push(format!("give_items={items}"));
+        }
+        if let Some(member) = &effects.join_party {
+            parts.push(format!("join_party={member}"));
+        }
+        if let Some(map) = &effects.transition_map {
+            parts.push(format!("transition={map}"));
+        }
+        if let Some(shop) = effects.open_shop {
+            parts.push(format!("open_shop={shop}"));
+        }
+        if effects.open_inn {
+            parts.push("open_inn".to_owned());
+        }
+        if effects.open_apothecary {
+            parts.push("open_apothecary".to_owned());
+        }
+        writeln!(output, "      effects: {}", parts.join("; "))?;
+    }
+    Ok(())
 }
 
 pub(crate) fn production_asset_base() -> PathBuf {
@@ -749,6 +1179,326 @@ mod tests {
         );
     }
 
+    /// A manifest-only scenario, sufficient for `build_map_report` to load a scenario identity
+    /// with zero map entries. Deep per-map report content (segments, portals, NPCs, dialogue) is
+    /// covered by `scenario_map_report`'s own tests; these CLI tests only check the command is
+    /// wired up and always exits successfully.
+    fn write_manifest_only_scenario(collection: &Path, package_key: &str) {
+        let manifest = r#"id: invented_story
+name: Invented Story
+version: "1.0"
+window_title: Invented Window
+title:
+  image: assets/title.webp
+  cursor_icon: assets/cursor.webp
+font:
+  path: assets/font.ttf
+ui:
+  menu_backdrop: assets/backdrop.webp
+apothecary:
+  sprite: assets/apothecary.tsx
+  icons:
+    locked: assets/locked.webp
+    ready: assets/ready.webp
+    missing: assets/missing.webp
+inn: {sprite: assets/inn.tsx}
+item_shop: {sprite: assets/item_shop.tsx}
+weapon_shop: {sprite: assets/weapon_shop.tsx}
+armor_shop: {sprite: assets/armor_shop.tsx}
+item_box: {sprite: assets/item_box.tsx}
+protagonist:
+  id: maker
+  name: Maker
+  class: maker
+  sprite: assets/maker.tsx
+start:
+  map: village
+  position: [1, 2]
+  intro_dialogue: data/dialogue/intro.yaml
+bootstrap_flags: []
+engine_managed_flags: []
+refs:
+  party: data/party.yaml
+  classes: data/classes/
+  maps: data/maps/
+  dialogue: data/dialogue/
+  items: data/items/
+  enemies: data/enemies/
+  encount: data/encount/
+  recipe: data/recipe/
+  quests: data/quests.yaml
+  balance: data/balance.yaml
+  battle_backgrounds: data/battle_backgrounds.yaml
+  assets: assets/
+  tmx: assets/maps/
+"#;
+        fs::write(collection.join(package_key).join("manifest.yaml"), manifest)
+            .expect("temporary manifest should be writable");
+    }
+
+    #[test]
+    fn map_report_command_does_not_invoke_the_bevy_app_launcher() {
+        let collection = TempCollection::new("fixture");
+        write_manifest_only_scenario(&collection.0, "fixture");
+        let launched = Cell::new(false);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-report".into(), "fixture".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || launched.set(true),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(!launched.get(), "map-report must not construct the Bevy app");
+        assert!(stderr.is_empty());
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Map report\n"));
+        assert!(output.contains("Package: fixture\n"));
+        assert!(output.contains("Scenario: invented_story (Invented Story)\n"));
+        assert!(output.contains("Total maps: 0\n"));
+        assert!(output.contains("Fully resolvable: 0\n"));
+        assert!(output.contains("Maps with findings: 0\n"));
+    }
+
+    #[test]
+    fn map_report_default_selects_the_default_package_key() {
+        let collection = TempCollection::new(DEFAULT_SCENARIO_PACKAGE_KEY);
+        write_manifest_only_scenario(&collection.0, DEFAULT_SCENARIO_PACKAGE_KEY);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-report".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || panic!("map-report must not launch Bevy"),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .contains("Package: rusted_kingdoms\n")
+        );
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn map_report_on_an_unavailable_package_still_exits_successfully() {
+        let collection = TempCollection::new("present");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-report".into(), "missing".into()],
+            &collection.0,
+            |_, _| panic!("an unavailable package must not reach the validator"),
+            &mut stdout,
+            &mut stderr,
+            || panic!("map-report must not launch Bevy"),
+        );
+
+        assert_eq!(
+            exit, EXIT_SUCCESS,
+            "map-report is informational and always exits zero"
+        );
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Load error: selected scenario package is unavailable\n"));
+        assert!(output.contains("Total maps: 0\n"));
+        assert!(!output.contains(collection.0.to_string_lossy().as_ref()));
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn map_sweep_command_does_not_invoke_the_bevy_app_launcher() {
+        let collection = TempCollection::new("fixture");
+        write_manifest_only_scenario(&collection.0, "fixture");
+        let launched = Cell::new(false);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-sweep".into(), "fixture".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || launched.set(true),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(!launched.get(), "map-sweep must not construct the Bevy app");
+        assert!(stderr.is_empty());
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Map sweep\n"));
+        assert!(output.contains("Package: fixture\n"));
+        assert!(output.contains("Scenario: invented_story (Invented Story)\n"));
+        assert!(output.contains("Total maps swept: 0\n"));
+        assert!(output.contains("Fully clean: 0\n"));
+        assert!(output.contains("Maps with findings: 0\n"));
+        assert!(output.contains("Findings (tmx): 0\n"));
+        assert!(output.contains("Findings (collision): 0\n"));
+        assert!(output.contains("Findings (npc): 0\n"));
+        assert!(output.contains("Findings (portal): 0\n"));
+        assert!(output.contains("Findings (object): 0\n"));
+    }
+
+    #[test]
+    fn map_sweep_default_selects_the_default_package_key() {
+        let collection = TempCollection::new(DEFAULT_SCENARIO_PACKAGE_KEY);
+        write_manifest_only_scenario(&collection.0, DEFAULT_SCENARIO_PACKAGE_KEY);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-sweep".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || panic!("map-sweep must not launch Bevy"),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .contains("Package: rusted_kingdoms\n")
+        );
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn map_sweep_on_an_unavailable_package_still_exits_successfully() {
+        let collection = TempCollection::new("present");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["map-sweep".into(), "missing".into()],
+            &collection.0,
+            |_, _| panic!("an unavailable package must not reach the validator"),
+            &mut stdout,
+            &mut stderr,
+            || panic!("map-sweep must not launch Bevy"),
+        );
+
+        assert_eq!(
+            exit, EXIT_SUCCESS,
+            "map-sweep is informational and always exits zero"
+        );
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Load error: selected scenario package is unavailable\n"));
+        assert!(output.contains("Total maps swept: 0\n"));
+        assert!(!output.contains(collection.0.to_string_lossy().as_ref()));
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn dialogue_report_command_does_not_invoke_the_bevy_app_launcher() {
+        let collection = TempCollection::new("fixture");
+        write_manifest_only_scenario(&collection.0, "fixture");
+        fs::create_dir_all(collection.0.join("fixture/data/dialogue"))
+            .expect("temporary dialogue directory should be creatable");
+        fs::write(
+            collection.0.join("fixture/data/dialogue/guide.yaml"),
+            "id: guide\ntype: npc\nentries:\n  - lines: [\"Hello.\"]\n",
+        )
+        .expect("temporary dialogue fixture should be writable");
+        let launched = Cell::new(false);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["dialogue-report".into(), "fixture".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || launched.set(true),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(
+            !launched.get(),
+            "dialogue-report must not construct the Bevy app"
+        );
+        assert!(stderr.is_empty());
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Dialogue report\n"));
+        assert!(output.contains("Package: fixture\n"));
+        assert!(output.contains("Scenario: invented_story (Invented Story)\n"));
+        assert!(output.contains("Dialogue guide (npc)\n"));
+        assert!(output.contains("Total dialogues: 1\n"));
+        assert!(output.contains("Fully clean: 1\n"));
+        assert!(output.contains("Dialogues with dead entries (documented-accepted): 0\n"));
+        assert!(output.contains("Dialogues with dead entries (new finding): 0\n"));
+    }
+
+    #[test]
+    fn dialogue_report_default_selects_the_default_package_key() {
+        let collection = TempCollection::new(DEFAULT_SCENARIO_PACKAGE_KEY);
+        write_manifest_only_scenario(&collection.0, DEFAULT_SCENARIO_PACKAGE_KEY);
+        fs::create_dir_all(
+            collection
+                .0
+                .join(format!("{DEFAULT_SCENARIO_PACKAGE_KEY}/data/dialogue")),
+        )
+        .expect("temporary dialogue directory should be creatable");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["dialogue-report".into()],
+            &collection.0,
+            valid_report,
+            &mut stdout,
+            &mut stderr,
+            || panic!("dialogue-report must not launch Bevy"),
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .contains("Package: rusted_kingdoms\n")
+        );
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn dialogue_report_on_an_unavailable_package_still_exits_successfully() {
+        let collection = TempCollection::new("present");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            ["dialogue-report".into(), "missing".into()],
+            &collection.0,
+            |_, _| panic!("an unavailable package must not reach the validator"),
+            &mut stdout,
+            &mut stderr,
+            || panic!("dialogue-report must not launch Bevy"),
+        );
+
+        assert_eq!(
+            exit, EXIT_SUCCESS,
+            "dialogue-report is informational and always exits zero"
+        );
+        let output = String::from_utf8(stdout).unwrap();
+        assert!(output.contains("Load error: selected scenario package is unavailable\n"));
+        assert!(output.contains("Total dialogues: 0\n"));
+        assert!(!output.contains(collection.0.to_string_lossy().as_ref()));
+        assert!(stderr.is_empty());
+    }
+
     #[test]
     fn default_validation_selects_the_default_package_key() {
         let collection = TempCollection::new(DEFAULT_SCENARIO_PACKAGE_KEY);
@@ -823,6 +1573,12 @@ mod tests {
             vec!["unknown".into()],
             vec!["validate-scenario".into(), "../escape".into()],
             vec!["validate-scenario".into(), "one".into(), "two".into()],
+            vec!["map-report".into(), "../escape".into()],
+            vec!["map-report".into(), "one".into(), "two".into()],
+            vec!["map-sweep".into(), "../escape".into()],
+            vec!["map-sweep".into(), "one".into(), "two".into()],
+            vec!["dialogue-report".into(), "../escape".into()],
+            vec!["dialogue-report".into(), "one".into(), "two".into()],
             vec!["import-python-save".into()],
             vec!["import-python-save".into(), "save.yaml".into()],
             vec![

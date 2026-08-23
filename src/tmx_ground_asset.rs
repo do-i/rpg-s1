@@ -512,7 +512,11 @@ impl AssetLoader for TmxGroundAssetLoader {
     }
 }
 
-fn unique_ground_layer_index(
+/// Locates the map's one `ground` tile layer.
+///
+/// `pub(crate)` so [`crate::scenario_map_sweep`] can headlessly replay this exact
+/// production selection rule without duplicating it.
+pub(crate) fn unique_ground_layer_index(
     document: &TmxMapDocument,
 ) -> Result<usize, TmxGroundAssetLoaderError> {
     let mut matches = document
@@ -529,7 +533,9 @@ fn unique_ground_layer_index(
     Ok(index)
 }
 
-fn visible_layer_indices(document: &TmxMapDocument) -> Vec<usize> {
+/// `pub(crate)` so [`crate::scenario_map_sweep`] can select the same visible layers the
+/// renderer would, without duplicating this rule.
+pub(crate) fn visible_layer_indices(document: &TmxMapDocument) -> Vec<usize> {
     document
         .tile_layers()
         .iter()
@@ -538,7 +544,9 @@ fn visible_layer_indices(document: &TmxMapDocument) -> Vec<usize> {
         .collect()
 }
 
-fn visible_atlas_reference_indices(
+/// `pub(crate)` so [`crate::scenario_map_sweep`] can determine exactly which external
+/// tilesets the renderer would load for a map's visible layers, without duplicating this rule.
+pub(crate) fn visible_atlas_reference_indices(
     document: &TmxMapDocument,
     visible_layer_indices: &[usize],
 ) -> Result<Vec<usize>, TmxGroundAssetLoaderError> {
@@ -579,8 +587,10 @@ fn scenario_owner(
     ScenarioRelativePath::try_from(relative).map_err(TmxGroundAssetLoaderError::OwnerPath)
 }
 
+/// `pub(crate)` so [`crate::scenario_map_sweep`] can report the same ground-layer and
+/// visible-atlas failures the production loader would, using its own [`fmt::Display`].
 #[derive(Debug)]
-enum TmxGroundAssetLoaderError {
+pub(crate) enum TmxGroundAssetLoaderError {
     OutsideScenarioRoot,
     NonUtf8Owner,
     OwnerPath(ScenarioRelativePathError),

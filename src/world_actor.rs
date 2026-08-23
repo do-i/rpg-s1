@@ -307,7 +307,11 @@ fn drive_world_actor_load(
     state.status = WorldActorStatus::Spawned;
 }
 
-fn present_npcs<'a>(
+/// Filters a map's authored NPCs to the ones the given flag state would spawn.
+///
+/// `pub(crate)` so [`crate::scenario_map_sweep`] can headlessly replay the exact production
+/// spawn-set derivation across several flag states, instead of duplicating this filter.
+pub(crate) fn present_npcs<'a>(
     metadata: &'a MapMetadata,
     flags: &crate::runtime_flags::RuntimeFlags,
 ) -> Vec<&'a NpcMetadata> {
