@@ -71,6 +71,30 @@ Run the deterministic Ardel composition check with:
 scripts/check-ardel-screenshot.sh
 ```
 
+## Releases
+
+`dev` is the integration branch; feature branches merge into it. `main` never
+receives commits directly — it only ever fast-forwards to `dev` and is then
+tagged. Cut a release from `dev`:
+
+```sh
+scripts/release.sh status      # show state, change nothing
+scripts/release.sh --dry-run cut
+scripts/release.sh cut         # bump, wait for CI, fast-forward main, tag
+```
+
+Versions are calendar-based (`year.month.sequence`, tagged `v2026.8.1`), and
+the sequence is computed from existing tags, so the common case needs no
+version argument. `cut` bumps `Cargo.toml`/`Cargo.lock` on `dev` as its own
+commit, waits for a green `ci.yml` run on that commit, then fast-forwards
+`main` and pushes the branch and tag atomically.
+
+Pushing the tag starts `release.yml`, which builds the Linux x86_64 binary,
+bundles it with `assets/` (the layout an installed build expects — the game
+reads `assets/` beside its executable), and attaches
+`rpg-s1-<version>-x86_64-linux.tar.gz` to the GitHub release. The workflow
+refuses to publish when the tag and `Cargo.toml` disagree.
+
 ## Scope
 
 The current playable slice contains:

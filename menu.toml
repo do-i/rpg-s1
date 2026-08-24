@@ -92,6 +92,34 @@ tags = ["build", "release", "binary"]
 description = "Build an optimized native binary in target/release"
 
 [[items]]
+id = "release-status"
+label = "Release status"
+key = "u"
+command = ["scripts/release.sh", "status"]
+group = "Release"
+tags = ["release", "status", "version", "tag", "dev", "main"]
+description = "Show dev/main state, the latest tag, and the version today's cut would use — changes nothing"
+
+[[items]]
+id = "release-cut-dry-run"
+label = "Cut release (dry run)"
+key = "d"
+command = ["scripts/release.sh", "--dry-run", "cut"]
+group = "Release"
+tags = ["release", "dry", "run", "preview", "version", "tag"]
+description = "Show exactly what cutting a release would do without bumping, tagging, or pushing anything"
+
+[[items]]
+id = "release-cut"
+label = "Cut release"
+key = "R"
+command = ["scripts/release.sh", "cut"]
+group = "Release"
+tags = ["release", "cut", "tag", "version", "publish", "binary"]
+description = "Bump the version on dev, wait for CI, fast-forward main, and push the tag that builds the release binary"
+confirm = true
+
+[[items]]
 id = "clean"
 label = "Clean build artifacts"
 key = "x"

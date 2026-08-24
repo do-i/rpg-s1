@@ -1,0 +1,124 @@
+name: Release
+
+# Build the Linux x86_64 release binary on a version tag, bundle it with the
+# scenario assets, and attach the tarball to the GitHub release.
+#
+# Release:
+#     scripts/release.sh cut          (or the "Cut release" entry in menu.toml)
+#
+# Also runnable manually (workflow_dispatch) to rebuild and re-attach the
+# artifact for the latest tag without cutting a new version.
+#
+# No secrets: GITHUB_TOKEN is injected into every run.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the release and upload its assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The scenario art, audio, and fonts live in Git LFS. Without this the
+          # checkout yields pointer stubs, and the tarball would ship a game that
+          # fails to load its own assets at runtime.
+          lfs: true
+          fetch-depth: 0   # tags needed for the dispatch path's git describe
+
+      - name: Compute and verify version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            ref="${GITHUB_REF_NAME}"
+          else
+            # Manual dispatch: rebuild the latest tag. actions/checkout left the
+            # dispatched branch's HEAD checked out, not this tag — building HEAD
+            # would ship newer code under the old version, so pin the worktree
+            # to the tag before anything is built.
+            ref="$(git describe --tags --abbrev=0)"
+            git checkout "$ref"
+          fi
+          version="${ref#v}"
+
+          # The tag is the release's identity, but the binary is built from
+          # Cargo.toml. If they disagree the artifact would claim a version it
+          # does not contain, so refuse rather than ship the discrepancy.
+          cargo_ver="$(sed -n '0,/^version = /s/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          if [[ "$version" != "$cargo_ver" ]]; then
+            echo "tag $ref implies version $version, but Cargo.toml says $cargo_ver." >&2
+            echo "bump Cargo.toml and re-tag, so the binary matches its contents." >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$ref" >> "$GITHUB_OUTPUT"
+          echo "name=rpg-s1-$version-x86_64-linux" >> "$GITHUB_OUTPUT"
+          echo "building rpg-s1 $version from $ref"
+
+      # Same set ci.yml installs: Bevy links X11/Wayland, ALSA, and udev.
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            g++ \
+            pkg-config \
+            libx11-dev \
+            libasound2-dev \
+            libudev-dev \
+            libxkbcommon-x11-0 \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - uses: dtolnay/rust-toolchain@1.97.0
+
+      # --locked: Cargo.lock is committed, and a release must build from exactly
+      # what is in the tree. A stale lock should fail here, loudly.
+      - name: Build release binary
+        run: cargo build --locked --release --bin rpg-s1
+
+      # `cli::asset_base_for_executable` treats an executable outside the source
+      # tree as an installed build and reads `assets/` beside itself, so the
+      # tarball has to place them as siblings for the game to find its data.
+      - name: Bundle binary with assets
+        id: bundle
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p "dist/$NAME"
+          cp target/release/rpg-s1 "dist/$NAME/"
+          cp -r assets "dist/$NAME/"
+          cp LICENSE README.md "dist/$NAME/" 2>/dev/null || true
+          tar -czf "dist/$NAME.tar.gz" -C dist "$NAME"
+          ls -la dist/
+          # A pointer-stub checkout yields a tarball orders of magnitude too
+          # small; catch that here rather than in a player's bug report.
+          size="$(stat -c %s "dist/$NAME.tar.gz")"
+          echo "tarball is $size bytes"
+          if (( size < 10000000 )); then
+            echo "tarball is implausibly small - did Git LFS resolve?" >&2
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          set -euo pipefail
+          # --clobber so a dispatch rebuild replaces the asset on an existing
+          # release instead of failing on the name collision.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "dist/$NAME.tar.gz" --clobber
+          else
+            gh release create "$TAG" "dist/$NAME.tar.gz" --generate-notes --verify-tag
+          fi
+          echo "published $TAG with $NAME.tar.gz"
