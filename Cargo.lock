@@ -4353,7 +4353,7 @@ dependencies = [
 
 [[package]]
 name = "rpg-s1"
-version = "0.1.0"
+version = "2026.8.1"
 dependencies = [
  "bevy",
  "crc32fast",
