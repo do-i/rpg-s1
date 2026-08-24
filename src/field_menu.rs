@@ -14,16 +14,23 @@ use crate::{
         learned_field_abilities, preview_stats, unequip_item, use_field_item,
     },
     game_state::GameState,
+    menu_chrome::{
+        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_panel,
+        spawn_status_text, status_border, status_border_active, status_ember, status_faint,
+        status_gold, status_ink, status_muted, status_teal, status_violet,
+    },
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
+    runtime_quest::{QuestStatus, quest_status},
     save_data::NativeSaveEnvelope,
     save_store::{
         FIRST_PLAYER_SLOT, LAST_PLAYER_SLOT, SaveSlot, SaveSlotState, SaveStore, unix_timestamp_now,
     },
-    save_ui::SaveSlotCatalog,
+    save_ui::{SaveSlotCatalog, save_slot_state_color, save_slot_state_label},
     scenario_class::{Ability, AbilityKind, UtilityAbility},
     scenario_item::ItemDefinition,
     scenario_path::ScenarioRelativePath,
+    scenario_quest::{QuestDefinition, QuestKind},
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
     service_ui::ServiceUiState,
@@ -37,13 +44,14 @@ mod ui;
 use ui::{
     cleanup_field_menu, large_status_portrait_path, load_status_image, profile_portrait_path,
     sync_custom_field_menu_content_visibility, sync_equipment_page, sync_field_menu_generic_text,
-    sync_field_menu_overlay_lifecycle, sync_items_page, sync_main_menu_page, sync_save_page,
-    sync_spells_page, sync_status_page,
+    sync_field_menu_overlay_lifecycle, sync_items_page, sync_main_menu_page, sync_quests_page,
+    sync_save_page, sync_spells_page, sync_status_page,
 };
 
 const INVENTORY_PAGE_ROWS: usize = 10;
 const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 const SPELLBOOK_VISIBLE_ROWS: usize = 7;
+const QUEST_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
 const SAVE_COMMAND_INDEX: usize = 5;
 const QUIT_COMMAND_INDEX: usize = 6;
@@ -109,6 +117,8 @@ const ITEMS_POUCH_WIDTH: f32 = 286.0;
 const ITEMS_DETAIL_WIDTH: f32 = 378.0;
 const ITEMS_COLUMN_GAP: f32 = 18.0;
 const EQUIPMENT_SLOT_WIDTH: f32 = 306.0;
+const QUEST_LIST_WIDTH: f32 = 512.0;
+const QUEST_COLUMN_GAP: f32 = 18.0;
 
 pub(crate) struct FieldMenuPlugin;
 
@@ -129,6 +139,7 @@ impl Plugin for FieldMenuPlugin {
                     sync_items_page,
                     sync_equipment_page,
                     sync_spells_page,
+                    sync_quests_page,
                     sync_save_page,
                 )
                     .chain()
@@ -318,6 +329,15 @@ struct SelectedSpellbookRow;
 
 #[derive(Component)]
 struct SpellTargetOverlay;
+
+#[derive(Component)]
+struct FieldMenuQuestsPage;
+
+#[derive(Component)]
+struct QuestBoardRow;
+
+#[derive(Component)]
+struct SelectedQuestBoardRow;
 
 #[derive(Component)]
 struct FieldMenuSavePage;

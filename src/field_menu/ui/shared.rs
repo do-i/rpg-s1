@@ -1,33 +1,5 @@
 use super::*;
 
-pub(in crate::field_menu) fn spawn_status_panel(
-    parent: &mut ChildSpawnerCommands<'_>,
-    node: Node,
-    title: &str,
-    font: &Handle<Font>,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    parent
-        .spawn((
-            node,
-            BackgroundColor(Color::srgba_u8(22, 22, 28, 228)),
-            BorderColor::all(status_border()),
-        ))
-        .with_children(|panel| {
-            spawn_status_text(panel, title, font, 14.0, status_gold());
-            panel.spawn((
-                Node {
-                    width: percent(100),
-                    height: px(1),
-                    margin: UiRect::bottom(px(2)),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
-            ));
-            content(panel);
-        });
-}
-
 pub(in crate::field_menu) fn spawn_meter(
     parent: &mut ChildSpawnerCommands<'_>,
     label: &str,
@@ -84,37 +56,6 @@ pub(in crate::field_menu) fn spawn_meter(
                     ));
                 });
         });
-}
-
-pub(in crate::field_menu) fn spawn_section_rule(parent: &mut ChildSpawnerCommands<'_>) {
-    parent.spawn((
-        Node {
-            width: percent(100),
-            height: px(1),
-            margin: UiRect::axes(px(0), px(2)),
-            ..default()
-        },
-        BackgroundColor(Color::srgba_u8(126, 98, 55, 100)),
-    ));
-}
-
-pub(in crate::field_menu) fn spawn_status_text(
-    parent: &mut ChildSpawnerCommands<'_>,
-    text: impl Into<String>,
-    font: &Handle<Font>,
-    size: f32,
-    color: Color,
-) {
-    parent.spawn((
-        Text::new(text),
-        TextFont {
-            font: font.clone().into(),
-            font_size: FontSize::Px(size),
-            ..default()
-        },
-        TextColor(color),
-        TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
-    ));
 }
 
 pub(in crate::field_menu) fn meter_percent(value: u32, maximum: u32) -> f32 {
@@ -235,36 +176,4 @@ pub(in crate::field_menu) fn status_slot_label(slot: EquipmentSlot) -> &'static 
         EquipmentSlot::Body => "BODY",
         EquipmentSlot::Accessory => "ACC",
     }
-}
-
-pub(in crate::field_menu) fn status_ink() -> Color {
-    Color::srgb_u8(242, 236, 211)
-}
-
-pub(in crate::field_menu) fn status_muted() -> Color {
-    Color::srgb_u8(184, 174, 142)
-}
-
-pub(in crate::field_menu) fn status_gold() -> Color {
-    Color::srgb_u8(231, 184, 86)
-}
-
-pub(in crate::field_menu) fn status_ember() -> Color {
-    Color::srgb_u8(203, 82, 47)
-}
-
-pub(in crate::field_menu) fn status_teal() -> Color {
-    Color::srgb_u8(67, 166, 160)
-}
-
-pub(in crate::field_menu) fn status_violet() -> Color {
-    Color::srgb_u8(126, 101, 204)
-}
-
-pub(in crate::field_menu) fn status_border() -> Color {
-    Color::srgb_u8(126, 98, 55)
-}
-
-pub(in crate::field_menu) fn status_border_active() -> Color {
-    Color::srgb_u8(235, 190, 89)
 }

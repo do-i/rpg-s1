@@ -162,24 +162,7 @@ pub(in crate::field_menu) fn spawn_save_header(
             ..default()
         })
         .with_children(|header| {
-            header.spawn((
-                Node {
-                    width: px(7),
-                    height: px(42),
-                    margin: UiRect::right(px(3)),
-                    ..default()
-                },
-                BackgroundColor(status_ember()),
-            ));
-            header.spawn((
-                Node {
-                    width: px(2),
-                    height: px(42),
-                    margin: UiRect::right(px(14)),
-                    ..default()
-                },
-                BackgroundColor(status_gold()),
-            ));
+            spawn_header_bars(header, 42.0, 14.0);
             header
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -193,7 +176,10 @@ pub(in crate::field_menu) fn spawn_save_header(
                         game.map()
                             .current()
                             .map_or("CHOOSE A RECORD".to_owned(), |map| {
-                                format!("{}  /  CHOOSE A RECORD", map.as_str().to_uppercase())
+                                format!(
+                                    "{}  /  CHOOSE A RECORD",
+                                    location_display_name(map.as_str()).to_uppercase()
+                                )
                             }),
                         font,
                         13.0,
@@ -260,7 +246,7 @@ pub(in crate::field_menu) fn spawn_field_save_slot_row(
                 if pinned { status_muted() } else { status_ink() },
             );
             if pinned {
-                spawn_status_text(label, "PINNED", font, 10.0, Color::srgb_u8(116, 108, 90));
+                spawn_status_text(label, "PINNED", font, 10.0, status_faint());
             }
         });
         row.spawn(Node {
@@ -288,18 +274,16 @@ pub(in crate::field_menu) fn spawn_save_slot_content(
 ) {
     match (&slot.state, &slot.metadata) {
         (SaveSlotState::Empty, _) => {
-            spawn_status_text(
-                parent,
-                "—  EMPTY  —",
-                font,
-                17.0,
-                Color::srgb_u8(116, 108, 90),
-            );
+            spawn_status_text(parent, "—  EMPTY  —", font, 17.0, status_faint());
         }
         (SaveSlotState::Valid, Some(metadata)) => {
             spawn_status_text(
                 parent,
-                format!("{}    ({})", metadata.location, metadata.protagonist_name),
+                format!(
+                    "{}    ({})",
+                    location_display_name(&metadata.location),
+                    metadata.protagonist_name
+                ),
                 font,
                 17.0,
                 status_ink(),
@@ -423,22 +407,4 @@ pub(in crate::field_menu) fn spawn_save_overwrite_modal(
 pub(in crate::field_menu) fn save_page_start(selected: usize) -> usize {
     ((selected.saturating_sub(FIRST_PLAYER_SLOT)) / SAVE_VISIBLE_ROWS) * SAVE_VISIBLE_ROWS
         + FIRST_PLAYER_SLOT
-}
-
-pub(in crate::field_menu) fn save_slot_state_label(slot: &SaveSlot) -> &'static str {
-    match slot.state {
-        SaveSlotState::Empty => "OPEN",
-        SaveSlotState::Valid => "SAVED",
-        SaveSlotState::Corrupt(_) => "CORRUPT",
-        SaveSlotState::Incompatible(_) => "VERSION",
-    }
-}
-
-pub(in crate::field_menu) fn save_slot_state_color(slot: &SaveSlot) -> Color {
-    match slot.state {
-        SaveSlotState::Empty => status_muted(),
-        SaveSlotState::Valid => status_teal(),
-        SaveSlotState::Corrupt(_) => status_ember(),
-        SaveSlotState::Incompatible(_) => status_violet(),
-    }
 }

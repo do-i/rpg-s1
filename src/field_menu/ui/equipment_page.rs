@@ -120,24 +120,7 @@ pub(in crate::field_menu) fn spawn_equipment_header(
             ..default()
         })
         .with_children(|header| {
-            header.spawn((
-                Node {
-                    width: px(7),
-                    height: px(46),
-                    margin: UiRect::right(px(3)),
-                    ..default()
-                },
-                BackgroundColor(status_ember()),
-            ));
-            header.spawn((
-                Node {
-                    width: px(2),
-                    height: px(46),
-                    margin: UiRect::right(px(15)),
-                    ..default()
-                },
-                BackgroundColor(status_gold()),
-            ));
+            spawn_header_bars(header, 46.0, 15.0);
             header
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -229,7 +212,7 @@ pub(in crate::field_menu) fn spawn_equipment_slots_column(
                         if equipped.is_some() {
                             status_ink()
                         } else {
-                            Color::srgb_u8(116, 108, 90)
+                            status_faint()
                         },
                     );
                 });
