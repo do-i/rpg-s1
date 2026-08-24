@@ -15,6 +15,7 @@ mod intro_completion;
 mod intro_dialogue;
 mod intro_transition;
 pub mod manifest_path_validation;
+mod menu_chrome;
 mod name_entry;
 pub mod new_game;
 mod new_game_install;

@@ -117,24 +117,7 @@ pub(in crate::field_menu) fn spawn_items_header(
             ..default()
         })
         .with_children(|header| {
-            header.spawn((
-                Node {
-                    width: px(7),
-                    height: px(46),
-                    margin: UiRect::right(px(3)),
-                    ..default()
-                },
-                BackgroundColor(status_ember()),
-            ));
-            header.spawn((
-                Node {
-                    width: px(2),
-                    height: px(46),
-                    margin: UiRect::right(px(15)),
-                    ..default()
-                },
-                BackgroundColor(status_gold()),
-            ));
+            spawn_header_bars(header, 46.0, 15.0);
             header
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -229,7 +212,7 @@ pub(in crate::field_menu) fn spawn_pouch_column(
                                 font,
                                 17.0,
                                 if count == 0 {
-                                    Color::srgb_u8(116, 108, 90)
+                                    status_faint()
                                 } else {
                                     status_ink()
                                 },
@@ -274,7 +257,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                     "Use LEFT/RIGHT to inspect another pouch.",
                     font,
                     14.0,
-                    Color::srgb_u8(116, 108, 90),
+                    status_faint(),
                 );
                 return;
             }
@@ -344,7 +327,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 format!("PAGE {page_number:02} / {page_count:02}"),
                 font,
                 12.0,
-                Color::srgb_u8(116, 108, 90),
+                status_faint(),
             );
         },
     );

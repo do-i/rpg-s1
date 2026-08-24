@@ -1,11 +1,19 @@
 //! Shared native slot catalog and title-screen load picker.
 
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{
+    ecs::{hierarchy::ChildSpawnerCommands, system::SystemParam},
+    prelude::*,
+};
 
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
+    menu_chrome::{
+        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_text,
+        status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
+        status_teal, status_violet,
+    },
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
     scenario_balance::BalanceData,
@@ -14,8 +22,10 @@ use crate::{
     scenario_manifest_asset::ActiveManifestLoad,
     scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
     scenario_party::PartyCatalog,
-    ui_theme::UiTheme,
 };
+
+/// Slot rows drawn per load-picker page.
+const LOAD_VISIBLE_ROWS: usize = 7;
 
 pub(crate) struct SaveUiPlugin;
 
@@ -109,11 +119,7 @@ pub(crate) struct TitleLoadMenu {
 
 impl TitleLoadMenu {
     pub(crate) fn open(&mut self, slots: &[SaveSlot]) {
-        let latest = slots
-            .iter()
-            .filter(|slot| slot.is_valid())
-            .max_by_key(|slot| slot.saved_at_unix_seconds.unwrap_or(0))
-            .map_or(0, |slot| slot.index);
+        let latest = latest_valid_slot(slots).unwrap_or(0);
         *self = Self {
             open: true,
             just_opened: true,
@@ -127,7 +133,10 @@ impl TitleLoadMenu {
 struct TitleLoadRoot;
 
 #[derive(Component)]
-struct TitleLoadBody;
+struct TitleLoadSlotRow;
+
+#[derive(Component)]
+struct SelectedTitleLoadSlotRow;
 
 #[derive(SystemParam)]
 struct SaveInputs<'w> {
@@ -259,11 +268,9 @@ fn handle_title_load_input(
 fn sync_title_load_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    theme: Res<UiTheme>,
     catalog: Res<SaveSlotCatalog>,
     load_menu: Res<TitleLoadMenu>,
     roots: Query<Entity, With<TitleLoadRoot>>,
-    mut bodies: Query<&mut Text, With<TitleLoadBody>>,
 ) {
     if !load_menu.open {
         for entity in &roots {
@@ -271,101 +278,351 @@ fn sync_title_load_overlay(
         }
         return;
     }
-    if roots.is_empty() {
-        let font = asset_server.load("fonts/Philosopher-Regular.ttf");
-        commands
-            .spawn((
-                Node {
-                    position_type: PositionType::Absolute,
-                    width: percent(100),
-                    height: percent(100),
-                    padding: UiRect::all(px(32)),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.96)),
-                GlobalZIndex(5_000),
-                TitleLoadRoot,
-            ))
-            .with_children(|root| {
-                root.spawn((
-                    Text::new(""),
-                    TextFont {
-                        font: font.into(),
-                        font_size: FontSize::Px(21.0),
-                        ..default()
-                    },
-                    TextColor(theme.name_entry_input_color),
-                    TitleLoadBody,
-                ));
-            });
+    if !roots.is_empty() && !load_menu.is_changed() && !catalog.is_changed() {
         return;
     }
-    let Ok(mut body) = bodies.single_mut() else {
-        return;
-    };
-    body.0 = render_load_menu(&catalog, &load_menu);
+    for entity in &roots {
+        commands.entity(entity).despawn();
+    }
+
+    let font = asset_server.load("fonts/Philosopher-Regular.ttf");
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: percent(100),
+                height: percent(100),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                padding: UiRect::all(px(28)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.96)),
+            GlobalZIndex(5_000),
+            Name::new("Load picker"),
+            TitleLoadRoot,
+        ))
+        .with_children(|root| {
+            spawn_load_panel(root, &font, &catalog, &load_menu);
+        });
 }
 
-fn render_load_menu(catalog: &SaveSlotCatalog, menu: &TitleLoadMenu) -> String {
-    if !catalog.ready {
-        return format!(
-            "LOAD GAME\n\n{}\n\nESC Back",
-            catalog
-                .failure
-                .as_deref()
-                .unwrap_or("Discovering native save slots...")
-        );
+fn spawn_load_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    catalog: &SaveSlotCatalog,
+    menu: &TitleLoadMenu,
+) {
+    parent
+        .spawn((
+            Node {
+                width: px(820),
+                max_height: percent(100),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(6),
+                padding: UiRect::all(px(16)),
+                border: UiRect::all(px(2)),
+                border_radius: BorderRadius::all(px(8)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(22, 22, 28, 240)),
+            BorderColor::all(status_border_active()),
+        ))
+        .with_children(|panel| {
+            spawn_load_header(panel, font, catalog, menu);
+            spawn_section_rule(panel);
+            if catalog.ready {
+                let page_start = load_page_start(menu.selected);
+                let latest = latest_valid_slot(&catalog.slots);
+                for slot in catalog
+                    .slots
+                    .iter()
+                    .skip(page_start)
+                    .take(LOAD_VISIBLE_ROWS)
+                {
+                    spawn_load_slot_row(
+                        panel,
+                        font,
+                        slot,
+                        slot.index == menu.selected,
+                        Some(slot.index) == latest,
+                    );
+                }
+            } else {
+                panel
+                    .spawn(Node {
+                        flex_grow: 1.0,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    })
+                    .with_children(|pending| {
+                        spawn_status_text(
+                            pending,
+                            catalog
+                                .failure
+                                .as_deref()
+                                .unwrap_or("Discovering native save slots..."),
+                            font,
+                            18.0,
+                            if catalog.failure.is_some() {
+                                status_ember()
+                            } else {
+                                status_muted()
+                            },
+                        );
+                    });
+            }
+            spawn_section_rule(panel);
+            spawn_status_text(
+                panel,
+                "UP/DOWN   SELECT SLOT      ENTER   LOAD      ESC   BACK",
+                font,
+                14.0,
+                status_muted(),
+            );
+            if !menu.message.is_empty() {
+                spawn_load_message(panel, font, &menu.message);
+            }
+        });
+}
+
+fn spawn_load_header(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    catalog: &SaveSlotCatalog,
+    menu: &TitleLoadMenu,
+) {
+    let page = menu.selected / LOAD_VISIBLE_ROWS + 1;
+    let page_count = SAVE_SLOT_COUNT.div_ceil(LOAD_VISIBLE_ROWS);
+    let recorded = catalog.slots.iter().filter(|slot| slot.is_valid()).count();
+    parent
+        .spawn(Node {
+            width: percent(100),
+            min_height: px(56),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|header| {
+            spawn_header_bars(header, 44.0, 14.0);
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(title, "LOAD GAME", font, 30.0, status_gold());
+                    spawn_status_text(
+                        title,
+                        "CONTINUE A RECORDED CHRONICLE",
+                        font,
+                        13.0,
+                        status_muted(),
+                    );
+                });
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::End,
+                    ..default()
+                })
+                .with_children(|counts| {
+                    spawn_status_text(
+                        counts,
+                        if catalog.ready {
+                            format!("{recorded:02} RECORDED")
+                        } else {
+                            "-- RECORDED".to_owned()
+                        },
+                        font,
+                        13.0,
+                        if recorded == 0 {
+                            status_muted()
+                        } else {
+                            status_teal()
+                        },
+                    );
+                    spawn_status_text(
+                        counts,
+                        format!("PAGE {page:02} / {page_count:02}"),
+                        font,
+                        13.0,
+                        status_muted(),
+                    );
+                });
+        });
+}
+
+fn spawn_load_slot_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    slot: &SaveSlot,
+    selected: bool,
+    latest: bool,
+) {
+    let mut row = parent.spawn((
+        Node {
+            width: percent(100),
+            min_height: px(56),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            padding: UiRect::axes(px(12), px(7)),
+            border: UiRect::all(px(if selected { 2 } else { 1 })),
+            border_radius: BorderRadius::all(px(4)),
+            ..default()
+        },
+        BackgroundColor(if selected {
+            Color::srgba_u8(72, 49, 25, 224)
+        } else {
+            Color::srgba_u8(10, 10, 14, 148)
+        }),
+        BorderColor::all(if selected {
+            status_border_active()
+        } else {
+            Color::srgba_u8(126, 98, 55, 95)
+        }),
+        TitleLoadSlotRow,
+    ));
+    if selected {
+        row.insert(SelectedTitleLoadSlotRow);
     }
-    let page_start = (menu.selected / 7) * 7;
-    let latest = catalog
-        .slots
+    row.with_children(|row| {
+        row.spawn(Node {
+            width: px(106),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
+        .with_children(|label| {
+            spawn_status_text(
+                label,
+                slot.label().to_uppercase(),
+                font,
+                15.0,
+                if slot.is_valid() {
+                    status_ink()
+                } else {
+                    status_muted()
+                },
+            );
+            if latest {
+                spawn_status_text(label, "LATEST", font, 10.0, status_gold());
+            }
+        });
+        row.spawn(Node {
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
+        .with_children(|content| {
+            spawn_load_slot_content(content, font, slot);
+        });
+        spawn_status_text(
+            row,
+            save_slot_state_label(slot),
+            font,
+            11.0,
+            save_slot_state_color(slot),
+        );
+    });
+}
+
+fn spawn_load_slot_content(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    slot: &SaveSlot,
+) {
+    match (&slot.state, &slot.metadata) {
+        (SaveSlotState::Empty, _) => {
+            spawn_status_text(parent, "—  EMPTY  —", font, 17.0, status_faint());
+        }
+        (SaveSlotState::Valid, Some(metadata)) => {
+            spawn_status_text(
+                parent,
+                format!(
+                    "{}    ({})",
+                    location_display_name(&metadata.location),
+                    metadata.protagonist_name
+                ),
+                font,
+                17.0,
+                status_ink(),
+            );
+            spawn_status_text(
+                parent,
+                format!(
+                    "LV {}      PLAYTIME {}",
+                    metadata.protagonist_level,
+                    Playtime::format(metadata.playtime_seconds)
+                ),
+                font,
+                12.0,
+                status_muted(),
+            );
+        }
+        (SaveSlotState::Corrupt(reason), _) => {
+            spawn_status_text(parent, "CORRUPT SAVE", font, 16.0, status_ember());
+            spawn_status_text(parent, reason, font, 11.0, status_muted());
+        }
+        (SaveSlotState::Incompatible(reason), _) => {
+            spawn_status_text(parent, "INCOMPATIBLE SAVE", font, 16.0, status_violet());
+            spawn_status_text(parent, reason, font, 11.0, status_muted());
+        }
+        _ => {
+            spawn_status_text(parent, "INVALID METADATA", font, 16.0, status_ember());
+        }
+    }
+}
+
+fn spawn_load_message(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, message: &str) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                justify_content: JustifyContent::Center,
+                padding: UiRect::axes(px(10), px(6)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 180)),
+            BorderColor::all(status_border_active()),
+        ))
+        .with_children(|banner| {
+            spawn_status_text(banner, message, font, 13.0, status_ink());
+        });
+}
+
+/// Reports the newest recorded slot so the picker can badge the row it opens on.
+pub(crate) fn latest_valid_slot(slots: &[SaveSlot]) -> Option<usize> {
+    slots
         .iter()
         .filter(|slot| slot.is_valid())
         .max_by_key(|slot| slot.saved_at_unix_seconds.unwrap_or(0))
-        .map(|slot| slot.index);
-    let rows = catalog
-        .slots
-        .iter()
-        .skip(page_start)
-        .take(7)
-        .map(|slot| {
-            let cursor = if slot.index == menu.selected {
-                ">"
-            } else {
-                " "
-            };
-            let latest = if Some(slot.index) == latest {
-                " [LATEST]"
-            } else {
-                ""
-            };
-            match (&slot.state, &slot.metadata) {
-                (SaveSlotState::Empty, _) => {
-                    format!("{cursor} {:<8} --- Empty ---", slot.label())
-                }
-                (SaveSlotState::Valid, Some(metadata)) => format!(
-                    "{cursor} {:<8} {} Lv{}  {}  {}{latest}",
-                    slot.label(),
-                    metadata.protagonist_name,
-                    metadata.protagonist_level,
-                    Playtime::format(metadata.playtime_seconds),
-                    metadata.location,
-                ),
-                (SaveSlotState::Corrupt(_), _) => {
-                    format!("{cursor} {:<8} [CORRUPT]", slot.label())
-                }
-                (SaveSlotState::Incompatible(_), _) => {
-                    format!("{cursor} {:<8} [INCOMPATIBLE]", slot.label())
-                }
-                _ => format!("{cursor} {:<8} [INVALID METADATA]", slot.label()),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    format!(
-        "LOAD GAME\n\n{rows}\n\n{}\nUP/DOWN Select  ENTER Load/inspect  ESC Back",
-        menu.message
-    )
+        .map(|slot| slot.index)
+}
+
+pub(crate) fn load_page_start(selected: usize) -> usize {
+    selected / LOAD_VISIBLE_ROWS * LOAD_VISIBLE_ROWS
+}
+
+pub(crate) fn save_slot_state_label(slot: &SaveSlot) -> &'static str {
+    match slot.state {
+        SaveSlotState::Empty => "OPEN",
+        SaveSlotState::Valid => "SAVED",
+        SaveSlotState::Corrupt(_) => "CORRUPT",
+        SaveSlotState::Incompatible(_) => "VERSION",
+    }
+}
+
+pub(crate) fn save_slot_state_color(slot: &SaveSlot) -> Color {
+    match slot.state {
+        SaveSlotState::Empty => status_muted(),
+        SaveSlotState::Valid => status_teal(),
+        SaveSlotState::Corrupt(_) => status_ember(),
+        SaveSlotState::Incompatible(_) => status_violet(),
+    }
 }
 
 fn cleanup_title_load_overlay(

@@ -48,8 +48,6 @@ pub(in crate::field_menu) fn render_quests(
     game: &GameState,
     catalog: &FieldMenuCatalog,
 ) -> String {
-    use crate::runtime_quest::{QuestStatus, quest_status};
-
     let quests = catalog.quests();
     let rows = quests
         .iter()

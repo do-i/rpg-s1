@@ -17,8 +17,12 @@ use crate::{
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
-const QUIT_START_TIMEOUT: Duration = Duration::from_secs(3);
-const QUIT_COMPLETION_TIMEOUT: Duration = Duration::from_secs(3);
+/// Bounded wait for the Quit confirmation to reach the audio device.
+///
+/// The chime is started, not awaited: shutdown must feel as immediate as the field menu's Quit,
+/// which writes [`AppExit`] on the spot. This deadline only covers a device that never hands back
+/// a sink, so a missing audio backend cannot stall the exit.
+const QUIT_START_TIMEOUT: Duration = Duration::from_millis(400);
 
 pub struct TitleScreenPlugin;
 
@@ -84,9 +88,6 @@ enum QuitLifecycleState {
     WaitingForStart {
         accepted_at: Duration,
     },
-    WaitingForCompletion {
-        started_at: Duration,
-    },
     ExitSent,
 }
 
@@ -99,17 +100,12 @@ impl QuitLifecycle {
     fn accepts_input(&self) -> bool {
         self.state == QuitLifecycleState::Idle
     }
-
-    fn playback_started(&self) -> bool {
-        matches!(self.state, QuitLifecycleState::WaitingForCompletion { .. })
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum QuitPlaybackObservation {
     AwaitingStart,
     Started,
-    CompletedAfterStart,
     AssetLoadFailed,
 }
 
@@ -125,6 +121,11 @@ enum QuitLifecycleEffect {
     EmitExit,
 }
 
+/// Advances the Quit lifecycle, emitting exactly one exit per activation.
+///
+/// Exit is emitted as soon as the confirmation reaches the device, rather than after the chime
+/// finishes. Waiting out the full sample cost the shutdown well over a second, which read as a
+/// hang next to the field menu's instant Quit.
 fn reduce_quit_lifecycle(
     lifecycle: &mut QuitLifecycle,
     elapsed: Duration,
@@ -143,26 +144,10 @@ fn reduce_quit_lifecycle(
         }
         QuitLifecycleEvent::Observe(observation) => match lifecycle.state {
             QuitLifecycleState::WaitingForStart { accepted_at } => {
-                if observation == QuitPlaybackObservation::AssetLoadFailed
-                    || elapsed.saturating_sub(accepted_at) >= QUIT_START_TIMEOUT
-                {
-                    lifecycle.state = QuitLifecycleState::ExitSent;
-                    Some(QuitLifecycleEffect::EmitExit)
-                } else if observation == QuitPlaybackObservation::Started {
-                    lifecycle.state = QuitLifecycleState::WaitingForCompletion {
-                        started_at: elapsed,
-                    };
-                    None
-                } else {
-                    None
-                }
-            }
-            QuitLifecycleState::WaitingForCompletion { started_at } => {
                 if matches!(
                     observation,
-                    QuitPlaybackObservation::CompletedAfterStart
-                        | QuitPlaybackObservation::AssetLoadFailed
-                ) || elapsed.saturating_sub(started_at) >= QUIT_COMPLETION_TIMEOUT
+                    QuitPlaybackObservation::Started | QuitPlaybackObservation::AssetLoadFailed
+                ) || elapsed.saturating_sub(accepted_at) >= QUIT_START_TIMEOUT
                 {
                     lifecycle.state = QuitLifecycleState::ExitSent;
                     Some(QuitLifecycleEffect::EmitExit)
@@ -388,8 +373,6 @@ fn observe_quit_playback(
         } else {
             QuitPlaybackObservation::AwaitingStart
         }
-    } else if quit.playback_started() {
-        QuitPlaybackObservation::CompletedAfterStart
     } else {
         QuitPlaybackObservation::AwaitingStart
     };
@@ -601,7 +584,7 @@ mod tests {
             observe_at(
                 &mut lifecycle,
                 Duration::from_millis(10_001),
-                QuitPlaybackObservation::Started
+                QuitPlaybackObservation::AwaitingStart
             ),
             None
         );
@@ -615,21 +598,21 @@ mod tests {
         );
         assert_eq!(
             lifecycle.state,
-            QuitLifecycleState::WaitingForCompletion {
-                started_at: Duration::from_millis(10_001)
+            QuitLifecycleState::WaitingForStart {
+                accepted_at: Duration::from_secs(10)
             }
         );
     }
 
     #[test]
-    fn normal_playback_exits_only_after_start_then_completion() {
+    fn playback_start_exits_without_waiting_for_the_chime_to_finish() {
         let mut lifecycle = QuitLifecycle::default();
         activate_at(&mut lifecycle, Duration::ZERO);
 
         assert_eq!(
             observe_at(
                 &mut lifecycle,
-                Duration::from_millis(250),
+                Duration::from_millis(16),
                 QuitPlaybackObservation::AwaitingStart
             ),
             None
@@ -637,18 +620,11 @@ mod tests {
         assert_eq!(
             observe_at(
                 &mut lifecycle,
-                Duration::from_millis(500),
+                Duration::from_millis(33),
                 QuitPlaybackObservation::Started
             ),
-            None
-        );
-        assert_eq!(
-            observe_at(
-                &mut lifecycle,
-                Duration::from_millis(1_900),
-                QuitPlaybackObservation::CompletedAfterStart
-            ),
-            Some(QuitLifecycleEffect::EmitExit)
+            Some(QuitLifecycleEffect::EmitExit),
+            "the exit must not wait out the confirmation sample"
         );
         assert_eq!(lifecycle.state, QuitLifecycleState::ExitSent);
     }
@@ -677,7 +653,7 @@ mod tests {
         assert_eq!(
             observe_at(
                 &mut lifecycle,
-                Duration::from_millis(6_999),
+                Duration::from_secs(4) + QUIT_START_TIMEOUT - Duration::from_millis(1),
                 QuitPlaybackObservation::AwaitingStart
             ),
             None
@@ -685,62 +661,10 @@ mod tests {
         assert_eq!(
             observe_at(
                 &mut lifecycle,
-                Duration::from_secs(7),
+                Duration::from_secs(4) + QUIT_START_TIMEOUT,
                 QuitPlaybackObservation::AwaitingStart
             ),
             Some(QuitLifecycleEffect::EmitExit)
-        );
-    }
-
-    #[test]
-    fn completion_timeout_fires_at_the_exact_boundary() {
-        let mut lifecycle = QuitLifecycle::default();
-        activate_at(&mut lifecycle, Duration::ZERO);
-        assert_eq!(
-            observe_at(
-                &mut lifecycle,
-                Duration::from_millis(250),
-                QuitPlaybackObservation::Started
-            ),
-            None
-        );
-
-        assert_eq!(
-            observe_at(
-                &mut lifecycle,
-                Duration::from_millis(3_249),
-                QuitPlaybackObservation::Started
-            ),
-            None
-        );
-        assert_eq!(
-            observe_at(
-                &mut lifecycle,
-                Duration::from_millis(3_250),
-                QuitPlaybackObservation::Started
-            ),
-            Some(QuitLifecycleEffect::EmitExit)
-        );
-    }
-
-    #[test]
-    fn completion_cannot_be_inferred_before_a_sink_was_seen() {
-        let mut lifecycle = QuitLifecycle::default();
-        activate_at(&mut lifecycle, Duration::ZERO);
-
-        assert_eq!(
-            observe_at(
-                &mut lifecycle,
-                Duration::from_secs(1),
-                QuitPlaybackObservation::CompletedAfterStart
-            ),
-            None
-        );
-        assert_eq!(
-            lifecycle.state,
-            QuitLifecycleState::WaitingForStart {
-                accepted_at: Duration::ZERO
-            }
         );
     }
 
@@ -751,7 +675,7 @@ mod tests {
         assert_eq!(
             observe_at(
                 &mut lifecycle,
-                Duration::from_secs(3),
+                QUIT_START_TIMEOUT,
                 QuitPlaybackObservation::AwaitingStart
             ),
             Some(QuitLifecycleEffect::EmitExit)
@@ -760,7 +684,6 @@ mod tests {
         for observation in [
             QuitPlaybackObservation::AwaitingStart,
             QuitPlaybackObservation::Started,
-            QuitPlaybackObservation::CompletedAfterStart,
             QuitPlaybackObservation::AssetLoadFailed,
         ] {
             assert_eq!(
@@ -878,10 +801,10 @@ mod tests {
 
         let mut exit_cursor = app.world().resource::<Messages<AppExit>>().get_cursor();
         app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
-            Duration::from_millis(250),
+            QUIT_START_TIMEOUT / 8,
         ));
 
-        for _ in 1..12 {
+        for _ in 1..8 {
             app.update();
             assert_eq!(
                 exit_cursor

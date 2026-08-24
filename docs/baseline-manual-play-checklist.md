@@ -166,6 +166,22 @@ decoder. This proves that the new confirm event reached the captured
 hardware-bound PCM before clean process exit; it is not a claim that a human
 listener acoustically heard a loudspeaker.
 
+## M0.17c amendment — Quit no longer waits out the confirmation
+
+Amended 2026-08-24. The lifecycle recorded above emitted `AppExit` only after
+the confirmation sample finished, which the 1.333333-second `menu_confirm.mp3`
+turned into a 1.5-second stall between Return and process exit. Measured on
+this machine at three runs each, key-to-exit was 1.531/1.497/1.559 seconds
+before the change and 0.186/0.188/0.145 seconds after it. The field menu's Quit
+had always exited immediately, so the title screen read as hung by comparison.
+
+`reduce_quit_lifecycle` now emits the exit as soon as the confirmation reaches
+the audio device, and the no-sink fallback deadline drops from 3 seconds to 400
+milliseconds. The M0.17c evidence above therefore no longer describes current
+behavior on one point only: the captured PCM will contain the confirmation's
+onset rather than the complete 1.333333-second event. Every other M0.17c
+assertion — one exit, status 0, no lingering process — still holds.
+
 ## M0.17 graphics-hardware blocker recheck
 
 The graphics prerequisite was rechecked on 2026-08-08. The guest exposes a
