@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    # Every branch still gets CI, but a release tag must not: release.sh pushes
+    # main and the tag atomically, and release.yml already builds the tag.
+    # Without this, one cut would queue three runs instead of one.
+    tags-ignore: ['**']
   pull_request:
 
 permissions:
