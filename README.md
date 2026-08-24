@@ -82,6 +82,10 @@ tagged. Cut a release from `dev`:
 scripts/release.sh status      # show state, change nothing
 scripts/release.sh --dry-run cut
 scripts/release.sh cut         # bump, wait for CI, fast-forward main, tag
+
+# or, to avoid blocking on the CI wait:
+scripts/release.sh bump        # bump version, push to dev, then stop
+scripts/release.sh tag         # check CI once and, if green, fast-forward main, tag
 ```
 
 Versions are calendar-based (`year.month.sequence`, tagged `v2026.8.1`), and
