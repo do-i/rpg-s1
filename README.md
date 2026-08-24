@@ -40,8 +40,9 @@ advances the intro, while Escape uses the supported intro-skip path. In Ardel,
 tap the Arrow keys to move one tile; perpendicular arrows provide diagonal
 movement. Load Game is enabled whenever at least one valid native slot exists.
 
-In the World, press `M` for the field menu, `I` for Items, or `S` for Status.
-Use Arrow keys to navigate, Enter to confirm, and Escape to return one level.
+In the World, press `M` or `Escape` for the field menu, `I` for Items, `S` for
+Status, or `Q` for Quests. Use Arrow keys to navigate, Enter to confirm, and
+Escape to return one level.
 The M6 slice includes shared party/status, inventory tabs and item use,
 equipment previews/swaps, learned field spells, and visited-map teleporting.
 Save opens slots 1-100; empty slots write immediately, while occupied slots
