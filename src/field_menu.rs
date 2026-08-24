@@ -51,6 +51,8 @@ use ui::{
 const INVENTORY_PAGE_ROWS: usize = 10;
 const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 const SPELLBOOK_VISIBLE_ROWS: usize = 7;
+/// Rows per column on the two-column main command deck.
+const MAIN_COMMAND_ROWS: usize = 4;
 const QUEST_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
 const SAVE_COMMAND_INDEX: usize = 5;
@@ -117,6 +119,8 @@ const ITEMS_POUCH_WIDTH: f32 = 286.0;
 const ITEMS_DETAIL_WIDTH: f32 = 378.0;
 const ITEMS_COLUMN_GAP: f32 = 18.0;
 const EQUIPMENT_SLOT_WIDTH: f32 = 306.0;
+const MAIN_DECK_WIDTH: f32 = 772.0;
+const MAIN_DECK_COLUMN_GAP: f32 = 14.0;
 const QUEST_LIST_WIDTH: f32 = 512.0;
 const QUEST_COLUMN_GAP: f32 = 18.0;
 
@@ -421,7 +425,7 @@ fn handle_field_menu_input(
         {
             return;
         }
-        if keys.just_pressed(KeyCode::KeyM) {
+        if keys.just_pressed(KeyCode::KeyM) || actions.just_pressed(AppAction::Back) {
             state.open(FieldMenuScreen::Main);
         } else if keys.just_pressed(KeyCode::KeyI) {
             state.open(FieldMenuScreen::Items);
@@ -461,8 +465,8 @@ fn handle_field_menu_input(
 
     match (state.screen, state.mode) {
         (FieldMenuScreen::Main, FieldMenuMode::Browse) => {
-            if let Some(delta) = vertical {
-                state.selected = wrapped(state.selected, MAIN_COMMANDS.len(), delta);
+            if vertical.is_some() || horizontal.is_some() {
+                state.selected = stepped_main_command(state.selected, vertical, horizontal);
             }
             if actions.just_pressed(AppAction::Confirm) {
                 if state.selected == SAVE_COMMAND_INDEX {
@@ -941,6 +945,45 @@ fn wrapped(current: usize, count: usize, delta: isize) -> usize {
 
 fn wrapped_quantity(current: u32, max: u32, delta: isize) -> u32 {
     ((current.saturating_sub(1) as isize + delta).rem_euclid(max as isize) + 1) as u32
+}
+
+/// Columns the command deck needs to hold every command at [`MAIN_COMMAND_ROWS`] per column.
+const fn main_command_columns() -> usize {
+    MAIN_COMMANDS.len().div_ceil(MAIN_COMMAND_ROWS)
+}
+
+/// Commands in one deck column; the last column is short when the count does not divide evenly.
+const fn main_command_column_len(column: usize) -> usize {
+    let remaining = MAIN_COMMANDS
+        .len()
+        .saturating_sub(column * MAIN_COMMAND_ROWS);
+    if remaining < MAIN_COMMAND_ROWS {
+        remaining
+    } else {
+        MAIN_COMMAND_ROWS
+    }
+}
+
+/// Moves the deck cursor across the command grid, wrapping on both axes.
+///
+/// Commands fill each column top to bottom before the next one starts, so the index alone carries
+/// the column. Crossing into a short column clamps the row rather than landing on nothing.
+fn stepped_main_command(
+    selected: usize,
+    vertical: Option<isize>,
+    horizontal: Option<isize>,
+) -> usize {
+    let selected = selected.min(MAIN_COMMANDS.len() - 1);
+    let mut column = selected / MAIN_COMMAND_ROWS;
+    let mut row = selected % MAIN_COMMAND_ROWS;
+    if let Some(delta) = horizontal {
+        column = wrapped(column, main_command_columns(), delta);
+        row = row.min(main_command_column_len(column) - 1);
+    }
+    if let Some(delta) = vertical {
+        row = wrapped(row, main_command_column_len(column), delta);
+    }
+    column * MAIN_COMMAND_ROWS + row
 }
 
 fn main_command_screen(index: usize) -> Option<FieldMenuScreen> {
@@ -1533,6 +1576,44 @@ mod tests {
         assert_eq!(state.screen, FieldMenuScreen::Main);
         state.back();
         assert!(!state.open);
+    }
+
+    #[test]
+    fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
+        // Left column holds Status, Spells, Items, Equipment; right holds Quests, Save, Quit.
+        assert_eq!(stepped_main_command(0, Some(1), None), 1);
+        assert_eq!(stepped_main_command(3, Some(1), None), 0);
+        assert_eq!(stepped_main_command(0, Some(-1), None), 3);
+        assert_eq!(stepped_main_command(4, Some(-1), None), 6);
+
+        assert_eq!(stepped_main_command(1, None, Some(1)), 5);
+        assert_eq!(stepped_main_command(5, None, Some(1)), 1);
+        assert_eq!(stepped_main_command(5, None, Some(-1)), 1);
+    }
+
+    #[test]
+    fn crossing_into_the_short_column_clamps_to_its_last_command() {
+        assert_eq!(main_command_columns(), 2);
+        assert_eq!(main_command_column_len(0), 4);
+        assert_eq!(main_command_column_len(1), 3);
+
+        // Equipment sits on a row the Quit column does not have.
+        assert_eq!(stepped_main_command(3, None, Some(1)), 6);
+    }
+
+    #[test]
+    fn the_deck_cursor_never_leaves_the_command_list() {
+        for selected in 0..MAIN_COMMANDS.len() {
+            for vertical in [None, Some(-1), Some(1)] {
+                for horizontal in [None, Some(-1), Some(1)] {
+                    let stepped = stepped_main_command(selected, vertical, horizontal);
+                    assert!(
+                        stepped < MAIN_COMMANDS.len(),
+                        "{selected} + {vertical:?}/{horizontal:?} left the deck at {stepped}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

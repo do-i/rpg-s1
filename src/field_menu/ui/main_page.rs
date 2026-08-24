@@ -69,7 +69,7 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
             });
             spawn_status_text(
                 page,
-                "UP/DOWN   SELECT      ENTER   CONFIRM      M / ESC   CLOSE",
+                "ARROWS   SELECT      ENTER   CONFIRM      M / ESC   CLOSE",
                 font,
                 15.0,
                 status_muted(),
@@ -123,8 +123,7 @@ pub(in crate::field_menu) fn spawn_main_commands_panel(
     spawn_status_panel(
         parent,
         Node {
-            width: px(460),
-            height: px(468),
+            width: px(MAIN_DECK_WIDTH),
             flex_direction: FlexDirection::Column,
             row_gap: px(8),
             padding: UiRect::all(px(16)),
@@ -135,11 +134,47 @@ pub(in crate::field_menu) fn spawn_main_commands_panel(
         "COMMANDS",
         font,
         |panel| {
-            for (index, command) in MAIN_COMMANDS.iter().enumerate() {
-                spawn_main_command_row(panel, font, command, index, index == state.selected);
-            }
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    column_gap: px(MAIN_DECK_COLUMN_GAP),
+                    align_items: AlignItems::Start,
+                    ..default()
+                })
+                .with_children(|columns| {
+                    for column in 0..main_command_columns() {
+                        spawn_main_command_column(columns, font, state, column);
+                    }
+                });
         },
     );
+}
+
+pub(in crate::field_menu) fn spawn_main_command_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    column: usize,
+) {
+    parent
+        .spawn(Node {
+            flex_basis: px(0),
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            row_gap: px(8),
+            ..default()
+        })
+        .with_children(|list| {
+            for (index, command) in MAIN_COMMANDS
+                .iter()
+                .enumerate()
+                .skip(column * MAIN_COMMAND_ROWS)
+                .take(MAIN_COMMAND_ROWS)
+            {
+                spawn_main_command_row(list, font, command, index, index == state.selected);
+            }
+        });
 }
 
 pub(in crate::field_menu) fn spawn_main_command_row(
@@ -276,6 +311,7 @@ pub(in crate::field_menu) fn main_command_accent(index: usize) -> Color {
         2 => status_ember(),
         3 => status_gold(),
         4 => Color::srgb_u8(91, 143, 183),
+        5 => Color::srgb_u8(124, 158, 116),
         _ => Color::srgb_u8(190, 72, 66),
     }
 }
