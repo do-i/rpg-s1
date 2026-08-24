@@ -110,8 +110,28 @@ tags = ["release", "dry", "run", "preview", "version", "tag"]
 description = "Show exactly what cutting a release would do without bumping, tagging, or pushing anything"
 
 [[items]]
+id = "release-bump"
+label = "1 Cut Release"
+key = "n"
+command = ["scripts/release.sh", "bump"]
+group = "Release"
+tags = ["release", "bump", "version", "dev", "cut"]
+description = "Bump the version on dev and push, then stop — no CI wait. Follow up with '2 Push Tag' once CI is green"
+confirm = true
+
+[[items]]
+id = "release-tag"
+label = "2 Push Tag"
+key = "g"
+command = ["scripts/release.sh", "tag"]
+group = "Release"
+tags = ["release", "tag", "publish", "binary", "main"]
+description = "Check CI once (no wait) and, if green, fast-forward main and push the tag that builds the release binary"
+confirm = true
+
+[[items]]
 id = "release-cut"
-label = "Cut release"
+label = "Cut Release (all-in-one)"
 key = "p"
 command = ["scripts/release.sh", "cut"]
 group = "Release"

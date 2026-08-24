@@ -40,11 +40,19 @@
 #
 # Usage:
 #   scripts/release.sh status               # show state, change nothing
-#   scripts/release.sh cut                  # cut a release
+#   scripts/release.sh cut                  # bump, wait for CI, tag, and push - one shot
 #   scripts/release.sh cut 2026.8.4         # cut an explicit version
+#   scripts/release.sh bump                 # bump version, push to dev, then stop
+#   scripts/release.sh tag                  # check CI once and, if green, tag + push main
 #   scripts/release.sh --dry-run cut        # show what would happen
 #   scripts/release.sh --skip-ci-check cut  # bypass the CI gate
 #   scripts/release.sh --yes cut            # skip the confirmation prompt
+#
+# `cut` blocks for however long CI takes. To avoid that wait, run the same
+# flow as two steps instead:
+#   scripts/release.sh bump   # bumps + pushes, then stops
+#   ...watch CI yourself, e.g. `gh run watch`...
+#   scripts/release.sh tag    # single CI check (no polling), then tag + push
 
 set -euo pipefail
 
@@ -71,7 +79,7 @@ for arg in "$@"; do
         --skip-ci-check) SKIP_CI_CHECK=1 ;;
         --yes|-y) ASSUME_YES=1 ;;
         -h|--help) print_usage; exit 0 ;;
-        cut|status) COMMAND="$arg" ;;
+        cut|bump|tag|status) COMMAND="$arg" ;;
         v*) EXPLICIT_VERSION="${arg#v}" ;;
         [0-9]*) EXPLICIT_VERSION="$arg" ;;
         *) echo "error: unknown argument '$arg'" >&2; exit 2 ;;
@@ -240,6 +248,62 @@ check_ci_status() {
     done
 }
 
+# Shared preconditions for bump/tag/cut: clean tree, on dev, fetched, dev
+# pushed, main not diverged. Exits on any violation.
+common_guards() {
+    if [[ -n "$(git status --porcelain)" ]]; then
+        echo "error: working tree is dirty. Commit or stash first." >&2
+        exit 1
+    fi
+    check_on_dev_branch
+    fetch_all
+    check_local_dev_pushed
+    check_not_diverged
+}
+
+# Single, non-blocking CI check for `tag`, whose caller is expected to have
+# already watched CI to green themselves. Fails fast instead of polling.
+check_ci_status_once() {
+    local sha="$1"
+    if [[ "$SKIP_CI_CHECK" == "1" ]]; then
+        echo "warning: skipping CI status check (--skip-ci-check)." >&2
+        return
+    fi
+    if [[ "$DRY_RUN" == "1" ]]; then
+        echo "  [dry-run] would check $WORKFLOW status once for ${sha:0:12}"
+        return
+    fi
+    if ! command -v gh &>/dev/null; then
+        echo "error: gh CLI not found; cannot verify CI status for $sha." >&2
+        echo "Install gh, or pass --skip-ci-check to override." >&2
+        exit 1
+    fi
+    if ! gh auth status &>/dev/null; then
+        echo "error: gh is not authenticated; cannot verify CI status for $sha." >&2
+        echo "Run 'gh auth login', or pass --skip-ci-check to override." >&2
+        exit 1
+    fi
+
+    local state status conclusion
+    state="$(ci_run_state "$sha")"
+    read -r status conclusion <<<"$state"
+
+    if [[ "$status" == "completed" && "$conclusion" == "success" ]]; then
+        echo "CI check: $WORKFLOW passed for $DEV_BRANCH @ ${sha:0:12}."
+        return
+    fi
+
+    if [[ -z "$status" || "$status" == "null" ]]; then
+        echo "error: no $WORKFLOW run found yet for ${sha:0:12}." >&2
+    elif [[ "$status" == "completed" ]]; then
+        echo "error: $WORKFLOW for ${sha:0:12} concluded '$conclusion', not success." >&2
+    else
+        echo "error: $WORKFLOW for ${sha:0:12} is still '$status'." >&2
+    fi
+    echo "Wait for it to finish, then rerun: scripts/release.sh tag" >&2
+    exit 1
+}
+
 confirm() {
     local prompt="$1"
     if [[ "$ASSUME_YES" == "1" || "$DRY_RUN" == "1" ]]; then
@@ -303,15 +367,90 @@ show_status() {
     echo "Auto-computed version for today: $(auto_next_version)"
 }
 
-cmd_cut() {
-    if [[ -n "$(git status --porcelain)" ]]; then
-        echo "error: working tree is dirty. Commit or stash first." >&2
+cmd_bump() {
+    common_guards
+
+    local version tag
+    version="${EXPLICIT_VERSION:-$(auto_next_version)}"
+    tag="v${version}"
+    if ! [[ "$version" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+        echo "error: version '$version' is not year.month.sequence (e.g. 2026.8.1)." >&2
         exit 1
     fi
-    check_on_dev_branch
-    fetch_all
-    check_local_dev_pushed
-    check_not_diverged
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "error: tag $tag already exists." >&2
+        exit 1
+    fi
+
+    echo "Bumping to $version."
+    echo "Commits that will land on $DEFAULT_BRANCH once tagged:"
+    git log --oneline "origin/$DEFAULT_BRANCH..origin/$DEV_BRANCH"
+    echo
+    if ! confirm "Bump to $version and push to $DEV_BRANCH?"; then
+        echo "Aborted."
+        exit 1
+    fi
+
+    if [[ "$(cargo_version)" != "$version" ]]; then
+        bump_version "$version"
+    else
+        echo "Cargo.toml is already at $version; no bump needed."
+    fi
+
+    local dev_sha
+    dev_sha="$(git rev-parse "$DEV_BRANCH")"
+    echo
+    echo "Pushed. Once $WORKFLOW is green on ${dev_sha:0:12}, run:"
+    echo "  scripts/release.sh tag"
+}
+
+cmd_tag() {
+    common_guards
+
+    local version tag dev_sha
+    version="$(cargo_version)"
+    tag="v${version}"
+    if ! [[ "$version" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+        echo "error: Cargo.toml version '$version' is not year.month.sequence (e.g. 2026.8.1)." >&2
+        exit 1
+    fi
+    if [[ -n "$EXPLICIT_VERSION" && "$EXPLICIT_VERSION" != "$version" ]]; then
+        echo "error: Cargo.toml is at $version, but $EXPLICIT_VERSION was requested." >&2
+        exit 1
+    fi
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "error: tag $tag already exists. Did 'bump' already run, or 'tag' run twice?" >&2
+        exit 1
+    fi
+
+    dev_sha="$(git rev-parse "$DEV_BRANCH")"
+    check_ci_status_once "$dev_sha"
+
+    if ! confirm "Tag and publish $tag?"; then
+        echo "Aborted."
+        exit 1
+    fi
+
+    run git tag -a "$tag" "$dev_sha" -m "rpg-s1 ${version}"
+    run git push --atomic origin \
+        "${dev_sha}:refs/heads/${DEFAULT_BRANCH}" "refs/tags/${tag}"
+    if [[ "$DRY_RUN" != "1" ]] && git show-ref --verify --quiet "refs/heads/$DEFAULT_BRANCH"; then
+        if git merge-base --is-ancestor "$DEFAULT_BRANCH" "$dev_sha"; then
+            git branch -f "$DEFAULT_BRANCH" "$dev_sha"
+            echo "Fast-forwarded local $DEFAULT_BRANCH to ${dev_sha:0:12}."
+        else
+            echo "warning: local $DEFAULT_BRANCH has diverged; not updating it." >&2
+        fi
+    fi
+
+    echo
+    echo "Released $tag."
+    echo "release.yml will build the Linux x86_64 binary, bundle it with assets/,"
+    echo "and attach the tarball to the GitHub release."
+}
+
+cmd_cut() {
+    common_guards
 
     local version tag
     version="${EXPLICIT_VERSION:-$(auto_next_version)}"
@@ -373,9 +512,11 @@ cmd_cut() {
 
 case "$COMMAND" in
     cut) cmd_cut ;;
+    bump) cmd_bump ;;
+    tag) cmd_tag ;;
     status) show_status ;;
     "")
-        echo "error: no command given; expected 'cut' or 'status'." >&2
+        echo "error: no command given; expected 'bump', 'tag', 'cut', or 'status'." >&2
         echo >&2
         print_usage >&2
         exit 2
