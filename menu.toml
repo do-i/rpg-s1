@@ -112,7 +112,7 @@ description = "Show exactly what cutting a release would do without bumping, tag
 [[items]]
 id = "release-cut"
 label = "Cut release"
-key = "R"
+key = "p"
 command = ["scripts/release.sh", "cut"]
 group = "Release"
 tags = ["release", "cut", "tag", "version", "publish", "binary"]
