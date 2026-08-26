@@ -1,15 +1,15 @@
-//! Renderer-independent atlas slicing for Aric's four-direction walk sheet.
+//! Renderer-independent atlas slicing for the engine's four-direction character profile.
 //!
 //! The pinned Python renderer indexes sheet rows in `Up`, `Left`, `Down`, `Right` order.
-//! Aric's TSX attaches the corresponding walk animations to tiles `0`, `9`, `18`, and `27`;
-//! those owner tiles are the idle/base frames at column zero of each row. This adapter validates
-//! that exact authored profile before exposing frame rectangles to later rendering work.
+//! A scenario protagonist using this profile attaches the corresponding walk animations to tiles
+//! `0`, `9`, `18`, and `27`; those owner tiles are the idle/base frames at column zero of each
+//! row. This adapter validates that engine/content contract before exposing frame rectangles.
 
 #![cfg_attr(
     not(test),
     expect(
         dead_code,
-        reason = "M4.16/M4.20 establish Aric atlas selection and authored animation playback"
+        reason = "the character atlas profile also exposes renderer-independent diagnostics"
     )
 )]
 
@@ -18,13 +18,13 @@ use std::{error::Error, fmt};
 use super::CardinalDirection;
 use crate::tsx_metadata::TsxTilesetMetadata;
 
-const ARIC_FRAME_SIZE: u32 = 64;
-const ARIC_COLUMNS: u32 = 9;
-const ARIC_ROWS: u32 = 4;
-const ARIC_TILE_COUNT: u32 = ARIC_COLUMNS * ARIC_ROWS;
-const ARIC_IMAGE_WIDTH: u32 = ARIC_COLUMNS * ARIC_FRAME_SIZE;
-const ARIC_IMAGE_HEIGHT: u32 = ARIC_ROWS * ARIC_FRAME_SIZE;
-const ARIC_ANIMATION_OWNERS: [u32; 4] = [0, 9, 18, 27];
+const CHARACTER_FRAME_SIZE: u32 = 64;
+const CHARACTER_COLUMNS: u32 = 9;
+const CHARACTER_ROWS: u32 = 4;
+const CHARACTER_TILE_COUNT: u32 = CHARACTER_COLUMNS * CHARACTER_ROWS;
+const CHARACTER_IMAGE_WIDTH: u32 = CHARACTER_COLUMNS * CHARACTER_FRAME_SIZE;
+const CHARACTER_IMAGE_HEIGHT: u32 = CHARACTER_ROWS * CHARACTER_FRAME_SIZE;
+const CARDINAL_ANIMATION_OWNERS: [u32; 4] = [0, 9, 18, 27];
 
 /// One tileset-local frame and its pixel rectangle within the atlas image.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -87,9 +87,9 @@ impl AtlasRectangle {
     }
 }
 
-/// Validated slicing and directional base-frame selection for Aric's walk atlas.
+/// Validated slicing and directional base-frame selection for a cardinal character atlas.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct AricAtlasLayout {
+pub(crate) struct CardinalCharacterAtlas {
     frame_width: u32,
     frame_height: u32,
     columns: u32,
@@ -99,25 +99,33 @@ pub(crate) struct AricAtlasLayout {
     directional_walk_frames: [Vec<AtlasAnimationFrame>; 4],
 }
 
-impl AricAtlasLayout {
-    /// Validates and projects Aric's strict TSX metadata into renderer-independent rectangles.
+impl CardinalCharacterAtlas {
+    /// Validates and projects the cardinal-character TSX profile into independent rectangles.
     pub(crate) fn from_tsx_metadata(
         metadata: &TsxTilesetMetadata,
-    ) -> Result<Self, AricAtlasLayoutError> {
-        require_value("tile width", metadata.tile_width(), ARIC_FRAME_SIZE)?;
-        require_value("tile height", metadata.tile_height(), ARIC_FRAME_SIZE)?;
-        require_value("column count", metadata.columns(), ARIC_COLUMNS)?;
-        require_value("tile count", metadata.tile_count(), ARIC_TILE_COUNT)?;
-        require_value("image width", metadata.image().width(), ARIC_IMAGE_WIDTH)?;
-        require_value("image height", metadata.image().height(), ARIC_IMAGE_HEIGHT)?;
+    ) -> Result<Self, CardinalCharacterAtlasError> {
+        require_value("tile width", metadata.tile_width(), CHARACTER_FRAME_SIZE)?;
+        require_value("tile height", metadata.tile_height(), CHARACTER_FRAME_SIZE)?;
+        require_value("column count", metadata.columns(), CHARACTER_COLUMNS)?;
+        require_value("tile count", metadata.tile_count(), CHARACTER_TILE_COUNT)?;
+        require_value(
+            "image width",
+            metadata.image().width(),
+            CHARACTER_IMAGE_WIDTH,
+        )?;
+        require_value(
+            "image height",
+            metadata.image().height(),
+            CHARACTER_IMAGE_HEIGHT,
+        )?;
 
         let animation_owners = metadata
             .animations()
             .iter()
             .map(|animation| animation.tile_id())
             .collect::<Vec<_>>();
-        if animation_owners != ARIC_ANIMATION_OWNERS {
-            return Err(AricAtlasLayoutError::AnimationOwners {
+        if animation_owners != CARDINAL_ANIMATION_OWNERS {
+            return Err(CardinalCharacterAtlasError::AnimationOwners {
                 actual: animation_owners,
             });
         }
@@ -139,7 +147,7 @@ impl AricAtlasLayout {
             columns: metadata.columns(),
             rows: metadata.image().height() / metadata.tile_height(),
             tile_count: metadata.tile_count(),
-            directional_base_tiles: ARIC_ANIMATION_OWNERS,
+            directional_base_tiles: CARDINAL_ANIMATION_OWNERS,
             directional_walk_frames,
         })
     }
@@ -187,7 +195,7 @@ impl AricAtlasLayout {
         let index = direction_index(direction);
         let tile_id = self.directional_base_tiles[index];
         self.frame(tile_id)
-            .expect("validated directional base tile must be inside the Aric atlas")
+            .expect("validated directional base tile must be inside the character atlas")
     }
 
     /// Returns the exact ordered TSX walk frames for one cardinal facing.
@@ -205,9 +213,9 @@ const fn direction_index(direction: CardinalDirection) -> usize {
     }
 }
 
-/// A failure to match the strict authored Aric atlas profile.
+/// A failure to match the engine's cardinal-character atlas profile.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum AricAtlasLayoutError {
+pub(crate) enum CardinalCharacterAtlasError {
     Geometry {
         field: &'static str,
         expected: u32,
@@ -218,7 +226,7 @@ pub(crate) enum AricAtlasLayoutError {
     },
 }
 
-impl fmt::Display for AricAtlasLayoutError {
+impl fmt::Display for CardinalCharacterAtlasError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Geometry {
@@ -227,27 +235,27 @@ impl fmt::Display for AricAtlasLayoutError {
                 actual,
             } => write!(
                 formatter,
-                "Aric atlas {field} must be {expected}, found {actual}"
+                "character atlas {field} must be {expected}, found {actual}"
             ),
             Self::AnimationOwners { actual } => write!(
                 formatter,
-                "Aric atlas animation owners must be [0, 9, 18, 27], found {actual:?}"
+                "character atlas animation owners must be [0, 9, 18, 27], found {actual:?}"
             ),
         }
     }
 }
 
-impl Error for AricAtlasLayoutError {}
+impl Error for CardinalCharacterAtlasError {}
 
 fn require_value(
     field: &'static str,
     actual: u32,
     expected: u32,
-) -> Result<(), AricAtlasLayoutError> {
+) -> Result<(), CardinalCharacterAtlasError> {
     if actual == expected {
         Ok(())
     } else {
-        Err(AricAtlasLayoutError::Geometry {
+        Err(CardinalCharacterAtlasError::Geometry {
             field,
             expected,
             actual,
@@ -257,7 +265,10 @@ fn require_value(
 
 #[cfg(test)]
 mod tests {
-    use super::{ARIC_ANIMATION_OWNERS, AricAtlasLayout, AricAtlasLayoutError, AtlasRectangle};
+    use super::{
+        AtlasRectangle, CARDINAL_ANIMATION_OWNERS, CardinalCharacterAtlas,
+        CardinalCharacterAtlasError,
+    };
     use crate::{
         scenario_path::ScenarioRelativePath, scenario_spatial::CardinalDirection,
         tsx_metadata::parse_tsx_tileset_metadata,
@@ -275,7 +286,7 @@ mod tests {
 
     #[test]
     fn copied_aric_metadata_slices_576_by_256_into_nine_by_four_64_pixel_cells() {
-        let layout = AricAtlasLayout::from_tsx_metadata(&metadata(COPIED_ARIC_TSX))
+        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX))
             .expect("copied Aric metadata should match its authored atlas");
 
         assert_eq!(layout.frame_width(), 64);
@@ -306,7 +317,7 @@ mod tests {
 
     #[test]
     fn cardinal_directions_select_the_exact_tsx_animation_owner_base_frames() {
-        let layout = AricAtlasLayout::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
+        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
 
         for ((direction, expected_tile), expected_y) in [
             (CardinalDirection::Up, 0_u32),
@@ -328,7 +339,7 @@ mod tests {
 
     #[test]
     fn cardinal_walks_retain_exact_authored_frame_ids_and_durations() {
-        let layout = AricAtlasLayout::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
+        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
 
         for (direction, expected_tiles) in [
             (CardinalDirection::Up, 1_u32..=8),
@@ -355,8 +366,8 @@ mod tests {
             .replace("height=\"256\"", "height=\"320\"");
 
         assert_eq!(
-            AricAtlasLayout::from_tsx_metadata(&metadata(&taller)),
-            Err(AricAtlasLayoutError::Geometry {
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(&taller)),
+            Err(CardinalCharacterAtlasError::Geometry {
                 field: "tile count",
                 expected: 36,
                 actual: 45,
@@ -369,11 +380,11 @@ mod tests {
         let wrong_owner = COPIED_ARIC_TSX.replacen("<tile id=\"9\">", "<tile id=\"10\">", 1);
 
         assert_eq!(
-            AricAtlasLayout::from_tsx_metadata(&metadata(&wrong_owner)),
-            Err(AricAtlasLayoutError::AnimationOwners {
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(&wrong_owner)),
+            Err(CardinalCharacterAtlasError::AnimationOwners {
                 actual: vec![0, 10, 18, 27],
             })
         );
-        assert_eq!(ARIC_ANIMATION_OWNERS, [0, 9, 18, 27]);
+        assert_eq!(CARDINAL_ANIMATION_OWNERS, [0, 9, 18, 27]);
     }
 }

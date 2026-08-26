@@ -1,4 +1,4 @@
-//! Transactional World-state spawning for Aric's scenario-authored map sprite.
+//! Transactional World-state spawning for the scenario-authored protagonist sprite.
 //!
 //! The logical runtime position remains a TMX tile coordinate owned by [`GameState`]. Rendering
 //! projects that coordinate through the shared top-left-TMX-to-Bevy convention and selects the
@@ -13,13 +13,17 @@ use bevy::{
 };
 
 use crate::{
-    app_state::AppState, game_state::GameState, gameplay_canvas::camera_follow::CameraFollowTarget,
-    scenario_path::ScenarioRelativePath, scenario_root::ScenarioRoot,
-    scenario_spatial::aric_atlas::AricAtlasLayout, tmx_ground_asset::world_entity_y_z,
+    app_state::AppState,
+    game_state::GameState,
+    gameplay_canvas::camera_follow::CameraFollowTarget,
+    scenario_manifest::Manifest,
+    scenario_manifest_asset::{ActiveManifestLoad, ActiveManifestStatus},
+    scenario_root::ScenarioRoot,
+    scenario_spatial::cardinal_character_atlas::CardinalCharacterAtlas,
+    tmx_ground_asset::world_entity_y_z,
     tsx_atlas_asset::TsxAtlasAsset,
 };
 
-const ARIC_TSX_PATH: &str = "assets/sprites/party/01_aric_walk.tsx";
 const MAP_TILE_WIDTH: u32 = 32;
 const MAP_TILE_HEIGHT: u32 = 32;
 pub(crate) const CHARACTER_SPRITE_SIZE: f32 = 64.0;
@@ -42,7 +46,12 @@ impl Plugin for WorldPlayerPlugin {
             .add_systems(OnEnter(AppState::World), begin_world_player_load)
             .add_systems(
                 Update,
-                (sync_world_player_map, ApplyDeferred, spawn_world_player)
+                (
+                    request_world_player_atlas,
+                    sync_world_player_map,
+                    ApplyDeferred,
+                    spawn_world_player,
+                )
                     .chain()
                     .run_if(in_state(AppState::World)),
             )
@@ -143,7 +152,7 @@ impl CharacterCollisionRect {
 /// one-tile taps advance through the cycle like the pinned Python controller.
 #[derive(Component, Debug)]
 pub(crate) struct WorldPlayerAnimation {
-    layout: AricAtlasLayout,
+    layout: CardinalCharacterAtlas,
     direction: crate::scenario_spatial::CardinalDirection,
     current_walk_frame: Option<usize>,
     next_walk_frame: usize,
@@ -152,7 +161,7 @@ pub(crate) struct WorldPlayerAnimation {
 
 impl WorldPlayerAnimation {
     pub(crate) fn new(
-        layout: AricAtlasLayout,
+        layout: CardinalCharacterAtlas,
         direction: crate::scenario_spatial::CardinalDirection,
     ) -> Self {
         Self {
@@ -216,6 +225,7 @@ const fn following_frame(current: usize, frame_count: usize) -> usize {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WorldPlayerSpawnStatus {
     Idle,
+    WaitingForManifest,
     Loading,
     WaitingForGame,
     Ready,
@@ -267,6 +277,7 @@ impl WorldPlayerSpawnState {
 /// Stable failure classes that never expose a host filesystem path.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum WorldPlayerSpawnFailure {
+    ManifestLoad,
     AtlasLoad,
     InvalidAtlas(String),
     MissingCurrentMap,
@@ -277,8 +288,11 @@ pub(crate) enum WorldPlayerSpawnFailure {
 impl fmt::Display for WorldPlayerSpawnFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AtlasLoad => formatter.write_str("Aric TSX atlas failed to load"),
-            Self::InvalidAtlas(cause) => write!(formatter, "Aric TSX atlas is invalid: {cause}"),
+            Self::ManifestLoad => formatter.write_str("scenario manifest failed to load"),
+            Self::AtlasLoad => formatter.write_str("protagonist TSX atlas failed to load"),
+            Self::InvalidAtlas(cause) => {
+                write!(formatter, "protagonist TSX atlas is invalid: {cause}")
+            }
             Self::MissingCurrentMap => {
                 formatter.write_str("game state has no current map for the World player")
             }
@@ -289,7 +303,7 @@ impl fmt::Display for WorldPlayerSpawnFailure {
                 )
             }
             Self::InvalidBaseFrame(cause) => {
-                write!(formatter, "Aric base frame is invalid: {cause}")
+                write!(formatter, "protagonist base frame is invalid: {cause}")
             }
         }
     }
@@ -297,23 +311,39 @@ impl fmt::Display for WorldPlayerSpawnFailure {
 
 impl Error for WorldPlayerSpawnFailure {}
 
-fn begin_world_player_load(
-    asset_server: Res<AssetServer>,
-    scenario_root: Res<ScenarioRoot>,
-    game: Option<Res<GameState>>,
-    mut state: ResMut<WorldPlayerSpawnState>,
-) {
-    let logical = ScenarioRelativePath::try_from(ARIC_TSX_PATH)
-        .expect("the canonical Aric TSX path must remain scenario-relative");
+fn begin_world_player_load(game: Option<Res<GameState>>, mut state: ResMut<WorldPlayerSpawnState>) {
     *state = WorldPlayerSpawnState {
-        atlas: Some(asset_server.load(scenario_root.resolve(&logical))),
+        atlas: None,
         map_id: game
             .as_deref()
             .and_then(|game| game.map().current())
             .map(|map| map.as_str().to_owned()),
-        status: WorldPlayerSpawnStatus::Loading,
+        status: WorldPlayerSpawnStatus::WaitingForManifest,
         failure: None,
     };
+}
+
+fn request_world_player_atlas(
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    active_manifest: Res<ActiveManifestLoad>,
+    manifests: Res<Assets<Manifest>>,
+    mut state: ResMut<WorldPlayerSpawnState>,
+) {
+    if state.atlas.is_some() || state.status == WorldPlayerSpawnStatus::Failed {
+        return;
+    }
+    if active_manifest.status() == ActiveManifestStatus::Failed {
+        fail_spawn(&mut state, WorldPlayerSpawnFailure::ManifestLoad);
+        return;
+    }
+    let Some(manifest) = active_manifest.manifest(&manifests) else {
+        state.status = WorldPlayerSpawnStatus::WaitingForManifest;
+        return;
+    };
+    state.atlas = Some(asset_server.load(scenario_root.resolve(&manifest.protagonist.sprite)));
+    state.status = WorldPlayerSpawnStatus::Loading;
+    state.failure = None;
 }
 
 fn sync_world_player_map(
@@ -352,6 +382,7 @@ fn spawn_world_player(
     if matches!(
         state.status,
         WorldPlayerSpawnStatus::Idle
+            | WorldPlayerSpawnStatus::WaitingForManifest
             | WorldPlayerSpawnStatus::Spawned
             | WorldPlayerSpawnStatus::Failed
     ) {
@@ -380,7 +411,7 @@ fn spawn_world_player(
         state.failure = None;
         return;
     };
-    let layout = match AricAtlasLayout::from_tsx_metadata(atlas.metadata()) {
+    let layout = match CardinalCharacterAtlas::from_tsx_metadata(atlas.metadata()) {
         Ok(layout) => layout,
         Err(error) => {
             fail_spawn(
@@ -427,7 +458,7 @@ fn spawn_world_player(
     let translation =
         motion.sprite_center_world(world_entity_y_z(visual_y, PLAYER_SPRITE_HALF_HEIGHT));
 
-    // Publish only after the atlas, image dependency, strict Aric profile, runtime map, selected
+    // Publish only after the atlas, image dependency, strict character profile, runtime map, selected
     // base frame, and world position have all succeeded.
     if state.status != WorldPlayerSpawnStatus::Ready {
         state.status = WorldPlayerSpawnStatus::Ready;
@@ -494,6 +525,7 @@ mod tests {
         runtime_map::RuntimeMapId,
         scenario_balance::BalanceData,
         scenario_manifest::Manifest,
+        scenario_manifest_asset::ScenarioManifestAssetPlugin,
         scenario_party::PartyCatalog,
         scenario_spatial::{CardinalDirection, Position},
         scenario_yaml,
@@ -520,7 +552,13 @@ mod tests {
                 std::process::id(),
                 NEXT_PACKAGE.fetch_add(1, Ordering::Relaxed)
             ));
-            fs::create_dir_all(root.join("scenarios").join(package_key)).unwrap();
+            let package = root.join("scenarios").join(package_key);
+            fs::create_dir_all(&package).unwrap();
+            fs::write(
+                package.join("manifest.yaml"),
+                include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"),
+            )
+            .unwrap();
             Self { root }
         }
 
@@ -595,6 +633,7 @@ mod tests {
             .add_plugins(ImagePlugin::default_nearest())
             .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
             .insert_resource(root)
+            .add_plugins(ScenarioManifestAssetPlugin)
             .add_plugins(TsxAtlasAssetPlugin)
             .insert_state(AppState::World)
             .add_plugins(WorldPlayerPlugin);
@@ -637,7 +676,7 @@ mod tests {
             .texture_atlas
             .as_ref()
             .map(|atlas: &TextureAtlas| atlas.index)
-            .expect("Aric sprite should select an atlas frame");
+            .expect("protagonist sprite should select an atlas frame");
         (entity, *transform, atlas_index)
     }
 
@@ -740,7 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_or_non_aric_assets_fail_without_a_partial_sprite() {
+    fn missing_or_invalid_protagonist_assets_fail_without_a_partial_sprite() {
         let missing = TestAssetBase::empty("missing");
         let mut missing_app = world_app(
             &missing.root,
