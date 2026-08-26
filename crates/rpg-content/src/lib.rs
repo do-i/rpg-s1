@@ -1,10 +1,12 @@
 //! Generic scenario-package primitives shared by the game runtime and content tools.
 
+pub mod manifest_path_validation;
 pub mod scenario_audio;
 pub mod scenario_balance;
 pub mod scenario_battle_background;
 pub mod scenario_class;
 pub mod scenario_condition;
+pub mod scenario_cross_reference;
 pub mod scenario_dialogue;
 pub mod scenario_duplicate_id;
 pub mod scenario_encounter;
@@ -19,3 +21,5 @@ pub mod scenario_recipe;
 pub mod scenario_root;
 pub mod scenario_spatial;
 pub mod scenario_yaml;
+pub mod tmx_header;
+pub mod tsx_metadata;

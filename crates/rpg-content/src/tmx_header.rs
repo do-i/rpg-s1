@@ -4,14 +4,6 @@
 //! additionally scans direct external tileset references, finite CSV tile layers, and direct
 //! rectangle object groups, decoding orthogonal tile transforms from each raw GID.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.01-M4.08 establish parser APIs before later M4 map loading consumes them"
-    )
-)]
-
 use std::{collections::HashSet, fmt, str};
 
 use quick_xml::{Reader, XmlVersion, events::Event};
@@ -21,13 +13,13 @@ use crate::tsx_metadata::TsxTilesetMetadata;
 
 /// The only map orientation supported by the current fixed-grid runtime profile.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum TmxOrientation {
+pub enum TmxOrientation {
     Orthogonal,
 }
 
 /// Validated dimensions and orientation of a finite TMX map.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TmxMapHeader {
+pub struct TmxMapHeader {
     orientation: TmxOrientation,
     width: u32,
     height: u32,
@@ -35,38 +27,31 @@ pub(crate) struct TmxMapHeader {
     tile_height: u32,
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.01 exposes typed map metadata for the later map loader and renderer"
-    )
-)]
 impl TmxMapHeader {
-    pub(crate) const fn orientation(self) -> TmxOrientation {
+    pub const fn orientation(self) -> TmxOrientation {
         self.orientation
     }
 
-    pub(crate) const fn width(self) -> u32 {
+    pub const fn width(self) -> u32 {
         self.width
     }
 
-    pub(crate) const fn height(self) -> u32 {
+    pub const fn height(self) -> u32 {
         self.height
     }
 
-    pub(crate) const fn tile_width(self) -> u32 {
+    pub const fn tile_width(self) -> u32 {
         self.tile_width
     }
 
-    pub(crate) const fn tile_height(self) -> u32 {
+    pub const fn tile_height(self) -> u32 {
         self.tile_height
     }
 }
 
 /// A location-safe TMX root-header failure. Byte offsets are relative to the supplied XML.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TmxHeaderError {
+pub struct TmxHeaderError {
     offset: u64,
     detail: String,
 }
@@ -99,7 +84,7 @@ impl std::error::Error for TmxHeaderError {}
 
 /// One ordered external TSX dependency declared directly below the TMX map root.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TmxExternalTileset {
+pub struct TmxExternalTileset {
     first_gid: u32,
     source: ScenarioRelativePath,
 }
@@ -115,7 +100,7 @@ const TILED_TRANSFORM_FLAGS: u32 = TILED_HORIZONTAL_FLIP_FLAG
 
 /// One decoded orthogonal Tiled global ID and its independent transform flags.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TmxTileGid {
+pub struct TmxTileGid {
     global_id: u32,
     flip_horizontally: bool,
     flip_vertically: bool,
@@ -135,23 +120,23 @@ impl TmxTileGid {
         })
     }
 
-    pub(crate) const fn global_id(self) -> u32 {
+    pub const fn global_id(self) -> u32 {
         self.global_id
     }
 
-    pub(crate) const fn is_empty(self) -> bool {
+    pub const fn is_empty(self) -> bool {
         self.global_id == 0
     }
 
-    pub(crate) const fn flip_horizontally(self) -> bool {
+    pub const fn flip_horizontally(self) -> bool {
         self.flip_horizontally
     }
 
-    pub(crate) const fn flip_vertically(self) -> bool {
+    pub const fn flip_vertically(self) -> bool {
         self.flip_vertically
     }
 
-    pub(crate) const fn flip_diagonally(self) -> bool {
+    pub const fn flip_diagonally(self) -> bool {
         self.flip_diagonally
     }
 
@@ -183,7 +168,7 @@ enum TmxTileGidError {
 
 /// One finite tile layer with decoded Tiled global IDs in row-major order.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TmxTileLayer {
+pub struct TmxTileLayer {
     id: u32,
     name: String,
     width: u32,
@@ -194,29 +179,29 @@ pub(crate) struct TmxTileLayer {
 
 /// One ordered direct TMX object group from the supported game-data allowlist.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TmxObjectGroup {
+pub struct TmxObjectGroup {
     id: u32,
     name: String,
     objects: Vec<TmxRectangleObject>,
 }
 
 impl TmxObjectGroup {
-    pub(crate) const fn id(&self) -> u32 {
+    pub const fn id(&self) -> u32 {
         self.id
     }
 
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub(crate) fn objects(&self) -> &[TmxRectangleObject] {
+    pub fn objects(&self) -> &[TmxRectangleObject] {
         &self.objects
     }
 }
 
 /// Renderer-independent bounds and typed ordered properties for one rectangle object.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TmxRectangleObject {
+pub struct TmxRectangleObject {
     id: u32,
     name: Option<String>,
     x: f64,
@@ -227,55 +212,55 @@ pub(crate) struct TmxRectangleObject {
 }
 
 impl TmxRectangleObject {
-    pub(crate) const fn id(&self) -> u32 {
+    pub const fn id(&self) -> u32 {
         self.id
     }
 
-    pub(crate) fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
-    pub(crate) const fn x(&self) -> f64 {
+    pub const fn x(&self) -> f64 {
         self.x
     }
 
-    pub(crate) const fn y(&self) -> f64 {
+    pub const fn y(&self) -> f64 {
         self.y
     }
 
-    pub(crate) const fn width(&self) -> f64 {
+    pub const fn width(&self) -> f64 {
         self.width
     }
 
-    pub(crate) const fn height(&self) -> f64 {
+    pub const fn height(&self) -> f64 {
         self.height
     }
 
-    pub(crate) fn properties(&self) -> &[TmxProperty] {
+    pub fn properties(&self) -> &[TmxProperty] {
         &self.properties
     }
 }
 
 /// One named Tiled property in authored source order.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TmxProperty {
+pub struct TmxProperty {
     name: String,
     value: TmxPropertyValue,
 }
 
 impl TmxProperty {
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub(crate) const fn value(&self) -> &TmxPropertyValue {
+    pub const fn value(&self) -> &TmxPropertyValue {
         &self.value
     }
 }
 
 /// The strict scalar property types accepted by the TMX profile.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum TmxPropertyValue {
+pub enum TmxPropertyValue {
     String(String),
     Integer(i64),
     Float(f64),
@@ -283,31 +268,31 @@ pub(crate) enum TmxPropertyValue {
 }
 
 impl TmxTileLayer {
-    pub(crate) const fn id(&self) -> u32 {
+    pub const fn id(&self) -> u32 {
         self.id
     }
 
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub(crate) const fn width(&self) -> u32 {
+    pub const fn width(&self) -> u32 {
         self.width
     }
 
-    pub(crate) const fn height(&self) -> u32 {
+    pub const fn height(&self) -> u32 {
         self.height
     }
 
-    pub(crate) const fn visible(&self) -> bool {
+    pub const fn visible(&self) -> bool {
         self.visible
     }
 
-    pub(crate) fn gids(&self) -> &[TmxTileGid] {
+    pub fn gids(&self) -> &[TmxTileGid] {
         &self.gids
     }
 
-    pub(crate) fn gid_at(&self, column: u32, row: u32) -> Option<TmxTileGid> {
+    pub fn gid_at(&self, column: u32, row: u32) -> Option<TmxTileGid> {
         if column >= self.width || row >= self.height {
             return None;
         }
@@ -317,18 +302,18 @@ impl TmxTileLayer {
 }
 
 impl TmxExternalTileset {
-    pub(crate) const fn first_gid(&self) -> u32 {
+    pub const fn first_gid(&self) -> u32 {
         self.first_gid
     }
 
-    pub(crate) fn source(&self) -> &ScenarioRelativePath {
+    pub fn source(&self) -> &ScenarioRelativePath {
         &self.source
     }
 }
 
 /// Validated ordered external-tileset ranges for resolving decoded TMX tile GIDs.
 #[derive(Clone, Debug)]
-pub(crate) struct TmxTilesetRanges<'a> {
+pub struct TmxTilesetRanges<'a> {
     ranges: Vec<TmxTilesetRange<'a>>,
 }
 
@@ -340,7 +325,7 @@ struct TmxTilesetRange<'a> {
 
 impl<'a> TmxTilesetRanges<'a> {
     /// Couples each ordered TMX reference to its parsed external TSX metadata.
-    pub(crate) fn try_new(
+    pub fn try_new(
         tilesets: impl IntoIterator<Item = (&'a TmxExternalTileset, &'a TsxTilesetMetadata)>,
     ) -> Result<Self, TmxGidResolutionError> {
         let mut ranges: Vec<TmxTilesetRange<'a>> = Vec::new();
@@ -375,7 +360,7 @@ impl<'a> TmxTilesetRanges<'a> {
     }
 
     /// Resolves a decoded, non-empty global ID while retaining its transform flags.
-    pub(crate) fn resolve(
+    pub fn resolve(
         &self,
         gid: TmxTileGid,
     ) -> Result<Option<TmxResolvedTile<'a>>, TmxGidResolutionError> {
@@ -404,29 +389,29 @@ impl<'a> TmxTilesetRanges<'a> {
 
 /// One decoded map tile resolved to its external tileset and zero-based local ID.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TmxResolvedTile<'a> {
+pub struct TmxResolvedTile<'a> {
     gid: TmxTileGid,
     tileset: &'a TmxExternalTileset,
     local_id: u32,
 }
 
 impl<'a> TmxResolvedTile<'a> {
-    pub(crate) const fn gid(self) -> TmxTileGid {
+    pub const fn gid(self) -> TmxTileGid {
         self.gid
     }
 
-    pub(crate) const fn tileset(self) -> &'a TmxExternalTileset {
+    pub const fn tileset(self) -> &'a TmxExternalTileset {
         self.tileset
     }
 
-    pub(crate) const fn local_id(self) -> u32 {
+    pub const fn local_id(self) -> u32 {
         self.local_id
     }
 }
 
 /// Failure to construct or query strict ordered external-tileset ranges.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum TmxGidResolutionError {
+pub enum TmxGidResolutionError {
     TilesetRangeOverflow {
         first_gid: u32,
         tile_count: u32,
@@ -482,7 +467,7 @@ impl std::error::Error for TmxGidResolutionError {}
 
 /// The single owned TMX parse result extended by later M4 milestones.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TmxMapDocument {
+pub struct TmxMapDocument {
     header: TmxMapHeader,
     external_tilesets: Vec<TmxExternalTileset>,
     tile_layers: Vec<TmxTileLayer>,
@@ -490,26 +475,26 @@ pub(crate) struct TmxMapDocument {
 }
 
 impl TmxMapDocument {
-    pub(crate) const fn header(&self) -> TmxMapHeader {
+    pub const fn header(&self) -> TmxMapHeader {
         self.header
     }
 
-    pub(crate) fn external_tilesets(&self) -> &[TmxExternalTileset] {
+    pub fn external_tilesets(&self) -> &[TmxExternalTileset] {
         &self.external_tilesets
     }
 
-    pub(crate) fn tile_layers(&self) -> &[TmxTileLayer] {
+    pub fn tile_layers(&self) -> &[TmxTileLayer] {
         &self.tile_layers
     }
 
-    pub(crate) fn object_groups(&self) -> &[TmxObjectGroup] {
+    pub fn object_groups(&self) -> &[TmxObjectGroup] {
         &self.object_groups
     }
 }
 
 /// A location-safe failure while parsing an owned TMX document.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TmxMapDocumentError {
+pub struct TmxMapDocumentError {
     offset: u64,
     detail: String,
 }
@@ -558,7 +543,7 @@ struct TmxMapScan {
 ///
 /// Tiled defines an omitted `infinite` attribute as finite (`0`); this parser pins that default.
 /// Explicit `infinite="1"` is rejected because chunked infinite maps are outside M4's profile.
-pub(crate) fn parse_tmx_map_header(xml: &str) -> Result<TmxMapHeader, TmxHeaderError> {
+pub fn parse_tmx_map_header(xml: &str) -> Result<TmxMapHeader, TmxHeaderError> {
     let mut reader = Reader::from_str(xml);
     loop {
         let offset = reader.buffer_position();
@@ -584,7 +569,7 @@ pub(crate) fn parse_tmx_map_header(xml: &str) -> Result<TmxMapHeader, TmxHeaderE
 ///
 /// External TSX paths are resolved lexically relative to `logical_tmx_path`. Other root children
 /// remain uninterpreted until their owning milestone, matching the M4.01 header-only tolerance.
-pub(crate) fn parse_tmx_map_document(
+pub fn parse_tmx_map_document(
     xml: &str,
     logical_tmx_path: &ScenarioRelativePath,
 ) -> Result<TmxMapDocument, TmxMapDocumentError> {
@@ -780,7 +765,7 @@ fn scan_tmx_map_document(
 /// Test-only tolerant scan used by pinned corpus audits that must inventory external references
 /// even in the one map that also contains an unsupported inline tileset.
 #[cfg(test)]
-pub(crate) fn scan_tmx_external_tilesets_for_test(
+pub fn scan_tmx_external_tilesets_for_test(
     xml: &str,
     logical_tmx_path: &ScenarioRelativePath,
 ) -> Result<TmxMapDocument, TmxMapDocumentError> {
@@ -1939,7 +1924,7 @@ mod tests {
     use super::*;
     use crate::tsx_metadata::parse_tsx_tileset_metadata;
 
-    const VALID: &str = include_str!("../tests/fixtures/tmx-header/finite-orthogonal.tmx");
+    const VALID: &str = include_str!("../../../tests/fixtures/tmx-header/finite-orthogonal.tmx");
 
     fn invented_document(children: &str) -> String {
         format!(

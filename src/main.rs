@@ -14,7 +14,6 @@ pub mod gameplay_rng;
 mod intro_completion;
 mod intro_dialogue;
 mod intro_transition;
-pub mod manifest_path_validation;
 mod menu_chrome;
 mod name_entry;
 pub mod new_game;
@@ -31,7 +30,6 @@ pub mod runtime_repository;
 mod save_data;
 mod save_store;
 mod save_ui;
-pub mod scenario_cross_reference;
 mod scenario_dialogue_report;
 pub mod scenario_manifest_asset;
 mod scenario_map_report;
@@ -43,9 +41,7 @@ mod service_ui;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;
-mod tmx_header;
 mod tsx_atlas_asset;
-mod tsx_metadata;
 mod ui_theme;
 mod world_actor;
 mod world_audio;
@@ -58,10 +54,11 @@ mod world_player;
 mod world_transition;
 
 pub use rpg_content::{
-    scenario_audio, scenario_balance, scenario_battle_background, scenario_class,
-    scenario_condition, scenario_dialogue, scenario_duplicate_id, scenario_encounter,
-    scenario_enemy, scenario_item, scenario_manifest, scenario_map, scenario_party, scenario_path,
-    scenario_quest, scenario_recipe, scenario_root, scenario_yaml,
+    manifest_path_validation, scenario_audio, scenario_balance, scenario_battle_background,
+    scenario_class, scenario_condition, scenario_cross_reference, scenario_dialogue,
+    scenario_duplicate_id, scenario_encounter, scenario_enemy, scenario_item, scenario_manifest,
+    scenario_map, scenario_party, scenario_path, scenario_quest, scenario_recipe, scenario_root,
+    scenario_yaml, tmx_header, tsx_metadata,
 };
 
 #[cfg(test)]
