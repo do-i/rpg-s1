@@ -219,7 +219,7 @@ mod tests {
 
     fn manifest() -> Manifest {
         scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"
         ))
         .expect("the complete pinned-shaped manifest should deserialize")
     }

@@ -808,10 +808,9 @@ mod tests {
 
     #[test]
     fn retains_key_accessory_and_equipment_variants() {
-        let keys: ItemCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../tests/fixtures/items/key_items.yaml"
-        ))
-        .unwrap();
+        let keys: ItemCatalogFile =
+            scenario_yaml::from_str(include_str!("../../../tests/fixtures/items/key_items.yaml"))
+                .unwrap();
         let ItemDefinition::Key(revive) = &keys.0[0] else {
             panic!("first key should be the revive variant")
         };
@@ -845,10 +844,9 @@ mod tests {
             })
         ));
 
-        let helmets: ItemCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../tests/fixtures/items/helmets.yaml"
-        ))
-        .unwrap();
+        let helmets: ItemCatalogFile =
+            scenario_yaml::from_str(include_str!("../../../tests/fixtures/items/helmets.yaml"))
+                .unwrap();
         assert!(matches!(
             helmets.0[0],
             ItemDefinition::Helmet(HelmetItem {
@@ -867,10 +865,9 @@ mod tests {
 
     #[test]
     fn loads_all_field_use_variants_and_explicit_defaults() {
-        let file: FieldUseCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../tests/fixtures/items/field_use.yaml"
-        ))
-        .unwrap();
+        let file: FieldUseCatalogFile =
+            scenario_yaml::from_str(include_str!("../../../tests/fixtures/items/field_use.yaml"))
+                .unwrap();
         assert_eq!(file.entries().len(), 7);
         assert_eq!(
             file.entries()
@@ -939,8 +936,7 @@ mod tests {
             );
         }
 
-        let throws =
-            include_str!("../../../tests/fixtures/items/consumables_battle_throw.yaml");
+        let throws = include_str!("../../../tests/fixtures/items/consumables_battle_throw.yaml");
         assert!(
             scenario_yaml::from_str::<ItemCatalogFile>(
                 &throws.replace("bonus_vs: [undead, demon]", "bonus_vs: null")

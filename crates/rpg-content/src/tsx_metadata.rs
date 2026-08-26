@@ -1,13 +1,5 @@
 //! Strict metadata for one external, single-image TSX atlas.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.03/M4.09 establish typed TSX metadata before later M4 atlas and animation systems consume it"
-    )
-)]
-
 use std::{collections::HashSet, fmt, str};
 
 use quick_xml::{Reader, XmlVersion, events::Event};
@@ -16,7 +8,7 @@ use crate::scenario_path::ScenarioRelativePath;
 
 /// Validated external image metadata for the M4 single-atlas TSX profile.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TsxTilesetMetadata {
+pub struct TsxTilesetMetadata {
     tile_width: u32,
     tile_height: u32,
     columns: u32,
@@ -26,90 +18,90 @@ pub(crate) struct TsxTilesetMetadata {
 }
 
 impl TsxTilesetMetadata {
-    pub(crate) const fn tile_width(&self) -> u32 {
+    pub const fn tile_width(&self) -> u32 {
         self.tile_width
     }
 
-    pub(crate) const fn tile_height(&self) -> u32 {
+    pub const fn tile_height(&self) -> u32 {
         self.tile_height
     }
 
-    pub(crate) const fn columns(&self) -> u32 {
+    pub const fn columns(&self) -> u32 {
         self.columns
     }
 
-    pub(crate) const fn tile_count(&self) -> u32 {
+    pub const fn tile_count(&self) -> u32 {
         self.tile_count
     }
 
-    pub(crate) const fn image(&self) -> &TsxImageMetadata {
+    pub const fn image(&self) -> &TsxImageMetadata {
         &self.image
     }
 
-    pub(crate) fn animations(&self) -> &[TsxTileAnimation] {
+    pub fn animations(&self) -> &[TsxTileAnimation] {
         &self.animations
     }
 }
 
 /// One tileset-local animation, attached to the tile identified by `tile_id`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TsxTileAnimation {
+pub struct TsxTileAnimation {
     tile_id: u32,
     frames: Vec<TsxAnimationFrame>,
 }
 
 impl TsxTileAnimation {
-    pub(crate) const fn tile_id(&self) -> u32 {
+    pub const fn tile_id(&self) -> u32 {
         self.tile_id
     }
 
-    pub(crate) fn frames(&self) -> &[TsxAnimationFrame] {
+    pub fn frames(&self) -> &[TsxAnimationFrame] {
         &self.frames
     }
 }
 
 /// One ordered TSX animation frame using a tileset-local tile ID.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TsxAnimationFrame {
+pub struct TsxAnimationFrame {
     tile_id: u32,
     duration_ms: u32,
 }
 
 impl TsxAnimationFrame {
-    pub(crate) const fn tile_id(self) -> u32 {
+    pub const fn tile_id(self) -> u32 {
         self.tile_id
     }
 
-    pub(crate) const fn duration_ms(self) -> u32 {
+    pub const fn duration_ms(self) -> u32 {
         self.duration_ms
     }
 }
 
 /// One safely resolved external atlas image.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TsxImageMetadata {
+pub struct TsxImageMetadata {
     source: ScenarioRelativePath,
     width: u32,
     height: u32,
 }
 
 impl TsxImageMetadata {
-    pub(crate) const fn source(&self) -> &ScenarioRelativePath {
+    pub const fn source(&self) -> &ScenarioRelativePath {
         &self.source
     }
 
-    pub(crate) const fn width(&self) -> u32 {
+    pub const fn width(&self) -> u32 {
         self.width
     }
 
-    pub(crate) const fn height(&self) -> u32 {
+    pub const fn height(&self) -> u32 {
         self.height
     }
 }
 
 /// A location-safe TSX metadata failure. Byte offsets are relative to the supplied XML.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct TsxMetadataError {
+pub struct TsxMetadataError {
     offset: u64,
     detail: String,
 }
@@ -141,7 +133,7 @@ impl fmt::Display for TsxMetadataError {
 impl std::error::Error for TsxMetadataError {}
 
 /// Parses a complete external TSX atlas document owned by `logical_tsx_path`.
-pub(crate) fn parse_tsx_tileset_metadata(
+pub fn parse_tsx_tileset_metadata(
     xml: &str,
     logical_tsx_path: &ScenarioRelativePath,
 ) -> Result<TsxTilesetMetadata, TsxMetadataError> {
@@ -696,9 +688,9 @@ mod tests {
     use super::*;
     use crate::tmx_header::scan_tmx_external_tilesets_for_test;
 
-    const VALID: &str = include_str!("../tests/fixtures/tsx-metadata/invented-atlas.tsx");
+    const VALID: &str = include_str!("../../../tests/fixtures/tsx-metadata/invented-atlas.tsx");
     const VALID_ANIMATION: &str =
-        include_str!("../tests/fixtures/tsx-metadata/invented-animation.tsx");
+        include_str!("../../../tests/fixtures/tsx-metadata/invented-animation.tsx");
 
     fn owner() -> ScenarioRelativePath {
         ScenarioRelativePath::try_from("assets/tilesets/ground/invented.tsx").unwrap()
