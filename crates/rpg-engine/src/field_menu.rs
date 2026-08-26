@@ -28,6 +28,7 @@ use crate::{
     },
     save_ui::{SaveSlotCatalog, save_slot_state_color, save_slot_state_label},
     scenario_class::{Ability, AbilityKind, UtilityAbility},
+    scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
     scenario_path::ScenarioRelativePath,
     scenario_quest::{QuestDefinition, QuestKind},
@@ -38,6 +39,17 @@ use crate::{
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
 };
+
+fn scenario_font(
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    inventory: &ScenarioInventory,
+) -> Option<Handle<Font>> {
+    inventory
+        .font
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)))
+}
 
 mod ui;
 

@@ -18,6 +18,14 @@ use crate::{
 
 #[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct ScenarioInventory {
+    pub(crate) font: Option<ScenarioRelativePath>,
+    pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
+    pub(crate) map_directory: Option<ScenarioRelativePath>,
+    pub(crate) encounter_directory: Option<ScenarioRelativePath>,
+    pub(crate) tmx_directory: Option<ScenarioRelativePath>,
+    pub(crate) battle_backgrounds: Option<ScenarioRelativePath>,
+    pub(crate) party: Option<ScenarioRelativePath>,
+    pub(crate) balance: Option<ScenarioRelativePath>,
     pub(crate) item_catalogs: Vec<ScenarioRelativePath>,
     pub(crate) field_use: Option<ScenarioRelativePath>,
     pub(crate) classes: Vec<ScenarioRelativePath>,
@@ -39,6 +47,29 @@ impl ScenarioInventory {
             },
         }
     }
+
+    pub(crate) fn map_metadata_path(&self, map_id: &str) -> Option<ScenarioRelativePath> {
+        self.file_in(self.map_directory.as_ref()?, &format!("{map_id}.yaml"))
+    }
+
+    pub(crate) fn encounter_path(&self, map_id: &str) -> Option<ScenarioRelativePath> {
+        self.file_in(
+            self.encounter_directory.as_ref()?,
+            &format!("{map_id}.yaml"),
+        )
+    }
+
+    pub(crate) fn tmx_path(&self, map_id: &str) -> Option<ScenarioRelativePath> {
+        self.file_in(self.tmx_directory.as_ref()?, &format!("{map_id}.tmx"))
+    }
+
+    fn file_in(
+        &self,
+        directory: &ScenarioRelativePath,
+        filename: &str,
+    ) -> Option<ScenarioRelativePath> {
+        ScenarioRelativePath::try_from(format!("{}/{filename}", directory.as_str())).ok()
+    }
 }
 
 #[derive(Debug)]
@@ -58,7 +89,17 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         InventoryError(format!("scenario manifest inventory parse failed: {error}"))
     })?;
 
-    let mut inventory = ScenarioInventory::default();
+    let mut inventory = ScenarioInventory {
+        font: Some(manifest.font.path.clone()),
+        menu_backdrop: Some(manifest.ui.menu_backdrop.clone()),
+        map_directory: Some(manifest.refs.maps.as_relative_path().clone()),
+        encounter_directory: Some(manifest.refs.encount.as_relative_path().clone()),
+        tmx_directory: Some(manifest.refs.tmx.as_relative_path().clone()),
+        battle_backgrounds: Some(manifest.refs.battle_backgrounds.clone()),
+        party: Some(manifest.refs.party.clone()),
+        balance: Some(manifest.refs.balance.clone()),
+        ..Default::default()
+    };
     for path in yaml_files(&package, manifest.refs.items.as_relative_path())? {
         let document = fs::read_to_string(package.join(path.as_str()))
             .map_err(|_| InventoryError(format!("{} is unreadable", path.as_str())))?;
@@ -209,8 +250,19 @@ mod tests {
         assert!(inventory.maps.is_empty());
         assert!(inventory.enemy_catalogs.is_empty());
         assert_eq!(
+            inventory.font.as_ref().map(ScenarioRelativePath::as_str),
+            Some("assets/font.ttf")
+        );
+        assert_eq!(
+            inventory
+                .map_metadata_path("invented_map")
+                .as_ref()
+                .map(ScenarioRelativePath::as_str),
+            Some("records/places/invented_map.yaml")
+        );
+        assert_eq!(
             inventory.quests.as_ref().map(ScenarioRelativePath::as_str),
-            Some("data/quests.yaml")
+            Some("records/quests.yaml")
         );
     }
 }

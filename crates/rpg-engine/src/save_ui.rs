@@ -18,10 +18,12 @@ use crate::{
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
     scenario_balance::BalanceData,
     scenario_dialogue::CutsceneDialogue,
+    scenario_inventory::ScenarioInventory,
     scenario_manifest::Manifest,
     scenario_manifest_asset::ActiveManifestLoad,
     scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
     scenario_party::PartyCatalog,
+    scenario_root::ScenarioRoot,
 };
 
 /// Slot rows drawn per load-picker page.
@@ -268,6 +270,8 @@ fn handle_title_load_input(
 fn sync_title_load_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     catalog: Res<SaveSlotCatalog>,
     load_menu: Res<TitleLoadMenu>,
     roots: Query<Entity, With<TitleLoadRoot>>,
@@ -285,7 +289,10 @@ fn sync_title_load_overlay(
         commands.entity(entity).despawn();
     }
 
-    let font = asset_server.load("fonts/Philosopher-Regular.ttf");
+    let Some(font_path) = inventory.font.as_ref() else {
+        return;
+    };
+    let font = asset_server.load(root.resolve(font_path));
     commands
         .spawn((
             Node {

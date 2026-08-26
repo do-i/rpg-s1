@@ -9,6 +9,7 @@ use crate::{
     game_state::GameState,
     runtime_map::RuntimeMapId,
     runtime_opened_boxes::OpenedBoxKey,
+    scenario_inventory::ScenarioInventory,
     scenario_manifest::{Manifest, ManifestSigns},
     scenario_map::{ItemBoxLoot, MapMetadata, optional_scenario_asset_is_missing},
     scenario_path::ScenarioRelativePath,
@@ -155,6 +156,7 @@ fn sync_world_object_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     signs: Query<Entity, With<WorldSign>>,
     boxes: Query<Entity, With<WorldItemBox>>,
@@ -181,9 +183,7 @@ fn sync_world_object_request(
     let Some(map_id) = current else {
         return;
     };
-    let Ok(metadata_path) =
-        ScenarioRelativePath::try_from(format!("data/maps/{map_id}.yaml").as_str())
-    else {
+    let Some(metadata_path) = inventory.map_metadata_path(map_id) else {
         state.status = WorldObjectStatus::Failed;
         return;
     };

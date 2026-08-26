@@ -4,6 +4,7 @@ pub(in crate::field_menu) fn sync_field_menu_overlay_lifecycle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     theme: Res<UiTheme>,
     state: Res<FieldMenuState>,
     roots: Query<Entity, With<FieldMenuRoot>>,
@@ -13,7 +14,7 @@ pub(in crate::field_menu) fn sync_field_menu_overlay_lifecycle(
             commands.entity(entity).despawn();
         }
     } else if roots.is_empty() {
-        spawn_field_menu_overlay(&mut commands, &asset_server, &root, &theme);
+        spawn_field_menu_overlay(&mut commands, &asset_server, &root, &inventory, &theme);
     }
 }
 
@@ -77,22 +78,16 @@ pub(in crate::field_menu) fn spawn_field_menu_overlay(
     commands: &mut Commands,
     asset_server: &AssetServer,
     root: &ScenarioRoot,
+    inventory: &ScenarioInventory,
     theme: &UiTheme,
 ) {
-    let font = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("field font path"),
-        ),
-    );
-    let backdrop = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from(
-                "assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp",
-            )
-            .expect("field backdrop path"),
-        ),
-    );
+    let Some(font) = scenario_font(asset_server, root, inventory) else {
+        return;
+    };
+    let Some(backdrop_path) = inventory.menu_backdrop.as_ref() else {
+        return;
+    };
+    let backdrop = asset_server.load(root.resolve(backdrop_path));
     commands
         .spawn((
             Node {

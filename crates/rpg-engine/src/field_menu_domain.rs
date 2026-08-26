@@ -414,19 +414,19 @@ fn track_catalog_load(
     for (stem, metadata, tmx) in &load.maps {
         if let LoadState::Failed(error) = asset_server.load_state(metadata.id()) {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("data/maps/{stem}.yaml: {error}"));
+            catalog.failure = Some(format!("map metadata for `{stem}`: {error}"));
             return;
         }
         if let LoadState::Failed(error) = asset_server.load_state(tmx.id()) {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("assets/maps/{stem}.tmx: {error}"));
+            catalog.failure = Some(format!("map TMX for `{stem}`: {error}"));
             return;
         }
     }
     for (stem, metadata) in &load.service_maps {
         if let LoadState::Failed(error) = asset_server.load_state(metadata.id()) {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("data/maps/{stem}.yaml: {error}"));
+            catalog.failure = Some(format!("map metadata for `{stem}`: {error}"));
             return;
         }
     }

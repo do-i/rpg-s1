@@ -9,6 +9,8 @@ use crate::{
     game_state::GameState,
     gameplay_canvas::fixed_gameplay_camera,
     save_ui::OpenTitleLoadPicker,
+    scenario_inventory::ScenarioInventory,
+    scenario_root::ScenarioRoot,
     ui_theme::UiTheme,
 };
 
@@ -59,12 +61,17 @@ struct GameOverOptions;
 fn enter_game_over(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     theme: Res<UiTheme>,
     mut menu: ResMut<GameOverMenu>,
 ) {
     *menu = GameOverMenu::default();
     commands.spawn((fixed_gameplay_camera(), GameOverUi));
-    let font = asset_server.load("fonts/Philosopher-Regular.ttf");
+    let Some(font_path) = inventory.font.as_ref() else {
+        return;
+    };
+    let font = asset_server.load(root.resolve(font_path));
     commands
         .spawn((
             Node {

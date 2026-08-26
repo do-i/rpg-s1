@@ -26,6 +26,7 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     scenario_audio::{BGM_INDEX_PATH, BgmIndex},
+    scenario_inventory::ScenarioInventory,
     scenario_map::MapMetadata,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -198,6 +199,7 @@ struct WorldAudioAssets<'w> {
     metadata: Res<'w, Assets<MapMetadata>>,
     indexes: Res<'w, Assets<BgmIndex>>,
     scenario_root: Res<'w, ScenarioRoot>,
+    inventory: Res<'w, ScenarioInventory>,
 }
 
 fn drive_world_audio(
@@ -236,10 +238,9 @@ fn drive_world_audio(
         // Stopping playback unconditionally on every map change — as this system used to, before
         // it knew whether the destination even named a track — would silence music the pinned
         // source keeps playing across such a boundary.
-        let metadata_path = match ScenarioRelativePath::try_from(format!("data/maps/{map_id}.yaml"))
-        {
-            Ok(path) => path,
-            Err(_) => {
+        let metadata_path = match assets.inventory.map_metadata_path(map_id) {
+            Some(path) => path,
+            None => {
                 state.request = None;
                 state.status = WorldBgmStatus::Failed;
                 state.failure = Some(WorldBgmFailure::InvalidMapId(map_id.to_owned()));
@@ -569,8 +570,18 @@ mod tests {
                 NEXT_PACKAGE.fetch_add(1, Ordering::Relaxed)
             ));
             let scenario = asset_base.join("scenarios/invented");
-            fs::create_dir_all(scenario.join("data/maps")).unwrap();
-            fs::create_dir_all(scenario.join("data/audio")).unwrap();
+            for directory in [
+                "assets/maps",
+                "data/audio",
+                "data/classes",
+                "data/encount",
+                "data/enemies",
+                "data/items",
+                "data/maps",
+                "data/recipe",
+            ] {
+                fs::create_dir_all(scenario.join(directory)).unwrap();
+            }
             fs::write(
                 scenario.join("manifest.yaml"),
                 include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"),

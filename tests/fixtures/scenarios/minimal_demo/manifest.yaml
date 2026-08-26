@@ -32,16 +32,16 @@ start:
 bootstrap_flags: []
 engine_managed_flags: []
 refs:
-  party: data/party.yaml
-  classes: data/classes/
-  maps: data/maps/
-  dialogue: data/dialogue/
-  items: data/items/
-  enemies: data/enemies/
-  encount: data/encount/
-  recipe: data/recipe/
-  quests: data/quests.yaml
-  balance: data/balance.yaml
-  battle_backgrounds: data/battle_backgrounds.yaml
+  party: records/party.yaml
+  classes: records/jobs/
+  maps: records/places/
+  dialogue: story/
+  items: records/gear/
+  enemies: records/foes/
+  encount: records/encounters/
+  recipe: records/crafting/
+  quests: records/quests.yaml
+  balance: records/balance.yaml
+  battle_backgrounds: records/backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: maps/

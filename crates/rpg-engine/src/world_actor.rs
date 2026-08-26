@@ -6,10 +6,10 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     gameplay_rng::GameplayRng,
+    scenario_inventory::ScenarioInventory,
     scenario_map::{
         MapMetadata, NpcAnimationMode, NpcMetadata, optional_scenario_asset_is_missing,
     },
-    scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{
         CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
@@ -169,6 +169,7 @@ fn sync_world_actor_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     actors: Query<Entity, With<WorldNpc>>,
     mut state: ResMut<WorldActorState>,
@@ -192,8 +193,7 @@ fn sync_world_actor_request(
     let Some(map_id) = current else {
         return;
     };
-    let logical = format!("data/maps/{map_id}.yaml");
-    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+    let Some(logical) = inventory.map_metadata_path(map_id) else {
         state.status = WorldActorStatus::Failed;
         return;
     };
@@ -662,7 +662,7 @@ fn cleanup_world_actors(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{runtime_flags::RuntimeFlags, scenario_yaml};
+    use crate::{runtime_flags::RuntimeFlags, scenario_path::ScenarioRelativePath, scenario_yaml};
 
     fn ardel_metadata() -> MapMetadata {
         scenario_yaml::from_str(include_str!(

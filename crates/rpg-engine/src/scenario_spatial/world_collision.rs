@@ -3,7 +3,7 @@
 use bevy::{asset::LoadState, prelude::*};
 
 use crate::{
-    app_state::AppState, game_state::GameState, scenario_path::ScenarioRelativePath,
+    app_state::AppState, game_state::GameState, scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot, scenario_spatial::collision_occupancy::CollisionOccupancy,
     tmx_ground_asset::TmxGroundAsset,
 };
@@ -41,14 +41,14 @@ impl WorldCollision {
         map_id: &str,
         asset_server: &AssetServer,
         scenario_root: &ScenarioRoot,
+        inventory: &ScenarioInventory,
     ) {
         self.map_id = Some(map_id.to_owned());
         self.handle = None;
         self.occupancy = None;
         self.failed = false;
 
-        let logical = format!("assets/maps/{map_id}.tmx");
-        let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+        let Some(logical) = inventory.tmx_path(map_id) else {
             self.failed = true;
             return;
         };
@@ -68,6 +68,7 @@ impl WorldCollision {
 fn load_world_collision(
     asset_server: Option<Res<AssetServer>>,
     scenario_root: Option<Res<ScenarioRoot>>,
+    inventory: Option<Res<ScenarioInventory>>,
     maps: Option<Res<Assets<TmxGroundAsset>>>,
     game: Option<Res<GameState>>,
     mut collision: ResMut<WorldCollision>,
@@ -86,8 +87,8 @@ fn load_world_collision(
     let maps = maps.as_deref();
 
     if collision.map_id.as_deref() != Some(map_id) {
-        let (Some(asset_server), Some(scenario_root), Some(_)) =
-            (asset_server, scenario_root, maps)
+        let (Some(asset_server), Some(scenario_root), Some(inventory), Some(_)) =
+            (asset_server, scenario_root, inventory.as_deref(), maps)
         else {
             *collision = WorldCollision {
                 map_id: Some(map_id.to_owned()),
@@ -95,7 +96,7 @@ fn load_world_collision(
             };
             return;
         };
-        collision.reset_for_map(map_id, asset_server, scenario_root);
+        collision.reset_for_map(map_id, asset_server, scenario_root, inventory);
     }
     if collision.failed || collision.occupancy.is_some() {
         return;

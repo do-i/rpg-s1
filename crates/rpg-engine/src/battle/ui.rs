@@ -10,6 +10,7 @@ use crate::{
     scenario_balance::BalanceData,
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
     scenario_enemy::EnemySize,
+    scenario_inventory::ScenarioInventory,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     tsx_atlas_asset::TsxAtlasAsset,
@@ -178,6 +179,7 @@ fn enter_battle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     catalog: Res<FieldMenuCatalog>,
     game: Res<GameState>,
     entry: Option<Res<BattleEntry>>,
@@ -212,18 +214,14 @@ fn enter_battle(
         .ok()
         .map(|path| asset_server.load(root.resolve(&path)))
         .unwrap_or_default();
-    let backgrounds = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
-                .expect("battle background catalog path"),
-        ),
-    );
-    let font = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("battle font path"),
-        ),
-    );
+    let (Some(backgrounds_path), Some(font_path)) = (
+        inventory.battle_backgrounds.as_ref(),
+        inventory.font.as_ref(),
+    ) else {
+        return;
+    };
+    let backgrounds = asset_server.load(root.resolve(backgrounds_path));
+    let font = asset_server.load(root.resolve(font_path));
     commands
         .spawn((
             Node {
