@@ -266,7 +266,7 @@ mod tests {
         scenario_manifest::Manifest,
         scenario_party::{PartyCatalog, PartyMember},
         scenario_path::ScenarioRelativePath,
-        scenario_spatial::{Position, aric_atlas::AricAtlasLayout},
+        scenario_spatial::{Position, cardinal_character_atlas::CardinalCharacterAtlas},
         scenario_yaml,
         tmx_header::parse_tmx_map_document,
         tsx_metadata::parse_tsx_tileset_metadata,
@@ -335,7 +335,7 @@ mod tests {
     fn player_animation() -> WorldPlayerAnimation {
         let path = ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx").unwrap();
         let metadata = parse_tsx_tileset_metadata(COPIED_ARIC_TSX, &path).unwrap();
-        let layout = AricAtlasLayout::from_tsx_metadata(&metadata).unwrap();
+        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata).unwrap();
         WorldPlayerAnimation::new(layout, CardinalDirection::Down)
     }
 

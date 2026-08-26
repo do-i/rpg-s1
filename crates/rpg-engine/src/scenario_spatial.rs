@@ -5,7 +5,7 @@
 
 pub use rpg_content::scenario_spatial::*;
 
-pub(crate) mod aric_atlas;
+pub(crate) mod cardinal_character_atlas;
 pub(crate) mod cardinal_movement;
 pub(crate) mod collision_occupancy;
 pub(crate) mod world_collision;

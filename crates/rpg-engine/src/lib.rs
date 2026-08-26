@@ -72,7 +72,7 @@ use bevy::{
     asset::AssetPlugin,
     audio::{AudioPlugin, GlobalVolume, Volume},
     prelude::*,
-    window::{PresentMode, WindowPlugin},
+    window::{PresentMode, PrimaryWindow, WindowPlugin},
 };
 use encounter_assets::EncounterAssetPlugin;
 use field_menu::FieldMenuPlugin;
@@ -87,7 +87,8 @@ use name_entry::NameEntryPlugin;
 use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
 use save_ui::SaveUiPlugin;
-use scenario_manifest_asset::ScenarioManifestAssetPlugin;
+use scenario_manifest::Manifest;
+use scenario_manifest_asset::{ActiveManifestLoad, ScenarioManifestAssetPlugin};
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use scenario_root::ScenarioRoot;
 use service_ui::ServiceUiPlugin;
@@ -136,7 +137,7 @@ fn run_game(scenario_root: ScenarioRoot) {
                 })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: "Chronicles of the Lost Flame".into(),
+                        title: "RPG".into(),
                         resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
                         present_mode: PresentMode::AutoVsync,
                         resizable: true,
@@ -148,6 +149,7 @@ fn run_game(scenario_root: ScenarioRoot) {
         .insert_resource(ClearColor(UiTheme::default().clear_color))
         .insert_resource(scenario_root)
         .add_plugins(ScenarioManifestAssetPlugin)
+        .add_systems(Update, sync_window_title_from_manifest)
         .add_plugins(ScenarioNewGameAssetsPlugin)
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(TsxAtlasAssetPlugin)
@@ -181,4 +183,20 @@ fn run_game(scenario_root: ScenarioRoot) {
         .add_plugins(BattlePlugin)
         .add_plugins(GameOverPlugin)
         .run();
+}
+
+fn sync_window_title_from_manifest(
+    active: Res<ActiveManifestLoad>,
+    manifests: Res<Assets<Manifest>>,
+    mut primary_window: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    let Some(manifest) = active.manifest(&manifests) else {
+        return;
+    };
+    let Ok(mut window) = primary_window.single_mut() else {
+        return;
+    };
+    if window.title != manifest.window_title {
+        window.title.clone_from(&manifest.window_title);
+    }
 }
