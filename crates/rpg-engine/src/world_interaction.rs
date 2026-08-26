@@ -38,9 +38,7 @@ pub(crate) struct WorldInteractionPlugin;
 impl Plugin for WorldInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<DialogueDocument>()
-            .init_asset::<SfxIndex>()
             .init_asset_loader::<DialogueDocumentAssetLoader>()
-            .init_asset_loader::<SfxIndexAssetLoader>()
             .init_resource::<WorldInteractionState>()
             .add_systems(OnEnter(AppState::World), begin_world_interactions)
             .add_systems(

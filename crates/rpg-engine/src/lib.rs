@@ -69,7 +69,7 @@ use app_state::{AppState, AppStateTransitionPlugin};
 use autosave::AutosavePlugin;
 use battle::BattlePlugin;
 use bevy::{
-    asset::AssetPlugin,
+    asset::{AssetApp, AssetPlugin},
     audio::{AudioPlugin, GlobalVolume, Volume},
     prelude::*,
     window::{PresentMode, PrimaryWindow, WindowPlugin},
@@ -87,6 +87,7 @@ use name_entry::NameEntryPlugin;
 use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
 use save_ui::SaveUiPlugin;
+use scenario_audio::{BgmIndex, SfxIndex};
 use scenario_manifest::Manifest;
 use scenario_manifest_asset::{ActiveManifestLoad, ScenarioManifestAssetPlugin};
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
@@ -97,9 +98,11 @@ use tmx_ground_asset::TmxGroundAssetPlugin;
 use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
 use world_actor::WorldActorPlugin;
+use world_audio::BgmIndexAssetLoader;
 use world_audio::WorldAudioPlugin;
 use world_debug_overlay::WorldDebugOverlayPlugin;
 use world_encounter::{BattleEntryPlugin, WorldEncounterPlugin};
+use world_interaction::SfxIndexAssetLoader;
 use world_interaction::WorldInteractionPlugin;
 use world_object::WorldObjectPlugin;
 use world_player::WorldPlayerPlugin;
@@ -149,6 +152,7 @@ fn run_game(scenario_root: ScenarioRoot) {
         .insert_resource(ClearColor(UiTheme::default().clear_color))
         .insert_resource(scenario_root)
         .add_plugins(ScenarioManifestAssetPlugin)
+        .add_plugins(ScenarioAudioAssetPlugin)
         .add_systems(Update, sync_window_title_from_manifest)
         .add_plugins(ScenarioNewGameAssetsPlugin)
         .add_plugins(FieldMenuDomainPlugin)
@@ -183,6 +187,17 @@ fn run_game(scenario_root: ScenarioRoot) {
         .add_plugins(BattlePlugin)
         .add_plugins(GameOverPlugin)
         .run();
+}
+
+pub(crate) struct ScenarioAudioAssetPlugin;
+
+impl Plugin for ScenarioAudioAssetPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_asset::<BgmIndex>()
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<BgmIndexAssetLoader>()
+            .init_asset_loader::<SfxIndexAssetLoader>();
+    }
 }
 
 fn sync_window_title_from_manifest(
