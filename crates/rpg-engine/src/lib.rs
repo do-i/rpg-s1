@@ -116,7 +116,7 @@ pub fn run() -> std::process::ExitCode {
     ))
 }
 
-fn run_game() {
+fn run_game(scenario_root: ScenarioRoot) {
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -146,7 +146,7 @@ fn run_game() {
                 }),
         )
         .insert_resource(ClearColor(UiTheme::default().clear_color))
-        .init_resource::<ScenarioRoot>()
+        .insert_resource(scenario_root)
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioNewGameAssetsPlugin)
         .add_plugins(FieldMenuDomainPlugin)

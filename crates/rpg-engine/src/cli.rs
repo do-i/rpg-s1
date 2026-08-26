@@ -32,10 +32,10 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY]\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
-    Play,
+    Play(ScenarioRoot),
     Validate(ScenarioRoot),
     MapReport(ScenarioRoot),
     MapSweep(ScenarioRoot),
@@ -67,7 +67,7 @@ pub(crate) fn run(
     arguments: impl IntoIterator<Item = OsString>,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
-    launch_bevy_app: impl FnOnce(),
+    launch_bevy_app: impl FnOnce(ScenarioRoot),
 ) -> u8 {
     let collection_root = production_scenario_collection();
     run_with(
@@ -90,7 +90,7 @@ fn run_with<V>(
     validator: V,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
-    launch_bevy_app: impl FnOnce(),
+    launch_bevy_app: impl FnOnce(ScenarioRoot),
 ) -> u8
 where
     V: FnOnce(&ScenarioRoot, &Path) -> ScenarioValidationReport,
@@ -104,8 +104,8 @@ where
     };
 
     match command {
-        Command::Play => {
-            launch_bevy_app();
+        Command::Play(root) => {
+            launch_bevy_app(root);
             EXIT_SUCCESS
         }
         Command::Help => match writeln!(stdout, "{USAGE}") {
@@ -203,7 +203,27 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         .collect::<Result<Vec<_>, _>>()?;
 
     match arguments.as_slice() {
-        [] => Ok(Command::Play),
+        [] => Ok(Command::Play(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command] if command == "play" => Ok(Command::Play(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command, flag] if command == "play" && (flag == "-h" || flag == "--help") => {
+            Ok(Command::Help)
+        }
+        [command, package_key] if command == "play" => {
+            ScenarioRoot::try_for_package_key(package_key.clone())
+                .map(Command::Play)
+                .map_err(|error| {
+                    UsageError(format!("invalid package key `{package_key}`: {error}"))
+                })
+        }
+        [command, ..] if command == "play" => Err(UsageError(
+            "play accepts at most one package key".to_owned(),
+        )),
         [flag] if flag == "-h" || flag == "--help" => Ok(Command::Help),
         [command, flag] if command == "validate-scenario" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
@@ -1157,7 +1177,7 @@ mod tests {
             valid_report,
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |_| launched.set(true),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1187,7 +1207,7 @@ mod tests {
             invalid_report,
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |_| launched.set(true),
         );
 
         assert_eq!(exit, EXIT_VALIDATION_FAILED);
@@ -1275,7 +1295,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |_| launched.set(true),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1351,7 +1371,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || panic!("map-report must not launch Bevy"),
+            |_| panic!("map-report must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1375,7 +1395,7 @@ refs:
             |_, _| panic!("an unavailable package must not reach the validator"),
             &mut stdout,
             &mut stderr,
-            || panic!("map-report must not launch Bevy"),
+            |_| panic!("map-report must not launch Bevy"),
         );
 
         assert_eq!(
@@ -1403,7 +1423,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |_| launched.set(true),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1436,7 +1456,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || panic!("map-sweep must not launch Bevy"),
+            |_| panic!("map-sweep must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1460,7 +1480,7 @@ refs:
             |_, _| panic!("an unavailable package must not reach the validator"),
             &mut stdout,
             &mut stderr,
-            || panic!("map-sweep must not launch Bevy"),
+            |_| panic!("map-sweep must not launch Bevy"),
         );
 
         assert_eq!(
@@ -1495,7 +1515,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |_| launched.set(true),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1534,7 +1554,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || panic!("dialogue-report must not launch Bevy"),
+            |_| panic!("dialogue-report must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1558,7 +1578,7 @@ refs:
             |_, _| panic!("an unavailable package must not reach the validator"),
             &mut stdout,
             &mut stderr,
-            || panic!("dialogue-report must not launch Bevy"),
+            |_| panic!("dialogue-report must not launch Bevy"),
         );
 
         assert_eq!(
@@ -1584,7 +1604,7 @@ refs:
             valid_report,
             &mut stdout,
             &mut stderr,
-            || panic!("validation must not launch Bevy"),
+            |_| panic!("validation must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
@@ -1608,7 +1628,7 @@ refs:
             |_, _| panic!("an unavailable package must not reach the validator"),
             &mut stdout,
             &mut stderr,
-            || panic!("validation must not launch Bevy"),
+            |_| panic!("validation must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_VALIDATION_FAILED);
@@ -1630,7 +1650,7 @@ refs:
             production_validate,
             &mut stdout,
             &mut stderr,
-            || panic!("shared validation must not launch Bevy"),
+            |_| panic!("shared validation must not launch Bevy"),
         );
 
         assert_eq!(exit, EXIT_VALIDATION_FAILED);
@@ -1669,7 +1689,7 @@ refs:
                 |_, _| panic!("misuse must not validate"),
                 &mut stdout,
                 &mut stderr,
-                || panic!("misuse must not launch Bevy"),
+                |_| panic!("misuse must not launch Bevy"),
             );
             assert_eq!(exit, EXIT_USAGE);
             assert!(stdout.is_empty());
@@ -1712,7 +1732,7 @@ refs:
     }
 
     #[test]
-    fn no_subcommand_is_the_only_path_that_invokes_the_bevy_launcher() {
+    fn no_subcommand_launches_the_default_scenario() {
         let launched = Cell::new(false);
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
@@ -1722,7 +1742,33 @@ refs:
             |_, _| panic!("play mode must not validate"),
             &mut stdout,
             &mut stderr,
-            || launched.set(true),
+            |root| {
+                assert_eq!(root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
+                launched.set(true);
+            },
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(launched.get());
+        assert!(stdout.is_empty());
+        assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn play_subcommand_launches_the_selected_scenario_without_validation() {
+        let launched = Cell::new(false);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit = run_with(
+            ["play".into(), "invented_campaign".into()],
+            Path::new("unused"),
+            |_, _| panic!("play mode must not validate"),
+            &mut stdout,
+            &mut stderr,
+            |root| {
+                assert_eq!(root.package_key(), "invented_campaign");
+                launched.set(true);
+            },
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
