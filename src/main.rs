@@ -35,7 +35,6 @@ pub mod scenario_audio;
 pub mod scenario_balance;
 pub mod scenario_battle_background;
 pub mod scenario_class;
-pub mod scenario_condition;
 pub mod scenario_cross_reference;
 pub mod scenario_dialogue;
 mod scenario_dialogue_report;
@@ -50,12 +49,9 @@ mod scenario_map_report;
 mod scenario_map_sweep;
 pub mod scenario_new_game_assets;
 pub mod scenario_party;
-pub mod scenario_path;
 pub mod scenario_quest;
 pub mod scenario_recipe;
-pub mod scenario_root;
 pub mod scenario_spatial;
-pub mod scenario_yaml;
 pub mod service_domain;
 mod service_ui;
 mod tile_coordinates;
@@ -74,6 +70,8 @@ mod world_interaction;
 mod world_object;
 mod world_player;
 mod world_transition;
+
+pub use rpg_content::{scenario_condition, scenario_path, scenario_root, scenario_yaml};
 
 #[cfg(test)]
 mod test_support;
