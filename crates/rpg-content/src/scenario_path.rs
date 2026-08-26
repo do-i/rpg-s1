@@ -20,7 +20,7 @@ impl ScenarioRelativePath {
     ///
     /// The reference is normalized lexically; filesystem canonicalization is intentionally left
     /// to the resource boundary so paths cannot depend on a developer-machine layout.
-    pub(crate) fn resolve_from_file(
+    pub fn resolve_from_file(
         &self,
         reference: &str,
     ) -> Result<Self, ScenarioRelativePathError> {

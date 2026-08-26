@@ -4352,12 +4352,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpg-content"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "serde",
+ "serde_path_to_error",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "rpg-s1"
 version = "2026.8.1"
 dependencies = [
  "bevy",
  "crc32fast",
  "quick-xml",
+ "rpg-content",
  "serde",
  "serde_path_to_error",
  "serde_yaml_ng",
