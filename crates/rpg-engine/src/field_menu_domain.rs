@@ -19,12 +19,12 @@ use crate::{
         Ability, AbilityKind, AbilityTarget, ClassDefinition, ClassEquipmentSlots, HealingMethod,
         UtilityAbility,
     },
+    scenario_inventory::ScenarioInventory,
     scenario_item::{
         BodyStats, FieldUseCatalogFile, FieldUseDefinition, FullRecoveryTarget, HelmetStats,
         ItemCatalogFile, ItemDefinition, ShieldStats, WeaponStats,
     },
     scenario_map::MapMetadata,
-    scenario_path::ScenarioRelativePath,
     scenario_quest::{QuestCatalogFile, QuestDefinition},
     scenario_recipe::{RecipeCatalogFile, RecipeDefinition},
     scenario_root::ScenarioRoot,
@@ -34,37 +34,8 @@ use crate::{
     world_transition::{RuntimePortal, runtime_portals},
 };
 
-const ITEM_FILES: [&str; 13] = [
-    "accessories.yaml",
-    "body.yaml",
-    "consumables_battle_throw.yaml",
-    "consumables_field.yaml",
-    "consumables_recovery.yaml",
-    "consumables_status_cure.yaml",
-    "helmets.yaml",
-    "key_items.yaml",
-    "magic_cores.yaml",
-    "materials.yaml",
-    "migration_zone1_drops.yaml",
-    "shields.yaml",
-    "weapons.yaml",
-];
-const CLASS_FILES: [&str; 5] = [
-    "cleric.yaml",
-    "hero.yaml",
-    "rogue.yaml",
-    "sorcerer.yaml",
-    "warrior.yaml",
-];
-const FIELD_USE_FILE: &str = "field_use.yaml";
-const MAP_FILES: [&str; 3] = [
-    "town_01_ardel",
-    "town_01_ardel_house_01",
-    "zone_01_starting_forest",
-];
-const SERVICE_MAP_FILES: [&str; 2] = ["town_01_ardel_inn_01", "town_01_ardel_shop_01"];
-const RECIPE_FILE: &str = "data/recipe/all_recipe.yaml";
-const QUEST_FILE: &str = "data/quests.yaml";
+#[cfg(test)]
+use crate::scenario_path::ScenarioRelativePath;
 
 pub(crate) struct FieldMenuDomainPlugin;
 
@@ -321,12 +292,13 @@ struct FieldMenuCatalogLoad {
     classes: Vec<(String, Handle<ClassDefinition>)>,
     maps: Vec<(String, Handle<MapMetadata>, Handle<TmxGroundAsset>)>,
     service_maps: Vec<(String, Handle<MapMetadata>)>,
-    recipes: Option<Handle<RecipeCatalogFile>>,
+    recipes: Vec<(String, Handle<RecipeCatalogFile>)>,
     quests: Option<Handle<QuestCatalogFile>>,
 }
 
 fn begin_catalog_load(
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     asset_server: Res<AssetServer>,
     mut load: ResMut<FieldMenuCatalogLoad>,
     mut catalog: ResMut<FieldMenuCatalog>,
@@ -336,62 +308,73 @@ fn begin_catalog_load(
     }
     catalog.status = CatalogStatus::Loading;
     catalog.failure = None;
-    load.items = ITEM_FILES
+    if let Some(failure) = inventory.failure.as_ref() {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some(failure.clone());
+        return;
+    }
+    if inventory.field_use.is_none() {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some("scenario has no field-use catalog".to_owned());
+        return;
+    }
+    load.items = inventory
+        .item_catalogs
         .iter()
-        .map(|name| {
-            let relative = ScenarioRelativePath::try_from(format!("data/items/{name}"))
-                .expect("compiled item catalog path is valid");
+        .map(|path| {
             (
-                (*name).to_owned(),
-                asset_server.load(root.resolve(&relative)),
+                path.as_str().to_owned(),
+                asset_server.load(root.resolve(path)),
             )
         })
         .collect();
-    let field_path = ScenarioRelativePath::try_from(format!("data/items/{FIELD_USE_FILE}"))
-        .expect("compiled field-use path is valid");
-    load.field_use = Some(asset_server.load(root.resolve(&field_path)));
-    load.classes = CLASS_FILES
+    load.field_use = inventory
+        .field_use
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)));
+    load.classes = inventory
+        .classes
         .iter()
-        .map(|name| {
-            let relative = ScenarioRelativePath::try_from(format!("data/classes/{name}"))
-                .expect("compiled class catalog path is valid");
+        .map(|path| {
             (
-                (*name).to_owned(),
-                asset_server.load(root.resolve(&relative)),
+                path.as_str().to_owned(),
+                asset_server.load(root.resolve(path)),
             )
         })
         .collect();
-    load.maps = MAP_FILES
+    load.maps = inventory
+        .maps
         .iter()
-        .map(|stem| {
-            let metadata = ScenarioRelativePath::try_from(format!("data/maps/{stem}.yaml"))
-                .expect("compiled map metadata path is valid");
-            let tmx = ScenarioRelativePath::try_from(format!("assets/maps/{stem}.tmx"))
-                .expect("compiled TMX path is valid");
+        .filter_map(|(stem, metadata, tmx)| {
+            tmx.as_ref().map(|tmx| {
+                (
+                    stem.clone(),
+                    asset_server.load(root.resolve(metadata)),
+                    asset_server.load(root.resolve(tmx)),
+                )
+            })
+        })
+        .collect();
+    load.service_maps = inventory
+        .maps
+        .iter()
+        .filter(|(_, _, tmx)| tmx.is_none())
+        .map(|(stem, metadata, _)| (stem.clone(), asset_server.load(root.resolve(metadata))))
+        .collect();
+    load.recipes = inventory
+        .recipes
+        .iter()
+        .map(|path| {
             (
-                (*stem).to_owned(),
-                asset_server.load(root.resolve(&metadata)),
-                asset_server.load(root.resolve(&tmx)),
+                path.as_str().to_owned(),
+                asset_server.load(root.resolve(path)),
             )
         })
         .collect();
-    load.service_maps = SERVICE_MAP_FILES
-        .iter()
-        .map(|stem| {
-            let metadata = ScenarioRelativePath::try_from(format!("data/maps/{stem}.yaml"))
-                .expect("compiled service-map metadata path is valid");
-            (
-                (*stem).to_owned(),
-                asset_server.load(root.resolve(&metadata)),
-            )
-        })
-        .collect();
-    load.recipes = Some(asset_server.load(
-        root.resolve(&ScenarioRelativePath::try_from(RECIPE_FILE).expect("canonical recipe path")),
-    ));
-    load.quests = Some(asset_server.load(
-        root.resolve(&ScenarioRelativePath::try_from(QUEST_FILE).expect("canonical quest path")),
-    ));
+    load.quests = inventory
+        .quests
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)));
 }
 
 #[expect(
@@ -410,24 +393,21 @@ fn track_catalog_load(
     load: Res<FieldMenuCatalogLoad>,
     mut catalog: ResMut<FieldMenuCatalog>,
 ) {
-    if catalog.status != CatalogStatus::Loading
-        || load.field_use.is_none()
-        || load.recipes.is_none()
-        || load.quests.is_none()
+    if catalog.status != CatalogStatus::Loading || load.field_use.is_none() || load.quests.is_none()
     {
         return;
     }
     for (path, handle) in &load.items {
         if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("data/items/{path}: {error}"));
+            catalog.failure = Some(format!("{path}: {error}"));
             return;
         }
     }
     for (path, handle) in &load.classes {
         if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("data/classes/{path}: {error}"));
+            catalog.failure = Some(format!("{path}: {error}"));
             return;
         }
     }
@@ -453,19 +433,20 @@ fn track_catalog_load(
     let field_handle = load.field_use.as_ref().expect("checked above");
     if let LoadState::Failed(error) = asset_server.load_state(field_handle.id()) {
         catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("data/items/{FIELD_USE_FILE}: {error}"));
+        catalog.failure = Some(format!("field-use catalog: {error}"));
         return;
     }
-    let recipe_handle = load.recipes.as_ref().expect("checked above");
-    if let LoadState::Failed(error) = asset_server.load_state(recipe_handle.id()) {
-        catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("{RECIPE_FILE}: {error}"));
-        return;
+    for (path, handle) in &load.recipes {
+        if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
+            catalog.status = CatalogStatus::Failed;
+            catalog.failure = Some(format!("{path}: {error}"));
+            return;
+        }
     }
     let quest_handle = load.quests.as_ref().expect("checked above");
     if let LoadState::Failed(error) = asset_server.load_state(quest_handle.id()) {
         catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("{QUEST_FILE}: {error}"));
+        catalog.failure = Some(format!("quest catalog: {error}"));
         return;
     }
     if load
@@ -484,7 +465,10 @@ fn track_catalog_load(
             .service_maps
             .iter()
             .any(|(_, metadata)| map_assets.get(metadata).is_none())
-        || recipe_assets.get(recipe_handle).is_none()
+        || load
+            .recipes
+            .iter()
+            .any(|(_, handle)| recipe_assets.get(handle).is_none())
         || quest_assets.get(quest_handle).is_none()
     {
         return;
@@ -546,11 +530,18 @@ fn track_catalog_load(
     catalog.classes = classes;
     catalog.warp_destinations = warp_destinations;
     catalog.maps = maps;
-    catalog.recipes = recipe_assets
-        .get(recipe_handle)
-        .expect("checked")
-        .entries()
-        .to_vec();
+    catalog.recipes = load
+        .recipes
+        .iter()
+        .flat_map(|(_, handle)| {
+            recipe_assets
+                .get(handle)
+                .expect("checked")
+                .entries()
+                .iter()
+                .cloned()
+        })
+        .collect();
     catalog.quests = quest_assets
         .get(quest_handle)
         .expect("checked")

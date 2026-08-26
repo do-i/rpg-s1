@@ -1,0 +1,47 @@
+id: minimal_demo
+name: Minimal Demo
+version: "1.0"
+window_title: Minimal Demo Window
+title:
+  image: assets/title.webp
+  cursor_icon: assets/cursor.webp
+font:
+  path: assets/font.ttf
+ui:
+  menu_backdrop: assets/backdrop.webp
+apothecary:
+  sprite: assets/apothecary.tsx
+  icons:
+    locked: assets/locked.webp
+    ready: assets/ready.webp
+    missing: assets/missing.webp
+inn: {sprite: assets/inn.tsx}
+item_shop: {sprite: assets/item_shop.tsx}
+weapon_shop: {sprite: assets/weapon_shop.tsx}
+armor_shop: {sprite: assets/armor_shop.tsx}
+item_box: {sprite: assets/item_box.tsx}
+protagonist:
+  id: nova
+  name: Nova
+  class: explorer
+  sprite: assets/nova.tsx
+start:
+  map: clearing
+  position: [1, 1]
+  intro_dialogue: data/dialogue/intro.yaml
+bootstrap_flags: []
+engine_managed_flags: []
+refs:
+  party: data/party.yaml
+  classes: data/classes/
+  maps: data/maps/
+  dialogue: data/dialogue/
+  items: data/items/
+  enemies: data/enemies/
+  encount: data/encount/
+  recipe: data/recipe/
+  quests: data/quests.yaml
+  balance: data/balance.yaml
+  battle_backgrounds: data/battle_backgrounds.yaml
+  assets: assets/
+  tmx: assets/maps/

@@ -548,6 +548,7 @@ fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize, has_valid_sa
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     fn title_app(initial_state: AppState) -> App {
         let mut app = crate::test_support::headless_title_app(initial_state);
@@ -608,6 +609,57 @@ mod tests {
             panic!("title screen must spawn exactly one themed panel");
         };
         assert_eq!(panel.0, theme.panel_color);
+    }
+
+    #[test]
+    fn invented_package_drives_title_assets_without_rusted_kingdoms_paths() {
+        let asset_base = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures")
+            .to_string_lossy()
+            .into_owned();
+        let root = ScenarioRoot::try_for_package_key("minimal_demo").unwrap();
+        let mut app = crate::test_support::headless_title_app_with_asset_base(
+            AppState::Title,
+            asset_base,
+            root,
+        );
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<TitlePresentation>().is_ready() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(app.world().resource::<TitlePresentation>().is_ready());
+
+        let world = app.world_mut();
+        let image = world.query::<&Sprite>().single(world).unwrap().image.id();
+        let music = world
+            .query::<&AudioPlayer<AudioSource>>()
+            .single(world)
+            .unwrap()
+            .0
+            .id();
+        let server = world.resource::<AssetServer>();
+        let image_path = server
+            .get_path(image)
+            .unwrap()
+            .path()
+            .to_string_lossy()
+            .into_owned();
+        let music_path = server
+            .get_path(music)
+            .unwrap()
+            .path()
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(image_path, "scenarios/minimal_demo/assets/title.webp");
+        assert_eq!(
+            music_path,
+            "scenarios/minimal_demo/assets/audio/bgm/minimal-theme.mp3"
+        );
+        assert!(!image_path.contains("rusted_kingdoms"));
+        assert!(!music_path.contains("rusted_kingdoms"));
     }
 
     #[test]

@@ -23,6 +23,7 @@ use crate::{
     scenario_battle_background::BattleBackgroundCatalog,
     scenario_encounter::EncounterZone,
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
+    scenario_inventory::ScenarioInventory,
     scenario_map::{MapMetadata, optional_scenario_asset_is_missing},
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -40,27 +41,6 @@ use crate::{
     },
 };
 
-const ENEMY_RANK_FILES: [&str; 8] = [
-    "enemies_rank_1_SS.yaml",
-    "enemies_rank_2_S.yaml",
-    "enemies_rank_3_A.yaml",
-    "enemies_rank_4_B.yaml",
-    "enemies_rank_5_C.yaml",
-    "enemies_rank_6_D.yaml",
-    "enemies_rank_7_E.yaml",
-    "enemies_rank_8_F.yaml",
-];
-const BOSS_MOVE_SET_FILES: [&str; 9] = [
-    "fallen_angel_red_judicator.yaml",
-    "orc_shaman_red_hood_shaman.yaml",
-    "pirate_captain_eyepatch_captain.yaml",
-    "ratkin_plague_doctor_black_mask_doctor.yaml",
-    "skeleton_knight_base.yaml",
-    "titch_the_ticker_171.yaml",
-    "troll_shaman_base.yaml",
-    "wartotaur_warlord_blackhorn_chief.yaml",
-    "wolf_beast_black_fur.yaml",
-];
 const TILE_SIZE: u32 = 32;
 const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
 const ENEMY_WALK_ROW_OFFSET: u32 = 8;
@@ -315,14 +295,20 @@ fn request_active_encounter_assets(
     state.status = WorldEncounterStatus::Loading;
 }
 
+#[derive(SystemParam)]
+struct EncounterScenarioAssets<'w> {
+    asset_server: Res<'w, AssetServer>,
+    root: Res<'w, ScenarioRoot>,
+    inventory: Res<'w, ScenarioInventory>,
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "transactional encounter publication reads each independently typed asset store"
 )]
 fn drive_active_encounter_assets(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    root: Res<ScenarioRoot>,
+    scenario: EncounterScenarioAssets,
     metadata_assets: Res<Assets<MapMetadata>>,
     zone_assets: Res<Assets<EncounterZone>>,
     enemy_file_assets: Res<Assets<EnemyCatalogFile>>,
@@ -337,6 +323,9 @@ fn drive_active_encounter_assets(
     existing: Query<(), With<WorldEnemy>>,
     mut state: ResMut<WorldEncounterState>,
 ) {
+    let asset_server = &scenario.asset_server;
+    let root = &scenario.root;
+    let inventory = &scenario.inventory;
     if !matches!(state.status, WorldEncounterStatus::Loading) || !existing.is_empty() {
         return;
     }
@@ -384,6 +373,10 @@ fn drive_active_encounter_assets(
     }
 
     if state.zone.is_none() {
+        if let Some(failure) = inventory.failure.as_ref() {
+            fail_encounter(&mut state, failure.clone());
+            return;
+        }
         let Ok(zone_path) =
             ScenarioRelativePath::try_from(format!("data/encount/{map_id}.yaml").as_str())
         else {
@@ -394,24 +387,15 @@ fn drive_active_encounter_assets(
             return;
         };
         state.zone = Some(asset_server.load(root.resolve(&zone_path)));
-        state.enemy_files = ENEMY_RANK_FILES
+        state.enemy_files = inventory
+            .enemy_catalogs
             .iter()
-            .map(|filename| {
-                let path =
-                    ScenarioRelativePath::try_from(format!("data/enemies/{filename}").as_str())
-                        .expect("fixed enemy rank path is scenario-relative");
-                asset_server.load(root.resolve(&path))
-            })
+            .map(|path| asset_server.load(root.resolve(path)))
             .collect();
-        state.boss_move_sets = BOSS_MOVE_SET_FILES
+        state.boss_move_sets = inventory
+            .boss_move_sets
             .iter()
-            .map(|filename| {
-                let relative = format!("boss_move_sets/{filename}");
-                let path =
-                    ScenarioRelativePath::try_from(format!("data/enemies/{relative}").as_str())
-                        .expect("fixed boss move-set path is scenario-relative");
-                (relative, asset_server.load(root.resolve(&path)))
-            })
+            .map(|(logical, path)| (logical.clone(), asset_server.load(root.resolve(path))))
             .collect();
         let background_path = ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
             .expect("fixed battle background path is scenario-relative");
