@@ -10,15 +10,10 @@
 //! flag-gated branches, so they are reported separately and never marked dead.
 //!
 //! One pinned dialogue, `ardel_fisherman`, ends with two flavor entries that are provably dead
-//! under this rule (`docs/m12-content-migration-ledger.md`, "Pinned-source differences affecting
-//! W12.1"); the target keeps that source content deliberately, and this report marks exactly
-//! those two entries "documented-accepted" rather than surfacing them as a new finding.
-//! `millhaven_carter` carries the identical pattern for W12.2 (`docs/m12-content-migration-ledger.md`,
-//! "Pinned-source differences affecting W12.2") and is accepted the same way. `harborgate_fishwife`
-//! carries it for W12.3 (`docs/m12-content-migration-ledger.md`, W12.3 `C-DIALOGUE-harborgate_fishwife`
-//! and `docs/adr/0007-inherited-scenario-data-debt.md`) and is likewise accepted. `ruinwatch_digger`
-//! carries it for W12.4 (`docs/m12-content-migration-ledger.md`, W12.4
-//! `C-DIALOGUE-ruinwatch_digger`) and joins them.
+//! under this rule. The target keeps that source content deliberately, and this report marks
+//! exactly those two entries "documented-accepted" rather than surfacing them as a new finding.
+//! `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` carry the identical pattern
+//! and are accepted the same way. ADR 0007 records the inherited-data decision and exact entries.
 //!
 //! Running this report against the shipped scenario turns up the same shape of dead trailing
 //! entry in three more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
@@ -55,11 +50,7 @@ use crate::{
 const MAX_ENUMERATED_FLAGS: usize = 16;
 
 /// The dialogue ids whose dead entries are accepted, deliberately-kept source content rather than
-/// a migration finding. See `docs/m12-content-migration-ledger.md`, "Pinned-source differences
-/// affecting W12.1" (`ardel_fisherman`), "affecting W12.2" (`millhaven_carter`), the W12.3
-/// `C-DIALOGUE-harborgate_fishwife` row / `docs/adr/0007-inherited-scenario-data-debt.md`
-/// (`harborgate_fishwife`), and the W12.4 `C-DIALOGUE-ruinwatch_digger` row
-/// (`ruinwatch_digger`).
+/// a migration finding. ADR 0007 records the inherited-data decision and exact entries.
 const DOCUMENTED_DEAD_ENTRIES: &[(&str, &[usize])] = &[
     ("ardel_fisherman", &[4, 5]),
     ("millhaven_carter", &[4, 5]),
@@ -554,7 +545,7 @@ fn mark_documented_dead(id: &str, entries: Vec<DialogueReportEntry>) -> Vec<Dial
                 entry.notes.retain(|note| !note.contains("is dead"));
                 entry.notes.push(format!(
                     "entry [{}] is dead but documented-accepted: pinned `{id}` flavor content \
-                     kept deliberately (docs/m12-content-migration-ledger.md)",
+                     kept deliberately (docs/adr/0007-inherited-scenario-data-debt.md)",
                     entry.index
                 ));
             }
@@ -938,9 +929,8 @@ entries:
 
     /// Pins the exact reachability findings against the shipped scenario. `ardel_fisherman`,
     /// `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` are the only dialogues
-    /// named in `docs/m12-content-migration-ledger.md` (the third also in
-    /// `docs/adr/0007-inherited-scenario-data-debt.md`), so they are the only ones this report
-    /// accepts as documented; the other three carry the identical pinned-source dead
+    /// named as accepted in `docs/adr/0007-inherited-scenario-data-debt.md`, so they are the only
+    /// ones this report accepts as documented; the other three carry the identical pinned-source dead
     /// trailing-entry pattern (see the module doc comment) and surface as new findings until the
     /// wave that reaches them documents them too. This test exists to catch regressions in the
     /// reachability algorithm itself, not to bless the count — a real drop in findings (fewer

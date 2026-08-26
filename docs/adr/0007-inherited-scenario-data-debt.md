@@ -140,8 +140,7 @@ are now fully silent on interact, exactly like the source. Covered by
 (a real sign dialogue still opens and still plays its sound, just resolved
 once the load is confirmed). `zone_06_mountain_pass_01`'s sign inherits the
 same fix; its own wave (W12.6) still owns verifying that map's other
-acceptance evidence. See `docs/m12-content-migration-ledger.md`, "Runtime
-divergences found and fixed during W12.3 acceptance".
+acceptance evidence.
 
 ## Consequences
 
