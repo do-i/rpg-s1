@@ -1,0 +1,23 @@
+[package]
+name = "rpg-engine"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+description = "Reusable Bevy RPG runtime for scenario packages"
+
+[dependencies]
+bevy = { version = "0.19", default-features = false, features = [
+    "2d",
+    "ui",
+    "audio",
+    "mp3",
+    "png",
+    "webp",
+] }
+quick-xml = "=0.41.0"
+crc32fast = "=1.5.0"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_path_to_error = "=0.1.20"
+serde_yaml_ng = "=0.10.0"
+sha2 = "=0.10.9"
+rpg-content = { path = "../rpg-content" }

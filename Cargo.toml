@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rpg-content"]
+members = ["crates/rpg-content", "crates/rpg-engine"]
 resolver = "3"
 
 [package]
@@ -25,6 +25,7 @@ serde_path_to_error = "=0.1.20"
 serde_yaml_ng = "=0.10.0"
 sha2 = "=0.10.9"
 rpg-content = { path = "crates/rpg-content" }
+rpg-engine = { path = "crates/rpg-engine" }
 
 [profile.dev]
 opt-level = 1
