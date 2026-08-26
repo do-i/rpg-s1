@@ -127,9 +127,10 @@ mod tests {
 
     #[test]
     fn loads_regular_and_unique_output_recipe_shapes() {
-        let catalog: RecipeCatalogFile =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/recipe-catalog-shapes.yaml"))
-                .expect("source-shaped recipe fixture should deserialize");
+        let catalog: RecipeCatalogFile = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/recipe-catalog-shapes.yaml"
+        ))
+        .expect("source-shaped recipe fixture should deserialize");
 
         assert_eq!(catalog.entries().len(), 2);
         let ordinary = &catalog.entries()[0];
@@ -190,7 +191,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_coerced_null_and_invalid_numeric_shapes() {
-        let valid = include_str!("../tests/fixtures/recipe-catalog-shapes.yaml");
+        let valid = include_str!("../../../tests/fixtures/recipe-catalog-shapes.yaml");
         for document in [
             valid.replacen("id: recipe_invented_remedy", "id: 42", 1),
             valid.replacen("scroll_name: Invented Remedy", "scroll_name: true", 1),

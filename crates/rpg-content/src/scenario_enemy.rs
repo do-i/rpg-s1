@@ -485,7 +485,7 @@ mod tests {
     #[test]
     fn loads_every_invented_enemy_rule_shape_from_a_multi_document_fixture() {
         let catalog = EnemyCatalogFile::from_yaml_stream(include_str!(
-            "../tests/fixtures/enemy-rule-shapes.yaml"
+            "../../../tests/fixtures/enemy-rule-shapes.yaml"
         ))
         .expect("source-shaped enemy stream should deserialize");
 
@@ -535,7 +535,7 @@ mod tests {
     #[test]
     fn loads_every_boss_move_condition_and_target_override_shape() {
         let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/enemy-boss-move-set-shapes.yaml"
+            "../../../tests/fixtures/enemy-boss-move-set-shapes.yaml"
         ))
         .expect("source-shaped boss move set should deserialize");
 
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_coerced_incomplete_mixed_and_out_of_range_shapes() {
-        let valid = include_str!("../tests/fixtures/enemy-rule-shapes.yaml");
+        let valid = include_str!("../../../tests/fixtures/enemy-rule-shapes.yaml");
         for stream in [
             valid.replacen("type: beast", "type: elemental", 1),
             valid.replacen("rank: SS", "rank: Z", 1),
@@ -605,7 +605,7 @@ mod tests {
         );
         assert!(EnemyCatalogFile::from_yaml_stream(&mixed).is_err());
 
-        let move_set = include_str!("../tests/fixtures/enemy-boss-move-set-shapes.yaml");
+        let move_set = include_str!("../../../tests/fixtures/enemy-boss-move-set-shapes.yaml");
         for document in [
             move_set.replace("hp_pct_below: 1.0", "hp_pct_below: 1"),
             move_set.replace("hp_pct_below: 1.0", "hp_pct_below: 1.1"),

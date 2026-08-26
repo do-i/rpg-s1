@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn loads_pinned_identity_and_window_values_from_complete_manifest_shape() {
         let manifest: ManifestIdentityWindow = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-identity-window.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-identity-window.yaml"
         ))
         .expect("the pinned manifest identity/window slice should deserialize");
 
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn partial_manifest_scalar_strings_reject_non_string_yaml_types() {
         let identity =
-            include_str!("../tests/fixtures/rusted-kingdoms-manifest-identity-window.yaml");
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-identity-window.yaml");
         for document in [
             identity.replacen("id: my_rpg_story", "id: 42", 1),
             identity.replacen("name: \"Chronicles of the Lost Flame\"", "name: false", 1),
@@ -327,7 +327,7 @@ mod tests {
         }
 
         let protagonist =
-            include_str!("../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml");
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml");
         for document in [
             protagonist.replacen("  id: aric", "  id: 42", 1),
             protagonist.replacen("  name: \"Aric\"", "  name: false", 1),
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn loads_title_font_and_ui_paths_with_the_repaired_cursor_reference() {
         let manifest: ManifestTitleFontUi = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-title-font-ui.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-title-font-ui.yaml"
         ))
         .expect("the title/font/UI slice should deserialize");
 
@@ -374,7 +374,7 @@ mod tests {
     #[test]
     fn loads_pinned_service_sprites_and_apothecary_icon_states() {
         let manifest: ManifestServiceSprites = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-service-sprites.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-service-sprites.yaml"
         ))
         .expect("the pinned manifest service-sprite slice should deserialize");
 
@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn loads_pinned_protagonist_and_new_game_start_values() {
         let manifest: ManifestProtagonistStart = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-protagonist-start.yaml"
         ))
         .expect("the pinned manifest protagonist/start slice should deserialize");
 
@@ -448,7 +448,7 @@ mod tests {
     #[test]
     fn loads_pinned_flags_and_every_reference_with_normalized_directory_paths() {
         let manifest: ManifestFlagsRefs = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml"
         ))
         .expect("the pinned manifest flags/refs slice should deserialize");
 
@@ -489,7 +489,8 @@ mod tests {
 
     #[test]
     fn partial_manifest_flag_lists_reject_non_string_elements() {
-        let fixture = include_str!("../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml");
+        let fixture =
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-flags-refs.yaml");
         for document in [
             fixture.replacen("  - story_quest_started", "  - 42", 1),
             fixture.replacen("  - story_act2_started", "  - false", 1),
@@ -524,7 +525,7 @@ mod tests {
     #[test]
     fn composes_every_owned_manifest_slice_from_the_source_shape() {
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"
+            "../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"
         ))
         .expect("the complete source-shaped manifest should deserialize");
 
@@ -543,7 +544,8 @@ mod tests {
 
     #[test]
     fn complete_manifest_strings_and_flag_lists_reject_non_string_yaml_types() {
-        let fixture = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml");
+        let fixture =
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml");
         for document in [
             fixture.replacen("id: my_rpg_story", "id: 42", 1),
             fixture.replacen("name: \"Chronicles of the Lost Flame\"", "name: false", 1),
@@ -562,8 +564,9 @@ mod tests {
 
     #[test]
     fn complete_manifest_reports_a_missing_top_level_field_with_its_location() {
-        let document = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
-            .replacen("id: my_rpg_story\n", "", 1);
+        let document =
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
+                .replacen("id: my_rpg_story\n", "", 1);
         let error = scenario_yaml::from_str::<Manifest>(&document)
             .expect_err("a complete manifest without id should fail");
 
@@ -580,12 +583,13 @@ mod tests {
 
     #[test]
     fn complete_manifest_reports_a_missing_nested_field_with_its_location() {
-        let document = include_str!("../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
-            .replacen(
-                "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
-                "",
-                1,
-            );
+        let document =
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
+                .replacen(
+                    "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
+                    "",
+                    1,
+                );
         let error = scenario_yaml::from_str::<Manifest>(&document)
             .expect_err("a complete manifest without title.cursor_icon should fail");
 

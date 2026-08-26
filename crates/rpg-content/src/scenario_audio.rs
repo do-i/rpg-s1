@@ -243,10 +243,10 @@ mod tests {
     #[test]
     fn loads_source_shaped_indexes_and_resolves_their_distinct_logical_keys() {
         let bgm: BgmIndex =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/audio-bgm-index.yaml"))
+            scenario_yaml::from_str(include_str!("../../../tests/fixtures/audio-bgm-index.yaml"))
                 .expect("invented BGM index should load");
         let sfx: SfxIndex =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/audio-sfx-index.yaml"))
+            scenario_yaml::from_str(include_str!("../../../tests/fixtures/audio-sfx-index.yaml"))
                 .expect("invented SFX index should load");
         let root = ScenarioRoot::default();
 

@@ -915,9 +915,10 @@ mod tests {
 
     #[test]
     fn loads_complete_class_and_every_authored_ability_field_shape() {
-        let class: ClassDefinition =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/class-ability-shapes.yaml"))
-                .expect("source-shaped class fixture should deserialize");
+        let class: ClassDefinition = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/class-ability-shapes.yaml"
+        ))
+        .expect("source-shaped class fixture should deserialize");
 
         assert_eq!(class.class_id, "warden");
         assert_eq!(class.name, "Warden");

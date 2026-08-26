@@ -633,62 +633,62 @@ mod tests {
     const METADATA_FIXTURES: [(&str, &str, usize); 12] = [
         (
             "accessories.yaml",
-            include_str!("../tests/fixtures/items/accessories.yaml"),
+            include_str!("../../../tests/fixtures/items/accessories.yaml"),
             2,
         ),
         (
             "body.yaml",
-            include_str!("../tests/fixtures/items/body.yaml"),
+            include_str!("../../../tests/fixtures/items/body.yaml"),
             2,
         ),
         (
             "consumables_battle_throw.yaml",
-            include_str!("../tests/fixtures/items/consumables_battle_throw.yaml"),
+            include_str!("../../../tests/fixtures/items/consumables_battle_throw.yaml"),
             2,
         ),
         (
             "consumables_field.yaml",
-            include_str!("../tests/fixtures/items/consumables_field.yaml"),
+            include_str!("../../../tests/fixtures/items/consumables_field.yaml"),
             3,
         ),
         (
             "consumables_recovery.yaml",
-            include_str!("../tests/fixtures/items/consumables_recovery.yaml"),
+            include_str!("../../../tests/fixtures/items/consumables_recovery.yaml"),
             4,
         ),
         (
             "consumables_status_cure.yaml",
-            include_str!("../tests/fixtures/items/consumables_status_cure.yaml"),
+            include_str!("../../../tests/fixtures/items/consumables_status_cure.yaml"),
             1,
         ),
         (
             "helmets.yaml",
-            include_str!("../tests/fixtures/items/helmets.yaml"),
+            include_str!("../../../tests/fixtures/items/helmets.yaml"),
             2,
         ),
         (
             "key_items.yaml",
-            include_str!("../tests/fixtures/items/key_items.yaml"),
+            include_str!("../../../tests/fixtures/items/key_items.yaml"),
             2,
         ),
         (
             "magic_cores.yaml",
-            include_str!("../tests/fixtures/items/magic_cores.yaml"),
+            include_str!("../../../tests/fixtures/items/magic_cores.yaml"),
             1,
         ),
         (
             "materials.yaml",
-            include_str!("../tests/fixtures/items/materials.yaml"),
+            include_str!("../../../tests/fixtures/items/materials.yaml"),
             1,
         ),
         (
             "shields.yaml",
-            include_str!("../tests/fixtures/items/shields.yaml"),
+            include_str!("../../../tests/fixtures/items/shields.yaml"),
             2,
         ),
         (
             "weapons.yaml",
-            include_str!("../tests/fixtures/items/weapons.yaml"),
+            include_str!("../../../tests/fixtures/items/weapons.yaml"),
             3,
         ),
     ];
@@ -709,7 +709,7 @@ mod tests {
     #[test]
     fn zone_one_migration_drop_repairs_are_bounded_materials() {
         let catalog: ItemCatalogFile = scenario_yaml::from_str(include_str!(
-            "../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
+            "../../../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
         ))
         .unwrap();
         let materials = catalog
@@ -808,9 +808,10 @@ mod tests {
 
     #[test]
     fn retains_key_accessory_and_equipment_variants() {
-        let keys: ItemCatalogFile =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/items/key_items.yaml"))
-                .unwrap();
+        let keys: ItemCatalogFile = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/items/key_items.yaml"
+        ))
+        .unwrap();
         let ItemDefinition::Key(revive) = &keys.0[0] else {
             panic!("first key should be the revive variant")
         };
@@ -823,9 +824,10 @@ mod tests {
         assert_eq!(unlock.use_context, None);
         assert!(matches!(unlock.effect, KeyItemEffect::Unlock(_)));
 
-        let accessories: ItemCatalogFile =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/items/accessories.yaml"))
-                .unwrap();
+        let accessories: ItemCatalogFile = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/items/accessories.yaml"
+        ))
+        .unwrap();
         let ItemDefinition::Accessory(encounter) = &accessories.0[0] else {
             panic!("first accessory should load")
         };
@@ -843,8 +845,10 @@ mod tests {
             })
         ));
 
-        let helmets: ItemCatalogFile =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/items/helmets.yaml")).unwrap();
+        let helmets: ItemCatalogFile = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/items/helmets.yaml"
+        ))
+        .unwrap();
         assert!(matches!(
             helmets.0[0],
             ItemDefinition::Helmet(HelmetItem {
@@ -863,9 +867,10 @@ mod tests {
 
     #[test]
     fn loads_all_field_use_variants_and_explicit_defaults() {
-        let file: FieldUseCatalogFile =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/items/field_use.yaml"))
-                .unwrap();
+        let file: FieldUseCatalogFile = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/items/field_use.yaml"
+        ))
+        .unwrap();
         assert_eq!(file.entries().len(), 7);
         assert_eq!(
             file.entries()
@@ -916,7 +921,7 @@ mod tests {
 
     #[test]
     fn rejects_scalar_coercion_unknown_fields_bad_ranges_and_wrong_shapes() {
-        let valid = include_str!("../tests/fixtures/items/consumables_recovery.yaml");
+        let valid = include_str!("../../../tests/fixtures/items/consumables_recovery.yaml");
         for document in [
             valid.replace("id: leaf_tonic", "id: 42"),
             valid.replace("type: consumable", "type: ritual"),
@@ -934,7 +939,8 @@ mod tests {
             );
         }
 
-        let throws = include_str!("../tests/fixtures/items/consumables_battle_throw.yaml");
+        let throws =
+            include_str!("../../../tests/fixtures/items/consumables_battle_throw.yaml");
         assert!(
             scenario_yaml::from_str::<ItemCatalogFile>(
                 &throws.replace("bonus_vs: [undead, demon]", "bonus_vs: null")
@@ -946,7 +952,7 @@ mod tests {
 
     #[test]
     fn rejects_invalid_field_use_discriminants_and_variant_fields() {
-        let valid = include_str!("../tests/fixtures/items/field_use.yaml");
+        let valid = include_str!("../../../tests/fixtures/items/field_use.yaml");
         for document in [
             valid.replace("effect: restore_hp", "effect: transmute"),
             valid.replace("id: leaf_tonic", "id: 12"),

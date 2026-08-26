@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn loads_regular_zone_formations_barrier_and_spawn_metadata() {
         let zone: EncounterZone = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/encounter-regular-zone.yaml"
+            "../../../tests/fixtures/encounter-regular-zone.yaml"
         ))
         .expect("source-shaped regular encounter zone should deserialize");
 
@@ -179,9 +179,10 @@ mod tests {
 
     #[test]
     fn loads_boss_zone_and_completion_flag() {
-        let zone: EncounterZone =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/encounter-boss-zone.yaml"))
-                .expect("source-shaped boss encounter zone should deserialize");
+        let zone: EncounterZone = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/encounter-boss-zone.yaml"
+        ))
+        .expect("source-shaped boss encounter zone should deserialize");
 
         assert_eq!(zone.effective_id("ignored_stem"), "zone_clockwork_keep");
         let boss = zone.boss.expect("boss fixture should retain its boss");
@@ -244,7 +245,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_coerced_incomplete_null_and_out_of_range_shapes() {
-        let valid = include_str!("../tests/fixtures/encounter-regular-zone.yaml");
+        let valid = include_str!("../../../tests/fixtures/encounter-regular-zone.yaml");
         for document in [
             valid.replacen("name: Mossy Track", "name: true", 1),
             valid.replacen("density: 0.35", "density: 1", 1),

@@ -20,10 +20,7 @@ impl ScenarioRelativePath {
     ///
     /// The reference is normalized lexically; filesystem canonicalization is intentionally left
     /// to the resource boundary so paths cannot depend on a developer-machine layout.
-    pub fn resolve_from_file(
-        &self,
-        reference: &str,
-    ) -> Result<Self, ScenarioRelativePathError> {
+    pub fn resolve_from_file(&self, reference: &str) -> Result<Self, ScenarioRelativePathError> {
         reject_absolute_or_aliased(reference)?;
         let Some((parent, _file_name)) = self.as_str().rsplit_once('/') else {
             return Self::try_from(reference);
