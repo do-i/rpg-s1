@@ -10,9 +10,9 @@ use crate::{
     },
     game_state::GameState,
     scenario_dialogue::{DialogueActions, DialogueShopKind},
+    scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
     scenario_map::ShopMetadata,
-    scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     service_domain::{
         RecipeAvailability, buy, can_sell, craft, exchange_magic_core, recipe_availability,
@@ -437,6 +437,7 @@ fn sync_service_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     theme: Res<UiTheme>,
     state: Res<ServiceUiState>,
     catalog: Res<FieldMenuCatalog>,
@@ -474,7 +475,7 @@ fn sync_service_overlay(
         return;
     }
     if roots.is_empty() {
-        spawn_service_overlay(&mut commands, &asset_server, &root, &theme);
+        spawn_service_overlay(&mut commands, &asset_server, &root, &inventory, &theme);
         return;
     }
     let Some(game) = game else { return };
@@ -805,14 +806,13 @@ fn spawn_service_overlay(
     commands: &mut Commands,
     assets: &AssetServer,
     root: &ScenarioRoot,
+    inventory: &ScenarioInventory,
     theme: &UiTheme,
 ) {
-    let font = assets.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("service font path"),
-        ),
-    );
+    let Some(font_path) = inventory.font.as_ref() else {
+        return;
+    };
+    let font = assets.load(root.resolve(font_path));
     commands
         .spawn((
             Node {

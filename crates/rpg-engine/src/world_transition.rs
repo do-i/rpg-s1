@@ -8,7 +8,7 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     runtime_map::RuntimeMapId,
-    scenario_path::ScenarioRelativePath,
+    scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
     scenario_spatial::collision_occupancy::CollisionOccupancy,
     scenario_spatial::{CardinalDirection, Position},
@@ -468,6 +468,7 @@ fn detect_portal_entry(
 fn prepare_destination_load(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     transition: Res<WorldTransition>,
     mut destination: ResMut<TransitionDestinationLoad>,
 ) {
@@ -480,8 +481,7 @@ fn prepare_destination_load(
         return;
     }
     *destination = TransitionDestinationLoad::default();
-    let logical = format!("assets/maps/{map_id}.tmx");
-    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+    let Some(logical) = inventory.tmx_path(map_id) else {
         return;
     };
     destination.map_id = Some(map_id.to_owned());

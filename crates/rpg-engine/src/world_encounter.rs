@@ -265,6 +265,7 @@ fn request_active_encounter_assets(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     enemies: Query<Entity, With<WorldEnemy>>,
     mut state: ResMut<WorldEncounterState>,
@@ -283,9 +284,7 @@ fn request_active_encounter_assets(
     let Some(map_id) = current else {
         return;
     };
-    let Ok(metadata_path) =
-        ScenarioRelativePath::try_from(format!("data/maps/{map_id}.yaml").as_str())
-    else {
+    let Some(metadata_path) = inventory.map_metadata_path(map_id) else {
         state.status = WorldEncounterStatus::Failed;
         state.failure = Some(format!("invalid encounter map id `{map_id}`"));
         return;
@@ -377,9 +376,7 @@ fn drive_active_encounter_assets(
             fail_encounter(&mut state, failure.clone());
             return;
         }
-        let Ok(zone_path) =
-            ScenarioRelativePath::try_from(format!("data/encount/{map_id}.yaml").as_str())
-        else {
+        let Some(zone_path) = inventory.encounter_path(&map_id) else {
             fail_encounter(
                 &mut state,
                 format!("invalid encounter-zone path for `{map_id}`"),
@@ -397,9 +394,14 @@ fn drive_active_encounter_assets(
             .iter()
             .map(|(logical, path)| (logical.clone(), asset_server.load(root.resolve(path))))
             .collect();
-        let background_path = ScenarioRelativePath::try_from("data/battle_backgrounds.yaml")
-            .expect("fixed battle background path is scenario-relative");
-        state.backgrounds = Some(asset_server.load(root.resolve(&background_path)));
+        let Some(background_path) = inventory.battle_backgrounds.as_ref() else {
+            fail_encounter(
+                &mut state,
+                "scenario has no battle background catalog".to_owned(),
+            );
+            return;
+        };
+        state.backgrounds = Some(asset_server.load(root.resolve(background_path)));
         let sfx_path = ScenarioRelativePath::try_from(SFX_INDEX_PATH)
             .expect("canonical SFX index path is scenario-relative");
         state.sfx_index = Some(asset_server.load(root.resolve(&sfx_path)));

@@ -32,6 +32,7 @@ use crate::{
         camera_follow::{MapCameraFollow, MapPixelBounds, follow_map_camera},
         fixed_gameplay_camera,
     },
+    scenario_inventory::ScenarioInventory,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     tile_coordinates::tmx_tile_center,
@@ -324,6 +325,7 @@ fn apply_tiled_transform(sprite: &mut Sprite, gid: crate::tmx_header::TmxTileGid
 fn begin_static_map_load(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     mut state: ResMut<StaticMapRenderState>,
 ) {
@@ -336,8 +338,7 @@ fn begin_static_map_load(
         state.status = StaticMapRenderStatus::Failed;
         return;
     };
-    let logical = format!("assets/maps/{map_id}.tmx");
-    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+    let Some(logical) = inventory.tmx_path(map_id) else {
         state.status = StaticMapRenderStatus::Failed;
         return;
     };
@@ -350,6 +351,7 @@ fn sync_static_map_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     tiles: Query<Entity, With<StaticMapTile>>,
     cameras: Query<Entity, With<WorldMapCamera>>,
@@ -374,8 +376,7 @@ fn sync_static_map_request(
         state.status = StaticMapRenderStatus::Failed;
         return;
     };
-    let logical = format!("assets/maps/{map_id}.tmx");
-    let Ok(logical) = ScenarioRelativePath::try_from(logical.as_str()) else {
+    let Some(logical) = inventory.tmx_path(map_id) else {
         state.status = StaticMapRenderStatus::Failed;
         return;
     };

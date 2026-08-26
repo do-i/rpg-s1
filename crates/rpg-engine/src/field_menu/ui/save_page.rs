@@ -8,6 +8,7 @@ pub(in crate::field_menu) fn sync_save_page(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     state: Res<FieldMenuState>,
     saves: Res<SaveSlotCatalog>,
     game: Option<Res<GameState>>,
@@ -36,12 +37,9 @@ pub(in crate::field_menu) fn sync_save_page(
         commands.entity(entity).despawn();
     }
 
-    let font = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("save font path"),
-        ),
-    );
+    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
+        return;
+    };
     commands.entity(menu_root).with_children(|parent| {
         spawn_save_page(parent, &font, &state, &game, &saves);
     });

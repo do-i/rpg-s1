@@ -8,6 +8,7 @@ pub(in crate::field_menu) fn sync_spells_page(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
@@ -40,12 +41,9 @@ pub(in crate::field_menu) fn sync_spells_page(
         commands.entity(entity).despawn();
     }
 
-    let font = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("spells font path"),
-        ),
-    );
+    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
+        return;
+    };
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     commands.entity(menu_root).with_children(|parent| {
         spawn_spells_page(parent, &font, &state, &game, &catalog, &portraits);

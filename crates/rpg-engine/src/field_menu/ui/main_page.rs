@@ -4,6 +4,7 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     state: Res<FieldMenuState>,
     game: Option<Res<GameState>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
@@ -27,12 +28,9 @@ pub(in crate::field_menu) fn sync_main_menu_page(
         commands.entity(entity).despawn();
     }
 
-    let font = asset_server.load(
-        root.resolve(
-            &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                .expect("field menu font path"),
-        ),
-    );
+    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
+        return;
+    };
     commands.entity(menu_root).with_children(|parent| {
         spawn_main_menu_page(parent, &font, &state);
     });

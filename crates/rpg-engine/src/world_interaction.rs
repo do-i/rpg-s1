@@ -18,6 +18,7 @@ use crate::{
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
     scenario_balance::BalanceData,
     scenario_dialogue::{DialogueActions, DialogueDocument},
+    scenario_inventory::ScenarioInventory,
     scenario_map::MagicCoreSize,
     scenario_party::PartyCatalog,
     scenario_path::ScenarioRelativePath,
@@ -105,15 +106,17 @@ struct WorldDialogueHint;
 fn begin_world_interactions(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     mut state: ResMut<WorldInteractionState>,
 ) {
+    let (Some(party), Some(balance)) = (inventory.party.as_ref(), inventory.balance.as_ref())
+    else {
+        *state = WorldInteractionState::default();
+        return;
+    };
     *state = WorldInteractionState {
-        party: Some(asset_server.load(scenario_root.resolve(
-            &ScenarioRelativePath::try_from("data/party.yaml").expect("canonical party path"),
-        ))),
-        balance: Some(asset_server.load(scenario_root.resolve(
-            &ScenarioRelativePath::try_from("data/balance.yaml").expect("canonical balance path"),
-        ))),
+        party: Some(asset_server.load(scenario_root.resolve(party))),
+        balance: Some(asset_server.load(scenario_root.resolve(balance))),
         sfx_index: Some(asset_server.load(scenario_root.resolve(
             &ScenarioRelativePath::try_from(SFX_INDEX_PATH).expect("canonical SFX index path"),
         ))),
@@ -638,6 +641,7 @@ fn sync_dialogue_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     theme: Res<UiTheme>,
     state: Res<WorldInteractionState>,
     mut roots: Query<(Entity, &mut Name), With<WorldDialogueRoot>>,
@@ -685,12 +689,10 @@ fn sync_dialogue_overlay(
         return;
     };
     if roots.is_empty() {
-        let font = asset_server.load(
-            scenario_root.resolve(
-                &ScenarioRelativePath::try_from("assets/fonts/Philosopher-Regular.ttf")
-                    .expect("canonical field font path"),
-            ),
-        );
+        let Some(font_path) = inventory.font.as_ref() else {
+            return;
+        };
+        let font = asset_server.load(scenario_root.resolve(font_path));
         spawn_dialogue_overlay(&mut commands, &theme, font);
         return;
     }
