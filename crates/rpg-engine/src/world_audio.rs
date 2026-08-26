@@ -40,9 +40,7 @@ pub(crate) struct WorldAudioPlugin;
 impl Plugin for WorldAudioPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<MapMetadata>()
-            .init_asset::<BgmIndex>()
             .init_asset_loader::<MapMetadataAssetLoader>()
-            .init_asset_loader::<BgmIndexAssetLoader>()
             .init_resource::<WorldBgmState>()
             .add_systems(OnEnter(AppState::World), begin_world_audio)
             .add_systems(Update, drive_world_audio.run_if(in_state(AppState::World)))
@@ -468,7 +466,7 @@ impl AssetLoader for MapMetadataAssetLoader {
 }
 
 #[derive(Default, TypePath)]
-struct BgmIndexAssetLoader;
+pub(crate) struct BgmIndexAssetLoader;
 
 impl AssetLoader for BgmIndexAssetLoader {
     type Asset = BgmIndex;
@@ -502,7 +500,7 @@ async fn load_yaml<T: serde::de::DeserializeOwned>(
 }
 
 #[derive(Debug)]
-enum WorldYamlAssetLoaderError {
+pub(crate) enum WorldYamlAssetLoaderError {
     Io(std::io::Error),
     Utf8(std::str::Utf8Error),
     Yaml(ScenarioYamlError),
@@ -573,6 +571,11 @@ mod tests {
             let scenario = asset_base.join("scenarios/invented");
             fs::create_dir_all(scenario.join("data/maps")).unwrap();
             fs::create_dir_all(scenario.join("data/audio")).unwrap();
+            fs::write(
+                scenario.join("manifest.yaml"),
+                include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"),
+            )
+            .unwrap();
             for (map_id, map_metadata) in maps {
                 fs::write(
                     scenario.join(format!("data/maps/{map_id}.yaml")),
@@ -580,7 +583,16 @@ mod tests {
                 )
                 .unwrap();
             }
-            fs::write(scenario.join("data/audio/bgm_index.yaml"), bgm_index).unwrap();
+            fs::write(
+                scenario.join("data/audio/bgm_index.yaml"),
+                format!("title:\n  default: bgm/invented-title.mp3\n{bgm_index}"),
+            )
+            .unwrap();
+            fs::write(
+                scenario.join("data/audio/sfx_index.yaml"),
+                "ui:\n  hover: sfx/hover.mp3\n  confirm: sfx/confirm.mp3\n",
+            )
+            .unwrap();
             Self { asset_base }
         }
     }
@@ -661,7 +673,13 @@ mod tests {
         );
         let mut app = app(&package, AppState::Title);
 
-        app.update();
+        for _ in 0..5_000 {
+            app.update();
+            if !logical_players(&mut app).is_empty() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
         let [title_player] = logical_players(&mut app)[..] else {
             panic!("Title must own exactly one logically marked BGM before transition");
         };

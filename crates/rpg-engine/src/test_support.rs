@@ -40,6 +40,7 @@ pub(crate) fn assert_clean_pinned_python_source(source: &Path) {
 }
 
 use crate::{
+    ScenarioAudioAssetPlugin,
     action_input::ActionInputPlugin,
     app_state::{AppState, AppStateTransitionPlugin},
     gameplay_canvas::FixedGameplayCanvasPlugin,
@@ -90,6 +91,7 @@ pub(crate) fn headless_title_app_with_asset_base(
         .init_resource::<ButtonInput<KeyCode>>()
         .insert_resource(scenario_root)
         .add_plugins(ScenarioManifestAssetPlugin)
+        .add_plugins(ScenarioAudioAssetPlugin)
         .add_plugins(ScenarioNewGameAssetsPlugin)
         .init_resource::<Playtime>()
         .add_plugins(GameplayRngPlugin)

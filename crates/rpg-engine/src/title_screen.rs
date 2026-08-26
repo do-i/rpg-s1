@@ -11,6 +11,11 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_canvas::fixed_gameplay_camera,
     save_ui::{SaveSlotCatalog, TitleLoadMenu},
+    scenario_audio::{BGM_INDEX_PATH, BgmIndex, SFX_INDEX_PATH, SfxIndex},
+    scenario_manifest::Manifest,
+    scenario_manifest_asset::{ActiveManifestLoad, ActiveManifestStatus},
+    scenario_path::ScenarioRelativePath,
+    scenario_root::ScenarioRoot,
     ui_theme::UiTheme,
     world_audio::LogicalBgmPlayer,
 };
@@ -30,12 +35,18 @@ impl Plugin for TitleScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TitleMenu>()
             .init_resource::<QuitLifecycle>()
+            .init_resource::<TitlePresentation>()
             .init_resource::<UiTheme>()
             .add_systems(OnEnter(AppState::Title), setup_title_screen)
             .add_systems(OnExit(AppState::Title), cleanup_title_screen)
             .add_systems(
                 Update,
-                (handle_menu_input, observe_quit_playback, update_menu_colors)
+                (
+                    apply_title_presentation,
+                    handle_menu_input,
+                    observe_quit_playback,
+                    update_menu_colors,
+                )
                     .chain()
                     .run_if(in_state(AppState::Title)),
             );
@@ -94,6 +105,30 @@ enum QuitLifecycleState {
 #[derive(Resource, Debug, Default, Eq, PartialEq)]
 struct QuitLifecycle {
     state: QuitLifecycleState,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum TitlePresentationStatus {
+    #[default]
+    Loading,
+    Ready,
+    Failed,
+}
+
+#[derive(Debug, Default, Resource)]
+pub(crate) struct TitlePresentation {
+    status: TitlePresentationStatus,
+    bgm_index: Option<Handle<BgmIndex>>,
+    sfx_index: Option<Handle<SfxIndex>>,
+    hover_sfx: Option<String>,
+    confirm_sfx: Option<String>,
+}
+
+impl TitlePresentation {
+    #[cfg(test)]
+    pub(crate) const fn is_ready(&self) -> bool {
+        matches!(self.status, TitlePresentationStatus::Ready)
+    }
 }
 
 impl QuitLifecycle {
@@ -178,26 +213,26 @@ fn title_menu_action(selected: usize, has_valid_save: bool) -> TitleMenuAction {
     }
 }
 
-fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, theme: Res<UiTheme>) {
+fn setup_title_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    theme: Res<UiTheme>,
+    mut presentation: ResMut<TitlePresentation>,
+) {
+    let bgm_path = ScenarioRelativePath::try_from(BGM_INDEX_PATH)
+        .expect("the BGM index path is scenario-relative");
+    let sfx_path = ScenarioRelativePath::try_from(SFX_INDEX_PATH)
+        .expect("the SFX index path is scenario-relative");
+    *presentation = TitlePresentation {
+        status: TitlePresentationStatus::Loading,
+        bgm_index: Some(asset_server.load(scenario_root.resolve(&bgm_path))),
+        sfx_index: Some(asset_server.load(scenario_root.resolve(&sfx_path))),
+        hover_sfx: None,
+        confirm_sfx: None,
+    };
+
     commands.spawn((fixed_gameplay_camera(), TitleScreenEntity));
-
-    commands.spawn((
-        Sprite::from_image(asset_server.load("images/title_lost_flame.webp")),
-        TitleScreenEntity,
-    ));
-
-    commands.spawn((
-        AudioPlayer::new(asset_server.load("audio/title_theme.mp3")),
-        PlaybackSettings {
-            mode: PlaybackMode::Loop,
-            volume: Volume::Linear(0.65),
-            ..default()
-        },
-        LogicalBgmPlayer,
-        TitleScreenEntity,
-    ));
-
-    let font = asset_server.load("fonts/Philosopher-Regular.ttf");
 
     commands
         .spawn(Node {
@@ -227,7 +262,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, th
                     panel.spawn((
                         Text::new(label),
                         TextFont {
-                            font: font.clone().into(),
+                            font: Handle::<Font>::default().into(),
                             font_size: FontSize::Px(theme.menu_font_size),
                             ..default()
                         },
@@ -245,7 +280,7 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, th
             root.spawn((
                 Text::new(""),
                 TextFont {
-                    font: font.into(),
+                    font: Handle::<Font>::default().into(),
                     font_size: FontSize::Px(theme.status_font_size),
                     ..default()
                 },
@@ -263,11 +298,99 @@ fn setup_title_screen(mut commands: Commands, asset_server: Res<AssetServer>, th
         });
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "title publication joins the manifest and both typed audio indexes transactionally"
+)]
+fn apply_title_presentation(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    active_manifest: Res<ActiveManifestLoad>,
+    manifests: Res<Assets<Manifest>>,
+    bgm_indexes: Res<Assets<BgmIndex>>,
+    sfx_indexes: Res<Assets<SfxIndex>>,
+    mut presentation: ResMut<TitlePresentation>,
+    mut fonts: Query<&mut TextFont, With<TitleScreenEntity>>,
+    mut status: Single<&mut Text, With<StatusMessage>>,
+) {
+    if presentation.status != TitlePresentationStatus::Loading {
+        return;
+    }
+    if active_manifest.status() == ActiveManifestStatus::Failed {
+        presentation.status = TitlePresentationStatus::Failed;
+        status.0 = "Scenario manifest failed to load.".to_owned();
+        return;
+    }
+    let Some(manifest) = active_manifest.manifest(&manifests) else {
+        return;
+    };
+    let Some(bgm_handle) = presentation.bgm_index.as_ref() else {
+        return;
+    };
+    let Some(sfx_handle) = presentation.sfx_index.as_ref() else {
+        return;
+    };
+    if matches!(
+        asset_server.load_state(bgm_handle.id()),
+        LoadState::Failed(_)
+    ) || matches!(
+        asset_server.load_state(sfx_handle.id()),
+        LoadState::Failed(_)
+    ) {
+        presentation.status = TitlePresentationStatus::Failed;
+        status.0 = "Scenario audio index failed to load.".to_owned();
+        return;
+    }
+    let (Some(bgm_index), Some(sfx_index)) =
+        (bgm_indexes.get(bgm_handle), sfx_indexes.get(sfx_handle))
+    else {
+        return;
+    };
+    let Some(title_bgm) = bgm_index.resolve_key(&scenario_root, "title.default") else {
+        presentation.status = TitlePresentationStatus::Failed;
+        status.0 = "Scenario audio has no title.default track.".to_owned();
+        return;
+    };
+    let (Some(hover_sfx), Some(confirm_sfx)) = (
+        sfx_index.resolve_key(&scenario_root, "hover"),
+        sfx_index.resolve_key(&scenario_root, "confirm"),
+    ) else {
+        presentation.status = TitlePresentationStatus::Failed;
+        status.0 = "Scenario audio has no hover or confirm event.".to_owned();
+        return;
+    };
+
+    let font = asset_server.load(scenario_root.resolve(&manifest.font.path));
+    for mut text_font in &mut fonts {
+        text_font.font = font.clone().into();
+    }
+    commands.spawn((
+        Sprite::from_image(asset_server.load(scenario_root.resolve(&manifest.title.image))),
+        TitleScreenEntity,
+    ));
+    commands.spawn((
+        AudioPlayer::new(asset_server.load(title_bgm)),
+        PlaybackSettings {
+            mode: PlaybackMode::Loop,
+            volume: Volume::Linear(0.65),
+            ..default()
+        },
+        LogicalBgmPlayer,
+        TitleScreenEntity,
+    ));
+    presentation.hover_sfx = Some(hover_sfx);
+    presentation.confirm_sfx = Some(confirm_sfx);
+    presentation.status = TitlePresentationStatus::Ready;
+    status.0.clear();
+}
+
 fn cleanup_title_screen(
     mut commands: Commands,
     title_entities: Query<Entity, With<TitleScreenEntity>>,
     mut menu: ResMut<TitleMenu>,
     mut quit: ResMut<QuitLifecycle>,
+    mut presentation: ResMut<TitlePresentation>,
 ) {
     for entity in &title_entities {
         commands.entity(entity).despawn();
@@ -275,6 +398,7 @@ fn cleanup_title_screen(
 
     *menu = TitleMenu::default();
     *quit = QuitLifecycle::default();
+    *presentation = TitlePresentation::default();
 }
 
 fn handle_menu_input(
@@ -285,6 +409,7 @@ fn handle_menu_input(
     catalog: Res<SaveSlotCatalog>,
     mut load_menu: ResMut<TitleLoadMenu>,
     mut output: TitleMenuInputOutput,
+    presentation: Res<TitlePresentation>,
 ) {
     if !quit.accepts_input() || load_menu.open {
         return;
@@ -296,11 +421,13 @@ fn handle_menu_input(
 
     if let Some(delta) = direction {
         menu.move_by(delta);
-        output.commands.spawn((
-            AudioPlayer::new(output.asset_server.load("audio/menu_hover.mp3")),
-            PlaybackSettings::DESPAWN,
-            TitleScreenEntity,
-        ));
+        if let Some(path) = presentation.hover_sfx.as_ref() {
+            output.commands.spawn((
+                AudioPlayer::new(output.asset_server.load(path)),
+                PlaybackSettings::DESPAWN,
+                TitleScreenEntity,
+            ));
+        }
         output.status.0.clear();
     }
 
@@ -310,22 +437,26 @@ fn handle_menu_input(
 
     match title_menu_action(menu.selected, catalog.has_valid()) {
         TitleMenuAction::NewGame => {
-            output.commands.spawn((
-                AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
-                PlaybackSettings::DESPAWN,
-                TitleScreenEntity,
-            ));
+            if let Some(path) = presentation.confirm_sfx.as_ref() {
+                output.commands.spawn((
+                    AudioPlayer::new(output.asset_server.load(path)),
+                    PlaybackSettings::DESPAWN,
+                    TitleScreenEntity,
+                ));
+            }
             output.status.0.clear();
             output
                 .transitions
                 .write(AppStateTransitionRequest::new(AppState::NameEntry));
         }
         TitleMenuAction::LoadGame => {
-            output.commands.spawn((
-                AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
-                PlaybackSettings::DESPAWN,
-                TitleScreenEntity,
-            ));
+            if let Some(path) = presentation.confirm_sfx.as_ref() {
+                output.commands.spawn((
+                    AudioPlayer::new(output.asset_server.load(path)),
+                    PlaybackSettings::DESPAWN,
+                    TitleScreenEntity,
+                ));
+            }
             output.status.0.clear();
             load_menu.open(catalog.slots());
         }
@@ -334,12 +465,14 @@ fn handle_menu_input(
             if reduce_quit_lifecycle(&mut quit, time.elapsed(), QuitLifecycleEvent::Activate)
                 == Some(QuitLifecycleEffect::SpawnConfirm)
             {
-                output.commands.spawn((
-                    AudioPlayer::new(output.asset_server.load("audio/menu_confirm.mp3")),
-                    PlaybackSettings::DESPAWN,
-                    QuitConfirmSound,
-                    TitleScreenEntity,
-                ));
+                if let Some(path) = presentation.confirm_sfx.as_ref() {
+                    output.commands.spawn((
+                        AudioPlayer::new(output.asset_server.load(path)),
+                        PlaybackSettings::DESPAWN,
+                        QuitConfirmSound,
+                        TitleScreenEntity,
+                    ));
+                }
             }
         }
     }
@@ -416,6 +549,21 @@ fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize, has_valid_sa
 mod tests {
     use super::*;
 
+    fn title_app(initial_state: AppState) -> App {
+        let mut app = crate::test_support::headless_title_app(initial_state);
+        if initial_state != AppState::Title {
+            return app;
+        }
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<TitlePresentation>().is_ready() {
+                return app;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        panic!("headless title presentation did not become ready");
+    }
+
     #[test]
     fn default_ui_theme_preserves_the_title_visual_contract() {
         let theme = UiTheme::default();
@@ -432,7 +580,7 @@ mod tests {
 
     #[test]
     fn spawned_title_ui_uses_the_registered_theme() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
 
         let theme = *app.world().resource::<UiTheme>();
@@ -464,7 +612,7 @@ mod tests {
 
     #[test]
     fn spawned_title_camera_uses_the_fixed_gameplay_canvas() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
 
         let world = app.world_mut();
@@ -529,7 +677,7 @@ mod tests {
 
     #[test]
     fn title_menu_uses_the_action_maps_up_precedence_for_opposite_navigation() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
         app.world_mut().resource_mut::<TitleMenu>().selected = 1;
 
@@ -545,7 +693,7 @@ mod tests {
 
     #[test]
     fn title_menu_navigates_before_confirming_a_same_frame_selection() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
 
         {
@@ -704,7 +852,7 @@ mod tests {
 
     #[test]
     fn headless_quit_input_spawns_one_marked_confirmation_and_suppresses_input() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
         app.world_mut().resource_mut::<TitleMenu>().selected = 2;
         app.world_mut()
@@ -728,7 +876,10 @@ mod tests {
             .path()
             .to_string_lossy()
             .into_owned();
-        assert_eq!(confirm_path, "audio/menu_confirm.mp3");
+        assert_eq!(
+            confirm_path,
+            "scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3"
+        );
 
         world.resource_mut::<TitleMenu>().selected = 0;
         world
@@ -757,7 +908,7 @@ mod tests {
 
     #[test]
     fn confirming_new_game_transitions_once_and_cleans_up_title() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.update();
 
         app.world_mut()
@@ -787,7 +938,7 @@ mod tests {
 
     #[test]
     fn headless_start_timeout_emits_one_app_exit_message() {
-        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        let mut app = title_app(AppState::Title);
         app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
             Duration::ZERO,
         ));
@@ -838,7 +989,7 @@ mod tests {
 
     #[test]
     fn title_screen_is_removed_after_leaving_title() {
-        let mut app = crate::test_support::headless_title_app(AppState::Boot);
+        let mut app = title_app(AppState::Boot);
         app.update();
 
         let world = app.world_mut();
@@ -858,7 +1009,14 @@ mod tests {
         app.world_mut()
             .resource_mut::<NextState<AppState>>()
             .set(AppState::Title);
-        app.update();
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<TitlePresentation>().is_ready() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(app.world().resource::<TitlePresentation>().is_ready());
 
         let world = app.world_mut();
         assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
@@ -910,7 +1068,10 @@ mod tests {
                     .into_owned()
             })
             .collect::<Vec<_>>();
-        assert_eq!(backgrounds, ["images/title_lost_flame.webp"]);
+        assert_eq!(
+            backgrounds,
+            ["scenarios/rusted_kingdoms/assets/images/title_bg/title_lost_flame.webp"]
+        );
 
         assert_eq!(title_music.len(), 1);
         let title_music_path = asset_server
@@ -919,7 +1080,10 @@ mod tests {
             .path()
             .to_string_lossy()
             .into_owned();
-        assert_eq!(title_music_path, "audio/title_theme.mp3");
+        assert_eq!(
+            title_music_path,
+            "scenarios/rusted_kingdoms/assets/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3"
+        );
         assert!(matches!(title_music[0].1, PlaybackMode::Loop));
         assert_eq!(title_music[0].2, Volume::Linear(0.65));
 
@@ -945,7 +1109,14 @@ mod tests {
         app.world_mut()
             .resource_mut::<NextState<AppState>>()
             .set(AppState::Title);
-        app.update();
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<TitlePresentation>().is_ready() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(app.world().resource::<TitlePresentation>().is_ready());
 
         let world = app.world_mut();
         assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
