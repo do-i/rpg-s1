@@ -52,6 +52,7 @@ use crate::{
     new_game_install::NewGameInstallPlugin,
     playtime::Playtime,
     save_ui::{SaveSlotCatalog, TitleLoadMenu},
+    scenario_inventory::ScenarioInventory,
     scenario_manifest_asset::ScenarioManifestAssetPlugin,
     scenario_new_game_assets::ScenarioNewGameAssetsPlugin,
     scenario_root::ScenarioRoot,
@@ -77,6 +78,7 @@ pub(crate) fn headless_title_app_with_asset_base(
     asset_base: String,
     scenario_root: ScenarioRoot,
 ) -> App {
+    let inventory = ScenarioInventory::discover(Path::new(&asset_base), &scenario_root);
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(StatesPlugin)
@@ -90,6 +92,7 @@ pub(crate) fn headless_title_app_with_asset_base(
         .init_asset::<AudioSource>()
         .init_resource::<ButtonInput<KeyCode>>()
         .insert_resource(scenario_root)
+        .insert_resource(inventory)
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioAudioAssetPlugin)
         .add_plugins(ScenarioNewGameAssetsPlugin)

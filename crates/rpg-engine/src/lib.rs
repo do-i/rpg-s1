@@ -31,6 +31,7 @@ mod save_data;
 mod save_store;
 mod save_ui;
 mod scenario_dialogue_report;
+mod scenario_inventory;
 pub mod scenario_manifest_asset;
 mod scenario_map_report;
 mod scenario_map_sweep;
@@ -88,6 +89,7 @@ use new_game_install::NewGameInstallPlugin;
 use playtime::Playtime;
 use save_ui::SaveUiPlugin;
 use scenario_audio::{BgmIndex, SfxIndex};
+use scenario_inventory::ScenarioInventory;
 use scenario_manifest::Manifest;
 use scenario_manifest_asset::{ActiveManifestLoad, ScenarioManifestAssetPlugin};
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
@@ -121,6 +123,8 @@ pub fn run() -> std::process::ExitCode {
 }
 
 fn run_game(scenario_root: ScenarioRoot) {
+    let asset_base = cli::production_asset_base();
+    let inventory = ScenarioInventory::discover(&asset_base, &scenario_root);
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -135,7 +139,7 @@ fn run_game(scenario_root: ScenarioRoot) {
                     ..default()
                 })
                 .set(AssetPlugin {
-                    file_path: cli::production_asset_base().to_string_lossy().into_owned(),
+                    file_path: asset_base.to_string_lossy().into_owned(),
                     ..default()
                 })
                 .set(WindowPlugin {
@@ -151,6 +155,7 @@ fn run_game(scenario_root: ScenarioRoot) {
         )
         .insert_resource(ClearColor(UiTheme::default().clear_color))
         .insert_resource(scenario_root)
+        .insert_resource(inventory)
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioAudioAssetPlugin)
         .add_systems(Update, sync_window_title_from_manifest)
