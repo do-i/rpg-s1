@@ -4,3 +4,6 @@
 # Release staging: release.yml builds the tarball here, and so does a local
 # rehearsal of that step.
 /dist/
+
+# Local work-in-progress planning documents.
+/plans/

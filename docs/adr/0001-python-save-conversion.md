@@ -13,7 +13,7 @@ one-way conversion described below, and normal runtime enumeration/load reads
 only native versioned slots. The checked-in source-produced input and
 converted-native golden live under `tests/fixtures/python-save-0897035/`.
 Gate 7 and RK-SAV-006 passed through separate live game processes; detailed
-evidence is in `docs/m7-manual-play-checklist.md`.
+evidence remains available in the milestone's Git history.
 
 ## Context
 

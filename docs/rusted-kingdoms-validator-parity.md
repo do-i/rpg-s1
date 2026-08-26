@@ -168,8 +168,7 @@ An unresolved `give_items` id is noted informationally rather than as an
 error, since `validate-scenario` already checks that at error level.
 
 Like `map-report`, this command is informational and always exits `0`.
-`docs/m12-content-migration-ledger.md` ("Pinned-source differences affecting
-W12.1") documents that `ardel_fisherman` ends with two flavor entries that
+ADR 0007 documents that `ardel_fisherman` ends with two flavor entries that
 are provably dead under this rule; the report marks exactly those two
 `documented-accepted` rather than as findings. Running it against the shipped
 package turns up the identical dead-trailing-entry shape, undocumented, in
