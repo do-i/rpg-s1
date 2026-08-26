@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn loads_source_shaped_catalog_and_preserves_rectangles_in_order() {
         let catalog: BattleBackgroundCatalog = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/battle-background-catalog.yaml"
+            "../../../tests/fixtures/battle-background-catalog.yaml"
         ))
         .expect("source-shaped background catalog should deserialize");
 
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_null_coerced_fractional_negative_and_unknown_shapes() {
-        let valid = include_str!("../tests/fixtures/battle-background-catalog.yaml");
+        let valid = include_str!("../../../tests/fixtures/battle-background-catalog.yaml");
         for document in [
             valid.replacen("id: invented-grove-1280x468", "id: true", 1),
             valid.replacen("x: 0", "x: '0'", 1),

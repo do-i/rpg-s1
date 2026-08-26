@@ -184,9 +184,10 @@ mod tests {
 
     #[test]
     fn loads_complete_source_shaped_balance_data() {
-        let balance: BalanceData =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/balance-complete.yaml"))
-                .expect("complete balance fixture should deserialize");
+        let balance: BalanceData = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/balance-complete.yaml"
+        ))
+        .expect("complete balance fixture should deserialize");
 
         assert_eq!(balance.progression.level_cap.get(), 77);
         assert_eq!(balance.progression.exp_cap.get(), 900_000);
@@ -219,7 +220,7 @@ mod tests {
 
     #[test]
     fn rejects_missing_null_coerced_invalid_and_unknown_shapes() {
-        let valid = include_str!("../tests/fixtures/balance-complete.yaml");
+        let valid = include_str!("../../../tests/fixtures/balance-complete.yaml");
         for document in [
             valid.replacen("level_cap: 77", "level_cap: 0", 1),
             valid.replacen("exp_cap: 900_000", "exp_cap: -1", 1),

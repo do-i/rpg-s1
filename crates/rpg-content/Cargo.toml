@@ -6,7 +6,7 @@ rust-version = "1.97"
 description = "Scenario package boundaries and source-compatible content types for rpg-s1"
 
 [dependencies]
-bevy = { version = "0.19", default-features = false }
+bevy = { version = "0.19", default-features = false, features = ["bevy_asset"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_path_to_error = "=0.1.20"
 serde_yaml_ng = "=0.10.0"

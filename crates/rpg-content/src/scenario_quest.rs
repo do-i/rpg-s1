@@ -79,7 +79,7 @@ mod tests {
     use super::{QuestCatalogFile, QuestKind};
     use crate::scenario_yaml;
 
-    const FIXTURE: &str = include_str!("../tests/fixtures/quest-catalog-shapes.yaml");
+    const FIXTURE: &str = include_str!("../../../tests/fixtures/quest-catalog-shapes.yaml");
 
     #[test]
     fn loads_every_current_quest_shape_and_preserves_order() {

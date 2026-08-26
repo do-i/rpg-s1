@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn loads_every_ardel_map_metadata_field_and_shop_variant() {
         let map: MapMetadata = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/ardel-map-metadata-complete.yaml"
+            "../../../tests/fixtures/ardel-map-metadata-complete.yaml"
         ))
         .expect("the source-shaped Ardel fixture should deserialize");
 

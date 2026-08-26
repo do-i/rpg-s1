@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn loads_source_shaped_intro_cutscene_without_changing_text_or_order() {
         let document: DialogueDocument = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/dialogue-intro-cutscene.yaml"
+            "../../../tests/fixtures/dialogue-intro-cutscene.yaml"
         ))
         .expect("the source-shaped intro fixture should deserialize");
 
@@ -298,7 +298,7 @@ mod tests {
     #[test]
     fn loads_ordered_branching_npc_entries_and_every_corpus_action_shape() {
         let document: DialogueDocument = scenario_yaml::from_str(include_str!(
-            "../tests/fixtures/dialogue-branching-npc.yaml"
+            "../../../tests/fixtures/dialogue-branching-npc.yaml"
         ))
         .expect("the source-shaped branching fixture should deserialize");
         assert_eq!(document.effective_id("ignored_stem"), "mira_join");

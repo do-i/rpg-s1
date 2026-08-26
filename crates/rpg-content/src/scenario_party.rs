@@ -277,9 +277,10 @@ mod tests {
 
     #[test]
     fn loads_every_party_record_shape_and_field_without_loss() {
-        let catalog: PartyCatalog =
-            scenario_yaml::from_str(include_str!("../tests/fixtures/party-catalog-shapes.yaml"))
-                .expect("source-shaped party fixture should deserialize");
+        let catalog: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../../../tests/fixtures/party-catalog-shapes.yaml"
+        ))
+        .expect("source-shaped party fixture should deserialize");
 
         assert_eq!(catalog.party.len(), 2);
 
