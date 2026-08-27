@@ -30,6 +30,8 @@ use super::{
 
 const LPC_COLUMNS: u32 = 9;
 const BATTLE_IDLE_TILE: u32 = 2 * LPC_COLUMNS;
+/// Row 6 of every authored `*_battle.tsx` sheet holds the armed attack swing.
+const BATTLE_ATTACK_TILE: u32 = 6 * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
 const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
 const ENEMY_GROUND_NUDGE: f32 = 10.0;
@@ -69,6 +71,7 @@ impl Plugin for BattlePlugin {
                     sync_battle_message,
                     sync_enemy_cards,
                     sync_enemy_meters,
+                    super::reward_modal::sync_reward_modal,
                 )
                     .chain()
                     .run_if(in_state(AppState::Battle)),
@@ -78,7 +81,7 @@ impl Plugin for BattlePlugin {
 }
 
 #[derive(Component)]
-struct BattleUi;
+pub(super) struct BattleUi;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum EnemySpritePart {
@@ -719,7 +722,7 @@ fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>)
         });
 }
 
-fn spawn_battle_text<'a>(
+pub(super) fn spawn_battle_text<'a>(
     parent: &'a mut ChildSpawnerCommands<'_>,
     text: impl Into<String>,
     font: &Handle<Font>,
@@ -849,15 +852,15 @@ fn meter_color(kind: BattleMeterKind, value: u32, maximum: u32) -> Color {
     }
 }
 
-fn battle_ink() -> Color {
+pub(super) fn battle_ink() -> Color {
     Color::srgb_u8(242, 236, 211)
 }
 
-fn battle_dim() -> Color {
+pub(super) fn battle_dim() -> Color {
     Color::srgb_u8(101, 96, 88)
 }
 
-fn battle_gold() -> Color {
+pub(super) fn battle_gold() -> Color {
     Color::srgb_u8(231, 184, 86)
 }
 
@@ -865,15 +868,15 @@ fn battle_ember() -> Color {
     Color::srgb_u8(203, 82, 47)
 }
 
-fn battle_teal() -> Color {
+pub(super) fn battle_teal() -> Color {
     Color::srgb_u8(67, 166, 160)
 }
 
-fn battle_violet() -> Color {
+pub(super) fn battle_violet() -> Color {
     Color::srgb_u8(126, 101, 204)
 }
 
-fn battle_panel() -> Color {
+pub(super) fn battle_panel() -> Color {
     Color::srgba_u8(22, 22, 28, 228)
 }
 
@@ -885,11 +888,11 @@ fn battle_border() -> Color {
     Color::srgb_u8(126, 98, 55)
 }
 
-fn battle_border_active() -> Color {
+pub(super) fn battle_border_active() -> Color {
     Color::srgb_u8(235, 190, 89)
 }
 
-fn battle_row() -> Color {
+pub(super) fn battle_row() -> Color {
     Color::srgba_u8(30, 30, 38, 210)
 }
 
@@ -897,7 +900,7 @@ fn battle_row_active() -> Color {
     Color::srgba_u8(79, 51, 38, 230)
 }
 
-fn battle_row_border() -> Color {
+pub(super) fn battle_row_border() -> Color {
     Color::srgb_u8(82, 70, 50)
 }
 
@@ -913,13 +916,34 @@ fn battle_mana() -> Color {
     Color::srgb_u8(88, 72, 138)
 }
 
+/// Returns the enemy slot that is mid-action, so it can wear the attack pose.
+fn attacking_enemy_index(state: &BattleState) -> Option<usize> {
+    if state.phase != BattlePhase::Resolve {
+        return None;
+    }
+    state
+        .active_key()
+        .filter(|key| key.side == BattleSide::Enemy)
+        .map(|key| key.index)
+}
+
+fn enemy_sprite_tile(index: usize, attacking: Option<usize>) -> u32 {
+    if attacking == Some(index) {
+        BATTLE_ATTACK_TILE
+    } else {
+        BATTLE_IDLE_TILE
+    }
+}
+
 fn drive_battle_assets(
     asset_server: Res<AssetServer>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     assets: Option<Res<BattleAssetState>>,
+    state: Option<Res<BattleState>>,
     mut images: Query<(&BattleEnemyImage, &mut ImageNode)>,
 ) {
     let Some(assets) = assets else { return };
+    let attacking = state.as_deref().and_then(attacking_enemy_index);
     for (marker, mut image) in &mut images {
         let Some(Some(handle)) = assets.atlases.get(marker.index) else {
             continue;
@@ -930,7 +954,7 @@ fn drive_battle_assets(
         let Some(atlas) = atlases.get(handle) else {
             continue;
         };
-        if let Ok(sprite) = atlas.sprite_for_tile(BATTLE_IDLE_TILE) {
+        if let Ok(sprite) = atlas.sprite_for_tile(enemy_sprite_tile(marker.index, attacking)) {
             image.image = sprite.image;
             image.texture_atlas = sprite.texture_atlas;
             let source_width = atlas.metadata().tile_width() as f32;
@@ -1707,6 +1731,26 @@ mod tests {
     }
 
     #[test]
+    fn the_full_party_panel_still_leaves_the_command_panel_its_minimum() {
+        // Panel row padding is 8 per side, with an 8px gap before the right column.
+        let available = crate::gameplay_canvas::LOGICAL_CANVAS_WIDTH as f32 - 8.0 * 2.0;
+        let remaining = available - party_panel_width(5) - 8.0;
+        assert!(
+            remaining >= 220.0,
+            "five party cards must not squeeze out the command panel, got {remaining}"
+        );
+    }
+
+    #[test]
+    fn only_the_acting_enemy_wears_the_attack_pose() {
+        assert_eq!(BATTLE_IDLE_TILE, 18);
+        assert_eq!(BATTLE_ATTACK_TILE, 54);
+        assert_eq!(enemy_sprite_tile(0, Some(0)), BATTLE_ATTACK_TILE);
+        assert_eq!(enemy_sprite_tile(1, Some(0)), BATTLE_IDLE_TILE);
+        assert_eq!(enemy_sprite_tile(0, None), BATTLE_IDLE_TILE);
+    }
+
+    #[test]
     fn meters_clamp_and_switch_to_low_health_color() {
         assert_eq!(meter_percent(50, 100), 50.0);
         assert_eq!(meter_percent(200, 100), 100.0);
@@ -1729,6 +1773,9 @@ mod tests {
                 sync_battle_message,
                 sync_enemy_cards,
                 sync_enemy_meters,
+                super::super::reward_modal::sync_reward_modal,
+                super::super::fx::route_battle_fx,
+                super::super::fx::animate_battle_fx,
             )
                 .chain(),
         );

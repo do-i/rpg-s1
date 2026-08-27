@@ -7,6 +7,7 @@ mod fx;
 mod item;
 mod model;
 mod resolver;
+mod reward_modal;
 mod rewards;
 mod rules;
 mod status;
