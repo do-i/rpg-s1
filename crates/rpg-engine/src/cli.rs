@@ -14,6 +14,7 @@ use std::{
 
 use crate::{
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
+    input_record::{InputAutomation, InputRecord, RecordSource},
     python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
     save_store::{SaveStore, resolve_save_directory, unix_timestamp_now},
     scenario_cross_reference::{
@@ -24,19 +25,26 @@ use crate::{
         DialogueReachability, DialogueReport, DialogueReportEntry, DialogueReportShape,
         build_dialogue_report,
     },
+    scenario_manifest::ManifestIdentityWindow,
     scenario_map_report::{MapReport, build_map_report},
     scenario_map_sweep::{MapSweepReport, SweepCategory, build_map_sweep},
     scenario_path::ScenarioRelativePath,
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, SCENARIO_MANIFEST_PATH, ScenarioRoot},
+    scenario_yaml,
 };
 
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64]\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Record refuses to overwrite OUTPUT; replay takes its package and seed from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play(PlayArguments),
+    Record {
+        output: PathBuf,
+        play: PlayArguments,
+    },
+    Replay(PathBuf),
     Validate(ScenarioRoot),
     MapReport(ScenarioRoot),
     MapSweep(ScenarioRoot),
@@ -46,10 +54,11 @@ enum Command {
 }
 
 /// Validated process options passed across the window-construction boundary.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub(crate) struct PlayArguments {
     pub(crate) root: ScenarioRoot,
     pub(crate) seed: u64,
+    pub(crate) automation: Option<InputAutomation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,13 +82,15 @@ impl fmt::Display for UsageError {
 /// Routes one process invocation. Validation is completed before the Bevy launcher is considered.
 pub(crate) fn run(
     arguments: impl IntoIterator<Item = OsString>,
+    game_version: &str,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
     launch_bevy_app: impl FnOnce(PlayArguments),
 ) -> u8 {
     let collection_root = production_scenario_collection();
-    run_with(
+    run_with_version(
         arguments,
+        game_version,
         &collection_root,
         production_validate,
         stdout,
@@ -92,8 +103,32 @@ fn production_validate(root: &ScenarioRoot, selected: &Path) -> ScenarioValidati
     validate_scenario_directory(root, selected)
 }
 
+#[cfg(test)]
 fn run_with<V>(
     arguments: impl IntoIterator<Item = OsString>,
+    collection_root: &Path,
+    validator: V,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+    launch_bevy_app: impl FnOnce(PlayArguments),
+) -> u8
+where
+    V: FnOnce(&ScenarioRoot, &Path) -> ScenarioValidationReport,
+{
+    run_with_version(
+        arguments,
+        env!("CARGO_PKG_VERSION"),
+        collection_root,
+        validator,
+        stdout,
+        stderr,
+        launch_bevy_app,
+    )
+}
+
+fn run_with_version<V>(
+    arguments: impl IntoIterator<Item = OsString>,
+    game_version: &str,
     collection_root: &Path,
     validator: V,
     stdout: &mut impl Write,
@@ -115,6 +150,41 @@ where
         Command::Play(arguments) => {
             let _ = writeln!(stdout, "Gameplay seed: {}", arguments.seed);
             launch_bevy_app(arguments);
+            EXIT_SUCCESS
+        }
+        Command::Record { output, mut play } => {
+            let record = match prepare_record(collection_root, game_version, &play, &output) {
+                Ok(record) => record,
+                Err(error) => {
+                    let _ = writeln!(stderr, "error: {error}");
+                    return EXIT_VALIDATION_FAILED;
+                }
+            };
+            let _ = writeln!(stdout, "Gameplay seed: {}", play.seed);
+            let _ = writeln!(
+                stdout,
+                "Recording normalized actions to {}",
+                output.display()
+            );
+            play.automation = Some(InputAutomation::record(output, record));
+            launch_bevy_app(play);
+            EXIT_SUCCESS
+        }
+        Command::Replay(input) => {
+            let play = match prepare_replay(collection_root, game_version, &input) {
+                Ok(play) => play,
+                Err(error) => {
+                    let _ = writeln!(stderr, "error: {error}");
+                    return EXIT_VALIDATION_FAILED;
+                }
+            };
+            let _ = writeln!(stdout, "Gameplay seed: {}", play.seed);
+            let _ = writeln!(
+                stdout,
+                "Replaying normalized actions from {}",
+                input.display()
+            );
+            launch_bevy_app(play);
             EXIT_SUCCESS
         }
         Command::Help => match writeln!(stdout, "{USAGE}") {
@@ -217,6 +287,27 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
             Ok(Command::Help)
         }
         [command, rest @ ..] if command == "play" => parse_play_arguments(rest).map(Command::Play),
+        [command, flag]
+            if (command == "record" || command == "replay")
+                && (flag == "-h" || flag == "--help") =>
+        {
+            Ok(Command::Help)
+        }
+        [command, output, rest @ ..] if command == "record" && !output.starts_with('-') => {
+            Ok(Command::Record {
+                output: PathBuf::from(output),
+                play: parse_play_arguments(rest)?,
+            })
+        }
+        [command, ..] if command == "record" => {
+            Err(UsageError("record requires OUTPUT first".to_owned()))
+        }
+        [command, input] if command == "replay" && !input.starts_with('-') => {
+            Ok(Command::Replay(PathBuf::from(input)))
+        }
+        [command, ..] if command == "replay" => {
+            Err(UsageError("replay requires exactly one INPUT".to_owned()))
+        }
         [flag] if flag == "-h" || flag == "--help" => Ok(Command::Help),
         [command, flag] if command == "validate-scenario" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
@@ -303,6 +394,7 @@ fn default_play_arguments() -> PlayArguments {
         root: ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
             .expect("the default package key is valid"),
         seed: DEFAULT_GAMEPLAY_SEED,
+        automation: None,
     }
 }
 
@@ -343,6 +435,74 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     Ok(PlayArguments {
         root,
         seed: seed.unwrap_or(DEFAULT_GAMEPLAY_SEED),
+        automation: None,
+    })
+}
+
+fn prepare_record(
+    collection_root: &Path,
+    game_version: &str,
+    play: &PlayArguments,
+    output: &Path,
+) -> Result<InputRecord, String> {
+    if output.exists() {
+        return Err(format!(
+            "record output `{}` already exists; choose a new path",
+            output.display()
+        ));
+    }
+    let source = record_source(collection_root, &play.root)?;
+    let record = InputRecord::new(game_version, source, play.seed);
+    let encoded = record.encode().map_err(|error| error.to_string())?;
+    fs::write(output, encoded)
+        .map_err(|error| format!("could not create record `{}`: {error}", output.display()))?;
+    Ok(record)
+}
+
+fn prepare_replay(
+    collection_root: &Path,
+    game_version: &str,
+    input: &Path,
+) -> Result<PlayArguments, String> {
+    let bytes = fs::read(input)
+        .map_err(|error| format!("could not read replay `{}`: {error}", input.display()))?;
+    let record = InputRecord::decode(&bytes).map_err(|error| error.to_string())?;
+    if record.game_version != game_version {
+        return Err(format!(
+            "replay game version `{}` does not match running game version `{game_version}`",
+            record.game_version
+        ));
+    }
+    let root = ScenarioRoot::try_for_package_key(record.source.package_key.clone())
+        .map_err(|error| format!("invalid replay package key: {error}"))?;
+    let current = record_source(collection_root, &root)?;
+    if current != record.source {
+        return Err(format!(
+            "replay source {} {} does not match installed source {} {}",
+            record.source.scenario_id,
+            record.source.scenario_version,
+            current.scenario_id,
+            current.scenario_version
+        ));
+    }
+    Ok(PlayArguments {
+        root,
+        seed: record.seed,
+        automation: Some(InputAutomation::replay(input.to_owned(), record)),
+    })
+}
+
+fn record_source(collection_root: &Path, root: &ScenarioRoot) -> Result<RecordSource, String> {
+    let selected = select_scenario_package(collection_root, root).map_err(|error| error.message)?;
+    let manifest_path = selected.join(SCENARIO_MANIFEST_PATH);
+    let document = fs::read_to_string(&manifest_path)
+        .map_err(|error| format!("could not read selected scenario manifest: {error}"))?;
+    let identity: ManifestIdentityWindow = scenario_yaml::from_str(&document)
+        .map_err(|error| format!("selected scenario manifest is invalid: {error}"))?;
+    Ok(RecordSource {
+        package_key: root.package_key().to_owned(),
+        scenario_id: identity.id,
+        scenario_version: identity.version,
     })
 }
 
@@ -1713,6 +1873,10 @@ refs:
             vec!["map-sweep".into(), "one".into(), "two".into()],
             vec!["dialogue-report".into(), "../escape".into()],
             vec!["dialogue-report".into(), "one".into(), "two".into()],
+            vec!["record".into()],
+            vec!["record".into(), "--seed".into(), "1".into()],
+            vec!["replay".into()],
+            vec!["replay".into(), "one".into(), "two".into()],
             vec!["import-python-save".into()],
             vec!["import-python-save".into(), "save.yaml".into()],
             vec![
@@ -1871,6 +2035,160 @@ refs:
             assert!(stdout.is_empty());
             assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
         }
+    }
+
+    #[test]
+    fn record_and_replay_commands_validate_identity_before_launching() {
+        let collection = TempCollection::new("invented");
+        fs::write(
+            collection.0.join("invented/manifest.yaml"),
+            "id: invented_story\nname: Invented Story\nversion: 2.3.4\nwindow_title: Invented\n",
+        )
+        .unwrap();
+        let output_path = collection.0.join("trace.yaml");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let recorded = Cell::new(false);
+        let exit = run_with_version(
+            [
+                OsString::from("record"),
+                output_path.as_os_str().to_owned(),
+                OsString::from("invented"),
+                OsString::from("--seed"),
+                OsString::from("77"),
+            ],
+            "2026.8.1",
+            &collection.0,
+            |_, _| panic!("record must not invoke full validation"),
+            &mut stdout,
+            &mut stderr,
+            |arguments| {
+                assert_eq!(arguments.root.package_key(), "invented");
+                assert_eq!(arguments.seed, 77);
+                let Some(InputAutomation::Record { record, .. }) = arguments.automation else {
+                    panic!("record mode should reach the launcher");
+                };
+                assert_eq!(record.game_version, "2026.8.1");
+                assert_eq!(record.source.scenario_id, "invented_story");
+                assert_eq!(record.source.scenario_version, "2.3.4");
+                recorded.set(true);
+            },
+        );
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(recorded.get());
+        assert!(stderr.is_empty());
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .contains("Recording normalized actions")
+        );
+        let disk_record = InputRecord::decode(&fs::read(&output_path).unwrap()).unwrap();
+        assert_eq!(disk_record.seed, 77);
+
+        let replayed = Cell::new(false);
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit = run_with_version(
+            [OsString::from("replay"), output_path.as_os_str().to_owned()],
+            "2026.8.1",
+            &collection.0,
+            |_, _| panic!("replay must not invoke full validation"),
+            &mut stdout,
+            &mut stderr,
+            |arguments| {
+                assert_eq!(arguments.root.package_key(), "invented");
+                assert_eq!(arguments.seed, 77);
+                assert!(matches!(
+                    arguments.automation,
+                    Some(InputAutomation::Replay { .. })
+                ));
+                replayed.set(true);
+            },
+        );
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(replayed.get());
+        assert!(stderr.is_empty());
+        assert!(
+            String::from_utf8(stdout)
+                .unwrap()
+                .contains("Replaying normalized actions")
+        );
+    }
+
+    #[test]
+    fn record_refuses_overwrite_and_replay_rejects_version_or_source_drift() {
+        let collection = TempCollection::new("invented");
+        let manifest_path = collection.0.join("invented/manifest.yaml");
+        fs::write(
+            &manifest_path,
+            "id: invented_story\nname: Invented Story\nversion: 2.3.4\nwindow_title: Invented\n",
+        )
+        .unwrap();
+        let output_path = collection.0.join("trace.yaml");
+        let record = InputRecord::new(
+            "2026.8.1",
+            RecordSource {
+                package_key: "invented".to_owned(),
+                scenario_id: "invented_story".to_owned(),
+                scenario_version: "2.3.4".to_owned(),
+            },
+            1,
+        );
+        fs::write(&output_path, record.encode().unwrap()).unwrap();
+
+        for (arguments, game_version) in [
+            (
+                vec![OsString::from("record"), output_path.as_os_str().to_owned()],
+                "2026.8.1",
+            ),
+            (
+                vec![OsString::from("replay"), output_path.as_os_str().to_owned()],
+                "2026.9.0",
+            ),
+        ] {
+            let mut stdout = Vec::new();
+            let mut stderr = Vec::new();
+            assert_eq!(
+                run_with_version(
+                    arguments,
+                    game_version,
+                    &collection.0,
+                    |_, _| panic!("failed preparation must not validate"),
+                    &mut stdout,
+                    &mut stderr,
+                    |_| panic!("failed preparation must not launch Bevy"),
+                ),
+                EXIT_VALIDATION_FAILED
+            );
+            assert!(stdout.is_empty());
+            assert!(!stderr.is_empty());
+        }
+
+        fs::write(
+            manifest_path,
+            "id: invented_story\nname: Invented Story\nversion: 9.0.0\nwindow_title: Invented\n",
+        )
+        .unwrap();
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        assert_eq!(
+            run_with_version(
+                [OsString::from("replay"), output_path.as_os_str().to_owned(),],
+                "2026.8.1",
+                &collection.0,
+                |_, _| panic!("failed preparation must not validate"),
+                &mut stdout,
+                &mut stderr,
+                |_| panic!("failed preparation must not launch Bevy"),
+            ),
+            EXIT_VALIDATION_FAILED
+        );
+        assert!(stdout.is_empty());
+        assert!(
+            String::from_utf8(stderr)
+                .unwrap()
+                .contains("does not match installed source")
+        );
     }
 
     #[cfg(unix)]
