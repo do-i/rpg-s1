@@ -7,3 +7,8 @@
 
 # Local work-in-progress planning documents.
 /plans/
+
+# Derived output from the external map editors. Existing tracked source
+# backups remain tracked; newly generated backups and thumbnails do not.
+*.tmx.bak
+/assets/scenarios/*/.cache/

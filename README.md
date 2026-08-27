@@ -72,6 +72,10 @@ Run the deterministic Ardel composition check with:
 scripts/check-ardel-screenshot.sh
 ```
 
+Scenario authors can use the map editors and the deterministic validation,
+sweep, debug-map, record, and replay loop documented in
+[`docs/content-authoring.md`](docs/content-authoring.md).
+
 ## Releases
 
 `dev` is the integration branch; feature branches merge into it. `main` never
