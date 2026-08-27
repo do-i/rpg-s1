@@ -9,6 +9,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     action_input::{ActionState, update_action_state},
     app_state::AppState,
+    debug_launch::DebugLaunchConfig,
     game_state::GameState,
     gameplay_rng::GameplayRng,
     save_data::SavePayload,
@@ -59,6 +60,8 @@ pub(crate) struct InputRecord {
     pub source: RecordSource,
     pub seed: u64,
     pub action_schema: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<DebugLaunchConfig>,
     pub action_frames: Vec<RecordedActionFrame>,
 }
 
@@ -70,8 +73,14 @@ impl InputRecord {
             source,
             seed,
             action_schema: NORMALIZED_ACTION_SCHEMA.to_owned(),
+            debug: None,
             action_frames: Vec::new(),
         }
+    }
+
+    pub(crate) fn with_debug(mut self, debug: Option<DebugLaunchConfig>) -> Self {
+        self.debug = debug;
+        self
     }
 
     pub(crate) fn encode(&self) -> Result<Vec<u8>, InputRecordError> {

@@ -14,6 +14,7 @@ use bevy::prelude::*;
 
 use crate::{
     app_state::AppState,
+    debug_launch::DebugSession,
     game_state::GameState,
     runtime_map::RuntimeMapId,
     save_data::NativeSaveEnvelope,
@@ -70,7 +71,11 @@ fn autosave_on_map_arrival(
     mut saves: ResMut<SaveSlotCatalog>,
     game: Option<ResMut<GameState>>,
     time: Res<Time<Real>>,
+    debug_session: Option<Res<DebugSession>>,
 ) {
+    if debug_session.is_some() {
+        return;
+    }
     // Wait for the arrival fade to settle. A transition commits the destination before the map is
     // published, so checkpointing mid-fade would capture a session the player cannot act on yet.
     if transition.input_locked() {
@@ -219,6 +224,20 @@ mod tests {
         app.update();
         app.update();
         assert!(!dir.autosave_path().exists());
+    }
+
+    #[test]
+    fn debug_session_never_autosaves_without_explicit_player_action() {
+        let dir = TempSaveDir::new("debug-session");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        app.insert_resource(DebugSession);
+
+        app.update();
+        move_to_map(&mut app, "town_01_ardel");
+        app.update();
+
+        assert!(!dir.autosave_path().exists());
+        assert!(app.world().resource::<AutosaveTracker>().last_map.is_none());
     }
 
     #[test]
