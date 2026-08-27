@@ -29,6 +29,42 @@ tags = ["run", "play", "game", "release", "fast", "performance", "framerate"]
 description = "Play the Ardel slice from an optimized release build for a true read on framerate and load times"
 
 [[items]]
+id = "play-seeded"
+label = "Play - Seed 1"
+key = "p"
+command = ["cargo", "run", "--", "play", "rusted_kingdoms", "--seed", "1"]
+group = "Play"
+tags = ["play", "seed", "deterministic", "normal", "title"]
+description = "Launch normal-mode Rusted Kingdoms with the documented deterministic seed"
+
+[[items]]
+id = "run-map-ardel"
+label = "Run map - Ardel"
+key = "m"
+command = ["cargo", "run", "--", "play", "rusted_kingdoms", "--seed", "1", "--start-map", "town_01_ardel", "--start-position", "10,0"]
+group = "Play"
+tags = ["run", "map", "debug", "ardel", "position", "author"]
+description = "Validate the debug start and launch directly on a walkable Ardel tile"
+
+[[items]]
+id = "record-author-check"
+label = "Record - Author check"
+key = "c"
+command = ["cargo", "run", "--", "record", "/tmp/rpg-s1-menu-record.yaml", "rusted_kingdoms", "--seed", "13", "--start-map", "town_01_ardel", "--start-position", "10,0"]
+group = "Replay"
+tags = ["record", "replay", "actions", "deterministic", "author"]
+description = "Record normalized Ardel actions to /tmp/rpg-s1-menu-record.yaml; recording refuses an existing file"
+
+[[items]]
+id = "replay-author-check"
+label = "Replay - Author check"
+key = "y"
+command = ["cargo", "run", "--", "replay", "/tmp/rpg-s1-menu-record.yaml"]
+group = "Replay"
+tags = ["replay", "record", "actions", "hash", "deterministic"]
+description = "Replay /tmp/rpg-s1-menu-record.yaml and verify every recorded state checkpoint"
+
+[[items]]
 id = "validate-scenario"
 label = "Validate scenario data"
 key = "v"
@@ -36,6 +72,69 @@ command = ["cargo", "run", "--", "validate-scenario"]
 group = "Quality"
 tags = ["validate", "scenario", "data", "rust"]
 description = "Validate the default Rusted Kingdoms package without launching Bevy"
+
+[[items]]
+id = "map-sweep"
+label = "Map sweep"
+key = "l"
+command = ["cargo", "run", "--", "map-sweep", "rusted_kingdoms"]
+group = "Quality"
+tags = ["map", "sweep", "tmx", "tsx", "headless", "validate"]
+description = "Run structural checks and load every migrated map for five headless Bevy frames"
+
+[[items]]
+id = "dialogue-sweep"
+label = "Dialogue sweep"
+key = "o"
+command = ["cargo", "run", "--", "dialogue-sweep", "rusted_kingdoms"]
+group = "Quality"
+tags = ["dialogue", "sweep", "branch", "cycle", "validate"]
+description = "Traverse every dialogue branch and report exact cycles or graph errors"
+
+[[items]]
+id = "encounter-sweep"
+label = "Encounter sweep"
+key = "e"
+command = ["cargo", "run", "--", "encounter-sweep", "rusted_kingdoms"]
+group = "Quality"
+tags = ["encounter", "battle", "enemy", "asset", "sweep", "validate"]
+description = "Construct every formation and boss and load all referenced battle assets"
+
+[[items]]
+id = "test-workspace"
+label = "Run test suite"
+key = "t"
+command = ["cargo", "test", "--workspace"]
+group = "Quality"
+tags = ["test", "suite", "workspace", "quality", "ci"]
+description = "Run the complete Rust workspace test suite"
+
+[[items]]
+id = "editor-setup"
+label = "Map editors - Setup/check"
+key = "s"
+command = ["scripts/map-editor.sh", "setup"]
+group = "Authoring"
+tags = ["editor", "setup", "prerequisite", "pygame", "web", "map"]
+description = "Prepare the pinned external editor checkout, Python environment, and web frontend"
+
+[[items]]
+id = "editor-pygame"
+label = "Map editor - Pygame"
+key = "i"
+command = ["scripts/map-editor.sh", "pygame"]
+group = "Authoring"
+tags = ["editor", "pygame", "portal", "tmx", "map"]
+description = "Launch the pinned Pygame portal editor against the Rust scenario tree"
+
+[[items]]
+id = "editor-web"
+label = "Map editor - Web"
+key = "w"
+command = ["scripts/map-editor.sh", "web"]
+group = "Authoring"
+tags = ["editor", "web", "browser", "portal", "tmx", "map"]
+description = "Launch the pinned web portal editor against the Rust scenario tree"
 
 [[items]]
 id = "build-release"
