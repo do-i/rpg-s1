@@ -20,6 +20,16 @@ description = "Play the Ardel slice with sound disabled and the portal/collision
 favorite = true
 
 [[items]]
+id = "run-debug-full-party"
+label = "Run - Debug full party"
+key = "f"
+command = ["env", "RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "RPG_S1_PARTY_PRESET=full", "cargo", "run"]
+group = "Play"
+tags = ["run", "play", "game", "debug", "party", "full", "battle", "collision", "level", "rewards"]
+description = "Debug run that skips the title and starts in the world with all five party members, for checking four- and five-slot battle layout, level-ups, and victory rewards"
+favorite = true
+
+[[items]]
 id = "run-fast"
 label = "Run - Fast"
 key = "r"
