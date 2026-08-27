@@ -6,7 +6,7 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
     name_entry::NameEntryConfirmed,
-    new_game::{NewGameScenario, build_new_game_state},
+    new_game::{NewGameScenario, build_new_game_state_with_seed},
     playtime::Playtime,
     scenario_balance::BalanceData,
     scenario_dialogue::CutsceneDialogue,
@@ -90,6 +90,7 @@ fn install_confirmed_game(
     mut state: ResMut<NewGameInstallState>,
     assets: NewGameAssets,
     real_time: Res<Time<Real>>,
+    gameplay_rng: Res<GameplayRng>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
 ) {
     let Some(name) = state.pending_name.clone() else {
@@ -112,13 +113,14 @@ fn install_confirmed_game(
         }
         return;
     };
-    let mut game = match build_new_game_state(
+    let mut game = match build_new_game_state_with_seed(
         NewGameScenario {
             manifest: inputs.manifest,
             party: inputs.party,
             balance: inputs.balance,
         },
         real_time.elapsed(),
+        gameplay_rng.state(),
     ) {
         Ok(game) => game,
         Err(error) => {

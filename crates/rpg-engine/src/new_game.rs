@@ -38,12 +38,25 @@ pub struct NewGameScenario<'a> {
 /// Builds the source-compatible state that name confirmation will install.
 ///
 /// Only the manifest-selected protagonist joins the initial party. The repository and opened-box
-/// set begin empty, the initial facing is down, the deterministic gameplay stream uses its
-/// documented default seed, and playtime starts a zero-total session at the injected wall-clock
-/// sample. The confirmed protagonist name is intentionally applied by M3.13.
+/// set begin empty, the initial facing is down, and playtime starts a zero-total session at the
+/// injected wall-clock sample. This compatibility wrapper uses the documented default gameplay
+/// seed; the process launcher uses [`build_new_game_state_with_seed`].
 pub fn build_new_game_state(
     scenario: NewGameScenario<'_>,
     session_start: Duration,
+) -> Result<GameState, NewGameStateError> {
+    build_new_game_state_with_seed(
+        scenario,
+        session_start,
+        crate::gameplay_rng::DEFAULT_GAMEPLAY_SEED,
+    )
+}
+
+/// Builds a new session from the process-selected deterministic gameplay seed.
+pub fn build_new_game_state_with_seed(
+    scenario: NewGameScenario<'_>,
+    session_start: Duration,
+    seed: u64,
 ) -> Result<GameState, NewGameStateError> {
     let protagonist_id = &scenario.manifest.protagonist.id;
     let protagonist = scenario
@@ -88,7 +101,7 @@ pub fn build_new_game_state(
         ),
         opened_boxes: RuntimeOpenedBoxes::default(),
         controlled_member_id,
-        rng: GameplayRng::default(),
+        rng: GameplayRng::from_seed(seed),
         playtime,
     })
     .map_err(NewGameStateError::GameState)
@@ -246,6 +259,27 @@ mod tests {
         let actual = state.rng_mut().next_u64();
         let expected = GameplayRng::from_seed(DEFAULT_GAMEPLAY_SEED).next_u64();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn process_selected_seed_controls_the_new_game_stream() {
+        let manifest = manifest();
+        let party = party();
+        let balance = balance();
+        let mut state = build_new_game_state_with_seed(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+            },
+            Duration::ZERO,
+            9_876_543,
+        )
+        .expect("valid invented inputs should build a seeded game state");
+        let mut expected = GameplayRng::from_seed(9_876_543);
+
+        assert_eq!(state.rng().state(), 9_876_543);
+        assert_eq!(state.rng_mut().next_u64(), expected.next_u64());
     }
 
     #[test]
