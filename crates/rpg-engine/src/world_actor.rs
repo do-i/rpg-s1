@@ -682,6 +682,22 @@ mod tests {
         .unwrap()
     }
 
+    fn millhaven_interior_metadata(map_id: &str) -> MapMetadata {
+        let document = match map_id {
+            "town_02_millhaven_inn" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_inn.yaml"
+            ),
+            "town_02_millhaven_mill" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_mill.yaml"
+            ),
+            "town_02_millhaven_shop" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop.yaml"
+            ),
+            _ => panic!("unknown Millhaven interior {map_id}"),
+        };
+        scenario_yaml::from_str(document).unwrap()
+    }
+
     fn open_collision() -> CollisionOccupancy {
         let rows = std::iter::repeat_n("0,0,0,0,0,0,0,0,0", 9)
             .collect::<Vec<_>>()
@@ -779,6 +795,78 @@ mod tests {
                 "millhaven_gossip",
             ]
         );
+    }
+
+    #[test]
+    fn millhaven_interior_metadata_keeps_authored_services_and_npcs_ungated() {
+        let inn = millhaven_interior_metadata("town_02_millhaven_inn");
+        let mill = millhaven_interior_metadata("town_02_millhaven_mill");
+        let shop = millhaven_interior_metadata("town_02_millhaven_shop");
+
+        let inn_service = inn.inn.as_ref().expect("Millhaven inn service");
+        assert_eq!(inn_service.cost.get(), 120);
+        assert_eq!(inn_service.position, Position::new(5, 9));
+        assert_eq!(
+            present_npcs(&inn, &RuntimeFlags::default())
+                .iter()
+                .map(|npc| (
+                    npc.id.as_str(),
+                    npc.position,
+                    npc.dialogue.as_deref().unwrap_or_default()
+                ))
+                .collect::<Vec<_>>(),
+            [("inn_keeper", Position::new(8, 3), "inn_millhaven")]
+        );
+        assert_eq!(
+            present_npcs(&mill, &RuntimeFlags::default())
+                .iter()
+                .map(|npc| (
+                    npc.id.as_str(),
+                    npc.position,
+                    npc.dialogue.as_deref().unwrap_or_default()
+                ))
+                .collect::<Vec<_>>(),
+            [("millhaven_miller", Position::new(5, 6), "millhaven_miller")]
+        );
+
+        assert_eq!(shop.shop.as_ref().unwrap().items.len(), 5);
+        assert_eq!(shop.weapon_shop.as_ref().unwrap().items.len(), 6);
+        assert_eq!(shop.armor_shop.as_ref().unwrap().items.len(), 5);
+        let expected_shop_npcs = [
+            (
+                "item_shop_keeper",
+                Position::new(6, 3),
+                "item_shop_millhaven",
+            ),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            (
+                "weapon_shop_keeper",
+                Position::new(4, 3),
+                "weapon_shop_millhaven",
+            ),
+            (
+                "armor_shop_keeper",
+                Position::new(12, 3),
+                "armor_shop_millhaven",
+            ),
+        ];
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_quest_started"]),
+            RuntimeFlags::from_bootstrap(["story_quest_started", "story_act2_started"]),
+        ] {
+            let observed = present_npcs(&shop, &flags)
+                .iter()
+                .map(|npc| {
+                    (
+                        npc.id.as_str(),
+                        npc.position,
+                        npc.dialogue.as_deref().unwrap_or_default(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(observed, expected_shop_npcs);
+        }
     }
 
     fn harborgate_metadata() -> MapMetadata {
