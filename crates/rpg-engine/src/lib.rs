@@ -4,6 +4,7 @@ mod autosave;
 mod battle;
 mod cli;
 mod debug_launch;
+mod dialogue_sweep;
 pub mod encounter;
 mod encounter_assets;
 mod field_menu;

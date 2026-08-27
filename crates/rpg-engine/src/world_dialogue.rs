@@ -289,7 +289,7 @@ pub(crate) fn apply_flag_actions(actions: &DialogueActions, flags: &mut RuntimeF
     }
 }
 
-fn validate_graph(dialogue: &EntryDialogue) -> Result<(), DialogueSessionError> {
+pub(crate) fn validate_graph(dialogue: &EntryDialogue) -> Result<(), DialogueSessionError> {
     let mut nodes = BTreeSet::new();
     for entry in &dialogue.entries {
         if let Some(node) = entry.node.as_ref()
