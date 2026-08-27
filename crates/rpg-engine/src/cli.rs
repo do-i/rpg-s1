@@ -15,6 +15,7 @@ use std::{
 use crate::{
     debug_launch::{DebugLaunchConfig, DebugPartyPreset, validate_debug_launch},
     dialogue_sweep::{DialogueTraversalReport, build_dialogue_traversal_sweep},
+    encounter_sweep::{EncounterSweepReport, build_encounter_sweep},
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
     input_record::{InputAutomation, InputRecord, RecordSource},
     python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
@@ -39,7 +40,7 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play(PlayArguments),
@@ -53,6 +54,7 @@ enum Command {
     MapSweep(ScenarioRoot),
     DialogueReport(ScenarioRoot),
     DialogueSweep(ScenarioRoot),
+    EncounterSweep(ScenarioRoot),
     ImportPython(ImportPythonArguments),
     Help,
 }
@@ -288,6 +290,25 @@ where
                 result
             }
         }
+        Command::EncounterSweep(root) => {
+            let report = match select_scenario_package(collection_root, &root) {
+                Ok(selected) => {
+                    let asset_base = collection_root.parent().unwrap_or(collection_root);
+                    build_encounter_sweep(asset_base, &root, &selected)
+                }
+                Err(error) => EncounterSweepReport::with_load_error(error.message),
+            };
+            let result = if report.is_valid() {
+                EXIT_SUCCESS
+            } else {
+                EXIT_VALIDATION_FAILED
+            };
+            if write_encounter_sweep_report(stdout, &root, &report).is_err() {
+                EXIT_USAGE
+            } else {
+                result
+            }
+        }
         Command::ImportPython(arguments) => match run_python_import(collection_root, &arguments) {
             Ok(result) => {
                 let _ = writeln!(
@@ -369,6 +390,9 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         [command, flag] if command == "dialogue-sweep" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
         }
+        [command, flag] if command == "encounter-sweep" && (flag == "-h" || flag == "--help") => {
+            Ok(Command::Help)
+        }
         [command, flag] if command == "map-sweep" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
         }
@@ -446,6 +470,20 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         }
         [command, ..] if command == "dialogue-sweep" => Err(UsageError(
             "dialogue-sweep accepts at most one package key".to_owned(),
+        )),
+        [command] if command == "encounter-sweep" => Ok(Command::EncounterSweep(
+            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+                .expect("the default package key is valid"),
+        )),
+        [command, package_key] if command == "encounter-sweep" => {
+            ScenarioRoot::try_for_package_key(package_key.clone())
+                .map(Command::EncounterSweep)
+                .map_err(|error| {
+                    UsageError(format!("invalid package key `{package_key}`: {error}"))
+                })
+        }
+        [command, ..] if command == "encounter-sweep" => Err(UsageError(
+            "encounter-sweep accepts at most one package key".to_owned(),
         )),
         [command, rest @ ..] if command == "import-python-save" => {
             parse_import_python_arguments(rest).map(Command::ImportPython)
@@ -1347,6 +1385,72 @@ fn write_dialogue_traversal_report(
     writeln!(output, "Terminating paths: {}", report.terminating_paths())?;
     writeln!(output, "Cycles reported: {}", report.cycle_count())?;
     writeln!(output, "Errors: {}", report.error_count())?;
+    writeln!(
+        output,
+        "Status: {}",
+        if report.is_valid() { "PASS" } else { "FAIL" }
+    )?;
+    Ok(())
+}
+
+fn write_encounter_sweep_report(
+    output: &mut impl Write,
+    root: &ScenarioRoot,
+    report: &EncounterSweepReport,
+) -> io::Result<()> {
+    writeln!(output, "Encounter construction sweep")?;
+    writeln!(output, "Package: {}", root.package_key())?;
+    match (
+        report.scenario_id.as_deref(),
+        report.scenario_name.as_deref(),
+    ) {
+        (Some(id), Some(name)) => writeln!(output, "Scenario: {id} ({name})")?,
+        _ => writeln!(output, "Scenario: unavailable")?,
+    }
+    if let Some(error) = &report.load_error {
+        writeln!(output, "Load error: {error}")?;
+    }
+    writeln!(output)?;
+    for zone in &report.zones {
+        let failures = zone
+            .constructions
+            .iter()
+            .filter(|construction| construction.failure.is_some())
+            .count();
+        writeln!(
+            output,
+            "{} {}: formations={} bosses={} constructions={} failures={}",
+            if failures == 0 { "PASS" } else { "FAIL" },
+            zone.id,
+            zone.formations,
+            zone.bosses,
+            zone.constructions.len(),
+            failures
+        )?;
+        for construction in &zone.constructions {
+            if let Some(error) = &construction.failure {
+                writeln!(
+                    output,
+                    "  ERROR {} ({} enemies): {error}",
+                    construction.label, construction.enemies
+                )?;
+            }
+        }
+    }
+    for failure in &report.asset_failures {
+        writeln!(output, "ASSET ERROR {failure}")?;
+    }
+    writeln!(output)?;
+    writeln!(output, "Summary")?;
+    writeln!(output, "Zones swept: {}", report.zones.len())?;
+    writeln!(output, "Encounters constructed: {}", report.constructions())?;
+    writeln!(
+        output,
+        "Construction failures: {}",
+        report.construction_failures()
+    )?;
+    writeln!(output, "Assets loaded: {}", report.assets_checked)?;
+    writeln!(output, "Asset failures: {}", report.asset_failures.len())?;
     writeln!(
         output,
         "Status: {}",
