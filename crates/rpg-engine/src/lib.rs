@@ -3,6 +3,7 @@ pub mod app_state;
 mod autosave;
 mod battle;
 mod cli;
+mod debug_launch;
 pub mod encounter;
 mod encounter_assets;
 mod field_menu;
@@ -76,6 +77,7 @@ use bevy::{
     prelude::*,
     window::{PresentMode, PrimaryWindow, WindowPlugin},
 };
+use debug_launch::DebugLaunchPlugin;
 use encounter_assets::EncounterAssetPlugin;
 use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
@@ -132,6 +134,11 @@ pub fn run_with_game_version(game_version: &str) -> std::process::ExitCode {
 fn run_game(arguments: cli::PlayArguments) {
     let asset_base = cli::production_asset_base();
     let inventory = ScenarioInventory::discover(&asset_base, &arguments.root);
+    let initial_state = if arguments.debug.is_some() {
+        AppState::Boot
+    } else {
+        AppState::Title
+    };
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
@@ -174,8 +181,9 @@ fn run_game(arguments: cli::PlayArguments) {
     .init_resource::<Playtime>()
     .insert_resource(GameplayRng::from_seed(arguments.seed))
     .add_plugins(GameplayRngPlugin)
-    .insert_state(AppState::Title)
+    .insert_state(initial_state)
     .add_plugins(AppStateTransitionPlugin)
+    .add_plugins(DebugLaunchPlugin)
     .add_plugins(ActionInputPlugin)
     .add_plugins(InputRecordPlugin)
     .add_plugins(FixedGameplayCanvasPlugin)
@@ -202,6 +210,9 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(GameOverPlugin);
     if let Some(automation) = arguments.automation {
         app.insert_resource(automation);
+    }
+    if let Some(debug) = arguments.debug {
+        app.insert_resource(debug);
     }
     app.run();
 }

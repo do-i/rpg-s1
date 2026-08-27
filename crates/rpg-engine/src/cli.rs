@@ -13,6 +13,7 @@ use std::{
 };
 
 use crate::{
+    debug_launch::{DebugLaunchConfig, DebugPartyPreset, validate_debug_launch},
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
     input_record::{InputAutomation, InputRecord, RecordSource},
     python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
@@ -36,7 +37,7 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Record refuses to overwrite OUTPUT; replay takes its package and seed from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play(PlayArguments),
@@ -58,6 +59,7 @@ enum Command {
 pub(crate) struct PlayArguments {
     pub(crate) root: ScenarioRoot,
     pub(crate) seed: u64,
+    pub(crate) debug: Option<DebugLaunchConfig>,
     pub(crate) automation: Option<InputAutomation>,
 }
 
@@ -148,7 +150,12 @@ where
 
     match command {
         Command::Play(arguments) => {
+            if let Err(error) = prepare_debug_launch(collection_root, &arguments) {
+                let _ = writeln!(stderr, "error: {error}");
+                return EXIT_VALIDATION_FAILED;
+            }
             let _ = writeln!(stdout, "Gameplay seed: {}", arguments.seed);
+            write_debug_log(stdout, arguments.debug.as_ref());
             launch_bevy_app(arguments);
             EXIT_SUCCESS
         }
@@ -161,6 +168,7 @@ where
                 }
             };
             let _ = writeln!(stdout, "Gameplay seed: {}", play.seed);
+            write_debug_log(stdout, play.debug.as_ref());
             let _ = writeln!(
                 stdout,
                 "Recording normalized actions to {}",
@@ -179,6 +187,7 @@ where
                 }
             };
             let _ = writeln!(stdout, "Gameplay seed: {}", play.seed);
+            write_debug_log(stdout, play.debug.as_ref());
             let _ = writeln!(
                 stdout,
                 "Replaying normalized actions from {}",
@@ -394,6 +403,7 @@ fn default_play_arguments() -> PlayArguments {
         root: ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
             .expect("the default package key is valid"),
         seed: DEFAULT_GAMEPLAY_SEED,
+        debug: None,
         automation: None,
     }
 }
@@ -401,6 +411,10 @@ fn default_play_arguments() -> PlayArguments {
 fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageError> {
     let mut package = None;
     let mut seed = None;
+    let mut start_map = None;
+    let mut start_position = None;
+    let mut party_preset = None;
+    let mut flag_overrides = std::collections::BTreeMap::new();
     let mut index = 0;
     while index < arguments.len() {
         match arguments[index].as_str() {
@@ -415,6 +429,65 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                 if seed.replace(parsed).is_some() {
                     return Err(UsageError("--seed may appear only once".to_owned()));
                 }
+            }
+            "--start-map" => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--start-map requires MAP_ID".to_owned()))?;
+                if value.is_empty() || start_map.replace(value.clone()).is_some() {
+                    return Err(UsageError(
+                        "--start-map must appear once with a nonempty MAP_ID".to_owned(),
+                    ));
+                }
+            }
+            "--start-position" => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--start-position requires X,Y".to_owned()))?;
+                let (x, y) = value
+                    .split_once(',')
+                    .ok_or_else(|| UsageError("--start-position requires X,Y".to_owned()))?;
+                let position = crate::scenario_spatial::Position::new(
+                    x.parse()
+                        .map_err(|_| UsageError("--start-position requires X,Y".to_owned()))?,
+                    y.parse()
+                        .map_err(|_| UsageError("--start-position requires X,Y".to_owned()))?,
+                );
+                if start_position.replace(position).is_some() {
+                    return Err(UsageError(
+                        "--start-position may appear only once".to_owned(),
+                    ));
+                }
+            }
+            "--party-preset" => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--party-preset requires solo|full".to_owned()))?;
+                let preset = match value.as_str() {
+                    "solo" => DebugPartyPreset::Solo,
+                    "full" => DebugPartyPreset::Full,
+                    _ => {
+                        return Err(UsageError("--party-preset requires solo|full".to_owned()));
+                    }
+                };
+                if party_preset.replace(preset).is_some() {
+                    return Err(UsageError("--party-preset may appear only once".to_owned()));
+                }
+            }
+            option @ ("--set-flag" | "--unset-flag") => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError(format!("{option} requires FLAG_ID")))?;
+                if !valid_debug_flag_id(value) || flag_overrides.contains_key(value) {
+                    return Err(UsageError(format!(
+                        "{option} requires a unique nonempty FLAG_ID"
+                    )));
+                }
+                flag_overrides.insert(value.clone(), option == "--set-flag");
             }
             option if option.starts_with('-') => {
                 return Err(UsageError(format!("unknown play option `{option}`")));
@@ -432,11 +505,30 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     let package = package.unwrap_or_else(|| DEFAULT_SCENARIO_PACKAGE_KEY.to_owned());
     let root = ScenarioRoot::try_for_package_key(package.clone())
         .map_err(|error| UsageError(format!("invalid package key `{package}`: {error}")))?;
+    if start_map.is_some() != start_position.is_some() {
+        return Err(UsageError(
+            "--start-map and --start-position must be supplied together".to_owned(),
+        ));
+    }
+    let debug = DebugLaunchConfig {
+        start_map,
+        start_position,
+        party_preset,
+        flag_overrides,
+    };
     Ok(PlayArguments {
         root,
         seed: seed.unwrap_or(DEFAULT_GAMEPLAY_SEED),
+        debug: debug.is_active().then_some(debug),
         automation: None,
     })
+}
+
+fn valid_debug_flag_id(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'))
 }
 
 fn prepare_record(
@@ -451,8 +543,9 @@ fn prepare_record(
             output.display()
         ));
     }
+    prepare_debug_launch(collection_root, play)?;
     let source = record_source(collection_root, &play.root)?;
-    let record = InputRecord::new(game_version, source, play.seed);
+    let record = InputRecord::new(game_version, source, play.seed).with_debug(play.debug.clone());
     let encoded = record.encode().map_err(|error| error.to_string())?;
     fs::write(output, encoded)
         .map_err(|error| format!("could not create record `{}`: {error}", output.display()))?;
@@ -485,11 +578,52 @@ fn prepare_replay(
             current.scenario_version
         ));
     }
-    Ok(PlayArguments {
+    let play = PlayArguments {
         root,
         seed: record.seed,
+        debug: record.debug.clone(),
         automation: Some(InputAutomation::replay(input.to_owned(), record)),
-    })
+    };
+    prepare_debug_launch(collection_root, &play)?;
+    Ok(play)
+}
+
+fn prepare_debug_launch(collection_root: &Path, play: &PlayArguments) -> Result<(), String> {
+    let Some(debug) = play.debug.as_ref() else {
+        return Ok(());
+    };
+    let selected =
+        select_scenario_package(collection_root, &play.root).map_err(|error| error.message)?;
+    validate_debug_launch(&selected, debug)
+}
+
+fn write_debug_log(output: &mut impl Write, debug: Option<&DebugLaunchConfig>) {
+    let Some(debug) = debug else { return };
+    if let (Some(map), Some(position)) = (&debug.start_map, debug.start_position) {
+        let _ = writeln!(
+            output,
+            "Debug start: {map} at [{}, {}]",
+            position.x, position.y
+        );
+    }
+    if let Some(preset) = debug.party_preset {
+        let label = match preset {
+            DebugPartyPreset::Solo => "solo",
+            DebugPartyPreset::Full => "full",
+        };
+        let _ = writeln!(output, "Debug party preset: {label}");
+    }
+    for (flag, value) in &debug.flag_overrides {
+        let _ = writeln!(
+            output,
+            "Debug flag override: {flag}={}",
+            if *value { "set" } else { "unset" }
+        );
+    }
+    let _ = writeln!(
+        output,
+        "Debug overrides are session-only until an explicit manual save"
+    );
 }
 
 fn record_source(collection_root: &Path, root: &ScenarioRoot) -> Result<RecordSource, String> {
@@ -2034,6 +2168,58 @@ refs:
             );
             assert!(stdout.is_empty());
             assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
+        }
+    }
+
+    #[test]
+    fn debug_play_options_are_typed_repeatable_and_isolated_from_normal_play() {
+        let Command::Play(arguments) = parse_command([
+            "play".into(),
+            "invented".into(),
+            "--start-map".into(),
+            "town_01".into(),
+            "--start-position".into(),
+            "10,12".into(),
+            "--party-preset".into(),
+            "full".into(),
+            "--set-flag".into(),
+            "quest_ready".into(),
+            "--unset-flag".into(),
+            "quest_hidden".into(),
+        ])
+        .unwrap() else {
+            panic!("debug options should remain a play command");
+        };
+        let debug = arguments.debug.unwrap();
+        assert_eq!(arguments.root.package_key(), "invented");
+        assert_eq!(debug.start_map.as_deref(), Some("town_01"));
+        assert_eq!(
+            debug.start_position,
+            Some(crate::scenario_spatial::Position::new(10, 12))
+        );
+        assert_eq!(debug.party_preset, Some(DebugPartyPreset::Full));
+        assert_eq!(debug.flag_overrides.get("quest_ready"), Some(&true));
+        assert_eq!(debug.flag_overrides.get("quest_hidden"), Some(&false));
+
+        let Command::Play(normal) = parse_command(["play".into()]).unwrap() else {
+            unreachable!()
+        };
+        assert!(normal.debug.is_none());
+
+        for invalid in [
+            vec!["play".into(), "--start-map".into(), "town_01".into()],
+            vec!["play".into(), "--start-position".into(), "10,12".into()],
+            vec!["play".into(), "--party-preset".into(), "unknown".into()],
+            vec!["play".into(), "--set-flag".into(), "bad flag".into()],
+            vec![
+                "play".into(),
+                "--set-flag".into(),
+                "same".into(),
+                "--unset-flag".into(),
+                "same".into(),
+            ],
+        ] {
+            assert!(parse_command(invalid).is_err());
         }
     }
 
