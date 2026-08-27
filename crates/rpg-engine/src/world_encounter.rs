@@ -739,7 +739,11 @@ fn update_world_enemies(
     mut state: ResMut<WorldEncounterState>,
     mut enemies: Query<(Entity, &mut WorldEnemy, &mut Sprite, &mut Transform)>,
     mut snapshot: Local<Vec<(Entity, CharacterCollisionRect, bool)>>,
+    mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
 ) {
+    let _measurement = timings
+        .as_deref_mut()
+        .map(|timings| timings.measure("world.enemies"));
     if state.status != WorldEncounterStatus::Spawned {
         return;
     }

@@ -37,7 +37,7 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
     Play(PlayArguments),
@@ -59,6 +59,7 @@ enum Command {
 pub(crate) struct PlayArguments {
     pub(crate) root: ScenarioRoot,
     pub(crate) seed: u64,
+    pub(crate) timings: bool,
     pub(crate) debug: Option<DebugLaunchConfig>,
     pub(crate) automation: Option<InputAutomation>,
 }
@@ -155,6 +156,9 @@ where
                 return EXIT_VALIDATION_FAILED;
             }
             let _ = writeln!(stdout, "Gameplay seed: {}", arguments.seed);
+            if arguments.timings {
+                let _ = writeln!(stdout, "Per-system frame timing: enabled");
+            }
             write_debug_log(stdout, arguments.debug.as_ref());
             launch_bevy_app(arguments);
             EXIT_SUCCESS
@@ -168,6 +172,9 @@ where
                 }
             };
             let _ = writeln!(stdout, "Gameplay seed: {}", play.seed);
+            if play.timings {
+                let _ = writeln!(stdout, "Per-system frame timing: enabled");
+            }
             write_debug_log(stdout, play.debug.as_ref());
             let _ = writeln!(
                 stdout,
@@ -403,6 +410,7 @@ fn default_play_arguments() -> PlayArguments {
         root: ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
             .expect("the default package key is valid"),
         seed: DEFAULT_GAMEPLAY_SEED,
+        timings: false,
         debug: None,
         automation: None,
     }
@@ -411,6 +419,7 @@ fn default_play_arguments() -> PlayArguments {
 fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageError> {
     let mut package = None;
     let mut seed = None;
+    let mut timings = false;
     let mut start_map = None;
     let mut start_position = None;
     let mut party_preset = None;
@@ -430,6 +439,7 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                     return Err(UsageError("--seed may appear only once".to_owned()));
                 }
             }
+            "--timings" if !timings => timings = true,
             "--start-map" => {
                 index += 1;
                 let value = arguments
@@ -519,6 +529,7 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     Ok(PlayArguments {
         root,
         seed: seed.unwrap_or(DEFAULT_GAMEPLAY_SEED),
+        timings,
         debug: debug.is_active().then_some(debug),
         automation: None,
     })
@@ -581,6 +592,7 @@ fn prepare_replay(
     let play = PlayArguments {
         root,
         seed: record.seed,
+        timings: false,
         debug: record.debug.clone(),
         automation: Some(InputAutomation::replay(input.to_owned(), record)),
     };
@@ -2182,6 +2194,7 @@ refs:
             "10,12".into(),
             "--party-preset".into(),
             "full".into(),
+            "--timings".into(),
             "--set-flag".into(),
             "quest_ready".into(),
             "--unset-flag".into(),
@@ -2198,6 +2211,7 @@ refs:
             Some(crate::scenario_spatial::Position::new(10, 12))
         );
         assert_eq!(debug.party_preset, Some(DebugPartyPreset::Full));
+        assert!(arguments.timings);
         assert_eq!(debug.flag_overrides.get("quest_ready"), Some(&true));
         assert_eq!(debug.flag_overrides.get("quest_hidden"), Some(&false));
 

@@ -1011,7 +1011,11 @@ fn handle_battle_input(
     mut context: BattleInputContext,
     state: Option<ResMut<BattleState>>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
+    mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
 ) {
+    let _measurement = timings
+        .as_deref_mut()
+        .map(|timings| timings.measure("battle.input_and_resolution"));
     let Some(entry) = context.entry.as_deref() else {
         return;
     };
