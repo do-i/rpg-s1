@@ -1241,6 +1241,27 @@ mod tests {
     }
 
     #[test]
+    fn interacting_with_a_ruinwatch_sign_opens_its_authored_dialogue() {
+        let mut app = interaction_app("town_03_ruinwatch", Position::new(5, 5));
+        app.world_mut().spawn(WorldSign::for_test(
+            "ruinwatch_sign",
+            "sign_town_03_ruinwatch",
+            Position::new(5, 6),
+        ));
+
+        press_confirm_and_settle(&mut app);
+
+        let state = app.world().resource::<WorldInteractionState>();
+        assert!(state.failure.is_none(), "{:?}", state.failure);
+        let session = state.session.as_ref().expect("Ruinwatch sign must speak");
+        assert_eq!(session.current_line(), "Notice Board — Ruinwatch");
+        let mut sfx = app.world_mut().query::<&WorldInteractionSfx>();
+        let sounds = sfx.iter(app.world()).collect::<Vec<_>>();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].logical_event, InteractionSound::Dialogue);
+    }
+
+    #[test]
     fn source_forest_box_grants_once_and_reports_open_on_repeat() {
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
