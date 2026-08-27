@@ -1088,6 +1088,149 @@ mod tests {
         );
     }
 
+    fn ancient_ruins_gate_document() -> &'static str {
+        include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_01_gate.tmx"
+        )
+    }
+
+    fn ancient_ruins_courtyard_document() -> &'static str {
+        include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_02_courtyard.tmx"
+        )
+    }
+
+    fn ancient_ruins_sanctum_document() -> &'static str {
+        include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx"
+        )
+    }
+
+    fn ruinwatch_document() -> &'static str {
+        include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx")
+    }
+
+    #[test]
+    fn ancient_ruins_portals_close_the_marshland_gate_courtyard_and_sanctum_graph() {
+        let gate = portals_for(
+            "zone_04_ancient_ruins_01_gate",
+            ancient_ruins_gate_document(),
+        );
+        assert_eq!(
+            gate.iter()
+                .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+                .collect::<Vec<_>>(),
+            [
+                ("zone_04_ancient_ruins_02_courtyard", Position::new(40, 15),),
+                ("zone_03_marshland", Position::new(1, 31)),
+                ("town_03_ruinwatch", Position::new(19, 29)),
+            ]
+        );
+        assert_reversible_link(
+            "zone_04_ancient_ruins_01_gate",
+            ancient_ruins_gate_document(),
+            "zone_03_marshland",
+            marshland_document(),
+        );
+        assert_reversible_link(
+            "zone_04_ancient_ruins_01_gate",
+            ancient_ruins_gate_document(),
+            "zone_04_ancient_ruins_02_courtyard",
+            ancient_ruins_courtyard_document(),
+        );
+
+        let courtyard = portals_for(
+            "zone_04_ancient_ruins_02_courtyard",
+            ancient_ruins_courtyard_document(),
+        );
+        assert_eq!(
+            courtyard
+                .iter()
+                .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+                .collect::<Vec<_>>(),
+            [
+                ("zone_04_ancient_ruins_01_gate", Position::new(1, 12),),
+                ("zone_04_ancient_ruins_03_sanctum", Position::new(36, 11),),
+            ]
+        );
+        assert_reversible_link(
+            "zone_04_ancient_ruins_02_courtyard",
+            ancient_ruins_courtyard_document(),
+            "zone_04_ancient_ruins_03_sanctum",
+            ancient_ruins_sanctum_document(),
+        );
+
+        let sanctum = portals_for(
+            "zone_04_ancient_ruins_03_sanctum",
+            ancient_ruins_sanctum_document(),
+        );
+        assert_eq!(
+            sanctum
+                .iter()
+                .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+                .collect::<Vec<_>>(),
+            [
+                ("zone_04_ancient_ruins_02_courtyard", Position::new(1, 16),),
+                ("zone_05_mountain_foothills_01", Position::new(8, 28),),
+            ]
+        );
+    }
+
+    #[test]
+    fn ruinwatch_portals_cover_all_four_authored_exits_with_reversible_return_links() {
+        let portals = portals_for("town_03_ruinwatch", ruinwatch_document());
+        assert_eq!(
+            portals
+                .iter()
+                .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+                .collect::<Vec<_>>(),
+            [
+                ("town_03_ruinwatch_monastery_vaults", Position::new(5, 9),),
+                ("town_03_ruinwatch_shop", Position::new(7, 10)),
+                ("town_03_ruinwatch_inn", Position::new(5, 9)),
+                ("zone_04_ancient_ruins_01_gate", Position::new(28, 1),),
+            ]
+        );
+
+        let interiors = [
+            (
+                "town_03_ruinwatch_inn",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx"
+                ),
+                Position::new(9, 25),
+            ),
+            (
+                "town_03_ruinwatch_shop",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx"
+                ),
+                Position::new(36, 6),
+            ),
+            (
+                "town_03_ruinwatch_monastery_vaults",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx"
+                ),
+                Position::new(20, 6),
+            ),
+        ];
+        for (map_id, document, expected_return_position) in interiors {
+            assert_reversible_link("town_03_ruinwatch", ruinwatch_document(), map_id, document);
+            let returns = portals_for(map_id, document);
+            assert_eq!(returns.len(), 1);
+            assert_eq!(returns[0].target_map().as_str(), "town_03_ruinwatch");
+            assert_eq!(returns[0].target_position(), expected_return_position);
+        }
+
+        assert_reversible_link(
+            "town_03_ruinwatch",
+            ruinwatch_document(),
+            "zone_04_ancient_ruins_01_gate",
+            ancient_ruins_gate_document(),
+        );
+    }
+
     /// A player collision rect (the live 20x18 source-pixel size) at an arbitrary top-left.
     fn collision_rect(x: f32, y: f32) -> CharacterCollisionRect {
         rect(x, y, 20.0, 18.0)
