@@ -42,7 +42,10 @@ const BREATH_PERIOD_SECONDS: f32 = 1.4;
 const BREATH_PHASE_OFFSET: f32 = 0.6;
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
+const PARTY_CARD_HEIGHT: f32 = 202.0;
 const PARTY_CARD_GAP: f32 = 10.0;
+/// Every slot the party can ever fill, drawn whether or not it is occupied.
+const PARTY_SLOT_COUNT: usize = 5;
 const PANEL_PADDING: f32 = 16.0;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
@@ -116,6 +119,11 @@ struct BattleEnemyHpFill(usize);
 
 #[derive(Component)]
 pub(super) struct BattlePartyCard(pub(super) usize);
+
+/// Marks a reserved-but-unfilled party slot. Never carries a [`BattlePartyCard`],
+/// which is what keeps every party sync system from touching it.
+#[derive(Component)]
+struct BattlePartyEmptySlot;
 
 #[derive(Component)]
 struct BattlePartyPortrait(usize);
@@ -441,7 +449,7 @@ fn spawn_battle_panels(
             spawn_battle_panel(
                 panels,
                 Node {
-                    width: px(party_panel_width(party.len())),
+                    width: px(party_panel_width()),
                     height: percent(100),
                     flex_shrink: 0.0,
                     ..default()
@@ -547,72 +555,152 @@ fn spawn_party_cards(
             ..default()
         })
         .with_children(|row| {
-            for (index, participant) in party.iter().enumerate() {
-                let portrait = ScenarioRelativePath::try_from(
-                    format!("assets/images/{}_profile.png", participant.id).as_str(),
-                )
-                .ok()
-                .map(|path| asset_server.load(root.resolve(&path)))
-                .unwrap_or_default();
-                row.spawn((
-                    Node {
-                        width: px(PARTY_CARD_WIDTH),
-                        height: px(202),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        padding: UiRect::all(px(4)),
-                        row_gap: px(4),
-                        border: UiRect::all(px(1)),
-                        border_radius: BorderRadius::all(px(5)),
-                        ..default()
-                    },
-                    BackgroundColor(battle_row()),
-                    BorderColor::all(battle_row_border()),
-                    BattlePartyCard(index),
-                ))
-                .with_children(|card| {
-                    card.spawn((
-                        ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
-                        Node {
-                            width: px(PARTY_PORTRAIT_SIZE),
-                            height: px(PARTY_PORTRAIT_SIZE),
-                            flex_shrink: 0.0,
-                            border_radius: BorderRadius::all(px(4)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb_u8(24, 24, 31)),
-                        BattlePartyPortrait(index),
-                    ));
-                    spawn_battle_text(
-                        card,
-                        participant.name.clone(),
-                        font,
-                        17.0,
-                        battle_ink(),
-                        Justify::Center,
-                    )
-                    .insert(BattlePartyName(index));
-                    spawn_party_meter(
-                        card,
-                        index,
-                        BattleMeterKind::Health,
-                        participant.health,
-                        participant.max_health,
-                        font,
-                    );
-                    if participant.max_mana > 0 {
-                        spawn_party_meter(
-                            card,
-                            index,
-                            BattleMeterKind::Mana,
-                            participant.mana,
-                            participant.max_mana,
-                            font,
-                        );
+            // The panel always shows every slot the party can ever fill, so the
+            // layout stops reflowing as companions are recruited.
+            for index in 0..PARTY_SLOT_COUNT {
+                match party.get(index) {
+                    Some(participant) => {
+                        spawn_party_card(row, index, participant, asset_server, root, font);
                     }
-                });
+                    None => spawn_empty_party_slot(row, font),
+                }
             }
         });
+}
+
+fn party_card_node(filled: bool) -> Node {
+    Node {
+        width: px(PARTY_CARD_WIDTH),
+        height: px(PARTY_CARD_HEIGHT),
+        flex_direction: FlexDirection::Column,
+        align_items: AlignItems::Center,
+        padding: UiRect::all(px(4)),
+        row_gap: px(4),
+        border: UiRect::all(px(1)),
+        border_radius: BorderRadius::all(px(5)),
+        justify_content: if filled {
+            JustifyContent::FlexStart
+        } else {
+            JustifyContent::Center
+        },
+        ..default()
+    }
+}
+
+fn spawn_party_card(
+    row: &mut ChildSpawnerCommands<'_>,
+    index: usize,
+    participant: &crate::encounter::BattleParticipant,
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    font: &Handle<Font>,
+) {
+    let portrait = ScenarioRelativePath::try_from(
+        format!("assets/images/{}_profile.png", participant.id).as_str(),
+    )
+    .ok()
+    .map(|path| asset_server.load(root.resolve(&path)))
+    .unwrap_or_default();
+    row.spawn((
+        party_card_node(true),
+        BackgroundColor(battle_row()),
+        BorderColor::all(battle_row_border()),
+        BattlePartyCard(index),
+    ))
+    .with_children(|card| {
+        card.spawn((
+            ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
+            Node {
+                width: px(PARTY_PORTRAIT_SIZE),
+                height: px(PARTY_PORTRAIT_SIZE),
+                flex_shrink: 0.0,
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb_u8(24, 24, 31)),
+            BattlePartyPortrait(index),
+        ));
+        spawn_battle_text(
+            card,
+            participant.name.clone(),
+            font,
+            17.0,
+            battle_ink(),
+            Justify::Center,
+        )
+        .insert(BattlePartyName(index));
+        spawn_party_meter(
+            card,
+            index,
+            BattleMeterKind::Health,
+            participant.health,
+            participant.max_health,
+            font,
+        );
+        if participant.max_mana > 0 {
+            spawn_party_meter(
+                card,
+                index,
+                BattleMeterKind::Mana,
+                participant.mana,
+                participant.max_mana,
+                font,
+            );
+        }
+    });
+}
+
+/// A slot no companion has filled yet: the same cell outline holding a dimmed
+/// avatar placeholder. It carries no [`BattlePartyCard`] marker, so every sync
+/// system ignores it for as long as it stays empty.
+fn spawn_empty_party_slot(row: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    row.spawn((
+        party_card_node(false),
+        BackgroundColor(empty_slot_fill()),
+        BorderColor::all(empty_slot_border()),
+        BattlePartyEmptySlot,
+    ))
+    .with_children(|card| {
+        card.spawn((
+            Node {
+                width: px(PARTY_PORTRAIT_SIZE),
+                height: px(PARTY_PORTRAIT_SIZE),
+                flex_shrink: 0.0,
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::FlexEnd,
+                overflow: Overflow::clip(),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb_u8(24, 24, 31)),
+        ))
+        .with_children(|frame| {
+            // Head and shoulders, the way a contact avatar reads as "nobody yet".
+            frame.spawn((
+                Node {
+                    width: px(30),
+                    height: px(30),
+                    margin: UiRect::bottom(px(6)),
+                    flex_shrink: 0.0,
+                    border_radius: BorderRadius::all(percent(50)),
+                    ..default()
+                },
+                BackgroundColor(empty_slot_ink()),
+            ));
+            frame.spawn((
+                Node {
+                    width: px(58),
+                    height: px(34),
+                    flex_shrink: 0.0,
+                    border_radius: BorderRadius::top(percent(50)),
+                    ..default()
+                },
+                BackgroundColor(empty_slot_ink()),
+            ));
+        });
+        spawn_battle_text(card, "Empty", font, 15.0, empty_slot_ink(), Justify::Center);
+    });
 }
 
 fn spawn_party_meter(
@@ -742,8 +830,9 @@ pub(super) fn spawn_battle_text<'a>(
     ))
 }
 
-fn party_panel_width(member_count: usize) -> f32 {
-    let count = member_count.max(1) as f32;
+/// Fixed to [`PARTY_SLOT_COUNT`], so recruiting a companion never reflows the panel.
+fn party_panel_width() -> f32 {
+    let count = PARTY_SLOT_COUNT as f32;
     count * PARTY_CARD_WIDTH + (count - 1.0) * PARTY_CARD_GAP + PANEL_PADDING * 2.0
 }
 
@@ -902,6 +991,18 @@ fn battle_row_active() -> Color {
 
 pub(super) fn battle_row_border() -> Color {
     Color::srgb_u8(82, 70, 50)
+}
+
+fn empty_slot_fill() -> Color {
+    Color::srgba_u8(20, 20, 26, 150)
+}
+
+fn empty_slot_border() -> Color {
+    Color::srgb_u8(54, 47, 36)
+}
+
+fn empty_slot_ink() -> Color {
+    Color::srgb_u8(58, 56, 62)
 }
 
 fn battle_health() -> Color {
@@ -1725,20 +1826,38 @@ mod tests {
     }
 
     #[test]
-    fn party_panel_expands_by_one_portrait_card_per_member() {
-        assert_eq!(party_panel_width(1), 140.0);
-        assert_eq!(party_panel_width(5), 612.0);
+    fn the_party_panel_reserves_every_slot_regardless_of_party_size() {
+        // Fixed width: recruiting a companion fills a slot, it never reflows the panel.
+        assert_eq!(party_panel_width(), 612.0);
+        assert_eq!(
+            party_panel_width(),
+            PARTY_SLOT_COUNT as f32 * PARTY_CARD_WIDTH
+                + (PARTY_SLOT_COUNT - 1) as f32 * PARTY_CARD_GAP
+                + PANEL_PADDING * 2.0
+        );
     }
 
     #[test]
     fn the_full_party_panel_still_leaves_the_command_panel_its_minimum() {
         // Panel row padding is 8 per side, with an 8px gap before the right column.
         let available = crate::gameplay_canvas::LOGICAL_CANVAS_WIDTH as f32 - 8.0 * 2.0;
-        let remaining = available - party_panel_width(5) - 8.0;
+        let remaining = available - party_panel_width() - 8.0;
         assert!(
             remaining >= 220.0,
             "five party cards must not squeeze out the command panel, got {remaining}"
         );
+    }
+
+    #[test]
+    fn a_filled_and_an_empty_slot_share_the_same_cell_footprint() {
+        // Occupied and reserved cells must line up exactly, or the row looks ragged.
+        let filled = party_card_node(true);
+        let empty = party_card_node(false);
+        assert_eq!(filled.width, empty.width);
+        assert_eq!(filled.height, empty.height);
+        assert_eq!(filled.border, empty.border);
+        assert_eq!(filled.width, px(PARTY_CARD_WIDTH));
+        assert_eq!(filled.height, px(PARTY_CARD_HEIGHT));
     }
 
     #[test]
