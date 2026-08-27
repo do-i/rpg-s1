@@ -47,6 +47,20 @@ const PARTY_CARD_GAP: f32 = 10.0;
 /// Every slot the party can ever fill, drawn whether or not it is occupied.
 const PARTY_SLOT_COUNT: usize = 5;
 const PANEL_PADDING: f32 = 16.0;
+const COMMAND_ROW_BORDER: f32 = 1.0;
+const COMMAND_ROW_PADDING_X: f32 = 12.0;
+const PANEL_BORDER_ACTIVE: f32 = 2.0;
+/// Chrome between a command row's text and the panel's outer edge.
+const COMMAND_ROW_CHROME: f32 =
+    2.0 * (PANEL_BORDER_ACTIVE + PANEL_PADDING + COMMAND_ROW_BORDER + COMMAND_ROW_PADDING_X);
+/// Room reserved for the widest row label the panel ever shows.
+///
+/// The longest is an ability row, `"{name}  {mp} MP"` — "Fortress Stance  12 MP"
+/// measures 177px in Philosopher-Regular at the 18px row size, so this leaves a
+/// margin for longer authored names and for rasterizer differences.
+const COMMAND_LABEL_RESERVE: f32 = 200.0;
+/// Fixed so the panel stops resizing as the log message and row labels change.
+const COMMAND_PANEL_WIDTH: f32 = COMMAND_LABEL_RESERVE + COMMAND_ROW_CHROME;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
     BattleCommand::Spell,
@@ -471,9 +485,10 @@ fn spawn_battle_panels(
                     spawn_battle_panel(
                         right,
                         Node {
-                            width: percent(45),
+                            width: px(COMMAND_PANEL_WIDTH),
                             height: percent(100),
-                            min_width: px(220),
+                            flex_grow: 0.0,
+                            flex_shrink: 0.0,
                             ..default()
                         },
                         "Command",
@@ -487,6 +502,7 @@ fn spawn_battle_panels(
                         Node {
                             height: percent(100),
                             flex_grow: 1.0,
+                            min_width: px(0),
                             ..default()
                         },
                         "Log",
@@ -511,7 +527,7 @@ fn spawn_battle_panel(
     node.flex_direction = FlexDirection::Column;
     node.padding = UiRect::all(px(PANEL_PADDING));
     node.row_gap = px(8);
-    node.border = UiRect::all(px(if active { 2 } else { 1 }));
+    node.border = UiRect::all(px(if active { PANEL_BORDER_ACTIVE } else { 1.0 }));
     node.border_radius = BorderRadius::all(px(6));
     parent
         .spawn((
@@ -768,7 +784,7 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                         width: percent(100),
                         min_height: px(36),
                         flex_grow: 1.0,
-                        padding: UiRect::axes(px(12), px(6)),
+                        padding: UiRect::axes(px(COMMAND_ROW_PADDING_X), px(6)),
                         border: UiRect::all(px(1)),
                         border_radius: BorderRadius::all(px(5)),
                         align_items: AlignItems::Center,
@@ -1838,13 +1854,27 @@ mod tests {
     }
 
     #[test]
-    fn the_full_party_panel_still_leaves_the_command_panel_its_minimum() {
-        // Panel row padding is 8 per side, with an 8px gap before the right column.
+    fn the_bottom_row_seats_every_panel_at_its_reserved_width() {
+        // Panel row padding is 8 per side, with an 8px gap between each column.
         let available = crate::gameplay_canvas::LOGICAL_CANVAS_WIDTH as f32 - 8.0 * 2.0;
-        let remaining = available - party_panel_width() - 8.0;
+        let log = available - party_panel_width() - 8.0 - COMMAND_PANEL_WIDTH - 8.0;
         assert!(
-            remaining >= 220.0,
-            "five party cards must not squeeze out the command panel, got {remaining}"
+            log >= 240.0,
+            "a full party and a fixed command panel must still leave the log room, got {log}"
+        );
+    }
+
+    #[test]
+    fn the_command_panel_is_wide_enough_for_its_longest_row_label() {
+        // "Fortress Stance  12 MP" is the widest label the panel ever shows, at
+        // 177px in Philosopher-Regular 18px. Chrome must not eat into that.
+        const WIDEST_MEASURED_LABEL: f32 = 177.0;
+        assert_eq!(COMMAND_ROW_CHROME, 62.0);
+        assert_eq!(COMMAND_PANEL_WIDTH, 262.0);
+        let usable = COMMAND_PANEL_WIDTH - COMMAND_ROW_CHROME;
+        assert!(
+            usable >= WIDEST_MEASURED_LABEL,
+            "the longest ability row would clip: {usable}px usable"
         );
     }
 
