@@ -25,6 +25,7 @@ pub mod playtime;
 mod python_save_import;
 pub mod runtime_flags;
 pub mod runtime_map;
+mod runtime_map_sweep;
 pub mod runtime_member;
 pub mod runtime_opened_boxes;
 pub mod runtime_party;
