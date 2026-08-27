@@ -40,7 +40,7 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.";
 
 enum Command {
     Play(PlayArguments),
@@ -146,13 +146,19 @@ fn run_with_version<V>(
 where
     V: FnOnce(&ScenarioRoot, &Path) -> ScenarioValidationReport,
 {
-    let command = match parse_command(arguments) {
+    let mut command = match parse_command(arguments) {
         Ok(command) => command,
         Err(error) => {
             let _ = writeln!(stderr, "error: {error}\n\n{USAGE}");
             return EXIT_USAGE;
         }
     };
+    if let Err(error) =
+        apply_environment_debug_defaults(&mut command, |name| std::env::var_os(name))
+    {
+        let _ = writeln!(stderr, "error: {error}\n\n{USAGE}");
+        return EXIT_USAGE;
+    }
 
     match command {
         Command::Play(arguments) => {
@@ -492,6 +498,50 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
     }
 }
 
+/// Set to `solo` or `full` to launch straight into the world with that debug party.
+///
+/// This exists so a launcher entry (see `menu.toml`) can start a debug session with no
+/// CLI arguments at all, following the same env-var precedent as `RPG_S1_MUTE_AUDIO`
+/// and `RPG_S1_DEBUG_COLLISION`. An explicit `--party-preset` always wins.
+pub(crate) const PARTY_PRESET_ENV_VAR: &str = "RPG_S1_PARTY_PRESET";
+
+fn parse_party_preset(value: &str) -> Option<DebugPartyPreset> {
+    match value {
+        "solo" => Some(DebugPartyPreset::Solo),
+        "full" => Some(DebugPartyPreset::Full),
+        _ => None,
+    }
+}
+
+/// Fills in environment-provided debug defaults on an already-parsed command.
+///
+/// `Replay` is deliberately excluded: its debug config comes from the record, so a replay
+/// stays faithful to what was recorded no matter what the environment says. `Record` is
+/// included, so a session launched this way records the preset it actually ran with.
+fn apply_environment_debug_defaults(
+    command: &mut Command,
+    environment: impl Fn(&str) -> Option<OsString>,
+) -> Result<(), UsageError> {
+    let play = match command {
+        Command::Play(play) | Command::Record { play, .. } => play,
+        _ => return Ok(()),
+    };
+    let Some(raw) = environment(PARTY_PRESET_ENV_VAR) else {
+        return Ok(());
+    };
+    let value = raw
+        .into_string()
+        .map_err(|_| UsageError(format!("{PARTY_PRESET_ENV_VAR} must be valid UTF-8")))?;
+    let preset = parse_party_preset(value.trim())
+        .ok_or_else(|| UsageError(format!("{PARTY_PRESET_ENV_VAR} requires solo|full")))?;
+    let mut debug = play.debug.take().unwrap_or_default();
+    if debug.party_preset.is_none() {
+        debug.party_preset = Some(preset);
+    }
+    play.debug = debug.is_active().then_some(debug);
+    Ok(())
+}
+
 fn default_play_arguments() -> PlayArguments {
     PlayArguments {
         root: ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
@@ -563,13 +613,8 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                 let value = arguments
                     .get(index)
                     .ok_or_else(|| UsageError("--party-preset requires solo|full".to_owned()))?;
-                let preset = match value.as_str() {
-                    "solo" => DebugPartyPreset::Solo,
-                    "full" => DebugPartyPreset::Full,
-                    _ => {
-                        return Err(UsageError("--party-preset requires solo|full".to_owned()));
-                    }
-                };
+                let preset = parse_party_preset(value.as_str())
+                    .ok_or_else(|| UsageError("--party-preset requires solo|full".to_owned()))?;
                 if party_preset.replace(preset).is_some() {
                     return Err(UsageError("--party-preset may appear only once".to_owned()));
                 }
@@ -2414,6 +2459,101 @@ refs:
             assert!(stdout.is_empty());
             assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
         }
+    }
+
+    /// Builds the environment lookup the production call site injects, without
+    /// touching the real process environment.
+    fn fake_environment(value: Option<&str>) -> impl Fn(&str) -> Option<OsString> + use<> {
+        let value = value.map(OsString::from);
+        move |name| {
+            (name == PARTY_PRESET_ENV_VAR)
+                .then(|| value.clone())
+                .flatten()
+        }
+    }
+
+    #[test]
+    fn the_party_preset_env_var_starts_a_bare_launch_directly_in_the_world() {
+        // A bare `rpg-s1` has no debug config at all until the environment supplies one.
+        let mut command = parse_command(Vec::<OsString>::new()).unwrap();
+        let Command::Play(before) = &command else {
+            unreachable!()
+        };
+        assert!(before.debug.is_none());
+
+        apply_environment_debug_defaults(&mut command, fake_environment(Some("full"))).unwrap();
+        let Command::Play(after) = &command else {
+            unreachable!()
+        };
+        let debug = after.debug.as_ref().expect("the env var activates debug");
+        assert_eq!(debug.party_preset, Some(DebugPartyPreset::Full));
+        // `run_game` keys "skip the title screen" off `debug.is_some()`.
+        assert!(debug.is_active());
+    }
+
+    #[test]
+    fn an_explicit_party_preset_flag_beats_the_env_var() {
+        let mut command =
+            parse_command(["play".into(), "--party-preset".into(), "solo".into()]).unwrap();
+        apply_environment_debug_defaults(&mut command, fake_environment(Some("full"))).unwrap();
+        let Command::Play(play) = &command else {
+            unreachable!()
+        };
+        assert_eq!(
+            play.debug.as_ref().unwrap().party_preset,
+            Some(DebugPartyPreset::Solo)
+        );
+    }
+
+    #[test]
+    fn the_party_preset_env_var_leaves_replay_and_absent_values_alone() {
+        // Replay must stay faithful to its record regardless of the environment.
+        let mut replay = parse_command(["replay".into(), "trace.yaml".into()]).unwrap();
+        apply_environment_debug_defaults(&mut replay, fake_environment(Some("full"))).unwrap();
+        let Command::Replay(input) = &replay else {
+            panic!("replay must stay a replay command");
+        };
+        assert_eq!(input, &PathBuf::from("trace.yaml"));
+
+        let mut command = parse_command(["play".into()]).unwrap();
+        apply_environment_debug_defaults(&mut command, fake_environment(None)).unwrap();
+        let Command::Play(play) = &command else {
+            unreachable!()
+        };
+        assert!(play.debug.is_none(), "an unset env var changes nothing");
+    }
+
+    #[test]
+    fn a_recorded_session_captures_the_env_var_preset_it_ran_with() {
+        let mut command =
+            parse_command(["record".into(), "trace.yaml".into(), "invented".into()]).unwrap();
+        apply_environment_debug_defaults(&mut command, fake_environment(Some("full"))).unwrap();
+        let Command::Record { play, .. } = &command else {
+            unreachable!()
+        };
+        assert_eq!(
+            play.debug.as_ref().unwrap().party_preset,
+            Some(DebugPartyPreset::Full)
+        );
+    }
+
+    #[test]
+    fn an_unreadable_party_preset_env_var_is_a_usage_error() {
+        let mut command = parse_command(["play".into()]).unwrap();
+        let error =
+            apply_environment_debug_defaults(&mut command, fake_environment(Some("everyone")))
+                .unwrap_err();
+        assert!(error.0.contains("requires solo|full"), "got {}", error.0);
+        // Whitespace from a shell export is tolerated rather than rejected.
+        let mut padded = parse_command(["play".into()]).unwrap();
+        apply_environment_debug_defaults(&mut padded, fake_environment(Some(" full "))).unwrap();
+        let Command::Play(play) = &padded else {
+            unreachable!()
+        };
+        assert_eq!(
+            play.debug.as_ref().unwrap().party_preset,
+            Some(DebugPartyPreset::Full)
+        );
     }
 
     #[test]
