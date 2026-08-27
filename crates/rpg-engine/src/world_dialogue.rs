@@ -1700,6 +1700,285 @@ mod tests {
     }
 
     #[test]
+    fn ruinwatch_service_dialogues_reach_their_distinct_service_terminals() {
+        let cases = [
+            (
+                "item_shop_ruinwatch",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_ruinwatch.yaml"
+                ),
+                "Relics in the window",
+                crate::scenario_dialogue::DialogueShopKind::Item,
+            ),
+            (
+                "weapon_shop_ruinwatch",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_ruinwatch.yaml"
+                ),
+                "Half my stock's dug from the ruins",
+                crate::scenario_dialogue::DialogueShopKind::Weapon,
+            ),
+            (
+                "armor_shop_ruinwatch",
+                include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_ruinwatch.yaml"
+                ),
+                "Pilgrims buy relics",
+                crate::scenario_dialogue::DialogueShopKind::Armor,
+            ),
+        ];
+        for (id, yaml, expected_start, expected_shop) in cases {
+            let flags = RuntimeFlags::default();
+            let mut session = DialogueSession::resolve(id, None, dialogue(yaml), &flags)
+                .unwrap()
+                .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            assert_eq!(actions[0].open_shop, Some(expected_shop));
+        }
+
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve(
+            "inn_ruinwatch",
+            None,
+            dialogue(include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/dialogue/inn_ruinwatch.yaml"
+            )),
+            &flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(session.current_line().starts_with("Pilgrim rates"));
+        let actions = complete_linear(&mut session, &flags);
+        assert_eq!(actions.len(), 1);
+        assert!(actions[0].open_inn.is_some());
+    }
+
+    #[test]
+    fn jep_join_traverses_every_branch_and_recruitment_is_idempotent() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/jep_join.yaml"
+        ));
+        let cases = [
+            (
+                vec!["npc_jep_joined", "boss_zone03_defeated"],
+                "Hear that? No marsh screaming",
+            ),
+            (vec!["npc_jep_joined"], "Lead the way"),
+            (vec!["story_act3_started"], "Okay, okay. I wasn't stealing"),
+            (vec!["story_act2_started"], "Ruinwatch? Bad stairs"),
+            (vec![], "Whoa-!"),
+        ];
+        let mut recruit_actions = None;
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session = DialogueSession::resolve("jep_join", None, dialogue.clone(), &flags)
+                .unwrap()
+                .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 2 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["npc_jep_joined"]
+                );
+                assert_eq!(actions[0].join_party.as_deref(), Some("jep"));
+                recruit_actions = Some(actions[0].clone());
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+
+        let mut flags = RuntimeFlags::from_bootstrap(["story_act3_started"]);
+        apply_flag_actions(&recruit_actions.unwrap(), &mut flags);
+        let mut session = DialogueSession::resolve("jep_join", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        assert!(session.current_line().starts_with("Lead the way"));
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
+    fn ruinwatch_archivist_traverses_start_relay_reward_and_repeat_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_archivist.yaml"
+        ));
+        let cases = [
+            (
+                vec!["sq_glyph_done"],
+                "'The flame remembers its first hand.'",
+            ),
+            (vec!["sq_glyph_relayed"], "He'll share it?"),
+            (vec!["sq_glyph_started"], "The mason works the north end"),
+            (vec![], "My legs won't carry me"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ruinwatch_archivist", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                1 => {
+                    assert_eq!(
+                        actions[0].set_flag.as_ref().unwrap().as_slice(),
+                        ["sq_glyph_done"]
+                    );
+                    assert_eq!(actions[0].give_items.len(), 1);
+                    assert_eq!(actions[0].give_items[0].id, "ether");
+                    assert_eq!(actions[0].give_items[0].qty.get(), 2);
+                }
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_glyph_started"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+    }
+
+    #[test]
+    fn ruinwatch_mason_traverses_millstone_and_glyph_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_mason.yaml"
+        ));
+        let cases = [
+            (vec!["sq_millstone_started"], "Millhaven wants ME now?"),
+            (vec!["sq_millstone_relayed"], "First thaw, like I said"),
+            (
+                vec!["sq_glyph_relayed"],
+                "The old reader can have her rubbing",
+            ),
+            (vec!["sq_glyph_started"], "The archivist sent you?"),
+            (vec![], "Every stone in this town"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ruinwatch_mason", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            match index {
+                0 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_millstone_relayed"]
+                ),
+                3 => assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_glyph_relayed"]
+                ),
+                _ => assert_eq!(actions[0], DialogueActions::default()),
+            }
+        }
+    }
+
+    #[test]
+    fn ruinwatch_pilgrim_traverses_crew_and_story_terminals() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_pilgrim.yaml"
+        ));
+        let cases = [
+            (vec!["sq_crew_started"], "The young digger?"),
+            (vec!["sq_crew_relayed"], "Go and ease the digger's mind"),
+            (
+                vec!["story_act3_started"],
+                "They say the Flame's being gathered",
+            ),
+            (vec![], "I came to pray"),
+        ];
+        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ruinwatch_pilgrim", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            let actions = complete_linear(&mut session, &flags);
+            assert_eq!(actions.len(), 1);
+            if index == 0 {
+                assert_eq!(
+                    actions[0].set_flag.as_ref().unwrap().as_slice(),
+                    ["sq_crew_relayed"]
+                );
+            } else {
+                assert_eq!(actions[0], DialogueActions::default());
+            }
+        }
+    }
+
+    #[test]
+    fn ruinwatch_scholar_hint_traverses_every_authored_story_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_scholar_hint.yaml"
+        ));
+        assert!(
+            DialogueSession::resolve(
+                "ruinwatch_scholar_hint",
+                None,
+                dialogue.clone(),
+                &RuntimeFlags::default(),
+            )
+            .unwrap()
+            .is_none()
+        );
+        let cases = [
+            (vec!["story_act4_started"], "The ruins here are a footnote"),
+            (
+                vec!["story_act3_started", "boss_zone03_defeated"],
+                "The marsh has calmed",
+            ),
+            (
+                vec!["story_act3_started"],
+                "I can't make sense of these glyphs",
+            ),
+            (
+                vec!["story_act2_started"],
+                "Ruinwatch used to be a trading post",
+            ),
+        ];
+        for (flags, expected_start) in cases {
+            let flags = RuntimeFlags::from_bootstrap(flags);
+            let mut session =
+                DialogueSession::resolve("ruinwatch_scholar_hint", None, dialogue.clone(), &flags)
+                    .unwrap()
+                    .unwrap();
+            assert!(session.current_line().starts_with(expected_start));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
+    }
+
+    #[test]
+    fn ruinwatch_notice_board_traverses_its_authored_terminal() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_03_ruinwatch.yaml"
+        ));
+        let flags = RuntimeFlags::default();
+        let mut session =
+            DialogueSession::resolve("sign_town_03_ruinwatch", None, dialogue, &flags)
+                .unwrap()
+                .unwrap();
+        assert_eq!(session.current_line(), "Notice Board — Ruinwatch");
+        assert_eq!(
+            complete_linear(&mut session, &flags),
+            [DialogueActions::default()]
+        );
+    }
+
+    #[test]
     fn port_master_intro_gates_the_sail_unlock_on_act_two_and_is_idempotent_after_unlock() {
         let dialogue = dialogue(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/dialogue/port_master_intro.yaml"

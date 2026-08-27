@@ -425,4 +425,24 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn ruinwatch_sign_cells_route_to_the_configured_tileset_profile() {
+        let owner = ScenarioRelativePath::try_from("assets/maps/town_03_ruinwatch.tmx").unwrap();
+        let map = parse_tmx_map_document(
+            include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx"
+            ),
+            &owner,
+        )
+        .unwrap();
+        let signs = ManifestSigns {
+            tileset: "stone_tile_stares_16x16".into(),
+            tile_ids: vec![18, 19, 20, 21],
+        };
+        assert_eq!(
+            sign_tiles(&map, &signs),
+            [Position::new(5, 0), Position::new(17, 28)]
+        );
+    }
 }
