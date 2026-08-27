@@ -80,7 +80,7 @@ use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
 use game_over::GameOverPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
-use gameplay_rng::GameplayRngPlugin;
+use gameplay_rng::{GameplayRng, GameplayRngPlugin};
 use intro_completion::IntroCompletionPlugin;
 use intro_dialogue::IntroDialoguePlugin;
 use intro_transition::IntroTransitionPlugin;
@@ -93,7 +93,6 @@ use scenario_inventory::ScenarioInventory;
 use scenario_manifest::Manifest;
 use scenario_manifest_asset::{ActiveManifestLoad, ScenarioManifestAssetPlugin};
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
-use scenario_root::ScenarioRoot;
 use service_ui::ServiceUiPlugin;
 use title_screen::TitleScreenPlugin;
 use tmx_ground_asset::TmxGroundAssetPlugin;
@@ -122,9 +121,9 @@ pub fn run() -> std::process::ExitCode {
     ))
 }
 
-fn run_game(scenario_root: ScenarioRoot) {
+fn run_game(arguments: cli::PlayArguments) {
     let asset_base = cli::production_asset_base();
-    let inventory = ScenarioInventory::discover(&asset_base, &scenario_root);
+    let inventory = ScenarioInventory::discover(&asset_base, &arguments.root);
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -154,7 +153,7 @@ fn run_game(scenario_root: ScenarioRoot) {
                 }),
         )
         .insert_resource(ClearColor(UiTheme::default().clear_color))
-        .insert_resource(scenario_root)
+        .insert_resource(arguments.root)
         .insert_resource(inventory)
         .add_plugins(ScenarioManifestAssetPlugin)
         .add_plugins(ScenarioAudioAssetPlugin)
@@ -165,6 +164,7 @@ fn run_game(scenario_root: ScenarioRoot) {
         .add_plugins(TmxGroundAssetPlugin)
         .add_plugins(EncounterAssetPlugin)
         .init_resource::<Playtime>()
+        .insert_resource(GameplayRng::from_seed(arguments.seed))
         .add_plugins(GameplayRngPlugin)
         .insert_state(AppState::Title)
         .add_plugins(AppStateTransitionPlugin)

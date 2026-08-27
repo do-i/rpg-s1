@@ -13,6 +13,7 @@ use std::{
 };
 
 use crate::{
+    gameplay_rng::DEFAULT_GAMEPLAY_SEED,
     python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
     save_store::{SaveStore, resolve_save_directory, unix_timestamp_now},
     scenario_cross_reference::{
@@ -32,16 +33,23 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY]\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Python import is explicit, one-way, and never scans for legacy saves.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64]\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. Python import is explicit, one-way, and never scans for legacy saves.";
 
 enum Command {
-    Play(ScenarioRoot),
+    Play(PlayArguments),
     Validate(ScenarioRoot),
     MapReport(ScenarioRoot),
     MapSweep(ScenarioRoot),
     DialogueReport(ScenarioRoot),
     ImportPython(ImportPythonArguments),
     Help,
+}
+
+/// Validated process options passed across the window-construction boundary.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct PlayArguments {
+    pub(crate) root: ScenarioRoot,
+    pub(crate) seed: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -67,7 +75,7 @@ pub(crate) fn run(
     arguments: impl IntoIterator<Item = OsString>,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
-    launch_bevy_app: impl FnOnce(ScenarioRoot),
+    launch_bevy_app: impl FnOnce(PlayArguments),
 ) -> u8 {
     let collection_root = production_scenario_collection();
     run_with(
@@ -90,7 +98,7 @@ fn run_with<V>(
     validator: V,
     stdout: &mut impl Write,
     stderr: &mut impl Write,
-    launch_bevy_app: impl FnOnce(ScenarioRoot),
+    launch_bevy_app: impl FnOnce(PlayArguments),
 ) -> u8
 where
     V: FnOnce(&ScenarioRoot, &Path) -> ScenarioValidationReport,
@@ -104,8 +112,9 @@ where
     };
 
     match command {
-        Command::Play(root) => {
-            launch_bevy_app(root);
+        Command::Play(arguments) => {
+            let _ = writeln!(stdout, "Gameplay seed: {}", arguments.seed);
+            launch_bevy_app(arguments);
             EXIT_SUCCESS
         }
         Command::Help => match writeln!(stdout, "{USAGE}") {
@@ -203,27 +212,11 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         .collect::<Result<Vec<_>, _>>()?;
 
     match arguments.as_slice() {
-        [] => Ok(Command::Play(
-            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
-                .expect("the default package key is valid"),
-        )),
-        [command] if command == "play" => Ok(Command::Play(
-            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
-                .expect("the default package key is valid"),
-        )),
+        [] => Ok(Command::Play(default_play_arguments())),
         [command, flag] if command == "play" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
         }
-        [command, package_key] if command == "play" => {
-            ScenarioRoot::try_for_package_key(package_key.clone())
-                .map(Command::Play)
-                .map_err(|error| {
-                    UsageError(format!("invalid package key `{package_key}`: {error}"))
-                })
-        }
-        [command, ..] if command == "play" => Err(UsageError(
-            "play accepts at most one package key".to_owned(),
-        )),
+        [command, rest @ ..] if command == "play" => parse_play_arguments(rest).map(Command::Play),
         [flag] if flag == "-h" || flag == "--help" => Ok(Command::Help),
         [command, flag] if command == "validate-scenario" && (flag == "-h" || flag == "--help") => {
             Ok(Command::Help)
@@ -303,6 +296,54 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         }
         [command, ..] => Err(UsageError(format!("unknown command `{command}`"))),
     }
+}
+
+fn default_play_arguments() -> PlayArguments {
+    PlayArguments {
+        root: ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
+            .expect("the default package key is valid"),
+        seed: DEFAULT_GAMEPLAY_SEED,
+    }
+}
+
+fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageError> {
+    let mut package = None;
+    let mut seed = None;
+    let mut index = 0;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--seed" => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .ok_or_else(|| UsageError("--seed requires a U64 value".to_owned()))?;
+                let parsed = value
+                    .parse::<u64>()
+                    .map_err(|_| UsageError("--seed requires a U64 value".to_owned()))?;
+                if seed.replace(parsed).is_some() {
+                    return Err(UsageError("--seed may appear only once".to_owned()));
+                }
+            }
+            option if option.starts_with('-') => {
+                return Err(UsageError(format!("unknown play option `{option}`")));
+            }
+            package_key => {
+                if package.replace(package_key.to_owned()).is_some() {
+                    return Err(UsageError(
+                        "play accepts at most one package key".to_owned(),
+                    ));
+                }
+            }
+        }
+        index += 1;
+    }
+    let package = package.unwrap_or_else(|| DEFAULT_SCENARIO_PACKAGE_KEY.to_owned());
+    let root = ScenarioRoot::try_for_package_key(package.clone())
+        .map_err(|error| UsageError(format!("invalid package key `{package}`: {error}")))?;
+    Ok(PlayArguments {
+        root,
+        seed: seed.unwrap_or(DEFAULT_GAMEPLAY_SEED),
+    })
 }
 
 fn parse_import_python_arguments(
@@ -1742,15 +1783,16 @@ refs:
             |_, _| panic!("play mode must not validate"),
             &mut stdout,
             &mut stderr,
-            |root| {
-                assert_eq!(root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
+            |arguments| {
+                assert_eq!(arguments.root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
+                assert_eq!(arguments.seed, DEFAULT_GAMEPLAY_SEED);
                 launched.set(true);
             },
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
         assert!(launched.get());
-        assert!(stdout.is_empty());
+        assert_eq!(String::from_utf8(stdout).unwrap(), "Gameplay seed: 1\n");
         assert!(stderr.is_empty());
     }
 
@@ -1765,16 +1807,70 @@ refs:
             |_, _| panic!("play mode must not validate"),
             &mut stdout,
             &mut stderr,
-            |root| {
-                assert_eq!(root.package_key(), "invented_campaign");
+            |arguments| {
+                assert_eq!(arguments.root.package_key(), "invented_campaign");
+                assert_eq!(arguments.seed, DEFAULT_GAMEPLAY_SEED);
                 launched.set(true);
             },
         );
 
         assert_eq!(exit, EXIT_SUCCESS);
         assert!(launched.get());
-        assert!(stdout.is_empty());
+        assert_eq!(String::from_utf8(stdout).unwrap(), "Gameplay seed: 1\n");
         assert!(stderr.is_empty());
+    }
+
+    #[test]
+    fn play_seed_is_bounded_to_u64_and_reaches_the_launcher() {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        let exit = run_with(
+            ["play".into(), "--seed".into(), u64::MAX.to_string().into()],
+            Path::new("unused"),
+            |_, _| panic!("play mode must not validate"),
+            &mut stdout,
+            &mut stderr,
+            |arguments| {
+                assert_eq!(arguments.root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
+                assert_eq!(arguments.seed, u64::MAX);
+            },
+        );
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert_eq!(
+            String::from_utf8(stdout).unwrap(),
+            format!("Gameplay seed: {}\n", u64::MAX)
+        );
+        assert!(stderr.is_empty());
+
+        for arguments in [
+            vec!["play".into(), "--seed".into()],
+            vec!["play".into(), "--seed".into(), "-1".into()],
+            vec!["play".into(), "--seed".into(), "not-a-seed".into()],
+            vec![
+                "play".into(),
+                "--seed".into(),
+                "1".into(),
+                "--seed".into(),
+                "2".into(),
+            ],
+        ] {
+            let mut stdout = Vec::new();
+            let mut stderr = Vec::new();
+            assert_eq!(
+                run_with(
+                    arguments,
+                    Path::new("unused"),
+                    |_, _| panic!("misuse must not validate"),
+                    &mut stdout,
+                    &mut stderr,
+                    |_| panic!("misuse must not launch Bevy"),
+                ),
+                EXIT_USAGE
+            );
+            assert!(stdout.is_empty());
+            assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
+        }
     }
 
     #[cfg(unix)]
