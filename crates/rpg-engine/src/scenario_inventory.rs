@@ -105,12 +105,12 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
             .map_err(|_| InventoryError(format!("{} is unreadable", path.as_str())))?;
         if scenario_yaml::from_str::<ItemCatalogFile>(&document).is_ok() {
             inventory.item_catalogs.push(path);
-        } else if scenario_yaml::from_str::<FieldUseCatalogFile>(&document).is_ok() {
-            if inventory.field_use.replace(path).is_some() {
-                return Err(InventoryError(
-                    "scenario has multiple field-use catalogs".into(),
-                ));
-            }
+        } else if scenario_yaml::from_str::<FieldUseCatalogFile>(&document).is_ok()
+            && inventory.field_use.replace(path).is_some()
+        {
+            return Err(InventoryError(
+                "scenario has multiple field-use catalogs".into(),
+            ));
         }
     }
     inventory.classes = yaml_files(&package, manifest.refs.classes.as_relative_path())?;

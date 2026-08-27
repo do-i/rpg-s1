@@ -401,6 +401,10 @@ fn cleanup_title_screen(
     *presentation = TitlePresentation::default();
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Bevy title input keeps lifecycle resources and output system parameters explicit"
+)]
 fn handle_menu_input(
     actions: Res<ActionState>,
     mut menu: ResMut<TitleMenu>,
@@ -464,15 +468,14 @@ fn handle_menu_input(
         TitleMenuAction::Quit => {
             if reduce_quit_lifecycle(&mut quit, time.elapsed(), QuitLifecycleEvent::Activate)
                 == Some(QuitLifecycleEffect::SpawnConfirm)
+                && let Some(path) = presentation.confirm_sfx.as_ref()
             {
-                if let Some(path) = presentation.confirm_sfx.as_ref() {
-                    output.commands.spawn((
-                        AudioPlayer::new(output.asset_server.load(path)),
-                        PlaybackSettings::DESPAWN,
-                        QuitConfirmSound,
-                        TitleScreenEntity,
-                    ));
-                }
+                output.commands.spawn((
+                    AudioPlayer::new(output.asset_server.load(path)),
+                    PlaybackSettings::DESPAWN,
+                    QuitConfirmSound,
+                    TitleScreenEntity,
+                ));
             }
         }
     }
