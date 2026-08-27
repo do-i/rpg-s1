@@ -363,7 +363,11 @@ fn update_world_npcs(
     players: Query<&WorldPlayerMotion>,
     mut actors: Query<(Entity, &mut WorldNpc, &mut Sprite, &mut Transform)>,
     mut snapshot: Local<Vec<(Entity, CharacterCollisionRect)>>,
+    mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
 ) {
+    let _measurement = timings
+        .as_deref_mut()
+        .map(|timings| timings.measure("world.npcs"));
     let Some(mut game) = game else {
         return;
     };

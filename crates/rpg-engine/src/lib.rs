@@ -8,6 +8,7 @@ pub mod encounter;
 mod encounter_assets;
 mod field_menu;
 mod field_menu_domain;
+mod frame_timing;
 mod game_over;
 pub mod game_state;
 pub mod gameplay_canvas;
@@ -81,6 +82,7 @@ use debug_launch::DebugLaunchPlugin;
 use encounter_assets::EncounterAssetPlugin;
 use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
+use frame_timing::FrameTimingPlugin;
 use game_over::GameOverPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::{GameplayRng, GameplayRngPlugin};
@@ -213,6 +215,9 @@ fn run_game(arguments: cli::PlayArguments) {
     }
     if let Some(debug) = arguments.debug {
         app.insert_resource(debug);
+    }
+    if arguments.timings {
+        app.add_plugins(FrameTimingPlugin);
     }
     app.run();
 }
