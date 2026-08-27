@@ -949,6 +949,139 @@ mod tests {
         }
     }
 
+    fn ruinwatch_metadata(map_id: &str) -> MapMetadata {
+        let document = match map_id {
+            "town_03_ruinwatch" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch.yaml"
+            ),
+            "town_03_ruinwatch_inn" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_inn.yaml"
+            ),
+            "town_03_ruinwatch_shop" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_shop.yaml"
+            ),
+            "town_03_ruinwatch_monastery_vaults" => include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_monastery_vaults.yaml"
+            ),
+            _ => panic!("unsupported Ruinwatch map fixture: {map_id}"),
+        };
+        scenario_yaml::from_str(document).unwrap()
+    }
+
+    fn observed_npcs<'a>(
+        metadata: &'a MapMetadata,
+        flags: &RuntimeFlags,
+    ) -> Vec<(&'a str, Position, &'a str)> {
+        present_npcs(metadata, flags)
+            .iter()
+            .map(|npc| {
+                (
+                    npc.id.as_str(),
+                    npc.position,
+                    npc.dialogue.as_deref().unwrap_or_default(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn presence_conditions_keep_the_full_ruinwatch_town_roster_across_story_flags() {
+        let metadata = ruinwatch_metadata("town_03_ruinwatch");
+        let expected = [
+            (
+                "ruinwatch_scholar",
+                Position::new(18, 27),
+                "ruinwatch_scholar_hint",
+            ),
+            (
+                "ruinwatch_archivist",
+                Position::new(12, 7),
+                "ruinwatch_archivist",
+            ),
+            ("ruinwatch_mason", Position::new(26, 7), "ruinwatch_mason"),
+            (
+                "ruinwatch_pilgrim",
+                Position::new(33, 15),
+                "ruinwatch_pilgrim",
+            ),
+            ("ruinwatch_digger", Position::new(3, 22), "ruinwatch_digger"),
+        ];
+
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_act2_started"]),
+            RuntimeFlags::from_bootstrap([
+                "story_act2_started",
+                "story_act3_started",
+                "story_act4_started",
+                "boss_zone03_defeated",
+                "boss_zone04_defeated",
+            ]),
+        ] {
+            assert_eq!(observed_npcs(&metadata, &flags), expected);
+        }
+    }
+
+    #[test]
+    fn presence_conditions_keep_ruinwatch_inn_and_shop_service_rosters_ungated() {
+        let inn = ruinwatch_metadata("town_03_ruinwatch_inn");
+        let shop = ruinwatch_metadata("town_03_ruinwatch_shop");
+        let expected_inn = [("inn_keeper", Position::new(8, 3), "inn_ruinwatch")];
+        let expected_shop = [
+            (
+                "item_shop_keeper",
+                Position::new(6, 3),
+                "item_shop_ruinwatch",
+            ),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            (
+                "weapon_shop_keeper",
+                Position::new(4, 3),
+                "weapon_shop_ruinwatch",
+            ),
+            (
+                "armor_shop_keeper",
+                Position::new(12, 3),
+                "armor_shop_ruinwatch",
+            ),
+        ];
+
+        for flags in [
+            RuntimeFlags::default(),
+            RuntimeFlags::from_bootstrap(["story_quest_started", "story_act2_started"]),
+            RuntimeFlags::from_bootstrap([
+                "story_quest_started",
+                "story_act2_started",
+                "story_act3_started",
+            ]),
+        ] {
+            assert_eq!(observed_npcs(&inn, &flags), expected_inn);
+            assert_eq!(observed_npcs(&shop, &flags), expected_shop);
+        }
+    }
+
+    #[test]
+    fn presence_conditions_remove_jep_from_the_monastery_vaults_only_after_recruitment() {
+        let metadata = ruinwatch_metadata("town_03_ruinwatch_monastery_vaults");
+        let expected = [("jep", Position::new(10, 5), "jep_join")];
+
+        assert_eq!(observed_npcs(&metadata, &RuntimeFlags::default()), expected);
+        assert_eq!(
+            observed_npcs(
+                &metadata,
+                &RuntimeFlags::from_bootstrap(["story_act3_started"]),
+            ),
+            expected
+        );
+        assert!(
+            observed_npcs(
+                &metadata,
+                &RuntimeFlags::from_bootstrap(["story_act3_started", "npc_jep_joined"]),
+            )
+            .is_empty()
+        );
+    }
+
     #[test]
     fn static_and_step_frames_keep_authored_facing_rows() {
         assert_eq!(direction_frame(CardinalDirection::Up, 0), 0);
