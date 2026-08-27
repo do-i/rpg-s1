@@ -731,6 +731,10 @@ struct EnemySimulationAssets<'w> {
     balances: Res<'w, Assets<BalanceData>>,
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "world enemy simulation reads independent timing, map, party, and collision state"
+)]
 fn update_world_enemies(
     time: Res<Time>,
     assets: EnemySimulationAssets,

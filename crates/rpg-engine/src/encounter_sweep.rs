@@ -229,6 +229,11 @@ fn try_build_encounter_sweep(
     let mut zones = Vec::new();
     let mut atlas_paths = BTreeSet::new();
     let mut background_paths = BTreeSet::new();
+    let construction_context = SweepConstructionContext {
+        enemies: &enemy_catalog,
+        items: &field_catalog,
+        game: &game,
+    };
     for (stem, zone) in &zone_documents {
         let zone_id = zone.effective_id(stem).to_owned();
         let mut constructions = Vec::new();
@@ -249,9 +254,7 @@ fn try_build_encounter_sweep(
                 &zone_id,
                 &formation.enemy_ids,
                 zone,
-                &enemy_catalog,
-                &field_catalog,
-                &game,
+                construction_context,
                 false,
             );
             collect_assets(&result, &mut atlas_paths, &mut background_paths);
@@ -274,9 +277,7 @@ fn try_build_encounter_sweep(
                 &zone_id,
                 std::slice::from_ref(&boss.enemy_id),
                 zone,
-                &enemy_catalog,
-                &field_catalog,
-                &game,
+                construction_context,
                 true,
             );
             collect_assets(&result, &mut atlas_paths, &mut background_paths);
@@ -311,25 +312,30 @@ fn try_build_encounter_sweep(
     })
 }
 
+#[derive(Clone, Copy)]
+struct SweepConstructionContext<'a> {
+    enemies: &'a EnemyCatalog,
+    items: &'a FieldMenuCatalog,
+    game: &'a crate::game_state::GameState,
+}
+
 fn construct(
     encounter_id: &str,
     map_id: &str,
     formation: &[String],
     zone: &EncounterZone,
-    enemies: &EnemyCatalog,
-    items: &FieldMenuCatalog,
-    game: &crate::game_state::GameState,
+    context: SweepConstructionContext<'_>,
     boss: bool,
 ) -> Result<crate::encounter::BattleEntry, String> {
     let entry = build_battle_entry(
         encounter_id,
         formation,
         zone,
-        enemies,
-        items,
-        game.party(),
-        game.repository(),
-        game.flags(),
+        context.enemies,
+        context.items,
+        context.game.party(),
+        context.game.repository(),
+        context.game.flags(),
         boss,
         PreBattleReturnContext {
             map_id: map_id.to_owned(),
@@ -455,14 +461,16 @@ fn load_battle_assets(
                 .map(|(path, handle)| (path, handle.id().untyped())),
         )
         .filter_map(|(path, id)| {
-            (!server.is_loaded_with_dependencies(id)).then(|| {
-                format!(
+            if server.is_loaded_with_dependencies(id) {
+                None
+            } else {
+                Some(format!(
                     "{}: root={:?}, dependencies={:?}",
                     path.as_str(),
                     server.load_state(id),
                     server.recursive_dependency_load_state(id)
-                )
-            })
+                ))
+            }
         })
         .collect()
 }
