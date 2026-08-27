@@ -11,6 +11,7 @@ mod game_over;
 pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
+mod input_record;
 mod intro_completion;
 mod intro_dialogue;
 mod intro_transition;
