@@ -3,13 +3,17 @@ use bevy::prelude::*;
 use super::{
     action::BattleEvent,
     model::{BattleState, CombatantKey},
-    ui::{BattleAssetState, BattleEnemyFrame, BattlePartyCard},
+    ui::{BattleAssetState, BattleEnemyFrame, BattlePartyCard, BattleUi},
 };
 use crate::encounter::BattleSide;
 
 const FLOAT_DURATION_SECONDS: f32 = 0.85;
 const FLOAT_RISE_PIXELS: f32 = 42.0;
 const FLASH_DURATION_SECONDS: f32 = 0.14;
+const SCREEN_FLASH_DURATION_SECONDS: f32 = 0.26;
+/// Fraction of the screen flash spent at full strength before it fades out.
+const SCREEN_FLASH_HOLD_FRACTION: f32 = 0.3;
+const SCREEN_FLASH_PEAK_ALPHA: f32 = 0.38;
 
 #[derive(Debug, Default, Resource)]
 pub(super) struct BattleFxRouter {
@@ -23,6 +27,12 @@ pub(super) struct BattleFxFloat {
 
 #[derive(Component)]
 pub(super) struct BattleHitFlash {
+    elapsed: f32,
+}
+
+/// Full-canvas tint raised whenever the party itself takes a hit.
+#[derive(Component)]
+pub(super) struct BattleScreenFlash {
     elapsed: f32,
 }
 
@@ -51,6 +61,7 @@ pub(super) fn route_battle_fx(
     router: Option<ResMut<BattleFxRouter>>,
     party_cards: Query<(&BattlePartyCard, Entity)>,
     enemy_frames: Query<(&BattleEnemyFrame, Entity)>,
+    mut screen_flashes: Query<&mut BattleScreenFlash>,
 ) {
     let (Some(state), Some(assets), Some(mut router)) = (state, assets, router) else {
         return;
@@ -58,10 +69,12 @@ pub(super) fn route_battle_fx(
     if router.next_event > state.feedback_events.len() {
         router.next_event = 0;
     }
+    let mut party_struck = false;
     for event in &state.feedback_events[router.next_event..] {
         let Some(cue) = cue_for_event(event) else {
             continue;
         };
+        party_struck |= triggers_screen_flash(&cue);
         let target = match cue.target.side {
             BattleSide::Party => party_cards
                 .iter()
@@ -109,6 +122,30 @@ pub(super) fn route_battle_fx(
         });
     }
     router.next_event = state.feedback_events.len();
+    if !party_struck {
+        return;
+    }
+    // A group hit produces several cues in one frame; restart the single overlay
+    // instead of stacking translucent copies until the screen washes out.
+    if let Some(mut existing) = screen_flashes.iter_mut().next() {
+        existing.elapsed = 0.0;
+        return;
+    }
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0),
+            top: px(0),
+            width: percent(100),
+            height: percent(100),
+            ..default()
+        },
+        BackgroundColor(screen_flash_color(SCREEN_FLASH_PEAK_ALPHA)),
+        GlobalZIndex(260),
+        Pickable::IGNORE,
+        BattleUi,
+        BattleScreenFlash { elapsed: 0.0 },
+    ));
 }
 
 pub(super) fn animate_battle_fx(
@@ -116,6 +153,10 @@ pub(super) fn animate_battle_fx(
     time: Res<Time>,
     mut floats: Query<(Entity, &mut BattleFxFloat, &mut Node, &mut TextColor)>,
     mut flashes: Query<(Entity, &mut BattleHitFlash, &mut BackgroundColor)>,
+    mut screen_flashes: Query<
+        (Entity, &mut BattleScreenFlash, &mut BackgroundColor),
+        Without<BattleHitFlash>,
+    >,
 ) {
     let delta = time.delta_secs().max(0.0);
     for (entity, mut effect, mut node, mut text_color) in &mut floats {
@@ -131,6 +172,14 @@ pub(super) fn animate_battle_fx(
         effect.elapsed += delta;
         let (alpha, expired) = flash_frame(effect.elapsed);
         background.0 = Color::srgba(1.0, 1.0, 1.0, alpha * 0.72);
+        if expired {
+            commands.entity(entity).despawn();
+        }
+    }
+    for (entity, mut effect, mut background) in &mut screen_flashes {
+        effect.elapsed += delta;
+        let (alpha, expired) = screen_flash_frame(effect.elapsed);
+        background.0 = screen_flash_color(alpha);
         if expired {
             commands.entity(entity).despawn();
         }
@@ -230,6 +279,27 @@ fn flash_frame(elapsed: f32) -> (f32, bool) {
     (1.0 - progress, elapsed >= FLASH_DURATION_SECONDS)
 }
 
+/// Only damage landing on the party shakes the whole canvas; hits the party
+/// deals out already read clearly from the enemy's own frame flash.
+fn triggers_screen_flash(cue: &FxCue) -> bool {
+    cue.flash && cue.target.side == BattleSide::Party
+}
+
+/// Holds the tint at full strength, then fades it linearly to nothing.
+fn screen_flash_frame(elapsed: f32) -> (f32, bool) {
+    let progress = (elapsed / SCREEN_FLASH_DURATION_SECONDS).clamp(0.0, 1.0);
+    let fade = ((progress - SCREEN_FLASH_HOLD_FRACTION) / (1.0 - SCREEN_FLASH_HOLD_FRACTION))
+        .clamp(0.0, 1.0);
+    (
+        SCREEN_FLASH_PEAK_ALPHA * (1.0 - fade),
+        elapsed >= SCREEN_FLASH_DURATION_SECONDS,
+    )
+}
+
+fn screen_flash_color(alpha: f32) -> Color {
+    Color::srgba(0.85, 0.09, 0.09, alpha)
+}
+
 fn color(color: FxColor, alpha: f32) -> Color {
     let (red, green, blue) = match color {
         FxColor::Damage => (1.0, 0.35, 0.25),
@@ -290,6 +360,60 @@ mod tests {
         assert_eq!(float_frame(9.0), (-50.0, 0.0, true));
         assert_eq!(flash_frame(0.0), (1.0, false));
         assert_eq!(flash_frame(FLASH_DURATION_SECONDS), (0.0, true));
+    }
+
+    #[test]
+    fn only_damage_taken_by_the_party_raises_the_screen_flash() {
+        let struck_party = cue_for_event(&BattleEvent::EnemyAbilityDamage {
+            source: CombatantKey::enemy(0),
+            target: CombatantKey::party(1),
+            amount: 9,
+            knocked_out: false,
+        })
+        .unwrap();
+        assert!(triggers_screen_flash(&struck_party));
+        let struck_enemy = cue_for_event(&BattleEvent::Damage {
+            action: BattleAction::Physical {
+                attacker: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+            },
+            amount: 9,
+            critical: false,
+            knocked_out: false,
+        })
+        .unwrap();
+        assert!(!triggers_screen_flash(&struck_enemy));
+        let healed_party = cue_for_event(&BattleEvent::Heal {
+            source: CombatantKey::party(0),
+            target: CombatantKey::party(1),
+            amount: 9,
+            revived: false,
+        })
+        .unwrap();
+        assert!(!triggers_screen_flash(&healed_party));
+    }
+
+    #[test]
+    fn screen_flash_holds_then_fades_to_nothing_within_its_budget() {
+        assert_eq!(
+            screen_flash_frame(0.0),
+            (SCREEN_FLASH_PEAK_ALPHA, false),
+            "the flash opens at full strength"
+        );
+        let hold_end = SCREEN_FLASH_DURATION_SECONDS * SCREEN_FLASH_HOLD_FRACTION;
+        assert_eq!(
+            screen_flash_frame(hold_end),
+            (SCREEN_FLASH_PEAK_ALPHA, false)
+        );
+        let (mid_alpha, mid_expired) =
+            screen_flash_frame(hold_end + (SCREEN_FLASH_DURATION_SECONDS - hold_end) / 2.0);
+        assert!(mid_alpha > 0.0 && mid_alpha < SCREEN_FLASH_PEAK_ALPHA);
+        assert!(!mid_expired);
+        assert_eq!(
+            screen_flash_frame(SCREEN_FLASH_DURATION_SECONDS),
+            (0.0, true)
+        );
+        assert_eq!(screen_flash_frame(9.0), (0.0, true));
     }
 
     #[test]

@@ -32,6 +32,32 @@ pub(super) struct MemberReward {
     pub(super) learned_abilities: Vec<String>,
 }
 
+/// One stat line on a level-up card: what was gained and where it landed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct RewardStatDelta {
+    pub(super) label: &'static str,
+    pub(super) gained: u32,
+    pub(super) total: u32,
+}
+
+/// Presentation-ready view of a single member's share of the spoils.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct RewardMemberRow {
+    pub(super) name: String,
+    pub(super) experience_applied: u32,
+    pub(super) experience_gained: u32,
+    pub(super) level_from: u32,
+    pub(super) level_to: u32,
+    pub(super) stats: Vec<RewardStatDelta>,
+    pub(super) learned_abilities: Vec<String>,
+}
+
+impl RewardMemberRow {
+    pub(super) fn leveled(&self) -> bool {
+        self.level_to > self.level_from
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct LootReward {
     pub(super) item_id: String,
@@ -183,6 +209,67 @@ pub(super) fn apply_rewards(
 }
 
 impl BattleRewards {
+    /// Builds the per-member cards the victory modal renders, in party order.
+    pub(super) fn member_rows(&self) -> Vec<RewardMemberRow> {
+        self.members
+            .iter()
+            .map(|member| {
+                let sum = |pick: fn(&RuntimeLevelUp) -> u32| {
+                    member.level_ups.iter().map(pick).sum::<u32>()
+                };
+                let (level_from, level_to, stats) =
+                    match (member.level_ups.first(), member.level_ups.last()) {
+                        (Some(first), Some(last)) => (
+                            first.old_level,
+                            last.new_level,
+                            vec![
+                                RewardStatDelta {
+                                    label: "HP",
+                                    gained: sum(|level| level.health),
+                                    total: last.max_health,
+                                },
+                                RewardStatDelta {
+                                    label: "MP",
+                                    gained: sum(|level| level.mana),
+                                    total: last.max_mana,
+                                },
+                                RewardStatDelta {
+                                    label: "STR",
+                                    gained: sum(|level| level.strength),
+                                    total: last.total_strength,
+                                },
+                                RewardStatDelta {
+                                    label: "DEX",
+                                    gained: sum(|level| level.dexterity),
+                                    total: last.total_dexterity,
+                                },
+                                RewardStatDelta {
+                                    label: "CON",
+                                    gained: sum(|level| level.constitution),
+                                    total: last.total_constitution,
+                                },
+                                RewardStatDelta {
+                                    label: "INT",
+                                    gained: sum(|level| level.intelligence),
+                                    total: last.total_intelligence,
+                                },
+                            ],
+                        ),
+                        _ => (0, 0, Vec::new()),
+                    };
+                RewardMemberRow {
+                    name: member.member_name.clone(),
+                    experience_applied: member.experience_applied,
+                    experience_gained: member.experience_gained,
+                    level_from,
+                    level_to,
+                    stats,
+                    learned_abilities: member.learned_abilities.clone(),
+                }
+            })
+            .collect()
+    }
+
     pub(super) fn summary_lines(&self) -> Vec<String> {
         let member_exp = self
             .members
