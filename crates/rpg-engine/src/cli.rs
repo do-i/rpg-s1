@@ -2051,7 +2051,7 @@ refs:
     }
 
     #[test]
-    fn map_sweep_on_an_unavailable_package_still_exits_successfully() {
+    fn map_sweep_on_an_unavailable_package_fails_the_runtime_phase() {
         let collection = TempCollection::new("present");
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
@@ -2065,13 +2065,11 @@ refs:
             |_| panic!("map-sweep must not launch Bevy"),
         );
 
-        assert_eq!(
-            exit, EXIT_SUCCESS,
-            "map-sweep is informational and always exits zero"
-        );
+        assert_eq!(exit, EXIT_VALIDATION_FAILED);
         let output = String::from_utf8(stdout).unwrap();
         assert!(output.contains("Load error: selected scenario package is unavailable\n"));
         assert!(output.contains("Total maps swept: 0\n"));
+        assert!(output.contains("Runtime status: FAIL (0 passed, 0 failed)\n"));
         assert!(!output.contains(collection.0.to_string_lossy().as_ref()));
         assert!(stderr.is_empty());
     }

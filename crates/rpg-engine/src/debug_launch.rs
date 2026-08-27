@@ -133,6 +133,10 @@ struct DebugAssets<'w> {
     intros: Res<'w, Assets<CutsceneDialogue>>,
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "debug installation validates and publishes one transactional scenario boundary"
+)]
 fn install_debug_session(
     mut commands: Commands,
     config: Res<DebugLaunchConfig>,
