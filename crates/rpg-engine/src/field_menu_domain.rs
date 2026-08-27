@@ -129,6 +129,34 @@ impl FieldMenuCatalog {
             .collect()
     }
 
+    /// Builds the battle-facing subset of the production catalog for the encounter sweep.
+    /// Battle construction reads item equipment stats and class abilities, but does not need
+    /// field-use, warp, recipe, quest, or map services.
+    pub(crate) fn for_encounter_sweep(
+        item_files: impl IntoIterator<Item = ItemCatalogFile>,
+        class_files: impl IntoIterator<Item = ClassDefinition>,
+    ) -> Self {
+        let mut items = BTreeMap::new();
+        let mut item_order = Vec::new();
+        for file in item_files {
+            for item in file.entries() {
+                item_order.push(item.id().to_owned());
+                items.insert(item.id().to_owned(), item.clone());
+            }
+        }
+        let classes = class_files
+            .into_iter()
+            .map(|class| (class.class_id.clone(), class))
+            .collect();
+        Self {
+            status: CatalogStatus::Ready,
+            items,
+            classes,
+            item_order,
+            ..Self::default()
+        }
+    }
+
     pub(crate) fn eligible_warp_destinations(
         &self,
         map: &RuntimeMapState,

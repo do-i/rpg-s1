@@ -7,6 +7,7 @@ mod debug_launch;
 mod dialogue_sweep;
 pub mod encounter;
 mod encounter_assets;
+mod encounter_sweep;
 mod field_menu;
 mod field_menu_domain;
 mod frame_timing;
