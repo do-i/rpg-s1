@@ -1307,6 +1307,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        encounter::{BattleSide, BuildBattleError},
         encounter_assets::EncounterAssetPlugin,
         field_menu_domain::{FieldMenuDomainPlugin, derived_stats},
         name_entry::NameEntryConfirmed,
@@ -2018,6 +2019,236 @@ mod tests {
             Some("boss_zone03_defeated")
         );
         assert_eq!(entry.return_context.map_id, "zone_03_marshland");
+        assert_eq!(entry.return_context.position, boss_position);
+        assert_eq!(entry.return_context.world_bgm_key, None);
+    }
+
+    /// Covers W12.4's three Ancient Ruins maps through the production loaders. The map changes
+    /// prove each TMX and optional metadata document publishes into the actor/object/encounter
+    /// systems, while the sanctum checks the first production barrier rule and the complete
+    /// Skeleton Knight boss handoff.
+    #[test]
+    fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_handoff() {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::NameEntry,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(ImagePlugin::default_nearest())
+            .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .add_plugins(TsxAtlasAssetPlugin)
+            .add_plugins(TmxGroundAssetPlugin)
+            .add_plugins(EncounterAssetPlugin)
+            .add_plugins(FieldMenuDomainPlugin)
+            .add_plugins(WorldAudioPlugin)
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
+            .add_plugins(WorldEncounterPlugin)
+            .add_plugins(WorldActorPlugin)
+            .add_plugins(WorldObjectPlugin)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+                100,
+            )));
+
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<ActiveNewGameInputs>().status()
+                == ActiveNewGameInputsStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(
+            app.world().resource::<ActiveNewGameInputs>().status(),
+            ActiveNewGameInputsStatus::Ready
+        );
+        app.world_mut()
+            .resource_mut::<Messages<NameEntryConfirmed>>()
+            .write(NameEntryConfirmed::for_test("Aric"));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().get_resource::<GameState>().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        let maps = [
+            ("zone_04_ancient_ruins_01_gate", Position::new(1, 31), 7),
+            (
+                "zone_04_ancient_ruins_02_courtyard",
+                Position::new(1, 12),
+                13,
+            ),
+            ("zone_04_ancient_ruins_03_sanctum", Position::new(1, 16), 9),
+        ];
+        for (index, (map_id, position, expected_enemies)) in maps.into_iter().enumerate() {
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .map_mut()
+                .move_to(
+                    RuntimeMapId::try_new(map_id).unwrap(),
+                    position,
+                    CardinalDirection::Down,
+                );
+            if index == 0 {
+                app.world_mut()
+                    .resource_mut::<NextState<AppState>>()
+                    .set(AppState::World);
+            }
+
+            for _ in 0..5_000 {
+                app.update();
+                if app.world().resource::<WorldEncounterState>().status()
+                    == WorldEncounterStatus::Spawned
+                    && app
+                        .world()
+                        .resource::<WorldActorState>()
+                        .is_spawned_for(map_id)
+                    && app
+                        .world()
+                        .resource::<WorldObjectState>()
+                        .is_spawned_for(map_id)
+                    && app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready
+                {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
+            assert_eq!(
+                app.world().resource::<WorldEncounterState>().status(),
+                WorldEncounterStatus::Spawned,
+                "{map_id}: {:?}",
+                app.world().resource::<WorldEncounterState>().failure()
+            );
+            assert!(
+                app.world()
+                    .resource::<WorldActorState>()
+                    .is_spawned_for(map_id)
+            );
+            assert!(
+                app.world()
+                    .resource::<WorldObjectState>()
+                    .is_spawned_for(map_id)
+            );
+            let mut query = app.world_mut().query::<&WorldEnemy>();
+            let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
+            assert_eq!(enemies.len(), expected_enemies, "{map_id}");
+            assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
+        }
+
+        let boss = {
+            let mut query = app.world_mut().query::<&WorldEnemy>();
+            query
+                .iter(app.world())
+                .find(|enemy| enemy.is_boss())
+                .cloned()
+                .expect("sanctum publishes its authored boss")
+        };
+        assert_eq!(boss.encounter_id(), "zone_04_ancient_ruins_03_sanctum:boss");
+        assert_eq!(boss.formation(), ["skeleton_knight_base"]);
+        assert_eq!(boss.tile_position(), Position::new(19, 14));
+
+        let barrier_context = PreBattleReturnContext {
+            map_id: "zone_04_ancient_ruins_03_sanctum".to_owned(),
+            position: Position::new(1, 16),
+            facing: CardinalDirection::Down,
+            world_bgm_key: None,
+            world_enemies: Vec::new(),
+        };
+        let blocked = {
+            let world = app.world();
+            let encounter_state = world.resource::<WorldEncounterState>();
+            let zones = world.resource::<Assets<EncounterZone>>();
+            let zone = zones
+                .get(encounter_state.zone.as_ref().unwrap())
+                .expect("active sanctum encounter zone is loaded");
+            let game = world.resource::<GameState>();
+            build_battle_entry(
+                "sanctum:barrier",
+                &["bat_demon_red_wing_fiend".to_owned()],
+                zone,
+                world.resource::<EnemyCatalog>(),
+                world.resource::<FieldMenuCatalog>(),
+                game.party(),
+                game.repository(),
+                game.flags(),
+                false,
+                barrier_context.clone(),
+            )
+        };
+        assert_eq!(blocked, Err(BuildBattleError::EmptyFormation));
+
+        assert_eq!(
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .repository_mut()
+                .add_item("veil_breaker", 1)
+                .unwrap()
+                .added(),
+            1
+        );
+        let unblocked = {
+            let world = app.world();
+            let encounter_state = world.resource::<WorldEncounterState>();
+            let zones = world.resource::<Assets<EncounterZone>>();
+            let zone = zones
+                .get(encounter_state.zone.as_ref().unwrap())
+                .expect("active sanctum encounter zone is loaded");
+            let game = world.resource::<GameState>();
+            build_battle_entry(
+                "sanctum:barrier",
+                &["bat_demon_red_wing_fiend".to_owned()],
+                zone,
+                world.resource::<EnemyCatalog>(),
+                world.resource::<FieldMenuCatalog>(),
+                game.party(),
+                game.repository(),
+                game.flags(),
+                false,
+                barrier_context,
+            )
+            .unwrap()
+        };
+        assert!(unblocked.barrier_messages.is_empty());
+        assert_eq!(
+            unblocked
+                .participants
+                .iter()
+                .filter(|participant| participant.side == BattleSide::Enemy)
+                .map(|participant| participant.id.as_str())
+                .collect::<Vec<_>>(),
+            ["bat_demon_red_wing_fiend"]
+        );
+
+        let boss_position = boss.tile_position();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .set_position(boss_position);
+        for _ in 0..10 {
+            app.update();
+            if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+                break;
+            }
+        }
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Battle
+        );
+        let entry = app.world().resource::<BattleEntry>();
+        assert_eq!(entry.encounter_id, boss.encounter_id());
+        assert_eq!(entry.background_id, "zone4-sanctum-bg-1280x468");
+        assert_eq!(entry.bgm_key, "battle.boss");
+        assert_eq!(
+            entry.boss_completion_flag.as_deref(),
+            Some("boss_zone04_defeated")
+        );
+        assert_eq!(
+            entry.return_context.map_id,
+            "zone_04_ancient_ruins_03_sanctum"
+        );
         assert_eq!(entry.return_context.position, boss_position);
         assert_eq!(entry.return_context.world_bgm_key, None);
     }
