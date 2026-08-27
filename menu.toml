@@ -10,9 +10,9 @@ selected_background = "cyan"
 selected_bold = true
 
 [[items]]
-id = "run"
-label = "Run playable M7 slice (debug overlay)"
-key = "r"
+id = "run-debug"
+label = "Run - Debug"
+key = "d"
 command = ["env", "RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "cargo", "run"]
 group = "Play"
 tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells", "debug", "collision", "portal"]
@@ -20,31 +20,13 @@ description = "Play the Ardel slice with sound disabled and the portal/collision
 favorite = true
 
 [[items]]
-id = "import-python-help"
-label = "Show Python save import help"
-key = "i"
-command = ["cargo", "run", "--", "import-python-save", "--help"]
-group = "Save tools"
-tags = ["save", "import", "python", "convert", "migration", "help"]
-description = "Show the explicit one-way Python-to-native save converter syntax"
-
-[[items]]
-id = "check"
-label = "Check"
-key = "c"
-command = ["cargo", "check"]
-group = "Quality"
-tags = ["check", "compile", "rust"]
-description = "Type-check the project without producing a release build"
-
-[[items]]
-id = "test"
-label = "Test"
-key = "t"
-command = ["cargo", "test"]
-group = "Quality"
-tags = ["test", "rust"]
-description = "Run the Rust test suite"
+id = "run-fast"
+label = "Run - Fast"
+key = "r"
+command = ["cargo", "run", "--release"]
+group = "Play"
+tags = ["run", "play", "game", "release", "fast", "performance", "framerate"]
+description = "Play the Ardel slice from an optimized release build for a true read on framerate and load times"
 
 [[items]]
 id = "validate-scenario"
@@ -54,33 +36,6 @@ command = ["cargo", "run", "--", "validate-scenario"]
 group = "Quality"
 tags = ["validate", "scenario", "data", "rust"]
 description = "Validate the default Rusted Kingdoms package without launching Bevy"
-
-[[items]]
-id = "clippy"
-label = "Clippy"
-key = "l"
-command = ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
-group = "Quality"
-tags = ["lint", "clippy", "rust"]
-description = "Run Clippy and reject warnings"
-
-[[items]]
-id = "ardel-screenshot"
-label = "Check Ardel screenshot"
-key = "s"
-command = ["scripts/check-ardel-screenshot.sh"]
-group = "Quality"
-tags = ["screenshot", "visual", "ardel", "regression"]
-description = "Render and compare the deterministic M4 town composition"
-
-[[items]]
-id = "format-check"
-label = "Check formatting"
-key = "f"
-command = ["cargo", "fmt", "--", "--check"]
-group = "Quality"
-tags = ["format", "rustfmt", "rust"]
-description = "Verify Rust formatting without changing files"
 
 [[items]]
 id = "build-release"
@@ -93,7 +48,7 @@ description = "Build an optimized native binary in target/release"
 
 [[items]]
 id = "release-status"
-label = "Release status"
+label = "Release Status"
 key = "u"
 command = ["scripts/release.sh", "status"]
 group = "Release"
@@ -101,42 +56,23 @@ tags = ["release", "status", "version", "tag", "dev", "main"]
 description = "Show dev/main state, the latest tag, and the version today's cut would use — changes nothing"
 
 [[items]]
-id = "release-cut-dry-run"
-label = "Cut release (dry run)"
-key = "d"
-command = ["scripts/release.sh", "--dry-run", "cut"]
-group = "Release"
-tags = ["release", "dry", "run", "preview", "version", "tag"]
-description = "Show exactly what cutting a release would do without bumping, tagging, or pushing anything"
-
-[[items]]
 id = "release-bump"
-label = "1 Cut Release"
+label = "Release 1 Cut"
 key = "n"
 command = ["scripts/release.sh", "bump"]
 group = "Release"
 tags = ["release", "bump", "version", "dev", "cut"]
-description = "Bump the version on dev and push, then stop — no CI wait. Follow up with '2 Push Tag' once CI is green"
+description = "Bump the version on dev and push, then stop — no CI wait. Follow up with 'Release 2 Tag/Push' once CI is green"
 confirm = true
 
 [[items]]
 id = "release-tag"
-label = "2 Push Tag"
+label = "Release 2 Tag/Push"
 key = "g"
 command = ["scripts/release.sh", "tag"]
 group = "Release"
 tags = ["release", "tag", "publish", "binary", "main"]
 description = "Check CI once (no wait) and, if green, fast-forward main and push the tag that builds the release binary"
-confirm = true
-
-[[items]]
-id = "release-cut"
-label = "Cut Release (all-in-one)"
-key = "p"
-command = ["scripts/release.sh", "cut"]
-group = "Release"
-tags = ["release", "cut", "tag", "version", "publish", "binary"]
-description = "Bump the version on dev, wait for CI, fast-forward main, and push the tag that builds the release binary"
 confirm = true
 
 [[items]]
