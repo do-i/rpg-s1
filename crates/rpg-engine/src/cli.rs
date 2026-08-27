@@ -17,6 +17,7 @@ use crate::{
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
     input_record::{InputAutomation, InputRecord, RecordSource},
     python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
+    runtime_map_sweep::{RuntimeMapSweepReport, build_runtime_map_sweep},
     save_store::{SaveStore, resolve_save_directory, unix_timestamp_now},
     scenario_cross_reference::{
         DiagnosticSeverity, ScenarioCatalogCounts, ScenarioDiagnostic, ScenarioLocation,
@@ -233,15 +234,28 @@ where
             }
         }
         Command::MapSweep(root) => {
-            let report = match select_scenario_package(collection_root, &root) {
-                Ok(selected) => build_map_sweep(&selected),
-                Err(error) => MapSweepReport::with_load_error(error.message),
+            let (report, runtime) = match select_scenario_package(collection_root, &root) {
+                Ok(selected) => {
+                    let asset_base = collection_root.parent().unwrap_or(collection_root);
+                    (
+                        build_map_sweep(&selected),
+                        build_runtime_map_sweep(asset_base, &root, &selected),
+                    )
+                }
+                Err(error) => (
+                    MapSweepReport::with_load_error(error.message),
+                    RuntimeMapSweepReport::with_load_error(error.message),
+                ),
             };
-            // Informational: findings are described in the body, not through the exit code.
-            if write_map_sweep_report(stdout, &root, &report).is_err() {
+            let result = if runtime.is_valid() {
+                EXIT_SUCCESS
+            } else {
+                EXIT_VALIDATION_FAILED
+            };
+            if write_map_sweep_report(stdout, &root, &report, &runtime).is_err() {
                 EXIT_USAGE
             } else {
-                EXIT_SUCCESS
+                result
             }
         }
         Command::DialogueReport(root) => {
@@ -1074,6 +1088,7 @@ fn write_map_sweep_report(
     output: &mut impl Write,
     root: &ScenarioRoot,
     report: &MapSweepReport,
+    runtime: &RuntimeMapSweepReport,
 ) -> io::Result<()> {
     writeln!(output, "Map sweep")?;
     writeln!(output, "Package: {}", root.package_key())?;
@@ -1134,6 +1149,35 @@ fn write_map_sweep_report(
             report.category_count(category)
         )?;
     }
+    writeln!(output)?;
+    writeln!(output, "Runtime map-load sweep")?;
+    if let Some(error) = &runtime.load_error {
+        writeln!(output, "Load error: {error}")?;
+    }
+    for entry in &runtime.entries {
+        match &entry.failure {
+            Some(error) => writeln!(output, "  FAIL {}: {error}", entry.id)?,
+            None => writeln!(
+                output,
+                "  PASS {} ({} headless frames)",
+                entry.id, entry.frames
+            )?,
+        }
+    }
+    if !runtime.skipped_fixtures.is_empty() {
+        writeln!(
+            output,
+            "Skipped non-migrated fixtures: {}",
+            runtime.skipped_fixtures.join(", ")
+        )?;
+    }
+    writeln!(
+        output,
+        "Runtime status: {} ({} passed, {} failed)",
+        if runtime.is_valid() { "PASS" } else { "FAIL" },
+        runtime.passed(),
+        runtime.failed()
+    )?;
     Ok(())
 }
 
@@ -1626,6 +1670,8 @@ refs:
 "#;
         fs::write(collection.join(package_key).join("manifest.yaml"), manifest)
             .expect("temporary manifest should be writable");
+        fs::create_dir_all(collection.join(package_key).join("assets/maps"))
+            .expect("temporary empty TMX directory should be creatable");
     }
 
     #[test]
