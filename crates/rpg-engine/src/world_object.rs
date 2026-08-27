@@ -152,6 +152,10 @@ fn reset_world_objects(mut state: ResMut<WorldObjectState>) {
     *state = WorldObjectState::default();
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "atomic Bevy object replacement keeps each resource and entity boundary explicit"
+)]
 fn sync_world_object_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

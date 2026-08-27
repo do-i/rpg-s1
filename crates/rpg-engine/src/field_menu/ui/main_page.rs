@@ -1,5 +1,9 @@
 use super::*;
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Bevy menu synchronization keeps each resource and query boundary explicit"
+)]
 pub(in crate::field_menu) fn sync_main_menu_page(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

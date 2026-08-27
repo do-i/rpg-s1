@@ -470,7 +470,7 @@ fn drive_active_encounter_assets(
     let Some(sfx_index) = sfx_assets.get(&sfx_handle) else {
         return;
     };
-    let Some(encounter_sfx) = sfx_index.resolve_key(&root, "encounter") else {
+    let Some(encounter_sfx) = sfx_index.resolve_key(root, "encounter") else {
         fail_encounter(
             &mut state,
             "scenario SFX index has no `encounter` event".to_owned(),

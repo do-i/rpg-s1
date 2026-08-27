@@ -347,6 +347,10 @@ fn begin_static_map_load(
     state.status = StaticMapRenderStatus::Loading;
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "atomic Bevy map replacement keeps each asset and entity boundary explicit"
+)]
 fn sync_static_map_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
