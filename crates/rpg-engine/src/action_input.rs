@@ -1,5 +1,7 @@
 use bevy::{input::InputSystems, prelude::*};
 
+use crate::input_record::NormalizedAction;
+
 /// A semantic menu action shared by application-shell screens.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum AppAction {
@@ -130,6 +132,58 @@ impl ActionState {
             _ => None,
         }
     }
+
+    pub(crate) fn normalized_actions(&self) -> Vec<NormalizedAction> {
+        let mut normalized = Vec::new();
+        for (action, value) in [
+            (AppAction::Back, NormalizedAction::Back),
+            (AppAction::Confirm, NormalizedAction::Confirm),
+            (AppAction::Up, NormalizedAction::MenuUp),
+            (AppAction::Down, NormalizedAction::MenuDown),
+        ] {
+            if self.just_pressed(action) {
+                normalized.push(value);
+            }
+        }
+        for (action, value) in [
+            (MovementAction::Up, NormalizedAction::MoveUp),
+            (MovementAction::Left, NormalizedAction::MoveLeft),
+            (MovementAction::Down, NormalizedAction::MoveDown),
+            (MovementAction::Right, NormalizedAction::MoveRight),
+        ] {
+            if self.movement_pressed[action.index()] {
+                normalized.push(value);
+            }
+        }
+        normalized.sort_unstable();
+        normalized.dedup();
+        normalized
+    }
+
+    pub(crate) fn replace_with_normalized(&mut self, normalized: &[NormalizedAction]) {
+        self.just_pressed.fill(false);
+        self.movement_pressed.fill(false);
+        for action in normalized {
+            match action {
+                NormalizedAction::Back => self.just_pressed[AppAction::Back.index()] = true,
+                NormalizedAction::Confirm => self.just_pressed[AppAction::Confirm.index()] = true,
+                NormalizedAction::MenuUp => self.just_pressed[AppAction::Up.index()] = true,
+                NormalizedAction::MenuDown => self.just_pressed[AppAction::Down.index()] = true,
+                NormalizedAction::MoveUp => {
+                    self.movement_pressed[MovementAction::Up.index()] = true
+                }
+                NormalizedAction::MoveLeft => {
+                    self.movement_pressed[MovementAction::Left.index()] = true
+                }
+                NormalizedAction::MoveDown => {
+                    self.movement_pressed[MovementAction::Down.index()] = true
+                }
+                NormalizedAction::MoveRight => {
+                    self.movement_pressed[MovementAction::Right.index()] = true
+                }
+            }
+        }
+    }
 }
 
 pub(crate) struct ActionInputPlugin;
@@ -142,7 +196,7 @@ impl Plugin for ActionInputPlugin {
     }
 }
 
-fn update_action_state(
+pub(crate) fn update_action_state(
     keys: Res<ButtonInput<KeyCode>>,
     map: Res<ActionMap>,
     mut actions: ResMut<ActionState>,

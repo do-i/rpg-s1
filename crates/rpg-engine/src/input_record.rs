@@ -1,8 +1,18 @@
 //! Versioned, physical-key-independent gameplay input records.
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, fs, path::PathBuf};
 
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+use crate::{
+    action_input::{ActionState, update_action_state},
+    app_state::AppState,
+    game_state::GameState,
+    gameplay_rng::GameplayRng,
+    save_data::SavePayload,
+};
 
 pub(crate) const INPUT_RECORD_FORMAT_VERSION: u32 = 1;
 pub(crate) const NORMALIZED_ACTION_SCHEMA: &str = "rpg-s1.normalized-actions.v1";
@@ -169,9 +179,259 @@ impl fmt::Display for InputRecordError {
 
 impl Error for InputRecordError {}
 
+/// Runtime input mode selected by the process command before the window opens.
+#[derive(Debug, Resource)]
+pub(crate) enum InputAutomation {
+    Record {
+        output: PathBuf,
+        record: InputRecord,
+        frame: u64,
+        failure: Option<String>,
+    },
+    Replay {
+        input: PathBuf,
+        record: InputRecord,
+        cursor: usize,
+        frame: u64,
+        failure: Option<String>,
+        complete: bool,
+    },
+}
+
+impl InputAutomation {
+    pub(crate) fn record(output: PathBuf, record: InputRecord) -> Self {
+        Self::Record {
+            output,
+            record,
+            frame: 0,
+            failure: None,
+        }
+    }
+
+    pub(crate) fn replay(input: PathBuf, record: InputRecord) -> Self {
+        Self::Replay {
+            input,
+            record,
+            cursor: 0,
+            frame: 0,
+            failure: None,
+            complete: false,
+        }
+    }
+}
+
+pub(crate) struct InputRecordPlugin;
+
+impl Plugin for InputRecordPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(PreUpdate, apply_replay_actions.after(update_action_state))
+            .add_systems(Last, (checkpoint_action_frame, advance_frame).chain());
+    }
+}
+
+fn apply_replay_actions(
+    mut actions: ResMut<ActionState>,
+    mut automation: Option<ResMut<InputAutomation>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    let Some(automation) = automation.as_deref_mut() else {
+        return;
+    };
+    let InputAutomation::Replay {
+        record,
+        cursor,
+        frame,
+        failure,
+        ..
+    } = automation
+    else {
+        return;
+    };
+    actions.replace_with_normalized(&[]);
+    let Some(expected) = record.action_frames.get(*cursor) else {
+        return;
+    };
+    if expected.frame == *frame {
+        actions.replace_with_normalized(&expected.actions);
+    } else if expected.frame < *frame {
+        let message = format!(
+            "replay missed action {} scheduled for frame {}",
+            expected.index, expected.frame
+        );
+        eprintln!("Replay divergence: {message}");
+        *failure = Some(message);
+        exit.write(AppExit::error());
+    }
+}
+
+fn checkpoint_action_frame(
+    actions: Res<ActionState>,
+    state: Option<Res<State<AppState>>>,
+    game: Option<Res<GameState>>,
+    startup_rng: Option<Res<GameplayRng>>,
+    mut automation: Option<ResMut<InputAutomation>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    let Some(automation) = automation.as_deref_mut() else {
+        return;
+    };
+    let normalized = actions.normalized_actions();
+    match automation {
+        InputAutomation::Record {
+            output,
+            record,
+            frame,
+            failure,
+        } if !normalized.is_empty() => {
+            let index = record.action_frames.len() as u64;
+            match checkpoint_hash(
+                index,
+                &normalized,
+                state.as_deref(),
+                game.as_deref(),
+                startup_rng.as_deref(),
+            ) {
+                Ok(state_hash) => {
+                    record.action_frames.push(RecordedActionFrame {
+                        index,
+                        frame: *frame,
+                        actions: normalized,
+                        state_hash,
+                    });
+                    if let Err(error) = persist_record(output, record) {
+                        eprintln!("Input recording failed: {error}");
+                        *failure = Some(error);
+                        exit.write(AppExit::error());
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Input recording failed: {error}");
+                    *failure = Some(error);
+                    exit.write(AppExit::error());
+                }
+            }
+        }
+        InputAutomation::Replay {
+            input,
+            record,
+            cursor,
+            frame,
+            failure,
+            complete,
+        } => {
+            let Some(expected) = record.action_frames.get(*cursor) else {
+                return;
+            };
+            if expected.frame != *frame || failure.is_some() {
+                return;
+            }
+            let actual = checkpoint_hash(
+                expected.index,
+                &normalized,
+                state.as_deref(),
+                game.as_deref(),
+                startup_rng.as_deref(),
+            );
+            match actual {
+                Ok(actual) if actual == expected.state_hash => {
+                    *cursor += 1;
+                    if *cursor == record.action_frames.len() {
+                        *complete = true;
+                        println!(
+                            "Replay PASS: {} action frames matched ({})",
+                            cursor,
+                            input.display()
+                        );
+                        exit.write(AppExit::Success);
+                    }
+                }
+                Ok(actual) => {
+                    let message = format!(
+                        "action {} at frame {}: expected {}, found {}",
+                        expected.index, expected.frame, expected.state_hash, actual
+                    );
+                    eprintln!("Replay divergence: {message}");
+                    *failure = Some(message);
+                    exit.write(AppExit::error());
+                }
+                Err(error) => {
+                    eprintln!("Replay failed: {error}");
+                    *failure = Some(error);
+                    exit.write(AppExit::error());
+                }
+            }
+        }
+        InputAutomation::Record { .. } => {}
+    }
+}
+
+fn advance_frame(mut automation: Option<ResMut<InputAutomation>>) {
+    let Some(automation) = automation.as_deref_mut() else {
+        return;
+    };
+    match automation {
+        InputAutomation::Record { frame, .. } | InputAutomation::Replay { frame, .. } => {
+            *frame = frame.saturating_add(1);
+        }
+    }
+}
+
+fn persist_record(output: &PathBuf, record: &InputRecord) -> Result<(), String> {
+    let encoded = record.encode().map_err(|error| error.to_string())?;
+    fs::write(output, encoded)
+        .map_err(|error| format!("could not write record `{}`: {error}", output.display()))
+}
+
+#[derive(Serialize)]
+struct Checkpoint<'a> {
+    action_schema: &'static str,
+    action_index: u64,
+    actions: &'a [NormalizedAction],
+    app_state: String,
+    game: Option<SavePayload>,
+    startup_rng_state: Option<u64>,
+}
+
+fn checkpoint_hash(
+    action_index: u64,
+    actions: &[NormalizedAction],
+    state: Option<&State<AppState>>,
+    game: Option<&GameState>,
+    startup_rng: Option<&GameplayRng>,
+) -> Result<String, String> {
+    let mut payload = game
+        .map(SavePayload::from_game_state)
+        .transpose()
+        .map_err(|error| error.to_string())?;
+    if let Some(payload) = payload.as_mut() {
+        payload.playtime_seconds = 0;
+    }
+    let checkpoint = Checkpoint {
+        action_schema: NORMALIZED_ACTION_SCHEMA,
+        action_index,
+        actions,
+        app_state: state
+            .map(|state| format!("{:?}", state.get()))
+            .unwrap_or_else(|| "Uninitialized".to_owned()),
+        game: payload,
+        startup_rng_state: game
+            .is_none()
+            .then(|| startup_rng.map(GameplayRng::state))
+            .flatten(),
+    };
+    let canonical = serde_yaml_ng::to_string(&checkpoint).map_err(|error| error.to_string())?;
+    Ok(format!("{:x}", Sha256::digest(canonical.as_bytes())))
+}
+
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use bevy::state::app::StatesPlugin;
+
     use super::*;
+
+    static NEXT_PATH: AtomicU64 = AtomicU64::new(0);
 
     fn record() -> InputRecord {
         let mut record = InputRecord::new(
@@ -230,5 +490,234 @@ mod tests {
         ] {
             assert!(InputRecord::decode(document.as_bytes()).is_err());
         }
+    }
+
+    fn automation_app(automation: InputAutomation) -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(StatesPlugin)
+            .add_message::<AppExit>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .insert_resource(GameplayRng::from_seed(42))
+            .insert_state(AppState::Title)
+            .insert_resource(automation)
+            .add_plugins(crate::action_input::ActionInputPlugin)
+            .add_plugins(InputRecordPlugin);
+        app
+    }
+
+    fn temporary_record_path() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "rpg-s1-input-record-{}-{}.yaml",
+            std::process::id(),
+            NEXT_PATH.fetch_add(1, Ordering::Relaxed)
+        ))
+    }
+
+    #[test]
+    fn physical_input_records_normalized_actions_and_replays_without_that_mapping() {
+        let path = temporary_record_path();
+        let mut recorder = automation_app(InputAutomation::record(path.clone(), record()));
+        if let InputAutomation::Record { record, .. } = recorder
+            .world_mut()
+            .resource_mut::<InputAutomation>()
+            .as_mut()
+        {
+            record.action_frames.clear();
+        }
+        recorder.update();
+        recorder
+            .world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        recorder.update();
+
+        let recorded = InputRecord::decode(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(recorded.action_frames.len(), 1);
+        assert_eq!(recorded.action_frames[0].frame, 1);
+        assert_eq!(
+            recorded.action_frames[0].actions,
+            [NormalizedAction::Confirm]
+        );
+
+        let mut replay = automation_app(InputAutomation::replay(path.clone(), recorded));
+        replay
+            .world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        replay.update();
+        assert!(
+            !replay
+                .world()
+                .resource::<ActionState>()
+                .just_pressed(crate::action_input::AppAction::Back)
+        );
+        replay.update();
+        assert!(
+            replay
+                .world()
+                .resource::<ActionState>()
+                .just_pressed(crate::action_input::AppAction::Confirm)
+        );
+        let InputAutomation::Replay {
+            cursor,
+            complete,
+            failure,
+            ..
+        } = replay.world().resource::<InputAutomation>()
+        else {
+            panic!("replay mode should remain installed");
+        };
+        assert_eq!(*cursor, 1);
+        assert!(*complete);
+        assert_eq!(failure, &None);
+
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn replay_reports_the_first_mismatching_action_checkpoint() {
+        let path = temporary_record_path();
+        let mut input = record();
+        input.action_frames[0].frame = 0;
+        input.action_frames[0].state_hash = "0".repeat(64);
+        let mut replay = automation_app(InputAutomation::replay(path, input));
+
+        replay.update();
+
+        let InputAutomation::Replay {
+            cursor,
+            complete,
+            failure,
+            ..
+        } = replay.world().resource::<InputAutomation>()
+        else {
+            panic!("replay mode should remain installed");
+        };
+        assert_eq!(*cursor, 0);
+        assert!(!*complete);
+        assert!(failure.as_deref().unwrap().contains("action 0 at frame 0"));
+    }
+
+    fn title_load_trace_app(save_directory: &std::path::Path) -> App {
+        let mut app = crate::test_support::headless_title_app(AppState::Title);
+        app.add_plugins(crate::save_ui::SaveUiPlugin)
+            .add_plugins(InputRecordPlugin)
+            .insert_resource(crate::save_store::SaveStore::new(save_directory.to_owned()));
+        for _ in 0..5_000 {
+            app.update();
+            if app
+                .world()
+                .resource::<crate::save_ui::SaveSlotCatalog>()
+                .has_valid()
+            {
+                return app;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        panic!("production title load catalog did not become ready");
+    }
+
+    fn release_keys(app: &mut App, keys: &[KeyCode]) {
+        let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+        for key in keys {
+            input.release(*key);
+        }
+        input.clear();
+    }
+
+    #[test]
+    fn production_title_to_world_trace_replays_to_the_same_final_state_hash() {
+        let root = std::env::temp_dir().join(format!(
+            "rpg-s1-title-world-replay-{}-{}",
+            std::process::id(),
+            NEXT_PATH.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("001.yaml"),
+            include_bytes!("../../../tests/fixtures/native-save-v1.yaml"),
+        )
+        .unwrap();
+        let record_path = root.join("title-to-world.yaml");
+        let empty_record = InputRecord::new(
+            "2026.8.1",
+            RecordSource {
+                package_key: "rusted_kingdoms".to_owned(),
+                scenario_id: "my_rpg_story".to_owned(),
+                scenario_version: "1.0.0".to_owned(),
+            },
+            1,
+        );
+
+        let mut recorder = title_load_trace_app(&root);
+        recorder.insert_resource(InputAutomation::record(record_path.clone(), empty_record));
+        {
+            let mut input = recorder.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            input.press(KeyCode::ArrowDown);
+            input.press(KeyCode::Enter);
+        }
+        recorder.update();
+        release_keys(&mut recorder, &[KeyCode::ArrowDown, KeyCode::Enter]);
+        recorder.update();
+        recorder
+            .world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        recorder.update();
+        release_keys(&mut recorder, &[KeyCode::Enter]);
+        recorder.update();
+        recorder
+            .world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowRight);
+        recorder.update();
+        assert_eq!(
+            recorder.world().resource::<State<AppState>>().get(),
+            &AppState::World
+        );
+        let recorded = InputRecord::decode(&fs::read(&record_path).unwrap()).unwrap();
+        assert_eq!(recorded.action_frames.len(), 3);
+        let expected_final_hash = recorded.action_frames.last().unwrap().state_hash.clone();
+
+        let mut replay = title_load_trace_app(&root);
+        replay.insert_resource(InputAutomation::replay(record_path.clone(), recorded));
+        for _ in 0..8 {
+            replay.update();
+            let automation = replay.world().resource::<InputAutomation>();
+            let InputAutomation::Replay {
+                complete, failure, ..
+            } = automation
+            else {
+                unreachable!()
+            };
+            assert!(failure.is_none(), "replay diverged: {failure:?}");
+            if *complete {
+                break;
+            }
+        }
+        let InputAutomation::Replay {
+            record,
+            cursor,
+            complete,
+            failure,
+            ..
+        } = replay.world().resource::<InputAutomation>()
+        else {
+            unreachable!()
+        };
+        assert!(*complete);
+        assert_eq!(*cursor, 3);
+        assert_eq!(failure, &None);
+        assert_eq!(
+            record.action_frames.last().unwrap().state_hash,
+            expected_final_hash
+        );
+        assert_eq!(
+            replay.world().resource::<State<AppState>>().get(),
+            &AppState::World
+        );
+
+        fs::remove_dir_all(root).unwrap();
     }
 }

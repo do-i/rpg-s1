@@ -82,6 +82,7 @@ use field_menu_domain::FieldMenuDomainPlugin;
 use game_over::GameOverPlugin;
 use gameplay_canvas::{FixedGameplayCanvasPlugin, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH};
 use gameplay_rng::{GameplayRng, GameplayRngPlugin};
+use input_record::InputRecordPlugin;
 use intro_completion::IntroCompletionPlugin;
 use intro_dialogue::IntroDialoguePlugin;
 use intro_transition::IntroTransitionPlugin;
@@ -112,10 +113,16 @@ use world_transition::WorldTransitionPlugin;
 
 /// Runs the RPG process, routing CLI tools before launching the Bevy application.
 pub fn run() -> std::process::ExitCode {
+    run_with_game_version(env!("CARGO_PKG_VERSION"))
+}
+
+/// Runs with the top-level game package version captured in replay headers.
+pub fn run_with_game_version(game_version: &str) -> std::process::ExitCode {
     let mut stdout = std::io::stdout();
     let mut stderr = std::io::stderr();
     std::process::ExitCode::from(cli::run(
         std::env::args_os().skip(1),
+        game_version,
         &mut stdout,
         &mut stderr,
         run_game,
@@ -125,74 +132,78 @@ pub fn run() -> std::process::ExitCode {
 fn run_game(arguments: cli::PlayArguments) {
     let asset_base = cli::production_asset_base();
     let inventory = ScenarioInventory::discover(&asset_base, &arguments.root);
-    App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(AudioPlugin {
-                    global_volume: GlobalVolume::new(
-                        if std::env::var_os("RPG_S1_MUTE_AUDIO").is_some() {
-                            Volume::Linear(0.0)
-                        } else {
-                            Volume::Linear(1.0)
-                        },
-                    ),
-                    ..default()
-                })
-                .set(AssetPlugin {
-                    file_path: asset_base.to_string_lossy().into_owned(),
-                    ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "RPG".into(),
-                        resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
-                        present_mode: PresentMode::AutoVsync,
-                        resizable: true,
-                        ..default()
-                    }),
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(AudioPlugin {
+                global_volume: GlobalVolume::new(
+                    if std::env::var_os("RPG_S1_MUTE_AUDIO").is_some() {
+                        Volume::Linear(0.0)
+                    } else {
+                        Volume::Linear(1.0)
+                    },
+                ),
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: asset_base.to_string_lossy().into_owned(),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "RPG".into(),
+                    resolution: (LOGICAL_CANVAS_WIDTH, LOGICAL_CANVAS_HEIGHT).into(),
+                    present_mode: PresentMode::AutoVsync,
+                    resizable: true,
                     ..default()
                 }),
-        )
-        .insert_resource(ClearColor(UiTheme::default().clear_color))
-        .insert_resource(arguments.root)
-        .insert_resource(inventory)
-        .add_plugins(ScenarioManifestAssetPlugin)
-        .add_plugins(ScenarioAudioAssetPlugin)
-        .add_systems(Update, sync_window_title_from_manifest)
-        .add_plugins(ScenarioNewGameAssetsPlugin)
-        .add_plugins(FieldMenuDomainPlugin)
-        .add_plugins(TsxAtlasAssetPlugin)
-        .add_plugins(TmxGroundAssetPlugin)
-        .add_plugins(EncounterAssetPlugin)
-        .init_resource::<Playtime>()
-        .insert_resource(GameplayRng::from_seed(arguments.seed))
-        .add_plugins(GameplayRngPlugin)
-        .insert_state(AppState::Title)
-        .add_plugins(AppStateTransitionPlugin)
-        .add_plugins(ActionInputPlugin)
-        .add_plugins(FixedGameplayCanvasPlugin)
-        .add_plugins(TitleScreenPlugin)
-        .add_plugins(SaveUiPlugin)
-        .add_plugins(NameEntryPlugin)
-        .add_plugins(NewGameInstallPlugin)
-        .add_plugins(IntroDialoguePlugin)
-        .add_plugins(IntroCompletionPlugin)
-        .add_plugins(IntroTransitionPlugin)
-        .add_plugins(WorldAudioPlugin)
-        .add_plugins(WorldActorPlugin)
-        .add_plugins(WorldObjectPlugin)
-        .add_plugins(WorldTransitionPlugin)
-        .add_plugins(AutosavePlugin)
-        .add_plugins(WorldEncounterPlugin)
-        .add_plugins(WorldInteractionPlugin)
-        .add_plugins(ServiceUiPlugin)
-        .add_plugins(WorldPlayerPlugin)
-        .add_plugins(WorldDebugOverlayPlugin)
-        .add_plugins(FieldMenuPlugin)
-        .add_plugins(BattleEntryPlugin)
-        .add_plugins(BattlePlugin)
-        .add_plugins(GameOverPlugin)
-        .run();
+                ..default()
+            }),
+    )
+    .insert_resource(ClearColor(UiTheme::default().clear_color))
+    .insert_resource(arguments.root)
+    .insert_resource(inventory)
+    .add_plugins(ScenarioManifestAssetPlugin)
+    .add_plugins(ScenarioAudioAssetPlugin)
+    .add_systems(Update, sync_window_title_from_manifest)
+    .add_plugins(ScenarioNewGameAssetsPlugin)
+    .add_plugins(FieldMenuDomainPlugin)
+    .add_plugins(TsxAtlasAssetPlugin)
+    .add_plugins(TmxGroundAssetPlugin)
+    .add_plugins(EncounterAssetPlugin)
+    .init_resource::<Playtime>()
+    .insert_resource(GameplayRng::from_seed(arguments.seed))
+    .add_plugins(GameplayRngPlugin)
+    .insert_state(AppState::Title)
+    .add_plugins(AppStateTransitionPlugin)
+    .add_plugins(ActionInputPlugin)
+    .add_plugins(InputRecordPlugin)
+    .add_plugins(FixedGameplayCanvasPlugin)
+    .add_plugins(TitleScreenPlugin)
+    .add_plugins(SaveUiPlugin)
+    .add_plugins(NameEntryPlugin)
+    .add_plugins(NewGameInstallPlugin)
+    .add_plugins(IntroDialoguePlugin)
+    .add_plugins(IntroCompletionPlugin)
+    .add_plugins(IntroTransitionPlugin)
+    .add_plugins(WorldAudioPlugin)
+    .add_plugins(WorldActorPlugin)
+    .add_plugins(WorldObjectPlugin)
+    .add_plugins(WorldTransitionPlugin)
+    .add_plugins(AutosavePlugin)
+    .add_plugins(WorldEncounterPlugin)
+    .add_plugins(WorldInteractionPlugin)
+    .add_plugins(ServiceUiPlugin)
+    .add_plugins(WorldPlayerPlugin)
+    .add_plugins(WorldDebugOverlayPlugin)
+    .add_plugins(FieldMenuPlugin)
+    .add_plugins(BattleEntryPlugin)
+    .add_plugins(BattlePlugin)
+    .add_plugins(GameOverPlugin);
+    if let Some(automation) = arguments.automation {
+        app.insert_resource(automation);
+    }
+    app.run();
 }
 
 pub(crate) struct ScenarioAudioAssetPlugin;

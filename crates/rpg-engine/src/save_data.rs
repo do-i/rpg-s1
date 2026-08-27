@@ -225,7 +225,7 @@ impl NativeSaveEnvelope {
 }
 
 impl SavePayload {
-    fn from_game_state(game: &GameState) -> Result<Self, NativeSaveError> {
+    pub(crate) fn from_game_state(game: &GameState) -> Result<Self, NativeSaveError> {
         let current = game
             .map()
             .current()
