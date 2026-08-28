@@ -2952,6 +2952,76 @@ npcs:
         assert_eq!(missing.message, "unknown SFX id `spell_fire`");
     }
 
+    /// Pins the exact diagnostic inventory of the scenario this repository actually ships.
+    ///
+    /// The pinned-source audit below needs an env var and is `#[ignore]`d, so before this test
+    /// nothing ran the validator over `assets/scenarios/rusted_kingdoms` in CI at all. That is how
+    /// `manifest.yaml#title.cursor_icon` shipped naming a file that does not exist for weeks after
+    /// ADR 0005 mandated the repair.
+    ///
+    /// Deliberately not "assert zero errors". ADR 0007 accepts the four Sorcerer ultimate flags as
+    /// inherited source debt — those abilities are unobtainable in the original too — and records
+    /// that granting them "is a new ADR, not a validator cleanup", and that this count "must not be
+    /// driven to zero by inventing unlocks". So this pins the set instead: a new diagnostic fails
+    /// CI, and so does one that silently stops firing.
+    #[test]
+    fn the_shipped_scenario_matches_the_known_diagnostic_inventory() {
+        let physical_root =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &physical_root);
+
+        let errors = report.errors().map(ToString::to_string).collect::<Vec<_>>();
+        let warnings = report
+            .warnings()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>();
+
+        // ADR 0007: the four Sorcerer ultimates, and nothing else.
+        assert_eq!(errors.len(), 4, "shipped errors changed:\n{errors:#?}");
+        assert_eq!(
+            report
+                .errors()
+                .filter(|finding| finding.code == "flag.undefined")
+                .count(),
+            4
+        );
+        assert_eq!(
+            report
+                .errors()
+                .filter_map(|finding| finding.message.split('`').nth(1))
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                "story_ultimate_earth",
+                "story_ultimate_fire",
+                "story_ultimate_water",
+                "story_ultimate_wind",
+            ])
+        );
+
+        // Roadmap B2.3 owns this one: `sky_crystal` unlocks a transport system that does not exist.
+        assert_eq!(
+            warnings.len(),
+            1,
+            "shipped warnings changed:\n{warnings:#?}"
+        );
+        assert_eq!(
+            report
+                .warnings()
+                .filter_map(|finding| finding.message.split('`').nth(1))
+                .collect::<Vec<_>>(),
+            vec!["transport_fly_unlocked"]
+        );
+
+        // No unresolvable asset path or dangling id may ship again.
+        for code in ["path.missing", "reference.missing"] {
+            assert_eq!(
+                report.errors().filter(|f| f.code == code).count(),
+                0,
+                "a `{code}` diagnostic shipped:\n{errors:#?}"
+            );
+        }
+    }
+
     #[test]
     #[ignore = "requires RPG_S1_PINNED_SCENARIO_DIR pointing at the pinned source scenario"]
     fn audits_complete_pinned_scenario_with_typed_production_validator() {
