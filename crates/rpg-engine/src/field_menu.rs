@@ -35,6 +35,7 @@ use crate::{
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
     service_ui::ServiceUiState,
+    sfx_cue::{MenuSfx, PlaySfx},
     ui_theme::UiTheme,
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
@@ -140,7 +141,8 @@ pub(crate) struct FieldMenuPlugin;
 
 impl Plugin for FieldMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<FieldMenuState>()
+        app.add_message::<PlaySfx>()
+            .init_resource::<FieldMenuState>()
             .add_systems(OnEnter(AppState::World), reset_field_menu)
             .add_systems(
                 Update,
@@ -427,6 +429,7 @@ fn handle_field_menu_input(
     time: Res<Time<Real>>,
     mut state: ResMut<FieldMenuState>,
     mut exit: MessageWriter<AppExit>,
+    mut menu_sfx: MenuSfx,
 ) {
     let Some(mut game) = game else { return };
 
@@ -439,22 +442,28 @@ fn handle_field_menu_input(
         }
         if keys.just_pressed(KeyCode::KeyM) || actions.just_pressed(AppAction::Back) {
             state.open(FieldMenuScreen::Main);
+            menu_sfx.confirm();
         } else if keys.just_pressed(KeyCode::KeyI) {
             state.open(FieldMenuScreen::Items);
+            menu_sfx.confirm();
         } else if keys.just_pressed(KeyCode::KeyS) {
             state.open(FieldMenuScreen::Status);
+            menu_sfx.confirm();
         } else if keys.just_pressed(KeyCode::KeyQ) {
             state.open(FieldMenuScreen::Quests);
+            menu_sfx.confirm();
         }
         return;
     }
 
     if keys.just_pressed(KeyCode::KeyM) {
         state.close();
+        menu_sfx.cancel();
         return;
     }
     if actions.just_pressed(AppAction::Back) {
         state.back();
+        menu_sfx.cancel();
         return;
     }
     if !state.message.is_empty()
@@ -474,6 +483,20 @@ fn handle_field_menu_input(
         None
     };
     let vertical = actions.menu_navigation();
+
+    // The four menu beats are wired here rather than inside the match below. That match has
+    // thirteen early returns across seventeen confirm branches, so there is no single point
+    // after it where "what actually changed" could be compared; hooking the shared entry points
+    // instead keeps the cue wiring in one readable place.
+    //
+    // The trade-off is that Confirm sounds on every press while the menu is open, including a
+    // press a branch ignores. Per-branch `blocked()` cues for the refusals are follow-up work.
+    if vertical.is_some() || horizontal.is_some() {
+        menu_sfx.hover();
+    }
+    if actions.just_pressed(AppAction::Confirm) {
+        menu_sfx.confirm();
+    }
 
     match (state.screen, state.mode) {
         (FieldMenuScreen::Main, FieldMenuMode::Browse) => {
@@ -1718,6 +1741,7 @@ mod tests {
                 ..default()
             })
             .add_message::<AppExit>()
+            .add_message::<PlaySfx>()
             .add_systems(Update, handle_field_menu_input);
 
         let mut exit_cursor = app.world().resource::<Messages<AppExit>>().get_cursor();

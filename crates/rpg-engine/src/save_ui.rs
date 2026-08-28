@@ -24,6 +24,7 @@ use crate::{
     scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
     scenario_party::PartyCatalog,
     scenario_root::ScenarioRoot,
+    sfx_cue::{MenuSfx, PlaySfx},
 };
 
 /// Slot rows drawn per load-picker page.
@@ -33,7 +34,8 @@ pub(crate) struct SaveUiPlugin;
 
 impl Plugin for SaveUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SaveStore>()
+        app.add_message::<PlaySfx>()
+            .init_resource::<SaveStore>()
             .init_resource::<SaveSlotCatalog>()
             .init_resource::<TitleLoadMenu>()
             .add_systems(OnEnter(AppState::Title), reset_title_save_ui)
@@ -216,6 +218,7 @@ fn handle_title_load_input(
     mut load_menu: ResMut<TitleLoadMenu>,
     mut commands: Commands,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
+    mut menu_sfx: MenuSfx,
 ) {
     if !load_menu.open {
         return;
@@ -226,11 +229,18 @@ fn handle_title_load_input(
     }
     if actions.just_pressed(AppAction::Back) {
         *load_menu = TitleLoadMenu::default();
+        menu_sfx.cancel();
         return;
     }
     if let Some(delta) = actions.menu_navigation() {
-        load_menu.selected =
+        // Selection clamps rather than wraps, so a press at either end moves nothing and must
+        // stay silent instead of implying the cursor went somewhere.
+        let moved =
             (load_menu.selected as isize + delta).clamp(0, (SAVE_SLOT_COUNT - 1) as isize) as usize;
+        if moved != load_menu.selected {
+            menu_sfx.hover();
+        }
+        load_menu.selected = moved;
         load_menu.message.clear();
     }
     if !actions.just_pressed(AppAction::Confirm) {
@@ -238,16 +248,22 @@ fn handle_title_load_input(
     }
     let Some(slot) = catalog.slots.get(load_menu.selected) else {
         load_menu.message = "Save slots are still loading.".to_owned();
+        menu_sfx.blocked();
         return;
     };
     match &slot.state {
-        SaveSlotState::Empty => load_menu.message = "That slot is empty.".to_owned(),
+        SaveSlotState::Empty => {
+            load_menu.message = "That slot is empty.".to_owned();
+            menu_sfx.blocked();
+        }
         SaveSlotState::Corrupt(reason) | SaveSlotState::Incompatible(reason) => {
-            load_menu.message = reason.clone()
+            load_menu.message = reason.clone();
+            menu_sfx.blocked();
         }
         SaveSlotState::Valid => {
             let Some((manifest, balance)) = inputs.current() else {
                 load_menu.message = "Scenario data is still loading.".to_owned();
+                menu_sfx.blocked();
                 return;
             };
             match store.load(slot.index, &manifest.id, &manifest.version, balance) {
@@ -260,8 +276,12 @@ fn handle_title_load_input(
                     });
                     transitions.write(AppStateTransitionRequest::new(AppState::World));
                     *load_menu = TitleLoadMenu::default();
+                    menu_sfx.confirm();
                 }
-                Err(error) => load_menu.message = error.to_string(),
+                Err(error) => {
+                    load_menu.message = error.to_string();
+                    menu_sfx.blocked();
+                }
             }
         }
     }

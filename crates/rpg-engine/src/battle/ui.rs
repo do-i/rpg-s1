@@ -13,6 +13,7 @@ use crate::{
     scenario_inventory::ScenarioInventory,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
+    sfx_cue::{MenuSfx, PlaySfx, cue},
     tsx_atlas_asset::TsxAtlasAsset,
     world_encounter::WorldEncounterRestore,
 };
@@ -72,7 +73,8 @@ pub(crate) struct BattlePlugin;
 
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Battle), enter_battle)
+        app.add_message::<PlaySfx>()
+            .add_systems(OnEnter(AppState::Battle), enter_battle)
             .add_systems(
                 Update,
                 (
@@ -1153,6 +1155,7 @@ fn handle_battle_input(
     state: Option<ResMut<BattleState>>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
     mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
+    mut menu_sfx: MenuSfx,
 ) {
     let _measurement = timings
         .as_deref_mut()
@@ -1173,11 +1176,12 @@ fn handle_battle_input(
         BattlePhase::Advance => state.advance(game.rng_mut()),
         BattlePhase::Command => {
             if actions.just_pressed(AppAction::Back) {
-                attempt_flee(&mut state, balances, &mut game);
+                attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
                 return;
             }
             if let Some(movement) = actions.menu_navigation() {
                 state.command_index = wrap_index(state.command_index, movement, COMMANDS.len());
+                menu_sfx.hover();
             }
             if actions.just_pressed(AppAction::Confirm) {
                 let command = COMMANDS[state.command_index];
@@ -1188,8 +1192,10 @@ fn handle_battle_input(
                         BattleCommand::Run => "Can't escape from a boss!".to_owned(),
                         BattleCommand::Attack => "That action is unavailable.".to_owned(),
                     };
+                    menu_sfx.blocked();
                     return;
                 }
+                menu_sfx.confirm();
                 match command {
                     BattleCommand::Attack => {
                         state.target =
@@ -1203,7 +1209,7 @@ fn handle_battle_input(
                         }
                     }
                     BattleCommand::Run => {
-                        attempt_flee(&mut state, balances, &mut game);
+                        attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
                     }
                     BattleCommand::Spell => {
                         state.ability_index = 0;
@@ -1464,9 +1470,15 @@ fn resolve_selected_ability(
     }
 }
 
-fn attempt_flee(state: &mut BattleState, balances: &Assets<BalanceData>, game: &mut GameState) {
+fn attempt_flee(
+    state: &mut BattleState,
+    balances: &Assets<BalanceData>,
+    game: &mut GameState,
+    menu_sfx: &mut MenuSfx,
+) {
     let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
         state.message = "Battle balance is still loading.".to_owned();
+        menu_sfx.blocked();
         return;
     };
     let boss = state
@@ -1482,6 +1494,12 @@ fn attempt_flee(state: &mut BattleState, balances: &Assets<BalanceData>, game: &
         FleeOutcome::Failed => "Couldn't escape! Press Enter.".to_owned(),
         FleeOutcome::Blocked => "Can't escape from a boss! Press Enter.".to_owned(),
     };
+    // The pinned engine splits these: getting away plays the escape cue, a failed or boss-blocked
+    // attempt plays the refusal (`battle_scene.py:246`).
+    match outcome {
+        FleeOutcome::Success => menu_sfx.play(cue::FLEE),
+        FleeOutcome::Failed | FleeOutcome::Blocked => menu_sfx.blocked(),
+    }
     state.transcript.push(format!("FLEE {outcome:?}"));
 }
 
@@ -1913,21 +1931,23 @@ mod tests {
     #[test]
     fn battle_ui_sync_systems_have_disjoint_component_access() {
         let mut app = App::new();
-        app.add_plugins(MinimalPlugins).add_systems(
-            Update,
-            (
-                sync_party_cards,
-                sync_party_meters,
-                sync_battle_commands,
-                sync_battle_message,
-                sync_enemy_cards,
-                sync_enemy_meters,
-                super::super::reward_modal::sync_reward_modal,
-                super::super::fx::route_battle_fx,
-                super::super::fx::animate_battle_fx,
-            )
-                .chain(),
-        );
+        app.add_plugins(MinimalPlugins)
+            .add_message::<PlaySfx>()
+            .add_systems(
+                Update,
+                (
+                    sync_party_cards,
+                    sync_party_meters,
+                    sync_battle_commands,
+                    sync_battle_message,
+                    sync_enemy_cards,
+                    sync_enemy_meters,
+                    super::super::reward_modal::sync_reward_modal,
+                    super::super::fx::route_battle_fx,
+                    super::super::fx::animate_battle_fx,
+                )
+                    .chain(),
+            );
         app.update();
     }
 }

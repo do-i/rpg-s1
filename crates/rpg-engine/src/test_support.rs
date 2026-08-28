@@ -113,6 +113,27 @@ pub(crate) fn headless_title_app_with_asset_base(
     app
 }
 
+/// Builds the minimum surface [`crate::sfx_cue`] needs: the SFX asset loader, the `minimal_demo`
+/// package, and the cue plugin itself. Waits for the index to load so cue tests see a resolved
+/// catalog rather than the still-loading path.
+pub(crate) fn headless_sfx_app() -> App {
+    let asset_base = concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures").to_owned();
+    let scenario_root = ScenarioRoot::try_for_package_key("minimal_demo")
+        .expect("the minimal_demo fixture package key is valid");
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin {
+            file_path: asset_base,
+            meta_check: AssetMetaCheck::Never,
+            ..default()
+        })
+        .init_asset::<AudioSource>()
+        .insert_resource(scenario_root)
+        .add_plugins(ScenarioAudioAssetPlugin)
+        .add_plugins(crate::sfx_cue::SfxCuePlugin);
+    app
+}
+
 #[test]
 fn headless_title_app_advances_without_a_window() {
     let mut app = headless_title_app(AppState::Title);

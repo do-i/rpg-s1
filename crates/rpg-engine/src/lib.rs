@@ -45,6 +45,7 @@ pub mod scenario_new_game_assets;
 pub mod scenario_spatial;
 pub mod service_domain;
 mod service_ui;
+mod sfx_cue;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;
@@ -178,6 +179,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .insert_resource(inventory)
     .add_plugins(ScenarioManifestAssetPlugin)
     .add_plugins(ScenarioAudioAssetPlugin)
+    .add_plugins(sfx_cue::SfxCuePlugin)
     .add_systems(Update, sync_window_title_from_manifest)
     .add_plugins(ScenarioNewGameAssetsPlugin)
     .add_plugins(FieldMenuDomainPlugin)

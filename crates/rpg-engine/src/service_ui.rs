@@ -18,6 +18,7 @@ use crate::{
         RecipeAvailability, buy, can_sell, craft, exchange_magic_core, recipe_availability,
         rest_at_inn, sell, sell_price, visible_stock,
     },
+    sfx_cue::{MenuSfx, PlaySfx},
     ui_theme::UiTheme,
 };
 
@@ -25,7 +26,8 @@ pub(crate) struct ServiceUiPlugin;
 
 impl Plugin for ServiceUiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ServiceUiState>()
+        app.add_message::<PlaySfx>()
+            .init_resource::<ServiceUiState>()
             .add_systems(OnEnter(AppState::World), reset_service_ui)
             .add_systems(
                 Update,
@@ -130,6 +132,7 @@ fn handle_service_input(
     catalog: Res<FieldMenuCatalog>,
     game: Option<ResMut<GameState>>,
     mut state: ResMut<ServiceUiState>,
+    mut menu_sfx: MenuSfx,
 ) {
     if !state.input_locked() {
         return;
@@ -165,9 +168,20 @@ fn handle_service_input(
             }
             _ => state.close(),
         }
+        menu_sfx.cancel();
         return;
     }
     let delta = actions.menu_navigation();
+    // Wired at the shared entry points for the same reason as `field_menu`: the match below
+    // returns early from several refusal branches, so there is no single post-match point to
+    // compare against. Per-refusal `blocked()` cues land with the A-2 service rebuild, which
+    // replaces these `state.message` strings with a real toast.
+    if delta.is_some() {
+        menu_sfx.hover();
+    }
+    if actions.just_pressed(AppAction::Confirm) {
+        menu_sfx.confirm();
+    }
     match state.page {
         Some(ServicePage::ShopMenu) => {
             if let Some(delta) = delta {
