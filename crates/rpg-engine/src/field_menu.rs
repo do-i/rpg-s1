@@ -2,6 +2,7 @@
 
 use bevy::{
     ecs::{hierarchy::ChildSpawnerCommands, schedule::ApplyDeferred},
+    input::{ButtonState, keyboard::KeyboardInput},
     prelude::*,
 };
 
@@ -9,9 +10,10 @@ use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
     field_menu_domain::{
-        CatalogStatus, FieldMenuCatalog, InventoryTab, can_equip, cast_heal, derived_stats,
-        discard_item, equip_item, inventory_ids, item_description, item_name,
-        learned_field_abilities, preview_stats, unequip_item, use_field_item,
+        CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
+        can_equip, cast_heal, custom_tags, derived_stats, discard_item, equip_item, inventory_ids,
+        item_description, item_name, learned_field_abilities, normalize_custom_tag, preview_stats,
+        unequip_item, use_field_item,
     },
     game_state::GameState,
     menu_chrome::{
@@ -71,6 +73,15 @@ const SPELLBOOK_VISIBLE_ROWS: usize = 7;
 const MAIN_COMMAND_ROWS: usize = 4;
 const QUEST_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
+const ITEM_MANAGE_VISIBLE_ROWS: usize = 8;
+/// Item-action rows, in the order the modal lists them.
+const ITEM_ACTIONS: [(&str, &str); 4] = [
+    ("Use", "apply this item"),
+    ("Discard", "remove from pouch"),
+    ("Hide", "hide for this session"),
+    ("Edit Tags", "curate and add tags"),
+];
+const ITEM_ACTION_TAGS: usize = 3;
 const CHARACTER_COMMAND_INDEX: usize = 5;
 const SAVE_COMMAND_INDEX: usize = 6;
 const QUIT_COMMAND_INDEX: usize = 7;
@@ -156,6 +167,7 @@ pub(crate) struct FieldMenuPlugin;
 impl Plugin for FieldMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySfx>()
+            .add_message::<KeyboardInput>()
             .init_resource::<FieldMenuState>()
             .init_resource::<PartyWalkSheets>()
             .add_systems(
@@ -211,6 +223,12 @@ enum FieldMenuMode {
     QuitConfirm,
     /// Roster overlay for choosing which member the World sprite follows.
     CharacterSwitch,
+    /// Tag editor for one item: toggle curatorial tags, drop custom ones, add a new one.
+    ItemTags,
+    /// Free-text entry for a new custom tag.
+    ItemNewTag,
+    /// Show/hide manager listing every owned item, hidden ones included.
+    ItemManage,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -233,6 +251,8 @@ pub(crate) struct FieldMenuState {
     tab_index: usize,
     quantity: u32,
     pending_id: Option<String>,
+    /// Draft text for the new-custom-tag prompt.
+    text_input: String,
     message: String,
 }
 
@@ -285,6 +305,21 @@ impl FieldMenuState {
                 self.mode = FieldMenuMode::Browse;
                 self.selected = 0;
                 self.pending_id = None;
+                self.message.clear();
+            }
+            FieldMenuMode::ItemTags => {
+                self.mode = FieldMenuMode::ItemActions;
+                self.selected = ITEM_ACTION_TAGS;
+                self.message.clear();
+            }
+            FieldMenuMode::ItemNewTag => {
+                self.mode = FieldMenuMode::ItemTags;
+                self.text_input.clear();
+                self.message.clear();
+            }
+            FieldMenuMode::ItemManage => {
+                self.mode = FieldMenuMode::Browse;
+                self.selected = 0;
                 self.message.clear();
             }
             FieldMenuMode::DiscardQuantity
@@ -504,6 +539,7 @@ fn handle_field_menu_input(
     mut saves: ResMut<SaveSlotCatalog>,
     time: Res<Time<Real>>,
     mut state: ResMut<FieldMenuState>,
+    mut keyboard: MessageReader<KeyboardInput>,
     mut exit: MessageWriter<AppExit>,
     mut menu_sfx: MenuSfx,
 ) {
@@ -542,14 +578,13 @@ fn handle_field_menu_input(
         menu_sfx.cancel();
         return;
     }
-    if !state.message.is_empty()
-        && !matches!(
-            state.mode,
-            FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
-        )
-    {
-        state.message.clear();
-    }
+    // Drained every frame, not only while the tag prompt is open, so entering the prompt never
+    // replays the keypress that opened it.
+    let typed = keyboard
+        .read()
+        .filter(|input| input.state == ButtonState::Pressed)
+        .cloned()
+        .collect::<Vec<_>>();
 
     let horizontal = if keys.just_pressed(KeyCode::ArrowLeft) {
         Some(-1)
@@ -559,6 +594,22 @@ fn handle_field_menu_input(
         None
     };
     let vertical = actions.menu_navigation();
+
+    // Messages persist until the player's next input rather than one frame. Clearing them
+    // unconditionally made every refusal ("This tab is empty", "Invalid tag") unreadable: the
+    // page rebuilds on state change, so the banner appeared and vanished inside one frame.
+    if !state.message.is_empty()
+        && !matches!(
+            state.mode,
+            FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
+        )
+        && (vertical.is_some()
+            || horizontal.is_some()
+            || !typed.is_empty()
+            || actions.just_pressed(AppAction::Confirm))
+    {
+        state.message.clear();
+    }
 
     // The four menu beats are wired here rather than inside the match below. That match has
     // thirteen early returns across seventeen confirm branches, so there is no single point
@@ -689,7 +740,16 @@ fn handle_field_menu_input(
             if let Some(delta) = vertical {
                 state.selected = wrapped_or_zero(state.selected, ids.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            // Python opens the manage modal with M; here M closes the whole field menu, so the
+            // show/hide manager takes H instead.
+            if keys.just_pressed(KeyCode::KeyH) {
+                if manage_ids(&game, &catalog).is_empty() {
+                    state.message = "The pouch is empty.".to_owned();
+                } else {
+                    state.mode = FieldMenuMode::ItemManage;
+                    state.selected = 0;
+                }
+            } else if actions.just_pressed(AppAction::Confirm) {
                 if let Some(id) = ids.get(state.selected) {
                     state.pending_id = Some((*id).to_owned());
                     state.mode = FieldMenuMode::ItemActions;
@@ -701,7 +761,7 @@ fn handle_field_menu_input(
         }
         (FieldMenuScreen::Items, FieldMenuMode::ItemActions) => {
             if let Some(delta) = vertical {
-                state.selected = wrapped(state.selected, 3, delta);
+                state.selected = wrapped(state.selected, ITEM_ACTIONS.len(), delta);
             }
             if actions.just_pressed(AppAction::Confirm) {
                 let id = state
@@ -732,8 +792,76 @@ fn handle_field_menu_input(
                         state.pending_id = None;
                         state.message = "Hidden for this session.".to_owned();
                     }
+                    ITEM_ACTION_TAGS => {
+                        state.mode = FieldMenuMode::ItemTags;
+                        state.selected = 0;
+                    }
                     _ => unreachable!(),
                 }
+            }
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemTags) => {
+            let id = state
+                .pending_id
+                .clone()
+                .expect("the tag editor requires an item");
+            let rows = tag_editor_rows(&game, &id);
+            if let Some(delta) = vertical {
+                state.selected = wrapped(state.selected, rows.len(), delta);
+            }
+            if actions.just_pressed(AppAction::Confirm) {
+                match rows.get(state.selected) {
+                    Some(TagEditorRow::New) => {
+                        state.mode = FieldMenuMode::ItemNewTag;
+                        state.text_input.clear();
+                        state.message.clear();
+                    }
+                    Some(TagEditorRow::Tag(tag)) => {
+                        let tag = tag.clone();
+                        toggle_item_tag(&mut game, &mut state, &id, &tag);
+                    }
+                    None => {}
+                }
+            }
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemNewTag) => {
+            let id = state
+                .pending_id
+                .clone()
+                .expect("the tag editor requires an item");
+            for input in typed {
+                match input.key_code {
+                    KeyCode::Backspace => {
+                        state.text_input.pop();
+                    }
+                    KeyCode::Enter | KeyCode::NumpadEnter if !input.repeat => {
+                        commit_new_tag(&mut game, &mut state, &id);
+                    }
+                    KeyCode::Escape => {}
+                    _ => {
+                        if let Some(text) = input.text.as_deref() {
+                            append_tag_text(&mut state.text_input, text);
+                        }
+                    }
+                }
+            }
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemManage) => {
+            let ids = manage_ids(&game, &catalog);
+            if let Some(delta) = vertical {
+                state.selected = wrapped_or_zero(state.selected, ids.len(), delta);
+            }
+            if keys.just_pressed(KeyCode::KeyH) {
+                state.back();
+            } else if actions.just_pressed(AppAction::Confirm)
+                && let Some(id) = ids.get(state.selected).map(|id| (*id).to_owned())
+            {
+                let hidden = game.repository_mut().toggle_hidden(&id);
+                state.message = if hidden {
+                    "Hidden from the pouch.".to_owned()
+                } else {
+                    "Shown in the pouch again.".to_owned()
+                };
             }
         }
         (FieldMenuScreen::Items, FieldMenuMode::DiscardQuantity) => {
@@ -1098,6 +1226,98 @@ fn set_member_row(game: &mut GameState, state: &mut FieldMenuState) {
     }
 }
 
+/// One row of the tag editor: a toggleable tag, or the prompt that opens free-text entry.
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum TagEditorRow {
+    Tag(String),
+    New,
+}
+
+/// The editor's rows for one item: the curatorial set, then that item's own tags, then `New tag`.
+///
+/// Ports `item_scene._editor_rows`. Type-driven tags are catalog-owned and never listed, so a row
+/// here is always something the player may add or drop.
+fn tag_editor_rows(game: &GameState, item_id: &str) -> Vec<TagEditorRow> {
+    let mut rows = EDITABLE_SYSTEM_TAGS
+        .into_iter()
+        .map(|tag| TagEditorRow::Tag(tag.to_owned()))
+        .collect::<Vec<_>>();
+    rows.extend(
+        custom_tags(game, item_id)
+            .into_iter()
+            .map(|tag| TagEditorRow::Tag(tag.to_owned())),
+    );
+    rows.push(TagEditorRow::New);
+    rows
+}
+
+/// Adds a tag the item lacks, or removes one it has. Ports `item_scene._activate_editor_row`.
+fn toggle_item_tag(game: &mut GameState, state: &mut FieldMenuState, item_id: &str, tag: &str) {
+    if game.repository().item_tags(item_id).any(|held| held == tag) {
+        game.repository_mut().remove_tag(item_id, tag);
+        state.message = format!("Removed `{tag}`.");
+        return;
+    }
+    let cap = game.repository().max_tags_per_item();
+    if game.repository_mut().add_tags(item_id, [tag]).is_err() {
+        state.message = format!("Max tags ({cap}) reached.");
+    } else {
+        state.message = format!("Added `{tag}`.");
+    }
+}
+
+/// Validates and stores the drafted custom tag, keeping the prompt open on rejection.
+///
+/// Ports `item_scene._commit_new_tag`, which distinguishes an invalid tag, a duplicate, and the
+/// per-item cap so the player learns which one blocked them.
+fn commit_new_tag(game: &mut GameState, state: &mut FieldMenuState, item_id: &str) {
+    let Some(tag) = normalize_custom_tag(&state.text_input) else {
+        state.message = "Invalid tag.".to_owned();
+        return;
+    };
+    if game.repository().item_tags(item_id).any(|held| held == tag) {
+        state.message = "Tag already added.".to_owned();
+        return;
+    }
+    let cap = game.repository().max_tags_per_item();
+    if game
+        .repository_mut()
+        .add_tags(item_id, [tag.as_str()])
+        .is_err()
+    {
+        state.message = format!("Max tags ({cap}) reached.");
+        return;
+    }
+    state.mode = FieldMenuMode::ItemTags;
+    state.text_input.clear();
+    state.message = format!("Added `{tag}`.");
+}
+
+/// Appends one scalar at a time so a multi-scalar platform text event cannot cross the cap.
+fn append_tag_text(draft: &mut String, text: &str) {
+    let remaining = CUSTOM_TAG_MAX_LENGTH.saturating_sub(draft.chars().count());
+    draft.extend(
+        text.chars()
+            .filter(|character| !character.is_control())
+            .take(remaining),
+    );
+}
+
+/// Every owned item the manage modal lists, hidden ones included.
+///
+/// Ports `item_scene._manage_entries`, which sorts by id and deliberately ignores the tab filter
+/// so a hidden item is always reachable again.
+fn manage_ids<'a>(game: &'a GameState, catalog: &FieldMenuCatalog) -> Vec<&'a str> {
+    let mut ids = game
+        .repository()
+        .item_counts()
+        .map(|(id, _)| id)
+        .filter(|id| catalog.item(id).is_some())
+        .collect::<Vec<_>>();
+    ids.sort_unstable();
+    ids
+}
+
 /// Row of the member the player currently controls, so the switch overlay opens on them.
 fn controlled_member_index(game: &GameState) -> usize {
     game.party()
@@ -1425,6 +1645,171 @@ mod tests {
             .count();
         assert_eq!(cards, party_len);
         assert_eq!(selected, usize::from(party_len > 0));
+    }
+
+    #[test]
+    fn the_tag_editor_lists_the_curatorial_set_then_custom_tags_then_the_new_prompt() {
+        let mut game = fixture_game();
+        game.repository_mut().add_tags("potion", ["mine"]).unwrap();
+
+        let rows = tag_editor_rows(&game, "potion");
+
+        assert_eq!(
+            rows,
+            vec![
+                TagEditorRow::Tag("rare".to_owned()),
+                TagEditorRow::Tag("sell_soon".to_owned()),
+                TagEditorRow::Tag("favorite".to_owned()),
+                TagEditorRow::Tag("mine".to_owned()),
+                TagEditorRow::New,
+            ]
+        );
+        // Type-driven catalog tags stay out of the editor: the player does not own them.
+        game.repository_mut()
+            .add_tags("potion", ["consumable"])
+            .unwrap();
+        assert!(
+            !tag_editor_rows(&game, "potion").contains(&TagEditorRow::Tag("consumable".to_owned()))
+        );
+    }
+
+    #[test]
+    fn toggling_a_tag_adds_it_once_and_removes_it_again() {
+        let mut game = fixture_game();
+        let mut state = FieldMenuState::default();
+
+        toggle_item_tag(&mut game, &mut state, "potion", "favorite");
+        assert!(
+            game.repository()
+                .item_tags("potion")
+                .any(|tag| tag == "favorite")
+        );
+        assert!(state.message.contains("Added"));
+
+        toggle_item_tag(&mut game, &mut state, "potion", "favorite");
+        assert!(
+            !game
+                .repository()
+                .item_tags("potion")
+                .any(|tag| tag == "favorite")
+        );
+        assert!(state.message.contains("Removed"));
+    }
+
+    #[test]
+    fn a_custom_tag_is_normalized_and_rejected_reasons_are_distinguished() {
+        assert_eq!(
+            normalize_custom_tag("  Sell Later "),
+            Some("sell_later".to_owned())
+        );
+        assert_eq!(normalize_custom_tag("KEEP"), Some("keep".to_owned()));
+        assert!(normalize_custom_tag("   ").is_none());
+        assert!(normalize_custom_tag("boss-drop").is_none());
+        assert!(normalize_custom_tag(&"a".repeat(CUSTOM_TAG_MAX_LENGTH + 1)).is_none());
+
+        let mut game = fixture_game();
+        let mut state = FieldMenuState {
+            mode: FieldMenuMode::ItemNewTag,
+            text_input: "boss-drop".to_owned(),
+            ..default()
+        };
+
+        commit_new_tag(&mut game, &mut state, "potion");
+        assert_eq!(
+            state.mode,
+            FieldMenuMode::ItemNewTag,
+            "an invalid tag keeps the prompt open"
+        );
+        assert_eq!(state.message, "Invalid tag.");
+
+        state.text_input = "Boss Drop".to_owned();
+        commit_new_tag(&mut game, &mut state, "potion");
+        assert_eq!(state.mode, FieldMenuMode::ItemTags);
+        assert!(state.text_input.is_empty());
+        assert!(
+            game.repository()
+                .item_tags("potion")
+                .any(|tag| tag == "boss_drop")
+        );
+
+        state.mode = FieldMenuMode::ItemNewTag;
+        state.text_input = "boss_drop".to_owned();
+        commit_new_tag(&mut game, &mut state, "potion");
+        assert_eq!(state.message, "Tag already added.");
+    }
+
+    #[test]
+    fn the_tag_draft_never_exceeds_the_cap_even_from_one_multi_scalar_event() {
+        let mut draft = String::new();
+        append_tag_text(&mut draft, &"x".repeat(CUSTOM_TAG_MAX_LENGTH + 8));
+        assert_eq!(draft.chars().count(), CUSTOM_TAG_MAX_LENGTH);
+
+        let mut short = "ab".to_owned();
+        append_tag_text(&mut short, "\u{7}c");
+        assert_eq!(short, "abc", "control scalars are dropped, not stored");
+    }
+
+    #[test]
+    fn the_manage_list_keeps_hidden_items_that_the_pouch_filters_out() {
+        // The fixture already hides its potion, which is exactly the state the manager exists for.
+        let mut game = fixture_game();
+        let catalog = crate::field_menu_domain::tests::catalog();
+
+        assert!(game.repository().is_hidden("potion"));
+        assert!(!inventory_ids(&game, &catalog, InventoryTab::All).contains(&"potion"));
+        assert!(
+            manage_ids(&game, &catalog).contains(&"potion"),
+            "a hidden item must stay reachable so it can be shown again"
+        );
+
+        assert!(!game.repository_mut().toggle_hidden("potion"));
+        assert!(inventory_ids(&game, &catalog, InventoryTab::All).contains(&"potion"));
+    }
+
+    #[test]
+    fn the_tag_and_manage_modals_render_their_rows() {
+        let mut game = fixture_game();
+        game.repository_mut()
+            .add_tags("potion", ["favorite"])
+            .unwrap();
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Items,
+                mode: FieldMenuMode::ItemTags,
+                pending_id: Some("potion".to_owned()),
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_items_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "EDIT TAGS"));
+        assert!(labels.iter().any(|label| label == "rare"));
+        assert!(labels.iter().any(|label| label == "favorite"));
+        assert!(labels.iter().any(|label| label == "New tag…"));
+        assert!(labels.iter().any(|label| label == "ON"));
+
+        app.world_mut().resource_mut::<FieldMenuState>().mode = FieldMenuMode::ItemManage;
+        app.update();
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "SHOW / HIDE"));
+        // The fixture's potion is hidden, so the manager is the only place it still appears.
+        assert!(labels.iter().any(|label| label == "HIDDEN"));
+        assert!(labels.iter().any(|label| label == "Potion"));
     }
 
     #[test]
@@ -2117,6 +2502,7 @@ mod tests {
             })
             .add_message::<AppExit>()
             .add_message::<PlaySfx>()
+            .add_message::<KeyboardInput>()
             .add_systems(Update, handle_field_menu_input);
 
         let mut exit_cursor = app.world().resource::<Messages<AppExit>>().get_cursor();
