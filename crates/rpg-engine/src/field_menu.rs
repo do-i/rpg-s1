@@ -31,6 +31,7 @@ use crate::{
     scenario_class::{Ability, AbilityKind, UtilityAbility},
     scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
+    scenario_party::PartyRow,
     scenario_path::ScenarioRelativePath,
     scenario_quest::{QuestDefinition, QuestKind},
     scenario_root::ScenarioRoot,
@@ -129,6 +130,10 @@ const STATUS_PARTY_WIDTH: f32 = 316.0;
 const STATUS_DETAIL_WIDTH: f32 = 404.0;
 const STATUS_COLUMN_GAP: f32 = 18.0;
 const STATUS_CATEGORIES: [&str; 2] = ["Spells", "Position"];
+/// Index of `Position` within [`STATUS_CATEGORIES`].
+const STATUS_POSITION_CATEGORY: usize = 1;
+/// Battle rows in picker order, matching Python's `status_renderer.ROWS`.
+const STATUS_ROWS: [PartyRow; 2] = [PartyRow::Front, PartyRow::Back];
 const ITEMS_POUCH_WIDTH: f32 = 286.0;
 const ITEMS_DETAIL_WIDTH: f32 = 378.0;
 const ITEMS_COLUMN_GAP: f32 = 18.0;
@@ -199,6 +204,8 @@ enum StatusPage {
     #[default]
     Roster,
     Details,
+    /// Front/back row picker, reached from the Position category.
+    Position,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -233,11 +240,22 @@ impl FieldMenuState {
     }
 
     fn back(&mut self) {
-        if self.screen == FieldMenuScreen::Status && self.status_page == StatusPage::Details {
-            self.status_page = StatusPage::Roster;
-            self.selected = 0;
-            self.message.clear();
-            return;
+        if self.screen == FieldMenuScreen::Status {
+            match self.status_page {
+                StatusPage::Roster => {}
+                StatusPage::Details => {
+                    self.status_page = StatusPage::Roster;
+                    self.selected = 0;
+                    self.message.clear();
+                    return;
+                }
+                StatusPage::Position => {
+                    self.status_page = StatusPage::Details;
+                    self.selected = STATUS_POSITION_CATEGORY;
+                    self.message.clear();
+                    return;
+                }
+            }
         }
         match self.mode {
             FieldMenuMode::Browse => {
@@ -553,8 +571,8 @@ fn handle_field_menu_input(
                 save_game(&mut game, &store, &mut saves, &time, &mut state, true);
             }
         }
-        (FieldMenuScreen::Status, FieldMenuMode::Browse) => {
-            if state.status_page == StatusPage::Roster {
+        (FieldMenuScreen::Status, FieldMenuMode::Browse) => match state.status_page {
+            StatusPage::Roster => {
                 if let Some(delta) = horizontal.or(vertical) {
                     cycle_member(&mut state, game.party().len(), delta);
                 }
@@ -562,10 +580,38 @@ fn handle_field_menu_input(
                     state.status_page = StatusPage::Details;
                     state.selected = 0;
                 }
-            } else if let Some(delta) = vertical {
-                state.selected = wrapped(state.selected, STATUS_CATEGORIES.len(), delta);
             }
-        }
+            StatusPage::Details => {
+                if let Some(delta) = vertical {
+                    state.selected = wrapped(state.selected, STATUS_CATEGORIES.len(), delta);
+                }
+                if actions.just_pressed(AppAction::Confirm) {
+                    if state.selected == STATUS_POSITION_CATEGORY {
+                        let current =
+                            member_at(&game, state.member_index).map(|member| member.row());
+                        state.status_page = StatusPage::Position;
+                        state.selected = current
+                            .and_then(|row| STATUS_ROWS.iter().position(|entry| *entry == row))
+                            .unwrap_or_default();
+                        state.message.clear();
+                    } else {
+                        // The spellbook is its own screen in this port; carry the member across.
+                        state.screen = FieldMenuScreen::Spells;
+                        state.status_page = StatusPage::Roster;
+                        state.selected = 0;
+                        state.message.clear();
+                    }
+                }
+            }
+            StatusPage::Position => {
+                if let Some(delta) = vertical {
+                    state.selected = wrapped(state.selected, STATUS_ROWS.len(), delta);
+                }
+                if actions.just_pressed(AppAction::Confirm) {
+                    set_member_row(&mut game, &mut state);
+                }
+            }
+        },
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
             if let Some(delta) = horizontal {
                 state.tab_index = wrapped(state.tab_index, InventoryTab::ALL.len(), delta);
@@ -956,6 +1002,40 @@ fn ability_by_id<'a>(
 
 fn member_at(game: &GameState, index: usize) -> Option<&crate::runtime_member::RuntimeMember> {
     game.party().members().nth(index)
+}
+
+/// Applies the Position picker's selection to the focused member.
+///
+/// Mirrors `status_scene._confirm_position`: re-picking the row the member already holds is a
+/// no-op rather than an error, and the picker stays open either way.
+fn set_member_row(game: &mut GameState, state: &mut FieldMenuState) {
+    let Some(row) = STATUS_ROWS.get(state.selected).copied() else {
+        return;
+    };
+    let Some(member_id) = member_id_at(game, state.member_index).map(ToOwned::to_owned) else {
+        return;
+    };
+    let name = member_at(game, state.member_index)
+        .map_or_else(|| member_id.clone(), |member| member.name().to_owned());
+    match game.party_mut().set_row(&member_id, row) {
+        Ok(previous) if previous == row => {
+            state.message = format!("{name} already holds the {} row.", row_label(row));
+        }
+        Ok(_) => {
+            state.message = format!("{name} moved to the {} row.", row_label(row));
+        }
+        Err(_) => {
+            state.message = "That party member is no longer available.".to_owned();
+        }
+    }
+}
+
+/// Player-facing name for a battle row. Keeps `{:?}` out of the status page.
+const fn row_label(row: PartyRow) -> &'static str {
+    match row {
+        PartyRow::Front => "Front",
+        PartyRow::Back => "Back",
+    }
 }
 
 fn member_id_at(game: &GameState, index: usize) -> Option<&str> {
@@ -1590,6 +1670,80 @@ mod tests {
                 .iter(world)
                 .all(|name| name.as_str() != "Full status portrait")
         );
+    }
+
+    #[test]
+    fn status_back_steps_out_of_the_position_picker_one_page_at_a_time() {
+        let mut state = FieldMenuState::default();
+        state.open(FieldMenuScreen::Status);
+        state.status_page = StatusPage::Position;
+        state.selected = 1;
+
+        state.back();
+
+        assert_eq!(state.status_page, StatusPage::Details);
+        assert_eq!(state.selected, STATUS_POSITION_CATEGORY);
+
+        state.back();
+        assert_eq!(state.status_page, StatusPage::Roster);
+    }
+
+    #[test]
+    fn confirming_a_row_moves_the_member_and_repeating_it_reports_no_change() {
+        let mut game = fixture_game();
+        let member_id = game
+            .party()
+            .members()
+            .next()
+            .expect("fixture party has members")
+            .id()
+            .to_owned();
+        assert_eq!(game.party().row_of(&member_id), Some(PartyRow::Front));
+
+        let mut state = FieldMenuState::default();
+        state.open(FieldMenuScreen::Status);
+        state.status_page = StatusPage::Position;
+        state.selected = 1;
+
+        set_member_row(&mut game, &mut state);
+        assert_eq!(game.party().row_of(&member_id), Some(PartyRow::Back));
+        assert!(state.message.contains("moved to the Back row"));
+
+        set_member_row(&mut game, &mut state);
+        assert_eq!(game.party().row_of(&member_id), Some(PartyRow::Back));
+        assert!(state.message.contains("already holds the Back row"));
+
+        state.selected = 0;
+        set_member_row(&mut game, &mut state);
+        assert_eq!(game.party().row_of(&member_id), Some(PartyRow::Front));
+    }
+
+    #[test]
+    fn the_position_page_lists_both_rows_and_tags_the_current_one() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Status,
+                status_page: StatusPage::Position,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_status_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "Front"));
+        assert!(labels.iter().any(|label| label == "Back"));
+        assert!(labels.iter().any(|label| label == "CURRENT"));
+        // The profile column yields to the picker while Position is open.
+        assert!(!labels.iter().any(|label| label == "FIELD ARTS"));
     }
 
     #[test]

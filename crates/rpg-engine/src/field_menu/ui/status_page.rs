@@ -84,15 +84,23 @@ pub(in crate::field_menu) fn spawn_status_page(
             .with_children(|columns| {
                 spawn_party_column(columns, font, state, game, catalog, portraits);
                 spawn_member_column(columns, font, state, game, catalog, portraits);
-                spawn_profile_column(columns, font, state, game, catalog);
+                if state.status_page == StatusPage::Position {
+                    spawn_position_column(columns, font, state, game);
+                } else {
+                    spawn_profile_column(columns, font, state, game, catalog);
+                }
             });
 
             spawn_status_text(
                 page,
-                if state.status_page == StatusPage::Roster {
-                    "UP/DOWN   SELECT MEMBER      ENTER   STATS      ESC   BACK"
-                } else {
-                    "UP/DOWN   SELECT ACTION      ESC   PORTRAIT      M   CLOSE"
+                match state.status_page {
+                    StatusPage::Roster => {
+                        "UP/DOWN   SELECT MEMBER      ENTER   STATS      ESC   BACK"
+                    }
+                    StatusPage::Details => {
+                        "UP/DOWN   SELECT ACTION      ENTER   OPEN      ESC   PORTRAIT"
+                    }
+                    StatusPage::Position => "UP/DOWN   SELECT ROW      ENTER   SET      ESC   BACK",
                 },
                 font,
                 15.0,
@@ -445,8 +453,15 @@ pub(in crate::field_menu) fn spawn_member_details_column(
                 ..default()
             });
             spawn_section_rule(panel);
+            // On the Position page `state.selected` indexes rows, so the category list pins its
+            // highlight to the category that opened it.
+            let category_cursor = if state.status_page == StatusPage::Position {
+                STATUS_POSITION_CATEGORY
+            } else {
+                state.selected
+            };
             for (index, label) in STATUS_CATEGORIES.into_iter().enumerate() {
-                let selected = index == state.selected;
+                let selected = index == category_cursor;
                 panel
                     .spawn((
                         Node {
@@ -498,10 +513,10 @@ pub(in crate::field_menu) fn spawn_member_details_column(
                             flex_grow: 1.0,
                             ..default()
                         });
-                        if index == 1 {
+                        if index == STATUS_POSITION_CATEGORY {
                             spawn_status_text(
                                 category,
-                                format!("{:?}", member.row()),
+                                row_label(member.row()),
                                 font,
                                 14.0,
                                 status_muted(),
@@ -617,6 +632,99 @@ pub(in crate::field_menu) fn spawn_profile_column(
                     status_ember()
                 },
             );
+        },
+    );
+}
+
+/// Front/back row picker, standing in for the profile column while `Position` is open.
+///
+/// Ports `status_renderer._render_position`: two rows, the member's current one tagged `CURRENT`,
+/// with the tactical consequence spelled out because the back row halves damage both ways.
+pub(in crate::field_menu) fn spawn_position_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+) {
+    let Some(member) = member_at(game, state.member_index) else {
+        return;
+    };
+    let current = member.row();
+    spawn_status_panel(
+        parent,
+        Node {
+            height: percent(100),
+            flex_basis: px(0),
+            flex_grow: 0.92,
+            flex_direction: FlexDirection::Column,
+            row_gap: px(10),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        "BATTLE POSITION",
+        font,
+        |panel| {
+            spawn_status_text(
+                panel,
+                format!("SET {}'S ROW", member.name().to_uppercase()),
+                font,
+                14.0,
+                status_gold(),
+            );
+            for (index, row) in STATUS_ROWS.into_iter().enumerate() {
+                let selected = index == state.selected;
+                let is_current = row == current;
+                panel
+                    .spawn((
+                        Node {
+                            width: percent(100),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            column_gap: px(12),
+                            padding: UiRect::axes(px(12), px(10)),
+                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                            border_radius: BorderRadius::all(px(5)),
+                            ..default()
+                        },
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(79, 51, 38, 214)
+                        } else {
+                            Color::srgba_u8(30, 30, 38, 164)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            status_border()
+                        }),
+                    ))
+                    .with_children(|entry| {
+                        spawn_status_text(entry, row_label(row), font, 18.0, status_ink());
+                        entry.spawn(Node {
+                            flex_grow: 1.0,
+                            ..default()
+                        });
+                        if is_current {
+                            spawn_status_text(entry, "CURRENT", font, 13.0, status_gold());
+                        }
+                    });
+            }
+            spawn_section_rule(panel);
+            spawn_status_text(
+                panel,
+                "Back-row fighters deal and take half melee damage.",
+                font,
+                14.0,
+                status_muted(),
+            );
+            panel.spawn(Node {
+                flex_grow: 1.0,
+                ..default()
+            });
+            if !state.message.is_empty() {
+                spawn_status_text(panel, state.message.as_str(), font, 14.0, status_teal());
+            }
         },
     );
 }
