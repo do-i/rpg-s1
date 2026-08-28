@@ -221,13 +221,55 @@ pub(in crate::field_menu) fn render_items(
         .map(item_description)
         .unwrap_or("No items in this tab.");
     let overlay = match state.mode {
-        FieldMenuMode::ItemActions => ["Use", "Discard", "Hide"]
+        FieldMenuMode::ItemActions => ITEM_ACTIONS
             .iter()
             .enumerate()
-            .map(|(index, label)| {
+            .map(|(index, (label, _))| {
                 format!(
                     "{} {label}",
                     if index == state.selected { ">" } else { " " }
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+        FieldMenuMode::ItemTags => state
+            .pending_id
+            .as_deref()
+            .map(|id| {
+                tag_editor_rows(game, id)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, row)| {
+                        let cursor = if index == state.selected { ">" } else { " " };
+                        match row {
+                            TagEditorRow::New => format!("{cursor} New tag..."),
+                            TagEditorRow::Tag(tag) => {
+                                let held = game
+                                    .repository()
+                                    .item_tags(id)
+                                    .any(|current| current == tag);
+                                format!("{cursor} [{}] {tag}", if held { "x" } else { " " })
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default(),
+        FieldMenuMode::ItemNewTag => format!("New tag: {}_", state.text_input),
+        FieldMenuMode::ItemManage => manage_ids(game, catalog)
+            .iter()
+            .enumerate()
+            .map(|(index, id)| {
+                format!(
+                    "{} {:<30} {}",
+                    if index == state.selected { ">" } else { " " },
+                    catalog.item(id).map_or(*id, item_name),
+                    if game.repository().is_hidden(id) {
+                        "HIDDEN"
+                    } else {
+                        "shown"
+                    }
                 )
             })
             .collect::<Vec<_>>()
@@ -466,7 +508,14 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         }
         (FieldMenuScreen::Status, _) => "UP/DOWN action  ENTER open  ESC portrait  M close",
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
-            "LEFT/RIGHT tab  UP/DOWN item  ENTER actions  ESC back"
+            "LEFT/RIGHT tab  UP/DOWN item  ENTER actions  H show/hide  ESC back"
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemTags) => "UP/DOWN tag  ENTER toggle  ESC back",
+        (FieldMenuScreen::Items, FieldMenuMode::ItemNewTag) => {
+            "TYPE a-z 0-9 _  ENTER add  ESC back"
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemManage) => {
+            "UP/DOWN item  ENTER show/hide  H/ESC back"
         }
         (FieldMenuScreen::Items, FieldMenuMode::DiscardQuantity) => {
             "UP/DOWN quantity  LEFT one  RIGHT whole stack  ENTER discard  ESC cancel"

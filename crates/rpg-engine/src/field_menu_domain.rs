@@ -667,6 +667,63 @@ impl InventoryTab {
     }
 }
 
+/// The curatorial tags the tag editor offers on every item.
+///
+/// Ports `item_logic.EDITABLE_SYSTEM_TAGS`.
+pub(crate) const EDITABLE_SYSTEM_TAGS: [&str; 3] = ["rare", "sell_soon", "favorite"];
+
+/// Longest custom tag the editor accepts, matching `item_logic.CUSTOM_TAG_MAX_LEN`.
+pub(crate) const CUSTOM_TAG_MAX_LENGTH: usize = 16;
+
+/// Type-driven tags the catalog owns; the editor shows but never toggles them.
+const TYPE_SYSTEM_TAGS: [&str; 13] = [
+    "consumable",
+    "material",
+    "key",
+    "magic_core",
+    "equipment",
+    "weapon",
+    "shield",
+    "helmet",
+    "body",
+    "accessory",
+    "battle",
+    "status",
+    "recovery",
+];
+
+/// Ports `item_logic.is_system_tag`: engine-managed tags the player does not author.
+pub(crate) fn is_system_tag(tag: &str) -> bool {
+    EDITABLE_SYSTEM_TAGS.contains(&tag) || TYPE_SYSTEM_TAGS.contains(&tag)
+}
+
+/// The player-authored tags on one stack, sorted for a stable editor order.
+pub(crate) fn custom_tags<'a>(game: &'a GameState, item_id: &str) -> Vec<&'a str> {
+    let mut tags = game
+        .repository()
+        .item_tags(item_id)
+        .filter(|tag| !is_system_tag(tag))
+        .collect::<Vec<_>>();
+    tags.sort_unstable();
+    tags
+}
+
+/// Ports `item_logic.normalize_custom_tag`: lowercase, spaces to underscores, bounded charset.
+///
+/// Returns `None` for anything the editor must reject rather than silently repair.
+pub(crate) fn normalize_custom_tag(raw: &str) -> Option<String> {
+    let normalized = raw.trim().to_lowercase().replace(' ', "_");
+    if normalized.is_empty() || normalized.chars().count() > CUSTOM_TAG_MAX_LENGTH {
+        return None;
+    }
+    if !normalized.chars().all(|character| {
+        character.is_ascii_lowercase() || character.is_ascii_digit() || character == '_'
+    }) {
+        return None;
+    }
+    Some(normalized)
+}
+
 pub(crate) fn inventory_ids<'a>(
     game: &'a GameState,
     catalog: &'a FieldMenuCatalog,

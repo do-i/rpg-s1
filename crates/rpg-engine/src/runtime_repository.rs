@@ -298,6 +298,29 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Removes one tag from a stack, reporting whether it was there.
+    pub fn remove_tag(&mut self, item_id: &str, tag: &str) -> bool {
+        let Some(tags) = self.item_tags.get_mut(item_id) else {
+            return false;
+        };
+        let removed = tags.remove(tag);
+        if tags.is_empty() {
+            self.item_tags.remove(item_id);
+        }
+        removed
+    }
+
+    /// Flips one item's session visibility, returning its new hidden state.
+    pub fn toggle_hidden(&mut self, item_id: &str) -> bool {
+        let hidden = !self.is_hidden(item_id);
+        self.set_hidden(item_id.to_owned(), hidden);
+        hidden
+    }
+
+    pub fn max_tags_per_item(&self) -> u32 {
+        self.max_tags_per_item
+    }
+
     pub fn is_loot(&self, item_id: &str) -> bool {
         self.loot_item_ids.contains(item_id)
     }

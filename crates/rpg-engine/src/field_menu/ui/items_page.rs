@@ -87,10 +87,14 @@ pub(in crate::field_menu) fn spawn_items_page(
                 spawn_item_detail_column(columns, font, state, game, catalog, &ids, list_index);
             });
 
-            let hint = if state.mode == FieldMenuMode::Browse {
-                "LEFT/RIGHT   CHANGE POUCH      UP/DOWN   BROWSE      ENTER   ACTIONS      ESC   BACK"
-            } else {
-                "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   CANCEL      I   CLOSE"
+            let hint = match state.mode {
+                FieldMenuMode::Browse => {
+                    "LEFT/RIGHT   POUCH      UP/DOWN   BROWSE      ENTER   ACTIONS      H   SHOW/HIDE"
+                }
+                FieldMenuMode::ItemNewTag => {
+                    "TYPE   a-z 0-9 _      ENTER   ADD      ESC   BACK"
+                }
+                _ => "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   CANCEL      I   CLOSE",
             };
             spawn_status_text(page, hint, font, 15.0, status_muted());
             if !state.message.is_empty() {
@@ -518,11 +522,14 @@ pub(in crate::field_menu) fn spawn_item_modal(
     if state.mode == FieldMenuMode::Browse {
         return;
     }
-    let title = state
-        .pending_id
-        .as_deref()
-        .and_then(|id| catalog.item(id))
-        .map_or("ITEM ACTION", item_name);
+    let title = match state.mode {
+        FieldMenuMode::ItemManage => "MANAGE POUCH",
+        _ => state
+            .pending_id
+            .as_deref()
+            .and_then(|id| catalog.item(id))
+            .map_or("ITEM ACTION", item_name),
+    };
     parent
         .spawn((
             Node {
@@ -556,14 +563,7 @@ pub(in crate::field_menu) fn spawn_item_modal(
                     modal.spawn(ItemActionModal);
                     match state.mode {
                         FieldMenuMode::ItemActions => {
-                            for (index, (label, subtitle)) in [
-                                ("Use", "apply this item"),
-                                ("Discard", "remove from pouch"),
-                                ("Hide", "hide for this session"),
-                            ]
-                            .into_iter()
-                            .enumerate()
-                            {
+                            for (index, (label, subtitle)) in ITEM_ACTIONS.into_iter().enumerate() {
                                 spawn_item_modal_row(
                                     modal,
                                     font,
@@ -572,6 +572,11 @@ pub(in crate::field_menu) fn spawn_item_modal(
                                     index == state.selected,
                                 );
                             }
+                        }
+                        FieldMenuMode::ItemTags => spawn_tag_editor(modal, font, state, game),
+                        FieldMenuMode::ItemNewTag => spawn_new_tag_prompt(modal, font, state),
+                        FieldMenuMode::ItemManage => {
+                            spawn_manage_rows(modal, font, state, game, catalog);
                         }
                         FieldMenuMode::DiscardQuantity => {
                             spawn_status_text(
@@ -619,6 +624,130 @@ pub(in crate::field_menu) fn spawn_item_modal(
                 },
             );
         });
+}
+
+/// Tag editor rows: the curatorial set, this item's own tags, then the free-text prompt.
+///
+/// Ports the `M_TAGS` modal from `item_scene`. A held tag reads `ON` so one glance shows what the
+/// item already carries, and custom tags are marked so the player can tell them from the fixed set.
+fn spawn_tag_editor(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+) {
+    let Some(id) = state.pending_id.as_deref() else {
+        return;
+    };
+    spawn_status_text(parent, "EDIT TAGS", font, 13.0, status_muted());
+    for (index, row) in tag_editor_rows(game, id).into_iter().enumerate() {
+        let selected = index == state.selected;
+        match row {
+            TagEditorRow::New => {
+                spawn_item_modal_row(parent, font, "New tag…", "type a custom tag", selected);
+            }
+            TagEditorRow::Tag(tag) => {
+                let held = game
+                    .repository()
+                    .item_tags(id)
+                    .any(|current| current == tag);
+                let custom = !EDITABLE_SYSTEM_TAGS.contains(&tag.as_str());
+                let subtitle = match (held, custom) {
+                    (true, true) => "ON    custom",
+                    (true, false) => "ON",
+                    (false, true) => "custom",
+                    (false, false) => "OFF",
+                };
+                spawn_item_modal_row(parent, font, &tag, subtitle, selected);
+            }
+        }
+    }
+}
+
+/// Free-text prompt for a new custom tag, with a live character budget.
+fn spawn_new_tag_prompt(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+) {
+    spawn_status_text(parent, "NEW TAG", font, 13.0, status_muted());
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                min_height: px(46),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                padding: UiRect::axes(px(11), px(6)),
+                border: UiRect::all(px(2)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 200)),
+            BorderColor::all(status_border_active()),
+        ))
+        .with_children(|field| {
+            spawn_status_text(
+                field,
+                format!("{}_", state.text_input),
+                font,
+                22.0,
+                status_gold(),
+            );
+        });
+    spawn_status_text(
+        parent,
+        format!(
+            "{}/{CUSTOM_TAG_MAX_LENGTH}    a-z 0-9 _",
+            state.text_input.chars().count()
+        ),
+        font,
+        12.0,
+        status_muted(),
+    );
+    spawn_status_text(
+        parent,
+        "ENTER   ADD      ESC   BACK",
+        font,
+        13.0,
+        status_muted(),
+    );
+}
+
+/// The show/hide manager: every owned item, hidden ones included, so any of them can come back.
+fn spawn_manage_rows(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) {
+    let ids = manage_ids(game, catalog);
+    spawn_status_text(parent, "SHOW / HIDE", font, 13.0, status_muted());
+    let first = window_start(state.selected, ids.len(), ITEM_MANAGE_VISIBLE_ROWS);
+    for (index, id) in ids
+        .iter()
+        .enumerate()
+        .skip(first)
+        .take(ITEM_MANAGE_VISIBLE_ROWS)
+    {
+        let name = catalog.item(id).map_or(*id, item_name);
+        let hidden = game.repository().is_hidden(id);
+        spawn_item_modal_row(
+            parent,
+            font,
+            name,
+            if hidden { "HIDDEN" } else { "shown" },
+            index == state.selected,
+        );
+    }
+    spawn_status_text(
+        parent,
+        "ENTER   TOGGLE      H / ESC   BACK",
+        font,
+        13.0,
+        status_muted(),
+    );
 }
 
 pub(in crate::field_menu) fn spawn_item_modal_row(
