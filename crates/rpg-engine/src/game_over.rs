@@ -11,6 +11,7 @@ use crate::{
     save_ui::OpenTitleLoadPicker,
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
+    sfx_cue::{MenuSfx, PlaySfx},
     ui_theme::UiTheme,
 };
 
@@ -35,7 +36,8 @@ pub(crate) struct GameOverPlugin;
 
 impl Plugin for GameOverPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GameOverMenu>()
+        app.add_message::<PlaySfx>()
+            .init_resource::<GameOverMenu>()
             .add_systems(OnEnter(AppState::GameOver), enter_game_over)
             .add_systems(
                 Update,
@@ -117,14 +119,17 @@ fn handle_game_over_input(
     actions: Res<ActionState>,
     mut menu: ResMut<GameOverMenu>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
+    mut menu_sfx: MenuSfx,
 ) {
     if let Some(movement) = actions.menu_navigation() {
         menu.selected =
             (menu.selected as isize + movement).rem_euclid(OPTIONS.len() as isize) as usize;
+        menu_sfx.hover();
     }
     if !actions.just_pressed(AppAction::Confirm) {
         return;
     }
+    menu_sfx.confirm();
     match selected_action(menu.selected) {
         GameOverAction::Retry => {
             transitions.write(AppStateTransitionRequest::new(AppState::Battle));

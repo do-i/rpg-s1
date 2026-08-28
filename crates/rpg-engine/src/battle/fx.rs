@@ -3,9 +3,15 @@ use bevy::prelude::*;
 use super::{
     action::BattleEvent,
     model::{BattleState, CombatantKey},
+    status::{StatusEffect, StatusPotency},
     ui::{BattleAssetState, BattleEnemyFrame, BattlePartyCard, BattleUi},
 };
-use crate::encounter::BattleSide;
+use crate::{
+    encounter::BattleSide,
+    scenario_class::AbilityElement,
+    scenario_item::ItemElement,
+    sfx_cue::{PlaySfx, cue},
+};
 
 const FLOAT_DURATION_SECONDS: f32 = 0.85;
 const FLOAT_RISE_PIXELS: f32 = 42.0;
@@ -54,6 +60,11 @@ struct FxCue {
     flash: bool,
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a Bevy system's parameters are its dependency injection; routing one event stream to \
+              floats, frame flashes, the screen flash, and audio needs each of these"
+)]
 pub(super) fn route_battle_fx(
     mut commands: Commands,
     state: Option<Res<BattleState>>,
@@ -62,6 +73,7 @@ pub(super) fn route_battle_fx(
     party_cards: Query<(&BattlePartyCard, Entity)>,
     enemy_frames: Query<(&BattleEnemyFrame, Entity)>,
     mut screen_flashes: Query<&mut BattleScreenFlash>,
+    mut sfx: MessageWriter<PlaySfx>,
 ) {
     let (Some(state), Some(assets), Some(mut router)) = (state, assets, router) else {
         return;
@@ -71,6 +83,9 @@ pub(super) fn route_battle_fx(
     }
     let mut party_struck = false;
     for event in &state.feedback_events[router.next_event..] {
+        // Audio is routed off the same cursor but independently of the visual cue: an event that
+        // draws nothing may still need to be heard.
+        sfx.write_batch(sfx_cues_for_event(event).into_iter().map(PlaySfx::new));
         let Some(cue) = cue_for_event(event) else {
             continue;
         };
@@ -265,6 +280,142 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
     Some(cue)
 }
 
+/// The impact cues a hit landing on `side` should make.
+///
+/// Mirrors the pinned engine, which plays two sounds when the party is struck — the physical
+/// impact and the party's own hurt cue (`battle_enemy_logic.py:55,57,82,84`) — and the swing alone
+/// when the party is the one connecting.
+const fn impact_cues(side: BattleSide) -> &'static [&'static str] {
+    match side {
+        BattleSide::Party => &[cue::ATK_IMPACT, cue::PARTY_HIT],
+        BattleSide::Enemy => &[cue::ATK_SLASH],
+    }
+}
+
+/// The authored cue for a spell's element.
+///
+/// `Holy` returns `None`: `sfx_index.yaml` authors no `spell_holy`. The reverse also holds — the
+/// index authors `spell_ice` and `spell_thunder`, and neither `AbilityElement` nor `ItemElement`
+/// has an Ice or Thunder variant to reach them. Both gaps are inherited content, not routing bugs.
+const fn ability_spell_cue(element: AbilityElement) -> Option<&'static str> {
+    match element {
+        AbilityElement::Fire => Some(cue::SPELL_FIRE),
+        AbilityElement::Water => Some(cue::SPELL_WATER),
+        AbilityElement::Wind => Some(cue::SPELL_WIND),
+        AbilityElement::Earth => Some(cue::SPELL_EARTH),
+        AbilityElement::Holy => None,
+    }
+}
+
+const fn item_spell_cue(element: ItemElement) -> Option<&'static str> {
+    match element {
+        ItemElement::Fire => Some(cue::SPELL_FIRE),
+        ItemElement::Water => Some(cue::SPELL_WATER),
+        ItemElement::Wind => Some(cue::SPELL_WIND),
+        ItemElement::Holy => None,
+    }
+}
+
+/// Whether an applied status reads as a boon or an affliction, and which cue says so.
+///
+/// The modifier statuses are direction-agnostic in the model — `AttackModifier` covers both a
+/// rally and a weakening — so the potency decides: a multiplier at or above 1.0 raises a stat, and
+/// a damage reduction is always in the wearer's favour. Everything else is an affliction.
+fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static str {
+    let beneficial = match potency {
+        StatusPotency::Multiplier(factor) => factor >= 1.0,
+        StatusPotency::Reduction(_) => true,
+        StatusPotency::None | StatusPotency::DamagePerTurn(_) | StatusPotency::Redirect(_) => false,
+    };
+    if !beneficial {
+        return cue::DEBUFF;
+    }
+    match status_effect {
+        StatusEffect::DefenseModifier
+        | StatusEffect::MagicResistanceModifier
+        | StatusEffect::DamageReduction => cue::DEF_BUFF,
+        _ => cue::ATK_BUFF,
+    }
+}
+
+/// Maps one resolved battle event to the SFX cues it should fire, in sounding order.
+///
+/// This is the port of the pinned `play_battle_action` dispatch
+/// (`engine/audio/sfx_manager.py:65-91`) together with the impact and death cues the source plays
+/// at resolution time. It is a pure function so the routing can be asserted without an audio
+/// device; `route_battle_fx` writes the results and the cue service collapses duplicates.
+/// Appends the death cue when a killing blow felled an enemy. The party falling is covered by the
+/// hurt cue that already sounded, matching the source, which has no party-death sample.
+fn push_knockout(knocked_out: bool, target: CombatantKey, cues: &mut Vec<&'static str>) {
+    if knocked_out && target.side == BattleSide::Enemy {
+        cues.push(cue::ENEMY_DEATH);
+    }
+}
+
+fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
+    let mut cues: Vec<&'static str> = Vec::new();
+    match *event {
+        // The pinned engine plays no cue on a whiff; the floating MISS label carries it.
+        BattleEvent::Miss { .. } => {}
+        BattleEvent::Damage {
+            action,
+            knocked_out,
+            ..
+        } => {
+            let target = action.target();
+            cues.extend_from_slice(impact_cues(target.side));
+            push_knockout(knocked_out, target, &mut cues);
+        }
+        BattleEvent::MagicDamage {
+            target,
+            element,
+            knocked_out,
+            ..
+        } => {
+            cues.extend(ability_spell_cue(element));
+            push_knockout(knocked_out, target, &mut cues);
+        }
+        BattleEvent::ItemDamage {
+            target,
+            element,
+            knocked_out,
+            ..
+        } => {
+            cues.push(cue::USE_ITEM);
+            cues.extend(item_spell_cue(element));
+            push_knockout(knocked_out, target, &mut cues);
+        }
+        BattleEvent::EnemyAbilityDamage {
+            target,
+            knocked_out,
+            ..
+        } => {
+            cues.extend_from_slice(impact_cues(target.side));
+            push_knockout(knocked_out, target, &mut cues);
+        }
+        // A blocked ability is the defensive beat the `defend` cue exists for.
+        BattleEvent::EnemyAbilityBlocked { .. } => cues.push(cue::DEFEND),
+        BattleEvent::Heal { revived, .. } => {
+            cues.push(if revived { cue::REVIVE } else { cue::HEAL });
+        }
+        BattleEvent::ManaRestored { .. } | BattleEvent::StatusCured { .. } => {
+            cues.push(cue::HEAL);
+        }
+        BattleEvent::StatusApplied { status, .. } => {
+            cues.push(status_cue(status.effect, status.potency));
+        }
+        BattleEvent::StatusDamage {
+            target,
+            knocked_out,
+            ..
+        } => {
+            cues.extend_from_slice(impact_cues(target.side));
+            push_knockout(knocked_out, target, &mut cues);
+        }
+    }
+    cues
+}
+
 fn float_frame(elapsed: f32) -> (f32, f32, bool) {
     let progress = (elapsed / FLOAT_DURATION_SECONDS).clamp(0.0, 1.0);
     (
@@ -315,7 +466,177 @@ fn color(color: FxColor, alpha: f32) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::{action::BattleAction, model::BattlePhase, status::StatusEffect};
+    use crate::battle::{
+        action::BattleAction,
+        model::BattlePhase,
+        status::{ActiveStatus, StatusEffect},
+    };
+
+    /// Pins the audio dispatch: which cues each resolved event makes, and in what order.
+    ///
+    /// The pinned engine plays a swing when the party connects and an impact plus a hurt cue when
+    /// the party is struck, so the two directions are deliberately asymmetric.
+    #[test]
+    fn every_battle_event_routes_to_its_authored_sfx_cues() {
+        let party_hits_enemy = BattleAction::Physical {
+            attacker: CombatantKey::party(0),
+            target: CombatantKey::enemy(0),
+        };
+        let enemy_hits_party = BattleAction::Physical {
+            attacker: CombatantKey::enemy(0),
+            target: CombatantKey::party(0),
+        };
+
+        // A whiff is silent; the floating label carries it.
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Miss {
+                action: party_hits_enemy
+            }),
+            Vec::<&str>::new()
+        );
+
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Damage {
+                action: party_hits_enemy,
+                amount: 9,
+                critical: false,
+                knocked_out: false,
+            }),
+            vec![cue::ATK_SLASH]
+        );
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Damage {
+                action: enemy_hits_party,
+                amount: 9,
+                critical: false,
+                knocked_out: false,
+            }),
+            vec![cue::ATK_IMPACT, cue::PARTY_HIT]
+        );
+
+        // A killing blow appends the death cue, but only when an enemy is the one falling.
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Damage {
+                action: party_hits_enemy,
+                amount: 99,
+                critical: true,
+                knocked_out: true,
+            }),
+            vec![cue::ATK_SLASH, cue::ENEMY_DEATH]
+        );
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Damage {
+                action: enemy_hits_party,
+                amount: 99,
+                critical: false,
+                knocked_out: true,
+            }),
+            vec![cue::ATK_IMPACT, cue::PARTY_HIT]
+        );
+
+        // Elements route to their own cue; Holy has none authored.
+        for (element, expected) in [
+            (AbilityElement::Fire, vec![cue::SPELL_FIRE]),
+            (AbilityElement::Water, vec![cue::SPELL_WATER]),
+            (AbilityElement::Wind, vec![cue::SPELL_WIND]),
+            (AbilityElement::Earth, vec![cue::SPELL_EARTH]),
+            (AbilityElement::Holy, Vec::new()),
+        ] {
+            assert_eq!(
+                sfx_cues_for_event(&BattleEvent::MagicDamage {
+                    source: CombatantKey::party(1),
+                    target: CombatantKey::enemy(0),
+                    element,
+                    amount: 20,
+                    knocked_out: false,
+                }),
+                expected,
+                "element {element:?}"
+            );
+        }
+
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::ItemDamage {
+                source: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+                element: ItemElement::Fire,
+                amount: 12,
+                knocked_out: true,
+            }),
+            vec![cue::USE_ITEM, cue::SPELL_FIRE, cue::ENEMY_DEATH]
+        );
+
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::EnemyAbilityBlocked {
+                source: CombatantKey::enemy(0),
+                target: CombatantKey::party(0),
+            }),
+            vec![cue::DEFEND]
+        );
+
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Heal {
+                source: CombatantKey::party(1),
+                target: CombatantKey::party(0),
+                amount: 30,
+                revived: false,
+            }),
+            vec![cue::HEAL]
+        );
+        assert_eq!(
+            sfx_cues_for_event(&BattleEvent::Heal {
+                source: CombatantKey::party(1),
+                target: CombatantKey::party(0),
+                amount: 30,
+                revived: true,
+            }),
+            vec![cue::REVIVE]
+        );
+
+        // Modifier statuses are direction-agnostic in the model, so potency picks the cue.
+        for (effect, potency, expected) in [
+            (
+                StatusEffect::AttackModifier,
+                StatusPotency::Multiplier(1.5),
+                cue::ATK_BUFF,
+            ),
+            (
+                StatusEffect::AttackModifier,
+                StatusPotency::Multiplier(0.5),
+                cue::DEBUFF,
+            ),
+            (
+                StatusEffect::DefenseModifier,
+                StatusPotency::Multiplier(1.25),
+                cue::DEF_BUFF,
+            ),
+            (
+                StatusEffect::DamageReduction,
+                StatusPotency::Reduction(0.3),
+                cue::DEF_BUFF,
+            ),
+            (
+                StatusEffect::Poison,
+                StatusPotency::DamagePerTurn(4),
+                cue::DEBUFF,
+            ),
+            (StatusEffect::Sleep, StatusPotency::None, cue::DEBUFF),
+        ] {
+            assert_eq!(
+                sfx_cues_for_event(&BattleEvent::StatusApplied {
+                    source: CombatantKey::enemy(0),
+                    target: CombatantKey::party(0),
+                    status: ActiveStatus {
+                        effect,
+                        remaining_turns: Some(3),
+                        potency,
+                    },
+                }),
+                vec![expected],
+                "{effect:?} with {potency:?}"
+            );
+        }
+    }
 
     #[test]
     fn damage_miss_critical_and_status_events_route_to_distinct_cues() {
