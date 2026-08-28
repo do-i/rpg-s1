@@ -328,7 +328,7 @@ targeting:
   default: random_alive
 
 ---
-id: titch_the_ticker_171
+id: titch_the_ticker
 name: Titch the Ticker
 type: construct
 rank: B
@@ -354,4 +354,4 @@ drops:
           weight: 50
         - item: rune_fragment
           weight: 50
-ai_ref: boss_move_sets/titch_the_ticker_171.yaml
+ai_ref: boss_move_sets/titch_the_ticker.yaml
