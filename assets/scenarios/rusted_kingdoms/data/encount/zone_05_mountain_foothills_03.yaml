@@ -38,7 +38,7 @@ barrier_enemies:
     blocked_message: "A mysterious force blocks your attack."
 
 boss:
-  id: titch_the_ticker_171
+  id: titch_the_ticker
   name: Titch the Ticker
   once: true
   on_complete:
