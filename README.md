@@ -1,57 +1,109 @@
-# rpg-s1
+# Chronicles of the Lost Flame — Rust port
 
-A native Rust and [Bevy](https://bevy.org/) RPG port in progress. The current
-playable slice starts a new game, plays the intro, and enters a rendered,
-walkable Ardel map using scenario-authored TMX/TSX/YAML content.
+`rpg-s1` is the native Rust and [Bevy](https://bevy.org/) port of **Chronicles
+of the Lost Flame**. It loads story, maps, dialogue, encounters, art, and audio
+directly from a selected scenario package. Normal gameplay and save conversion
+are implemented in Rust and do not invoke Python; the formal packaged-runtime
+proof required by M14.12 remains open.
 
-## Requirements
+The port is in final parity validation, not ready for public distribution. The
+normal campaign route has live acceptance through Harborgate (W12.3), while
+Ancient Ruins/Ruinwatch and the later campaign waves still need their recorded
+playthrough checks. The bundled parity assets also include unresolved
+redistribution-rights blockers described under [Licensing and credits](#licensing-and-credits).
 
-- Rust 1.97 or newer
-- [lazymenu-cli](https://github.com/do-i/lazymenu-cli/) for the project menu
-- Linux graphics and audio development dependencies required by Bevy
-- Optional screenshot-check tools: Tiled's `tmxrasterizer`, ImageMagick 7's
-  `magick`, and `sha256sum`
+## Run the game
 
-For Arch Linux systems without a Vulkan-capable GPU, install the software
-Vulkan driver:
+### From a packaged build
+
+Extract the Linux x86-64 archive and keep the executable beside its `assets/`
+directory:
+
+```text
+rpg-s1-<version>-x86_64-linux/
+├── rpg-s1
+└── assets/
+```
+
+Launch it from any working directory:
+
+```sh
+path/to/rpg-s1-<version>-x86_64-linux/rpg-s1 play rusted_kingdoms --seed 1
+```
+
+No Rust toolchain, Python interpreter, Python package, or source checkout is
+needed by a packaged game. A self-contained Milestone 14 release candidate has
+not yet completed clean-profile acceptance.
+
+### From this repository
+
+Requirements:
+
+- Rust 1.97 or newer;
+- Git LFS, with the repository's binary assets materialized;
+- the Linux graphics, windowing, audio, C/C++ linker, and `pkg-config`
+  dependencies required by Bevy; and
+- optionally, [lazymenu-cli](https://github.com/do-i/lazymenu-cli/) for the
+  searchable developer menu; and
+- optionally, Tiled's `tmxrasterizer`, ImageMagick 7's `magick`, and
+  `sha256sum` for the deterministic screenshot check.
+
+After cloning, run these commands from the repository root:
+
+```sh
+git lfs install
+git lfs pull
+cargo run -- play rusted_kingdoms --seed 1
+```
+
+Running `cargo run` with no arguments selects the same default scenario and
+seed. For an optimized build:
+
+```sh
+cargo run --release -- play rusted_kingdoms --seed 1
+```
+
+On Arch Linux without a Vulkan-capable GPU, the Mesa software Vulkan driver is
+available as `vulkan-swrast`:
 
 ```sh
 sudo pacman -S --needed vulkan-swrast vulkan-tools
 ```
 
-## Run
+Alternatively, run `lazymenu-cli` from the repository root and select **Play -
+Seed 1**. The menu also exposes the test suite, validation and sweep commands,
+record/replay, debug-map launches, both map editors, and release utilities. Use
+`/` to search and `q`, Escape, or Ctrl+C to leave the launcher.
 
-From the repository root:
+## Controls
 
-```sh
-lazymenu-cli
-```
+| Context | Controls |
+| --- | --- |
+| Title and menus | Up/Down selects; Enter, Numpad Enter, or Space confirms; Escape goes back. |
+| Name entry | Type a name, Backspace deletes, Enter confirms, and Escape cancels. |
+| Intro and dialogue | Enter or Space advances; Escape follows the supported intro-skip/back path. |
+| World | Hold Arrow keys to move in four or eight directions; Enter or Space interacts with the facing NPC, sign, box, or service. |
+| Field menu | `M` or Escape opens it; `M` closes it; Arrow keys navigate; Enter or Space confirms; Escape backs out. |
+| Field shortcuts | `I` opens Items, `S` opens Status, and `Q` opens Quests. |
+| Battle | Up/Down selects a command, ability, item, or target; Enter or Space confirms; Escape cancels a nested choice or attempts to flee from the command menu. |
+| Confirmations | `Y` or any confirm key accepts save-overwrite and quit prompts; `N` declines. |
 
-Select **Run playable M7 slice**. The initial Bevy build is expected to
-take longer than later incremental builds. You can also run it directly:
+The field menu contains Status, Spells, Items, Equipment, Quests, Save, and
+Quit. Opening any full-screen overlay pauses world movement, encounters, NPC
+wandering, interaction, and transitions until the overlay closes.
 
-```sh
-cargo run
-```
+## Saves
 
-Use the Up and Down arrows to select a title item, then Enter or Space to
-confirm. New Game opens name entry; Enter confirms the name. Enter or Space
-advances the intro, while Escape uses the supported intro-skip path. In Ardel,
-tap the Arrow keys to move one tile; perpendicular arrows provide diagonal
-movement. Load Game is enabled whenever at least one valid native slot exists.
+The game provides native slots 1–100 and checkpoints autosave slot 0 after a
+settled arrival on each new map. Empty manual slots save immediately; occupied
+slots require explicit overwrite confirmation. Writes use a verified temporary
+file and atomic replacement.
 
-In the World, press `M` or `Escape` for the field menu, `I` for Items, `S` for
-Status, or `Q` for Quests. Use Arrow keys to navigate, Enter to confirm, and
-Escape to return one level.
-The M6 slice includes shared party/status, inventory tabs and item use,
-equipment previews/swaps, learned field spells, and visited-map teleporting.
-Save opens slots 1-100; empty slots write immediately, while occupied slots
-require explicit overwrite confirmation. Quit asks before returning to title.
+Save-directory precedence is:
 
-Native slots are stored under `$XDG_DATA_HOME/rpg-s1/saves` when
-`XDG_DATA_HOME` is set, otherwise `$HOME/.local/share/rpg-s1/saves`. Set
-`RPG_S1_SAVE_DIR` to use an explicit directory for testing or portable runs.
-Writes use a verified temporary file and atomic replacement.
+1. `RPG_S1_SAVE_DIR`, when set;
+2. `$XDG_DATA_HOME/rpg-s1/saves`, when `XDG_DATA_HOME` is set; or
+3. `$HOME/.local/share/rpg-s1/saves`.
 
 To convert one save from the pinned Python version into a native slot:
 
@@ -59,71 +111,128 @@ To convert one save from the pinned Python version into a native slot:
 cargo run -- import-python-save path/to/007.yaml --slot 7
 ```
 
-The converter is explicit and one-way. It does not need Python or a source
-checkout, never scans for old saves, refuses an occupied destination by
-default, and accepts `--replace` only after preserving a verified backup.
-Checksumless input additionally requires `--allow-unchecked`; a checksum
-mismatch is always rejected. Run `cargo run -- import-python-save --help` for
-the complete syntax.
+The converter is explicit, one-way, and implemented in Rust. It never scans
+for legacy saves, refuses an occupied destination by default, and accepts
+`--replace` only after preserving a verified backup. Checksumless input also
+requires `--allow-unchecked`; a checksum mismatch is always rejected. Run
+`cargo run -- import-python-save --help` for the full syntax.
 
-Run the deterministic Ardel composition check with:
+## Validation and developer tools
+
+Run the normal project checks with:
 
 ```sh
+cargo fmt --all -- --check
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
 scripts/check-ardel-screenshot.sh
 ```
 
-Scenario authors can use the map editors and the deterministic validation,
-sweep, debug-map, record, and replay loop documented in
-[`docs/content-authoring.md`](docs/content-authoring.md).
-
-## Releases
-
-`dev` is the integration branch; feature branches merge into it. `main` never
-receives commits directly — it only ever fast-forwards to `dev` and is then
-tagged. Cut a release from `dev`:
+Scenario commands default to `rusted_kingdoms`:
 
 ```sh
-scripts/release.sh status      # show state, change nothing
-scripts/release.sh --dry-run cut
-scripts/release.sh cut         # bump, wait for CI, fast-forward main, tag
-
-# or, to avoid blocking on the CI wait:
-scripts/release.sh bump        # bump version, push to dev, then stop
-scripts/release.sh tag         # check CI once and, if green, fast-forward main, tag
+cargo run -- validate-scenario rusted_kingdoms
+cargo run -- map-report rusted_kingdoms
+cargo run -- map-sweep rusted_kingdoms
+cargo run -- dialogue-report rusted_kingdoms
+cargo run -- dialogue-sweep rusted_kingdoms
+cargo run -- encounter-sweep rusted_kingdoms
 ```
 
-Versions are calendar-based (`year.month.sequence`, tagged `v2026.8.1`), and
-the sequence is computed from existing tags, so the common case needs no
-version argument. `cut` bumps `Cargo.toml`/`Cargo.lock` on `dev` as its own
-commit, waits for a green `ci.yml` run on that commit, then fast-forwards
-`main` and pushes the branch and tag atomically.
+The production scenario currently has 13 inherited content diagnostics, so
+`validate-scenario` is expected to exit unsuccessfully until those issues are
+resolved or approved as explicit differences. Their exact flags, item
+references, stale recruitment references, and missing cursor asset are
+recorded in
+[`docs/adr/0007-inherited-scenario-data-debt.md`](docs/adr/0007-inherited-scenario-data-debt.md).
+The runtime map, dialogue, and encounter sweeps are the passing production
+load checks.
 
-Pushing the tag starts `release.yml`, which builds the Linux x86_64 binary,
-bundles it with `assets/` (the layout an installed build expects — the game
-reads `assets/` beside its executable), and attaches
-`rpg-s1-<version>-x86_64-linux.tar.gz` to the GitHub release. The workflow
-refuses to publish when the tag and `Cargo.toml` disagree.
+Gameplay defaults to deterministic seed `1`. A debug launch requires a map and
+walkable position together and can add a party preset or session-only flags:
 
-## Scope
+```sh
+cargo run -- play rusted_kingdoms --seed 13 --timings \
+  --start-map town_01_ardel --start-position 10,0 \
+  --party-preset full --set-flag story_quest_started
+```
 
-The current playable slice contains:
+`--timings` logs world and battle hotspots every 120 frames. Debug overrides
+are logged and remain session-only unless you explicitly save. Set
+`RPG_S1_MUTE_AUDIO=1` to mute audio or `RPG_S1_DEBUG_COLLISION=1` to draw world
+collision and portal outlines.
 
-- a resizable 1280x766 Bevy window;
-- the migrated title artwork, font, music, and menu sound effects;
-- name entry and the opening linear cutscene;
-- the production Ardel TMX map, visible layer ordering, and collision data;
-- Aric spawning, four/eight-way tile movement, TSX-authored animation, and
-  clamped camera behavior;
-- title-to-map BGM replacement;
-- source-authored NPC presence, occupancy, animation, wandering, and dialogue;
-- atomic faded map portals with a playable Ardel interior and Starting Forest;
-- Elise recruitment, configured signs, and persistent one-time treasure boxes;
-- indexed World interaction sound effects; and
-- source-authored class/item catalogs with party, status, inventory,
-  equipment, field-item, spell, and teleport screens;
-- versioned native save slots, atomic writes, recovery-aware title loading,
-  exact runtime-state restoration, and one-way Python-save conversion;
-- automated parser, runtime, production-package, and screenshot checks;
-- build, run, test, lint, format, release, and clean menu actions.
+Record normalized actions to a fresh path, then replay them without physical
+input:
 
-Encounters and combat remain later milestones.
+```sh
+cargo run -- record /tmp/rpg-s1-check.yaml rusted_kingdoms --seed 13 \
+  --start-map town_01_ardel --start-position 10,0
+cargo run -- replay /tmp/rpg-s1-check.yaml
+```
+
+Replay verifies the game/scenario identity and every recorded state checkpoint
+and exits unsuccessfully at the first divergence. See
+[`docs/content-authoring.md`](docs/content-authoring.md) for the complete Tiled,
+Pygame/web editor, validation, debug-map, and replay workflow.
+
+## Current game coverage
+
+The Rust runtime currently includes:
+
+- scenario-selected title, name-entry, intro, world, audio, and font assets;
+- TMX/TSX maps with layered rendering, collision, portals, camera movement,
+  animated party/NPC/enemy sprites, signs, treasure boxes, and encounters;
+- dialogue conditions/effects, recruitment, quests, shops, inns,
+  apothecary crafting, inventory, equipment, field spells, and teleporting;
+- deterministic turn-based party combat with rows, abilities, items, status
+  effects, enemy AI, bosses, flee, rewards, progression, and game-over flow;
+- native save/load/autosave and one-way Python-save conversion; and
+- manifest-selected scenario packages, deterministic seeds, record/replay,
+  validation reports, production sweeps, and map-authoring integrations.
+
+This list describes implemented systems, not final campaign acceptance. The
+current completion evidence and blockers are maintained in
+[`docs/m14-parity-audit.md`](docs/m14-parity-audit.md).
+
+## Licensing and credits
+
+The Rust source code is available under the [MIT License](LICENSE). Scenario
+data and bundled art, audio, fonts, and tilesets retain their own terms; the
+code license does not grant rights to those assets.
+
+Required notices and known provenance are preserved beside the applicable
+assets, including:
+
+- `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` for the
+  Liberated Pixel Cup components used by Aric;
+- `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`
+  for the LPC terrain atlas;
+- the bundled SIL Open Font License notices for Philosopher and Quintessential;
+  and
+- the other creator/source notices under the scenario asset tree.
+
+The auditable path-by-path record is
+[`docs/asset-license-inventory.md`](docs/asset-license-inventory.md), with a
+shorter overview in [`assets/README.md`](assets/README.md). Most copied parity
+assets still lack complete ownership, acquisition, license, or redistribution
+evidence. Do not publish or redistribute the current asset bundle until every
+shipped entry is approved, replaced, or excluded; local parity use is not
+public redistribution permission.
+
+## Maintainer release flow
+
+`dev` is the integration branch. `main` only fast-forwards to a validated
+`dev` commit before that commit is tagged. Inspect or dry-run the calendar
+versioned release flow with:
+
+```sh
+scripts/release.sh status
+scripts/release.sh --dry-run cut
+```
+
+`scripts/release.sh cut` bumps `Cargo.toml` and `Cargo.lock`, waits for the
+matching CI run, fast-forwards `main`, and pushes the branch and tag. A tag
+starts `.github/workflows/release.yml`, which builds the locked Linux x86-64
+binary and bundles it beside `assets/`. Do not publish a release while the
+Milestone 14 parity and asset-rights blockers above remain open.

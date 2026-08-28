@@ -16,7 +16,7 @@ key = "d"
 command = ["env", "RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "cargo", "run"]
 group = "Play"
 tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells", "debug", "collision", "portal"]
-description = "Play the Ardel slice with sound disabled and the portal/collision debug overlay on, native save/load, party, items, equipment, spells, and teleport"
+description = "Play the normal campaign with sound disabled and the portal/collision debug overlay on"
 favorite = true
 
 [[items]]
@@ -36,7 +36,7 @@ key = "r"
 command = ["cargo", "run", "--release"]
 group = "Play"
 tags = ["run", "play", "game", "release", "fast", "performance", "framerate"]
-description = "Play the Ardel slice from an optimized release build for a true read on framerate and load times"
+description = "Play the normal campaign from an optimized build for representative framerate and load-time checks"
 
 [[items]]
 id = "play-seeded"
