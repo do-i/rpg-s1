@@ -3,6 +3,26 @@ id: ashenveil_oracle_hint
 type: npc
 
 entries:
+  # Act 4, Corrupted Forest cleared — the Oracle hands over the Holy Talisman,
+  # the authored counter to the Red Judicator's Death Gaze
+  # (`fallen_angel_red_judicator.yaml` blocks that move on this accessory).
+  # It is the last scripted beat before the stronghold, and it fires once:
+  # `oracle_talisman_given` drops the player through to the entry below on
+  # every later visit.
+  - condition:
+      requires: [story_act4_started, boss_zone08_defeated]
+      excludes: [oracle_talisman_given]
+    lines:
+      - "Wait. Before you climb."
+      - "The thing in the stronghold does not fight the way the others fought."
+      - "It will not raise a blade. It will look at you, and ask your flame to go out."
+      - "Take this. Ash cannot argue with a stare. This can. Wear it, and do not take it off."
+    on_complete:
+      set_flag: oracle_talisman_given
+      give_items:
+        - id: holy_talisman
+          qty: 1
+
   # Act 4 started — both zone07 and zone08 cleared, endgame ahead
   - condition:
       requires: [story_act4_started, boss_zone08_defeated]

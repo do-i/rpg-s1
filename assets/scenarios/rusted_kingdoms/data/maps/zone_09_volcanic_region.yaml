@@ -7,6 +7,17 @@ enemy_spawn:
   max: 9
   interval: 20.0
 
+item_boxes:
+  # Tucked in the southern chamber, off the east-west road to the stronghold
+  # gate, so reaching it is a deliberate detour rather than something the
+  # player walks over on the way through.
+  - id: volcanic_chest_01
+    position: [43, 27]
+    loot:
+      items:
+        - id: phoenix_wing
+          qty: 1
+
 npcs:
   - id: stronghold_gate_guard
     name: "Warden Malc"
