@@ -22,6 +22,14 @@ use crate::{
 
 const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
+/// Row height for one title menu entry.
+const MENU_ENTRY_HEIGHT: f32 = 42.0;
+/// Cursor footprint beside the selected entry. The shipped `arrow-head-right.webp` is 434x293, so
+/// 24x16 holds its aspect at a size that reads against 30px menu text. The slot is reserved on
+/// every row and only its visibility toggles, so selection never reflows the menu.
+const MENU_CURSOR_WIDTH: f32 = 24.0;
+const MENU_CURSOR_HEIGHT: f32 = 16.0;
+const MENU_CURSOR_GAP: f32 = 10.0;
 /// Bounded wait for the Quit confirmation to reach the audio device.
 ///
 /// The chime is started, not awaited: shutdown must feel as immediate as the field menu's Quit,
@@ -67,6 +75,17 @@ impl TitleMenu {
 
 #[derive(Component)]
 struct MenuEntry(usize);
+
+/// Cursor image beside the entry of the same index.
+#[derive(Component)]
+struct MenuCursor(usize);
+
+/// Title text whose face is published from the manifest once it loads.
+///
+/// [`TitleScreenEntity`] marks only the root node, so it cannot select the descendant text that
+/// needs the scenario font.
+#[derive(Component)]
+struct TitleText;
 
 #[derive(Component)]
 struct StatusMessage;
@@ -125,7 +144,6 @@ pub(crate) struct TitlePresentation {
 }
 
 impl TitlePresentation {
-    #[cfg(test)]
     pub(crate) const fn is_ready(&self) -> bool {
         matches!(self.status, TitlePresentationStatus::Ready)
     }
@@ -259,21 +277,40 @@ fn setup_title_screen(
             ))
             .with_children(|panel| {
                 for (index, label) in MENU_LABELS.into_iter().enumerate() {
-                    panel.spawn((
-                        Text::new(label),
-                        TextFont {
-                            font: Handle::<Font>::default().into(),
-                            font_size: FontSize::Px(theme.menu_font_size),
+                    panel
+                        .spawn(Node {
+                            width: percent(100),
+                            height: px(MENU_ENTRY_HEIGHT),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
                             ..default()
-                        },
-                        TextColor(menu_entry_color(&theme, index, 0, false)),
-                        TextLayout::justify(Justify::Center),
-                        Node {
-                            height: px(42),
-                            ..default()
-                        },
-                        MenuEntry(index),
-                    ));
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                ImageNode::default(),
+                                Node {
+                                    width: px(MENU_CURSOR_WIDTH),
+                                    height: px(MENU_CURSOR_HEIGHT),
+                                    margin: UiRect::right(px(MENU_CURSOR_GAP)),
+                                    ..default()
+                                },
+                                Visibility::Hidden,
+                                MenuCursor(index),
+                            ));
+                            row.spawn((
+                                Text::new(label),
+                                TextFont {
+                                    font: Handle::<Font>::default().into(),
+                                    font_size: FontSize::Px(theme.menu_font_size),
+                                    ..default()
+                                },
+                                TextColor(menu_entry_color(&theme, index, 0, false)),
+                                TextLayout::justify(Justify::Center),
+                                MenuEntry(index),
+                                TitleText,
+                            ));
+                        });
                 }
             });
 
@@ -294,6 +331,7 @@ fn setup_title_screen(
                     ..default()
                 },
                 StatusMessage,
+                TitleText,
             ));
         });
 }
@@ -311,7 +349,8 @@ fn apply_title_presentation(
     bgm_indexes: Res<Assets<BgmIndex>>,
     sfx_indexes: Res<Assets<SfxIndex>>,
     mut presentation: ResMut<TitlePresentation>,
-    mut fonts: Query<&mut TextFont, With<TitleScreenEntity>>,
+    mut fonts: Query<&mut TextFont, With<TitleText>>,
+    mut cursors: Query<&mut ImageNode, With<MenuCursor>>,
     mut status: Single<&mut Text, With<StatusMessage>>,
 ) {
     if presentation.status != TitlePresentationStatus::Loading {
@@ -364,6 +403,10 @@ fn apply_title_presentation(
     let font = asset_server.load(scenario_root.resolve(&manifest.font.path));
     for mut text_font in &mut fonts {
         text_font.font = font.clone().into();
+    }
+    let cursor = asset_server.load(scenario_root.resolve(&manifest.title.cursor_icon));
+    for mut cursor_image in &mut cursors {
+        cursor_image.image = cursor.clone();
     }
     commands.spawn((
         Sprite::from_image(asset_server.load(scenario_root.resolve(&manifest.title.image))),
@@ -527,14 +570,26 @@ fn update_menu_colors(
     menu: Res<TitleMenu>,
     catalog: Res<SaveSlotCatalog>,
     theme: Res<UiTheme>,
+    presentation: Res<TitlePresentation>,
     mut entries: Query<(&MenuEntry, &mut TextColor)>,
+    mut cursors: Query<(&MenuCursor, &mut Visibility)>,
 ) {
-    if !menu.is_changed() && !catalog.is_changed() {
+    if !menu.is_changed() && !catalog.is_changed() && !presentation.is_changed() {
         return;
     }
 
     for (entry, mut color) in &mut entries {
         color.0 = menu_entry_color(&theme, entry.0, menu.selected, catalog.has_valid());
+    }
+
+    // The cursor image only exists once the manifest publishes; showing the node before then would
+    // draw an untextured block.
+    for (cursor, mut visibility) in &mut cursors {
+        *visibility = if presentation.is_ready() && cursor.0 == menu.selected {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 
@@ -614,8 +669,9 @@ mod tests {
         assert_eq!(panel.0, theme.panel_color);
     }
 
-    #[test]
-    fn invented_package_drives_title_assets_without_rusted_kingdoms_paths() {
+    /// Drives a title app on the `minimal_demo` fixture until its presentation publishes, so
+    /// assertions can inspect manifest-derived assets rather than the pre-publication defaults.
+    fn ready_minimal_demo_title_app() -> App {
         let asset_base = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../tests/fixtures")
             .to_string_lossy()
@@ -634,6 +690,12 @@ mod tests {
             std::thread::sleep(Duration::from_millis(1));
         }
         assert!(app.world().resource::<TitlePresentation>().is_ready());
+        app
+    }
+
+    #[test]
+    fn invented_package_drives_title_assets_without_rusted_kingdoms_paths() {
+        let mut app = ready_minimal_demo_title_app();
 
         let world = app.world_mut();
         let image = world.query::<&Sprite>().single(world).unwrap().image.id();
@@ -663,6 +725,84 @@ mod tests {
         );
         assert!(!image_path.contains("rusted_kingdoms"));
         assert!(!music_path.contains("rusted_kingdoms"));
+    }
+
+    /// Guards the descendant-marker bug: `TitleScreenEntity` sits only on the root node, so a
+    /// `With<TitleScreenEntity>` font query silently matched nothing and the whole title menu
+    /// rendered in Bevy's fallback face.
+    #[test]
+    fn menu_entries_receive_the_manifest_font() {
+        let mut app = ready_minimal_demo_title_app();
+        let world = app.world_mut();
+        let mut entries = world.query_filtered::<&TextFont, With<MenuEntry>>();
+        let handles = entries
+            .iter(world)
+            .map(|font| match &font.font {
+                FontSource::Handle(handle) => handle.id(),
+                other => panic!("menu text must carry a font handle, got {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        let server = world.resource::<AssetServer>();
+        let paths = handles
+            .into_iter()
+            .map(|id| {
+                server
+                    .get_path(id)
+                    .map(|path| path.path().to_string_lossy().into_owned())
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            paths,
+            vec![
+                Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
+                Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
+                Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn title_cursor_resolves_from_the_manifest_and_marks_only_the_selected_entry() {
+        let mut app = ready_minimal_demo_title_app();
+
+        let world = app.world_mut();
+        let mut cursors = world.query::<(&MenuCursor, &ImageNode, &Visibility)>();
+        let mut published = cursors
+            .iter(world)
+            .map(|(cursor, image, visibility)| (cursor.0, image.image.id(), *visibility))
+            .collect::<Vec<_>>();
+        published.sort_by_key(|(index, ..)| *index);
+
+        let server = world.resource::<AssetServer>();
+        for (index, image, visibility) in &published {
+            assert_eq!(
+                server
+                    .get_path(*image)
+                    .map(|path| path.path().to_string_lossy().into_owned()),
+                Some("scenarios/minimal_demo/assets/cursor.webp".to_owned()),
+                "entry {index} must draw the manifest cursor"
+            );
+            let expected = if *index == 0 {
+                Visibility::Inherited
+            } else {
+                Visibility::Hidden
+            };
+            assert_eq!(*visibility, expected, "entry {index} visibility");
+        }
+        assert_eq!(published.len(), MENU_LABELS.len());
+
+        // Selection moves the cursor rather than lighting a second one.
+        app.world_mut().resource_mut::<TitleMenu>().move_by(1);
+        app.update();
+
+        let world = app.world_mut();
+        let mut shown = world.query::<(&MenuCursor, &Visibility)>();
+        let visible = shown
+            .iter(world)
+            .filter(|(_, visibility)| **visibility != Visibility::Hidden)
+            .map(|(cursor, _)| cursor.0)
+            .collect::<Vec<_>>();
+        assert_eq!(visible, vec![1]);
     }
 
     #[test]
@@ -1177,9 +1317,11 @@ mod tests {
         assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
         assert_eq!(world.query::<&Sprite>().iter(world).count(), 1);
-        assert_eq!(world.query::<&Node>().iter(world).count(), 6);
+        // root + panel + status, then one row, cursor, and label per menu entry.
+        assert_eq!(world.query::<&Node>().iter(world).count(), 12);
         assert_eq!(world.query::<&Text>().iter(world).count(), 4);
         assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 3);
+        assert_eq!(world.query::<&MenuCursor>().iter(world).count(), 3);
         assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 1);
         assert_eq!(
             world
