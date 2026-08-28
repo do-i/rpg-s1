@@ -12,10 +12,10 @@
 //! bytes read from disk instead of driving `AssetServer` loads.
 //!
 //! Every finding here is informational: this module never fails the process, it only describes
-//! what production code did when actually run against the map. `sample_01.tmx` is a known
-//! placeholder using an inline tileset outside the M4 external-tileset profile (ADR 0007's
-//! sibling parity-plan notes); it is expected to surface a TMX finding here, not to be treated
-//! as a bug.
+//! what production code did when actually run against the map. It previously excused
+//! `sample_01.tmx`, an editor scratch map whose inline tileset falls outside the M4
+//! external-tileset profile; that map and `sample_dungeon_01.tmx` were removed as dead data, so
+//! every shipped TMX is now expected to parse cleanly.
 
 use std::{
     collections::BTreeSet,
@@ -1021,21 +1021,24 @@ item_boxes:
         assert_eq!(report.clean_count(), 1);
     }
 
+    /// Every shipped TMX now parses. This previously pinned `sample_01.tmx`, an editor scratch map
+    /// that used an inline tileset the loader cannot read; it and `sample_dungeon_01.tmx` were
+    /// removed as dead data, so a TMX finding here means a real map regressed.
     #[test]
-    fn the_shipped_scenario_sweeps_every_tmx_and_visits_the_known_placeholder() {
+    fn the_shipped_scenario_sweeps_every_tmx_without_a_parse_finding() {
         let root =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
         let report = build_map_sweep(&root);
 
         assert!(report.load_error.is_none());
-        assert_eq!(report.entries.len(), 47);
-
-        let sample_01 = entry(&report, "sample_01");
+        assert_eq!(report.entries.len(), 45);
+        assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert!(
-            findings(sample_01, SweepCategory::Tmx)
+            !report
+                .entries
                 .iter()
-                .any(|finding| finding.contains("inline")),
-            "sample_01.tmx is a known placeholder using an inline tileset"
+                .any(|entry| entry.id.starts_with("sample")),
+            "editor scratch maps must not ship"
         );
     }
 
@@ -1048,10 +1051,10 @@ item_boxes:
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
         let report = build_map_sweep(&root);
 
-        assert_eq!(report.entries.len(), 47);
-        assert_eq!(report.clean_count(), 44);
-        assert_eq!(report.maps_with_findings(), 3);
-        assert_eq!(report.category_count(SweepCategory::Tmx), 1);
+        assert_eq!(report.entries.len(), 45);
+        assert_eq!(report.clean_count(), 43);
+        assert_eq!(report.maps_with_findings(), 2);
+        assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert_eq!(report.category_count(SweepCategory::Collision), 0);
         assert_eq!(report.category_count(SweepCategory::Npc), 0);
         assert_eq!(report.category_count(SweepCategory::Portal), 0);

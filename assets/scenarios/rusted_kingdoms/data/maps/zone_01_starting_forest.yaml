@@ -8,18 +8,6 @@ enemy_spawn:
   max: 6
   interval: 25.0
 
-transport:
-  sail:
-    unlock_flag: transport_sail_unlocked
-    origin: port_tile
-  fly:
-    unlock_flag: transport_fly_unlocked
-    origin: world_map_any
-  warp:
-    unlock_flag: transport_warp_unlocked
-    origin: world_map_any
-    destinations: visited_only
-
 npcs:
   - id: bridge_guard_zone5
     name: "Guardsman Pike"

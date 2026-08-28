@@ -120,8 +120,8 @@ party:
     portrait: assets/images/jep_profile.png
     join:
       condition: story_act3_started
-      map: dungeon_ruinwatch
-      position: [5, 9]
+      map: town_03_ruinwatch_monastery_vaults
+      position: [10, 5]
     recruit:
       npc: jep
       dialogue: jep_join
