@@ -39,6 +39,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97.0
         with:
           components: rustfmt, clippy
-      - run: cargo fmt -- --check
-      - run: cargo test
-      - run: cargo clippy --all-targets -- -D warnings
+      # `--workspace` is load-bearing, not decoration. This manifest has a root package *and* a
+      # `[workspace]` members list, so a bare `cargo test` resolves to the default members -- the
+      # root package alone, whose only target is `src/main.rs` with zero tests. Every test in
+      # `crates/rpg-content` and `crates/rpg-engine` was being skipped, and `--all-targets` selects
+      # target kinds rather than packages, so clippy linted only the root package too.
+      # (`cargo fmt` already walks the workspace; `--all` is explicit for consistency.)
+      - run: cargo fmt --all -- --check
+      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
