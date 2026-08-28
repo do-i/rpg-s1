@@ -699,14 +699,29 @@ mod tests {
         let dialogue = dialogue(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_shrine_keeper.yaml"
         ));
-        let cases = [
-            (vec!["boss_zone10_defeated"], "Warm, isn't it?"),
-            (vec!["sq_stream_started"], "Marn sent you?"),
-            (vec!["sq_stream_relayed"], "I'll be at the stream"),
-            (vec!["story_act2_started"], "So the elder finally told you"),
-            (vec![], "Mind the beams"),
+        // The Act II pair is the interesting one: the revelation grants Teleport and must fire
+        // exactly once, with the repeat-visit entry taking over afterwards.
+        let cases: [(Vec<&str>, &str, Option<&str>); 6] = [
+            (vec!["boss_zone10_defeated"], "Warm, isn't it?", None),
+            (
+                vec!["sq_stream_started"],
+                "Marn sent you?",
+                Some("sq_stream_relayed"),
+            ),
+            (vec!["sq_stream_relayed"], "I'll be at the stream", None),
+            (
+                vec!["story_act2_started"],
+                "So the elder finally told you",
+                Some("aric_teleport_unlocked"),
+            ),
+            (
+                vec!["story_act2_started", "aric_teleport_unlocked"],
+                "Back again",
+                None,
+            ),
+            (vec![], "Mind the beams", None),
         ];
-        for (index, (flags, expected_start)) in cases.into_iter().enumerate() {
+        for (flags, expected_start, expected_flag) in cases {
             let flags = RuntimeFlags::from_bootstrap(flags);
             let mut session =
                 DialogueSession::resolve("ardel_shrine_keeper", None, dialogue.clone(), &flags)
@@ -715,13 +730,11 @@ mod tests {
             assert!(session.current_line().starts_with(expected_start));
             let actions = complete_linear(&mut session, &flags);
             assert_eq!(actions.len(), 1);
-            if index == 1 {
-                assert_eq!(
-                    actions[0].set_flag.as_ref().unwrap().as_slice(),
-                    ["sq_stream_relayed"]
-                );
-            } else {
-                assert_eq!(actions[0], DialogueActions::default());
+            match expected_flag {
+                Some(flag) => {
+                    assert_eq!(actions[0].set_flag.as_ref().unwrap().as_slice(), [flag]);
+                }
+                None => assert_eq!(actions[0], DialogueActions::default()),
             }
         }
     }

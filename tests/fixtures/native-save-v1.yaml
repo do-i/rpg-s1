@@ -9,7 +9,6 @@ metadata:
   playtime_seconds: 3661
 payload:
   flags:
-  - aric_teleport_unlocked
   - golden_quest_complete
   - story_quest_started
   party:

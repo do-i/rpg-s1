@@ -37,13 +37,28 @@ entries:
     lines:
       - "I'll be at the stream at dusk. Go tell Marn — he'll want to pretend he didn't ask."
 
-  # After the elder's revelation (Act II onward)
+  # After the elder's revelation (Act II) — the shrine beat where Aric is told
+  # what he is, and where Teleport wakes. This is the "mid-game story event"
+  # the hero class file and the manifest both name as the intended unlock.
+  # Fires once; `aric_teleport_unlocked` drops later visits to the entry below.
   - condition:
       requires: [story_act2_started]
+      excludes: [aric_teleport_unlocked]
     lines:
       - "So the elder finally told you. Sixteen years she carried that."
       - "This is where they found you, swaddled in ash, right where the altar stood."
       - "The fire that took this roof wasn't your fault, {protagonist}. Fires only ever do what we feed them."
+      - "...Stand where the altar was. Humour an old woman."
+      - "There. You felt it. The ash remembers every step you've taken — and it will carry you back to any ground you have already walked."
+    on_complete:
+      set_flag: aric_teleport_unlocked
+
+  # Repeat visits after the revelation
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "Back again. The stones remember you even when I don't."
+      - "Whatever the ash gave you that night, it is yours now. Spend it kindly."
 
   # Default — post-flare grief
   - lines:

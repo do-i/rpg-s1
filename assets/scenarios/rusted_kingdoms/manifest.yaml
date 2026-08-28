@@ -59,10 +59,6 @@ start:
 
 bootstrap_flags:
   - story_quest_started
-  # DEBUG: unlocks Aric's Teleport skill from the start of the game. In the
-  # shipped game this flag should instead be set by a mid-game story event;
-  # remove this line to restore the intended mid-game unlock.
-  - aric_teleport_unlocked
 
 engine_managed_flags:
   - story_act2_started
