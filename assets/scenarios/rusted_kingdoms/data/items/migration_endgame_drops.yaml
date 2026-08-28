@@ -1,0 +1,43 @@
+# Compatibility repairs for dangling endgame enemy-drop ids in the pinned
+# Python scenario, following the pattern set by `migration_zone1_drops.yaml`.
+# Confirmed inherited: in `~/ws/github/agentic-rpg` these three ids likewise
+# appear only in enemy drop pools and in no item catalog, so both builds ship
+# the same three unresolvable references.
+#
+# Materials rather than equipment, for the same reason the zone-1 repair gives:
+# the source supplies no slot, stat, or use semantics for any of the ids.
+#
+# Prices follow the pairing the drop pools already encode -- each endgame pool
+# offers one scale/crystal and one horn/core, and the authored ladder in
+# `materials.yaml` prices the horn just above its scale (frost 700 -> 720,
+# stone 900 -> 920, flame 1400 -> 1450).
+#
+# NOTE for roadmap B3.7 (orphan materials): `materials.yaml` already defines
+# `petrified_horn` (920), `inferno_horn` (1450), and `demon_core` (590) -- all
+# three referenced by nothing, all three sitting immediately after the very
+# scale each of these pools pairs with, under its `# Boss drops` header. They
+# read as the intended counterparts under different names. Repointing the drop
+# tables at them instead was considered and rejected here for one reason:
+# `fire_dragon_horn` is dropped both by `lizard_dragon_guard_base` (pooled with
+# `lava_scale`, 310) and by `wartotaur_warlord_blackhorn_chief` (pooled with
+# `flame_dragon_scale`, 1400), so it spans two tiers and cannot become a single
+# 1450 `inferno_horn` without inflating the rank-S drop. B3.7 should decide
+# whether to merge these pairs when it reworks the ~49 unreferenced materials.
+
+- id: fire_dragon_horn
+  name: Fire Dragon Horn
+  type: material
+  sell_price: 400
+  description: "A blackened horn still warm at the root. Smiths temper blades against it."
+
+- id: stone_dragon_horn
+  name: Stone Dragon Horn
+  type: material
+  sell_price: 920
+  description: "A blunt horn of fused rock, chipped at the tip from breaking walls."
+
+- id: void_core
+  name: Void Core
+  type: material
+  sell_price: 620
+  description: "The dense, lightless heart of a thing that should not have had one."
