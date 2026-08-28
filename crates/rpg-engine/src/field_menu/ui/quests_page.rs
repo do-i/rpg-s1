@@ -538,12 +538,7 @@ pub(in crate::field_menu) fn selected_quest_index(
 }
 
 pub(in crate::field_menu) fn quest_window_start(selected: usize, len: usize) -> usize {
-    if len <= QUEST_VISIBLE_ROWS {
-        return 0;
-    }
-    selected
-        .saturating_sub(QUEST_VISIBLE_ROWS - 1)
-        .min(len - QUEST_VISIBLE_ROWS)
+    window_start(selected, len, QUEST_VISIBLE_ROWS)
 }
 
 /// Reports the cursor position, and the visible span too once the register scrolls.

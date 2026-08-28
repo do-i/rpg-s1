@@ -123,6 +123,90 @@ pub(crate) fn status_border_active() -> Color {
     Color::srgb_u8(235, 190, 89)
 }
 
+/// The green the shop family reserves for an affordable price and a ready recipe.
+pub(crate) fn status_ready() -> Color {
+    Color::srgb_u8(132, 196, 111)
+}
+
+/// Draws the labelled `value / maximum` bar the party panels share.
+pub(crate) fn spawn_meter(
+    parent: &mut ChildSpawnerCommands<'_>,
+    label: &str,
+    value: u32,
+    maximum: u32,
+    font: &Handle<Font>,
+    fill: Color,
+) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(3),
+            ..default()
+        })
+        .with_children(|meter| {
+            meter
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    ..default()
+                })
+                .with_children(|label_row| {
+                    spawn_status_text(label_row, label, font, 13.0, status_muted());
+                    spawn_status_text(
+                        label_row,
+                        format!("{value} / {maximum}"),
+                        font,
+                        13.0,
+                        status_ink(),
+                    );
+                });
+            meter
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(8),
+                        border_radius: BorderRadius::all(px(4)),
+                        overflow: Overflow::clip(),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(17, 17, 22)),
+                ))
+                .with_children(|track| {
+                    track.spawn((
+                        Node {
+                            width: percent(meter_percent(value, maximum)),
+                            height: percent(100),
+                            border_radius: BorderRadius::all(px(4)),
+                            ..default()
+                        },
+                        BackgroundColor(fill),
+                    ));
+                });
+        });
+}
+
+pub(crate) fn meter_percent(value: u32, maximum: u32) -> f32 {
+    if maximum == 0 {
+        0.0
+    } else {
+        (value as f32 / maximum as f32 * 100.0).clamp(0.0, 100.0)
+    }
+}
+
+/// First visible index of a list that scrolls only far enough to keep `selected` on screen.
+///
+/// This is the source `ScrollListState` rule (`engine/common/scroll_list.py`), which the quest
+/// register and the shop family both need: the window holds still until the cursor would leave
+/// it, rather than paging in fixed blocks.
+pub(crate) fn window_start(selected: usize, len: usize, rows: usize) -> usize {
+    if rows == 0 || len <= rows {
+        return 0;
+    }
+    selected.saturating_sub(rows - 1).min(len - rows)
+}
+
 /// Category prefixes the scenario uses to group map ids, dropped from displayed place names.
 const MAP_ID_CATEGORIES: [&str; 4] = ["town", "port", "zone", "dungeon"];
 
@@ -161,7 +245,26 @@ fn title_case_word(word: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::location_display_name;
+    use super::{location_display_name, meter_percent, window_start};
+
+    #[test]
+    fn meter_fill_clamps_to_the_track_and_survives_a_zero_maximum() {
+        assert_eq!(meter_percent(3, 0), 0.0);
+        assert_eq!(meter_percent(25, 100), 25.0);
+        assert_eq!(meter_percent(125, 100), 100.0);
+    }
+
+    #[test]
+    fn a_list_window_holds_still_until_the_cursor_would_leave_it() {
+        // Short lists never scroll, whichever row is selected.
+        assert_eq!(window_start(0, 5, 7), 0);
+        assert_eq!(window_start(4, 5, 7), 0);
+        // Long lists hold at the top until the cursor reaches the last visible row.
+        assert_eq!(window_start(6, 20, 7), 0);
+        assert_eq!(window_start(7, 20, 7), 1);
+        // And stop once the final row is on screen, rather than scrolling past the end.
+        assert_eq!(window_start(19, 20, 7), 13);
+    }
 
     #[test]
     fn map_ids_lose_their_grouping_prefix_and_ordering_numbers() {

@@ -20,6 +20,8 @@ use crate::{
 pub(crate) struct ScenarioInventory {
     pub(crate) font: Option<ScenarioRelativePath>,
     pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
+    /// Keeper faces and recipe-status icons the service overlays draw.
+    pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
     pub(crate) encounter_directory: Option<ScenarioRelativePath>,
     pub(crate) tmx_directory: Option<ScenarioRelativePath>,
@@ -35,6 +37,23 @@ pub(crate) struct ScenarioInventory {
     pub(crate) boss_move_sets: Vec<(String, ScenarioRelativePath)>,
     pub(crate) quests: Option<ScenarioRelativePath>,
     pub(crate) failure: Option<String>,
+}
+
+/// The manifest-declared presentation assets belonging to the field services.
+///
+/// The manifest has always named these; nothing consumed them until the service overlays were
+/// rebuilt as drawn screens. Each is optional so a scenario package that omits a service still
+/// loads — the overlay falls back to its lettered placeholder frame.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ServiceArt {
+    pub(crate) apothecary_keeper: Option<ScenarioRelativePath>,
+    pub(crate) inn_keeper: Option<ScenarioRelativePath>,
+    pub(crate) item_shop_keeper: Option<ScenarioRelativePath>,
+    pub(crate) weapon_shop_keeper: Option<ScenarioRelativePath>,
+    pub(crate) armor_shop_keeper: Option<ScenarioRelativePath>,
+    pub(crate) recipe_locked_icon: Option<ScenarioRelativePath>,
+    pub(crate) recipe_ready_icon: Option<ScenarioRelativePath>,
+    pub(crate) recipe_missing_icon: Option<ScenarioRelativePath>,
 }
 
 impl ScenarioInventory {
@@ -92,6 +111,16 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
     let mut inventory = ScenarioInventory {
         font: Some(manifest.font.path.clone()),
         menu_backdrop: Some(manifest.ui.menu_backdrop.clone()),
+        service_art: ServiceArt {
+            apothecary_keeper: Some(manifest.apothecary.sprite.clone()),
+            inn_keeper: Some(manifest.inn.sprite.clone()),
+            item_shop_keeper: Some(manifest.item_shop.sprite.clone()),
+            weapon_shop_keeper: Some(manifest.weapon_shop.sprite.clone()),
+            armor_shop_keeper: Some(manifest.armor_shop.sprite.clone()),
+            recipe_locked_icon: Some(manifest.apothecary.icons.locked.clone()),
+            recipe_ready_icon: Some(manifest.apothecary.icons.ready.clone()),
+            recipe_missing_icon: Some(manifest.apothecary.icons.missing.clone()),
+        },
         map_directory: Some(manifest.refs.maps.as_relative_path().clone()),
         encounter_directory: Some(manifest.refs.encount.as_relative_path().clone()),
         tmx_directory: Some(manifest.refs.tmx.as_relative_path().clone()),
