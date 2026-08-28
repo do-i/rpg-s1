@@ -90,14 +90,14 @@ pub(in crate::field_menu) fn render_main(state: &FieldMenuState, game: &GameStat
         .members()
         .map(|member| {
             format!(
-                "{:<12} Lv {:>2}  HP {:>3}/{:<3}  MP {:>3}/{:<3}  {:?}",
+                "{:<12} Lv {:>2}  HP {:>3}/{:<3}  MP {:>3}/{:<3}  {}",
                 member.name(),
                 member.level(),
                 member.health(),
                 member.max_health(),
                 member.mana(),
                 member.max_mana(),
-                member.row()
+                row_label(member.row())
             )
         })
         .collect::<Vec<_>>()
@@ -140,13 +140,13 @@ pub(in crate::field_menu) fn render_status(
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        "Member {}/{}  {} — {}  Lv {}  {:?}\nHP {}/{}    MP {}/{}    EXP {}\n\nBase     STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\nDerived  STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\n\nEquipment\n{}\n\nField abilities: {}\nStatus effects: {}",
+        "Member {}/{}  {} — {}  Lv {}  {}\nHP {}/{}    MP {}/{}    EXP {}\n\nBase     STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\nDerived  STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\n\nEquipment\n{}\n\nField abilities: {}\nStatus effects: {}",
         state.member_index + 1,
         game.party().len(),
         member.name(),
         member.class_id(),
         member.level(),
-        member.row(),
+        row_label(member.row()),
         member.health(),
         member.max_health(),
         member.mana(),
@@ -461,7 +461,10 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Roster => {
             "UP/DOWN member  ENTER stats  ESC back  M close"
         }
-        (FieldMenuScreen::Status, _) => "UP/DOWN action  ESC portrait  M close",
+        (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Position => {
+            "UP/DOWN row  ENTER set  ESC back  M close"
+        }
+        (FieldMenuScreen::Status, _) => "UP/DOWN action  ENTER open  ESC portrait  M close",
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
             "LEFT/RIGHT tab  UP/DOWN item  ENTER actions  ESC back"
         }
