@@ -57,6 +57,7 @@ mod world_dialogue;
 mod world_encounter;
 mod world_interaction;
 mod world_object;
+mod world_pause;
 mod world_player;
 mod world_transition;
 

@@ -7,23 +7,19 @@ use bevy::prelude::*;
 use crate::{
     action_input::ActionState,
     app_state::AppState,
-    field_menu::FieldMenuState,
     game_state::GameState,
     scenario_spatial::{
         CardinalDirection, EightWayDirection, collision_occupancy::CollisionOccupancy,
         world_collision::WorldCollision,
     },
-    service_ui::ServiceUiState,
     world_actor::WorldNpc,
-    world_encounter::BattleTransition,
-    world_interaction::WorldInteractionState,
     world_object::WorldItemBox,
+    world_pause::WorldOverlays,
     world_player::{
         CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
         CHARACTER_COLLISION_WIDTH, CharacterCollisionRect, WorldPlayer, WorldPlayerAnimation,
         WorldPlayerMotion,
     },
-    world_transition::WorldTransition,
 };
 
 const RUSTED_KINGDOMS_TILE_WIDTH: u32 = 32;
@@ -49,11 +45,7 @@ fn move_world_player(
     actions: Option<Res<ActionState>>,
     time: Option<Res<Time>>,
     collision: Res<WorldCollision>,
-    transition: Option<Res<WorldTransition>>,
-    battle_transition: Option<Res<BattleTransition>>,
-    interaction: Option<Res<WorldInteractionState>>,
-    field_menu: Option<Res<FieldMenuState>>,
-    service: Option<Res<ServiceUiState>>,
+    overlays: WorldOverlays,
     npcs: Query<&WorldNpc>,
     boxes: Query<&WorldItemBox>,
     game: Option<ResMut<GameState>>,
@@ -79,20 +71,7 @@ fn move_world_player(
         return;
     };
     let delta_time = time.as_deref().map(Time::delta).unwrap_or(Duration::ZERO);
-    if transition
-        .as_deref()
-        .is_some_and(WorldTransition::input_locked)
-        || battle_transition
-            .as_deref()
-            .is_some_and(BattleTransition::input_locked)
-        || interaction
-            .as_deref()
-            .is_some_and(WorldInteractionState::input_locked)
-        || field_menu
-            .as_deref()
-            .is_some_and(FieldMenuState::input_locked)
-        || service.as_deref().is_some_and(ServiceUiState::input_locked)
-    {
+    if overlays.any_active() {
         let tile_id = player_animation.update(None, delta_time);
         set_atlas_tile(&mut player_sprite, tile_id);
         return;

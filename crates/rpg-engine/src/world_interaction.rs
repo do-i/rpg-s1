@@ -79,6 +79,19 @@ impl WorldInteractionState {
     pub(crate) fn session(&self) -> Option<&DialogueSession> {
         self.session.as_ref()
     }
+
+    /// A state with a dialogue open, for tests that need the World input-locked.
+    #[cfg(test)]
+    pub(crate) fn dialogue_open_for_tests() -> Self {
+        Self {
+            request: Some(DialogueRequest {
+                id: "test_dialogue".to_owned(),
+                speaker: None,
+                handle: Handle::default(),
+            }),
+            ..default()
+        }
+    }
 }
 
 #[derive(Debug)]

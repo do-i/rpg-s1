@@ -68,8 +68,11 @@ impl Plugin for WorldEncounterPlugin {
                     ApplyDeferred,
                     drive_active_encounter_assets,
                     ApplyDeferred,
-                    update_world_enemies,
-                    detect_enemy_contact,
+                    // The ambient World holds still while any overlay owns the
+                    // screen; asset loading and the battle hand-off below do not.
+                    (update_world_enemies, detect_enemy_contact)
+                        .chain()
+                        .run_if(crate::world_pause::world_simulation_running),
                     advance_battle_transition,
                     update_battle_flash_overlay,
                 )
