@@ -51,6 +51,20 @@ world-map-travel parity obligation is the `warp_logic.py` semantics check
 tracked as parity-plan task P1.1. Producing the flag, or wiring a map-level
 transport system, would be inventing behavior the original does not have.
 
+**Superseded 2026-08-28 by roadmap B2.7.** The reasoning above stands — nothing
+reads the block — but "keep the bytes" was the wrong conclusion for a surface
+that reads to a maintainer as a live system. The `transport:` block is removed
+from `zone_01_starting_forest.yaml` (it was the only map carrying one), which
+clears the `transport_warp_unlocked` error. The design of record remains
+`docs/design/transportation.md`, and roadmap B4.1 still owns the build-or-cut
+decision; if transport is built, the block is re-authored deliberately and for
+every map that needs it, not inherited as aspirational data in one.
+
+Removing it exposes a warning the error was masking: `sky_crystal` produces
+`transport_fly_unlocked`, which now nothing consumes. That is the honest state
+of a key item gating a system that does not exist, and it belongs to roadmap
+B2.3.
+
 ### Jep join map `dungeon_ruinwatch` (2 errors) — keep bytes; recruitment already has a real home
 
 `data/party.yaml#party[3].join.map` names a map that exists in neither
@@ -64,6 +78,16 @@ path, and will be in the port once W12.4 verifies Ruinwatch. The dangling
 `dungeon_ruinwatch` metadata stays as accounted source bytes; W12.4's
 acceptance must prove the monastery-vaults recruitment live, not a
 `dungeon_ruinwatch` map.
+
+**Superseded 2026-08-28 by roadmap B2.7.** `join.map` and `join.position` are
+consumed by nothing but the validator in the port either (the only readers are
+`scenario_cross_reference.rs:729,783`), so pointing them at a map that does not
+exist buys no fidelity and costs two standing errors plus a false trail for
+anyone reading `party.yaml` to find where Jep is recruited. They are repointed
+at the map that actually carries him, `town_03_ruinwatch_monastery_vaults` —
+and at his authored position `[10, 5]`, which is where the NPC really stands;
+the `[5, 9]` recorded above was the stale `party.yaml` value, not the NPC's.
+W12.4's acceptance obligation is unchanged.
 
 ### Title cursor icon (1 error) — already decided
 
