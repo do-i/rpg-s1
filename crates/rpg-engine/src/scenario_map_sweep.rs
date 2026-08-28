@@ -18,7 +18,7 @@
 //! every shipped TMX is now expected to parse cleanly.
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -158,20 +158,25 @@ pub(crate) fn build_map_sweep(physical_root: &Path) -> MapSweepReport {
 
     let tmx_stems = read_stem_set(&tmx_dir, canonical_root.as_deref(), "tmx");
     let dialogue_ids = read_dialogue_ids(&dialogue_dir, canonical_root.as_deref());
+    let collisions = collision_index(
+        physical_root,
+        canonical_root.as_deref(),
+        &manifest,
+        &tmx_stems,
+    );
 
+    let context = SweepContext {
+        physical_root,
+        canonical_root: canonical_root.as_deref(),
+        manifest: &manifest,
+        tmx_stems: &tmx_stems,
+        collisions: &collisions,
+        dialogue_ids: &dialogue_ids,
+        maps_dir: &maps_dir,
+    };
     let entries = tmx_stems
         .iter()
-        .map(|stem| {
-            build_entry(
-                stem,
-                physical_root,
-                canonical_root.as_deref(),
-                &manifest,
-                &tmx_stems,
-                &dialogue_ids,
-                &maps_dir,
-            )
-        })
+        .map(|stem| build_entry(stem, &context))
         .collect();
 
     MapSweepReport {
@@ -182,15 +187,27 @@ pub(crate) fn build_map_sweep(physical_root: &Path) -> MapSweepReport {
     }
 }
 
-fn build_entry(
-    stem: &str,
-    physical_root: &Path,
-    canonical_root: Option<&Path>,
-    manifest: &Manifest,
-    tmx_stems: &BTreeSet<String>,
-    dialogue_ids: &BTreeSet<String>,
-    maps_dir: &Path,
-) -> MapSweepEntry {
+/// Package-wide inputs shared by every swept map, resolved once by [`build_map_sweep`].
+struct SweepContext<'a> {
+    physical_root: &'a Path,
+    canonical_root: Option<&'a Path>,
+    manifest: &'a Manifest,
+    tmx_stems: &'a BTreeSet<String>,
+    collisions: &'a BTreeMap<String, CollisionOccupancy>,
+    dialogue_ids: &'a BTreeSet<String>,
+    maps_dir: &'a Path,
+}
+
+fn build_entry(stem: &str, context: &SweepContext<'_>) -> MapSweepEntry {
+    let &SweepContext {
+        physical_root,
+        canonical_root,
+        manifest,
+        tmx_stems,
+        collisions,
+        dialogue_ids,
+        maps_dir,
+    } = context;
     let mut findings = Vec::new();
     let mut portal_count = 0;
     let mut sign_count = 0;
@@ -229,7 +246,7 @@ fn build_entry(
     if let Some(document) = &document {
         check_visible_pipeline(document, physical_root, canonical_root, &mut findings);
         check_collision(document, &mut findings);
-        portal_count = check_portals(document, tmx_stems, &mut findings);
+        portal_count = check_portals(document, tmx_stems, collisions, &mut findings);
         sign_count = check_signs(document, stem, manifest, dialogue_ids, &mut findings);
         let (states, boxes) = check_npcs_and_boxes(
             document,
@@ -373,9 +390,40 @@ fn check_collision(document: &TmxMapDocument, findings: &mut Vec<SweepFinding>) 
     }
 }
 
+/// Collision occupancy for every parseable TMX in the package, keyed by stem.
+///
+/// Portals are authored on the *origin* map but land on the *destination* map, so checking a
+/// landing tile needs the target's collision layer, not the one being swept.
+fn collision_index(
+    physical_root: &Path,
+    canonical_root: Option<&Path>,
+    manifest: &Manifest,
+    tmx_stems: &BTreeSet<String>,
+) -> BTreeMap<String, CollisionOccupancy> {
+    let tmx_root = manifest.refs.tmx.as_str();
+    let mut index = BTreeMap::new();
+    for stem in tmx_stems {
+        let logical = format!("{tmx_root}/{stem}.tmx");
+        let Ok(path) = ScenarioRelativePath::try_from(logical.as_str()) else {
+            continue;
+        };
+        let Some(text) = read_file_safely(physical_root, canonical_root, path.as_str()) else {
+            continue;
+        };
+        let Ok(document) = parse_tmx_map_document(&text, &path) else {
+            continue;
+        };
+        if let Ok(occupancy) = CollisionOccupancy::from_tmx_document(&document) {
+            index.insert(stem.clone(), occupancy);
+        }
+    }
+    index
+}
+
 fn check_portals(
     document: &TmxMapDocument,
     tmx_stems: &BTreeSet<String>,
+    collisions: &BTreeMap<String, CollisionOccupancy>,
     findings: &mut Vec<SweepFinding>,
 ) -> usize {
     match runtime_portals(document) {
@@ -389,6 +437,33 @@ fn check_portals(
                             "portal targets map id `{target}` which has no same-stem or segment TMX"
                         ),
                     ));
+                    continue;
+                }
+                // A resolvable target with no entry here is a segment-parent id, which has no TMX
+                // of its own to land on; the id check above already covers unresolvable targets.
+                let Some(occupancy) = collisions.get(target) else {
+                    continue;
+                };
+                let landing = portal.target_position();
+                let (x, y) = (landing.x, landing.y);
+                match occupancy.is_open(x, y) {
+                    Some(true) => {}
+                    Some(false) => findings.push(SweepFinding::new(
+                        SweepCategory::Portal,
+                        format!(
+                            "portal to `{target}` lands on blocked tile ({x}, {y}); \
+                             the player would arrive inside collision"
+                        ),
+                    )),
+                    None => findings.push(SweepFinding::new(
+                        SweepCategory::Portal,
+                        format!(
+                            "portal to `{target}` lands at ({x}, {y}), outside that map's \
+                             {}x{} bounds",
+                            occupancy.width(),
+                            occupancy.height()
+                        ),
+                    )),
                 }
             }
             portals.len()
@@ -878,6 +953,66 @@ refs:
         let portal_findings = findings(origin, SweepCategory::Portal);
         assert_eq!(portal_findings.len(), 1);
         assert!(portal_findings[0].contains("`nowhere`"));
+    }
+
+    /// A portal can name a real map and still strand the player, by landing them inside that
+    /// map's collision or off its edge. The target-id check cannot see either, because the
+    /// landing tile belongs to the *destination* map, not the one being swept.
+    #[test]
+    fn portal_landing_tiles_are_checked_against_the_destination_map() {
+        let fixture = TempScenario::new();
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" orientation="orthogonal" renderorder="right-down" width="2" height="2" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="4">
+  <layer id="1" name="ground" width="2" height="2"><data encoding="csv">0,0,
+  0,0</data></layer>
+  <layer id="2" name="collision" width="2" height="2"><data encoding="csv">0,0,
+  0,0</data></layer>
+  <objectgroup id="1" name="portals">
+    <object id="1" x="0" y="0" width="32" height="32">
+      <properties>
+        <property name="target_map" value="walled"/>
+        <property name="target_position_x" type="int" value="1"/>
+        <property name="target_position_y" type="int" value="1"/>
+      </properties>
+    </object>
+    <object id="2" x="32" y="0" width="32" height="32">
+      <properties>
+        <property name="target_map" value="walled"/>
+        <property name="target_position_x" type="int" value="9"/>
+        <property name="target_position_y" type="int" value="9"/>
+      </properties>
+    </object>
+    <object id="3" x="0" y="32" width="32" height="32">
+      <properties>
+        <property name="target_map" value="walled"/>
+        <property name="target_position_x" type="int" value="0"/>
+        <property name="target_position_y" type="int" value="0"/>
+      </properties>
+    </object>
+  </objectgroup>
+</map>
+"#;
+        fixture.write("assets/maps/origin.tmx", xml);
+        // (1, 1) is solid; (0, 0) is open.
+        fixture.write("assets/maps/walled.tmx", &minimal_map_xml("0,0,\n0,1"));
+
+        let report = build_map_sweep(&fixture.0);
+        let origin = entry(&report, "origin");
+        assert_eq!(origin.portal_count, 3);
+        let portal_findings = findings(origin, SweepCategory::Portal);
+        assert_eq!(portal_findings.len(), 2, "{portal_findings:#?}");
+        assert!(
+            portal_findings
+                .iter()
+                .any(|finding| finding.contains("blocked tile (1, 1)")),
+            "{portal_findings:#?}"
+        );
+        assert!(
+            portal_findings
+                .iter()
+                .any(|finding| finding.contains("(9, 9), outside that map's 2x2 bounds")),
+            "{portal_findings:#?}"
+        );
     }
 
     #[test]

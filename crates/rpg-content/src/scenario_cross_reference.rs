@@ -856,21 +856,49 @@ impl<'a> Validator<'a> {
                 probe_path(self.physical_root, self.canonical_root.as_deref(), &path)
                     != ScenarioPathProbeResult::File
             });
-            // A same-stem-less map YAML is genuinely unmatched unless numbered segment TMX
-            // files (`<stem>_01.tmx`, `<stem>_02.tmx`, ...) name it as their parent: that is the
-            // pinned source's multi-segment convention (mirrors Python's `_is_submap` in
-            // `engine/world/warp_logic.py`), not missing content, so no warning is raised for it.
-            let has_segment_tmx = index
+            // A map YAML with no same-stem TMX is unreadable at runtime either way: both engines
+            // resolve per-map metadata by exact stem (`data/maps/<map_id>.yaml`), with no
+            // parent-to-segment fallback anywhere.
+            //
+            // This previously stayed silent whenever numbered segment TMX files
+            // (`<stem>_01.tmx`, `<stem>_02.tmx`, ...) named the file as their parent, treating
+            // that as the source's multi-segment convention. It is not a convention the runtime
+            // honours, and the suppression is exactly what hid `zone_05_mountain_foothills.yaml`
+            // stranding a BGM key, a `warp_order`, and two unreachable chests (roadmap B2.1).
+            // ADR 0007 records the same conclusion for the pinned engine: `_is_submap` builds its
+            // id set from `assets/maps/*.tmx` stems, so a parent with no TMX of its own is not a
+            // submap parent there either.
+            //
+            // So the segment case is now the *louder* one -- it means authored content exists and
+            // no map can load it -- and the repair is to name the file after the segment it
+            // describes.
+            let segments = index
                 .maps
                 .iter()
-                .any(|candidate| is_numeric_tmx_segment(&file.stem, candidate));
-            if tmx_missing && !has_segment_tmx {
-                self.warning(
-                    "source.unmatched_map_metadata",
-                    &file.path,
-                    "$same_stem_tmx",
-                    format!("no same-stem TMX file exists at `{tmx_path}`"),
-                );
+                .filter(|candidate| is_numeric_tmx_segment(&file.stem, candidate))
+                .cloned()
+                .collect::<Vec<_>>();
+            if tmx_missing {
+                if segments.is_empty() {
+                    self.warning(
+                        "source.unmatched_map_metadata",
+                        &file.path,
+                        "$same_stem_tmx",
+                        format!("no same-stem TMX file exists at `{tmx_path}`"),
+                    );
+                } else {
+                    self.error(
+                        "source.unreadable_map_metadata",
+                        &file.path,
+                        "$same_stem_tmx",
+                        format!(
+                            "no same-stem TMX file exists at `{tmx_path}`, so nothing can load \
+                             this metadata; its numbered segments ({}) each resolve their own \
+                             `data/maps/<id>.yaml` and none of them is this file",
+                            segments.join(", ")
+                        ),
+                    );
+                }
             }
             for (section, shop) in [
                 ("shop", file.value.shop.as_ref()),
@@ -2845,6 +2873,38 @@ on_complete:
         }));
     }
 
+    /// The exact shape of roadmap B2.1: `<stem>.yaml` describing a map whose TMX files are
+    /// `<stem>_01.tmx`, `<stem>_02.tmx`. Neither engine has a parent-to-segment metadata
+    /// fallback, so the file's BGM, `warp_order`, chests, and NPCs load for nobody. This used to
+    /// be suppressed as a multi-segment "convention" and shipped two unreachable chests.
+    #[test]
+    fn parent_metadata_naming_only_segment_tmx_files_is_an_error_not_a_convention() {
+        let fixture = InventedScenario::new();
+        fixture.write("data/maps/vale.yaml", "name: Vale\nwarp_order: 10\n");
+        fixture.touch("assets/maps/vale_01.tmx");
+        fixture.touch("assets/maps/vale_02.tmx");
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        let finding = report
+            .errors()
+            .find(|finding| finding.code == "source.unreadable_map_metadata")
+            .expect("parent metadata with only segment TMX files must be an error");
+        assert_eq!(finding.location.path.as_str(), "data/maps/vale.yaml");
+        assert_eq!(finding.location.field_path, "$same_stem_tmx");
+        assert!(
+            finding.message.contains("vale_01, vale_02"),
+            "message should name the segments: {}",
+            finding.message
+        );
+        // The softer warning is for the no-segment case and must not double-report here.
+        assert!(
+            !report
+                .warnings()
+                .any(|finding| finding.code == "source.unmatched_map_metadata"
+                    && finding.location.path.as_str() == "data/maps/vale.yaml")
+        );
+    }
+
     #[test]
     fn tmx_only_map_id_satisfies_a_runtime_map_reference() {
         let fixture = InventedScenario::new();
@@ -3061,12 +3121,22 @@ npcs:
             .collect::<Vec<_>>();
         assert_eq!(
             errors.len(),
-            37,
+            38,
             "pinned disagreements changed:\n{errors:#?}"
         );
-        // zone_05_mountain_foothills has no same-stem TMX, but its numbered segment TMX files
-        // (`zone_05_mountain_foothills_01.tmx`, `_02.tmx`, `_03.tmx`) name it as their parent
-        // metadata, so the former `source.unmatched_map_metadata` warning for it is suppressed.
+        // The 38th is `zone_05_mountain_foothills.yaml`: no same-stem TMX, only the numbered
+        // segments `_01.tmx`, `_02.tmx`, `_03.tmx`. This was long treated as a multi-segment
+        // "convention" and suppressed. It is not one -- neither engine resolves metadata from a
+        // parent stem -- so the pinned source strands that file's BGM, `warp_order`, and two
+        // chests. The port repaired it by renaming to `_01.yaml` (roadmap B2.1); the pinned
+        // source still carries the defect, which is why this count is 38 and not 37.
+        assert_eq!(
+            report
+                .errors()
+                .filter(|finding| finding.code == "source.unreadable_map_metadata")
+                .count(),
+            1
+        );
         assert_eq!(warnings.len(), 0, "pinned warnings changed:\n{warnings:#?}");
         assert_eq!(
             report
