@@ -606,6 +606,29 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn a_member_moved_to_the_back_row_keeps_that_row_across_a_save_and_load() {
+        let mut game = fixture_game();
+        assert_eq!(game.party().row_of("aric"), Some(PartyRow::Front));
+        game.party_mut().set_row("aric", PartyRow::Back).unwrap();
+
+        let encoded = NativeSaveEnvelope::from_game_state(
+            &game,
+            "my_rpg_story",
+            "1.0.0",
+            1_700_000_000,
+            "Starting Forest",
+        )
+        .unwrap()
+        .encode()
+        .unwrap();
+        let (_, restored) =
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+
+        assert_eq!(restored.party().row_of("aric"), Some(PartyRow::Back));
+    }
+
+    #[test]
     fn harmless_unknown_fields_are_forward_tolerant() {
         let encoded = String::from_utf8(fixture_envelope().encode().unwrap()).unwrap();
         let extended = encoded

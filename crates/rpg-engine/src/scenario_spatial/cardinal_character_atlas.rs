@@ -25,6 +25,13 @@ const CHARACTER_TILE_COUNT: u32 = CHARACTER_COLUMNS * CHARACTER_ROWS;
 const CHARACTER_IMAGE_WIDTH: u32 = CHARACTER_COLUMNS * CHARACTER_FRAME_SIZE;
 const CHARACTER_IMAGE_HEIGHT: u32 = CHARACTER_ROWS * CHARACTER_FRAME_SIZE;
 const CARDINAL_ANIMATION_OWNERS: [u32; 4] = [0, 9, 18, 27];
+/// Per-frame duration used when a sheet declares no `<animation>` blocks.
+///
+/// Only the protagonist sheet in the shipped scenario authors animations; the four recruit sheets
+/// are bare tilesets of identical geometry. Python never read the animation blocks at all — its
+/// `SpriteSheet` slices by `tilewidth`/`tileheight`/`columns` — so the recruits animate there and
+/// would fail strict validation here. This is the cadence every authored frame uses.
+const CARDINAL_FALLBACK_FRAME_MS: u32 = 100;
 
 /// One tileset-local frame and its pixel rectangle within the atlas image.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -119,27 +126,40 @@ impl CardinalCharacterAtlas {
             CHARACTER_IMAGE_HEIGHT,
         )?;
 
-        let animation_owners = metadata
-            .animations()
-            .iter()
-            .map(|animation| animation.tile_id())
-            .collect::<Vec<_>>();
-        if animation_owners != CARDINAL_ANIMATION_OWNERS {
-            return Err(CardinalCharacterAtlasError::AnimationOwners {
-                actual: animation_owners,
-            });
-        }
-
-        let directional_walk_frames = std::array::from_fn(|index| {
-            metadata.animations()[index]
-                .frames()
+        // A sheet that authors nothing gets the geometric cycle Python would have sliced; a sheet
+        // that authors something must author all four cardinal owners.
+        let directional_walk_frames = if metadata.animations().is_empty() {
+            std::array::from_fn(|index| {
+                let owner = CARDINAL_ANIMATION_OWNERS[index];
+                (owner + 1..owner + CHARACTER_COLUMNS)
+                    .map(|tile_id| AtlasAnimationFrame {
+                        tile_id,
+                        duration_ms: CARDINAL_FALLBACK_FRAME_MS,
+                    })
+                    .collect()
+            })
+        } else {
+            let animation_owners = metadata
+                .animations()
                 .iter()
-                .map(|frame| AtlasAnimationFrame {
-                    tile_id: frame.tile_id(),
-                    duration_ms: frame.duration_ms(),
-                })
-                .collect()
-        });
+                .map(|animation| animation.tile_id())
+                .collect::<Vec<_>>();
+            if animation_owners != CARDINAL_ANIMATION_OWNERS {
+                return Err(CardinalCharacterAtlasError::AnimationOwners {
+                    actual: animation_owners,
+                });
+            }
+            std::array::from_fn(|index| {
+                metadata.animations()[index]
+                    .frames()
+                    .iter()
+                    .map(|frame| AtlasAnimationFrame {
+                        tile_id: frame.tile_id(),
+                        duration_ms: frame.duration_ms(),
+                    })
+                    .collect()
+            })
+        };
 
         Ok(Self {
             frame_width: metadata.tile_width(),
@@ -277,6 +297,10 @@ mod tests {
     const COPIED_ARIC_TSX: &str = include_str!(
         "../../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx"
     );
+    /// A shipped recruit sheet: the same geometry as Aric's, with no `<animation>` blocks.
+    const COPIED_ELISE_TSX: &str = include_str!(
+        "../../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx"
+    );
 
     fn metadata(xml: &str) -> crate::tsx_metadata::TsxTilesetMetadata {
         let owner = ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx")
@@ -313,6 +337,38 @@ mod tests {
             }
         );
         assert!(layout.frame(36).is_none());
+    }
+
+    #[test]
+    fn a_sheet_without_animations_walks_on_its_geometric_rows_like_the_python_slicer() {
+        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ELISE_TSX))
+            .expect("a bare recruit sheet of matching geometry should be accepted");
+
+        let authored = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX))
+            .expect("the authored protagonist sheet still parses");
+        for direction in [
+            CardinalDirection::Up,
+            CardinalDirection::Left,
+            CardinalDirection::Down,
+            CardinalDirection::Right,
+        ] {
+            assert_eq!(
+                layout.base_frame(direction).tile_id(),
+                authored.base_frame(direction).tile_id()
+            );
+            let derived = layout
+                .walk_frames(direction)
+                .iter()
+                .map(|frame| (frame.tile_id(), frame.duration_ms()))
+                .collect::<Vec<_>>();
+            let expected = authored
+                .walk_frames(direction)
+                .iter()
+                .map(|frame| (frame.tile_id(), frame.duration_ms()))
+                .collect::<Vec<_>>();
+            assert_eq!(derived.len(), 8);
+            assert_eq!(derived, expected);
+        }
     }
 
     #[test]

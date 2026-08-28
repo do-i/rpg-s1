@@ -11,6 +11,7 @@ use crate::{
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_item::{FieldUseCatalogFile, ItemCatalogFile},
     scenario_manifest::Manifest,
+    scenario_party::PartyCatalog,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_yaml,
@@ -27,6 +28,13 @@ pub(crate) struct ScenarioInventory {
     pub(crate) tmx_directory: Option<ScenarioRelativePath>,
     pub(crate) battle_backgrounds: Option<ScenarioRelativePath>,
     pub(crate) party: Option<ScenarioRelativePath>,
+    /// Walk-cycle TSX per party member, in authored `party.yaml` order.
+    ///
+    /// Nothing in the source data names these files: Python's `load_party_member_sprite` derives
+    /// `{NN}_{id}_walk.tsx` from the member's party index and falls back to `{id}_walk.tsx`.
+    /// Resolving that convention once here keeps the World sprite and the switch modal reading the
+    /// same list, and members whose sheet is absent are simply omitted.
+    pub(crate) party_sprites: Vec<(String, ScenarioRelativePath)>,
     pub(crate) balance: Option<ScenarioRelativePath>,
     pub(crate) item_catalogs: Vec<ScenarioRelativePath>,
     pub(crate) field_use: Option<ScenarioRelativePath>,
@@ -183,7 +191,45 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         }
     }
     inventory.quests = Some(manifest.refs.quests.clone());
+    inventory.party_sprites = party_sprites(&package, &manifest);
     Ok(inventory)
+}
+
+/// Resolves each party member's walk sheet beside the manifest's protagonist sprite.
+///
+/// Deliberately non-fatal: a package that ships no party catalog, or a member with no sheet, loses
+/// the switch-modal thumbnail and falls back to the protagonist sprite in the World rather than
+/// failing the whole inventory.
+fn party_sprites(package: &Path, manifest: &Manifest) -> Vec<(String, ScenarioRelativePath)> {
+    let Some(directory) = Path::new(manifest.protagonist.sprite.as_str())
+        .parent()
+        .and_then(|parent| parent.to_str())
+    else {
+        return Vec::new();
+    };
+    let Ok(document) = fs::read_to_string(package.join(manifest.refs.party.as_str())) else {
+        return Vec::new();
+    };
+    let Ok(catalog) = scenario_yaml::from_str::<PartyCatalog>(&document) else {
+        return Vec::new();
+    };
+    catalog
+        .party
+        .iter()
+        .enumerate()
+        .filter_map(|(index, member)| {
+            let id = member.data().id.as_str();
+            let candidates = [
+                format!("{directory}/{:02}_{id}_walk.tsx", index + 1),
+                format!("{directory}/{id}_walk.tsx"),
+            ];
+            let path = candidates
+                .into_iter()
+                .filter_map(|candidate| ScenarioRelativePath::try_from(candidate).ok())
+                .find(|candidate| package.join(candidate.as_str()).is_file())?;
+            Some((id.to_owned(), path))
+        })
+        .collect()
 }
 
 fn yaml_files(
@@ -265,6 +311,31 @@ fn relative_path(package: &Path, path: &Path) -> Result<ScenarioRelativePath, In
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_shipped_party_member_resolves_a_numbered_walk_sheet() {
+        let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let root = ScenarioRoot::try_for_package_key("rusted_kingdoms").unwrap();
+
+        let inventory = ScenarioInventory::discover(&asset_base, &root);
+
+        assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
+        let sprites = inventory
+            .party_sprites
+            .iter()
+            .map(|(id, path)| (id.as_str(), path.as_str()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            sprites,
+            vec![
+                ("aric", "assets/sprites/party/01_aric_walk.tsx"),
+                ("elise", "assets/sprites/party/02_elise_walk.tsx"),
+                ("reiya", "assets/sprites/party/03_reiya_walk.tsx"),
+                ("jep", "assets/sprites/party/04_jep_walk.tsx"),
+                ("kael", "assets/sprites/party/05_kael_walk.tsx"),
+            ]
+        );
+    }
 
     #[test]
     fn discovers_an_invented_package_without_rusted_kingdoms_catalog_names() {
