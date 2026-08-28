@@ -238,6 +238,10 @@ pub(crate) enum WorldPlayerSpawnStatus {
 pub(crate) struct WorldPlayerSpawnState {
     atlas: Option<Handle<TsxAtlasAsset>>,
     map_id: Option<String>,
+    /// Party member the loaded atlas belongs to, so a switch re-requests the right sheet.
+    member_id: Option<String>,
+    /// Sub-tile position carried across a sprite swap, so switching does not snap to tile centre.
+    pending_motion: Option<WorldPlayerMotion>,
     status: WorldPlayerSpawnStatus,
     failure: Option<WorldPlayerSpawnFailure>,
 }
@@ -247,6 +251,8 @@ impl Default for WorldPlayerSpawnState {
         Self {
             atlas: None,
             map_id: None,
+            member_id: None,
+            pending_motion: None,
             status: WorldPlayerSpawnStatus::Idle,
             failure: None,
         }
@@ -318,19 +324,41 @@ fn begin_world_player_load(game: Option<Res<GameState>>, mut state: ResMut<World
             .as_deref()
             .and_then(|game| game.map().current())
             .map(|map| map.as_str().to_owned()),
+        member_id: None,
+        pending_motion: None,
         status: WorldPlayerSpawnStatus::WaitingForManifest,
         failure: None,
     };
 }
 
+/// Requests the walk sheet belonging to whoever the player currently controls.
+///
+/// Ports `world_map_scene._update_player_sprite_if_changed`: the visible sprite follows
+/// `controlled_member_id`, falling back to the manifest protagonist when that member ships no
+/// sheet. A switch invalidates the loaded atlas, and [`spawn_world_player`] rebuilds the sprite.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "resolving the sheet spans the manifest, the package inventory, and the live party"
+)]
 fn request_world_player_atlas(
+    mut commands: Commands,
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
     active_manifest: Res<ActiveManifestLoad>,
     manifests: Res<Assets<Manifest>>,
+    inventory: Res<crate::scenario_inventory::ScenarioInventory>,
+    game: Option<Res<GameState>>,
+    players: Query<(Entity, &WorldPlayerMotion), With<WorldPlayer>>,
     mut state: ResMut<WorldPlayerSpawnState>,
 ) {
-    if state.atlas.is_some() || state.status == WorldPlayerSpawnStatus::Failed {
+    if state.status == WorldPlayerSpawnStatus::Failed {
+        return;
+    }
+    let controlled = game
+        .as_deref()
+        .map(|game| game.controlled_member_id().to_owned());
+    let unchanged = state.atlas.is_some() && state.member_id == controlled;
+    if unchanged {
         return;
     }
     if active_manifest.status() == ActiveManifestStatus::Failed {
@@ -341,7 +369,25 @@ fn request_world_player_atlas(
         state.status = WorldPlayerSpawnStatus::WaitingForManifest;
         return;
     };
-    state.atlas = Some(asset_server.load(scenario_root.resolve(&manifest.protagonist.sprite)));
+    let sprite = controlled
+        .as_deref()
+        .and_then(|member_id| {
+            inventory
+                .party_sprites
+                .iter()
+                .find(|(id, _)| id == member_id)
+                .map(|(_, path)| path)
+        })
+        .unwrap_or(&manifest.protagonist.sprite);
+
+    // Only the initial request has no player to replace; a switch respawns one mid-walk, so its
+    // pixel position is carried over rather than re-derived from the containing tile.
+    for (entity, motion) in &players {
+        commands.entity(entity).despawn();
+        state.pending_motion = Some(*motion);
+    }
+    state.atlas = Some(asset_server.load(scenario_root.resolve(sprite)));
+    state.member_id = controlled;
     state.status = WorldPlayerSpawnStatus::Loading;
     state.failure = None;
 }
@@ -453,7 +499,9 @@ fn spawn_world_player(
             return;
         }
     };
-    let motion = WorldPlayerMotion::from_tile(tile);
+    let motion = state
+        .pending_motion
+        .unwrap_or_else(|| WorldPlayerMotion::from_tile(tile));
     let visual_y = -(motion.top_left().y + CHARACTER_SPRITE_SIZE / 2.0);
     let translation =
         motion.sprite_center_world(world_entity_y_z(visual_y, PLAYER_SPRITE_HALF_HEIGHT));
@@ -474,6 +522,7 @@ fn spawn_world_player(
         CameraFollowTarget,
         animation,
     ));
+    state.pending_motion = None;
     state.status = WorldPlayerSpawnStatus::Spawned;
     state.failure = None;
 }
@@ -632,6 +681,9 @@ mod tests {
             })
             .add_plugins(ImagePlugin::default_nearest())
             .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .insert_resource(crate::scenario_inventory::ScenarioInventory::discover(
+                asset_base, &root,
+            ))
             .insert_resource(root)
             .add_plugins(ScenarioManifestAssetPlugin)
             .add_plugins(TsxAtlasAssetPlugin)
@@ -740,6 +792,72 @@ mod tests {
         }
         assert_eq!(one_player(&mut app).0, entity);
         assert_eq!(player_count(&mut app), 1);
+    }
+
+    /// Currently requested walk sheet, as a package-relative string.
+    fn requested_sprite(app: &App) -> String {
+        app.world()
+            .resource::<WorldPlayerSpawnState>()
+            .atlas
+            .as_ref()
+            .and_then(|handle| handle.path())
+            .map(ToString::to_string)
+            .expect("a walk sheet should be requested")
+    }
+
+    #[test]
+    fn switching_the_controlled_member_reskins_the_player_without_moving_it() {
+        let mut app = world_app(
+            Path::new(REPOSITORY_ASSET_BASE),
+            ScenarioRoot::default(),
+            Some(new_game()),
+        );
+        wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
+        let (_, before, _) = one_player(&mut app);
+        assert!(requested_sprite(&app).ends_with("01_aric_walk.tsx"));
+
+        let shipped: PartyCatalog = scenario_yaml::from_str(
+            &fs::read_to_string(
+                Path::new(REPOSITORY_ASSET_BASE).join("scenarios/rusted_kingdoms/data/party.yaml"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let elise = shipped
+            .party
+            .iter()
+            .find(|member| member.data().id == "elise")
+            .expect("the shipped party has elise");
+        let balance = balance();
+        {
+            let mut game = app.world_mut().resource_mut::<GameState>();
+            game.party_mut()
+                .try_add(
+                    crate::runtime_member::RuntimeMember::try_from_catalog(
+                        elise,
+                        &balance.progression,
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+            game.set_controlled_member("elise").unwrap();
+        }
+
+        for _ in 0..5_000 {
+            app.update();
+            if requested_sprite(&app).ends_with("02_elise_walk.tsx")
+                && app.world().resource::<WorldPlayerSpawnState>().status()
+                    == WorldPlayerSpawnStatus::Spawned
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        assert!(requested_sprite(&app).ends_with("02_elise_walk.tsx"));
+        assert_eq!(player_count(&mut app), 1);
+        // The swap respawns the sprite, so the carried pixel position is what keeps it in place.
+        assert_eq!(one_player(&mut app).1.translation, before.translation);
     }
 
     #[test]

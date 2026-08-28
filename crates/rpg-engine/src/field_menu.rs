@@ -38,6 +38,7 @@ use crate::{
     scenario_spatial::CardinalDirection,
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, PlaySfx},
+    tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
@@ -70,8 +71,9 @@ const SPELLBOOK_VISIBLE_ROWS: usize = 7;
 const MAIN_COMMAND_ROWS: usize = 4;
 const QUEST_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
-const SAVE_COMMAND_INDEX: usize = 5;
-const QUIT_COMMAND_INDEX: usize = 6;
+const CHARACTER_COMMAND_INDEX: usize = 5;
+const SAVE_COMMAND_INDEX: usize = 6;
+const QUIT_COMMAND_INDEX: usize = 7;
 
 #[derive(Clone, Copy)]
 struct MainCommand {
@@ -81,7 +83,7 @@ struct MainCommand {
     screen: Option<FieldMenuScreen>,
 }
 
-const MAIN_COMMANDS: [MainCommand; 7] = [
+const MAIN_COMMANDS: [MainCommand; 8] = [
     MainCommand {
         label: "Status",
         badge: "ST",
@@ -111,6 +113,12 @@ const MAIN_COMMANDS: [MainCommand; 7] = [
         badge: "QU",
         description: "review active and completed quests",
         screen: Some(FieldMenuScreen::Quests),
+    },
+    MainCommand {
+        label: "Character",
+        badge: "CH",
+        description: "control a different party member",
+        screen: None,
     },
     MainCommand {
         label: "Save",
@@ -149,7 +157,11 @@ impl Plugin for FieldMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySfx>()
             .init_resource::<FieldMenuState>()
-            .add_systems(OnEnter(AppState::World), reset_field_menu)
+            .init_resource::<PartyWalkSheets>()
+            .add_systems(
+                OnEnter(AppState::World),
+                (reset_field_menu, load_party_walk_sheets),
+            )
             .add_systems(
                 Update,
                 (
@@ -197,6 +209,8 @@ enum FieldMenuMode {
     TeleportPicker,
     SaveConfirm,
     QuitConfirm,
+    /// Roster overlay for choosing which member the World sprite follows.
+    CharacterSwitch,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -294,6 +308,11 @@ impl FieldMenuState {
                 self.mode = FieldMenuMode::Browse;
                 self.message.clear();
             }
+            FieldMenuMode::CharacterSwitch => {
+                self.mode = FieldMenuMode::Browse;
+                self.selected = CHARACTER_COMMAND_INDEX;
+                self.message.clear();
+            }
         }
     }
 }
@@ -324,6 +343,9 @@ struct SelectedMainCommandRow;
 
 #[derive(Component)]
 struct FieldMenuQuitModal;
+
+#[derive(Component)]
+struct FieldMenuCharacterModal;
 
 #[derive(Component)]
 struct FieldMenuStatusPage;
@@ -427,6 +449,41 @@ impl StatusPortraitAssets {
     }
 }
 
+/// Tile row holding the downward-facing idle frame on a cardinal walk sheet.
+const WALK_SHEET_IDLE_DOWN_TILE: usize = 18;
+
+/// Strong handles to each party member's walk sheet, kept so the switch overlay can draw a real
+/// sprite frame instead of a lettered placeholder.
+#[derive(Debug, Default, Resource)]
+pub(crate) struct PartyWalkSheets {
+    sheets: Vec<(String, Handle<TsxAtlasAsset>)>,
+}
+
+impl PartyWalkSheets {
+    fn sheet(&self, member_id: &str) -> Option<&Handle<TsxAtlasAsset>> {
+        self.sheets
+            .iter()
+            .find(|(id, _)| id == member_id)
+            .map(|(_, handle)| handle)
+    }
+}
+
+fn load_party_walk_sheets(
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
+    mut sheets: ResMut<PartyWalkSheets>,
+) {
+    if !sheets.sheets.is_empty() {
+        return;
+    }
+    sheets.sheets = inventory
+        .party_sprites
+        .iter()
+        .map(|(member_id, path)| (member_id.clone(), asset_server.load(root.resolve(path))))
+        .collect();
+}
+
 fn reset_field_menu(mut state: ResMut<FieldMenuState>) {
     state.close();
 }
@@ -523,7 +580,10 @@ fn handle_field_menu_input(
                 state.selected = stepped_main_command(state.selected, vertical, horizontal);
             }
             if actions.just_pressed(AppAction::Confirm) {
-                if state.selected == SAVE_COMMAND_INDEX {
+                if state.selected == CHARACTER_COMMAND_INDEX {
+                    state.mode = FieldMenuMode::CharacterSwitch;
+                    state.selected = controlled_member_index(&game);
+                } else if state.selected == SAVE_COMMAND_INDEX {
                     state.screen = FieldMenuScreen::Save;
                     state.selected = FIRST_PLAYER_SLOT;
                 } else if state.selected == QUIT_COMMAND_INDEX {
@@ -533,6 +593,14 @@ fn handle_field_menu_input(
                     state.screen = screen;
                     state.selected = 0;
                 }
+            }
+        }
+        (FieldMenuScreen::Main, FieldMenuMode::CharacterSwitch) => {
+            if let Some(delta) = vertical {
+                state.selected = wrapped_or_zero(state.selected, game.party().len(), delta);
+            }
+            if actions.just_pressed(AppAction::Confirm) {
+                switch_controlled_member(&mut game, &mut state);
             }
         }
         (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => {
@@ -1030,6 +1098,33 @@ fn set_member_row(game: &mut GameState, state: &mut FieldMenuState) {
     }
 }
 
+/// Row of the member the player currently controls, so the switch overlay opens on them.
+fn controlled_member_index(game: &GameState) -> usize {
+    game.party()
+        .members()
+        .position(|member| member.id() == game.controlled_member_id())
+        .unwrap_or_default()
+}
+
+/// Applies the switch overlay's selection and closes it.
+///
+/// Ports `switch_character_scene._confirm_selection`: the overlay closes on confirm whether or not
+/// the selection changed, and the World sprite follows through `controlled_member_id`.
+fn switch_controlled_member(game: &mut GameState, state: &mut FieldMenuState) {
+    let Some(member_id) = member_id_at(game, state.selected).map(ToOwned::to_owned) else {
+        return;
+    };
+    let name = member_at(game, state.selected)
+        .map_or_else(|| member_id.clone(), |member| member.name().to_owned());
+    state.mode = FieldMenuMode::Browse;
+    state.selected = CHARACTER_COMMAND_INDEX;
+    state.message = if game.set_controlled_member(member_id).is_ok() {
+        format!("Now controlling {name}.")
+    } else {
+        "That party member cannot be controlled.".to_owned()
+    };
+}
+
 /// Player-facing name for a battle row. Keeps `{:?}` out of the status page.
 const fn row_label(row: PartyRow) -> &'static str {
     match row {
@@ -1114,11 +1209,45 @@ fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
 #[cfg(test)]
 mod tests {
     use super::{ui::*, *};
-    use crate::save_data::tests::fixture_game;
+    use crate::save_data::tests::{fixture_balance, fixture_game};
 
-    fn spawn_fixture_main_page(mut commands: Commands, state: Res<FieldMenuState>) {
+    /// A new game starts with the protagonist alone; the switch overlay needs someone to switch to.
+    fn fixture_game_with_recruit() -> GameState {
+        let catalog: crate::scenario_party::PartyCatalog = crate::scenario_yaml::from_str(
+            include_str!("../../../assets/scenarios/rusted_kingdoms/data/party.yaml"),
+        )
+        .unwrap();
+        let elise = catalog
+            .party
+            .iter()
+            .find(|member| member.data().id == "elise")
+            .expect("the shipped party has elise");
+        let mut game = fixture_game();
+        game.party_mut()
+            .try_add(
+                crate::runtime_member::RuntimeMember::try_from_catalog(
+                    elise,
+                    &fixture_balance().progression,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        game
+    }
+
+    fn spawn_fixture_main_page(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+    ) {
         commands.spawn(Node::default()).with_children(|parent| {
-            spawn_main_menu_page(parent, &Handle::<Font>::default(), &state);
+            spawn_main_menu_page(
+                parent,
+                &Handle::<Font>::default(),
+                &state,
+                &game,
+                &PartyWalkThumbnails::default(),
+            );
         });
     }
 
@@ -1747,14 +1876,93 @@ mod tests {
     }
 
     #[test]
+    fn the_switch_overlay_lists_the_party_and_badges_the_controlled_member() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game_with_recruit())
+            .insert_resource(FieldMenuState {
+                open: true,
+                selected: 1,
+                mode: FieldMenuMode::CharacterSwitch,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_main_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(
+            world
+                .query::<&FieldMenuCharacterModal>()
+                .iter(world)
+                .count(),
+            1
+        );
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "SWITCH CHARACTER"));
+        assert!(labels.iter().any(|label| label == "Golden Aric"));
+        assert!(labels.iter().any(|label| label == "Elise"));
+        // Only the protagonist is controlled, so exactly one row carries the badge.
+        assert_eq!(labels.iter().filter(|label| *label == "ACTIVE").count(), 1);
+    }
+
+    #[test]
+    fn confirming_the_switch_overlay_changes_control_and_returns_to_the_deck() {
+        let mut game = fixture_game_with_recruit();
+        assert_eq!(game.controlled_member_id(), "aric");
+
+        let mut state = FieldMenuState::default();
+        state.open(FieldMenuScreen::Main);
+        state.mode = FieldMenuMode::CharacterSwitch;
+        state.selected = 1;
+
+        switch_controlled_member(&mut game, &mut state);
+
+        assert_eq!(game.controlled_member_id(), "elise");
+        assert_eq!(state.mode, FieldMenuMode::Browse);
+        assert_eq!(state.selected, CHARACTER_COMMAND_INDEX);
+        assert!(state.message.contains("Now controlling Elise"));
+    }
+
+    #[test]
+    fn cancelling_the_switch_overlay_returns_the_cursor_to_the_character_command() {
+        let mut state = FieldMenuState::default();
+        state.open(FieldMenuScreen::Main);
+        state.mode = FieldMenuMode::CharacterSwitch;
+        state.selected = 3;
+
+        state.back();
+
+        assert!(state.open);
+        assert_eq!(state.mode, FieldMenuMode::Browse);
+        assert_eq!(state.selected, CHARACTER_COMMAND_INDEX);
+    }
+
+    #[test]
+    fn the_switch_overlay_opens_on_the_member_already_being_controlled() {
+        let mut game = fixture_game_with_recruit();
+        game.set_controlled_member("elise").unwrap();
+
+        assert_eq!(controlled_member_index(&game), 1);
+    }
+
+    #[test]
     fn main_commands_distinguish_enabled_disabled_and_cancel_paths() {
         assert_eq!(main_command_screen(0), Some(FieldMenuScreen::Status));
         assert_eq!(main_command_screen(1), Some(FieldMenuScreen::Spells));
         assert_eq!(main_command_screen(2), Some(FieldMenuScreen::Items));
         assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Equipment));
         assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Quests));
-        assert_eq!(main_command_screen(5), Some(FieldMenuScreen::Save));
-        assert!(main_command_screen(6).is_none());
+        // Character and Quit open modals rather than screens.
+        assert!(main_command_screen(CHARACTER_COMMAND_INDEX).is_none());
+        assert_eq!(
+            main_command_screen(SAVE_COMMAND_INDEX),
+            Some(FieldMenuScreen::Save)
+        );
+        assert!(main_command_screen(QUIT_COMMAND_INDEX).is_none());
 
         let mut state = FieldMenuState::default();
         state.open(FieldMenuScreen::Items);
@@ -1767,11 +1975,12 @@ mod tests {
 
     #[test]
     fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
-        // Left column holds Status, Spells, Items, Equipment; right holds Quests, Save, Quit.
+        // Left column holds Status, Spells, Items, Equipment; right holds Quests, Character,
+        // Save, Quit.
         assert_eq!(stepped_main_command(0, Some(1), None), 1);
         assert_eq!(stepped_main_command(3, Some(1), None), 0);
         assert_eq!(stepped_main_command(0, Some(-1), None), 3);
-        assert_eq!(stepped_main_command(4, Some(-1), None), 6);
+        assert_eq!(stepped_main_command(4, Some(-1), None), 7);
 
         assert_eq!(stepped_main_command(1, None, Some(1)), 5);
         assert_eq!(stepped_main_command(5, None, Some(1)), 1);
@@ -1780,12 +1989,20 @@ mod tests {
 
     #[test]
     fn crossing_into_the_short_column_clamps_to_its_last_command() {
+        // Adding Character filled the deck: eight commands are two whole columns, so the clamp has
+        // nothing to trim today. It still guards the cursor if a command is ever added or removed.
         assert_eq!(main_command_columns(), 2);
         assert_eq!(main_command_column_len(0), 4);
-        assert_eq!(main_command_column_len(1), 3);
+        assert_eq!(main_command_column_len(1), 4);
 
-        // Equipment sits on a row the Quit column does not have.
-        assert_eq!(stepped_main_command(3, None, Some(1)), 6);
+        assert_eq!(stepped_main_command(3, None, Some(1)), 7);
+        for row in 0..MAIN_COMMAND_ROWS {
+            let crossed = stepped_main_command(row, None, Some(1));
+            assert_eq!(
+                crossed % MAIN_COMMAND_ROWS,
+                row.min(main_command_column_len(1) - 1)
+            );
+        }
     }
 
     #[test]
@@ -1813,24 +2030,29 @@ mod tests {
                 "Items",
                 "Equipment",
                 "Quests",
+                "Character",
                 "Save",
                 "Quit"
             ]
         );
 
         let mut app = App::new();
-        app.insert_resource(FieldMenuState {
-            open: true,
-            selected: 1,
-            ..default()
-        })
-        .add_systems(Update, spawn_fixture_main_page);
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuState {
+                open: true,
+                selected: 1,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_main_page);
 
         app.update();
 
         let world = app.world_mut();
         assert_eq!(world.query::<&FieldMenuMainPage>().iter(world).count(), 1);
-        assert_eq!(world.query::<&MainCommandRow>().iter(world).count(), 7);
+        assert_eq!(
+            world.query::<&MainCommandRow>().iter(world).count(),
+            MAIN_COMMANDS.len()
+        );
         assert_eq!(
             world.query::<&SelectedMainCommandRow>().iter(world).count(),
             1
@@ -1849,13 +2071,14 @@ mod tests {
     #[test]
     fn quit_confirmation_is_a_focused_desktop_exit_modal() {
         let mut app = App::new();
-        app.insert_resource(FieldMenuState {
-            open: true,
-            selected: QUIT_COMMAND_INDEX,
-            mode: FieldMenuMode::QuitConfirm,
-            ..default()
-        })
-        .add_systems(Update, spawn_fixture_main_page);
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuState {
+                open: true,
+                selected: QUIT_COMMAND_INDEX,
+                mode: FieldMenuMode::QuitConfirm,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_main_page);
 
         app.update();
 
