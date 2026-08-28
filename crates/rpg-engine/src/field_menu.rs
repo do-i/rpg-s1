@@ -15,9 +15,10 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_panel,
-        spawn_status_text, status_border, status_border_active, status_ember, status_faint,
-        status_gold, status_ink, status_muted, status_teal, status_violet,
+        location_display_name, spawn_header_bars, spawn_meter, spawn_section_rule,
+        spawn_status_panel, spawn_status_text, status_border, status_border_active, status_ember,
+        status_faint, status_gold, status_ink, status_muted, status_teal, status_violet,
+        window_start,
     },
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
@@ -1177,13 +1178,10 @@ mod tests {
     }
 
     #[test]
-    fn status_visual_helpers_handle_empty_names_and_meter_bounds() {
+    fn status_visual_helpers_handle_empty_names_and_portrait_paths() {
         assert_eq!(member_emblem("Aric"), "AR");
         assert_eq!(member_emblem("Aric Vale"), "AV");
         assert_eq!(member_emblem("  "), "?");
-        assert_eq!(meter_percent(3, 0), 0.0);
-        assert_eq!(meter_percent(25, 100), 25.0);
-        assert_eq!(meter_percent(125, 100), 100.0);
         assert_eq!(
             profile_portrait_path("aric"),
             "assets/images/aric_profile.png"

@@ -1162,7 +1162,7 @@ impl fmt::Display for MenuMutationError {
 impl Error for MenuMutationError {}
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::{
         game_state::GameStateParts,
@@ -1190,7 +1190,7 @@ mod tests {
         (metadata, portals)
     }
 
-    fn catalog() -> FieldMenuCatalog {
+    pub(crate) fn catalog() -> FieldMenuCatalog {
         let item_documents = [
             include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/accessories.yaml"),
             include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/body.yaml"),
@@ -1260,7 +1260,7 @@ mod tests {
         }
     }
 
-    fn game(flags: impl IntoIterator<Item = &'static str>) -> GameState {
+    pub(crate) fn game(flags: impl IntoIterator<Item = &'static str>) -> GameState {
         let party_source: PartyCatalog = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
         ))

@@ -1,26 +1,29 @@
 //! Dialogue-routed shop, magic-core, inn, and apothecary overlays.
+//!
+//! This module owns the service state machine and its input; [`view`] draws it. The split
+//! matches `field_menu`: the pages are node trees rebuilt from state, not a formatted string.
 
 use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
 
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
-    field_menu_domain::{
-        FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
-    },
+    field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name},
     game_state::GameState,
     scenario_dialogue::{DialogueActions, DialogueShopKind},
-    scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
     scenario_map::ShopMetadata,
-    scenario_root::ScenarioRoot,
     service_domain::{
         RecipeAvailability, buy, can_sell, craft, exchange_magic_core, recipe_availability,
-        rest_at_inn, sell, sell_price, visible_stock,
+        rest_at_inn, sell, visible_stock,
     },
     sfx_cue::{MenuSfx, PlaySfx},
-    ui_theme::UiTheme,
 };
+
+mod sprites;
+mod view;
+
+use sprites::{ServiceSprites, load_service_sprites};
 
 pub(crate) struct ServiceUiPlugin;
 
@@ -28,16 +31,37 @@ impl Plugin for ServiceUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySfx>()
             .init_resource::<ServiceUiState>()
+            .init_resource::<ServiceSprites>()
+            .add_systems(Startup, load_service_sprites)
             .add_systems(OnEnter(AppState::World), reset_service_ui)
             .add_systems(
                 Update,
-                (handle_service_input, sync_service_overlay, ApplyDeferred)
+                (
+                    handle_service_input,
+                    view::sync_service_overlay,
+                    ApplyDeferred,
+                )
                     .chain()
                     .run_if(in_state(AppState::World)),
             )
-            .add_systems(OnExit(AppState::World), cleanup_service_ui);
+            .add_systems(OnExit(AppState::World), view::cleanup_service_ui);
     }
 }
+
+/// Rows a service list shows before it scrolls, matching the source `VISIBLE_ROWS`.
+const SERVICE_VISIBLE_ROWS: usize = 7;
+
+/// Coarse quantity step for the item shop (`item_shop_scene.py:27`).
+const SHOP_QUANTITY_STEP: u32 = 5;
+
+/// Coarse quantity step for the magic-core exchange (`magic_core_shop_scene.py:25`).
+const CORE_QUANTITY_STEP: u32 = 10;
+
+/// Exchange rate at or above which a core stack asks for confirmation.
+const HIGH_VALUE_CORE_RATE: u32 = 1_000;
+
+/// Seconds a result toast stays up before it fades on its own.
+const TOAST_SECONDS: f32 = 3.0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ServiceRequest {
@@ -64,8 +88,12 @@ enum ServicePage {
     MagicCore,
     Inn,
     Apothecary,
+    /// The apothecary's second stage: the full recipe before it is committed.
+    RecipeDetail,
     Quantity,
     CoreConfirm,
+    /// The post-purchase party picker offered after buying wearable gear.
+    Equip,
     Result,
 }
 
@@ -76,6 +104,41 @@ enum PendingTransaction {
     Exchange,
 }
 
+impl PendingTransaction {
+    const fn origin(self) -> ServicePage {
+        match self {
+            Self::Buy => ServicePage::Buy,
+            Self::Sell => ServicePage::Sell,
+            Self::Exchange => ServicePage::MagicCore,
+        }
+    }
+
+    const fn quantity_step(self) -> u32 {
+        match self {
+            Self::Buy | Self::Sell => SHOP_QUANTITY_STEP,
+            Self::Exchange => CORE_QUANTITY_STEP,
+        }
+    }
+
+    /// The core exchange wraps its quantity cursor; the item shop clamps (`quantity_picker.py`).
+    const fn wraps_quantity(self) -> bool {
+        matches!(self, Self::Exchange)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ToastTone {
+    Good,
+    Warn,
+}
+
+#[derive(Clone, Debug)]
+struct Toast {
+    text: String,
+    tone: ToastTone,
+    remaining: f32,
+}
+
 #[derive(Debug, Default, Resource)]
 pub(crate) struct ServiceUiState {
     request: Option<ServiceRequest>,
@@ -84,7 +147,13 @@ pub(crate) struct ServiceUiState {
     quantity: u32,
     pending_id: Option<String>,
     pending: Option<PendingTransaction>,
-    message: String,
+    /// Which party member the buy-page stat preview and the equip prompt are focused on.
+    equip_selection: usize,
+    /// The item a completed purchase is offering to equip.
+    pending_equip_id: Option<String>,
+    /// Sell-side tag filter; `None` shows every sellable stack.
+    sell_tag: Option<String>,
+    toast: Option<Toast>,
     suppress_confirm: bool,
 }
 
@@ -111,22 +180,35 @@ impl ServiceUiState {
     fn close(&mut self) {
         *self = Self::default();
     }
-}
 
-#[derive(Component)]
-struct ServiceRoot;
-#[derive(Component)]
-struct ServiceTitle;
-#[derive(Component)]
-struct ServiceBody;
-#[derive(Component)]
-struct ServiceHint;
+    fn announce(&mut self, text: impl Into<String>, tone: ToastTone) {
+        self.toast = Some(Toast {
+            text: text.into(),
+            tone,
+            remaining: TOAST_SECONDS,
+        });
+    }
+
+    /// Returns to a list page with the cursor and pending transaction cleared.
+    fn return_to(&mut self, page: ServicePage) {
+        self.page = Some(page);
+        self.selected = 0;
+        self.quantity = 1;
+        self.pending_id = None;
+        self.pending = None;
+    }
+}
 
 fn reset_service_ui(mut state: ResMut<ServiceUiState>) {
     state.close();
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the service state machine reads as one table of page transitions"
+)]
 fn handle_service_input(
+    time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
@@ -137,76 +219,70 @@ fn handle_service_input(
     if !state.input_locked() {
         return;
     }
+    expire_toast(&mut state, time.delta_secs());
     if state.suppress_confirm {
         state.suppress_confirm = false;
         return;
     }
     let Some(mut game) = game else { return };
-    if actions.just_pressed(AppAction::Back) {
-        match state.page {
-            Some(ServicePage::Buy | ServicePage::Sell) => {
-                state.page = Some(ServicePage::ShopMenu);
-                state.selected = 0;
-                state.message.clear();
-            }
-            Some(ServicePage::Quantity) => {
-                state.page = Some(match state.pending {
-                    Some(PendingTransaction::Buy) => ServicePage::Buy,
-                    Some(PendingTransaction::Sell) => ServicePage::Sell,
-                    Some(PendingTransaction::Exchange) => ServicePage::MagicCore,
-                    None => ServicePage::ShopMenu,
-                });
-                state.selected = 0;
-                state.quantity = 1;
-                state.pending_id = None;
-                state.pending = None;
-                state.message.clear();
-            }
-            Some(ServicePage::CoreConfirm) => {
-                state.page = Some(ServicePage::Quantity);
-                state.message.clear();
-            }
-            _ => state.close(),
-        }
-        menu_sfx.cancel();
-        return;
+    if any_input(&keys, &actions) {
+        state.toast = None;
     }
     let delta = actions.menu_navigation();
-    // Wired at the shared entry points for the same reason as `field_menu`: the match below
-    // returns early from several refusal branches, so there is no single post-match point to
-    // compare against. Per-refusal `blocked()` cues land with the A-2 service rebuild, which
-    // replaces these `state.message` strings with a real toast.
     if delta.is_some() {
         menu_sfx.hover();
     }
-    if actions.just_pressed(AppAction::Confirm) {
-        menu_sfx.confirm();
-    }
+    let confirm = actions.just_pressed(AppAction::Confirm);
+    let back = actions.just_pressed(AppAction::Back);
+
     match state.page {
         Some(ServicePage::ShopMenu) => {
+            if back {
+                menu_sfx.cancel();
+                state.close();
+                return;
+            }
             if let Some(delta) = delta {
                 state.selected = wrapped(state.selected, 2, delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
-                state.page = Some(if state.selected == 0 {
+            if confirm {
+                menu_sfx.confirm();
+                let page = if state.selected == 0 {
                     ServicePage::Buy
                 } else {
                     ServicePage::Sell
-                });
-                state.selected = 0;
-                state.message.clear();
+                };
+                state.return_to(page);
+                state.sell_tag = None;
             }
         }
         Some(ServicePage::Buy) => {
-            let rows = active_shop(&state, &catalog, &game)
-                .map(|shop| visible_stock(shop, game.flags()))
-                .unwrap_or_default();
+            if back {
+                menu_sfx.cancel();
+                state.return_to(ServicePage::ShopMenu);
+                return;
+            }
+            if keys.just_pressed(KeyCode::Tab) {
+                menu_sfx.hover();
+                state.return_to(ServicePage::Sell);
+                state.sell_tag = None;
+                return;
+            }
+            let rows = buy_rows(&state, &catalog, &game);
             if let Some(delta) = delta {
                 state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            let member_count = game.party().members().count();
+            if let Some(step) = horizontal_step(&keys)
+                && selected_buy_item(&state, &catalog, &game).is_some_and(is_equipment)
+            {
+                state.equip_selection = wrapped_or_zero(state.equip_selection, member_count, step);
+                menu_sfx.hover();
+            }
+            if confirm {
                 let Some(row) = rows.get(state.selected) else {
-                    state.message = "No stock is currently unlocked.".to_owned();
+                    menu_sfx.blocked();
+                    state.announce("No stock is currently unlocked.", ToastTone::Warn);
                     return;
                 };
                 let room = game
@@ -215,12 +291,15 @@ fn handle_service_input(
                     .saturating_sub(game.repository().item_count(row.id()));
                 let affordable = game.repository().gp() / row.buy_price().get();
                 if room.min(affordable) == 0 {
-                    state.message = if affordable == 0 {
-                        "Not enough GP.".to_owned()
+                    menu_sfx.blocked();
+                    let refusal = if affordable == 0 {
+                        "Not enough GP."
                     } else {
-                        "Item quantity cap reached.".to_owned()
+                        "Item quantity cap reached."
                     };
+                    state.announce(refusal, ToastTone::Warn);
                 } else {
+                    menu_sfx.confirm();
                     state.pending_id = Some(row.id().to_owned());
                     state.pending = Some(PendingTransaction::Buy);
                     state.page = Some(ServicePage::Quantity);
@@ -229,35 +308,61 @@ fn handle_service_input(
             }
         }
         Some(ServicePage::Sell) => {
-            let rows = owned_items(&catalog, &game);
+            if back {
+                menu_sfx.cancel();
+                state.return_to(ServicePage::ShopMenu);
+                return;
+            }
+            if keys.just_pressed(KeyCode::Tab) {
+                menu_sfx.hover();
+                state.return_to(ServicePage::Buy);
+                state.sell_tag = None;
+                return;
+            }
+            if keys.just_pressed(KeyCode::KeyT) {
+                cycle_sell_tag(&mut state, &catalog, &game);
+                menu_sfx.hover();
+                return;
+            }
+            let rows = sell_rows(&state, &catalog, &game);
             if let Some(delta) = delta {
                 state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            if confirm {
                 let Some(item) = rows.get(state.selected) else {
-                    state.message = "There is nothing to sell.".to_owned();
+                    menu_sfx.blocked();
+                    state.announce("There is nothing to sell.", ToastTone::Warn);
                     return;
                 };
-                if !can_sell(game.repository(), item) {
-                    state.message = "That item is locked or has no sale value.".to_owned();
-                } else {
+                if can_sell(game.repository(), item) {
+                    menu_sfx.confirm();
                     state.pending_id = Some(item.id().to_owned());
                     state.pending = Some(PendingTransaction::Sell);
                     state.page = Some(ServicePage::Quantity);
                     state.quantity = 1;
+                } else {
+                    menu_sfx.blocked();
+                    state.announce("That item is locked or has no sale value.", ToastTone::Warn);
                 }
             }
         }
         Some(ServicePage::MagicCore) => {
+            if back {
+                menu_sfx.cancel();
+                state.close();
+                return;
+            }
             let rows = owned_cores(&catalog, &game);
             if let Some(delta) = delta {
                 state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            if confirm {
                 let Some(item) = rows.get(state.selected) else {
-                    state.message = "No magic cores to exchange.".to_owned();
+                    menu_sfx.blocked();
+                    state.announce("No magic cores to exchange.", ToastTone::Warn);
                     return;
                 };
+                menu_sfx.confirm();
                 state.pending_id = Some(item.id().to_owned());
                 state.pending = Some(PendingTransaction::Exchange);
                 state.page = Some(ServicePage::Quantity);
@@ -265,120 +370,394 @@ fn handle_service_input(
             }
         }
         Some(ServicePage::Inn) => {
-            if keys.just_pressed(KeyCode::KeyN) {
+            if back || keys.just_pressed(KeyCode::KeyN) {
+                menu_sfx.cancel();
                 state.close();
-            } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
+                return;
+            }
+            if keys.just_pressed(KeyCode::KeyY) || confirm {
                 let Some(cost) = active_inn_cost(&catalog, &game) else {
-                    state.message = "This map has no inn service.".to_owned();
+                    menu_sfx.blocked();
+                    state.announce("This map has no inn service.", ToastTone::Warn);
                     return;
                 };
                 let (repository, party) = game.repository_and_party_mut();
                 match rest_at_inn(repository, party, cost) {
                     Ok(()) => {
+                        menu_sfx.confirm();
                         state.page = Some(ServicePage::Result);
-                        state.message = "The party is fully rested.".to_owned();
+                        state.announce("The party rested and recovered!", ToastTone::Good);
                     }
-                    Err(error) => state.message = error.to_string(),
+                    Err(error) => {
+                        menu_sfx.blocked();
+                        state.announce(error.to_string(), ToastTone::Warn);
+                    }
                 }
             }
         }
         Some(ServicePage::Apothecary) => {
+            if back {
+                menu_sfx.cancel();
+                state.close();
+                return;
+            }
             let recipes = catalog.recipes();
             if let Some(delta) = delta {
                 state.selected = wrapped_or_zero(state.selected, recipes.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            if confirm {
                 let Some(recipe) = recipes.get(state.selected) else {
+                    menu_sfx.blocked();
+                    return;
+                };
+                match recipe_availability(recipe, game.flags(), game.repository()) {
+                    RecipeAvailability::Locked => {
+                        menu_sfx.blocked();
+                        state.announce("That recipe is still sealed.", ToastTone::Warn);
+                    }
+                    RecipeAvailability::UniqueOwned => {
+                        menu_sfx.blocked();
+                        state.announce("You already carry that.", ToastTone::Warn);
+                    }
+                    _ => {
+                        menu_sfx.confirm();
+                        state.page = Some(ServicePage::RecipeDetail);
+                    }
+                }
+            }
+        }
+        Some(ServicePage::RecipeDetail) => {
+            if back {
+                menu_sfx.cancel();
+                state.page = Some(ServicePage::Apothecary);
+                return;
+            }
+            if confirm {
+                let Some(recipe) = catalog.recipes().get(state.selected) else {
+                    state.page = Some(ServicePage::Apothecary);
                     return;
                 };
                 let flags = game.flags().clone();
                 match craft(game.repository_mut(), &flags, recipe) {
-                    Ok(()) => state.message = format!("Crafted {}.", recipe.scroll_name),
-                    Err(error) => state.message = error.to_string(),
+                    Ok(()) => {
+                        menu_sfx.confirm();
+                        let scroll = recipe.scroll_name.clone();
+                        state.page = Some(ServicePage::Apothecary);
+                        state.announce(format!("Crafted {scroll}."), ToastTone::Good);
+                    }
+                    Err(error) => {
+                        menu_sfx.blocked();
+                        state.announce(error.to_string(), ToastTone::Warn);
+                    }
                 }
             }
         }
         Some(ServicePage::Quantity) => {
+            if back {
+                menu_sfx.cancel();
+                let origin = state
+                    .pending
+                    .map_or(ServicePage::ShopMenu, |pending| pending.origin());
+                state.return_to(origin);
+                return;
+            }
             let max = pending_max(&state, &catalog, &game).max(1);
+            let step = state.pending.map_or(1, PendingTransaction::quantity_step);
+            let wraps = state
+                .pending
+                .is_some_and(PendingTransaction::wraps_quantity);
             if let Some(delta) = delta {
-                state.quantity = wrapped_quantity(state.quantity, max, delta);
+                state.quantity =
+                    adjust_quantity(state.quantity, coarse_step(delta, step), max, wraps);
             }
-            if keys.just_pressed(KeyCode::ArrowLeft) {
-                state.quantity = 1;
-            } else if keys.just_pressed(KeyCode::ArrowRight) {
-                state.quantity = max;
+            if let Some(delta) = horizontal_step(&keys) {
+                state.quantity = adjust_quantity(state.quantity, delta, max, wraps);
+                menu_sfx.hover();
             }
-            if actions.just_pressed(AppAction::Confirm) {
-                let high_value_core = state.pending == Some(PendingTransaction::Exchange)
-                    && state
-                        .pending_id
-                        .as_deref()
-                        .and_then(|id| catalog.item(id))
-                        .is_some_and(|item| {
-                            matches!(item, ItemDefinition::MagicCore(core) if core.exchange_rate.get() >= 1_000)
-                        });
-                if high_value_core {
+            if confirm {
+                menu_sfx.confirm();
+                if is_high_value_core(&state, &catalog) {
                     state.page = Some(ServicePage::CoreConfirm);
-                    state.message.clear();
                 } else {
                     execute_pending(&mut state, &catalog, &mut game);
                 }
             }
         }
         Some(ServicePage::CoreConfirm) => {
-            if keys.just_pressed(KeyCode::KeyN) {
+            if back || keys.just_pressed(KeyCode::KeyN) {
+                menu_sfx.cancel();
                 state.page = Some(ServicePage::Quantity);
-            } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
+                return;
+            }
+            if keys.just_pressed(KeyCode::KeyY) || confirm {
+                menu_sfx.confirm();
                 execute_pending(&mut state, &catalog, &mut game);
             }
         }
-        Some(ServicePage::Result) if actions.just_pressed(AppAction::Confirm) => state.close(),
-        Some(ServicePage::Result) => {}
-        None => {}
+        Some(ServicePage::Equip) => {
+            let member_count = game.party().members().count();
+            if back {
+                menu_sfx.cancel();
+                state.pending_equip_id = None;
+                state.return_to(ServicePage::Buy);
+                return;
+            }
+            if let Some(delta) = delta {
+                state.equip_selection = wrapped_or_zero(state.equip_selection, member_count, delta);
+            }
+            if confirm {
+                equip_pending_purchase(&mut state, &catalog, &mut game, &mut menu_sfx);
+            }
+        }
+        Some(ServicePage::Result) if confirm || back => {
+            menu_sfx.cancel();
+            state.close();
+        }
+        Some(ServicePage::Result) | None => {}
     }
+}
+
+fn expire_toast(state: &mut ServiceUiState, delta_seconds: f32) {
+    let Some(toast) = state.toast.as_mut() else {
+        return;
+    };
+    toast.remaining -= delta_seconds;
+    if toast.remaining <= 0.0 {
+        state.toast = None;
+    }
+}
+
+/// Reports whether the player pressed anything the overlay reacts to this frame.
+///
+/// Any such press dismisses a standing toast, so a result banner never outlives the moment the
+/// player moved on from it.
+fn any_input(keys: &ButtonInput<KeyCode>, actions: &ActionState) -> bool {
+    actions.just_pressed(AppAction::Confirm)
+        || actions.just_pressed(AppAction::Back)
+        || actions.menu_navigation().is_some()
+        || horizontal_step(keys).is_some()
+        || keys.any_just_pressed([KeyCode::Tab, KeyCode::KeyT, KeyCode::KeyY, KeyCode::KeyN])
+}
+
+/// Left/Right as a single signed step, with Left winning a same-frame tie.
+///
+/// `ActionState` only binds vertical menu navigation; the shop family is the one place that
+/// needs the horizontal pair, so it reads the keys directly the way `field_menu` does.
+fn horizontal_step(keys: &ButtonInput<KeyCode>) -> Option<isize> {
+    if keys.just_pressed(KeyCode::ArrowLeft) {
+        Some(-1)
+    } else if keys.just_pressed(KeyCode::ArrowRight) {
+        Some(1)
+    } else {
+        None
+    }
+}
+
+/// Turns a menu-navigation delta into a coarse quantity step, with Up raising the count.
+///
+/// `menu_navigation` reports Up as `-1` because it indexes list rows downward, so the sign is
+/// flipped here. The two source scenes disagree on this: the item shop binds Up to
+/// `increase_large` (`item_shop_scene.py:277-282`) while the magic-core shop binds Up to
+/// `decrease_large` (`magic_core_shop_scene.py:130-135`). That contradiction is a source bug —
+/// the same key raises the quantity at one counter and lowers it at the next — so the port
+/// settles it the way `menu_navigation` already settles simultaneous Up/Down: one rule
+/// everywhere, and it is the item shop's, which is both the more-used screen and the reading
+/// that matches "up means more".
+const fn coarse_step(delta: isize, step: u32) -> isize {
+    -delta * step as isize
+}
+
+/// Applies one quantity step, clamping to `1..=max` or wrapping past both ends.
+fn adjust_quantity(current: u32, delta: isize, max: u32, wraps: bool) -> u32 {
+    let target = current as isize + delta;
+    if wraps {
+        if target < 1 {
+            max
+        } else if target > max as isize {
+            1
+        } else {
+            target as u32
+        }
+    } else {
+        target.clamp(1, max as isize) as u32
+    }
+}
+
+fn is_equipment(item: &ItemDefinition) -> bool {
+    matches!(
+        item,
+        ItemDefinition::Weapon(_)
+            | ItemDefinition::Shield(_)
+            | ItemDefinition::Helmet(_)
+            | ItemDefinition::Body(_)
+            | ItemDefinition::Accessory(_)
+    )
+}
+
+fn is_high_value_core(state: &ServiceUiState, catalog: &FieldMenuCatalog) -> bool {
+    state.pending == Some(PendingTransaction::Exchange)
+        && state
+            .pending_id
+            .as_deref()
+            .and_then(|id| catalog.item(id))
+            .is_some_and(|item| {
+                matches!(item, ItemDefinition::MagicCore(core)
+                    if core.exchange_rate.get() >= HIGH_VALUE_CORE_RATE)
+            })
+}
+
+/// Cycles the sell filter through `All → tag → … → All` (`item_shop_scene.py:121-133`).
+fn cycle_sell_tag(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) {
+    let tags = sellable_tags(catalog, game);
+    if tags.is_empty() {
+        return;
+    }
+    let position = state
+        .sell_tag
+        .as_ref()
+        .and_then(|current| tags.iter().position(|tag| tag == current))
+        .map_or(0, |index| index + 1);
+    state.sell_tag = tags.get(position % (tags.len() + 1)).cloned();
+    state.selected = 0;
+}
+
+/// Every distinct tag across the stacks the player could sell, sorted.
+fn sellable_tags(catalog: &FieldMenuCatalog, game: &GameState) -> Vec<String> {
+    let mut tags = catalog
+        .ordered_items()
+        .filter(|item| can_sell(game.repository(), item))
+        .flat_map(|item| game.repository().item_tags(item.id()))
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    tags.sort_unstable();
+    tags.dedup();
+    tags
 }
 
 fn execute_pending(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game: &mut GameState) {
     let Some(id) = state.pending_id.clone() else {
         return;
     };
+    let quantity = state.quantity;
     let result = match state.pending {
         Some(PendingTransaction::Buy) => active_shop(state, catalog, game)
             .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
             .ok_or_else(|| "shop item is unavailable".to_owned())
-            .and_then(|row| {
-                buy(game.repository_mut(), row, state.quantity).map_err(|e| e.to_string())
-            }),
+            .and_then(|row| buy(game.repository_mut(), row, quantity).map_err(|e| e.to_string())),
         Some(PendingTransaction::Sell) => catalog
             .item(&id)
             .ok_or_else(|| "item metadata is unavailable".to_owned())
             .and_then(|item| {
-                sell(game.repository_mut(), item, state.quantity).map_err(|e| e.to_string())
+                sell(game.repository_mut(), item, quantity).map_err(|e| e.to_string())
             }),
         Some(PendingTransaction::Exchange) => catalog
             .item(&id)
             .ok_or_else(|| "core metadata is unavailable".to_owned())
             .and_then(|item| {
-                exchange_magic_core(game.repository_mut(), item, state.quantity)
+                exchange_magic_core(game.repository_mut(), item, quantity)
                     .map_err(|e| e.to_string())
             }),
         None => return,
     };
+    let Some(pending) = state.pending else {
+        return;
+    };
+    let name = catalog
+        .item(&id)
+        .map_or_else(|| id.clone(), |item| item_name(item).to_owned());
     match result {
         Ok(total) => {
-            state.message = format!("Transaction complete: {total} GP.");
-            state.page = Some(match state.pending {
-                Some(PendingTransaction::Buy) => ServicePage::Buy,
-                Some(PendingTransaction::Sell) => ServicePage::Sell,
-                Some(PendingTransaction::Exchange) => ServicePage::MagicCore,
-                None => unreachable!(),
-            });
-            state.selected = 0;
-            state.quantity = 1;
-            state.pending_id = None;
-            state.pending = None;
+            let announcement = match pending {
+                PendingTransaction::Buy => format!("Bought {quantity} x {name}"),
+                PendingTransaction::Sell => format!("Sold {quantity} x {name} for {total} GP"),
+                PendingTransaction::Exchange => {
+                    format!("Exchanged {quantity} x {name}    +{total} GP")
+                }
+            };
+            state.return_to(pending.origin());
+            state.announce(announcement, ToastTone::Good);
+            match pending {
+                PendingTransaction::Buy => offer_equip_after_purchase(state, catalog, game, &id),
+                // The source closes the exchange rather than showing an empty list once the
+                // last core is spent (`magic_core_shop_scene.py:96-101`).
+                PendingTransaction::Exchange if owned_cores(catalog, game).is_empty() => {
+                    state.close();
+                }
+                _ => {}
+            }
         }
-        Err(error) => state.message = error,
+        Err(error) => {
+            state.page = Some(pending.origin());
+            state.announce(error, ToastTone::Warn);
+        }
+    }
+}
+
+/// Pushes the party picker when a purchase is wearable by somebody (`item_shop_scene.py:355-359`).
+fn offer_equip_after_purchase(
+    state: &mut ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+    item_id: &str,
+) {
+    let Some(item) = catalog.item(item_id) else {
+        return;
+    };
+    if !is_equipment(item) {
+        return;
+    }
+    let Some(index) = game
+        .party()
+        .members()
+        .position(|member| can_equip(member, item, catalog).is_ok())
+    else {
+        return;
+    };
+    state.pending_equip_id = Some(item_id.to_owned());
+    state.equip_selection = index;
+    state.page = Some(ServicePage::Equip);
+}
+
+fn equip_pending_purchase(
+    state: &mut ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &mut GameState,
+    menu_sfx: &mut MenuSfx,
+) {
+    let Some(item_id) = state.pending_equip_id.clone() else {
+        state.return_to(ServicePage::Buy);
+        return;
+    };
+    let Some(member_id) = game
+        .party()
+        .members()
+        .nth(state.equip_selection)
+        .map(|member| member.id().to_owned())
+    else {
+        menu_sfx.blocked();
+        return;
+    };
+    let member_name = game
+        .party()
+        .member(&member_id)
+        .map_or_else(|| member_id.clone(), |member| member.name().to_owned());
+    let item_name = catalog
+        .item(&item_id)
+        .map_or_else(|| item_id.clone(), |item| item_name(item).to_owned());
+    match equip_item(game, catalog, &member_id, &item_id) {
+        Ok(_displaced) => {
+            menu_sfx.confirm();
+            state.pending_equip_id = None;
+            state.return_to(ServicePage::Buy);
+            state.announce(
+                format!("Equipped {item_name} on {member_name}"),
+                ToastTone::Good,
+            );
+        }
+        Err(error) => {
+            menu_sfx.blocked();
+            state.announce(error.to_string(), ToastTone::Warn);
+        }
     }
 }
 
@@ -407,10 +786,38 @@ fn active_inn_cost(catalog: &FieldMenuCatalog, game: &GameState) -> Option<u32> 
     Some(active_map(catalog, game)?.inn.as_ref()?.cost.get())
 }
 
+fn buy_rows<'a>(
+    state: &ServiceUiState,
+    catalog: &'a FieldMenuCatalog,
+    game: &GameState,
+) -> Vec<&'a crate::scenario_map::ShopItem> {
+    active_shop(state, catalog, game)
+        .map(|shop| visible_stock(shop, game.flags()))
+        .unwrap_or_default()
+}
+
 fn owned_items<'a>(catalog: &'a FieldMenuCatalog, game: &GameState) -> Vec<&'a ItemDefinition> {
     catalog
         .ordered_items()
         .filter(|item| game.repository().item_count(item.id()) > 0)
+        .collect()
+}
+
+/// Sellable stacks, narrowed by the active tag filter.
+fn sell_rows<'a>(
+    state: &ServiceUiState,
+    catalog: &'a FieldMenuCatalog,
+    game: &GameState,
+) -> Vec<&'a ItemDefinition> {
+    owned_items(catalog, game)
+        .into_iter()
+        .filter(|item| {
+            state.sell_tag.as_ref().is_none_or(|tag| {
+                game.repository()
+                    .item_tags(item.id())
+                    .any(|owned| owned == tag)
+            })
+        })
         .collect()
 }
 
@@ -442,369 +849,20 @@ fn pending_max(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameSt
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    reason = "the service overlay synchronizes disjoint Bevy text roles from shared service state"
-)]
-fn sync_service_overlay(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    root: Res<ScenarioRoot>,
-    inventory: Res<ScenarioInventory>,
-    theme: Res<UiTheme>,
-    state: Res<ServiceUiState>,
-    catalog: Res<FieldMenuCatalog>,
-    game: Option<Res<GameState>>,
-    roots: Query<Entity, With<ServiceRoot>>,
-    mut titles: Query<
-        &mut Text,
-        (
-            With<ServiceTitle>,
-            Without<ServiceBody>,
-            Without<ServiceHint>,
-        ),
-    >,
-    mut bodies: Query<
-        &mut Text,
-        (
-            With<ServiceBody>,
-            Without<ServiceTitle>,
-            Without<ServiceHint>,
-        ),
-    >,
-    mut hints: Query<
-        &mut Text,
-        (
-            With<ServiceHint>,
-            Without<ServiceTitle>,
-            Without<ServiceBody>,
-        ),
-    >,
-) {
-    if !state.input_locked() {
-        for entity in &roots {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
-    if roots.is_empty() {
-        spawn_service_overlay(&mut commands, &asset_server, &root, &inventory, &theme);
-        return;
-    }
-    let Some(game) = game else { return };
-    if let Ok(mut title) = titles.single_mut() {
-        title.0 = service_title(&state).to_owned();
-    }
-    if let Ok(mut body) = bodies.single_mut() {
-        body.0 = render_service(&state, &catalog, &game);
-    }
-    if let Ok(mut hint) = hints.single_mut() {
-        hint.0 = service_hint(&state).to_owned();
-    }
-}
-
-fn service_title(state: &ServiceUiState) -> &'static str {
-    match state.request {
-        Some(ServiceRequest::Shop(DialogueShopKind::Item)) => "Item Shop",
-        Some(ServiceRequest::Shop(DialogueShopKind::Weapon)) => "Weapon Shop",
-        Some(ServiceRequest::Shop(DialogueShopKind::Armor)) => "Armor Shop",
-        Some(ServiceRequest::Shop(DialogueShopKind::MagicCore)) => "Magic Core Exchange",
-        Some(ServiceRequest::Inn) => "Inn",
-        Some(ServiceRequest::Apothecary) => "Apothecary",
-        None => "Service",
-    }
-}
-
-fn render_service(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> String {
-    let gp = game.repository().gp();
-    let content = match state.page {
-        Some(ServicePage::ShopMenu) => ["Buy", "Sell"]
-            .into_iter()
-            .enumerate()
-            .map(|(index, label)| format!("{} {label}", cursor(index, state.selected)))
-            .collect::<Vec<_>>()
-            .join("\n"),
-        Some(ServicePage::Buy) => render_buy_rows(state, catalog, game),
-        Some(ServicePage::Sell) => render_sell_rows(state, catalog, game),
-        Some(ServicePage::MagicCore) => render_core_rows(state, catalog, game),
-        Some(ServicePage::Inn) => {
-            let cost = active_inn_cost(catalog, game).unwrap_or(0);
-            format!(
-                "Rest for {cost} GP?\nAll HP, MP, and status effects will be restored.\n\nY/ENTER Yes     N/ESC No"
-            )
-        }
-        Some(ServicePage::Apothecary) => render_recipes(state, catalog, game),
-        Some(ServicePage::Quantity) => render_quantity(state, catalog, game),
-        Some(ServicePage::CoreConfirm) => format!(
-            "{}\n\nExchange this high-value core stack?\nY/ENTER Yes     N/ESC No",
-            render_quantity(state, catalog, game)
-        ),
-        Some(ServicePage::Result) => "Your stay is complete.".to_owned(),
-        None => String::new(),
-    };
-    let message = if state.message.is_empty() {
-        String::new()
-    } else {
-        format!("\n\n{}", state.message)
-    };
-    format!("GP {gp}\n\n{content}{message}")
-}
-
-fn render_buy_rows(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> String {
-    let rows = active_shop(state, catalog, game)
-        .map(|shop| visible_stock(shop, game.flags()))
-        .unwrap_or_default();
-    let mut text = rows
-        .iter()
-        .enumerate()
-        .map(|(index, row)| {
-            let item = catalog.item(row.id());
-            let name = item.map(item_name).unwrap_or(row.id());
-            let owned = game.repository().item_count(row.id());
-            let afford = if game.repository().gp() >= row.buy_price().get() {
-                ""
-            } else {
-                " [unaffordable]"
-            };
-            format!(
-                "{} {:<22} {:>5} GP  owned {:>2}{afford}",
-                cursor(index, state.selected),
-                name,
-                row.buy_price(),
-                owned
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    if let Some(row) = rows.get(state.selected)
-        && let Some(item) = catalog.item(row.id())
-    {
-        text.push_str(&format!("\n\n{}", item_description(item)));
-        text.push_str(&equipment_preview(item, catalog, game));
-    }
-    if text.is_empty() {
-        "No stock is currently unlocked.".to_owned()
-    } else {
-        text
-    }
-}
-
-fn equipment_preview(
-    item: &ItemDefinition,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) -> String {
-    let mut lines = Vec::new();
-    for member in game.party().members() {
-        match can_equip(member, item, catalog) {
-            Ok(slot) => {
-                let before = derived_stats(member, catalog);
-                let after = preview_stats(member, catalog, slot, Some(item.id()));
-                lines.push(format!(
-                    "{}: equip  STR {:+} DEX {:+} CON {:+} INT {:+}",
-                    member.name(),
-                    after.strength - before.strength,
-                    after.dexterity - before.dexterity,
-                    after.constitution - before.constitution,
-                    after.intelligence - before.intelligence
-                ));
-            }
-            Err(_)
-                if matches!(
-                    item,
-                    ItemDefinition::Weapon(_)
-                        | ItemDefinition::Shield(_)
-                        | ItemDefinition::Helmet(_)
-                        | ItemDefinition::Body(_)
-                        | ItemDefinition::Accessory(_)
-                ) =>
-            {
-                lines.push(format!("{}: incompatible", member.name()))
-            }
-            Err(_) => {}
-        }
-    }
-    if lines.is_empty() {
-        String::new()
-    } else {
-        format!("\n{}", lines.join("\n"))
-    }
-}
-
-fn render_sell_rows(
+fn selected_buy_item<'a>(
     state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
+    catalog: &'a FieldMenuCatalog,
     game: &GameState,
-) -> String {
-    let rows = owned_items(catalog, game);
-    if rows.is_empty() {
-        return "There is nothing to sell.".to_owned();
-    }
-    rows.iter()
-        .enumerate()
-        .map(|(index, item)| {
-            let price = sell_price(item).unwrap_or(0);
-            let disabled = if can_sell(game.repository(), item) {
-                ""
-            } else {
-                " [locked]"
-            };
-            format!(
-                "{} {:<22} x{:>2}  {:>5} GP{disabled}",
-                cursor(index, state.selected),
-                item_name(item),
-                game.repository().item_count(item.id()),
-                price
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+) -> Option<&'a ItemDefinition> {
+    let shop = active_shop(state, catalog, game)?;
+    let rows = visible_stock(shop, game.flags());
+    catalog.item(rows.get(state.selected)?.id())
 }
 
-fn render_core_rows(
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) -> String {
-    let rows = owned_cores(catalog, game);
-    if rows.is_empty() {
-        return "No magic cores to exchange.".to_owned();
-    }
-    rows.iter()
-        .enumerate()
-        .map(|(index, item)| {
-            let ItemDefinition::MagicCore(core) = item else {
-                unreachable!()
-            };
-            let confirm = if core.exchange_rate.get() >= 1_000 {
-                " [confirm]"
-            } else {
-                ""
-            };
-            format!(
-                "{} {:<22} x{:>2}  {:>5} GP{confirm}",
-                cursor(index, state.selected),
-                item_name(item),
-                game.repository().item_count(item.id()),
-                core.exchange_rate
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn render_recipes(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> String {
-    let mut text = catalog
-        .recipes()
-        .iter()
-        .enumerate()
-        .map(|(index, recipe)| {
-            let status = match recipe_availability(recipe, game.flags(), game.repository()) {
-                RecipeAvailability::Locked => "locked",
-                RecipeAvailability::MissingInputs => "missing inputs",
-                RecipeAvailability::Unaffordable => "not enough GP",
-                RecipeAvailability::UniqueOwned => "already owned",
-                RecipeAvailability::OutputCap => "item cap reached",
-                RecipeAvailability::Ready => "ready",
-            };
-            let output = catalog
-                .item(&recipe.output.item)
-                .map(item_name)
-                .unwrap_or(&recipe.output.item);
-            format!(
-                "{} {:<24} -> {:<20} {:>4} GP  [{status}]",
-                cursor(index, state.selected),
-                recipe.scroll_name,
-                output,
-                recipe.gp_cost
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    if let Some(recipe) = catalog.recipes().get(state.selected) {
-        let output = catalog
-            .item(&recipe.output.item)
-            .map(item_name)
-            .unwrap_or(&recipe.output.item);
-        let mut inputs = recipe
-            .inputs
-            .items
-            .iter()
-            .map(|input| {
-                let name = catalog.item(&input.id).map(item_name).unwrap_or(&input.id);
-                format!(
-                    "{name} {}/{}",
-                    game.repository().item_count(&input.id),
-                    input.qty
-                )
-            })
-            .collect::<Vec<_>>();
-        inputs.extend(recipe.inputs.mc.iter().map(|input| {
-            let id = match input.size {
-                crate::scenario_recipe::MagicCoreSize::XS => "mc_xs",
-                crate::scenario_recipe::MagicCoreSize::S => "mc_s",
-                crate::scenario_recipe::MagicCoreSize::M => "mc_m",
-                crate::scenario_recipe::MagicCoreSize::L => "mc_l",
-                crate::scenario_recipe::MagicCoreSize::XL => "mc_xl",
-            };
-            let name = catalog.item(id).map(item_name).unwrap_or(id);
-            format!("{name} {}/{}", game.repository().item_count(id), input.qty)
-        }));
-        text.push_str(&format!(
-            "\n\nOutput: {output} x{}\nIngredients: {}",
-            recipe.output.qty,
-            if inputs.is_empty() {
-                "None".to_owned()
-            } else {
-                inputs.join(", ")
-            }
-        ));
-    }
-    text
-}
-
-fn render_quantity(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> String {
-    let id = state.pending_id.as_deref().unwrap_or_default();
-    let name = catalog.item(id).map(item_name).unwrap_or(id);
-    let unit = match state.pending {
-        Some(PendingTransaction::Buy) => active_shop(state, catalog, game)
-            .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
-            .map(|row| row.buy_price().get()),
-        Some(PendingTransaction::Sell) => catalog.item(id).and_then(sell_price),
-        Some(PendingTransaction::Exchange) => match catalog.item(id) {
-            Some(ItemDefinition::MagicCore(core)) => Some(core.exchange_rate.get()),
-            _ => None,
-        },
-        None => None,
-    }
-    .unwrap_or(0);
-    format!(
-        "{name}\nQuantity: {} / {}\nTotal: {} GP",
-        state.quantity,
-        pending_max(state, catalog, game),
-        unit.saturating_mul(state.quantity)
-    )
-}
-
-fn service_hint(state: &ServiceUiState) -> &'static str {
-    match state.page {
-        Some(ServicePage::Inn) => "Y/ENTER · rest     N/ESC · leave",
-        Some(ServicePage::Quantity) => {
-            "UP/DOWN · quantity     LEFT/RIGHT · min/max     ENTER · confirm     ESC · back"
-        }
-        Some(ServicePage::CoreConfirm) => "Y/ENTER · exchange     N/ESC · cancel",
-        Some(ServicePage::Result) => "ENTER / ESC · leave",
-        _ => "UP/DOWN · choose     ENTER · confirm     ESC · back",
-    }
-}
-
-fn cursor(index: usize, selected: usize) -> &'static str {
-    if index == selected { ">" } else { " " }
-}
 fn wrapped(current: usize, count: usize, delta: isize) -> usize {
     (current as isize + delta).rem_euclid(count as isize) as usize
 }
+
 fn wrapped_or_zero(current: usize, count: usize, delta: isize) -> usize {
     if count == 0 {
         0
@@ -812,96 +870,27 @@ fn wrapped_or_zero(current: usize, count: usize, delta: isize) -> usize {
         wrapped(current.min(count - 1), count, delta)
     }
 }
-fn wrapped_quantity(current: u32, max: u32, delta: isize) -> u32 {
-    ((current.saturating_sub(1) as isize + delta).rem_euclid(max as isize) + 1) as u32
-}
-
-fn spawn_service_overlay(
-    commands: &mut Commands,
-    assets: &AssetServer,
-    root: &ScenarioRoot,
-    inventory: &ScenarioInventory,
-    theme: &UiTheme,
-) {
-    let Some(font_path) = inventory.font.as_ref() else {
-        return;
-    };
-    let font = assets.load(root.resolve(font_path));
-    commands
-        .spawn((
-            Node {
-                position_type: PositionType::Absolute,
-                left: px(70),
-                top: px(55),
-                width: px(820),
-                height: px(430),
-                padding: UiRect::all(px(24)),
-                border: UiRect::all(px(2)),
-                flex_direction: FlexDirection::Column,
-                row_gap: px(12),
-                ..default()
-            },
-            BackgroundColor(Color::srgba(0.025, 0.025, 0.09, 0.97)),
-            BorderColor::all(theme.name_entry_border_color),
-            GlobalZIndex(5_100),
-            Pickable::IGNORE,
-            Name::new("World service"),
-            ServiceRoot,
-        ))
-        .with_children(|panel| {
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(32.0),
-                    ..default()
-                },
-                TextColor(theme.name_entry_input_color),
-                ServiceTitle,
-            ));
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(18.0),
-                    ..default()
-                },
-                TextColor(Color::srgb_u8(235, 225, 190)),
-                TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
-                Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    ..default()
-                },
-                ServiceBody,
-            ));
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.into(),
-                    font_size: FontSize::Px(15.0),
-                    ..default()
-                },
-                TextColor(theme.name_entry_hint_color),
-                ServiceHint,
-            ));
-        });
-}
-
-fn cleanup_service_ui(
-    mut commands: Commands,
-    roots: Query<Entity, With<ServiceRoot>>,
-    mut state: ResMut<ServiceUiState>,
-) {
-    for entity in &roots {
-        commands.entity(entity).despawn();
-    }
-    state.close();
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::field_menu_domain::tests::{catalog, game};
+
+    /// The first catalog item some party member is actually allowed to wear.
+    fn wearable_for_party(catalog: &FieldMenuCatalog, game: &GameState) -> String {
+        catalog
+            .ordered_items()
+            .find(|item| {
+                is_equipment(item)
+                    && game
+                        .party()
+                        .members()
+                        .any(|member| can_equip(member, item, catalog).is_ok())
+            })
+            .expect("the production catalog equips somebody in the starting party")
+            .id()
+            .to_owned()
+    }
 
     #[test]
     fn routes_each_dialogue_service_action_without_conflating_shop_kinds() {
@@ -928,5 +917,162 @@ mod tests {
             let actions: DialogueActions = crate::scenario_yaml::from_str(yaml).unwrap();
             assert_eq!(ServiceRequest::from_dialogue(&actions), Some(expected));
         }
+    }
+
+    #[test]
+    fn shop_quantity_clamps_at_both_ends_while_the_core_exchange_wraps() {
+        // Item shop: coarse steps saturate rather than roll over (`quantity_picker.py:_adjust`).
+        assert_eq!(adjust_quantity(1, -1, 9, false), 1);
+        assert_eq!(adjust_quantity(1, 5, 9, false), 6);
+        assert_eq!(adjust_quantity(6, 5, 9, false), 9);
+        assert_eq!(adjust_quantity(9, 1, 9, false), 9);
+
+        // Magic core: the same picker constructed with `loop=True`.
+        assert_eq!(adjust_quantity(1, -1, 9, true), 9);
+        assert_eq!(adjust_quantity(9, 1, 9, true), 1);
+        assert_eq!(adjust_quantity(5, 10, 9, true), 1);
+    }
+
+    #[test]
+    fn coarse_steps_match_the_two_source_pickers() {
+        assert_eq!(PendingTransaction::Buy.quantity_step(), SHOP_QUANTITY_STEP);
+        assert_eq!(PendingTransaction::Sell.quantity_step(), SHOP_QUANTITY_STEP);
+        assert_eq!(
+            PendingTransaction::Exchange.quantity_step(),
+            CORE_QUANTITY_STEP
+        );
+        assert!(!PendingTransaction::Buy.wraps_quantity());
+        assert!(PendingTransaction::Exchange.wraps_quantity());
+    }
+
+    #[test]
+    fn up_raises_the_quantity_at_every_counter() {
+        // `menu_navigation` reports Up as -1; the picker must still count upward, and it must
+        // do so identically for the shop and the core exchange.
+        for step in [SHOP_QUANTITY_STEP, CORE_QUANTITY_STEP] {
+            assert_eq!(coarse_step(-1, step), step as isize, "Up adds {step}");
+            assert_eq!(
+                coarse_step(1, step),
+                -(step as isize),
+                "Down removes {step}"
+            );
+        }
+        assert_eq!(
+            adjust_quantity(1, coarse_step(-1, SHOP_QUANTITY_STEP), 80, false),
+            6
+        );
+    }
+
+    #[test]
+    fn a_toast_expires_on_its_own_without_being_dismissed() {
+        let mut state = ServiceUiState::default();
+        state.announce("Bought 1 x Potion", ToastTone::Good);
+        expire_toast(&mut state, TOAST_SECONDS / 2.0);
+        assert!(state.toast.is_some());
+        expire_toast(&mut state, TOAST_SECONDS);
+        assert!(state.toast.is_none());
+    }
+
+    #[test]
+    fn the_sell_filter_cycles_all_then_each_tag_and_narrows_the_rows() {
+        let catalog = catalog();
+        let mut game = game([]);
+        let _ = game.repository_mut().add_item("potion", 2).unwrap();
+        let _ = game.repository_mut().add_item("ether", 2).unwrap();
+        game.repository_mut()
+            .add_tags("potion", ["healing"])
+            .unwrap();
+        game.repository_mut().add_tags("ether", ["mana"]).unwrap();
+
+        let mut state = ServiceUiState {
+            page: Some(ServicePage::Sell),
+            ..default()
+        };
+        assert_eq!(sell_rows(&state, &catalog, &game).len(), 2);
+
+        // Sorted, so `healing` comes before `mana`, and the cycle returns to All.
+        cycle_sell_tag(&mut state, &catalog, &game);
+        assert_eq!(state.sell_tag.as_deref(), Some("healing"));
+        let rows = sell_rows(&state, &catalog, &game);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].id(), "potion");
+
+        cycle_sell_tag(&mut state, &catalog, &game);
+        assert_eq!(state.sell_tag.as_deref(), Some("mana"));
+        assert_eq!(sell_rows(&state, &catalog, &game)[0].id(), "ether");
+
+        cycle_sell_tag(&mut state, &catalog, &game);
+        assert_eq!(state.sell_tag, None);
+        assert_eq!(sell_rows(&state, &catalog, &game).len(), 2);
+    }
+
+    #[test]
+    fn buying_wearable_gear_opens_the_party_picker_and_ordinary_goods_do_not() {
+        let catalog = catalog();
+        let game = game([]);
+        let wearable = wearable_for_party(&catalog, &game);
+
+        let mut state = ServiceUiState {
+            page: Some(ServicePage::Buy),
+            ..default()
+        };
+        offer_equip_after_purchase(&mut state, &catalog, &game, &wearable);
+        assert_eq!(state.page, Some(ServicePage::Equip));
+        assert_eq!(state.pending_equip_id.as_deref(), Some(wearable.as_str()));
+        assert!(
+            game.party()
+                .members()
+                .nth(state.equip_selection)
+                .is_some_and(|member| can_equip(
+                    member,
+                    catalog.item(&wearable).unwrap(),
+                    &catalog
+                )
+                .is_ok())
+        );
+
+        let mut state = ServiceUiState {
+            page: Some(ServicePage::Buy),
+            ..default()
+        };
+        offer_equip_after_purchase(&mut state, &catalog, &game, "potion");
+        assert_eq!(state.page, Some(ServicePage::Buy));
+        assert_eq!(state.pending_equip_id, None);
+    }
+
+    #[test]
+    fn the_core_exchange_closes_itself_only_once_the_last_core_is_spent() {
+        let catalog = catalog();
+
+        let mut game = game([]);
+        let _ = game.repository_mut().add_item("mc_xs", 2).unwrap();
+        let mut state = ServiceUiState::default();
+        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore));
+        state.pending = Some(PendingTransaction::Exchange);
+        state.pending_id = Some("mc_xs".to_owned());
+        state.quantity = 1;
+        execute_pending(&mut state, &catalog, &mut game);
+        assert!(
+            state.input_locked(),
+            "one core is left, so the list stays up"
+        );
+        assert_eq!(state.page, Some(ServicePage::MagicCore));
+
+        execute_pending_last_core(&catalog);
+    }
+
+    fn execute_pending_last_core(catalog: &FieldMenuCatalog) {
+        let mut game = game([]);
+        let _ = game.repository_mut().add_item("mc_xs", 1).unwrap();
+        let mut state = ServiceUiState::default();
+        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore));
+        state.pending = Some(PendingTransaction::Exchange);
+        state.pending_id = Some("mc_xs".to_owned());
+        state.quantity = 1;
+        execute_pending(&mut state, catalog, &mut game);
+        assert!(
+            !state.input_locked(),
+            "the source closes rather than showing an empty exchange"
+        );
     }
 }
