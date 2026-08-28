@@ -80,30 +80,53 @@ These findings are compatibility decisions for Gate 2, not successful runtime
 substitutions. Migrated content must repair or explicitly retain each one in a
 reviewable later content task.
 
-`data/maps/zone_05_mountain_foothills.yaml` has no same-stem TMX but no longer
-produces a warning; see the multi-segment convention below for why.
+`data/maps/zone_05_mountain_foothills.yaml` has no same-stem TMX. It is now a
+`source.unreadable_map_metadata` **error**; see below for why the earlier
+"convention" reading was wrong.
 
-## The multi-segment TMX convention
+## The multi-segment TMX naming defect
 
-`zone_05_mountain_foothills` is metadata for a map split across several TMX
+*Revised 2026-08-28. This section previously described the pattern below as a
+supported convention. It is not one, and treating it as one shipped two
+unreachable chests.*
+
+`zone_05_mountain_foothills` was metadata for a map split across several TMX
 files rather than one: `assets/maps/zone_05_mountain_foothills_01.tmx`,
-`_02.tmx`, and `_03.tmx` exist, but no
-`assets/maps/zone_05_mountain_foothills.tmx` does. This mirrors the pinned
-Python engine's general submap rule — `_is_submap` in
-`engine/world/warp_logic.py`, which treats any map id that extends another
-known id with an underscore as that map's interior/segment — narrowed here to
-the purely numeric suffix pattern (`<id>_01`, `<id>_02`, ...) so a metadata
-file naming its own segments is recognized specifically, rather than folding
-in worded interiors like `..._shop_01`.
+`_02.tmx`, and `_03.tmx` existed, but no
+`assets/maps/zone_05_mountain_foothills.tmx` did.
 
-The Rust validator (`source.unmatched_map_metadata` in
-`src/scenario_cross_reference.rs`) previously warned on every map YAML
-without a same-stem TMX, including this one. It now checks whether numbered
-segment TMX files name the metadata's stem as their parent (`is_numeric_tmx_segment`)
-before warning; when they do, the metadata is parent content for a real,
-playable multi-segment map, not orphaned metadata, so no warning is raised.
-A map YAML with no same-stem TMX and no numbered segments is still warned on
-exactly as before.
+The earlier reading took this for the pinned Python engine's submap rule —
+`_is_submap` in `engine/world/warp_logic.py`, which treats any map id that
+extends another known id with an underscore as that map's interior/segment —
+narrowed to the purely numeric suffix pattern (`<id>_01`, `<id>_02`, ...), and
+suppressed the warning whenever such segments existed.
+
+That was wrong in both engines, for the same reason: **per-map metadata is
+resolved by exact stem.** The port's `ScenarioInventory::map_metadata_path`
+formats `{map_id}.yaml` and probes it directly; there is no parent fallback,
+and `MapMetadata::empty()` is what a segment gets instead. ADR 0007 records the
+Python side independently — `_is_submap` builds its id set from
+`assets/maps/*.tmx` stems, and with no bare `zone_05_mountain_foothills.tmx`
+present the three segments are not submaps there either.
+
+So a map YAML whose stem has no TMX is unreadable content, and the numbered
+segments are the *aggravating* factor, not a mitigating one: their presence
+means authored content exists and no map can load it. In this case the file
+carried `bgm: zone.alpine`, `warp_order: 110`, and two chests
+(`foothills_chest_01`, `foothills_chest_02`) that no player could reach.
+
+The validator now splits the two cases:
+
+| Case | Code | Severity |
+| --- | --- | --- |
+| No same-stem TMX, no numbered segments | `source.unmatched_map_metadata` | warning |
+| No same-stem TMX, numbered segments exist | `source.unreadable_map_metadata` | error |
+
+The repair is to name the metadata after the segment it describes. The port did
+this in roadmap B2.1 (`zone_05_mountain_foothills.yaml` -> `_01.yaml`, its
+`warp_order: 110` sitting correctly ahead of `_02`'s 120 and `_03`'s 125). The
+pinned source still carries the defect, which is why the pinned-corpus audit
+expects 38 errors rather than 37.
 
 ## `map-report`: per-map reachability report
 
