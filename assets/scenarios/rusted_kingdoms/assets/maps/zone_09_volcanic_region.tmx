@@ -19,7 +19,7 @@
   </object>
  </objectgroup>
  <objectgroup id="3" name="boss_enemy">
-  <object id="3" name="orc_shaman_red_hood_shaman" x="1280" y="512" width="32" height="32" />
+  <object id="3" name="boss" x="1280" y="512" width="32" height="32" />
  </objectgroup>
  <layer id="1" name="ground" width="50" height="34">
   <data encoding="csv">
