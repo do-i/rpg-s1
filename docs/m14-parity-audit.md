@@ -106,3 +106,12 @@ and W12.4 live acceptance. Then produce the self-contained M14.08 candidate and
 run the remaining M14.01 rows against that exact package. This ordering avoids
 certifying a package whose campaign content or shipped asset set is still
 changing.
+
+## Progress after the baseline
+
+- M14.10 completed on 2026-08-28. `README.md` now documents source and packaged
+  launch requirements, the current controls, native saves and import behavior,
+  validation/debug/replay commands, current campaign-acceptance boundaries,
+  the installed asset layout, and the unresolved redistribution-rights
+  boundary. The two normal-play entries in `menu.toml` no longer describe the
+  game as an Ardel-only slice.
