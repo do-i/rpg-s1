@@ -84,9 +84,9 @@ abilities:
     name: Teleport
     unlock_level: 1
     # Story-gated: Aric only learns Teleport once `aric_teleport_unlocked` is
-    # set (a mid-game cutscene). For debugging/testing the flag is currently
-    # listed in manifest.yaml `bootstrap_flags`, so the skill is available from
-    # the start — remove it there to restore the mid-game unlock.
+    # set, by the Ardel shrine keeper's Act II revelation
+    # (`data/dialogue/ardel_shrine_keeper.yaml`) — the mid-game beat where he
+    # is told he was found in the ash on that altar.
     unlock_flag: aric_teleport_unlocked
     type: utility
     description: "Warp to any town or area you have already visited."
