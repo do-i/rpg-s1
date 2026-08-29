@@ -13,7 +13,7 @@ selected_bold = true
 id = "run-debug"
 label = "Run - Debug"
 key = "d"
-command = ["env", "RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "cargo", "run"]
+command = ["env", "_RPG_S1_MUTE_AUDIO=1", "RPG_S1_DEBUG_COLLISION=1", "cargo", "run"]
 group = "Play"
 tags = ["run", "play", "game", "ardel", "world", "menu", "save", "load", "items", "equipment", "spells", "debug", "collision", "portal"]
 description = "Play the normal campaign with sound disabled and the portal/collision debug overlay on"

@@ -314,11 +314,11 @@ fn request_npc_dialogue(
     // opens, not here. The pinned Python engine only creates its dialogue overlay after
     // `DialogueEngine.resolve` returns a match (`engine/world/world_map_scene.py::_try_interact`),
     // so a target whose dialogue document is missing (e.g. the two painted `zone_03_marshland`
-    // sign tiles — no `sign_zone_03_marshland` document exists in either repository, see
-    // `docs/adr/0007-inherited-scenario-data-debt.md`) or whose entries don't match the current
+    // sign tiles — no `sign_zone_03_marshland` document exists in either repository) or whose
+    // entries don't match the current
     // flags never makes a sound in the original. Queuing the sound eagerly here, before the async
     // load even resolves, used to make a missing sign click and then show nothing — this player
-    // audible difference is what ADR 0007 flagged as needing a decision at W12.3 acceptance.
+    // audible difference is why W12.3 acceptance required an explicit parity decision.
     state.failure = None;
 }
 
@@ -1609,7 +1609,7 @@ mod tests {
         }
     }
 
-    /// Regression for the behavior delta ADR 0007 flagged for W12.3 acceptance: the pinned Python
+    /// Regression for the behavior delta found during W12.3 acceptance: the pinned Python
     /// engine's `DialogueEngine.resolve` returns `None` for a missing dialogue document
     /// (`load_yaml_optional_cached`), and `world_map_scene.py::_try_interact` only opens its
     /// dialogue overlay — the only place a sound is tied to interaction — once `resolve` returns a

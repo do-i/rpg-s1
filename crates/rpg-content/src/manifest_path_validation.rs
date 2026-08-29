@@ -2,8 +2,8 @@
 //!
 //! This module deliberately knows neither Bevy's asset server nor the host filesystem.  Callers
 //! supply a [`ScenarioPathProbe`] that can inspect one already-validated, scenario-relative path.
-//! Keeping the boundary this narrow lets runtime and the future headless validator apply the same
-//! manifest rules while their filesystem adapters retain ADR 0002/0004 containment guarantees.
+//! Keeping the boundary this narrow lets runtime and the headless validator apply the same
+//! manifest rules while their filesystem adapters retain the scenario containment guarantees.
 
 use crate::{
     scenario_manifest::{Manifest, ScenarioDirectoryPath},
@@ -52,7 +52,7 @@ impl From<ScenarioEntryKind> for ScenarioPathProbeResult {
 ///
 /// Implementations must not reinterpret the supplied value as an arbitrary host path.  In
 /// particular, filesystem-backed implementations are responsible for rejecting symlink escapes
-/// before reporting a result, as required by ADR 0002 and ADR 0004.
+/// before reporting a result, as required by the shared scenario path policy.
 pub trait ScenarioPathProbe {
     fn probe(&self, path: &ScenarioRelativePath) -> ScenarioPathProbeResult;
 }

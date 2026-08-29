@@ -9,8 +9,8 @@
 //!
 //! Entry documents may omit `id` (one pinned file does) and `type` (thirteen do). The line-pool
 //! utility also has no id. In those cases the containing filename stem is the effective id,
-//! matching ADR 0002. Missing conditions and completion actions are explicit Python loader
-//! defaults. The pinned files contain no YAML nulls, so null is not accepted as shorthand for
+//! matching the direct source-format contract. Missing conditions and completion actions are
+//! explicit Python loader defaults. The pinned files contain no YAML nulls, so null is not accepted as shorthand for
 //! any of those defaults.
 
 use std::num::NonZeroU32;

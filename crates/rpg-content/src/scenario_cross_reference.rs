@@ -4,11 +4,11 @@
 //! keeps host paths private: diagnostics identify the selected [`ScenarioRoot`] package and a
 //! stable scenario-relative `file#field` location. The pinned Python validator is the behavioral
 //! baseline, while additional checks (AI references, audio, derived assets, and all typed catalog
-//! edges) implement the stricter direct-authoring policy recorded by ADR 0002.
+//! edges) implement the strict direct-authoring policy shared by loading and validation.
 //!
 //! No catalog is reparsed into generic YAML. TMX portal links and TSX image references are the
-//! only relevant source edges not modeled here: ADR 0003 assigns their typed XML parsing to M4,
-//! so this milestone checks same-stem TMX presence but does not implement an ad-hoc XML scanner.
+//! only relevant source edges not modeled here: their typed XML parsing belongs to the TMX/TSX
+//! adapter, so this layer checks same-stem TMX presence without an ad-hoc XML scanner.
 //! The pinned quest schema contains flag-backed board rows rather than objective/reward records;
 //! those flag edges are therefore the complete current quest reference surface.
 
@@ -865,7 +865,7 @@ impl<'a> Validator<'a> {
             // that as the source's multi-segment convention. It is not a convention the runtime
             // honours, and the suppression is exactly what hid `zone_05_mountain_foothills.yaml`
             // stranding a BGM key, a `warp_order`, and two unreachable chests (roadmap B2.1).
-            // ADR 0007 records the same conclusion for the pinned engine: `_is_submap` builds its
+            // The pinned engine reaches the same conclusion: `_is_submap` builds its
             // id set from `assets/maps/*.tmx` stems, so a parent with no TMX of its own is not a
             // submap parent there either.
             //
@@ -3016,14 +3016,12 @@ npcs:
     ///
     /// The pinned-source audit below needs an env var and is `#[ignore]`d, so before this test
     /// nothing ran the validator over `assets/scenarios/rusted_kingdoms` in CI at all. That is how
-    /// `manifest.yaml#title.cursor_icon` shipped naming a file that does not exist for weeks after
-    /// ADR 0005 mandated the repair.
+    /// `manifest.yaml#title.cursor_icon` shipped naming a file that did not exist.
     ///
-    /// Deliberately not "assert zero errors". ADR 0007 accepts the four Sorcerer ultimate flags as
-    /// inherited source debt — those abilities are unobtainable in the original too — and records
-    /// that granting them "is a new ADR, not a validator cleanup", and that this count "must not be
-    /// driven to zero by inventing unlocks". So this pins the set instead: a new diagnostic fails
-    /// CI, and so does one that silently stops firing.
+    /// Deliberately not "assert zero errors". The four Sorcerer ultimate flags are accepted
+    /// inherited source debt: those abilities are unobtainable in the original too, and granting
+    /// them would be new game design rather than validator cleanup. This pins the set instead: a
+    /// new diagnostic fails CI, and so does one that silently stops firing.
     #[test]
     fn the_shipped_scenario_matches_the_known_diagnostic_inventory() {
         let physical_root =
@@ -3036,7 +3034,7 @@ npcs:
             .map(ToString::to_string)
             .collect::<Vec<_>>();
 
-        // ADR 0007: the four Sorcerer ultimates, and nothing else.
+        // The four accepted Sorcerer ultimate diagnostics, and nothing else.
         assert_eq!(errors.len(), 4, "shipped errors changed:\n{errors:#?}");
         assert_eq!(
             report

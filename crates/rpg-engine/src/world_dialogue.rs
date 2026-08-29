@@ -1158,8 +1158,8 @@ mod tests {
 
         // Entries [4] (`story_act3_started`) and [5] (unconditional fallback) are dead: the four
         // preceding `sq_millstone_started`/`_relayed`/`_done` entries already exhaustively
-        // partition every state via first-match, exactly like `ardel_fisherman`'s trailing pair
-        // (ADR 0007, "Dead trailing dialogue entries in six more dialogues").
+        // partition every state via first-match, exactly like `ardel_fisherman`'s accepted
+        // inherited trailing pair.
         let relevant_flags = [
             "sq_millstone_started",
             "sq_millstone_relayed",
@@ -1663,8 +1663,7 @@ mod tests {
         // Entry [4] (the unconditional "Fresh catch!" flavor line) is dead: the three
         // preceding sq_catch_started/_relayed/_done entries plus the excludes-started
         // first-meeting entry already exhaustively partition every state via first-match,
-        // exactly like `millhaven_carter`'s trailing pair (ADR 0007, "Dead trailing dialogue
-        // entries in six more dialogues").
+        // exactly like `millhaven_carter`'s accepted inherited trailing pair.
         let relevant_flags = ["sq_catch_started", "sq_catch_relayed", "sq_catch_done"];
         for mask in 0..(1 << relevant_flags.len()) {
             let flags = RuntimeFlags::from_bootstrap(
@@ -1728,8 +1727,8 @@ mod tests {
         // Entry [4] (the unconditional "Want a genuine relic?" flavor line) is dead for exactly
         // the reason `harborgate_fishwife`'s trailing entry is: the sq_crew_started/_relayed/_done
         // ladder plus the excludes-started first-meeting entry already partition every state under
-        // first-match, so nothing ever falls through to it (ADR 0007, "Dead trailing dialogue
-        // entries in six more dialogues"). W12.4 is where this one is documented-accepted.
+        // first-match, so nothing ever falls through to it. W12.4 is where this inherited entry
+        // became documented-accepted.
         let relevant_flags = ["sq_crew_started", "sq_crew_relayed", "sq_crew_done"];
         for mask in 0..(1 << relevant_flags.len()) {
             let flags = RuntimeFlags::from_bootstrap(

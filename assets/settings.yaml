@@ -6,7 +6,7 @@
 # elsewhere in this engine. Unread keys are ignored, not rejected, and a missing key falls back to
 # the value shown here.
 
-# Not consumed: docs/gameplay-canvas-policy.md fixes the logical canvas at 1280x766.
+# Not consumed: the engine fixes the logical gameplay canvas at 1280x766.
 display:
   screen_width: 1280
   screen_height: 766

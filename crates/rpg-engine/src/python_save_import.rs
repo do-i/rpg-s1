@@ -1,4 +1,4 @@
-//! One-way importer for the pinned Python YAML save schema from ADR 0001.
+//! One-way importer for the pinned Python YAML save schema.
 
 use std::{
     collections::{BTreeMap, BTreeSet},

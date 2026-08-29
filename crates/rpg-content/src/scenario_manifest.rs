@@ -59,8 +59,8 @@ pub struct ManifestSigns {
 
 /// The manifest fields that identify scenario content and label its game window.
 ///
-/// `id` and `version` are content identity rather than the selected package key; see
-/// ADR 0004. The fields are source-authored strings so their exact values remain available
+/// `id` and `version` are content identity rather than the selected package key. The fields are
+/// source-authored strings so their exact values remain available
 /// to save, cache, recording, and UI systems that are added later.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestIdentityWindow {
@@ -77,8 +77,8 @@ pub struct ManifestIdentityWindow {
 /// The source manifest fields that select the title presentation assets.
 ///
 /// This is a partial manifest adapter alongside [`ManifestIdentityWindow`]: both deserialize
-/// the same document, while later milestones add their own owned slices. All paths remain
-/// scenario-relative so loading and validation share ADR 0002 and ADR 0004 containment rules.
+/// the same document, while other adapters add their own owned slices. All paths remain
+/// scenario-relative so loading and validation share the same containment rules.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestTitleFontUi {
     pub title: ManifestTitle,
@@ -214,8 +214,8 @@ pub struct ManifestRefs {
 ///
 /// Source manifests use a trailing slash to distinguish catalog roots from single-file refs.
 /// The separator is accepted at this adapter boundary only; the stored value is a validated,
-/// normalized [`ScenarioRelativePath`]. This keeps ADR 0004's general path policy strict while
-/// preserving the pinned manifest spelling.
+/// normalized [`ScenarioRelativePath`]. This keeps the package path policy strict while preserving
+/// the pinned manifest spelling.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScenarioDirectoryPath(ScenarioRelativePath);
 

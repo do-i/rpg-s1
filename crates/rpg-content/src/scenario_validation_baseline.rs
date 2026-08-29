@@ -1,9 +1,9 @@
 //! Compares a scenario validation report against a checked-in list of accepted diagnostics.
 //!
-//! ADR 0007 decided that a handful of validator diagnostics are inherited source debt that must
-//! *not* be driven to zero by inventing unlocks, maps, or flags. That decision left the validator
-//! permanently exiting non-zero, which is why it could not be a CI gate and why the broken title
-//! cursor reference (ADR 0005) shipped unnoticed.
+//! A handful of validator diagnostics are accepted inherited source debt that must *not* be
+//! driven to zero by inventing unlocks, maps, or flags. That leaves bare validation permanently
+//! exiting non-zero, which is why it could not be a CI gate and why a broken title cursor
+//! reference once shipped unnoticed.
 //!
 //! A baseline resolves both halves. The accepted diagnostics are enumerated in a file; the run is
 //! clean only when the report matches that file exactly. A *new* diagnostic fails, so regressions

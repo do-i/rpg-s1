@@ -2,14 +2,14 @@
 //!
 //! The source keeps these in `engine/settings/settings.yaml`, loaded by
 //! `engine/settings/engine_config_data.py`. This is a deliberate subset: the port carries only the
-//! keys it actually consumes, because a parsed-but-unread setting is exactly the kind of
-//! aspirational surface `docs/adr/0007-inherited-scenario-data-debt.md` had to clean up later.
+//! keys it actually consumes, because parsed-but-unread settings create misleading aspirational
+//! surfaces.
 //!
 //! Keys the source has that the port governs elsewhere, and therefore does not read here:
 //!
 //! | Source key | Where the port decides it |
 //! | --- | --- |
-//! | `display.*` | `docs/gameplay-canvas-policy.md` fixes the canvas at 1280x766 |
+//! | `display.*` | the fixed gameplay canvas is 1280x766 |
 //! | `tiles.tile_size` | derived from each map's own TMX header |
 //! | `saves.dir` | `save_store::resolve_save_directory`, which follows platform conventions |
 //! | `audio.*` | the `RPG_S1_MUTE_AUDIO` environment variable |

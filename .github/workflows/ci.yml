@@ -49,9 +49,9 @@ jobs:
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # Content, not code: the three checks above all passed while `manifest.yaml` pointed at a
-      # cursor image that does not exist (ADR 0005). The validator catches that class, but it exits
-      # non-zero on the inherited diagnostics ADR 0007 accepted, so it gates against the baseline
+      # cursor image that does not exist. The validator catches that class, but it exits non-zero
+      # on accepted inherited diagnostics, so it gates against the scenario-owned baseline
       # rather than against zero -- failing on a new diagnostic and on a baseline line the report
       # no longer produces.
       - name: Validate the production scenario against its accepted diagnostics
-        run: cargo run -- validate-scenario rusted_kingdoms --baseline docs/scenario-validation-baseline.txt
+        run: cargo run -- validate-scenario rusted_kingdoms --baseline assets/scenarios/rusted_kingdoms/validation-baseline.txt

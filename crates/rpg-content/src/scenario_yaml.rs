@@ -1,8 +1,7 @@
 //! Scenario YAML deserialization boundary.
 //!
-//! Typed scenario schemas use this helper to deserialize the source-authored YAML documents
-//! selected by ADR 0002. File access, schema validation, and multi-document streams are added
-//! by later milestones.
+//! Typed scenario schemas use this helper to deserialize source-authored YAML documents. File
+//! access, schema validation, and multi-document streams are layered on separately.
 
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 use std::error::Error as StdError;
