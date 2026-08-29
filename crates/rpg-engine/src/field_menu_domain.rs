@@ -1886,7 +1886,7 @@ pub(crate) mod tests {
     fn warp_destinations_do_not_treat_numbered_zone_segments_as_submaps_of_each_other() {
         // `zone_05_mountain_foothills_01/02/03` are numbered segments of the conceptual zone
         // `zone_05_mountain_foothills`, but that parent id has no `.tmx` of its own in the pinned
-        // scenario — only `data/maps/zone_05_mountain_foothills.yaml` (ADR 0007). `_is_submap`
+        // scenario — only `data/maps/zone_05_mountain_foothills.yaml`. `_is_submap`
         // checks each candidate's prefix against `all_ids`, built from `assets/maps/*.tmx` stems
         // only (warp_logic.py:68-78, 152), so a parent id with no TMX never enters that set and
         // its segments are *not* submaps of one another under the literal algorithm — confirmed

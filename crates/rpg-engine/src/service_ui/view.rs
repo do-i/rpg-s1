@@ -48,8 +48,8 @@ const WIDE_PANEL_WIDTH: f32 = 980.0;
 /// This is a pixel cap rather than a percentage on purpose. The centring row above the panel
 /// gives its child an indefinite cross size, so a percentage `max_height` has no basis to
 /// resolve against and clamps the frame to a fraction of its content — which left the list
-/// rows drawn outside their own border. `docs/gameplay-canvas-policy.md` fixes the canvas at
-/// 1280x766, so a pixel ceiling is exact here.
+/// rows drawn outside their own border. The fixed gameplay canvas is 1280x766, so a pixel
+/// ceiling is exact here.
 const PANEL_MAX_HEIGHT: f32 = 700.0;
 
 /// Keeper face sizes: the inn draws a larger portrait than the counter services.

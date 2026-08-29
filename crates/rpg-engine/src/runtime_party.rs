@@ -2,7 +2,7 @@
 //!
 //! The Python `PartyState` uses list order for presentation and returns the first protagonist.
 //! Rust preserves that ordering while rejecting duplicate identities and multiple protagonists,
-//! which the save ADR identifies as malformed state. An empty party remains available through
+//! which the save compatibility contract identifies as malformed state. An empty party remains available through
 //! [`Default`] for staged new-game construction; [`RuntimeParty::try_from_members`] validates a
 //! complete party and therefore requires exactly one protagonist.
 //!

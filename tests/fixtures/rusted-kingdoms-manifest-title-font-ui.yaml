@@ -1,5 +1,5 @@
 # Pinned-source-shaped manifest fixture for M2.04.
-# The cursor differs only by ADR 0005's required migration repair.
+# The cursor differs only by the required missing-asset migration repair.
 id: my_rpg_story
 name: "Chronicles of the Lost Flame"
 version: "1.0.0"

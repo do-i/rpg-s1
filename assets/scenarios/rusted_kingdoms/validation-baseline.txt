@@ -1,7 +1,7 @@
 # Accepted scenario validation diagnostics for package `rusted_kingdoms`.
 #
 # CI runs:
-#   cargo run -- validate-scenario rusted_kingdoms --baseline docs/scenario-validation-baseline.txt
+#   cargo run -- validate-scenario rusted_kingdoms --baseline assets/scenarios/rusted_kingdoms/validation-baseline.txt
 #
 # The run passes only when the validator's diagnostics match this file exactly. A diagnostic that
 # is not listed here fails the build as a regression; a line here that the validator no longer
@@ -9,20 +9,19 @@
 # comments are ignored; every other line is one accepted diagnostic, copied verbatim from the
 # validator's own output.
 #
-# Adding a line means recording a decision, not silencing a check. ADR 0007
-# (docs/adr/0007-inherited-scenario-data-debt.md) governs this class of entry.
+# Adding a line records an explicit source-parity or game-design decision in the change that edits
+# this file; it is not a way to silence a check.
 
-# --- Sorcerer "ultimate" ability flags (ADR 0007: keep source behavior) ---
+# --- Sorcerer "ultimate" ability flags: keep pinned-source behavior ---
 # `data/classes/sorcerer.yaml` gates four abilities on flags nothing produces, so they are
 # unobtainable in the pinned Python source too. Parity means they stay unobtainable; inventing
-# unlock points would be new game design and needs its own ADR, not a validator cleanup.
+# unlock points is new game design rather than validator cleanup.
 error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[4].unlock_flag [flag.undefined] flag `story_ultimate_fire` is consumed but never produced
 error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[9].unlock_flag [flag.undefined] flag `story_ultimate_water` is consumed but never produced
 error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[14].unlock_flag [flag.undefined] flag `story_ultimate_wind` is consumed but never produced
 error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[19].unlock_flag [flag.undefined] flag `story_ultimate_earth` is consumed but never produced
 
-# --- `transport_fly_unlocked` (ADR 0007, superseding note; roadmap B4.1 owns the decision) ---
+# --- `transport_fly_unlocked`: unfinished transport decision ---
 # `sky_crystal` produces the flag that would gate flight, and no system consumes it because
-# transport was designed (docs/design/transportation.md) and never built. The warning is the
-# honest state of that gap and clears when B4.1 decides to build or cut.
+# transport was designed but never built. The warning clears when transport is built or cut.
 warning rusted_kingdoms:data/items/key_items.yaml#[1].effect.unlock_flag [flag.orphan] flag `transport_fly_unlocked` is produced but never consumed

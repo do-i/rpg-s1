@@ -109,7 +109,7 @@ impl Default for ScenarioRoot {
 }
 
 impl ScenarioRoot {
-    /// Creates the logical root for a package key accepted by ADR 0004.
+    /// Creates the logical root for an accepted scenario package key.
     ///
     /// A key consists of lowercase ASCII letters, digits, `_`, or `-`, begins with a lowercase
     /// ASCII letter or digit, and contains no path separator or dot component.

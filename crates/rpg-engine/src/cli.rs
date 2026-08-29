@@ -2,7 +2,7 @@
 //!
 //! Argument parsing happens before the game launcher is called. The `validate-scenario` command
 //! accepts a package key, never a filesystem path, and resolves it beneath the bounded production
-//! collection selected by ADR 0004. Tests inject a separate collection root through the same
+//! scenario collection. Tests inject a separate collection root through the same
 //! boundary rather than adding fixture-only command-line options.
 
 use std::{
@@ -73,8 +73,8 @@ pub(crate) struct PlayArguments {
 /// Validated `validate-scenario` options.
 ///
 /// `baseline` selects the gating mode: without it the command reports and exits on validity, which
-/// is permanently non-zero for the production package (ADR 0007); with it the exit code tracks the
-/// diff against the accepted set instead, which is what CI can enforce.
+/// is permanently non-zero for the production package's accepted inherited debt; with it the exit
+/// code tracks the diff against the accepted set instead, which is what CI can enforce.
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ValidateArguments {
     root: ScenarioRoot,
@@ -2004,7 +2004,7 @@ warning broken:data/maps/z.yaml#name [content.warning] later warning
         let (exit, output, errors) = run_validation_against_baseline(ACCEPTED_DIAGNOSTICS);
 
         // The point of the gate: the report itself still says FAIL, because these diagnostics are
-        // real and accepted (ADR 0007), yet CI can run the command and get a usable signal.
+        // real and accepted inherited debt, yet CI can run the command and get a usable signal.
         assert_eq!(exit, EXIT_SUCCESS);
         assert!(output.contains("Status: FAIL\n"));
         assert!(

@@ -136,7 +136,7 @@ Run the normal project checks with:
 cargo fmt --all -- --check
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo run -- validate-scenario rusted_kingdoms --baseline docs/scenario-validation-baseline.txt
+cargo run -- validate-scenario rusted_kingdoms --baseline assets/scenarios/rusted_kingdoms/validation-baseline.txt
 scripts/check-ardel-screenshot.sh
 ```
 
@@ -151,17 +151,15 @@ cargo run -- dialogue-sweep rusted_kingdoms
 cargo run -- encounter-sweep rusted_kingdoms
 ```
 
-The production scenario still carries inherited content diagnostics, so a bare
-`validate-scenario` exits unsuccessfully by design. Their exact flags, item
-references, stale recruitment references, and missing cursor asset are recorded
-in
-[`docs/adr/0007-inherited-scenario-data-debt.md`](docs/adr/0007-inherited-scenario-data-debt.md),
-which also decided that the count must not be driven to zero by inventing
-unlocks, maps, or flags.
+The production scenario intentionally retains four undefined Sorcerer ultimate
+flags and one orphan transport flag from the inherited content, so a bare
+`validate-scenario` exits unsuccessfully by design. The accepted diagnostics
+and their source-parity rationale are kept beside the scenario rather than
+being hidden by disabling a check.
 
 That is why CI gates on `--baseline` instead. The accepted diagnostics are
 enumerated in
-[`docs/scenario-validation-baseline.txt`](docs/scenario-validation-baseline.txt),
+[`assets/scenarios/rusted_kingdoms/validation-baseline.txt`](assets/scenarios/rusted_kingdoms/validation-baseline.txt),
 and the run passes only when the report matches that file exactly: a diagnostic
 the file omits fails as a regression, and a line the validator no longer
 produces fails too, so paying down a debt includes deleting its line. Adding a
@@ -192,9 +190,10 @@ cargo run -- replay /tmp/rpg-s1-check.yaml
 ```
 
 Replay verifies the game/scenario identity and every recorded state checkpoint
-and exits unsuccessfully at the first divergence. See
-[`docs/content-authoring.md`](docs/content-authoring.md) for the complete Tiled,
-Pygame/web editor, validation, debug-map, and replay workflow.
+and exits unsuccessfully at the first divergence. Use
+`scripts/map-editor.sh setup` and `scripts/map-editor.sh check` before launching
+the Pygame or web editor; review the TMX diff and run the validation, sweep,
+debug-map, and replay commands above after every authored change.
 
 ## Current game coverage
 
@@ -211,9 +210,9 @@ The Rust runtime currently includes:
 - manifest-selected scenario packages, deterministic seeds, record/replay,
   validation reports, production sweeps, and map-authoring integrations.
 
-This list describes implemented systems, not final campaign acceptance. The
-current completion evidence and blockers are maintained in
-[`docs/m14-parity-audit.md`](docs/m14-parity-audit.md).
+This list describes implemented systems, not final campaign acceptance. Active
+acceptance evidence and blockers are maintained locally under the ignored
+`plans/` directory.
 
 ## Licensing and credits
 

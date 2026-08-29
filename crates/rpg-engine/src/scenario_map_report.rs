@@ -1,8 +1,8 @@
 //! Per-map reachability report for the `map-report` CLI subcommand.
 //!
 //! Unlike [`crate::scenario_cross_reference::validate_scenario_directory`], this walks each
-//! map's TMX `portals` object layer (ADR 0003 leaves that XML edge outside the strict M2
-//! validator) so the report can describe what a map actually connects to: its same-stem TMX (or
+//! map's TMX `portals` object layer (an XML edge outside the strict YAML validator) so the report
+//! can describe what a map actually connects to: its same-stem TMX (or
 //! numbered-segment TMX family, mirroring the pinned Python `_is_submap`/multi-segment naming
 //! convention from `engine/world/warp_logic.py`), its NPCs and their dialogue ids, and the
 //! portal targets authored in its TMX. Every finding here is informational: this module never
