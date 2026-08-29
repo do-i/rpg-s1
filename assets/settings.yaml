@@ -1,0 +1,61 @@
+# Engine settings.
+#
+# Ported from `engine/settings/settings.yaml` in the Python source. The block names and values are
+# kept identical so the two files stay diffable, but the port only reads the keys listed as
+# "consumed" below -- see `crates/rpg-content/src/engine_config.rs` for which decisions live
+# elsewhere in this engine. Unread keys are ignored, not rejected, and a missing key falls back to
+# the value shown here.
+
+# Not consumed: docs/gameplay-canvas-policy.md fixes the logical canvas at 1280x766.
+display:
+  screen_width: 1280
+  screen_height: 766
+  fps: 60
+  window_position: center   # "center" or "X,Y" pixel offset like "100,50"
+
+# Not consumed: each map's tile size comes from its own TMX header.
+tiles:
+  tile_size: 32
+
+# Consumed: typewriter reveal rate for world dialogue.
+dialogue:
+  text_speed: fast   # slow | fast | very_fast
+
+# Not consumed: the save directory follows platform conventions.
+saves:
+  dir: ~/user_save_data
+
+# Not consumed: the port has no non-sliding collision path.
+movement:
+  smooth_collision: true   # axis-separation sliding on walls and NPCs
+
+# Consumed: confirm before exchanging an L or XL magic core.
+shop:
+  mc_exchange_confirm_large: true
+
+# Consumed: confirm before spending an item on the whole party (Tent, Rest Capsule).
+item:
+  use_aoe_confirm: true
+
+# Not consumed: audio is muted with the RPG_S1_MUTE_AUDIO environment variable.
+audio:
+  bgm_enabled: false
+  sfx_enabled: false
+
+# Consumed: `medium` scales the engine's named font sizes. 24 is the baseline -- at this value no
+# text moves from where it is drawn today.
+fonts:
+  sizes:
+    small:  20
+    medium: 24
+    large:  28
+    xlarge: 32
+
+# Not consumed: use `--party-preset` and RPG_S1_DEBUG_COLLISION.
+debug:
+  party:     false
+  collision: false
+
+# Not consumed: spawn pacing comes from the scenario package's encounter data.
+enemy_spawn:
+  global_interval: 30.0

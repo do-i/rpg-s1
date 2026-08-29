@@ -1,5 +1,6 @@
 //! Generic scenario-package primitives shared by the game runtime and content tools.
 
+pub mod engine_config;
 pub mod manifest_path_validation;
 pub mod scenario_audio;
 pub mod scenario_balance;

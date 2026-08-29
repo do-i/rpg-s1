@@ -9,11 +9,12 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    engine_settings::EngineSettings,
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
         can_equip, cast_heal, custom_tags, derived_stats, discard_item, equip_item, inventory_ids,
         item_description, item_name, learned_field_abilities, normalize_custom_tag, preview_stats,
-        unequip_item, use_field_item,
+        targets_whole_party, unequip_item, use_field_item, use_field_item_on_party,
     },
     game_state::GameState,
     menu_chrome::{
@@ -229,6 +230,8 @@ enum FieldMenuMode {
     ItemNewTag,
     /// Show/hide manager listing every owned item, hidden ones included.
     ItemManage,
+    /// Y/N guard before an item is spent on the whole party. Gated on `item.use_aoe_confirm`.
+    ItemAoeConfirm,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -337,6 +340,12 @@ impl FieldMenuState {
             }
             FieldMenuMode::SaveConfirm => {
                 self.mode = FieldMenuMode::Browse;
+                self.message.clear();
+            }
+            // Backing out of the guard returns to the item's action list, not to browsing, so
+            // declining to spend a Tent does not also lose the player's place.
+            FieldMenuMode::ItemAoeConfirm => {
+                self.mode = FieldMenuMode::ItemActions;
                 self.message.clear();
             }
             FieldMenuMode::QuitConfirm => {
@@ -531,6 +540,7 @@ fn handle_field_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
+    settings: Res<EngineSettings>,
     interaction: Res<WorldInteractionState>,
     service: Option<Res<ServiceUiState>>,
     mut transition: ResMut<WorldTransition>,
@@ -601,7 +611,7 @@ fn handle_field_menu_input(
     if !state.message.is_empty()
         && !matches!(
             state.mode,
-            FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm
+            FieldMenuMode::SaveConfirm | FieldMenuMode::QuitConfirm | FieldMenuMode::ItemAoeConfirm
         )
         && (vertical.is_some()
             || horizontal.is_some()
@@ -680,6 +690,18 @@ fn handle_field_menu_input(
                     state.mode = FieldMenuMode::SaveConfirm;
                     state.message = format!("Overwrite {}?", slot.label());
                 }
+            }
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemAoeConfirm) => {
+            if keys.just_pressed(KeyCode::KeyN) {
+                state.mode = FieldMenuMode::ItemActions;
+                state.message.clear();
+            } else if keys.just_pressed(KeyCode::KeyY) || actions.just_pressed(AppAction::Confirm) {
+                let id = state
+                    .pending_id
+                    .clone()
+                    .expect("a party-wide confirm requires an item");
+                apply_party_item(&mut state, &mut game, &catalog, &id);
             }
         }
         (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => {
@@ -769,6 +791,17 @@ fn handle_field_menu_input(
                     .clone()
                     .expect("item action requires an item");
                 match state.selected {
+                    // A party-wide item never reaches the target picker: the source branches on
+                    // the effect's target before offering one, and routing a Tent through the
+                    // picker is what made it unusable -- every member was an invalid target.
+                    0 if targets_whole_party(&catalog, &id) => {
+                        if settings.use_aoe_confirm {
+                            state.mode = FieldMenuMode::ItemAoeConfirm;
+                            state.selected = 0;
+                        } else {
+                            apply_party_item(&mut state, &mut game, &catalog, &id);
+                        }
+                    }
                     0 if catalog.field_use(&id).is_some() => {
                         state.mode = FieldMenuMode::ItemTarget;
                         state.selected = 0;
@@ -1098,6 +1131,27 @@ fn state_slot_index(state: &FieldMenuState) -> usize {
         state.quantity.saturating_sub(1) as usize
     } else {
         state.selected.min(EquipmentSlot::ALL.len() - 1)
+    }
+}
+
+/// Spends a party-wide item and returns the menu to browsing, from either route into it.
+fn apply_party_item(
+    state: &mut FieldMenuState,
+    game: &mut GameState,
+    catalog: &FieldMenuCatalog,
+    item_id: &str,
+) {
+    match use_field_item_on_party(game, catalog, item_id) {
+        Ok(changed) => {
+            state.mode = FieldMenuMode::Browse;
+            state.selected = 0;
+            state.pending_id = None;
+            state.message = format!("Applied {changed} points/effects to the party.");
+        }
+        Err(error) => {
+            state.mode = FieldMenuMode::ItemActions;
+            state.message = error.to_string();
+        }
     }
 }
 
@@ -2496,6 +2550,7 @@ mod tests {
                 .add_plugins(ActionInputPlugin)
                 .insert_resource(FieldMenuCatalog::default())
                 .insert_resource(WorldInteractionState::default())
+                .init_resource::<EngineSettings>()
                 .insert_resource(WorldTransition::idle_for_test())
                 .insert_resource(fixture_game())
                 .insert_resource(SaveStore::new(
@@ -2558,6 +2613,7 @@ mod tests {
             .insert_resource(ActionState::default())
             .insert_resource(FieldMenuCatalog::default())
             .insert_resource(WorldInteractionState::default())
+            .init_resource::<EngineSettings>()
             .insert_resource(WorldTransition::default())
             .insert_resource(fixture_game())
             .insert_resource(SaveStore::new(

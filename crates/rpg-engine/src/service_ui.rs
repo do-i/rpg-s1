@@ -8,6 +8,7 @@ use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    engine_settings::EngineSettings,
     field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name},
     game_state::GameState,
     scenario_dialogue::{DialogueActions, DialogueShopKind},
@@ -217,13 +218,15 @@ fn reset_service_ui(mut state: ResMut<ServiceUiState>) {
 
 #[expect(
     clippy::too_many_lines,
-    reason = "the service state machine reads as one table of page transitions"
+    clippy::too_many_arguments,
+    reason = "the service state machine reads as one table of page transitions over live state"
 )]
 pub(crate) fn handle_service_input(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
+    settings: Res<EngineSettings>,
     game: Option<ResMut<GameState>>,
     mut state: ResMut<ServiceUiState>,
     mut menu_sfx: MenuSfx,
@@ -491,7 +494,7 @@ pub(crate) fn handle_service_input(
             }
             if confirm {
                 menu_sfx.confirm();
-                if is_high_value_core(&state, &catalog) {
+                if settings.mc_exchange_confirm_large && is_high_value_core(&state, &catalog) {
                     state.page = Some(ServicePage::CoreConfirm);
                 } else {
                     execute_pending(&mut state, &catalog, &mut game);

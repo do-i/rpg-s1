@@ -3,11 +3,10 @@
 use std::{collections::BTreeSet, fmt};
 
 use crate::{
+    engine_config::TextSpeed,
     runtime_flags::RuntimeFlags,
     scenario_dialogue::{DialogueActions, DialogueChoice, EntryDialogue},
 };
-
-const TYPEWRITER_CHARS_PER_SECOND: f32 = 60.0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DialoguePhase {
@@ -152,13 +151,23 @@ impl DialogueSession {
         self.selected_choice
     }
 
-    pub(crate) fn tick(&mut self, delta_seconds: f32) {
+    /// Advances the typewriter at the configured reveal rate.
+    ///
+    /// `speed` comes from `dialogue.text_speed` in `assets/settings.yaml`. The source's
+    /// `very_fast` is a rate of zero meaning *instant*, not stalled, so it completes the line in
+    /// one tick (`dialogue_scene.py::_advance` sets `_line_done` immediately when the speed is 0).
+    pub(crate) fn tick(&mut self, delta_seconds: f32, speed: TextSpeed) {
         if self.phase != DialoguePhase::Typing {
             return;
         }
         let total = self.current_line().chars().count();
-        let additional = (TYPEWRITER_CHARS_PER_SECOND * delta_seconds.max(0.0)) as usize;
-        self.revealed_chars = self.revealed_chars.saturating_add(additional).min(total);
+        self.revealed_chars = match speed.chars_per_second() {
+            Some(rate) => {
+                let additional = (rate * delta_seconds.max(0.0)) as usize;
+                self.revealed_chars.saturating_add(additional).min(total)
+            }
+            None => total,
+        };
         if self.revealed_chars == total {
             self.phase = DialoguePhase::Ready;
         }
@@ -366,7 +375,7 @@ mod tests {
         )
         .unwrap()
         .unwrap();
-        session.tick(0.02);
+        session.tick(0.02, TextSpeed::Fast);
         assert_eq!(session.visible_text(), "F");
         assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
         assert_eq!(session.visible_text(), "First");
@@ -375,6 +384,37 @@ mod tests {
         assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
         assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
         assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    /// `dialogue.text_speed` in `assets/settings.yaml` reaches the typewriter.
+    #[test]
+    fn each_configured_text_speed_reveals_at_the_sources_rate() {
+        let flags = RuntimeFlags::default();
+        let line = |speed: TextSpeed, seconds: f32| {
+            let mut session = DialogueSession::resolve(
+                "linear",
+                None,
+                dialogue("id: linear\ntype: npc\nentries:\n  - lines: [Abcdefghij]\n"),
+                &flags,
+            )
+            .unwrap()
+            .unwrap();
+            session.tick(seconds, speed);
+            (session.visible_text(), session.phase())
+        };
+
+        // 20 and 60 characters per second over a tenth of a second: 2 and 6.
+        assert_eq!(line(TextSpeed::Slow, 0.1).0, "Ab");
+        assert_eq!(line(TextSpeed::Fast, 0.1).0, "Abcdef");
+
+        // `very_fast` is the source's rate of 0, which means instant rather than stalled.
+        let (text, phase) = line(TextSpeed::VeryFast, 0.0);
+        assert_eq!(text, "Abcdefghij");
+        assert_eq!(
+            phase,
+            DialoguePhase::Ready,
+            "an instant reveal must not leave the line waiting to finish typing"
+        );
     }
 
     #[test]

@@ -117,6 +117,17 @@ for legacy saves, refuses an occupied destination by default, and accepts
 requires `--allow-unchecked`; a checksum mismatch is always rejected. Run
 `cargo run -- import-python-save --help` for the full syntax.
 
+## Settings
+
+`assets/settings.yaml` carries the engine settings, ported from the Python
+build's `engine/settings/settings.yaml` with the same block names. The port
+reads four of its keys — dialogue text speed, the font-size scale, whether an
+item spent on the whole party asks first, and whether a large magic-core
+exchange asks first. Every other key is documented in the file as decided
+elsewhere in this engine (the fixed canvas policy, save-directory resolution,
+or an environment variable) and is ignored rather than rejected. Deleting the
+file runs the game on the same values.
+
 ## Validation and developer tools
 
 Run the normal project checks with:
