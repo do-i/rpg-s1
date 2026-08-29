@@ -48,6 +48,18 @@ const BREATH_MAX_SQUASH: f32 = 2.0;
 const BREATH_PERIOD_SECONDS: f32 = 1.4;
 const BREATH_PHASE_OFFSET: f32 = 0.6;
 /// Gap between a status pill stack and the corner of the frame it sits in.
+/// Global stacking layer of the battle UI root.
+///
+/// `bevy_ui::stack` walks each root's children filtered by `Without<GlobalZIndex>`: a descendant
+/// that carries one is lifted *out* of the walk and re-sorted against the roots themselves. So a
+/// `GlobalZIndex` below this value does not lower a node within the battle screen — it drops the
+/// node behind the whole screen, where the root's opaque [`battle_floor`] hides it however
+/// correctly it laid out. Anything inside a frame that only needs to sit above its siblings uses a
+/// plain [`ZIndex`]; only a node that must escape the frame it annotates goes global, and then it
+/// goes *above* this.
+pub(super) const BATTLE_ROOT_Z: i32 = 200;
+/// Layer of a combatant's badge stack within its own frame, above the portrait and the meters.
+const BADGE_Z: i32 = 15;
 const BADGE_INSET: f32 = 5.0;
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
@@ -295,7 +307,7 @@ fn enter_battle(
                 ..default()
             },
             BackgroundColor(battle_floor()),
-            GlobalZIndex(200),
+            GlobalZIndex(BATTLE_ROOT_Z),
             Pickable::IGNORE,
             BattleUi,
         ))
@@ -813,6 +825,10 @@ fn spawn_party_meter(
 /// Every slot is spawned up front and hidden; [`sync_status_badges`] only ever toggles and
 /// re-colors them. The source pins its single badge to the same corner
 /// (`battle_party_panel_renderer.py:141-151`).
+///
+/// The stack sits inside its frame's own inset, so it is layered with a plain [`ZIndex`] and not a
+/// `GlobalZIndex` — see [`BATTLE_ROOT_Z`] for why the global form would have hidden it behind the
+/// battle screen entirely.
 fn spawn_status_badges(
     parent: &mut ChildSpawnerCommands<'_>,
     key: CombatantKey,
@@ -829,7 +845,7 @@ fn spawn_status_badges(
                 row_gap: px(2),
                 ..default()
             },
-            GlobalZIndex(15),
+            ZIndex(BADGE_Z),
             Pickable::IGNORE,
         ))
         .with_children(|stack| {
@@ -2273,6 +2289,62 @@ mod tests {
                 marker.slot
             );
         }
+    }
+
+    /// The defect RK-BTL-011 recorded: every badge resolved, coloured and un-hid correctly, and
+    /// not one of them reached the screen.
+    ///
+    /// The stack claimed `GlobalZIndex(15)` to sit above the portrait it overlaps, which reads as
+    /// a local raise but is not one — Bevy lifts such a node clear of its parent and ranks it
+    /// against the UI roots, so 15 put the pills *behind* the battle root at
+    /// [`BATTLE_ROOT_Z`] and its opaque floor drew over them. The sibling tests here could not see
+    /// it because their root has no `GlobalZIndex` for a child to sink beneath.
+    #[test]
+    fn a_badge_stack_is_layered_within_its_frame_and_not_behind_the_battle_screen() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+
+        let font = Handle::<Font>::default();
+        let root = app
+            .world_mut()
+            .commands()
+            .spawn((Node::default(), GlobalZIndex(BATTLE_ROOT_Z)))
+            .with_children(|root| {
+                root.spawn((Node::default(), BattlePartyCard(0)))
+                    .with_children(|card| {
+                        spawn_status_badges(card, CombatantKey::party(0), &font);
+                    });
+                root.spawn((Node::default(), BattleEnemyFrame(0)))
+                    .with_children(|frame| {
+                        spawn_status_badges(frame, CombatantKey::enemy(0), &font);
+                    });
+            })
+            .id();
+        app.update();
+
+        assert_eq!(
+            crate::battle::tests::hidden_behind_the_battle_root(app.world(), root),
+            Vec::<i32>::new(),
+            "a pill under the battle root's own layer is drawn beneath its opaque floor"
+        );
+
+        // It still has to outrank the portrait and meters it is pinned over, which is what the
+        // global index was reaching for in the first place.
+        let mut stacks = app.world_mut().query::<(&ZIndex, &Children)>();
+        let badge_stacks = stacks
+            .iter(app.world())
+            .filter(|(_, children)| {
+                children
+                    .iter()
+                    .any(|child| app.world().get::<BattleStatusBadge>(child).is_some())
+            })
+            .map(|(zindex, _)| zindex.0)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            badge_stacks,
+            vec![BADGE_Z; 2],
+            "both stacks keep a local raise over the frame contents they overlap"
+        );
     }
 
     #[test]

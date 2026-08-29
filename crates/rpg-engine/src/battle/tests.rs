@@ -272,6 +272,36 @@ pub(super) fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
     }
 }
 
+/// The `GlobalZIndex` of every descendant of `root` that would be drawn *behind* the battle screen.
+///
+/// `bevy_ui::stack` walks a root's children filtered by `Without<GlobalZIndex>` and re-sorts the
+/// ones that do carry it against the roots themselves. So a descendant global index at or below
+/// [`super::ui::BATTLE_ROOT_Z`] does not sit lower *within* the battle screen — it sits under the
+/// root's own opaque floor, and the player never sees it. Nothing about layout, colour or
+/// visibility changes, which is why a whole feature could be hidden this way while every test
+/// asserting on `Node` and `BackgroundColor` stayed green.
+pub(super) fn hidden_behind_the_battle_root(
+    world: &bevy::prelude::World,
+    root: bevy::prelude::Entity,
+) -> Vec<i32> {
+    use bevy::prelude::{Children, GlobalZIndex};
+
+    let mut sunk = Vec::new();
+    let mut pending = vec![root];
+    while let Some(entity) = pending.pop() {
+        if entity != root
+            && let Some(zindex) = world.get::<GlobalZIndex>(entity)
+            && zindex.0 <= super::ui::BATTLE_ROOT_Z
+        {
+            sunk.push(zindex.0);
+        }
+        if let Some(children) = world.get::<Children>(entity) {
+            pending.extend(children.iter());
+        }
+    }
+    sunk
+}
+
 #[test]
 fn phase_graph_names_and_bounds_every_minimum_loop_transition() {
     assert!(BattlePhase::Start.allows(BattlePhase::Command));

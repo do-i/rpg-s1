@@ -17,6 +17,17 @@ use crate::{
 
 const FLOAT_DURATION_SECONDS: f32 = 0.85;
 const FLOAT_RISE_PIXELS: f32 = 42.0;
+/// A float rises out of the top of the frame it belongs to and is wider than that frame, so it has
+/// to outrank the neighbouring cards it crosses — which means leaving the battle root's stacking
+/// context rather than merely topping its own siblings. See [`super::ui::BATTLE_ROOT_Z`]: below
+/// that line a `GlobalZIndex` hides the node behind the whole battle screen instead of raising it.
+const FLOAT_Z: i32 = super::ui::BATTLE_ROOT_Z + 20;
+/// The struck frame's white flash covers that frame and nothing else, so it stays in the frame's
+/// own stacking context — over the portrait and meters, under the status badges.
+const FRAME_FLASH_Z: i32 = 10;
+/// The screen flash is spawned parentless and washes the whole battle screen, so it sits above the
+/// root — including above the floats, which it tints along with everything else.
+const SCREEN_FLASH_Z: i32 = super::ui::BATTLE_ROOT_Z + 60;
 const FLASH_DURATION_SECONDS: f32 = 0.14;
 const SCREEN_FLASH_DURATION_SECONDS: f32 = 0.26;
 /// Fraction of the screen flash spent at full strength before it fades out.
@@ -195,7 +206,7 @@ pub(super) fn route_battle_fx(
                     top: px(-8),
                     ..default()
                 },
-                GlobalZIndex(20),
+                GlobalZIndex(FLOAT_Z),
                 BattleFxFloat { elapsed: 0.0 },
             ));
             if cue.flash {
@@ -209,7 +220,7 @@ pub(super) fn route_battle_fx(
                         ..default()
                     },
                     BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.72)),
-                    GlobalZIndex(10),
+                    ZIndex(FRAME_FLASH_Z),
                     Pickable::IGNORE,
                     BattleHitFlash { elapsed: 0.0 },
                 ));
@@ -236,7 +247,7 @@ pub(super) fn route_battle_fx(
             ..default()
         },
         BackgroundColor(screen_flash_color(SCREEN_FLASH_PEAK_ALPHA)),
-        GlobalZIndex(260),
+        GlobalZIndex(SCREEN_FLASH_Z),
         Pickable::IGNORE,
         BattleUi,
         BattleScreenFlash { elapsed: 0.0 },
@@ -1027,6 +1038,68 @@ mod tests {
             (0.0, true)
         );
         assert_eq!(screen_flash_frame(9.0), (0.0, true));
+    }
+
+    /// The float and the frame flash are spawned into the struck frame, so they inherit the same
+    /// trap that hid the status badges: a `GlobalZIndex` beneath [`super::ui::BATTLE_ROOT_Z`]
+    /// leaves the node laid out and coloured exactly as intended, and draws it behind the battle
+    /// screen. The float still has to leave the frame — it is wider than the card it rises from —
+    /// so it goes above the root rather than local.
+    #[test]
+    fn a_cues_overlay_outranks_the_battle_root_it_is_spawned_inside() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<PlaySfx>()
+            .insert_resource(BattleFxRouter::default())
+            .insert_resource(BattleAttackAnimations::default())
+            .insert_resource(BattleAssetState::test_stub())
+            .add_systems(Update, route_battle_fx);
+
+        let root = app
+            .world_mut()
+            .commands()
+            .spawn((
+                Node::default(),
+                GlobalZIndex(crate::battle::ui::BATTLE_ROOT_Z),
+            ))
+            .with_children(|root| {
+                root.spawn((Node::default(), BattlePartyCard(0)));
+            })
+            .id();
+
+        let mut state = crate::battle::tests::state_with(vec![
+            crate::battle::tests::actor(BattleSide::Party, 0, 5, 20),
+            crate::battle::tests::actor(BattleSide::Enemy, 1, 4, 30),
+        ]);
+        state.feedback_events.push(BattleEvent::Damage {
+            action: BattleAction::Physical {
+                attacker: CombatantKey::enemy(1),
+                target: CombatantKey::party(0),
+            },
+            amount: 6,
+            critical: false,
+            knocked_out: false,
+        });
+        app.world_mut().insert_resource(state);
+        app.update();
+
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleFxFloat>()
+                .iter(app.world())
+                .count(),
+            1,
+            "the hit raises its damage float"
+        );
+        assert_eq!(
+            crate::battle::tests::hidden_behind_the_battle_root(app.world(), root),
+            Vec::<i32>::new(),
+            "a cue drawn under the battle root's floor is a cue the player never sees"
+        );
+        assert!(
+            FLOAT_Z > crate::battle::ui::BATTLE_ROOT_Z,
+            "the float crosses neighbouring cards, so it has to leave the frame's context"
+        );
     }
 
     /// Drives the real router against a real frame entity, because the pure functions above only
