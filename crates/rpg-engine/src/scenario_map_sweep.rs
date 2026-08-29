@@ -254,6 +254,7 @@ fn build_entry(stem: &str, context: &SweepContext<'_>) -> MapSweepEntry {
             maps_dir,
             canonical_root,
             dialogue_ids,
+            collisions.get(stem),
             &mut findings,
         );
         npc_flag_states = states;
@@ -527,6 +528,7 @@ fn check_npcs_and_boxes(
     maps_dir: &Path,
     canonical_root: Option<&Path>,
     dialogue_ids: &BTreeSet<String>,
+    occupancy: Option<&CollisionOccupancy>,
     findings: &mut Vec<SweepFinding>,
 ) -> (usize, usize) {
     let metadata_filename = format!("{stem}.yaml");
@@ -650,9 +652,43 @@ fn check_npcs_and_boxes(
                 format!("item box `{}` has no loot entries", item_box.id),
             ));
         }
+        if let Some(occupancy) = occupancy
+            && in_bounds(item_box.position)
+            && !has_standing_tile(occupancy, item_box.position)
+        {
+            findings.push(SweepFinding::new(
+                SweepCategory::Object,
+                format!(
+                    "item box `{}` at ({}, {}) has no open tile to stand on; \
+                     no player position can select it",
+                    item_box.id, item_box.position.x, item_box.position.y
+                ),
+            ));
+        }
     }
 
     (states.len(), metadata.item_boxes.len())
+}
+
+/// True when some open tile exists from which the interaction path could select a box on `target`.
+///
+/// [`crate::world_interaction`] admits a target when `is_in_facing_direction` and
+/// `within_range(.., 1.5)` both hold against tile positions, so the candidate set is exactly the
+/// eight tiles surrounding the box: `within_range` compares each axis separately, which puts a
+/// diagonal's `(1, 1)` inside the range box, and the facing arms compare with `>=`, so an exact
+/// diagonal satisfies both of its two arms rather than neither. The box's own tile is excluded --
+/// every arm requires a strictly nonzero delta, which is why standing on a box never opens it.
+///
+/// The same rule governs the pinned source: `world/item_box.py::is_near` is the identical
+/// per-axis `tile_size * 1.5` box test, so this is a parity check, not a port-only convention.
+///
+/// Reachability *of* that standing tile is not tested here; a full flood fill needs an entry
+/// point, and no shipped map has a walkable region cut off from its portals.
+fn has_standing_tile(occupancy: &CollisionOccupancy, target: Position) -> bool {
+    (-1..=1)
+        .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+        .filter(|&(dx, dy)| (dx, dy) != (0, 0))
+        .any(|(dx, dy)| occupancy.is_open(target.x + dx, target.y + dy) == Some(true))
 }
 
 fn read_manifest(physical_root: &Path, canonical_root: Option<&Path>) -> Option<Manifest> {
@@ -1112,6 +1148,64 @@ item_boxes:
                 .iter()
                 .any(|finding| finding.contains("no loot entries")),
             "{object_findings:?}"
+        );
+    }
+
+    /// The defect this catches shipped twice: a box whose own tile is open but sealed on every
+    /// side, and a box authored straight into rock. Both are invisible to the bounds check.
+    #[test]
+    fn an_item_box_with_no_open_tile_around_it_is_an_object_finding() {
+        let fixture = TempScenario::new();
+        // Only (0, 0) is open, and the box sits on it -- standing on a box never opens it.
+        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,1,\n1,1"));
+        fixture.write(
+            "data/maps/village.yaml",
+            r#"name: Village
+item_boxes:
+  - id: chest_01
+    position: [0, 0]
+    loot:
+      items:
+        - id: potion
+          qty: 1
+"#,
+        );
+
+        let report = build_map_sweep(&fixture.0);
+        let findings = findings(entry(&report, "village"), SweepCategory::Object);
+        assert!(
+            findings
+                .iter()
+                .any(|finding| finding.contains("has no open tile to stand on")),
+            "{findings:?}"
+        );
+    }
+
+    /// `within_range` compares each axis on its own and the facing arms compare with `>=`, so a
+    /// player standing diagonally opposite a box faces it. A check that demanded an axis-aligned
+    /// neighbour would report this reachable box as sealed.
+    #[test]
+    fn a_box_reachable_only_from_a_diagonal_tile_is_not_a_finding() {
+        let fixture = TempScenario::new();
+        // Open: (0, 0) and (1, 1). The box on (1, 1) is axis-blocked but diagonally open.
+        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,1,\n1,0"));
+        fixture.write(
+            "data/maps/village.yaml",
+            r#"name: Village
+item_boxes:
+  - id: chest_01
+    position: [1, 1]
+    loot:
+      items:
+        - id: potion
+          qty: 1
+"#,
+        );
+
+        let report = build_map_sweep(&fixture.0);
+        assert_eq!(
+            findings(entry(&report, "village"), SweepCategory::Object),
+            [] as [&str; 0]
         );
     }
 
