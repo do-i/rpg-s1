@@ -67,7 +67,7 @@ pub use rpg_content::{
     scenario_class, scenario_condition, scenario_cross_reference, scenario_dialogue,
     scenario_duplicate_id, scenario_encounter, scenario_enemy, scenario_item, scenario_manifest,
     scenario_map, scenario_party, scenario_path, scenario_quest, scenario_recipe, scenario_root,
-    scenario_yaml, tmx_header, tsx_metadata,
+    scenario_validation_baseline, scenario_yaml, tmx_header, tsx_metadata,
 };
 
 #[cfg(test)]

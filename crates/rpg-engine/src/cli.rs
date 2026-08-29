@@ -34,13 +34,14 @@ use crate::{
     scenario_map_sweep::{MapSweepReport, SweepCategory, build_map_sweep},
     scenario_path::ScenarioRelativePath,
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, SCENARIO_MANIFEST_PATH, ScenarioRoot},
+    scenario_validation_baseline::{BaselineComparison, compare_to_baseline, parse_baseline},
     scenario_yaml,
 };
 
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.";
 
 enum Command {
     Play(PlayArguments),
@@ -49,7 +50,7 @@ enum Command {
         play: PlayArguments,
     },
     Replay(PathBuf),
-    Validate(ScenarioRoot),
+    Validate(ValidateArguments),
     MapReport(ScenarioRoot),
     MapSweep(ScenarioRoot),
     DialogueReport(ScenarioRoot),
@@ -67,6 +68,17 @@ pub(crate) struct PlayArguments {
     pub(crate) timings: bool,
     pub(crate) debug: Option<DebugLaunchConfig>,
     pub(crate) automation: Option<InputAutomation>,
+}
+
+/// Validated `validate-scenario` options.
+///
+/// `baseline` selects the gating mode: without it the command reports and exits on validity, which
+/// is permanently non-zero for the production package (ADR 0007); with it the exit code tracks the
+/// diff against the accepted set instead, which is what CI can enforce.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ValidateArguments {
+    root: ScenarioRoot,
+    baseline: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -218,17 +230,39 @@ where
             Ok(()) => EXIT_SUCCESS,
             Err(_) => EXIT_USAGE,
         },
-        Command::Validate(root) => {
-            let report = validate_selected_scenario(collection_root, &root, validator);
-            let result = if report.is_valid() {
+        Command::Validate(arguments) => {
+            let report = validate_selected_scenario(collection_root, &arguments.root, validator);
+            if write_validation_report(stdout, &report).is_err() {
+                return EXIT_USAGE;
+            }
+            let Some(baseline_path) = arguments.baseline else {
+                return if report.is_valid() {
+                    EXIT_SUCCESS
+                } else {
+                    EXIT_VALIDATION_FAILED
+                };
+            };
+            let contents = match fs::read_to_string(&baseline_path) {
+                Ok(contents) => contents,
+                Err(error) => {
+                    let _ = writeln!(
+                        stderr,
+                        "cannot read baseline {}: {error}",
+                        baseline_path.display()
+                    );
+                    return EXIT_USAGE;
+                }
+            };
+            let comparison = compare_to_baseline(
+                &validation_report_lines(&report),
+                &parse_baseline(&contents),
+            );
+            if write_baseline_comparison(stdout, &baseline_path, &comparison).is_err() {
+                EXIT_USAGE
+            } else if comparison.is_clean() {
                 EXIT_SUCCESS
             } else {
                 EXIT_VALIDATION_FAILED
-            };
-            if write_validation_report(stdout, &report).is_err() {
-                EXIT_USAGE
-            } else {
-                result
             }
         }
         Command::MapReport(root) => {
@@ -407,20 +441,9 @@ fn parse_command(arguments: impl IntoIterator<Item = OsString>) -> Result<Comman
         {
             Ok(Command::Help)
         }
-        [command] if command == "validate-scenario" => Ok(Command::Validate(
-            ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
-                .expect("the default package key is valid"),
-        )),
-        [command, package_key] if command == "validate-scenario" => {
-            ScenarioRoot::try_for_package_key(package_key.clone())
-                .map(Command::Validate)
-                .map_err(|error| {
-                    UsageError(format!("invalid package key `{package_key}`: {error}"))
-                })
+        [command, rest @ ..] if command == "validate-scenario" => {
+            parse_validate_arguments(rest).map(Command::Validate)
         }
-        [command, ..] if command == "validate-scenario" => Err(UsageError(
-            "validate-scenario accepts at most one package key".to_owned(),
-        )),
         [command] if command == "map-report" => Ok(Command::MapReport(
             ScenarioRoot::try_for_package_key(DEFAULT_SCENARIO_PACKAGE_KEY)
                 .expect("the default package key is valid"),
@@ -551,6 +574,42 @@ fn default_play_arguments() -> PlayArguments {
         debug: None,
         automation: None,
     }
+}
+
+fn parse_validate_arguments(arguments: &[String]) -> Result<ValidateArguments, UsageError> {
+    let mut package_key: Option<&String> = None;
+    let mut baseline: Option<PathBuf> = None;
+    let mut remaining = arguments.iter();
+    while let Some(argument) = remaining.next() {
+        match argument.as_str() {
+            "--baseline" => {
+                let path = remaining
+                    .next()
+                    .ok_or_else(|| UsageError("--baseline requires a PATH".to_owned()))?;
+                if baseline.replace(PathBuf::from(path)).is_some() {
+                    return Err(UsageError("--baseline accepts one PATH".to_owned()));
+                }
+            }
+            value if value.starts_with('-') => {
+                return Err(UsageError(format!(
+                    "unknown validate-scenario option `{value}`"
+                )));
+            }
+            _ => {
+                if package_key.replace(argument).is_some() {
+                    return Err(UsageError(
+                        "validate-scenario accepts at most one package key".to_owned(),
+                    ));
+                }
+            }
+        }
+    }
+    let key = package_key
+        .map(String::as_str)
+        .unwrap_or(DEFAULT_SCENARIO_PACKAGE_KEY);
+    let root = ScenarioRoot::try_for_package_key(key)
+        .map_err(|error| UsageError(format!("invalid package key `{key}`: {error}")))?;
+    Ok(ValidateArguments { root, baseline })
 }
 
 fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageError> {
@@ -1027,6 +1086,17 @@ fn write_validation_report(
         "Diagnostics: {errors} error(s), {warnings} warning(s)"
     )?;
 
+    for line in validation_report_lines(report) {
+        writeln!(output, "{line}")?;
+    }
+    Ok(())
+}
+
+/// Renders one report line per diagnostic, in the display order the report is printed in.
+///
+/// The baseline compares these exact strings, so the accepted-diagnostics file reads as a slice of
+/// the validator's own output rather than a second format to learn.
+fn validation_report_lines(report: &ScenarioValidationReport) -> Vec<String> {
     let mut diagnostics = report.diagnostics.iter().collect::<Vec<_>>();
     diagnostics.sort_by(|left, right| {
         left.severity
@@ -1035,15 +1105,61 @@ fn write_validation_report(
             .then_with(|| left.code.cmp(right.code))
             .then_with(|| left.message.cmp(&right.message))
     });
-    for diagnostic in diagnostics {
+    diagnostics
+        .into_iter()
+        .map(|diagnostic| {
+            format!(
+                "{} {}:{} [{}] {}",
+                severity_name(diagnostic.severity),
+                report.package_key,
+                diagnostic.location,
+                diagnostic.code,
+                diagnostic.message
+            )
+        })
+        .collect()
+}
+
+/// Prints the baseline comparison and reports whether the run may pass.
+///
+/// Both directions fail: a diagnostic the baseline does not list is a regression, and a baseline
+/// entry the report no longer produces is debt that was paid without deleting its line.
+fn write_baseline_comparison(
+    output: &mut impl Write,
+    baseline_path: &Path,
+    comparison: &BaselineComparison,
+) -> io::Result<()> {
+    writeln!(output, "Baseline: {}", baseline_path.display())?;
+    writeln!(
+        output,
+        "Baseline status: {} ({} accepted, {} new, {} no longer reported)",
+        if comparison.is_clean() {
+            "PASS"
+        } else {
+            "FAIL"
+        },
+        comparison.matched,
+        comparison.unexpected.len(),
+        comparison.resolved.len()
+    )?;
+    for line in &comparison.unexpected {
+        writeln!(output, "new {line}")?;
+    }
+    for line in &comparison.resolved {
+        writeln!(output, "no-longer-reported {line}")?;
+    }
+    if !comparison.unexpected.is_empty() {
         writeln!(
             output,
-            "{} {}:{} [{}] {}",
-            severity_name(diagnostic.severity),
-            report.package_key,
-            diagnostic.location,
-            diagnostic.code,
-            diagnostic.message
+            "Fix the new diagnostics, or record them in {} with the decision that accepts them.",
+            baseline_path.display()
+        )?;
+    }
+    if !comparison.resolved.is_empty() {
+        writeln!(
+            output,
+            "Delete the no-longer-reported lines from {}.",
+            baseline_path.display()
         )?;
     }
     Ok(())
@@ -1847,6 +1963,177 @@ mod tests {
             error < warning,
             "errors must sort before warnings:\n{output}"
         );
+    }
+
+    /// Runs `validate-scenario` against `invalid_report` with a baseline file of the given text.
+    fn run_validation_against_baseline(contents: &str) -> (u8, String, String) {
+        let collection = TempCollection::new("broken");
+        let baseline = collection.0.join("baseline.txt");
+        fs::write(&baseline, contents).expect("baseline file should be writable");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            [
+                "validate-scenario".into(),
+                "broken".into(),
+                "--baseline".into(),
+                baseline.clone().into(),
+            ],
+            &collection.0,
+            invalid_report,
+            &mut stdout,
+            &mut stderr,
+            |_| panic!("validation must never launch the app"),
+        );
+
+        (
+            exit,
+            String::from_utf8(stdout).unwrap(),
+            String::from_utf8(stderr).unwrap(),
+        )
+    }
+
+    const ACCEPTED_DIAGNOSTICS: &str = "\
+error broken:data/maps/a.yaml#npcs[0].dialogue [reference.missing] unknown dialogue id `lost`
+warning broken:data/maps/z.yaml#name [content.warning] later warning
+";
+
+    #[test]
+    fn a_report_matching_its_baseline_exits_zero_despite_standing_errors() {
+        let (exit, output, errors) = run_validation_against_baseline(ACCEPTED_DIAGNOSTICS);
+
+        // The point of the gate: the report itself still says FAIL, because these diagnostics are
+        // real and accepted (ADR 0007), yet CI can run the command and get a usable signal.
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(output.contains("Status: FAIL\n"));
+        assert!(
+            output.contains("Baseline status: PASS (2 accepted, 0 new, 0 no longer reported)\n"),
+            "{output}"
+        );
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn a_diagnostic_the_baseline_omits_fails_the_gate() {
+        let (exit, output, _) = run_validation_against_baseline(
+            "warning broken:data/maps/z.yaml#name [content.warning] later warning\n",
+        );
+
+        assert_eq!(exit, EXIT_VALIDATION_FAILED);
+        assert!(
+            output.contains("Baseline status: FAIL (1 accepted, 1 new, 0 no longer reported)\n"),
+            "{output}"
+        );
+        assert!(
+            output.contains(
+                "new error broken:data/maps/a.yaml#npcs[0].dialogue [reference.missing] unknown dialogue id `lost`\n"
+            ),
+            "{output}"
+        );
+    }
+
+    #[test]
+    fn a_baseline_line_the_report_no_longer_produces_fails_the_gate() {
+        let stale = format!(
+            "{ACCEPTED_DIAGNOSTICS}error broken:data/maps/gone.yaml#id [reference.missing] already repaired\n"
+        );
+
+        let (exit, output, _) = run_validation_against_baseline(&stale);
+
+        assert_eq!(exit, EXIT_VALIDATION_FAILED);
+        assert!(
+            output.contains("Baseline status: FAIL (2 accepted, 0 new, 1 no longer reported)\n"),
+            "{output}"
+        );
+        assert!(
+            output.contains(
+                "no-longer-reported error broken:data/maps/gone.yaml#id [reference.missing] already repaired\n"
+            ),
+            "{output}"
+        );
+    }
+
+    #[test]
+    fn baseline_comments_and_blank_lines_are_not_accepted_diagnostics() {
+        let annotated = format!("# why these are accepted\n\n{ACCEPTED_DIAGNOSTICS}\n");
+
+        let (exit, output, _) = run_validation_against_baseline(&annotated);
+
+        assert_eq!(exit, EXIT_SUCCESS);
+        assert!(
+            output.contains("Baseline status: PASS (2 accepted"),
+            "{output}"
+        );
+    }
+
+    #[test]
+    fn an_unreadable_baseline_is_a_usage_error_not_a_silent_pass() {
+        let collection = TempCollection::new("broken");
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        let exit = run_with(
+            [
+                "validate-scenario".into(),
+                "broken".into(),
+                "--baseline".into(),
+                collection.0.join("absent.txt").into(),
+            ],
+            &collection.0,
+            invalid_report,
+            &mut stdout,
+            &mut stderr,
+            |_| panic!("validation must never launch the app"),
+        );
+
+        assert_eq!(exit, EXIT_USAGE);
+        assert!(
+            String::from_utf8(stderr)
+                .unwrap()
+                .contains("cannot read baseline"),
+            "a missing baseline must be reported, never treated as an empty accepted set"
+        );
+    }
+
+    #[test]
+    fn baseline_requires_a_path_and_the_package_key_may_come_either_side_of_it() {
+        assert_eq!(
+            parse_validate_arguments(&["--baseline".to_owned()]),
+            Err(UsageError("--baseline requires a PATH".to_owned()))
+        );
+        assert_eq!(
+            parse_validate_arguments(&["--unknown".to_owned()]),
+            Err(UsageError(
+                "unknown validate-scenario option `--unknown`".to_owned()
+            ))
+        );
+        assert_eq!(
+            parse_validate_arguments(&["one".to_owned(), "two".to_owned()]),
+            Err(UsageError(
+                "validate-scenario accepts at most one package key".to_owned()
+            ))
+        );
+
+        let leading = parse_validate_arguments(&[
+            "fixture".to_owned(),
+            "--baseline".to_owned(),
+            "accepted.txt".to_owned(),
+        ])
+        .expect("a package key before the flag should parse");
+        let trailing = parse_validate_arguments(&[
+            "--baseline".to_owned(),
+            "accepted.txt".to_owned(),
+            "fixture".to_owned(),
+        ])
+        .expect("a package key after the flag should parse");
+        assert_eq!(leading, trailing);
+        assert_eq!(leading.baseline, Some(PathBuf::from("accepted.txt")));
+        assert_eq!(leading.root.package_key(), "fixture");
+
+        let bare = parse_validate_arguments(&[]).expect("a bare command should parse");
+        assert_eq!(bare.baseline, None);
+        assert_eq!(bare.root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
     }
 
     /// A manifest-only scenario, sufficient for `build_map_report` to load a scenario identity

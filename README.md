@@ -125,6 +125,7 @@ Run the normal project checks with:
 cargo fmt --all -- --check
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
+cargo run -- validate-scenario rusted_kingdoms --baseline docs/scenario-validation-baseline.txt
 scripts/check-ardel-screenshot.sh
 ```
 
@@ -139,14 +140,22 @@ cargo run -- dialogue-sweep rusted_kingdoms
 cargo run -- encounter-sweep rusted_kingdoms
 ```
 
-The production scenario currently has 13 inherited content diagnostics, so
-`validate-scenario` is expected to exit unsuccessfully until those issues are
-resolved or approved as explicit differences. Their exact flags, item
-references, stale recruitment references, and missing cursor asset are
-recorded in
-[`docs/adr/0007-inherited-scenario-data-debt.md`](docs/adr/0007-inherited-scenario-data-debt.md).
-The runtime map, dialogue, and encounter sweeps are the passing production
-load checks.
+The production scenario still carries inherited content diagnostics, so a bare
+`validate-scenario` exits unsuccessfully by design. Their exact flags, item
+references, stale recruitment references, and missing cursor asset are recorded
+in
+[`docs/adr/0007-inherited-scenario-data-debt.md`](docs/adr/0007-inherited-scenario-data-debt.md),
+which also decided that the count must not be driven to zero by inventing
+unlocks, maps, or flags.
+
+That is why CI gates on `--baseline` instead. The accepted diagnostics are
+enumerated in
+[`docs/scenario-validation-baseline.txt`](docs/scenario-validation-baseline.txt),
+and the run passes only when the report matches that file exactly: a diagnostic
+the file omits fails as a regression, and a line the validator no longer
+produces fails too, so paying down a debt includes deleting its line. Adding a
+line records a decision — the file is not a mute button. The runtime map,
+dialogue, and encounter sweeps remain the passing production load checks.
 
 Gameplay defaults to deterministic seed `1`. A debug launch requires a map and
 walkable position together and can add a party preset or session-only flags:
