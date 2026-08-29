@@ -46,3 +46,64 @@ impl Default for UiTheme {
         }
     }
 }
+
+impl UiTheme {
+    /// The theme with every named font size multiplied by `scale`.
+    ///
+    /// This is where `fonts.sizes` from `assets/settings.yaml` lands. The source keeps a
+    /// four-entry size palette; this engine names its type roles instead, so the setting is
+    /// honored as a multiplier over those roles. A non-finite or non-positive scale is ignored
+    /// rather than collapsing every label to nothing.
+    pub(crate) fn with_font_scale(scale: f32) -> Self {
+        let base = Self::default();
+        if !scale.is_finite() || scale <= 0.0 || scale == 1.0 {
+            return base;
+        }
+        Self {
+            menu_font_size: base.menu_font_size * scale,
+            status_font_size: base.status_font_size * scale,
+            name_entry_prompt_font_size: base.name_entry_prompt_font_size * scale,
+            name_entry_input_font_size: base.name_entry_input_font_size * scale,
+            name_entry_hint_font_size: base.name_entry_hint_font_size * scale,
+            ..base
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_shipped_scale_leaves_every_size_untouched() {
+        assert_eq!(UiTheme::with_font_scale(1.0), UiTheme::default());
+    }
+
+    #[test]
+    fn a_scale_multiplies_every_named_size_and_no_colour() {
+        let base = UiTheme::default();
+        let scaled = UiTheme::with_font_scale(1.5);
+
+        assert_eq!(scaled.menu_font_size, base.menu_font_size * 1.5);
+        assert_eq!(scaled.status_font_size, base.status_font_size * 1.5);
+        assert_eq!(
+            scaled.name_entry_input_font_size,
+            base.name_entry_input_font_size * 1.5
+        );
+        assert_eq!(
+            scaled.menu_selected_color, base.menu_selected_color,
+            "a type scale must not touch the palette"
+        );
+    }
+
+    #[test]
+    fn a_scale_that_would_erase_the_interface_is_refused() {
+        for scale in [0.0, -2.0, f32::NAN, f32::INFINITY] {
+            assert_eq!(
+                UiTheme::with_font_scale(scale),
+                UiTheme::default(),
+                "scale {scale} must fall back to the shipped sizes"
+            );
+        }
+    }
+}

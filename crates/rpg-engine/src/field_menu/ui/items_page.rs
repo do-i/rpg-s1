@@ -619,6 +619,41 @@ pub(in crate::field_menu) fn spawn_item_modal(
                                 );
                             }
                         }
+                        FieldMenuMode::ItemAoeConfirm => {
+                            spawn_status_text(
+                                modal,
+                                "USE ON THE WHOLE PARTY?",
+                                font,
+                                13.0,
+                                status_muted(),
+                            );
+                            for member in game
+                                .party()
+                                .members()
+                                .filter(|member| !member.is_knocked_out())
+                            {
+                                spawn_item_modal_row(
+                                    modal,
+                                    font,
+                                    member.name(),
+                                    &format!(
+                                        "HP {}/{}    MP {}/{}",
+                                        member.health(),
+                                        member.max_health(),
+                                        member.mana(),
+                                        member.max_mana()
+                                    ),
+                                    false,
+                                );
+                            }
+                            spawn_status_text(
+                                modal,
+                                "Y/ENTER use    N/ESC cancel",
+                                font,
+                                14.0,
+                                status_muted(),
+                            );
+                        }
                         _ => {}
                     }
                 },

@@ -12,6 +12,7 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    engine_settings::EngineSettings,
     field_menu::FieldMenuState,
     field_menu_domain::{FieldMenuCatalog, item_name},
     game_state::GameState,
@@ -585,9 +586,14 @@ fn resolve_dialogue_request(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "driving a session reads the clock, input, settings, and every catalog it can apply"
+)]
 fn drive_dialogue_session(
     time: Res<Time>,
     actions: Res<ActionState>,
+    settings: Res<EngineSettings>,
     party_assets: Res<Assets<PartyCatalog>>,
     balance_assets: Res<Assets<BalanceData>>,
     game: Option<ResMut<GameState>>,
@@ -607,7 +613,7 @@ fn drive_dialogue_session(
     let Some(session) = state.session.as_mut() else {
         return;
     };
-    session.tick(time.delta_secs());
+    session.tick(time.delta_secs(), settings.text_speed);
     if actions.just_pressed(AppAction::Back) {
         session.cancel();
         state.session = None;
@@ -1528,7 +1534,9 @@ mod tests {
             .insert_resource(crate::field_menu_domain::tests::catalog())
             // Speaker portraits read the frame rects out of the NPC sprite's atlas layout.
             // `SpritePlugin` registers this in the real app; the headless harness has no renderer.
-            .init_asset::<TextureAtlasLayout>();
+            .init_asset::<TextureAtlasLayout>()
+            // The typewriter reads its reveal rate from the settings file.
+            .init_resource::<EngineSettings>();
 
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"

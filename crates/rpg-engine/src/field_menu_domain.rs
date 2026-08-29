@@ -1097,6 +1097,77 @@ pub(crate) fn cast_heal(
         .restore_health(amount))
 }
 
+/// True when an item's field effect covers the whole party instead of one chosen member.
+///
+/// The source branches on this before it ever offers a target picker
+/// (`engine/item/item_scene.py::_begin_use`), which is why the port must ask the same question
+/// first: routing a Tent through the picker is what made it unusable.
+pub(crate) fn targets_whole_party(catalog: &FieldMenuCatalog, item_id: &str) -> bool {
+    matches!(
+        catalog.field_use(item_id),
+        Some(FieldUseDefinition::RestoreFull {
+            target: FullRecoveryTarget::AllAlive,
+            ..
+        })
+    )
+}
+
+/// Spends one party-wide item on every living member.
+///
+/// Mirrors `_apply_aoe` with `valid_targets`: the targets are exactly the members above zero HP,
+/// the effect lands on all of them, and the item is consumed once no matter how many it helped.
+/// The source applies unconditionally rather than refusing a full-health party ("warn-and-allow"
+/// in `item_effect_handler.apply`), so a Tent at full health is spent, not rejected.
+pub(crate) fn use_field_item_on_party(
+    game: &mut GameState,
+    catalog: &FieldMenuCatalog,
+    item_id: &str,
+) -> Result<u32, MenuMutationError> {
+    if game.repository().item_count(item_id) == 0 {
+        return Err(MenuMutationError::NotOwned);
+    }
+    let effect = catalog
+        .field_use(item_id)
+        .ok_or(MenuMutationError::NotFieldUsable)?
+        .clone();
+    let FieldUseDefinition::RestoreFull {
+        target: FullRecoveryTarget::AllAlive,
+        cures,
+        ..
+    } = &effect
+    else {
+        return Err(MenuMutationError::InvalidTarget);
+    };
+    let cures = cures.clone();
+    let living = game
+        .party()
+        .members()
+        .filter(|member| !member.is_knocked_out())
+        .map(|member| member.id().to_owned())
+        .collect::<Vec<String>>();
+    if living.is_empty() {
+        return Err(MenuMutationError::InvalidTarget);
+    }
+    let mut changed = 0;
+    for id in living {
+        let member = game
+            .party_mut()
+            .member_mut(&id)
+            .expect("a member listed a moment ago is still in the party");
+        changed += member.restore_health(u32::MAX) + member.restore_mana(u32::MAX);
+        changed += cures
+            .iter()
+            .filter(|status| member.cure_status(**status))
+            .count() as u32;
+    }
+    if effect.consumable() {
+        game.repository_mut()
+            .remove_item(item_id, 1)
+            .map_err(|error| MenuMutationError::Repository(error.to_string()))?;
+    }
+    Ok(changed)
+}
+
 pub(crate) fn use_field_item(
     game: &mut GameState,
     catalog: &FieldMenuCatalog,
@@ -1474,6 +1545,82 @@ pub(crate) mod tests {
             Err(MenuMutationError::InvalidTarget)
         );
         assert_eq!(game.repository().item_count("antidote"), 1);
+    }
+
+    /// The Tent and Rest Capsule were unusable: the field menu sent every item through the
+    /// single-target picker, and `use_field_item` rejects an `all_alive` effect on one member, so
+    /// both shipped consumables refused every target in the party.
+    #[test]
+    fn a_party_wide_item_heals_everyone_alive_and_is_spent_once() {
+        let catalog = catalog();
+        let mut game = game([]);
+        let _outcome = game.repository_mut().add_item("tent", 2).unwrap();
+        game.party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .apply_damage(10);
+        game.party_mut()
+            .member_mut("elise")
+            .unwrap()
+            .apply_damage(6);
+        game.party_mut()
+            .member_mut("elise")
+            .unwrap()
+            .add_status(crate::scenario_item::ItemStatus::Poison);
+
+        assert!(targets_whole_party(&catalog, "tent"));
+        assert!(
+            !targets_whole_party(&catalog, "potion"),
+            "a single-target item must still reach the picker"
+        );
+
+        let changed = use_field_item_on_party(&mut game, &catalog, "tent").unwrap();
+
+        assert!(
+            changed >= 17,
+            "both members healed, plus the cure: {changed}"
+        );
+        let aric = game.party().member("aric").unwrap();
+        let elise = game.party().member("elise").unwrap();
+        assert_eq!(aric.health(), aric.max_health());
+        assert_eq!(elise.health(), elise.max_health());
+        assert!(!elise.has_status(crate::scenario_item::ItemStatus::Poison));
+        assert_eq!(
+            game.repository().item_count("tent"),
+            1,
+            "one Tent covers the whole party, it is not spent per member"
+        );
+    }
+
+    #[test]
+    fn a_party_wide_item_is_refused_when_it_is_not_owned_or_not_party_wide() {
+        let catalog = catalog();
+        let mut game = game([]);
+
+        assert_eq!(
+            use_field_item_on_party(&mut game, &catalog, "tent"),
+            Err(MenuMutationError::NotOwned)
+        );
+
+        let _outcome = game.repository_mut().add_item("potion", 1).unwrap();
+        assert_eq!(
+            use_field_item_on_party(&mut game, &catalog, "potion"),
+            Err(MenuMutationError::InvalidTarget),
+            "a single-target item must not be spendable through the party-wide path"
+        );
+        assert_eq!(game.repository().item_count("potion"), 1);
+    }
+
+    /// The source applies to a full-health party rather than refusing ("warn-and-allow" in
+    /// `item_effect_handler.apply`), so the item is spent. Reproduced deliberately.
+    #[test]
+    fn a_party_wide_item_used_at_full_health_is_still_spent() {
+        let catalog = catalog();
+        let mut game = game([]);
+        let _outcome = game.repository_mut().add_item("tent", 1).unwrap();
+
+        assert_eq!(use_field_item_on_party(&mut game, &catalog, "tent"), Ok(0));
+        assert_eq!(game.repository().item_count("tent"), 0);
     }
 
     #[test]

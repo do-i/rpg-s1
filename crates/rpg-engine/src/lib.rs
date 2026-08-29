@@ -8,6 +8,7 @@ mod dialogue_sweep;
 pub mod encounter;
 mod encounter_assets;
 mod encounter_sweep;
+mod engine_settings;
 mod field_menu;
 mod field_menu_domain;
 mod frame_timing;
@@ -63,11 +64,12 @@ mod world_player;
 mod world_transition;
 
 pub use rpg_content::{
-    manifest_path_validation, scenario_audio, scenario_balance, scenario_battle_background,
-    scenario_class, scenario_condition, scenario_cross_reference, scenario_dialogue,
-    scenario_duplicate_id, scenario_encounter, scenario_enemy, scenario_item, scenario_manifest,
-    scenario_map, scenario_party, scenario_path, scenario_quest, scenario_recipe, scenario_root,
-    scenario_validation_baseline, scenario_yaml, tmx_header, tsx_metadata,
+    engine_config, manifest_path_validation, scenario_audio, scenario_balance,
+    scenario_battle_background, scenario_class, scenario_condition, scenario_cross_reference,
+    scenario_dialogue, scenario_duplicate_id, scenario_encounter, scenario_enemy, scenario_item,
+    scenario_manifest, scenario_map, scenario_party, scenario_path, scenario_quest,
+    scenario_recipe, scenario_root, scenario_validation_baseline, scenario_yaml, tmx_header,
+    tsx_metadata,
 };
 
 #[cfg(test)]
@@ -85,6 +87,7 @@ use bevy::{
 };
 use debug_launch::DebugLaunchPlugin;
 use encounter_assets::EncounterAssetPlugin;
+use engine_settings::EngineSettings;
 use field_menu::FieldMenuPlugin;
 use field_menu_domain::FieldMenuDomainPlugin;
 use frame_timing::FrameTimingPlugin;
@@ -141,6 +144,7 @@ pub fn run_with_game_version(game_version: &str) -> std::process::ExitCode {
 fn run_game(arguments: cli::PlayArguments) {
     let asset_base = cli::production_asset_base();
     let inventory = ScenarioInventory::discover(&asset_base, &arguments.root);
+    let settings = EngineSettings::load(&asset_base);
     let initial_state = if arguments.debug.is_some() {
         AppState::Boot
     } else {
@@ -175,6 +179,10 @@ fn run_game(arguments: cli::PlayArguments) {
             }),
     )
     .insert_resource(ClearColor(UiTheme::default().clear_color))
+    // Inserted before the plugins that `init_resource` a theme, so the configured type scale is
+    // the one they find rather than being overwritten by the default.
+    .insert_resource(UiTheme::with_font_scale(settings.font_scale))
+    .insert_resource(settings)
     .insert_resource(arguments.root)
     .insert_resource(inventory)
     .add_plugins(ScenarioManifestAssetPlugin)
