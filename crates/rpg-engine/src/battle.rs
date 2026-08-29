@@ -2,6 +2,7 @@
 
 mod ability;
 mod action;
+mod badge;
 mod enemy_ai;
 mod fx;
 mod item;
