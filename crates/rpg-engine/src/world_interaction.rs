@@ -65,6 +65,8 @@ impl Plugin for WorldInteractionPlugin {
 pub(crate) struct WorldInteractionState {
     request: Option<DialogueRequest>,
     session: Option<DialogueSession>,
+    /// The open session's speaker portrait, if the speaker has a world sprite. Signs do not.
+    portrait: Option<DialoguePortrait>,
     treasure: Option<TreasureReveal>,
     party: Option<Handle<PartyCatalog>>,
     balance: Option<Handle<BalanceData>>,
@@ -97,6 +99,7 @@ impl WorldInteractionState {
             request: Some(DialogueRequest {
                 id: "test_dialogue".to_owned(),
                 speaker: None,
+                portrait: None,
                 handle: Handle::default(),
             }),
             ..default()
@@ -108,6 +111,9 @@ impl WorldInteractionState {
 struct DialogueRequest {
     id: String,
     speaker: Option<String>,
+    /// Resolved when the target is picked, because that is the only point the speaker's world
+    /// sprite is in hand; it moves onto the state once the session actually opens.
+    portrait: Option<DialoguePortrait>,
     handle: Handle<DialogueDocument>,
 }
 
@@ -134,6 +140,12 @@ struct TreasureOverlayRoot;
 
 #[derive(Component)]
 struct WorldDialogueSpeaker;
+
+#[derive(Component)]
+struct WorldDialogueSpeakerPlate;
+
+#[derive(Component)]
+struct WorldDialoguePortrait;
 
 #[derive(Component)]
 struct WorldDialogueBody;
@@ -177,8 +189,9 @@ fn request_npc_dialogue(
     field_menu: Res<FieldMenuState>,
     service: Res<ServiceUiState>,
     catalog: Res<FieldMenuCatalog>,
+    layouts: Res<Assets<TextureAtlasLayout>>,
     game: Option<ResMut<GameState>>,
-    npcs: Query<&WorldNpc>,
+    npcs: Query<(&WorldNpc, &Sprite)>,
     signs: Query<&WorldSign>,
     boxes: Query<&WorldItemBox>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
@@ -201,13 +214,14 @@ fn request_npc_dialogue(
         .single()
         .map(|motion| motion.top_left())
         .unwrap_or_else(|_| WorldPlayerMotion::from_tile(player).top_left());
-    let npc = select_npc(player_pixels, facing, npcs.iter()).map(|target| {
+    let npc = select_npc(player_pixels, facing, npcs.iter()).map(|(target, sprite)| {
         (
             distance_squared(player, target.tile_position()),
             0_u8,
             InteractionTarget::Dialogue {
                 id: target.dialogue_id().to_owned(),
                 speaker: Some(target.name().to_owned()),
+                portrait: portrait_for_sprite(sprite, &layouts),
             },
         )
     });
@@ -225,6 +239,8 @@ fn request_npc_dialogue(
                 InteractionTarget::Dialogue {
                     id: sign.dialogue_id().to_owned(),
                     speaker: None,
+                    // A sign has no sprite sheet, so the source passes no portrait either.
+                    portrait: None,
                 },
             )
         });
@@ -273,7 +289,12 @@ fn request_npc_dialogue(
         state.failure = None;
         return;
     }
-    let InteractionTarget::Dialogue { id, speaker } = target else {
+    let InteractionTarget::Dialogue {
+        id,
+        speaker,
+        portrait,
+    } = target
+    else {
         unreachable!();
     };
     let logical = format!("data/dialogue/{id}.yaml");
@@ -285,6 +306,7 @@ fn request_npc_dialogue(
     state.request = Some(DialogueRequest {
         id,
         speaker,
+        portrait,
         handle: asset_server.load(scenario_root.resolve(&logical)),
     });
     // The interaction sound plays once `resolve_dialogue_request` confirms a session actually
@@ -300,26 +322,77 @@ fn request_npc_dialogue(
 }
 
 enum InteractionTarget<'a> {
-    Dialogue { id: String, speaker: Option<String> },
+    Dialogue {
+        id: String,
+        speaker: Option<String>,
+        portrait: Option<DialoguePortrait>,
+    },
     Box(&'a WorldItemBox),
 }
 
 fn select_npc<'a>(
     player_pixels: Vec2,
     facing: CardinalDirection,
-    npcs: impl Iterator<Item = &'a WorldNpc>,
-) -> Option<&'a WorldNpc> {
-    npcs.filter(|npc| {
+    npcs: impl Iterator<Item = (&'a WorldNpc, &'a Sprite)>,
+) -> Option<(&'a WorldNpc, &'a Sprite)> {
+    npcs.filter(|(npc, _)| {
         let target = npc.source_pixel_position();
         !npc.map_id().is_empty()
             && is_in_facing_direction_pixels(player_pixels, target, facing)
             && within_pixel_range(player_pixels, target, npc.interaction_range_pixels())
     })
-    .min_by(|left, right| {
+    .min_by(|(left, _), (right, _)| {
         player_pixels
             .distance_squared(left.source_pixel_position())
             .total_cmp(&player_pixels.distance_squared(right.source_pixel_position()))
             .then_with(|| left.name().cmp(right.name()))
+    })
+}
+
+/// The image region the dialogue box shows beside a speaker's lines.
+///
+/// The source does not read `party.yaml`'s `portrait` here at all -- it crops the head out of the
+/// NPC's own walking sprite at dialogue time (`engine/world/sprite_sheet.py::get_portrait`), so a
+/// speaker's portrait always matches the sprite standing in front of the player.
+#[derive(Clone, Debug, PartialEq)]
+struct DialoguePortrait {
+    image: Handle<Image>,
+    /// Absolute pixel region of the source sheet, already cropped to the head.
+    rect: Rect,
+}
+
+/// The idle frame the source crops from: row 2 (facing down), frame 0.
+const PORTRAIT_SOURCE_FRAME: usize = 18;
+/// `PORTRAIT_HEAD_TOP_RATIO` in `engine/world/sprite_sheet.py`.
+const PORTRAIT_HEAD_TOP_RATIO: f32 = 10.0 / 64.0;
+
+/// Crops a speaker's head out of one frame of their walking sheet.
+///
+/// Mirrors `get_portrait`: the middle half of the frame horizontally, and the top half starting a
+/// little below the frame's top edge, which is where these sheets put the head.
+fn head_crop(frame: Rect) -> Rect {
+    let width = frame.width();
+    let height = frame.height();
+    // `int()` truncation in the source, reproduced rather than rounded.
+    let crop = Vec2::new((width * 0.5).trunc(), (height * 0.5).trunc());
+    let origin = frame.min
+        + Vec2::new(
+            (width / 4.0).trunc(),
+            (height * PORTRAIT_HEAD_TOP_RATIO).trunc(),
+        );
+    Rect::from_corners(origin, origin + crop)
+}
+
+/// Resolves the head crop for a speaker from the sprite already standing in the world.
+fn portrait_for_sprite(
+    sprite: &Sprite,
+    layouts: &Assets<TextureAtlasLayout>,
+) -> Option<DialoguePortrait> {
+    let layout = layouts.get(&sprite.texture_atlas.as_ref()?.layout)?;
+    let frame = layout.textures.get(PORTRAIT_SOURCE_FRAME)?;
+    Some(DialoguePortrait {
+        image: sprite.image.clone(),
+        rect: head_crop(frame.as_rect()),
     })
 }
 
@@ -487,6 +560,7 @@ fn resolve_dialogue_request(
         state.request = None;
         return;
     };
+    let portrait = request.portrait.clone();
     match DialogueSession::resolve(
         request.id.clone(),
         request.speaker.clone(),
@@ -495,6 +569,7 @@ fn resolve_dialogue_request(
     ) {
         Ok(Some(session)) => {
             state.session = Some(session);
+            state.portrait = portrait;
             state.suppress_confirm = true;
             state.request = None;
             state.failure = None;
@@ -536,6 +611,7 @@ fn drive_dialogue_session(
     if actions.just_pressed(AppAction::Back) {
         session.cancel();
         state.session = None;
+        state.portrait = None;
         state.closed_this_frame = true;
         state.pending_sounds.push(InteractionSound::Cancel);
         return;
@@ -578,6 +654,7 @@ fn drive_dialogue_session(
         .is_some_and(|session| session.phase() == DialoguePhase::Closed)
     {
         state.session = None;
+        state.portrait = None;
     }
 }
 
@@ -790,6 +867,8 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueChoices>,
         ),
     >,
+    mut plates: Query<&mut Node, With<WorldDialogueSpeakerPlate>>,
+    mut portraits: Query<(&mut ImageNode, &mut Visibility), With<WorldDialoguePortrait>>,
 ) {
     let Some(session) = state.session() else {
         for (entity, _) in &mut roots {
@@ -810,6 +889,24 @@ fn sync_dialogue_overlay(
     }
     if let Ok(mut speaker) = speakers.single_mut() {
         speaker.0 = session.speaker().unwrap_or_default().to_owned();
+    }
+    if let Ok(mut plate) = plates.single_mut() {
+        // The source only draws the plate for a named speaker; a sign's box has no name on it.
+        plate.display = if session.speaker().is_some_and(|name| !name.is_empty()) {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+    if let Ok((mut portrait, mut visibility)) = portraits.single_mut() {
+        match state.portrait.as_ref() {
+            Some(source) => {
+                portrait.image = source.image.clone();
+                portrait.rect = Some(source.rect);
+                *visibility = Visibility::Inherited;
+            }
+            None => *visibility = Visibility::Hidden,
+        }
     }
     if let Ok(mut body) = bodies.single_mut() {
         body.0 = session.visible_text();
@@ -842,19 +939,36 @@ fn sync_dialogue_overlay(
     }
 }
 
+/// Box geometry from `engine/dialogue/dialogue_scene.py`.
+///
+/// The source sizes the box from the screen -- `box_w = screen_w - BOX_MARGIN * 2` -- so it always
+/// spans the display. The port had `width: px(920)` hardcoded, which left 340 px of the 1280 px
+/// canvas empty to the right of every conversation.
+const DIALOGUE_BOX_MARGIN: f32 = 20.0;
+const DIALOGUE_BOX_HEIGHT: f32 = 180.0;
+const DIALOGUE_BOX_PADDING: f32 = 16.0;
+const DIALOGUE_PORTRAIT_SIZE: f32 = 96.0;
+/// The source's speaker plate straddles the box's top border rather than sitting inside it.
+const DIALOGUE_PLATE_HEIGHT: f32 = 30.0;
+
 fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle<Font>) {
     commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: px(20),
-                bottom: px(20),
-                width: px(920),
-                height: px(180),
-                padding: UiRect::all(px(16)),
+                left: px(DIALOGUE_BOX_MARGIN),
+                // Both insets rather than a width, so the box tracks the canvas the way the
+                // source's `screen.get_width() - BOX_MARGIN * 2` does.
+                right: px(DIALOGUE_BOX_MARGIN),
+                bottom: px(DIALOGUE_BOX_MARGIN),
+                height: px(DIALOGUE_BOX_HEIGHT),
+                // pygame draws the box's 2 px border *inside* the rect, so the source's contents
+                // start `BOX_PAD` from the box edge. Bevy lays padding out inside the border, so
+                // the border's width comes out of the padding to land on the same pixels.
+                padding: UiRect::all(px(DIALOGUE_BOX_PADDING - 2.0)),
                 border: UiRect::all(px(2)),
-                flex_direction: FlexDirection::Column,
-                row_gap: px(6),
+                flex_direction: FlexDirection::Row,
+                column_gap: px(DIALOGUE_BOX_PADDING),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.047, 0.047, 0.118, 0.94)),
@@ -865,52 +979,112 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
             WorldDialogueRoot,
         ))
         .with_children(|panel| {
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(18.0),
-                    ..default()
-                },
-                TextColor(Color::srgb_u8(235, 210, 140)),
-                WorldDialogueSpeaker,
-            ));
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(22.0),
-                    ..default()
-                },
-                TextColor(Color::srgb_u8(220, 220, 180)),
-                TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
-                Node {
-                    width: percent(100),
+            // Name plate: absolutely placed so it can hang over the box's own top border, which
+            // is where the source draws it.
+            panel
+                .spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        // Absolute children sit inside the parent's border, so these insets are
+                        // measured from there: 14 px in and half a plate up puts the plate on the
+                        // box's top border exactly where the source draws it.
+                        left: px(14.0 - 2.0),
+                        top: px(-(DIALOGUE_PLATE_HEIGHT / 2.0 + 2.0)),
+                        height: px(DIALOGUE_PLATE_HEIGHT),
+                        padding: UiRect::axes(px(10), px(4)),
+                        border: UiRect::all(px(1)),
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(24, 22, 40)),
+                    BorderColor::all(Color::srgb_u8(160, 160, 100)),
+                    WorldDialogueSpeakerPlate,
+                ))
+                .with_child((
+                    Text::new(""),
+                    TextFont {
+                        font: font.clone().into(),
+                        font_size: FontSize::Px(18.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb_u8(235, 210, 140)),
+                    WorldDialogueSpeaker,
+                ));
+            // The source draws the portrait's frame whether or not a speaker has a sprite, so a
+            // sign's dialogue keeps the same text column as an NPC's.
+            panel
+                .spawn((
+                    Node {
+                        width: px(DIALOGUE_PORTRAIT_SIZE),
+                        height: px(DIALOGUE_PORTRAIT_SIZE),
+                        flex_shrink: 0.0,
+                        border: UiRect::all(px(1)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(50, 50, 80)),
+                    BorderColor::all(Color::srgb_u8(120, 120, 90)),
+                ))
+                .with_child((
+                    ImageNode::default(),
+                    Node {
+                        width: percent(100),
+                        height: percent(100),
+                        ..default()
+                    },
+                    Visibility::Hidden,
+                    WorldDialoguePortrait,
+                ));
+            panel
+                .spawn(Node {
                     flex_grow: 1.0,
+                    // Without this a long line widens the row instead of wrapping inside it.
+                    min_width: px(0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(6),
                     ..default()
-                },
-                WorldDialogueBody,
-            ));
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(18.0),
-                    ..default()
-                },
-                TextColor(theme.name_entry_input_color),
-                WorldDialogueChoices,
-            ));
-            panel.spawn((
-                Text::new(""),
-                TextFont {
-                    font: font.into(),
-                    font_size: FontSize::Px(15.0),
-                    ..default()
-                },
-                TextColor(theme.name_entry_hint_color),
-                WorldDialogueHint,
-            ));
+                })
+                .with_children(|column| {
+                    column.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(22.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(220, 220, 180)),
+                        TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
+                        Node {
+                            width: percent(100),
+                            flex_grow: 1.0,
+                            ..default()
+                        },
+                        WorldDialogueBody,
+                    ));
+                    column.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(18.0),
+                            ..default()
+                        },
+                        TextColor(theme.name_entry_input_color),
+                        WorldDialogueChoices,
+                    ));
+                    column.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font: font.into(),
+                            font_size: FontSize::Px(15.0),
+                            ..default()
+                        },
+                        TextColor(theme.name_entry_hint_color),
+                        Node {
+                            align_self: AlignSelf::FlexEnd,
+                            ..default()
+                        },
+                        WorldDialogueHint,
+                    ));
+                });
         });
 }
 
@@ -981,7 +1155,8 @@ fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[S
                 .spawn((
                     Node {
                         width: px(TREASURE_MODAL_WIDTH),
-                        padding: UiRect::all(px(TREASURE_PADDING)),
+                        // Same border-inside-the-rect correction as the dialogue box.
+                        padding: UiRect::all(px(TREASURE_PADDING - 2.0)),
                         border: UiRect::all(px(2)),
                         flex_direction: FlexDirection::Column,
                         ..default()
@@ -1350,7 +1525,10 @@ mod tests {
             .init_resource::<FieldMenuState>()
             .init_resource::<ServiceUiState>()
             // Opening a treasure box resolves loot ids to display names through the catalog.
-            .insert_resource(crate::field_menu_domain::tests::catalog());
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            // Speaker portraits read the frame rects out of the NPC sprite's atlas layout.
+            // `SpritePlugin` registers this in the real app; the headless harness has no renderer.
+            .init_asset::<TextureAtlasLayout>();
 
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
@@ -1563,6 +1741,48 @@ mod tests {
         assert_eq!(game.repository().item_count("mc_s"), 10);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
+    }
+
+    /// The source crops the head out of the walking sheet rather than loading a portrait asset,
+    /// so the numbers here are `get_portrait`'s, reproduced including its `int()` truncation.
+    #[test]
+    fn a_speaker_portrait_is_the_head_half_of_their_idle_frame() {
+        // A 64x64 frame at the third row of the sheet, which is the idle DOWN frame.
+        let frame = Rect::new(0.0, 128.0, 64.0, 192.0);
+
+        let head = head_crop(frame);
+
+        assert_eq!(head.min, Vec2::new(16.0, 138.0), "x = w/4, y = h * 10/64");
+        assert_eq!(head.width(), 32.0);
+        assert_eq!(head.height(), 32.0);
+        assert!(
+            head.max.y <= frame.max.y && head.max.x <= frame.max.x,
+            "the crop must stay inside its own frame, never bleed into the next one"
+        );
+    }
+
+    #[test]
+    fn a_frame_whose_size_does_not_halve_evenly_truncates_like_the_source() {
+        // 33 px: the source's `int(33 * 0.5)` is 16, and `33 // 4` is 8.
+        let head = head_crop(Rect::new(0.0, 0.0, 33.0, 33.0));
+
+        assert_eq!(head.width(), 16.0);
+        assert_eq!(head.height(), 16.0);
+        assert_eq!(head.min, Vec2::new(8.0, 5.0));
+    }
+
+    #[test]
+    fn a_sprite_with_no_atlas_yields_no_portrait() {
+        let layouts = Assets::<TextureAtlasLayout>::default();
+
+        assert_eq!(
+            portrait_for_sprite(
+                &Sprite::from_color(Color::WHITE, Vec2::splat(64.0)),
+                &layouts
+            ),
+            None,
+            "a speaker drawn as a flat placeholder has no head to crop"
+        );
     }
 
     #[test]
