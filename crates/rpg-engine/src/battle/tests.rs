@@ -222,7 +222,7 @@ fn reward_enemy(id: &str, index: usize) -> BattleCombatant {
     enemy
 }
 
-fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombatant {
+pub(super) fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombatant {
     BattleCombatant {
         key: CombatantKey { side, index },
         id: format!("{side:?}-{index}"),
@@ -249,7 +249,7 @@ fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> BattleCombata
     }
 }
 
-fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
+pub(super) fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
     BattleState {
         phase: BattlePhase::Command,
         turn_order: calculate_turn_order(&combatants),

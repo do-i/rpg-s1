@@ -9,10 +9,19 @@ pub(crate) enum AppAction {
     Confirm,
     Up,
     Down,
+    Left,
+    Right,
 }
 
 impl AppAction {
-    const ALL: [Self; 4] = [Self::Back, Self::Confirm, Self::Up, Self::Down];
+    const ALL: [Self; 6] = [
+        Self::Back,
+        Self::Confirm,
+        Self::Up,
+        Self::Down,
+        Self::Left,
+        Self::Right,
+    ];
 
     const fn index(self) -> usize {
         match self {
@@ -20,6 +29,8 @@ impl AppAction {
             Self::Confirm => 1,
             Self::Up => 2,
             Self::Down => 3,
+            Self::Left => 4,
+            Self::Right => 5,
         }
     }
 }
@@ -48,7 +59,7 @@ impl MovementAction {
 /// Keyboard bindings for semantic application-shell actions.
 #[derive(Resource)]
 pub(crate) struct ActionMap {
-    bindings: [Vec<KeyCode>; 4],
+    bindings: [Vec<KeyCode>; 6],
     movement_bindings: [Vec<KeyCode>; 4],
 }
 
@@ -60,6 +71,8 @@ impl Default for ActionMap {
                 vec![KeyCode::Enter, KeyCode::Space, KeyCode::NumpadEnter],
                 vec![KeyCode::ArrowUp],
                 vec![KeyCode::ArrowDown],
+                vec![KeyCode::ArrowLeft],
+                vec![KeyCode::ArrowRight],
             ],
             movement_bindings: [
                 vec![KeyCode::ArrowUp],
@@ -84,7 +97,7 @@ impl ActionMap {
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
-    just_pressed: [bool; 4],
+    just_pressed: [bool; 6],
     movement_pressed: [bool; 4],
 }
 
@@ -103,6 +116,21 @@ impl ActionState {
         if self.just_pressed(AppAction::Up) {
             Some(-1)
         } else if self.just_pressed(AppAction::Down) {
+            Some(1)
+        } else {
+            None
+        }
+    }
+
+    /// Resolves same-frame horizontal menu navigation to one movement.
+    ///
+    /// The pinned engine's battle target picker treats Left as "previous" and Right as "next"
+    /// alongside Up/Down (`battle_input.py:106-109`). Left wins a conflicting pair for the same
+    /// reason Up does above: one keypress pair must never take two steps.
+    pub(crate) fn menu_navigation_horizontal(&self) -> Option<isize> {
+        if self.just_pressed(AppAction::Left) {
+            Some(-1)
+        } else if self.just_pressed(AppAction::Right) {
             Some(1)
         } else {
             None
@@ -140,6 +168,8 @@ impl ActionState {
             (AppAction::Confirm, NormalizedAction::Confirm),
             (AppAction::Up, NormalizedAction::MenuUp),
             (AppAction::Down, NormalizedAction::MenuDown),
+            (AppAction::Left, NormalizedAction::MenuLeft),
+            (AppAction::Right, NormalizedAction::MenuRight),
         ] {
             if self.just_pressed(action) {
                 normalized.push(value);
@@ -169,6 +199,8 @@ impl ActionState {
                 NormalizedAction::Confirm => self.just_pressed[AppAction::Confirm.index()] = true,
                 NormalizedAction::MenuUp => self.just_pressed[AppAction::Up.index()] = true,
                 NormalizedAction::MenuDown => self.just_pressed[AppAction::Down.index()] = true,
+                NormalizedAction::MenuLeft => self.just_pressed[AppAction::Left.index()] = true,
+                NormalizedAction::MenuRight => self.just_pressed[AppAction::Right.index()] = true,
                 NormalizedAction::MoveUp => {
                     self.movement_pressed[MovementAction::Up.index()] = true
                 }
@@ -242,6 +274,8 @@ mod tests {
         );
         assert_eq!(map.bindings(AppAction::Up), [KeyCode::ArrowUp]);
         assert_eq!(map.bindings(AppAction::Down), [KeyCode::ArrowDown]);
+        assert_eq!(map.bindings(AppAction::Left), [KeyCode::ArrowLeft]);
+        assert_eq!(map.bindings(AppAction::Right), [KeyCode::ArrowRight]);
         assert_eq!(
             map.movement_bindings(MovementAction::Up),
             [KeyCode::ArrowUp]
@@ -269,6 +303,8 @@ mod tests {
             (KeyCode::NumpadEnter, AppAction::Confirm),
             (KeyCode::ArrowUp, AppAction::Up),
             (KeyCode::ArrowDown, AppAction::Down),
+            (KeyCode::ArrowLeft, AppAction::Left),
+            (KeyCode::ArrowRight, AppAction::Right),
         ];
 
         for (key, expected) in cases {
@@ -332,6 +368,48 @@ mod tests {
             .press(KeyCode::Enter);
         app.update();
         assert!(action_state(&app, AppAction::Confirm));
+    }
+
+    #[test]
+    fn horizontal_navigation_is_edge_triggered_and_prefers_left() {
+        let mut app = action_app();
+        app.update();
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.press(KeyCode::ArrowLeft);
+            keys.press(KeyCode::ArrowRight);
+        }
+        app.update();
+        let actions = app.world().resource::<ActionState>();
+        assert_eq!(actions.menu_navigation_horizontal(), Some(-1));
+        // Vertical navigation is untouched by a horizontal press, so a target picker can consult
+        // both without one swallowing the other.
+        assert_eq!(actions.menu_navigation(), None);
+
+        // Holding a direction must not walk the pool: this is menu navigation, not world movement.
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<ActionState>()
+                .menu_navigation_horizontal(),
+            None
+        );
+
+        let mut app = action_app();
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowRight);
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<ActionState>()
+                .menu_navigation_horizontal(),
+            Some(1)
+        );
     }
 
     #[test]

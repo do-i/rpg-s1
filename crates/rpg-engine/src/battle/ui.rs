@@ -20,6 +20,7 @@ use crate::{
 
 use super::{
     ability::{AbilityError, AbilityTargetPlan, resolve_ability, target_plan},
+    fx::AttackKind,
     item::{ItemUseError, battle_item, resolve_item, target_plan as item_target_plan},
     model::{
         BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
@@ -30,9 +31,14 @@ use super::{
 };
 
 const LPC_COLUMNS: u32 = 9;
-const BATTLE_IDLE_TILE: u32 = 2 * LPC_COLUMNS;
-/// Row 6 of every authored `*_battle.tsx` sheet holds the armed attack swing.
-const BATTLE_ATTACK_TILE: u32 = 6 * LPC_COLUMNS;
+/// LPC row layout, shared by every authored `*_battle.tsx` sheet: row 2 is spellcast-facing-down
+/// over 7 frames, row 6 is thrust-facing-down over 8 (`battle_enemy_area_renderer.py:44-49`). The
+/// idle pose is the first frame of the spellcast row.
+const SPELLCAST_ROW: u32 = 2;
+const SPELLCAST_FRAMES: u32 = 7;
+const THRUST_ROW: u32 = 6;
+const THRUST_FRAMES: u32 = 8;
+const BATTLE_IDLE_TILE: u32 = SPELLCAST_ROW * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
 const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
 const ENEMY_GROUND_NUDGE: f32 = 10.0;
@@ -41,6 +47,8 @@ const BREATH_TOP_FRACTION: f32 = 0.60;
 const BREATH_MAX_SQUASH: f32 = 2.0;
 const BREATH_PERIOD_SECONDS: f32 = 1.4;
 const BREATH_PHASE_OFFSET: f32 = 0.6;
+/// Gap between a status pill stack and the corner of the frame it sits in.
+const BADGE_INSET: f32 = 5.0;
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
 const PARTY_CARD_HEIGHT: f32 = 202.0;
@@ -84,8 +92,10 @@ impl Plugin for BattlePlugin {
                     handle_battle_input,
                     super::fx::route_battle_fx,
                     super::fx::animate_battle_fx,
+                    super::fx::animate_battle_shake,
                     sync_party_cards,
                     sync_party_meters,
+                    sync_status_badges,
                     sync_battle_commands,
                     sync_battle_message,
                     sync_enemy_cards,
@@ -181,6 +191,20 @@ struct BattleCommandRow(usize);
 #[derive(Component)]
 struct BattleCommandLabel(usize);
 
+/// One badge pill on a combatant's frame. Slots are pre-spawned and hidden, so a status landing
+/// mid-battle never has to spawn UI from a sync system.
+#[derive(Clone, Copy, Component)]
+struct BattleStatusBadge {
+    key: CombatantKey,
+    slot: usize,
+}
+
+#[derive(Clone, Copy, Component)]
+struct BattleStatusBadgeLabel {
+    key: CombatantKey,
+    slot: usize,
+}
+
 #[derive(Component)]
 struct BattleMessageText;
 
@@ -192,6 +216,18 @@ pub(super) struct BattleAssetState {
     atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
     backgrounds: Handle<BattleBackgroundCatalog>,
     pub(super) font: Handle<Font>,
+}
+
+#[cfg(test)]
+impl BattleAssetState {
+    /// An asset set with nothing loaded, for systems that only read the font handle.
+    pub(super) fn test_stub() -> Self {
+        Self {
+            atlases: Vec::new(),
+            backgrounds: Handle::default(),
+            font: Handle::default(),
+        }
+    }
 }
 
 fn battle_enemy_atlas_path(
@@ -273,6 +309,7 @@ fn enter_battle(
         font,
     });
     commands.insert_resource(super::fx::BattleFxRouter::default());
+    commands.insert_resource(super::fx::BattleAttackAnimations::default());
     commands.insert_resource(state);
 }
 
@@ -395,6 +432,7 @@ fn spawn_enemy_area(
                                             },
                                         ));
                                     });
+                                spawn_status_badges(frame, CombatantKey::enemy(index), font);
                             });
                             card.spawn((
                                 Node {
@@ -665,6 +703,7 @@ fn spawn_party_card(
                 font,
             );
         }
+        spawn_status_badges(card, CombatantKey::party(index), font);
     });
 }
 
@@ -767,6 +806,89 @@ fn spawn_party_meter(
             )
             .insert(BattlePartyMeterText(marker));
         });
+}
+
+/// Stacks the combatant's status pills into the top-right corner of its frame.
+///
+/// Every slot is spawned up front and hidden; [`sync_status_badges`] only ever toggles and
+/// re-colors them. The source pins its single badge to the same corner
+/// (`battle_party_panel_renderer.py:141-151`).
+fn spawn_status_badges(
+    parent: &mut ChildSpawnerCommands<'_>,
+    key: CombatantKey,
+    font: &Handle<Font>,
+) {
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(BADGE_INSET),
+                right: px(BADGE_INSET),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexEnd,
+                row_gap: px(2),
+                ..default()
+            },
+            GlobalZIndex(15),
+            Pickable::IGNORE,
+        ))
+        .with_children(|stack| {
+            for slot in 0..super::badge::MAX_BADGES {
+                stack
+                    .spawn((
+                        Node {
+                            display: Display::None,
+                            padding: UiRect::axes(px(4), px(1)),
+                            border_radius: BorderRadius::all(px(3)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::NONE),
+                        BattleStatusBadge { key, slot },
+                    ))
+                    .with_children(|pill| {
+                        spawn_battle_text(pill, "", font, 11.0, battle_ink(), Justify::Center)
+                            .insert(BattleStatusBadgeLabel { key, slot });
+                    });
+            }
+        });
+}
+
+/// Shows every combatant's active statuses as persistent pills.
+///
+/// Runs off the same `is_changed` gate as the other sync systems: statuses only move when the
+/// resolver writes them, so there is nothing to recompute on a quiet frame.
+fn sync_status_badges(
+    state: Option<Res<BattleState>>,
+    mut pills: Query<(&BattleStatusBadge, &mut Node, &mut BackgroundColor)>,
+    mut labels: Query<(&BattleStatusBadgeLabel, &mut Text, &mut TextColor)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    let badges_for = |key: CombatantKey| {
+        state
+            .actor(key)
+            .filter(|actor| actor.is_alive())
+            .map(|actor| super::badge::badges(&actor.status_effects))
+            .unwrap_or_default()
+    };
+    for (marker, mut node, mut background) in &mut pills {
+        let badge = badges_for(marker.key).get(marker.slot).copied();
+        node.display = if badge.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        background.0 = badge.map_or(Color::NONE, |badge| badge.fill);
+    }
+    for (marker, mut text, mut color) in &mut labels {
+        let badge = badges_for(marker.key).get(marker.slot).copied();
+        text.0 = badge
+            .map(|badge| badge.label.to_owned())
+            .unwrap_or_default();
+        color.0 = badge.map_or(Color::NONE, |badge| badge.ink);
+    }
 }
 
 fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
@@ -1007,6 +1129,11 @@ fn battle_row_active() -> Color {
     Color::srgba_u8(79, 51, 38, 230)
 }
 
+/// The targeting reticle, `C_TARGET` in the source (`battle_party_panel_renderer.py:25`).
+fn battle_target() -> Color {
+    Color::srgb_u8(204, 170, 255)
+}
+
 pub(super) fn battle_row_border() -> Color {
     Color::srgb_u8(82, 70, 50)
 }
@@ -1035,34 +1162,30 @@ fn battle_mana() -> Color {
     Color::srgb_u8(88, 72, 138)
 }
 
-/// Returns the enemy slot that is mid-action, so it can wear the attack pose.
-fn attacking_enemy_index(state: &BattleState) -> Option<usize> {
-    if state.phase != BattlePhase::Resolve {
-        return None;
-    }
-    state
-        .active_key()
-        .filter(|key| key.side == BattleSide::Enemy)
-        .map(|key| key.index)
-}
-
-fn enemy_sprite_tile(index: usize, attacking: Option<usize>) -> u32 {
-    if attacking == Some(index) {
-        BATTLE_ATTACK_TILE
-    } else {
-        BATTLE_IDLE_TILE
-    }
+/// The sheet tile an enemy shows this frame.
+///
+/// An idle enemy holds the resting pose; a mid-action one steps through its row, holding the last
+/// frame at the end rather than wrapping (`battle_enemy_area_renderer.py:200-207`).
+fn enemy_sprite_tile(animation: Option<(AttackKind, f32)>) -> u32 {
+    let Some((kind, progress)) = animation else {
+        return BATTLE_IDLE_TILE;
+    };
+    let (row, frames) = match kind {
+        AttackKind::Thrust => (THRUST_ROW, THRUST_FRAMES),
+        AttackKind::Spellcast => (SPELLCAST_ROW, SPELLCAST_FRAMES),
+    };
+    let frame = ((progress * frames as f32) as u32).min(frames - 1);
+    row * LPC_COLUMNS + frame
 }
 
 fn drive_battle_assets(
     asset_server: Res<AssetServer>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     assets: Option<Res<BattleAssetState>>,
-    state: Option<Res<BattleState>>,
+    attacks: Option<Res<super::fx::BattleAttackAnimations>>,
     mut images: Query<(&BattleEnemyImage, &mut ImageNode)>,
 ) {
     let Some(assets) = assets else { return };
-    let attacking = state.as_deref().and_then(attacking_enemy_index);
     for (marker, mut image) in &mut images {
         let Some(Some(handle)) = assets.atlases.get(marker.index) else {
             continue;
@@ -1073,7 +1196,10 @@ fn drive_battle_assets(
         let Some(atlas) = atlases.get(handle) else {
             continue;
         };
-        if let Ok(sprite) = atlas.sprite_for_tile(enemy_sprite_tile(marker.index, attacking)) {
+        let animation = attacks
+            .as_deref()
+            .and_then(|attacks| attacks.progress(marker.index));
+        if let Ok(sprite) = atlas.sprite_for_tile(enemy_sprite_tile(animation)) {
             image.image = sprite.image;
             image.texture_atlas = sprite.texture_atlas;
             let source_width = atlas.metadata().tile_width() as f32;
@@ -1129,12 +1255,22 @@ fn position_enemy_cards(
     }
 }
 
+/// Idle breathing, held flat while an enemy is mid-swing so the squash does not fight the attack
+/// frames — the same suspension the source applies (`battle_enemy_area_renderer.py:120-124`).
 fn animate_enemy_breathing(
     time: Res<Time>,
+    attacks: Option<Res<super::fx::BattleAttackAnimations>>,
     mut upper_bodies: Query<(&BattleEnemyUpperBody, &mut Node)>,
 ) {
     for (marker, mut node) in &mut upper_bodies {
-        let squash = breath_squash(time.elapsed_secs(), marker.index);
+        let attacking = attacks
+            .as_deref()
+            .is_some_and(|attacks| attacks.progress(marker.index).is_some());
+        let squash = if attacking {
+            0.0
+        } else {
+            breath_squash(time.elapsed_secs(), marker.index)
+        };
         node.top = px(squash);
         node.height = px((marker.base_height - squash).max(1.0));
     }
@@ -1183,7 +1319,7 @@ fn handle_battle_input(
                 state.command_index = wrap_index(state.command_index, movement, COMMANDS.len());
                 menu_sfx.hover();
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            if confirm_pressed(&actions) {
                 let command = COMMANDS[state.command_index];
                 if !state.command_available(command) {
                     state.message = match command {
@@ -1228,14 +1364,14 @@ fn handle_battle_input(
         }
         BattlePhase::Ability => {
             let choices = state.battle_ability_indices();
-            if actions.just_pressed(AppAction::Back) {
+            if cancel_pressed(&actions) {
                 state.phase = BattlePhase::Command;
                 state.message = "Action cancelled.".to_owned();
             } else {
                 if let Some(movement) = actions.menu_navigation() {
                     state.ability_index = wrap_index(state.ability_index, movement, choices.len());
                 }
-                if actions.just_pressed(AppAction::Confirm)
+                if confirm_pressed(&actions)
                     && let Some(&ability_index) = choices.get(state.ability_index)
                 {
                     begin_ability_targeting(&mut state, ability_index, game.rng_mut());
@@ -1243,7 +1379,7 @@ fn handle_battle_input(
             }
         }
         BattlePhase::Item => {
-            if actions.just_pressed(AppAction::Back) {
+            if cancel_pressed(&actions) {
                 state.phase = BattlePhase::Command;
                 state.message = "Action cancelled.".to_owned();
             } else {
@@ -1251,7 +1387,7 @@ fn handle_battle_input(
                     state.item_index =
                         wrap_index(state.item_index, movement, state.item_choices.len());
                 }
-                if actions.just_pressed(AppAction::Confirm)
+                if confirm_pressed(&actions)
                     && let Some(choice) = state.item_choices.get(state.item_index).cloned()
                 {
                     begin_item_targeting(&mut state, &choice.id, catalog);
@@ -1270,7 +1406,9 @@ fn handle_battle_input(
                 };
                 state.message = "Action cancelled.".to_owned();
             } else {
-                if let Some(movement) = actions.menu_navigation()
+                // Enemies stand in a row, so Left/Right cycle the same pool Up/Down do
+                // (`battle_input.py:106-109`).
+                if let Some(movement) = target_navigation(&actions)
                     && let Some(target) = state.target.as_mut()
                 {
                     target.navigate(movement);
@@ -1344,6 +1482,25 @@ fn handle_battle_input(
         }
         _ => {}
     }
+}
+
+/// Confirm, or Right — the pinned engine accepts both on the command and sub-menus
+/// (`battle_input.py:80,93`). Target selection is deliberately excluded: there Right steps the
+/// pool instead.
+fn confirm_pressed(actions: &ActionState) -> bool {
+    actions.just_pressed(AppAction::Confirm) || actions.just_pressed(AppAction::Right)
+}
+
+/// Back, or Left — Left backs out of a sub-menu in the pinned engine (`battle_input.py:85`).
+fn cancel_pressed(actions: &ActionState) -> bool {
+    actions.just_pressed(AppAction::Back) || actions.just_pressed(AppAction::Left)
+}
+
+/// One step through the target pool: Left/Up step back, Right/Down step forward.
+fn target_navigation(actions: &ActionState) -> Option<isize> {
+    actions
+        .menu_navigation()
+        .or_else(|| actions.menu_navigation_horizontal())
 }
 
 fn begin_item_targeting(state: &mut BattleState, item_id: &str, catalog: &FieldMenuCatalog) {
@@ -1523,6 +1680,7 @@ fn sync_party_cards(
         return;
     }
     let active = state.active_key();
+    let selected_target = state.target.as_ref().map(TargetSelector::selected);
     for (marker, mut background, mut border) in &mut cards {
         let key = CombatantKey::party(marker.0);
         let Some(actor) = state.actor(key) else {
@@ -1534,7 +1692,11 @@ fn sync_party_cards(
         } else {
             battle_row()
         };
-        border.set_all(if is_active {
+        // A heal or a revive picks its target from these cards, so the reticle has to land on the
+        // member the way it lands on an enemy sprite (`battle_party_panel_renderer.py:80-82`).
+        border.set_all(if selected_target == Some(key) {
+            battle_target()
+        } else if is_active {
             battle_border_active()
         } else {
             battle_row_border()
@@ -1753,7 +1915,7 @@ fn sync_enemy_cards(
     for (marker, mut border) in &mut frames {
         let key = CombatantKey::enemy(marker.0);
         border.set_all(if selected_target == Some(key) {
-            Color::srgb_u8(204, 170, 255)
+            battle_target()
         } else {
             Color::NONE
         });
@@ -1796,6 +1958,7 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
     commands.remove_resource::<BattleState>();
     commands.remove_resource::<BattleAssetState>();
     commands.remove_resource::<super::fx::BattleFxRouter>();
+    commands.remove_resource::<super::fx::BattleAttackAnimations>();
 }
 
 #[cfg(test)]
@@ -1909,12 +2072,35 @@ mod tests {
     }
 
     #[test]
-    fn only_the_acting_enemy_wears_the_attack_pose() {
+    fn an_idle_enemy_holds_the_resting_pose() {
         assert_eq!(BATTLE_IDLE_TILE, 18);
-        assert_eq!(BATTLE_ATTACK_TILE, 54);
-        assert_eq!(enemy_sprite_tile(0, Some(0)), BATTLE_ATTACK_TILE);
-        assert_eq!(enemy_sprite_tile(1, Some(0)), BATTLE_IDLE_TILE);
-        assert_eq!(enemy_sprite_tile(0, None), BATTLE_IDLE_TILE);
+        assert_eq!(enemy_sprite_tile(None), BATTLE_IDLE_TILE);
+        // The resting pose is the spellcast row's first frame, so an attack that has only just
+        // begun casting is indistinguishable from idle — by design, not by accident.
+        assert_eq!(
+            enemy_sprite_tile(Some((AttackKind::Spellcast, 0.0))),
+            BATTLE_IDLE_TILE
+        );
+    }
+
+    #[test]
+    fn an_attack_walks_its_whole_row_and_stops_on_the_last_frame() {
+        // Thrust: row 6, 8 frames — tiles 54..=61.
+        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 0.0))), 54);
+        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 0.5))), 58);
+        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 1.0))), 61);
+        // Spellcast: row 2, 7 frames — tiles 18..=24. One frame shorter, so the two rows must
+        // never share a step schedule.
+        assert_eq!(enemy_sprite_tile(Some((AttackKind::Spellcast, 0.5))), 21);
+        assert_eq!(enemy_sprite_tile(Some((AttackKind::Spellcast, 1.0))), 24);
+
+        // Every frame of both rows exists on the authored sheets (108 tiles, 9 columns).
+        for progress in 0..=10 {
+            for kind in [AttackKind::Thrust, AttackKind::Spellcast] {
+                let tile = enemy_sprite_tile(Some((kind, progress as f32 / 10.0)));
+                assert!(tile < 108, "{kind:?} at {progress}/10 ran off the sheet");
+            }
+        }
     }
 
     #[test]
@@ -1928,6 +2114,200 @@ mod tests {
         );
     }
 
+    fn actions_from(normalized: &[crate::input_record::NormalizedAction]) -> ActionState {
+        let mut actions = ActionState::default();
+        actions.replace_with_normalized(normalized);
+        actions
+    }
+
+    #[test]
+    fn right_confirms_and_left_cancels_outside_target_selection() {
+        use crate::input_record::NormalizedAction as Key;
+
+        // `battle_input.py:80,93` — Right is a second confirm on the command and sub-menus.
+        assert!(confirm_pressed(&actions_from(&[Key::Confirm])));
+        assert!(confirm_pressed(&actions_from(&[Key::MenuRight])));
+        assert!(!confirm_pressed(&actions_from(&[Key::MenuLeft])));
+        assert!(!confirm_pressed(&actions_from(&[])));
+
+        // `battle_input.py:85` — Left backs out of a sub-menu the way ESC does.
+        assert!(cancel_pressed(&actions_from(&[Key::Back])));
+        assert!(cancel_pressed(&actions_from(&[Key::MenuLeft])));
+        assert!(!cancel_pressed(&actions_from(&[Key::MenuRight])));
+        assert!(!cancel_pressed(&actions_from(&[])));
+    }
+
+    #[test]
+    fn target_selection_cycles_horizontally_without_confirming() {
+        use crate::input_record::NormalizedAction as Key;
+
+        // Enemies stand in a row, so Left/Right walk it just as Up/Down do
+        // (`battle_input.py:106-109`).
+        assert_eq!(target_navigation(&actions_from(&[Key::MenuLeft])), Some(-1));
+        assert_eq!(target_navigation(&actions_from(&[Key::MenuRight])), Some(1));
+        assert_eq!(target_navigation(&actions_from(&[Key::MenuUp])), Some(-1));
+        assert_eq!(target_navigation(&actions_from(&[Key::MenuDown])), Some(1));
+        assert_eq!(target_navigation(&actions_from(&[])), None);
+        // One frame is one step, whichever axis it arrived on.
+        assert_eq!(
+            target_navigation(&actions_from(&[Key::MenuUp, Key::MenuRight])),
+            Some(-1)
+        );
+    }
+
+    #[test]
+    fn a_target_walks_the_pool_when_left_and_right_are_pressed() {
+        use crate::input_record::NormalizedAction as Key;
+
+        let mut selector = TargetSelector {
+            group: TargetGroup::Enemy,
+            eligible: vec![
+                CombatantKey::enemy(0),
+                CombatantKey::enemy(1),
+                CombatantKey::enemy(2),
+            ],
+            selected: 0,
+        };
+        selector.navigate(target_navigation(&actions_from(&[Key::MenuRight])).unwrap());
+        assert_eq!(selector.selected(), CombatantKey::enemy(1));
+        selector.navigate(target_navigation(&actions_from(&[Key::MenuLeft])).unwrap());
+        assert_eq!(selector.selected(), CombatantKey::enemy(0));
+        // The row wraps at both ends, so a leftmost enemy is one Left from the rightmost.
+        selector.navigate(target_navigation(&actions_from(&[Key::MenuLeft])).unwrap());
+        assert_eq!(selector.selected(), CombatantKey::enemy(2));
+    }
+
+    /// Drives the real spawn-and-sync pair, because a badge that exists only in the palette is the
+    /// same bug as no badge at all: this is the wiring that was missing, not the colors.
+    #[test]
+    fn a_spawned_badge_stack_shows_exactly_the_statuses_a_combatant_carries() {
+        use crate::battle::status::{ActiveStatus, StatusEffect};
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_systems(Update, sync_status_badges);
+
+        let font = Handle::<Font>::default();
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_status_badges(root, CombatantKey::party(0), &font);
+                spawn_status_badges(root, CombatantKey::enemy(0), &font);
+            });
+        app.update();
+
+        // Nothing applied yet: every slot is spawned, and every slot is hidden.
+        let slots = app
+            .world_mut()
+            .query::<(&BattleStatusBadge, &Node)>()
+            .iter(app.world())
+            .count();
+        assert_eq!(slots, crate::battle::badge::MAX_BADGES * 2);
+        assert!(
+            app.world_mut()
+                .query::<(&BattleStatusBadge, &Node)>()
+                .iter(app.world())
+                .all(|(_, node)| node.display == Display::None)
+        );
+
+        let mut party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
+        party.status_effects = vec![
+            ActiveStatus::damage_over_time(StatusEffect::Poison, Some(3), 4),
+            ActiveStatus::timed(StatusEffect::Silence, 2),
+        ];
+        let mut enemy = crate::battle::tests::actor(BattleSide::Enemy, 0, 4, 30);
+        enemy.status_effects = vec![ActiveStatus::modifier(
+            StatusEffect::AttackModifier,
+            2,
+            0.85,
+        )];
+        app.world_mut()
+            .insert_resource(crate::battle::tests::state_with(vec![party, enemy]));
+        app.update();
+
+        let labels = |key: CombatantKey, app: &mut App| {
+            let mut query = app
+                .world_mut()
+                .query::<(&BattleStatusBadgeLabel, &Text, &Node)>();
+            let mut rows = query
+                .iter(app.world())
+                .filter(|(marker, ..)| marker.key == key)
+                .map(|(marker, text, _)| (marker.slot, text.0.clone()))
+                .collect::<Vec<_>>();
+            rows.sort_by_key(|(slot, _)| *slot);
+            rows.into_iter().map(|(_, label)| label).collect::<Vec<_>>()
+        };
+        assert_eq!(
+            labels(CombatantKey::party(0), &mut app),
+            vec!["PSN".to_owned(), "SIL".to_owned(), String::new()],
+            "both afflictions show, in the order they landed, and the spare slot stays blank"
+        );
+        assert_eq!(
+            labels(CombatantKey::enemy(0), &mut app),
+            vec!["ATK-".to_owned(), String::new(), String::new()],
+            "an enemy weakened by Shield Bash wears the badge too, not just the party"
+        );
+
+        // Filled slots are visible and carry their palette fill; the spare stays hidden.
+        let mut query = app
+            .world_mut()
+            .query::<(&BattleStatusBadge, &Node, &BackgroundColor)>();
+        for (marker, node, background) in query.iter(app.world()) {
+            let expected_filled = matches!(
+                (marker.key.side, marker.slot),
+                (BattleSide::Party, 0 | 1) | (BattleSide::Enemy, 0)
+            );
+            assert_eq!(
+                node.display == Display::Flex,
+                expected_filled,
+                "{:?} slot {} visibility",
+                marker.key,
+                marker.slot
+            );
+            assert_eq!(
+                background.0 != Color::NONE,
+                expected_filled,
+                "{:?} slot {} fill",
+                marker.key,
+                marker.slot
+            );
+        }
+    }
+
+    #[test]
+    fn a_defeated_combatant_drops_its_badges() {
+        use crate::battle::status::{ActiveStatus, StatusEffect};
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_systems(Update, sync_status_badges);
+        let font = Handle::<Font>::default();
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| spawn_status_badges(root, CombatantKey::party(0), &font));
+
+        // A downed member is drawn dimmed, and a poison badge on a corpse reads as still ticking.
+        let mut party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
+        party.status_effects = vec![ActiveStatus::damage_over_time(
+            StatusEffect::Poison,
+            Some(3),
+            4,
+        )];
+        party.health = 0;
+        app.world_mut()
+            .insert_resource(crate::battle::tests::state_with(vec![party]));
+        app.update();
+
+        assert!(
+            app.world_mut()
+                .query::<(&BattleStatusBadge, &Node)>()
+                .iter(app.world())
+                .all(|(_, node)| node.display == Display::None)
+        );
+    }
+
     #[test]
     fn battle_ui_sync_systems_have_disjoint_component_access() {
         let mut app = App::new();
@@ -1938,6 +2318,7 @@ mod tests {
                 (
                     sync_party_cards,
                     sync_party_meters,
+                    sync_status_badges,
                     sync_battle_commands,
                     sync_battle_message,
                     sync_enemy_cards,
@@ -1945,6 +2326,7 @@ mod tests {
                     super::super::reward_modal::sync_reward_modal,
                     super::super::fx::route_battle_fx,
                     super::super::fx::animate_battle_fx,
+                    super::super::fx::animate_battle_shake,
                 )
                     .chain(),
             );
