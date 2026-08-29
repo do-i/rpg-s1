@@ -13,6 +13,7 @@ use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
     field_menu::FieldMenuState,
+    field_menu_domain::{FieldMenuCatalog, item_name},
     game_state::GameState,
     runtime_member::RuntimeMember,
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
@@ -48,8 +49,10 @@ impl Plugin for WorldInteractionPlugin {
                     request_npc_dialogue,
                     resolve_dialogue_request,
                     drive_dialogue_session,
+                    dismiss_treasure_reveal,
                     play_interaction_sfx,
                     sync_dialogue_overlay,
+                    sync_treasure_overlay,
                 )
                     .chain()
                     .run_if(in_state(AppState::World)),
@@ -62,6 +65,7 @@ impl Plugin for WorldInteractionPlugin {
 pub(crate) struct WorldInteractionState {
     request: Option<DialogueRequest>,
     session: Option<DialogueSession>,
+    treasure: Option<TreasureReveal>,
     party: Option<Handle<PartyCatalog>>,
     balance: Option<Handle<BalanceData>>,
     sfx_index: Option<Handle<SfxIndex>>,
@@ -76,7 +80,10 @@ pub(crate) struct WorldInteractionState {
 
 impl WorldInteractionState {
     pub(crate) const fn input_locked(&self) -> bool {
-        self.request.is_some() || self.session.is_some() || self.closed_this_frame
+        self.request.is_some()
+            || self.session.is_some()
+            || self.treasure.is_some()
+            || self.closed_this_frame
     }
 
     pub(crate) fn session(&self) -> Option<&DialogueSession> {
@@ -104,8 +111,26 @@ struct DialogueRequest {
     handle: Handle<DialogueDocument>,
 }
 
+/// The contents of a treasure box the player just opened, ready to display.
+///
+/// The source shows this as its own centered modal scene (`engine/world/item_box_scene.py`)
+/// rather than as a line of world dialogue, which is why this is a separate state from
+/// `session` instead of another `DialogueSession::message`.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct TreasureReveal {
+    /// One `name ×qty` line per granted stack, in loot order.
+    rows: Vec<String>,
+    /// False for the frame the box is opened, so the Confirm press that opened the box cannot
+    /// also dismiss the reveal it produced. Mirrors `suppress_confirm` for dialogue, but lives
+    /// on the reveal so it does not depend on which system runs first.
+    armed: bool,
+}
+
 #[derive(Component)]
 struct WorldDialogueRoot;
+
+#[derive(Component)]
+struct TreasureOverlayRoot;
 
 #[derive(Component)]
 struct WorldDialogueSpeaker;
@@ -151,6 +176,7 @@ fn request_npc_dialogue(
     transition: Res<WorldTransition>,
     field_menu: Res<FieldMenuState>,
     service: Res<ServiceUiState>,
+    catalog: Res<FieldMenuCatalog>,
     game: Option<ResMut<GameState>>,
     npcs: Query<&WorldNpc>,
     signs: Query<&WorldSign>,
@@ -225,18 +251,25 @@ fn request_npc_dialogue(
         return;
     };
     if let InteractionTarget::Box(item_box) = target {
-        let outcome = open_item_box(item_box, &mut game);
+        let outcome = open_item_box(item_box, &mut game, &catalog);
         state.pending_sounds.push(if outcome.opened {
             InteractionSound::Box
         } else {
             InteractionSound::Blocked
         });
-        state.session = Some(DialogueSession::message(
-            format!("box_{}", item_box.id()),
-            Some("Treasure".to_owned()),
-            vec![outcome.message],
-        ));
-        state.suppress_confirm = true;
+        if outcome.opened {
+            state.treasure = Some(TreasureReveal {
+                rows: outcome.rows,
+                armed: false,
+            });
+        } else {
+            state.session = Some(DialogueSession::message(
+                format!("box_{}", item_box.id()),
+                Some("Treasure".to_owned()),
+                vec![outcome.message],
+            ));
+            state.suppress_confirm = true;
+        }
         state.failure = None;
         return;
     }
@@ -328,15 +361,45 @@ fn distance_squared(left: Position, right: Position) -> i64 {
 
 #[derive(Debug, Eq, PartialEq)]
 struct ItemBoxOutcome {
+    /// Shown as world dialogue when the box could not be opened; empty once it was.
     message: String,
+    /// The reveal rows, one `name ×qty` per granted stack. Empty when the box did not open.
+    rows: Vec<String>,
     opened: bool,
 }
 
-fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcome {
+/// The source's fallback when an id resolves to no catalog entry: `hi_potion` reads
+/// `Hi Potion` rather than leaking the identifier (`item_box_scene.py::_name_for`).
+fn humanize_item_id(id: &str) -> String {
+    id.split('_')
+        .filter(|word| !word.is_empty())
+        .map(|word| {
+            let mut characters = word.chars();
+            match characters.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + characters.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn loot_display_name(catalog: &FieldMenuCatalog, id: &str) -> String {
+    catalog
+        .item(id)
+        .map_or_else(|| humanize_item_id(id), |item| item_name(item).to_owned())
+}
+
+fn open_item_box(
+    item_box: &WorldItemBox,
+    game: &mut GameState,
+    catalog: &FieldMenuCatalog,
+) -> ItemBoxOutcome {
     let key = item_box.key();
     if game.opened_boxes().contains(&key) {
         return ItemBoxOutcome {
             message: "This treasure box is already open.".to_owned(),
+            rows: Vec::new(),
             opened: false,
         };
     }
@@ -353,7 +416,11 @@ fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcom
                 batch.expect("nonempty item-box loot started a batch"),
             )
             .expect("validated item-box loot uses a current batch");
-        grants.push(format!("{} ×{}", item.id, item.qty));
+        grants.push(format!(
+            "{} ×{}",
+            loot_display_name(catalog, &item.id),
+            item.qty
+        ));
     }
     for core in &item_box.loot().magic_cores {
         let size = match core.size {
@@ -372,16 +439,17 @@ fn open_item_box(item_box: &WorldItemBox, game: &mut GameState) -> ItemBoxOutcom
                 batch.expect("nonempty item-box loot started a batch"),
             )
             .expect("validated item-box core uses a current batch");
-        grants.push(format!("{id} ×{}", core.qty));
+        grants.push(format!("{} ×{}", loot_display_name(catalog, &id), core.qty));
     }
     game.opened_boxes_mut().record(key);
-    let message = if grants.is_empty() {
-        "The treasure box was empty.".to_owned()
-    } else {
-        format!("Found {}.", grants.join(", "))
-    };
+    if grants.is_empty() {
+        // A chest authored with no loot at all. The source still opens its modal and prints one
+        // placeholder row rather than a sentence (`item_box_scene.py::_build_lines`).
+        grants.push("(empty)".to_owned());
+    }
     ItemBoxOutcome {
-        message,
+        message: String::new(),
+        rows: grants,
         opened: true,
     }
 }
@@ -511,6 +579,27 @@ fn drive_dialogue_session(
     {
         state.session = None;
     }
+}
+
+/// Closes the treasure reveal on the next press.
+///
+/// The source's modal has no cancel path at all -- Enter is its only exit -- but the loot was
+/// already granted when the reveal was built, so accepting Back here dismisses the same box
+/// without the player being able to lose anything by pressing it.
+fn dismiss_treasure_reveal(actions: Res<ActionState>, mut state: ResMut<WorldInteractionState>) {
+    let Some(reveal) = state.treasure.as_mut() else {
+        return;
+    };
+    if !reveal.armed {
+        reveal.armed = true;
+        return;
+    }
+    if !actions.just_pressed(AppAction::Confirm) && !actions.just_pressed(AppAction::Back) {
+        return;
+    }
+    state.treasure = None;
+    state.closed_this_frame = true;
+    state.pending_sounds.push(InteractionSound::Confirm);
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -825,9 +914,135 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
         });
 }
 
+/// Panel geometry, copied from `engine/world/item_box_scene.py` so the modal keeps the source's
+/// proportions: a fixed-width panel whose height grows one row at a time.
+const TREASURE_MODAL_WIDTH: f32 = 520.0;
+const TREASURE_ROW_HEIGHT: f32 = 30.0;
+const TREASURE_TITLE_HEIGHT: f32 = 42.0;
+const TREASURE_HINT_HEIGHT: f32 = 32.0;
+const TREASURE_PADDING: f32 = 20.0;
+
+/// Spawns the reveal when a box opens and despawns it when the player dismisses it.
+///
+/// The rows never change while the modal is up -- the box is looted once, before the reveal
+/// exists -- so this spawns the contents rather than re-synchronizing text every frame.
+fn sync_treasure_overlay(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
+    state: Res<WorldInteractionState>,
+    roots: Query<Entity, With<TreasureOverlayRoot>>,
+) {
+    let Some(reveal) = state.treasure.as_ref() else {
+        for entity in &roots {
+            commands.entity(entity).despawn();
+        }
+        return;
+    };
+    if !roots.is_empty() {
+        return;
+    }
+    let Some(font_path) = inventory.font.as_ref() else {
+        return;
+    };
+    let font: Handle<Font> = asset_server.load(scenario_root.resolve(font_path));
+    spawn_treasure_overlay(&mut commands, font, &reveal.rows);
+}
+
+fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[String]) {
+    commands
+        .spawn((
+            // The scrim covers the whole canvas rather than a fixed size, so the modal stays
+            // centered at any viewport the canvas policy produces.
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(0),
+                top: px(0),
+                width: percent(100),
+                height: percent(100),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            // The source dims with a straight sRGB blend at alpha 160/255 (0.627). Bevy composites
+            // in linear space, where that same alpha reads visibly lighter -- measured on the
+            // forest, a 58-value pixel landed at 34 instead of the source's 22. This alpha
+            // reproduces the source's *perceived* darkness instead of its numeric value, the same
+            // adjustment the dialogue box already carries (0.94 for the source's 0.863).
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
+            GlobalZIndex(5_500),
+            Pickable::IGNORE,
+            Name::new("Treasure reveal"),
+            TreasureOverlayRoot,
+        ))
+        .with_children(|scrim| {
+            scrim
+                .spawn((
+                    Node {
+                        width: px(TREASURE_MODAL_WIDTH),
+                        padding: UiRect::all(px(TREASURE_PADDING)),
+                        border: UiRect::all(px(2)),
+                        flex_direction: FlexDirection::Column,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb_u8(20, 20, 45)),
+                    BorderColor::all(Color::srgb_u8(160, 160, 100)),
+                ))
+                .with_children(|panel| {
+                    panel.spawn((
+                        Text::new("You found:"),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(24.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(240, 220, 140)),
+                        Node {
+                            height: px(TREASURE_TITLE_HEIGHT),
+                            ..default()
+                        },
+                    ));
+                    for row in rows {
+                        panel.spawn((
+                            Text::new(row.clone()),
+                            TextFont {
+                                font: font.clone().into(),
+                                font_size: FontSize::Px(20.0),
+                                ..default()
+                            },
+                            TextColor(Color::srgb_u8(220, 220, 180)),
+                            Node {
+                                height: px(TREASURE_ROW_HEIGHT),
+                                margin: UiRect::left(px(8)),
+                                ..default()
+                            },
+                        ));
+                    }
+                    panel.spawn((
+                        Text::new("ENTER  take"),
+                        TextFont {
+                            font: font.into(),
+                            font_size: FontSize::Px(16.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(160, 160, 120)),
+                        Node {
+                            height: px(TREASURE_HINT_HEIGHT),
+                            align_self: AlignSelf::FlexEnd,
+                            ..default()
+                        },
+                    ));
+                });
+        });
+}
+
+/// Every overlay root this module owns, so leaving the World takes all of them down together.
+type WorldOverlayRoots = Or<(With<WorldDialogueRoot>, With<TreasureOverlayRoot>)>;
+
 fn cleanup_world_interactions(
     mut commands: Commands,
-    roots: Query<Entity, With<WorldDialogueRoot>>,
+    roots: Query<Entity, WorldOverlayRoots>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     for entity in &roots {
@@ -1133,7 +1348,9 @@ mod tests {
         app.add_plugins(WorldInteractionPlugin)
             .insert_resource(WorldTransition::idle_for_test())
             .init_resource::<FieldMenuState>()
-            .init_resource::<ServiceUiState>();
+            .init_resource::<ServiceUiState>()
+            // Opening a treasure box resolves loot ids to display names through the catalog.
+            .insert_resource(crate::field_menu_domain::tests::catalog());
 
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
@@ -1316,16 +1533,27 @@ mod tests {
             source.loot.clone(),
         );
 
-        let first = open_item_box(&item_box, &mut game);
-        let second = open_item_box(&item_box, &mut game);
+        let catalog = crate::field_menu_domain::tests::catalog();
+
+        let first = open_item_box(&item_box, &mut game, &catalog);
+        let second = open_item_box(&item_box, &mut game, &catalog);
 
         assert!(first.opened);
-        assert!(first.message.contains("potion ×2"));
-        assert!(first.message.contains("antidote ×1"));
+        // Display names, not the `potion`/`antidote` ids the player never sees elsewhere.
+        assert_eq!(
+            first.rows,
+            vec![
+                "Potion ×2".to_owned(),
+                "Antidote ×1".to_owned(),
+                "Magic Core (M) ×3".to_owned(),
+                "Magic Core (S) ×10".to_owned(),
+            ]
+        );
         assert_eq!(
             second,
             ItemBoxOutcome {
                 message: "This treasure box is already open.".to_owned(),
+                rows: Vec::new(),
                 opened: false,
             }
         );
@@ -1335,6 +1563,83 @@ mod tests {
         assert_eq!(game.repository().item_count("mc_s"), 10);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
+    }
+
+    #[test]
+    fn an_id_the_catalog_does_not_define_reads_as_words_not_as_an_identifier() {
+        assert_eq!(humanize_item_id("hi_potion"), "Hi Potion");
+        assert_eq!(humanize_item_id("mimic_key"), "Mimic Key");
+        assert_eq!(humanize_item_id("potion"), "Potion");
+        // Real ids carry digits and doubled separators; neither may produce an empty word.
+        assert_eq!(humanize_item_id("zone_01__drop"), "Zone 01 Drop");
+        assert_eq!(
+            loot_display_name(&FieldMenuCatalog::default(), "wolf_pelt"),
+            "Wolf Pelt"
+        );
+    }
+
+    /// The press that opens a box must not also dismiss the reveal it produces -- otherwise the
+    /// modal appears and vanishes inside one frame and the player never reads their loot.
+    #[test]
+    fn the_press_that_opens_a_box_cannot_also_dismiss_its_reveal() {
+        use crate::action_input::ActionInputPlugin;
+        use bevy::input::keyboard::KeyboardInput;
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<ButtonInput<KeyCode>>()
+            .add_plugins(ActionInputPlugin)
+            .init_resource::<WorldInteractionState>()
+            .add_message::<KeyboardInput>()
+            .add_systems(Update, dismiss_treasure_reveal);
+
+        // Enter is held from the moment the box opens, exactly as it is in play.
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        app.world_mut()
+            .resource_mut::<WorldInteractionState>()
+            .treasure = Some(TreasureReveal {
+            rows: vec!["Potion ×2".to_owned()],
+            armed: false,
+        });
+        app.update();
+
+        let state = app.world().resource::<WorldInteractionState>();
+        assert!(state.treasure.is_some(), "the opening press dismissed it");
+        assert!(
+            state.input_locked(),
+            "a reveal must hold World input while it is up"
+        );
+
+        // MinimalPlugins carries no input plugin, so releasing and re-pressing is manual.
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.clear();
+            keys.release(KeyCode::Enter);
+        }
+        app.update();
+        assert!(
+            app.world()
+                .resource::<WorldInteractionState>()
+                .treasure
+                .is_some(),
+            "releasing the key is not a press"
+        );
+
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.clear();
+            keys.press(KeyCode::Enter);
+        }
+        app.update();
+
+        let state = app.world().resource::<WorldInteractionState>();
+        assert!(state.treasure.is_none(), "a fresh press must take the loot");
+        assert!(
+            state.closed_this_frame,
+            "the dismissing press is spent, so it cannot open the field menu"
+        );
     }
 
     #[test]
