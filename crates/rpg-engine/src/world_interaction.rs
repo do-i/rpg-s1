@@ -69,11 +69,14 @@ pub(crate) struct WorldInteractionState {
     failure: Option<String>,
     sfx_failure: Option<String>,
     suppress_confirm: bool,
+    /// Set for the rest of the frame a Back press closes a dialogue, so the same press
+    /// cannot fall through to the field menu.
+    closed_this_frame: bool,
 }
 
 impl WorldInteractionState {
     pub(crate) const fn input_locked(&self) -> bool {
-        self.request.is_some() || self.session.is_some()
+        self.request.is_some() || self.session.is_some() || self.closed_this_frame
     }
 
     pub(crate) fn session(&self) -> Option<&DialogueSession> {
@@ -451,6 +454,9 @@ fn drive_dialogue_session(
     let Some(mut game) = game else {
         return;
     };
+    // The latch belongs to the frame that set it; releasing it here keeps the field menu
+    // from reacting to a Back press this dialogue already consumed.
+    state.closed_this_frame = false;
     if state.suppress_confirm {
         state.suppress_confirm = false;
         return;
@@ -462,6 +468,7 @@ fn drive_dialogue_session(
     if actions.just_pressed(AppAction::Back) {
         session.cancel();
         state.session = None;
+        state.closed_this_frame = true;
         state.pending_sounds.push(InteractionSound::Cancel);
         return;
     }

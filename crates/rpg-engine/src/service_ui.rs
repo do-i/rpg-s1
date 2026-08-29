@@ -155,10 +155,19 @@ pub(crate) struct ServiceUiState {
     sell_tag: Option<String>,
     toast: Option<Toast>,
     suppress_confirm: bool,
+    /// Set for the rest of the frame a Back press closes the service, so the same press
+    /// cannot fall through to the field menu.
+    closed_this_frame: bool,
 }
 
 impl ServiceUiState {
     pub(crate) const fn input_locked(&self) -> bool {
+        self.request.is_some() || self.closed_this_frame
+    }
+
+    /// Whether a service overlay is up, ignoring the one-frame close latch.
+    #[cfg(test)]
+    const fn is_open(&self) -> bool {
         self.request.is_some()
     }
 
@@ -178,7 +187,10 @@ impl ServiceUiState {
     }
 
     fn close(&mut self) {
-        *self = Self::default();
+        *self = Self {
+            closed_this_frame: true,
+            ..Self::default()
+        };
     }
 
     fn announce(&mut self, text: impl Into<String>, tone: ToastTone) {
@@ -207,7 +219,7 @@ fn reset_service_ui(mut state: ResMut<ServiceUiState>) {
     clippy::too_many_lines,
     reason = "the service state machine reads as one table of page transitions"
 )]
-fn handle_service_input(
+pub(crate) fn handle_service_input(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
@@ -216,6 +228,9 @@ fn handle_service_input(
     mut state: ResMut<ServiceUiState>,
     mut menu_sfx: MenuSfx,
 ) {
+    // The latch belongs to the frame that set it; releasing it here keeps the field menu
+    // from reacting to a Back press this service already consumed.
+    state.closed_this_frame = false;
     if !state.input_locked() {
         return;
     }
@@ -1052,10 +1067,7 @@ mod tests {
         state.pending_id = Some("mc_xs".to_owned());
         state.quantity = 1;
         execute_pending(&mut state, &catalog, &mut game);
-        assert!(
-            state.input_locked(),
-            "one core is left, so the list stays up"
-        );
+        assert!(state.is_open(), "one core is left, so the list stays up");
         assert_eq!(state.page, Some(ServicePage::MagicCore));
 
         execute_pending_last_core(&catalog);
@@ -1071,7 +1083,7 @@ mod tests {
         state.quantity = 1;
         execute_pending(&mut state, catalog, &mut game);
         assert!(
-            !state.input_locked(),
+            !state.is_open(),
             "the source closes rather than showing an empty exchange"
         );
     }

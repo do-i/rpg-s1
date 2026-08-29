@@ -2479,6 +2479,76 @@ mod tests {
         assert!(labels.contains(&"ENTER / Y   CONFIRM      ESC / N   CANCEL"));
     }
 
+    /// A Back press that closes an overlay is spent. Before the close latch, the same press
+    /// reached the world and popped the field menu, so cancelling any shop, inn, apothecary,
+    /// or dialogue left the player staring at the command deck.
+    #[test]
+    fn a_back_press_that_closes_a_service_never_reaches_the_field_menu() {
+        use crate::{
+            action_input::ActionInputPlugin,
+            service_ui::{ServiceRequest, handle_service_input},
+        };
+
+        for service_runs_first in [true, false] {
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins)
+                .init_resource::<ButtonInput<KeyCode>>()
+                .add_plugins(ActionInputPlugin)
+                .insert_resource(FieldMenuCatalog::default())
+                .insert_resource(WorldInteractionState::default())
+                .insert_resource(WorldTransition::idle_for_test())
+                .insert_resource(fixture_game())
+                .insert_resource(SaveStore::new(
+                    std::env::temp_dir().join("rpg-s1-service-back-test-unused"),
+                ))
+                .insert_resource(SaveSlotCatalog::default())
+                .insert_resource(Time::<Real>::default())
+                .init_resource::<ServiceUiState>()
+                .init_resource::<FieldMenuState>()
+                .add_message::<AppExit>()
+                .add_message::<PlaySfx>()
+                .add_message::<KeyboardInput>();
+            if service_runs_first {
+                app.add_systems(
+                    Update,
+                    (handle_service_input, handle_field_menu_input).chain(),
+                );
+            } else {
+                app.add_systems(
+                    Update,
+                    (handle_field_menu_input, handle_service_input).chain(),
+                );
+            }
+            app.world_mut()
+                .resource_mut::<ServiceUiState>()
+                .open(ServiceRequest::Inn);
+            app.update();
+
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.update();
+
+            assert!(
+                !app.world().resource::<FieldMenuState>().open,
+                "the Escape that closed the inn also opened the field menu \
+                 (service first: {service_runs_first})"
+            );
+
+            // MinimalPlugins carries no input plugin, so the per-frame clear is manual.
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .clear();
+            app.update();
+
+            assert!(
+                !app.world().resource::<ServiceUiState>().input_locked(),
+                "the inn stayed open (service first: {service_runs_first})"
+            );
+            assert!(!app.world().resource::<FieldMenuState>().open);
+        }
+    }
+
     #[test]
     fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
         let mut app = App::new();

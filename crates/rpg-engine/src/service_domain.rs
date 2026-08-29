@@ -21,6 +21,19 @@ pub(crate) enum RecipeAvailability {
     Ready,
 }
 
+impl fmt::Display for RecipeAvailability {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::Locked => "That recipe is still sealed.",
+            Self::MissingInputs => "You lack the ingredients.",
+            Self::Unaffordable => "Not enough GP.",
+            Self::UniqueOwned => "You already carry that.",
+            Self::OutputCap => "You cannot carry any more.",
+            Self::Ready => "The recipe is ready.",
+        })
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ServiceError {
     ZeroQuantity,
@@ -38,15 +51,15 @@ pub(crate) enum ServiceError {
 impl fmt::Display for ServiceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ZeroQuantity => formatter.write_str("quantity must be positive"),
-            Self::Overflow => formatter.write_str("transaction total overflowed"),
-            Self::InsufficientGp => formatter.write_str("not enough GP"),
-            Self::ItemCap => formatter.write_str("item quantity cap reached"),
-            Self::NotOwned => formatter.write_str("required item is not owned"),
-            Self::Locked => formatter.write_str("item is locked"),
-            Self::NotSellable => formatter.write_str("item cannot be sold"),
-            Self::WrongCore => formatter.write_str("item is not a magic core"),
-            Self::Recipe(state) => write!(formatter, "recipe is not ready: {state:?}"),
+            Self::ZeroQuantity => formatter.write_str("Choose at least one."),
+            Self::Overflow => formatter.write_str("That is more than the purse can hold."),
+            Self::InsufficientGp => formatter.write_str("Not enough GP."),
+            Self::ItemCap => formatter.write_str("You cannot carry any more."),
+            Self::NotOwned => formatter.write_str("You do not own that."),
+            Self::Locked => formatter.write_str("That item is locked."),
+            Self::NotSellable => formatter.write_str("That cannot be sold."),
+            Self::WrongCore => formatter.write_str("That is not a magic core."),
+            Self::Recipe(state) => fmt::Display::fmt(state, formatter),
             Self::Repository(error) => formatter.write_str(error),
         }
     }
@@ -474,6 +487,47 @@ mod tests {
             Err(ServiceError::Recipe(RecipeAvailability::UniqueOwned))
         );
         assert_eq!(game.repository(), &completed);
+    }
+
+    /// Every one of these reaches a player-visible toast, so they are sentences, not log lines.
+    #[test]
+    fn service_rejections_read_as_prose_not_log_lines() {
+        for error in [
+            ServiceError::ZeroQuantity,
+            ServiceError::Overflow,
+            ServiceError::InsufficientGp,
+            ServiceError::ItemCap,
+            ServiceError::NotOwned,
+            ServiceError::Locked,
+            ServiceError::NotSellable,
+            ServiceError::WrongCore,
+            ServiceError::Recipe(RecipeAvailability::MissingInputs),
+        ] {
+            let shown = error.to_string();
+            assert!(
+                shown.starts_with(|first: char| first.is_uppercase()) && shown.ends_with('.'),
+                "expected a sentence, got {shown}"
+            );
+        }
+    }
+
+    #[test]
+    fn recipe_rejection_reads_as_prose_not_a_variant_name() {
+        for state in [
+            RecipeAvailability::Locked,
+            RecipeAvailability::MissingInputs,
+            RecipeAvailability::Unaffordable,
+            RecipeAvailability::UniqueOwned,
+            RecipeAvailability::OutputCap,
+        ] {
+            let shown = ServiceError::Recipe(state).to_string();
+            assert_eq!(shown, state.to_string());
+            assert!(
+                !shown.contains(&format!("{state:?}")),
+                "player-visible text leaked the {state:?} variant name: {shown}"
+            );
+            assert!(shown.ends_with('.'), "expected a sentence, got {shown}");
+        }
     }
 
     #[test]
