@@ -171,6 +171,22 @@ acceptance evidence.
 - Strict target validation is expected to hold at 13 errors / 1 warning until
   W12.7/W12.8 author the endgame drop materials; the count is not a parity
   score and must not be driven to zero by inventing unlocks, maps, or flags.
+
+  **Amended 2026-08-29 (roadmap A5.3).** The B2.x repairs closed nine of the
+  thirteen: the endgame drop items (B2.5), the `transport:` block (B2.7), Jep's
+  `join.map` (B2.7), and the title cursor (A5.1/ADR 0005). The standing set is
+  now **4 errors / 1 warning** — the four Sorcerer ultimate flags decided above,
+  plus the `transport_fly_unlocked` orphan this ADR's B2.7 note predicted.
+
+  The "expected to exit non-zero" property was itself a hazard: it is exactly
+  why the ADR 0005 cursor repair could regress unnoticed, since no CI job could
+  usefully run a command that always fails. The accepted set is therefore
+  enumerated in `docs/scenario-validation-baseline.txt` and CI runs
+  `validate-scenario --baseline` against it. The gate fails in both directions —
+  on a diagnostic the file omits, and on a file line the validator no longer
+  produces — so the baseline cannot drift from this ADR's decisions in either
+  direction, and paying down a debt includes deleting its line. Editing that
+  file is amending this ADR, not silencing a check.
 - Wave acceptance evidence (ledger `C-PLAY` rows) remains the parity metric.
 - Any future decision to exceed source behavior (e.g., actually granting the
   Sorcerer ultimates) is a new ADR, not a validator cleanup.
