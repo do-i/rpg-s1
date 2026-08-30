@@ -75,7 +75,7 @@ npcs:
   - id: ruinwatch_digger
     name: "Ferd"
     dialogue: ruinwatch_digger
-    position: [3, 22]
+    position: [3, 23]
     sprite: assets/sprites/npc/rogue_hooded_rogue.tsx
     default_facing: right
     animation:

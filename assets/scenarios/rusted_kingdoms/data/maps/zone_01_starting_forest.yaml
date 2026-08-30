@@ -12,7 +12,7 @@ npcs:
   - id: bridge_guard_zone5
     name: "Guardsman Pike"
     type: gate
-    position: [4, 9]
+    position: [4, 8]
     dialogue: bridge_guard_zone5
     sprite: assets/sprites/npc/knight_01.tsx
     present:
