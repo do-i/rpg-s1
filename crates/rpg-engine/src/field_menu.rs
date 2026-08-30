@@ -83,9 +83,9 @@ const ITEM_ACTIONS: [(&str, &str); 4] = [
     ("Edit Tags", "curate and add tags"),
 ];
 const ITEM_ACTION_TAGS: usize = 3;
-const CHARACTER_COMMAND_INDEX: usize = 5;
-const SAVE_COMMAND_INDEX: usize = 6;
-const QUIT_COMMAND_INDEX: usize = 7;
+const QUIT_COMMAND_INDEX: usize = 3;
+const SAVE_COMMAND_INDEX: usize = 4;
+const CHARACTER_COMMAND_INDEX: usize = 7;
 
 #[derive(Clone, Copy)]
 struct MainCommand {
@@ -115,6 +115,18 @@ const MAIN_COMMANDS: [MainCommand; 8] = [
         screen: Some(FieldMenuScreen::Items),
     },
     MainCommand {
+        label: "Quit",
+        badge: "QT",
+        description: "exit the game to desktop",
+        screen: None,
+    },
+    MainCommand {
+        label: "Save",
+        badge: "SV",
+        description: "record the current journey",
+        screen: Some(FieldMenuScreen::Save),
+    },
+    MainCommand {
         label: "Equipment",
         badge: "EQ",
         description: "tune gear and compare stats",
@@ -130,18 +142,6 @@ const MAIN_COMMANDS: [MainCommand; 8] = [
         label: "Character",
         badge: "CH",
         description: "control a different party member",
-        screen: None,
-    },
-    MainCommand {
-        label: "Save",
-        badge: "SV",
-        description: "record the current journey",
-        screen: Some(FieldMenuScreen::Save),
-    },
-    MainCommand {
-        label: "Quit",
-        badge: "QT",
-        description: "exit the game to desktop",
         screen: None,
     },
 ];
@@ -2393,8 +2393,8 @@ mod tests {
         assert_eq!(main_command_screen(0), Some(FieldMenuScreen::Status));
         assert_eq!(main_command_screen(1), Some(FieldMenuScreen::Spells));
         assert_eq!(main_command_screen(2), Some(FieldMenuScreen::Items));
-        assert_eq!(main_command_screen(3), Some(FieldMenuScreen::Equipment));
-        assert_eq!(main_command_screen(4), Some(FieldMenuScreen::Quests));
+        assert_eq!(main_command_screen(5), Some(FieldMenuScreen::Equipment));
+        assert_eq!(main_command_screen(6), Some(FieldMenuScreen::Quests));
         // Character and Quit open modals rather than screens.
         assert!(main_command_screen(CHARACTER_COMMAND_INDEX).is_none());
         assert_eq!(
@@ -2414,8 +2414,8 @@ mod tests {
 
     #[test]
     fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
-        // Left column holds Status, Spells, Items, Equipment; right holds Quests, Character,
-        // Save, Quit.
+        // Left column holds Status, Spells, Items, Quit; right holds Save, Equipment, Quests,
+        // Character.
         assert_eq!(stepped_main_command(0, Some(1), None), 1);
         assert_eq!(stepped_main_command(3, Some(1), None), 0);
         assert_eq!(stepped_main_command(0, Some(-1), None), 3);
@@ -2467,11 +2467,11 @@ mod tests {
                 "Status",
                 "Spells",
                 "Items",
+                "Quit",
+                "Save",
                 "Equipment",
                 "Quests",
-                "Character",
-                "Save",
-                "Quit"
+                "Character"
             ]
         );
 
