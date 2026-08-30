@@ -1501,6 +1501,7 @@ mod tests {
             .try_add(
                 crate::runtime_member::RuntimeMember::try_from_catalog(
                     elise,
+                    &crate::runtime_member::test_class("cleric"),
                     &fixture_balance().progression,
                 )
                 .unwrap(),

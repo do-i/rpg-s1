@@ -197,8 +197,12 @@ mod tests {
     }
 
     fn runtime(member: &PartyMember) -> RuntimeMember {
-        RuntimeMember::try_from_catalog(member, &progression())
-            .expect("invented member should construct runtime state")
+        RuntimeMember::try_from_catalog(
+            member,
+            &crate::runtime_member::test_class_of(member),
+            &progression(),
+        )
+        .expect("invented member should construct runtime state")
     }
 
     #[test]

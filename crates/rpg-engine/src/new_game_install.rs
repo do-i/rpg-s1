@@ -4,6 +4,7 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 
 use crate::{
     app_state::{AppState, AppStateTransitionRequest},
+    field_menu_domain::{CatalogStatus, FieldMenuCatalog},
     gameplay_rng::GameplayRng,
     name_entry::NameEntryConfirmed,
     new_game::{NewGameScenario, build_new_game_state_with_seed},
@@ -89,6 +90,7 @@ fn install_confirmed_game(
     mut commands: Commands,
     mut state: ResMut<NewGameInstallState>,
     assets: NewGameAssets,
+    catalog: Res<FieldMenuCatalog>,
     real_time: Res<Time<Real>>,
     gameplay_rng: Res<GameplayRng>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
@@ -113,11 +115,24 @@ fn install_confirmed_game(
         }
         return;
     };
+    // The class catalog is a separate load; keep waiting for it rather than starting a run
+    // whose protagonist would carry a zeroed EXP threshold.
+    let Some(protagonist_class) = catalog.class(&inputs.manifest.protagonist.class) else {
+        if catalog.status() == CatalogStatus::Failed {
+            state.status = NewGameInstallStatus::Failed;
+            state.failure = Some(catalog.failure().map_or_else(
+                || "class catalog failed to load".to_owned(),
+                ToOwned::to_owned,
+            ));
+        }
+        return;
+    };
     let mut game = match build_new_game_state_with_seed(
         NewGameScenario {
             manifest: inputs.manifest,
             party: inputs.party,
             balance: inputs.balance,
+            protagonist_class,
         },
         real_time.elapsed(),
         gameplay_rng.state(),

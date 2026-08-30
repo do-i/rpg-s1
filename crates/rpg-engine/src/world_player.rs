@@ -552,6 +552,7 @@ fn cleanup_world_player(
 
 #[cfg(test)]
 mod tests {
+    use crate::runtime_member::test_class;
     use std::{
         fs,
         path::{Path, PathBuf},
@@ -664,6 +665,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -835,6 +837,7 @@ mod tests {
                 .try_add(
                     crate::runtime_member::RuntimeMember::try_from_catalog(
                         elise,
+                        &test_class("cleric"),
                         &balance.progression,
                     )
                     .unwrap(),

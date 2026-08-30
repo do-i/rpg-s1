@@ -45,8 +45,11 @@ impl RuntimeMember {
     /// Referential validation of ids remains the scenario validator's responsibility. This
     /// boundary validates numeric session invariants against the selected balance data and
     /// rejects bad authored state rather than changing it during new-game construction.
+    /// `class` must be the member's own class definition; it supplies the EXP curve used for
+    /// the first threshold. Every caller resolves it from `member`'s `class_id`.
     pub fn try_from_catalog(
         member: &PartyMember,
+        class: &ClassDefinition,
         progression: &ProgressionBalance,
     ) -> Result<Self, RuntimeMemberError> {
         let data = member.data();
@@ -94,7 +97,13 @@ impl RuntimeMember {
             class_id: data.class_id.clone(),
             level: data.level,
             experience: data.exp,
-            experience_next: 0,
+            // The source attaches class data before deriving the next threshold, so a member
+            // reads its real requirement the moment it joins rather than after its first award.
+            experience_next: if data.level >= level_cap {
+                0
+            } else {
+                experience_required(class, data.level.saturating_add(1))
+            },
             health: data.hp,
             max_health: data.hp_max,
             mana: data.mp,
@@ -419,6 +428,45 @@ impl RuntimeMember {
     pub fn unequip(&mut self, slot: EquipmentSlot) -> Option<String> {
         self.equipment.replace(slot, None)
     }
+}
+
+/// Resolves the class definition a test needs to build a runtime member.
+///
+/// Shipped ids load their real file so EXP-threshold assertions stay honest. Invented fixture
+/// ids borrow the hero curve under their own id, since those tests only need a well-formed class.
+#[cfg(test)]
+pub(crate) fn test_class(class_id: &str) -> ClassDefinition {
+    fn parse(document: &str) -> ClassDefinition {
+        crate::scenario_yaml::from_str(document).expect("shipped class should deserialize")
+    }
+    const HERO: &str =
+        include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml");
+    match class_id {
+        "hero" => parse(HERO),
+        "cleric" => parse(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"
+        )),
+        "rogue" => parse(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"
+        )),
+        "sorcerer" => parse(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"
+        )),
+        "warrior" => parse(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"
+        )),
+        invented => {
+            let mut class = parse(HERO);
+            class.class_id = invented.to_owned();
+            class
+        }
+    }
+}
+
+/// Resolves the class for one catalog member, for tests that build it directly.
+#[cfg(test)]
+pub(crate) fn test_class_of(member: &PartyMember) -> ClassDefinition {
+    test_class(&member.data().class_id)
 }
 
 pub(crate) fn experience_required(class: &ClassDefinition, level: u32) -> u32 {
@@ -806,11 +854,57 @@ mod tests {
     }
 
     #[test]
+    fn a_catalog_member_carries_its_class_threshold_before_earning_any_experience() {
+        // The source derives exp_next when it attaches class data, so a member recruited
+        // mid-run shows a real requirement immediately instead of `EXP 0 / 0`.
+        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
+        ))
+        .expect("the shipped party catalog should deserialize");
+        let elise = party
+            .party
+            .iter()
+            .find(|member| member.data().id == "elise")
+            .expect("the shipped party has elise");
+
+        let runtime = RuntimeMember::try_from_catalog(
+            elise,
+            &test_class("cleric"),
+            &progression(99, 999_999),
+        )
+        .expect("the shipped cleric should construct runtime state");
+
+        assert_eq!(runtime.level(), 1);
+        assert_eq!(runtime.experience(), 0);
+        // cleric.yaml: exp_base 95, exp_factor 2.0 -> 95 * 2^2.
+        assert_eq!(runtime.experience_next(), 380);
+    }
+
+    #[test]
+    fn a_member_already_at_the_level_cap_has_no_next_threshold() {
+        let mut source = catalog().party.remove(0);
+        with_data(&mut source, |data| data.level = 10);
+
+        let runtime = RuntimeMember::try_from_catalog(
+            &source,
+            &test_class_of(&source),
+            &progression(10, 100),
+        )
+        .expect("a member at the level cap is valid");
+
+        assert_eq!(runtime.experience_next(), 0);
+    }
+
+    #[test]
     fn construction_copies_only_runtime_state_and_keeps_stable_linkage() {
         let source = catalog().party.remove(0);
         let source_before = source.clone();
-        let mut runtime = RuntimeMember::try_from_catalog(&source, &progression(100, 1_000_000))
-            .expect("valid invented member should construct runtime state");
+        let mut runtime = RuntimeMember::try_from_catalog(
+            &source,
+            &test_class_of(&source),
+            &progression(100, 1_000_000),
+        )
+        .expect("valid invented member should construct runtime state");
 
         assert_eq!(runtime.id(), "ember");
         assert_eq!(runtime.name(), "Ember");
@@ -852,9 +946,12 @@ mod tests {
             "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
         ))
         .unwrap();
-        let mut member =
-            RuntimeMember::try_from_catalog(&source.party[0], &progression(100, 1_000_000))
-                .unwrap();
+        let mut member = RuntimeMember::try_from_catalog(
+            &source.party[0],
+            &test_class_of(&source.party[0]),
+            &progression(100, 1_000_000),
+        )
+        .unwrap();
         member.apply_damage(10);
         member.spend_mana(10);
         let result = member.apply_experience_progression(400, &class, &progression(100, 1_000_000));
@@ -926,9 +1023,12 @@ mod tests {
             "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
         ))
         .unwrap();
-        let mut member =
-            RuntimeMember::try_from_catalog(&source.party[0], &progression(100, 1_000_000))
-                .unwrap();
+        let mut member = RuntimeMember::try_from_catalog(
+            &source.party[0],
+            &test_class_of(&source.party[0]),
+            &progression(100, 1_000_000),
+        )
+        .unwrap();
 
         let result =
             member.apply_experience_progression(1_600, &class, &progression(100, 1_000_000));
@@ -992,7 +1092,11 @@ mod tests {
             let mut member = catalog().party.remove(0);
             with_data(&mut member, mutate);
             assert_eq!(
-                RuntimeMember::try_from_catalog(&member, &progression(10, 100)),
+                RuntimeMember::try_from_catalog(
+                    &member,
+                    &test_class_of(&member),
+                    &progression(10, 100)
+                ),
                 Err(expected)
             );
         }
@@ -1000,7 +1104,11 @@ mod tests {
         let mut above_level_cap = catalog().party.remove(0);
         with_data(&mut above_level_cap, |data| data.level = 11);
         assert!(matches!(
-            RuntimeMember::try_from_catalog(&above_level_cap, &progression(10, 100)),
+            RuntimeMember::try_from_catalog(
+                &above_level_cap,
+                &test_class_of(&above_level_cap),
+                &progression(10, 100)
+            ),
             Err(RuntimeMemberError::LevelOutsideBalance { level: 11, .. })
         ));
     }
@@ -1008,8 +1116,12 @@ mod tests {
     #[test]
     fn health_and_mana_mutations_clamp_and_plain_healing_does_not_revive() {
         let source = catalog().party.remove(0);
-        let mut runtime = RuntimeMember::try_from_catalog(&source, &progression(100, 1_000_000))
-            .expect("valid invented member should construct runtime state");
+        let mut runtime = RuntimeMember::try_from_catalog(
+            &source,
+            &test_class_of(&source),
+            &progression(100, 1_000_000),
+        )
+        .expect("valid invented member should construct runtime state");
 
         assert_eq!(runtime.apply_damage(7), 7);
         assert_eq!(runtime.health(), 15);
@@ -1033,8 +1145,9 @@ mod tests {
         let mut source = catalog().party.remove(0);
         with_data(&mut source, |data| data.exp = 90);
         let balance = progression(10, 100);
-        let mut runtime = RuntimeMember::try_from_catalog(&source, &balance)
-            .expect("valid invented member should construct runtime state");
+        let mut runtime =
+            RuntimeMember::try_from_catalog(&source, &test_class_of(&source), &balance)
+                .expect("valid invented member should construct runtime state");
 
         assert_eq!(runtime.add_experience(7, &balance), 7);
         assert_eq!(runtime.add_experience(u32::MAX, &balance), 3);
@@ -1043,8 +1156,12 @@ mod tests {
 
         let mut capped_source = catalog().party.remove(0);
         with_data(&mut capped_source, |data| data.level = 10);
-        let mut capped = RuntimeMember::try_from_catalog(&capped_source, &balance)
-            .expect("member at level cap is valid");
+        let mut capped = RuntimeMember::try_from_catalog(
+            &capped_source,
+            &test_class_of(&capped_source),
+            &balance,
+        )
+        .expect("member at level cap is valid");
         assert_eq!(capped.add_experience(50, &balance), 0);
         assert_eq!(capped.experience(), 0);
     }
@@ -1052,8 +1169,12 @@ mod tests {
     #[test]
     fn equipment_mutation_uses_options_and_rejects_empty_item_ids() {
         let source = catalog().party.remove(1);
-        let mut runtime = RuntimeMember::try_from_catalog(&source, &progression(100, 1_000_000))
-            .expect("valid invented recruit should construct runtime state");
+        let mut runtime = RuntimeMember::try_from_catalog(
+            &source,
+            &test_class_of(&source),
+            &progression(100, 1_000_000),
+        )
+        .expect("valid invented recruit should construct runtime state");
 
         assert!(!runtime.is_protagonist());
         assert_eq!(runtime.class_id(), "mystic");

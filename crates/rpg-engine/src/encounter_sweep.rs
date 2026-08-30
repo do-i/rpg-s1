@@ -127,16 +127,6 @@ fn try_build_encounter_sweep(
         &physical_root.join(balance_path.as_str()),
         balance_path.as_str(),
     )?;
-    let mut game = build_new_game_state(
-        NewGameScenario {
-            manifest: &manifest,
-            party: &party,
-            balance: &balance,
-        },
-        std::time::Duration::ZERO,
-    )
-    .map_err(|error| format!("normal new-game construction failed: {error}"))?;
-
     let item_files = inventory
         .item_catalogs
         .iter()
@@ -148,6 +138,25 @@ fn try_build_encounter_sweep(
         .map(|path| read_yaml(&physical_root.join(path.as_str()), path.as_str()))
         .collect::<Result<Vec<ClassDefinition>, _>>()?;
     let field_catalog = FieldMenuCatalog::for_encounter_sweep(item_files, class_files);
+
+    let protagonist_class = field_catalog
+        .class(&manifest.protagonist.class)
+        .ok_or_else(|| {
+            format!(
+                "protagonist class `{}` is missing from the class catalog",
+                manifest.protagonist.class
+            )
+        })?;
+    let mut game = build_new_game_state(
+        NewGameScenario {
+            manifest: &manifest,
+            party: &party,
+            balance: &balance,
+            protagonist_class,
+        },
+        std::time::Duration::ZERO,
+    )
+    .map_err(|error| format!("normal new-game construction failed: {error}"))?;
 
     let enemy_files = inventory
         .enemy_catalogs

@@ -503,6 +503,7 @@ fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime_member::test_class;
     use crate::{
         new_game::{NewGameScenario, build_new_game_state},
         scenario_balance::BalanceData,
@@ -546,6 +547,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             std::time::Duration::ZERO,
         )
