@@ -826,7 +826,7 @@ mod tests {
                     npc.dialogue.as_deref().unwrap_or_default()
                 ))
                 .collect::<Vec<_>>(),
-            [("millhaven_miller", Position::new(5, 6), "millhaven_miller")]
+            [("millhaven_miller", Position::new(5, 5), "millhaven_miller")]
         );
 
         assert_eq!(shop.shop.as_ref().unwrap().items.len(), 5);
@@ -835,13 +835,13 @@ mod tests {
         let expected_shop_npcs = [
             (
                 "item_shop_keeper",
-                Position::new(6, 4),
+                Position::new(6, 3),
                 "item_shop_millhaven",
             ),
-            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
-                Position::new(4, 3),
+                Position::new(5, 3),
                 "weapon_shop_millhaven",
             ),
             (
@@ -967,7 +967,7 @@ mod tests {
             ),
             (
                 "quarantine_patient",
-                Position::new(14, 6),
+                Position::new(14, 5),
                 "harborgate_patient",
             ),
         ];
@@ -1004,13 +1004,13 @@ mod tests {
         let expected = [
             (
                 "item_shop_keeper",
-                Position::new(6, 4),
+                Position::new(6, 3),
                 "item_shop_harborgate",
             ),
-            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
-                Position::new(4, 3),
+                Position::new(5, 3),
                 "weapon_shop_harborgate",
             ),
             (
@@ -1096,7 +1096,7 @@ mod tests {
                 Position::new(33, 15),
                 "ruinwatch_pilgrim",
             ),
-            ("ruinwatch_digger", Position::new(3, 22), "ruinwatch_digger"),
+            ("ruinwatch_digger", Position::new(3, 23), "ruinwatch_digger"),
         ];
 
         for flags in [
@@ -1122,13 +1122,13 @@ mod tests {
         let expected_shop = [
             (
                 "item_shop_keeper",
-                Position::new(6, 4),
+                Position::new(6, 3),
                 "item_shop_ruinwatch",
             ),
-            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
-                Position::new(4, 3),
+                Position::new(5, 3),
                 "weapon_shop_ruinwatch",
             ),
             (
