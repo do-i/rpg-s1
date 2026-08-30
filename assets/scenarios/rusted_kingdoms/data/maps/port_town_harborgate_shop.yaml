@@ -29,7 +29,7 @@ npcs:
   - id: item_shop_keeper
     name: "Salvo"
     dialogue: item_shop_harborgate
-    position: [6, 3]
+    position: [6, 4]
     sprite: assets/sprites/npc/merchant_base.tsx
     default_facing: down
     interaction_range: 2.5
@@ -39,7 +39,7 @@ npcs:
   - id: mc_shop_keeper
     name: "Mirel"
     dialogue: mc_shop_intro
-    position: [10, 3]
+    position: [10, 4]
     sprite: assets/sprites/npc/merchant_traveling_merchant.tsx
     default_facing: down
     interaction_range: 2.5
