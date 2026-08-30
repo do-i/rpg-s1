@@ -16,7 +16,7 @@ npcs:
   - id: quarantine_patient
     name: "Edda"
     dialogue: harborgate_patient
-    position: [14, 6]
+    position: [14, 5]
     sprite: assets/sprites/npc/village_male_person_quiet_neighbor.tsx
     default_facing: left
     animation:
