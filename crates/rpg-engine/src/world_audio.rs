@@ -521,6 +521,7 @@ impl Error for WorldYamlAssetLoaderError {}
 
 #[cfg(test)]
 mod tests {
+    use crate::runtime_member::test_class;
     use std::{
         fs,
         path::PathBuf,
@@ -632,6 +633,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )

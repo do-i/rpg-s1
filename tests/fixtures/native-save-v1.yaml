@@ -18,7 +18,7 @@ payload:
     class_id: hero
     level: 1
     experience: 0
-    experience_next: 0
+    experience_next: 400
     health: 22
     max_health: 22
     mana: 12

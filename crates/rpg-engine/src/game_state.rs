@@ -227,8 +227,12 @@ mod tests {
     }
 
     fn runtime(member: &PartyMember, balance: &BalanceData) -> RuntimeMember {
-        RuntimeMember::try_from_catalog(member, &balance.progression)
-            .expect("invented member should construct runtime state")
+        RuntimeMember::try_from_catalog(
+            member,
+            &crate::runtime_member::test_class_of(member),
+            &balance.progression,
+        )
+        .expect("invented member should construct runtime state")
     }
 
     fn map_id(id: &str) -> RuntimeMapId {

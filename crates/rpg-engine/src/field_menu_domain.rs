@@ -1397,9 +1397,14 @@ pub(crate) mod tests {
             "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
         ))
         .unwrap();
-        let members = party_source.party[..2]
-            .iter()
-            .map(|source| RuntimeMember::try_from_catalog(source, &balance.progression).unwrap());
+        let members = party_source.party[..2].iter().map(|source| {
+            RuntimeMember::try_from_catalog(
+                source,
+                &crate::runtime_member::test_class_of(source),
+                &balance.progression,
+            )
+            .unwrap()
+        });
         GameState::try_from_parts(GameStateParts {
             flags: RuntimeFlags::from_bootstrap(flags),
             party: RuntimeParty::try_from_members(members).unwrap(),

@@ -233,6 +233,7 @@ const fn movement_facing(direction: EightWayDirection) -> CardinalDirection {
 
 #[cfg(test)]
 mod tests {
+    use crate::runtime_member::test_class;
     use std::time::Duration;
 
     use bevy::{image::TextureAtlas, state::app::StatesPlugin, time::TimeUpdateStrategy};
@@ -280,6 +281,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )

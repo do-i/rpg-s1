@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::{AppState, AppStateTransitionRequest},
+    field_menu_domain::{CatalogStatus, FieldMenuCatalog},
     game_state::GameState,
     gameplay_rng::GameplayRng,
     new_game::{NewGameScenario, build_new_game_state_with_seed},
@@ -141,6 +142,7 @@ fn install_debug_session(
     mut commands: Commands,
     config: Res<DebugLaunchConfig>,
     assets: DebugAssets,
+    catalog: Res<FieldMenuCatalog>,
     startup_rng: Res<GameplayRng>,
     real_time: Res<Time<Real>>,
     mut state: ResMut<DebugLaunchState>,
@@ -170,18 +172,34 @@ fn install_debug_session(
         }
         return;
     };
+    // Class data loads separately; wait for it so a debug session cannot start with a
+    // zeroed EXP threshold on its members.
+    let Some(protagonist_class) = catalog.class(&inputs.manifest.protagonist.class) else {
+        if catalog.status() == CatalogStatus::Failed {
+            fail_debug_launch(
+                &mut state,
+                catalog.failure().map_or_else(
+                    || "class catalog failed to load".to_owned(),
+                    ToOwned::to_owned,
+                ),
+                &mut exit,
+            );
+        }
+        return;
+    };
     let result = build_new_game_state_with_seed(
         NewGameScenario {
             manifest: inputs.manifest,
             party: inputs.party,
             balance: inputs.balance,
+            protagonist_class,
         },
         real_time.elapsed(),
         startup_rng.state(),
     )
     .map_err(|error| error.to_string())
     .and_then(|mut game| {
-        apply_debug_overrides(&mut game, inputs.party, inputs.balance, &config)?;
+        apply_debug_overrides(&mut game, inputs.party, inputs.balance, &catalog, &config)?;
         Ok(game)
     });
     match result {
@@ -214,6 +232,7 @@ fn apply_debug_overrides(
     game: &mut GameState,
     party: &PartyCatalog,
     balance: &BalanceData,
+    catalog: &FieldMenuCatalog,
     config: &DebugLaunchConfig,
 ) -> Result<(), String> {
     if let (Some(map_id), Some(position)) = (&config.start_map, config.start_position) {
@@ -228,7 +247,11 @@ fn apply_debug_overrides(
             if game.party().contains(&authored.data().id) {
                 continue;
             }
-            let member = RuntimeMember::try_from_catalog(authored, &balance.progression)
+            let class_id = &authored.data().class_id;
+            let class = catalog
+                .class(class_id)
+                .ok_or_else(|| format!("debug party preset has unknown class `{class_id}`"))?;
+            let member = RuntimeMember::try_from_catalog(authored, class, &balance.progression)
                 .map_err(|error| error.to_string())?;
             game.party_mut()
                 .try_add(member)
@@ -247,6 +270,7 @@ fn apply_debug_overrides(
 
 #[cfg(test)]
 mod tests {
+    use crate::runtime_member::test_class;
     use std::time::Duration;
 
     use super::*;
@@ -272,6 +296,17 @@ mod tests {
         party
     }
 
+    /// A class catalog covering every class the fixture party names, so the Full preset can
+    /// resolve each member's EXP curve.
+    fn debug_catalog() -> FieldMenuCatalog {
+        let classes: Vec<_> = party()
+            .party
+            .iter()
+            .map(crate::runtime_member::test_class_of)
+            .collect();
+        FieldMenuCatalog::for_encounter_sweep(Vec::new(), classes)
+    }
+
     fn balance() -> BalanceData {
         scenario_yaml::from_str(include_str!(
             "../../../tests/fixtures/balance-complete.yaml"
@@ -289,6 +324,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -304,7 +340,7 @@ mod tests {
             ]),
         };
 
-        apply_debug_overrides(&mut game, &party, &balance, &config).unwrap();
+        apply_debug_overrides(&mut game, &party, &balance, &debug_catalog(), &config).unwrap();
 
         assert_eq!(normal.party().len(), 1);
         assert_eq!(normal.map().current().unwrap().as_str(), "town_01_ardel");
@@ -366,6 +402,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -375,6 +412,7 @@ mod tests {
             &mut game,
             &party,
             &balance,
+            &FieldMenuCatalog::production_class_fixture(),
             &DebugLaunchConfig {
                 party_preset: Some(DebugPartyPreset::Full),
                 ..Default::default()

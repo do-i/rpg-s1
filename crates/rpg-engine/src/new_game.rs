@@ -19,6 +19,7 @@ use crate::{
     runtime_party::{RuntimeParty, RuntimePartyError},
     runtime_repository::RuntimeRepository,
     scenario_balance::BalanceData,
+    scenario_class::ClassDefinition,
     scenario_manifest::Manifest,
     scenario_party::PartyCatalog,
     scenario_spatial::CardinalDirection,
@@ -33,6 +34,9 @@ pub struct NewGameScenario<'a> {
     pub manifest: &'a Manifest,
     pub party: &'a PartyCatalog,
     pub balance: &'a BalanceData,
+    /// Class data for the manifest-selected protagonist, needed to derive its first EXP
+    /// threshold the way the source does when it attaches class data on construction.
+    pub protagonist_class: &'a ClassDefinition,
 }
 
 /// Builds the source-compatible state that name confirmation will install.
@@ -81,8 +85,12 @@ pub fn build_new_game_state_with_seed(
         });
     }
 
-    let member = RuntimeMember::try_from_catalog(protagonist, &scenario.balance.progression)
-        .map_err(NewGameStateError::Member)?;
+    let member = RuntimeMember::try_from_catalog(
+        protagonist,
+        scenario.protagonist_class,
+        &scenario.balance.progression,
+    )
+    .map_err(NewGameStateError::Member)?;
     let controlled_member_id = member.id().to_owned();
     let party = RuntimeParty::try_from_members([member]).map_err(NewGameStateError::Party)?;
     let map_id = RuntimeMapId::try_new(scenario.manifest.start.map.clone())
@@ -172,6 +180,7 @@ impl Error for NewGameStateError {
 
 #[cfg(test)]
 mod tests {
+    use crate::runtime_member::test_class;
     use std::{fs, path::Path, process::Command};
 
     use super::*;
@@ -221,6 +230,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::from_secs(42),
         )
@@ -271,6 +281,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
             9_876_543,
@@ -292,6 +303,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -354,6 +366,7 @@ mod tests {
                     manifest: &manifest,
                     party: &party,
                     balance: &balance,
+                    protagonist_class: &test_class(&manifest.protagonist.class),
                 },
                 Duration::ZERO,
             )
@@ -371,6 +384,7 @@ mod tests {
                     manifest: &manifest,
                     party: &party,
                     balance: &balance,
+                    protagonist_class: &test_class(&manifest.protagonist.class),
                 },
                 Duration::ZERO,
             )
@@ -388,6 +402,7 @@ mod tests {
                     manifest: &manifest,
                     party: &party,
                     balance: &balance,
+                    protagonist_class: &test_class(&manifest.protagonist.class),
                 },
                 Duration::ZERO,
             )
@@ -416,6 +431,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::from_secs(9),
         );
@@ -435,6 +451,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::from_secs(9),
         )
@@ -462,6 +479,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::from_secs(123),
         )

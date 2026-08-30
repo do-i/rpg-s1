@@ -553,6 +553,7 @@ fn drive_dialogue_session(
     settings: Res<EngineSettings>,
     party_assets: Res<Assets<PartyCatalog>>,
     balance_assets: Res<Assets<BalanceData>>,
+    catalog: Res<FieldMenuCatalog>,
     game: Option<ResMut<GameState>>,
     mut service: ResMut<ServiceUiState>,
     mut state: ResMut<WorldInteractionState>,
@@ -606,7 +607,9 @@ fn drive_dialogue_session(
             if let Some(request) = ServiceRequest::from_dialogue(&completion) {
                 service.open(request);
             }
-            if let Err(error) = apply_dialogue_actions(&completion, &mut game, party, balance) {
+            if let Err(error) =
+                apply_dialogue_actions(&completion, &mut game, party, balance, &catalog)
+            {
                 state.failure = Some(error.to_string());
             }
         }
@@ -721,6 +724,7 @@ fn apply_dialogue_actions(
     game: &mut GameState,
     party: Option<&PartyCatalog>,
     balance: Option<&BalanceData>,
+    catalog: &FieldMenuCatalog,
 ) -> Result<(), DialogueActionError> {
     apply_flag_actions(actions, game.flags_mut());
     let gift_batch =
@@ -748,7 +752,11 @@ fn apply_dialogue_actions(
         .iter()
         .find(|member| member.data().id == member_id)
         .ok_or_else(|| DialogueActionError::UnknownPartyMember(member_id.to_owned()))?;
-    let runtime = RuntimeMember::try_from_catalog(source, &balance.progression)
+    let class_id = &source.data().class_id;
+    let class = catalog
+        .class(class_id)
+        .ok_or_else(|| DialogueActionError::UnknownClass(class_id.clone()))?;
+    let runtime = RuntimeMember::try_from_catalog(source, class, &balance.progression)
         .map_err(|error| DialogueActionError::PartyMember(error.to_string()))?;
     game.party_mut()
         .try_add(runtime)
@@ -762,6 +770,7 @@ enum DialogueActionError {
     PartyCatalogUnavailable,
     BalanceUnavailable,
     UnknownPartyMember(String),
+    UnknownClass(String),
     PartyMember(String),
 }
 
@@ -773,6 +782,9 @@ impl fmt::Display for DialogueActionError {
             Self::BalanceUnavailable => formatter.write_str("balance data is unavailable"),
             Self::UnknownPartyMember(id) => {
                 write!(formatter, "dialogue names unknown party member `{id}`")
+            }
+            Self::UnknownClass(id) => {
+                write!(formatter, "joining member has unknown class `{id}`")
             }
             Self::PartyMember(error) => write!(formatter, "dialogue party join failed: {error}"),
         }
@@ -1367,6 +1379,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -1374,8 +1387,22 @@ mod tests {
         let actions: DialogueActions =
             scenario_yaml::from_str("set_flag: npc_elise_joined\njoin_party: elise\n").unwrap();
 
-        apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
-        apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
+        apply_dialogue_actions(
+            &actions,
+            &mut game,
+            Some(&party),
+            Some(&balance),
+            &FieldMenuCatalog::production_class_fixture(),
+        )
+        .unwrap();
+        apply_dialogue_actions(
+            &actions,
+            &mut game,
+            Some(&party),
+            Some(&balance),
+            &FieldMenuCatalog::production_class_fixture(),
+        )
+        .unwrap();
 
         assert!(game.flags().is_set("npc_elise_joined"));
         assert_eq!(game.party().len(), 2);
@@ -1385,7 +1412,14 @@ mod tests {
             .iter()
             .find(|member| member.data().id == "elise")
             .unwrap();
-        let expected = RuntimeMember::try_from_catalog(source, &balance.progression).unwrap();
+        let expected = RuntimeMember::try_from_catalog(
+            source,
+            FieldMenuCatalog::production_class_fixture()
+                .class("cleric")
+                .unwrap(),
+            &balance.progression,
+        )
+        .unwrap();
         assert_eq!(elise, &expected);
     }
 
@@ -1414,6 +1448,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -1436,7 +1471,14 @@ mod tests {
                 .starts_with("The forest breathes easier")
         );
         for actions in complete_linear_dialogue(&mut reward, game.flags()) {
-            apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
+            apply_dialogue_actions(
+                &actions,
+                &mut game,
+                Some(&party),
+                Some(&balance),
+                &FieldMenuCatalog::production_class_fixture(),
+            )
+            .unwrap();
         }
         assert!(game.flags().is_set("npc_elder_reward_given"));
         assert!(game.flags().is_set("story_act2_started"));
@@ -1457,7 +1499,14 @@ mod tests {
         .unwrap();
         assert!(repeat.current_line().starts_with("The plains to the east"));
         for actions in complete_linear_dialogue(&mut repeat, game.flags()) {
-            apply_dialogue_actions(&actions, &mut game, Some(&party), Some(&balance)).unwrap();
+            apply_dialogue_actions(
+                &actions,
+                &mut game,
+                Some(&party),
+                Some(&balance),
+                &FieldMenuCatalog::production_class_fixture(),
+            )
+            .unwrap();
         }
         assert_eq!(game.repository(), &rewarded_repository);
 
@@ -1511,6 +1560,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )
@@ -1663,6 +1713,7 @@ mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )

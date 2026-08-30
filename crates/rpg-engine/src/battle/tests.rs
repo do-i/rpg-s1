@@ -16,6 +16,7 @@ use super::{
     },
     status::{ActiveStatus, StatusEffect},
 };
+use crate::runtime_member::test_class;
 use crate::{
     encounter::BattleSide,
     field_menu_domain::FieldMenuCatalog,
@@ -189,6 +190,7 @@ fn reward_game() -> (GameState, BalanceData) {
             manifest: &manifest,
             party: &party,
             balance: &balance,
+            protagonist_class: &test_class(&manifest.protagonist.class),
         },
         std::time::Duration::ZERO,
     )

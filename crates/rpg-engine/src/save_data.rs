@@ -490,6 +490,7 @@ impl Error for NativeSaveError {}
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::runtime_member::test_class;
     use std::time::Duration;
 
     use super::*;
@@ -524,6 +525,7 @@ pub(crate) mod tests {
                 manifest: &manifest,
                 party: &party,
                 balance: &balance,
+                protagonist_class: &test_class(&manifest.protagonist.class),
             },
             Duration::ZERO,
         )

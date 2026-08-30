@@ -102,6 +102,9 @@ pub(crate) fn headless_title_app_with_asset_base(
         .add_plugins(AppStateTransitionPlugin)
         .add_plugins(ActionInputPlugin)
         .add_plugins(FixedGameplayCanvasPlugin)
+        // The class catalog normally arrives with FieldMenuDomainPlugin, which these headless
+        // apps do not add; new-game install needs it to derive the protagonist's EXP threshold.
+        .insert_resource(crate::field_menu_domain::FieldMenuCatalog::production_class_fixture())
         .init_resource::<SaveSlotCatalog>()
         .init_resource::<TitleLoadMenu>()
         .add_plugins(TitleScreenPlugin)
