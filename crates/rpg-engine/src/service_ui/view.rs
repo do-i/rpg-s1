@@ -52,6 +52,15 @@ const WIDE_PANEL_WIDTH: f32 = 980.0;
 /// ceiling is exact here.
 const PANEL_MAX_HEIGHT: f32 = 700.0;
 
+/// Fixed buy-page detail footprint, sized for the title, description, and all five party preview
+/// rows. Consumables omit the equipment preview, but must keep this space reserved so moving the
+/// stock cursor never resizes either column or the containing modal.
+const BUY_DETAIL_HEIGHT: f32 = 500.0;
+
+/// Keeps compatible and incompatible party rows the same height. Compatible rows add a stat
+/// delta line; incompatible rows leave that line empty, but the cursor must not reflow the panel.
+const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 64.0;
+
 /// Keeper face sizes: the inn draws a larger portrait than the counter services.
 const KEEPER_FACE: f32 = 64.0;
 const INN_KEEPER_FACE: f32 = 96.0;
@@ -367,7 +376,7 @@ fn spawn_buy_page(
             }
             spawn_window_footer(panel, font, state.selected, rows.len());
         });
-        spawn_status_panel(columns, detail_panel_node(), "DETAIL", font, |panel| {
+        spawn_status_panel(columns, buy_detail_panel_node(), "DETAIL", font, |panel| {
             let Some(item) = rows
                 .get(state.selected)
                 .and_then(|row| catalog.item(row.id()))
@@ -446,14 +455,7 @@ fn spawn_preview_row(
 ) {
     parent
         .spawn((
-            Node {
-                width: percent(100),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::axes(px(10), px(5)),
-                border: UiRect::all(px(if focused { 2 } else { 1 })),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
+            equipment_preview_row_node(focused),
             BackgroundColor(if focused {
                 Color::srgba_u8(72, 49, 25, 218)
             } else {
@@ -476,6 +478,20 @@ fn spawn_preview_row(
             })
             .with_children(deltas);
         });
+}
+
+fn equipment_preview_row_node(focused: bool) -> Node {
+    Node {
+        width: percent(100),
+        height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
+        min_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
+        max_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
+        flex_direction: FlexDirection::Column,
+        padding: UiRect::axes(px(10), px(5)),
+        border: UiRect::all(px(if focused { 2 } else { 1 })),
+        border_radius: BorderRadius::all(px(4)),
+        ..default()
+    }
 }
 
 fn delta_color(delta: i32) -> Color {
@@ -1201,6 +1217,15 @@ fn detail_panel_node() -> Node {
     }
 }
 
+fn buy_detail_panel_node() -> Node {
+    Node {
+        height: px(BUY_DETAIL_HEIGHT),
+        min_height: px(BUY_DETAIL_HEIGHT),
+        max_height: px(BUY_DETAIL_HEIGHT),
+        ..detail_panel_node()
+    }
+}
+
 fn spawn_toast(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, state: &ServiceUiState) {
     let Some(toast) = state.toast.as_ref() else {
         return;
@@ -1320,6 +1345,21 @@ mod tests {
         ] {
             state.page = Some(page);
             assert_eq!(panel_width(&state), PANEL_WIDTH, "{page:?}");
+        }
+    }
+
+    #[test]
+    fn the_buy_detail_reserves_the_full_equipment_preview_height() {
+        let node = buy_detail_panel_node();
+
+        assert_eq!(node.height, px(BUY_DETAIL_HEIGHT));
+        assert_eq!(node.min_height, px(BUY_DETAIL_HEIGHT));
+        assert_eq!(node.max_height, px(BUY_DETAIL_HEIGHT));
+        for focused in [false, true] {
+            let row = equipment_preview_row_node(focused);
+            assert_eq!(row.height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
+            assert_eq!(row.min_height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
+            assert_eq!(row.max_height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
         }
     }
 
