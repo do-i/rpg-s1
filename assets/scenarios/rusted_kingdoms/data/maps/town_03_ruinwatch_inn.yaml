@@ -9,7 +9,7 @@ npcs:
   - id: inn_keeper
     name: "Fenwick"
     dialogue: inn_ruinwatch
-    position: [8, 3]
+    position: [8, 4]
     sprite: assets/sprites/npc/female_blue_01.tsx
     default_facing: down
     interaction_range: 2.5
