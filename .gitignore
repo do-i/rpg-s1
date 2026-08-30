@@ -8,6 +8,9 @@
 # Local work-in-progress planning documents.
 /plans/
 
+# Scratch: run evidence screenshots and save-file backups kept out of history.
+/temp/
+
 # Derived output from the external map editors. Existing tracked source
 # backups remain tracked; newly generated backups and thumbnails do not.
 *.tmx.bak
