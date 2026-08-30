@@ -1096,10 +1096,12 @@ mod tests {
             Vec::<i32>::new(),
             "a cue drawn under the battle root's floor is a cue the player never sees"
         );
-        assert!(
-            FLOAT_Z > crate::battle::ui::BATTLE_ROOT_Z,
-            "the float crosses neighbouring cards, so it has to leave the frame's context"
-        );
+        const {
+            assert!(
+                FLOAT_Z > crate::battle::ui::BATTLE_ROOT_Z,
+                "the float crosses neighbouring cards, so it has to leave the frame's context"
+            );
+        }
     }
 
     /// Drives the real router against a real frame entity, because the pure functions above only
