@@ -815,7 +815,7 @@ mod tests {
                     npc.dialogue.as_deref().unwrap_or_default()
                 ))
                 .collect::<Vec<_>>(),
-            [("inn_keeper", Position::new(8, 3), "inn_millhaven")]
+            [("inn_keeper", Position::new(8, 4), "inn_millhaven")]
         );
         assert_eq!(
             present_npcs(&mill, &RuntimeFlags::default())
@@ -835,10 +835,10 @@ mod tests {
         let expected_shop_npcs = [
             (
                 "item_shop_keeper",
-                Position::new(6, 3),
+                Position::new(6, 4),
                 "item_shop_millhaven",
             ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
                 Position::new(4, 3),
@@ -962,12 +962,12 @@ mod tests {
         let expected = [
             (
                 "quarantine_priestess",
-                Position::new(8, 3),
+                Position::new(8, 4),
                 "harborgate_priestess",
             ),
             (
                 "quarantine_patient",
-                Position::new(14, 5),
+                Position::new(14, 6),
                 "harborgate_patient",
             ),
         ];
@@ -1004,10 +1004,10 @@ mod tests {
         let expected = [
             (
                 "item_shop_keeper",
-                Position::new(6, 3),
+                Position::new(6, 4),
                 "item_shop_harborgate",
             ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
                 Position::new(4, 3),
@@ -1118,14 +1118,14 @@ mod tests {
     fn presence_conditions_keep_ruinwatch_inn_and_shop_service_rosters_ungated() {
         let inn = ruinwatch_metadata("town_03_ruinwatch_inn");
         let shop = ruinwatch_metadata("town_03_ruinwatch_shop");
-        let expected_inn = [("inn_keeper", Position::new(8, 3), "inn_ruinwatch")];
+        let expected_inn = [("inn_keeper", Position::new(8, 4), "inn_ruinwatch")];
         let expected_shop = [
             (
                 "item_shop_keeper",
-                Position::new(6, 3),
+                Position::new(6, 4),
                 "item_shop_ruinwatch",
             ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
+            ("mc_shop_keeper", Position::new(10, 4), "mc_shop_intro"),
             (
                 "weapon_shop_keeper",
                 Position::new(4, 3),
