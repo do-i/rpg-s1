@@ -13,7 +13,7 @@ use std::{error::Error, fmt, path::PathBuf, str};
 use bevy::{
     asset::{Asset, AssetApp, AssetLoader, AssetPath, Handle, LoadContext, io::Reader},
     image::{Image, ImageLoaderSettings, ImageSampler, TextureAtlas, TextureAtlasLayout},
-    math::{URect, UVec2},
+    math::{Rect, URect, UVec2},
     prelude::{App, FromWorld, Plugin, Sprite, World},
     reflect::TypePath,
 };
@@ -58,6 +58,25 @@ impl TsxAtlasAsset {
 
     pub(crate) const fn layout(&self) -> &Handle<TextureAtlasLayout> {
         &self.layout
+    }
+
+    /// Returns the absolute image rectangle for one tileset-local tile.
+    ///
+    /// UI portraits use this instead of a `TextureAtlas` because they need to crop *inside* the
+    /// selected frame rather than render the complete atlas cell.
+    pub(crate) fn frame_rect(&self, tile_id: u32) -> Option<Rect> {
+        if tile_id >= self.metadata.tile_count() {
+            return None;
+        }
+        let cell = UVec2::new(
+            tile_id % self.metadata.columns(),
+            tile_id / self.metadata.columns(),
+        );
+        let min =
+            (cell * UVec2::new(self.metadata.tile_width(), self.metadata.tile_height())).as_vec2();
+        let max =
+            min + UVec2::new(self.metadata.tile_width(), self.metadata.tile_height()).as_vec2();
+        Some(Rect::from_corners(min, max))
     }
 
     /// Creates the exact Bevy sprite representation for one tileset-local tile.
@@ -319,6 +338,8 @@ mod tests {
 
         let expected_image = atlas.image().clone();
         let expected_layout = atlas.layout().clone();
+        assert_eq!(atlas.frame_rect(4), Some(Rect::new(2.0, 2.0, 4.0, 4.0)));
+        assert_eq!(atlas.frame_rect(6), None);
         let sprite = atlas.sprite_for_tile(4).unwrap();
         let entity = app.world_mut().spawn(sprite).id();
         let sprite = app.world().entity(entity).get::<Sprite>().unwrap();
