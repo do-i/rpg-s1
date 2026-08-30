@@ -13,6 +13,7 @@ use super::{
     sprites::{RecipeIcon, ServiceKeeper, ServiceSprites},
 };
 use crate::{
+    dialogue_portrait::DialoguePortrait,
     field_menu_domain::{
         FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
     },
@@ -174,7 +175,7 @@ fn keeper_face(
     state: &ServiceUiState,
     sprites: &ServiceSprites,
     atlases: &Assets<TsxAtlasAsset>,
-) -> Option<ImageNode> {
+) -> Option<DialoguePortrait> {
     let keeper = match state.request? {
         ServiceRequest::Shop(DialogueShopKind::Item | DialogueShopKind::MagicCore) => {
             ServiceKeeper::ItemShop
@@ -192,7 +193,7 @@ fn spawn_service_header(
     font: &Handle<Font>,
     state: &ServiceUiState,
     game: &GameState,
-    face: Option<ImageNode>,
+    face: Option<DialoguePortrait>,
 ) {
     let inn = state.request == Some(ServiceRequest::Inn);
     let size = if inn { INN_KEEPER_FACE } else { KEEPER_FACE };
@@ -232,7 +233,7 @@ fn spawn_keeper_frame(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     size: f32,
-    face: Option<ImageNode>,
+    face: Option<DialoguePortrait>,
 ) {
     let mut frame = parent.spawn((
         Node {
@@ -252,7 +253,7 @@ fn spawn_keeper_frame(
         Some(image) => {
             frame.with_children(|slot| {
                 slot.spawn((
-                    image,
+                    image.image_node(),
                     Node {
                         width: percent(100),
                         height: percent(100),

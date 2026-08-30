@@ -8,18 +8,15 @@
 
 use std::collections::BTreeMap;
 
-use bevy::{image::TextureAtlas, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
-    scenario_inventory::ScenarioInventory, scenario_root::ScenarioRoot,
-    service_domain::RecipeAvailability, tsx_atlas_asset::TsxAtlasAsset,
+    dialogue_portrait::{DialoguePortrait, dialogue_portrait_from_atlas},
+    scenario_inventory::ScenarioInventory,
+    scenario_root::ScenarioRoot,
+    service_domain::RecipeAvailability,
+    tsx_atlas_asset::TsxAtlasAsset,
 };
-
-/// The tileset-local frame a keeper face uses: the idle `Down` row, column zero.
-///
-/// Source `SpriteSheet.load_npc_face` (`engine/world/sprite_sheet.py:145`) takes exactly this
-/// frame, and the four-direction character profile puts the `Down` row's owner tile at 18.
-const KEEPER_FACE_TILE: u32 = 18;
 
 /// Which service's keeper is being drawn.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -63,23 +60,14 @@ pub(crate) struct ServiceSprites {
 }
 
 impl ServiceSprites {
-    /// Builds the UI image for one keeper's face, or `None` until its atlas finishes loading.
+    /// Builds the shared shoulder-up popup portrait, or `None` until its atlas finishes loading.
     pub(crate) fn keeper_face(
         &self,
         keeper: ServiceKeeper,
         atlases: &Assets<TsxAtlasAsset>,
-    ) -> Option<ImageNode> {
+    ) -> Option<DialoguePortrait> {
         let atlas = atlases.get(self.keepers.get(&keeper)?)?;
-        if KEEPER_FACE_TILE >= atlas.metadata().tile_count() {
-            return None;
-        }
-        Some(ImageNode::from_atlas_image(
-            atlas.image().clone(),
-            TextureAtlas {
-                layout: atlas.layout().clone(),
-                index: KEEPER_FACE_TILE as usize,
-            },
-        ))
+        dialogue_portrait_from_atlas(atlas)
     }
 
     pub(crate) fn recipe_icon(&self, icon: RecipeIcon) -> Option<Handle<Image>> {

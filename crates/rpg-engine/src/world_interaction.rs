@@ -12,6 +12,7 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    dialogue_portrait::{DialoguePortrait, dialogue_portrait_from_sprite},
     engine_settings::EngineSettings,
     field_menu::FieldMenuState,
     field_menu_domain::{FieldMenuCatalog, item_name},
@@ -35,6 +36,9 @@ use crate::{
     world_player::{WorldPlayer, WorldPlayerMotion},
     world_transition::WorldTransition,
 };
+
+#[cfg(test)]
+use crate::dialogue_portrait::dialogue_portrait_crop;
 
 pub(crate) struct WorldInteractionPlugin;
 
@@ -222,7 +226,7 @@ fn request_npc_dialogue(
             InteractionTarget::Dialogue {
                 id: target.dialogue_id().to_owned(),
                 speaker: Some(target.name().to_owned()),
-                portrait: portrait_for_sprite(sprite, &layouts),
+                portrait: dialogue_portrait_from_sprite(sprite, &layouts),
             },
         )
     });
@@ -347,53 +351,6 @@ fn select_npc<'a>(
             .distance_squared(left.source_pixel_position())
             .total_cmp(&player_pixels.distance_squared(right.source_pixel_position()))
             .then_with(|| left.name().cmp(right.name()))
-    })
-}
-
-/// The image region the dialogue box shows beside a speaker's lines.
-///
-/// The source does not read `party.yaml`'s `portrait` here at all -- it crops the head out of the
-/// NPC's own walking sprite at dialogue time (`engine/world/sprite_sheet.py::get_portrait`), so a
-/// speaker's portrait always matches the sprite standing in front of the player.
-#[derive(Clone, Debug, PartialEq)]
-struct DialoguePortrait {
-    image: Handle<Image>,
-    /// Absolute pixel region of the source sheet, already cropped to the head.
-    rect: Rect,
-}
-
-/// The idle frame the source crops from: row 2 (facing down), frame 0.
-const PORTRAIT_SOURCE_FRAME: usize = 18;
-/// `PORTRAIT_HEAD_TOP_RATIO` in `engine/world/sprite_sheet.py`.
-const PORTRAIT_HEAD_TOP_RATIO: f32 = 10.0 / 64.0;
-
-/// Crops a speaker's head out of one frame of their walking sheet.
-///
-/// Mirrors `get_portrait`: the middle half of the frame horizontally, and the top half starting a
-/// little below the frame's top edge, which is where these sheets put the head.
-fn head_crop(frame: Rect) -> Rect {
-    let width = frame.width();
-    let height = frame.height();
-    // `int()` truncation in the source, reproduced rather than rounded.
-    let crop = Vec2::new((width * 0.5).trunc(), (height * 0.5).trunc());
-    let origin = frame.min
-        + Vec2::new(
-            (width / 4.0).trunc(),
-            (height * PORTRAIT_HEAD_TOP_RATIO).trunc(),
-        );
-    Rect::from_corners(origin, origin + crop)
-}
-
-/// Resolves the head crop for a speaker from the sprite already standing in the world.
-fn portrait_for_sprite(
-    sprite: &Sprite,
-    layouts: &Assets<TextureAtlasLayout>,
-) -> Option<DialoguePortrait> {
-    let layout = layouts.get(&sprite.texture_atlas.as_ref()?.layout)?;
-    let frame = layout.textures.get(PORTRAIT_SOURCE_FRAME)?;
-    Some(DialoguePortrait {
-        image: sprite.image.clone(),
-        rect: head_crop(frame.as_rect()),
     })
 }
 
@@ -907,8 +864,7 @@ fn sync_dialogue_overlay(
     if let Ok((mut portrait, mut visibility)) = portraits.single_mut() {
         match state.portrait.as_ref() {
             Some(source) => {
-                portrait.image = source.image.clone();
-                portrait.rect = Some(source.rect);
+                *portrait = source.image_node();
                 *visibility = Visibility::Inherited;
             }
             None => *visibility = Visibility::Hidden,
@@ -1758,7 +1714,7 @@ mod tests {
         // A 64x64 frame at the third row of the sheet, which is the idle DOWN frame.
         let frame = Rect::new(0.0, 128.0, 64.0, 192.0);
 
-        let head = head_crop(frame);
+        let head = dialogue_portrait_crop(frame);
 
         assert_eq!(head.min, Vec2::new(16.0, 138.0), "x = w/4, y = h * 10/64");
         assert_eq!(head.width(), 32.0);
@@ -1772,7 +1728,7 @@ mod tests {
     #[test]
     fn a_frame_whose_size_does_not_halve_evenly_truncates_like_the_source() {
         // 33 px: the source's `int(33 * 0.5)` is 16, and `33 // 4` is 8.
-        let head = head_crop(Rect::new(0.0, 0.0, 33.0, 33.0));
+        let head = dialogue_portrait_crop(Rect::new(0.0, 0.0, 33.0, 33.0));
 
         assert_eq!(head.width(), 16.0);
         assert_eq!(head.height(), 16.0);
@@ -1784,7 +1740,7 @@ mod tests {
         let layouts = Assets::<TextureAtlasLayout>::default();
 
         assert_eq!(
-            portrait_for_sprite(
+            dialogue_portrait_from_sprite(
                 &Sprite::from_color(Color::WHITE, Vec2::splat(64.0)),
                 &layouts
             ),
