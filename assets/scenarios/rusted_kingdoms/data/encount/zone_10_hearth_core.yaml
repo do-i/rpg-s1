@@ -1,0 +1,16 @@
+# data/encount/zone_10_hearth_core.yaml
+#
+# Boss allocation only. The Hearth Descent is encounter-free by design, so
+# `density` is zero and `entries` is empty; this file exists to give the
+# `boss_enemy` object in zone_10_hearth_core.tmx an enemy and a completion flag.
+id: zone_10_hearth_core
+name: The Hearth
+background: zone10-bg-1280x468
+density: 0.0
+
+boss:
+  id: hearth_effigy_ashen_crown
+  name: The Ashen Crown
+  once: true
+  on_complete:
+    set_flag: boss_hearth_core_defeated

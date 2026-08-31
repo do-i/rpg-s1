@@ -1,0 +1,64 @@
+# data/dialogue/hearth_memory_kael.yaml
+#
+# Hearth Descent chamber 4. Kael's memory: the Frostholm watch he could not
+# hold. He is the last companion to join, so his counsel is the one a player
+# most easily misses — which is deliberate, since Third Fire needs all four.
+# Shape and flag contract match hearth_memory_elise.yaml.
+id: hearth_memory_kael
+type: npc
+
+entries:
+  - condition:
+      excludes: [counsel_rekindle_kael, counsel_release_kael, counsel_third_kael]
+    lines:
+      - "Frostholm. The long watch, the one they still won't put in the count."
+      - "I held that wall four nights. On the fifth I sat down, and the wall did not care either way."
+      - "There is no lesson in it. Men tell you there is a lesson in it. There is a wall and there is how long you last."
+      - "You are walking toward a thing that has outlasted every wall there is. What are you going to do when you reach it?"
+    choices:
+      - text: "Light it again. Give them something to stand for."
+        target: rekindle
+        on_select:
+          set_flag: counsel_rekindle_kael
+      - text: "Let it go out. Then no one has to hold the wall."
+        target: release
+        on_select:
+          set_flag: counsel_release_kael
+      - text: "I'll take the watch myself. Permanently."
+        target: third
+        on_select:
+          set_flag: counsel_third_kael
+
+  - node: rekindle
+    lines:
+      - "Something to stand for. That is the officer's answer, and it is not a bad one."
+      - "It is also how you get a fifth night. Remember I said so."
+    end: true
+
+  - node: release
+    lines:
+      - "No wall. No watch."
+      - "You have just described the only thing I have ever wanted and I find I do not know where to put my hands."
+    end: true
+
+  - node: third
+    lines:
+      - "You would stand there. Forever. Alone."
+      - "Boy — {protagonist} — I sat down on the fifth night. Do you understand what I am telling you?"
+      - "...And you are still going to do it. Then I will walk you to the door and I will not sit down this time."
+    end: true
+
+  - condition:
+      requires: [counsel_rekindle_kael]
+    lines:
+      - "Still lighting it. Then I will hold whatever it needs held."
+
+  - condition:
+      requires: [counsel_release_kael]
+    lines:
+      - "Still letting it out. I keep waiting to feel worse about that."
+
+  - condition:
+      requires: [counsel_third_kael]
+    lines:
+      - "Still taking the watch yourself. I have not talked myself out of stopping you. Go on."

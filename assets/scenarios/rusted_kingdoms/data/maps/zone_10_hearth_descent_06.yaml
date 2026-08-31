@@ -1,0 +1,16 @@
+# data/maps/zone_10_hearth_descent_06.yaml
+#
+# The threshold. No counsel is taken here; the Warden reads back which endings
+# the party has earned, so the gating at the Hearth Core is legible before the
+# point of no return rather than a locked door with no explanation.
+name: "Hearth Descent — The Threshold"
+warp_order: 240
+bgm: zone.dark
+
+npcs:
+  - id: threshold_warden
+    name: "The Ashen Warden"
+    position: [9, 5]
+    dialogue: hearth_threshold
+    sprite: assets/sprites/npc/knight_01.tsx
+    default_facing: down

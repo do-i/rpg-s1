@@ -723,3 +723,33 @@ drops:
         - item: void_core
           weight: 60
 ai_ref: boss_move_sets/fallen_angel_red_judicator.yaml
+
+---
+# The true final boss, at the bottom of the Hearth Descent. It wears the Red
+# Judicator's shape deliberately — the Judicator was the mask, this is the face
+# — so it re-skins that atlas instead of shipping new art.
+id: hearth_effigy_ashen_crown
+name: The Ashen Crown
+type: demon
+rank: SS
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 420
+hp: 1180
+atk: 88
+def: 62
+mres: 66
+dex: 48
+exp: 2600
+drops:
+  mc:
+    - size: XL
+      qty: 3
+    - size: L
+      qty: 2
+  loot:
+    - pool:
+        - item: void_core
+          weight: 100
+ai_ref: boss_move_sets/hearth_effigy_ashen_crown.yaml

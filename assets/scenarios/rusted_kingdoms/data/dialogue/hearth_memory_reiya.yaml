@@ -1,0 +1,64 @@
+# data/dialogue/hearth_memory_reiya.yaml
+#
+# Hearth Descent chamber 2. Reiya's memory: what her power cost, and why the
+# sorcerer is the one companion who already knows the Hearth's price.
+# Shape and flag contract match hearth_memory_elise.yaml.
+id: hearth_memory_reiya
+type: npc
+
+entries:
+  - condition:
+      excludes: [counsel_rekindle_reiya, counsel_release_reiya, counsel_third_reiya]
+    lines:
+      - "Don't look at the hands. Everyone looks at the hands."
+      - "This is the week I learned what I could do, and the week I learned what it takes back."
+      - "Every spell any of us cast, all the way down, is a draw on that fire. Mine just showed sooner."
+      - "You are about to decide whether anyone ever gets to make that trade again. Say it out loud."
+    choices:
+      - text: "Light it again. People should get the choice I got."
+        target: rekindle
+        on_select:
+          set_flag: counsel_rekindle_reiya
+      - text: "Let it go out. Nobody should pay what you paid."
+        target: release
+        on_select:
+          set_flag: counsel_release_reiya
+      - text: "There is a third way to hold it. I mean to find it."
+        target: third
+        on_select:
+          set_flag: counsel_third_reiya
+
+  - node: rekindle
+    lines:
+      - "The choice. Right — the choice."
+      - "I would take it again, for whatever that is worth, and I would still tell you it cost too much."
+    end: true
+
+  - node: release
+    lines:
+      - "You say that easily for someone who has never had it taken."
+      - "...No. That is unfair. You are the only one who has asked me first."
+      - "Then let it out. I have carried the arithmetic long enough."
+    end: true
+
+  - node: third
+    lines:
+      - "A third way. Do you know how many people have said that to me?"
+      - "None. Not one. Everybody argues about the fire; nobody argues about the holding."
+      - "Go on, then. I want to be wrong about this."
+    end: true
+
+  - condition:
+      requires: [counsel_rekindle_reiya]
+    lines:
+      - "Still lighting it? Fine. I will be standing close enough to see."
+
+  - condition:
+      requires: [counsel_release_reiya]
+    lines:
+      - "Still putting it out? Good. Do it before I finish the arithmetic again."
+
+  - condition:
+      requires: [counsel_third_reiya]
+    lines:
+      - "Still looking for the third way. Yes. Keep going."

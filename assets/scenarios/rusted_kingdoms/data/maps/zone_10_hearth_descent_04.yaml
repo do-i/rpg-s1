@@ -1,0 +1,16 @@
+# data/maps/zone_10_hearth_descent_04.yaml
+#
+# Hearth Descent chamber 4 of 6. Encounter-free by design — no `enemy_spawn`
+# block and no `data/encount/` file — so the descent is dialogue, not grinding.
+# See plans/b0-ending-design.md for the ending-path model these chambers feed.
+name: "Hearth Descent — The Watch Unheld"
+warp_order: 220
+bgm: zone.dark
+
+npcs:
+  - id: memory_kael
+    name: "Kael, as he was"
+    position: [9, 5]
+    dialogue: hearth_memory_kael
+    sprite: assets/sprites/party/05_kael_walk.tsx
+    default_facing: down

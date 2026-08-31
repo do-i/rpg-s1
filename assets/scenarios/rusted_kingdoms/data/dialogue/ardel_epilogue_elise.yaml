@@ -1,0 +1,32 @@
+# data/dialogue/ardel_epilogue_elise.yaml
+#
+# Elise in the epilogue shrine. She was the first to join and the one whose
+# memory opens the Hearth Descent, so she gets the last companion word.
+# Consumes `ending_path_*`; sets nothing.
+id: ardel_epilogue_elise
+type: npc
+
+entries:
+  - condition:
+      requires: [ending_path_third]
+    lines:
+      - "I keep putting my hand flat on the floor. Joss thinks I'm praying."
+      - "I'm not. I'm checking."
+      - "Reiya comes on the first of every month and sits exactly where you're standing and doesn't say anything for an hour."
+      - "Jep hasn't come yet. He will. He's the one who said somebody has to stay down there, and he's very angry that it wasn't him."
+
+  - condition:
+      requires: [ending_path_release]
+    lines:
+      - "I reached for it this morning. Out of habit — a boy came in with his arm opened up on a fence."
+      - "Nothing. Not a flicker. And I stood there like a fool with my hands out."
+      - "So I tied it. With cloth, and a stick, and Kael telling me I was doing it wrong the entire time."
+      - "It healed anyway, {protagonist}. That's the part nobody warned me about. It healed anyway."
+
+  - condition:
+      requires: [ending_path_rekindle]
+    lines:
+      - "Everything works. Everything works exactly the way it did."
+      - "I mended that boy's arm in about four seconds and he was rude to me about the sting."
+      - "...I am glad. I want you to hear me say I am glad, because I am about to say the other thing."
+      - "In six hundred years someone will stand where you stood, and I would like them to already know it isn't the only door."

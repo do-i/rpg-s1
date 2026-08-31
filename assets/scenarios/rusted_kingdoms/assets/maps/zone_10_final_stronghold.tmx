@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="38" height="28" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="4">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="38" height="28" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="5">
  <tileset firstgid="1" source="../tilesets/ground/terrain-v7.tsx"/>
  <tileset firstgid="2049" source="../tilesets/grass_cave_walls_24x14.tsx"/>
  <tileset firstgid="2385" source="../tilesets/stone_tile_stares_16x16.tsx"/>
@@ -17,6 +17,13 @@
     <property name="target_map" value="town_01_ardel"/>
     <property name="target_position_x" type="int" value="20"/>
     <property name="target_position_y" type="int" value="16"/>
+   </properties>
+  </object>
+  <object id="4" name="to_zone_10_hearth_descent_01" x="96" y="784" width="64" height="12">
+   <properties>
+    <property name="target_map" value="zone_10_hearth_descent_01"/>
+    <property name="target_position_x" type="int" value="5"/>
+    <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
  </objectgroup>

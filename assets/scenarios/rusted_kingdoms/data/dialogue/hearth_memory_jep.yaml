@@ -1,0 +1,63 @@
+# data/dialogue/hearth_memory_jep.yaml
+#
+# Hearth Descent chamber 3. Jep's memory: the Ruinwatch dig crew that went into
+# the ruins without him and did not come back — the events behind `sq_crew`.
+# Shape and flag contract match hearth_memory_elise.yaml.
+id: hearth_memory_jep
+type: npc
+
+entries:
+  - condition:
+      excludes: [counsel_rekindle_jep, counsel_release_jep, counsel_third_jep]
+    lines:
+      - "Don't. Don't do the face. I know how old I look in this one."
+      - "They went down the shaft and I didn't, because I was small and quick and I was scared."
+      - "Everyone keeps telling me that's why I'm alive. Like it's a prize."
+      - "So you're going to stand at the bottom of a hole and decide something for everybody. Say it now, where I can hear it."
+    choices:
+      - text: "Light it again. They'd want the world they knew."
+        target: rekindle
+        on_select:
+          set_flag: counsel_rekindle_jep
+      - text: "Let it go out. No more holes, no more crews."
+        target: release
+        on_select:
+          set_flag: counsel_release_jep
+      - text: "Neither. Somebody has to stay down there and hold it."
+        target: third
+        on_select:
+          set_flag: counsel_third_jep
+
+  - node: rekindle
+    lines:
+      - "The world they knew. Yeah. That's a thing you can say."
+      - "It had the hole in it, though. The world they knew had the hole in it."
+    end: true
+
+  - node: release
+    lines:
+      - "No more holes."
+      - "...I'd like that. I'd like that a stupid amount."
+    end: true
+
+  - node: third
+    lines:
+      - "Somebody stays down. You mean you stay down."
+      - "That's the worst answer and you knew it before you said it, and I'm still going to walk you there."
+      - "Because that's what I didn't do last time."
+    end: true
+
+  - condition:
+      requires: [counsel_rekindle_jep]
+    lines:
+      - "Still lighting it. All right. I'm behind you either way, you know that."
+
+  - condition:
+      requires: [counsel_release_jep]
+    lines:
+      - "Still putting it out. No more holes. I'm holding you to it."
+
+  - condition:
+      requires: [counsel_third_jep]
+    lines:
+      - "Still planning to stay down there. I haven't stopped thinking about it. Keep going."

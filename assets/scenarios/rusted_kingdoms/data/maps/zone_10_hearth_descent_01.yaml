@@ -1,0 +1,28 @@
+# data/maps/zone_10_hearth_descent_01.yaml
+#
+# Hearth Descent chamber 1 of 6. Encounter-free by design — no `enemy_spawn`
+# block and no `data/encount/` file — so the descent is dialogue, not grinding.
+# See plans/b0-ending-design.md for the ending-path model these chambers feed.
+name: "Hearth Descent — The Burnt Shrine"
+warp_order: 190
+bgm: zone.dark
+
+npcs:
+  # The stair is shut while the Red Judicator still stands. The entry corridor is
+  # one tile wide, so this single NPC seals it; once `boss_zone10_defeated` is
+  # set he is simply not present and the way is open.
+  - id: hearth_warden
+    name: "The Ashen Warden"
+    type: gate
+    position: [5, 8]
+    dialogue: hearth_warden
+    sprite: assets/sprites/npc/knight_01.tsx
+    present:
+      excludes: [boss_zone10_defeated]
+
+  - id: memory_elise
+    name: "Elise, as she was"
+    position: [9, 5]
+    dialogue: hearth_memory_elise
+    sprite: assets/sprites/party/02_elise_walk.tsx
+    default_facing: down
