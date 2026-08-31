@@ -1,11 +1,91 @@
 # data/dialogue/bridge_guard_zone5.yaml
+#
+# Guardsman Pike holds the south bridge out of the starting forest and leaves
+# the map once the ruins beyond are cleared (`present.excludes:
+# [boss_zone04_defeated]` in maps/zone_01_starting_forest.yaml).
+#
+# The Act II entry is the corpus's branching conversation. Pike is holding a
+# road he has no men left to hold, and what he parts with depends on how the
+# party answers him. The middle choice stays visible but greyed until Bram's
+# whetstone errand is done — Pike knows the Ardel smith's edge on sight, and
+# nothing else in Act II vouches for strangers.
+#
+# Every branch is a terminal node, and answering sets `bridge_zone5_answered`,
+# which retires the offer entirely: the branches cannot be re-entered and the
+# supplies cannot be drawn twice.
 id: bridge_guard_zone5
 type: npc
 
 entries:
+  # Act II — the crossing. Offered once; the answer is recorded on the way out.
   - condition:
       requires: [story_act2_started]
+      excludes: [boss_zone04_defeated, bridge_zone5_answered]
+    lines:
+      - "Hold there. The ruins south of this bridge are thick with the undead."
+      - "My orders are to keep the road shut until they're cleared. My orders don't say who does the clearing."
+      - "So say your piece, and be honest about it. I've no men left to spend on the other kind."
+    choices:
+      - text: "We'll go south and clear them ourselves."
+        target: pledge
+        on_select:
+          set_flag: [bridge_zone5_answered, bridge_zone5_pledged]
+      - text: "Bram of Ardel set this edge. Judge us by it."
+        enabled:
+          requires: [sq_smith_done]
+        target: vouched
+        on_select:
+          set_flag: [bridge_zone5_answered, bridge_zone5_vouched]
+      - text: "Nothing. We're not crossing today."
+        target: turned_back
+
+  - node: pledge
+    lines:
+      - "Then go, and don't make me write your names down twice."
+      - "Keep to the causeway. Whatever's in the water down there stopped being fish a long while back."
+    end: true
+
+  - node: vouched
+    lines:
+      - "...Bram's work. He grinds a hollow into the bevel; nobody else in this valley troubles himself."
+      - "He doesn't put that edge on fools, and he doesn't put it on strangers."
+      - "Take these, then. Watch-issue — and the watch is me, so there's nobody left to argue it."
+    end: true
+    on_complete:
+      give_items:
+        - id: potion
+          qty: 3
+        - id: antidote
+          qty: 2
+
+  - node: turned_back
+    lines:
+      - "Sensible. The bridge will still be shut tomorrow, and I'll still be standing on it."
+    end: true
+
+  # After answering, while the ruins are still uncleared. Pike remembers which
+  # answer he got, so the branch flags are read back here as well as recorded.
+  - condition:
+      requires: [bridge_zone5_vouched]
       excludes: [boss_zone04_defeated]
     lines:
-      - "The ruins to the south are crawling with the undead."
-      - "No one crosses this bridge until they're cleared out."
+      - "Still shut, and still me. Tell Bram his hollow-grind held, when you're back through Ardel."
+
+  - condition:
+      requires: [bridge_zone5_pledged]
+      excludes: [boss_zone04_defeated]
+    lines:
+      - "Still shut, and still me. You said you'd clear it. I've written nothing down yet."
+
+  # The party turned back; the offer is spent either way.
+  - condition:
+      requires: [bridge_zone5_answered]
+      excludes: [boss_zone04_defeated]
+    lines:
+      - "Changed your mind, then. Go on south if you're going — I'll not ask twice."
+
+  # Before Act II the road is not yet the party's business, but Pike is already
+  # standing on the bridge and ought to say why.
+  - lines:
+      - "Bridge is shut, and it wasn't my choosing. Something's gone wrong in the ruins south of here."
+      - "Word from the capital will come across these planks when it comes. Until then I stand on them."

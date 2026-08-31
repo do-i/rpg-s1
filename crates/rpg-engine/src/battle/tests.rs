@@ -1,7 +1,7 @@
 use super::{
     ability::{AbilityError, ElementalAffinity, elemental_damage, resolve_ability},
     action::{BattleAction, BattleEvent},
-    enemy_ai::{EnemyAction, pick_enemy_action, resolve_targets},
+    enemy_ai::{EnemyAction, pick_enemy_action, resolve_enemy_ability, resolve_targets},
     item::{ItemUseError, resolve_item as resolve_battle_item},
     model::{
         BattleCombatant, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
@@ -26,7 +26,9 @@ use crate::{
     runtime_repository::RuntimeRepository,
     scenario_balance::BalanceData,
     scenario_class::{Ability, ClassDefinition},
-    scenario_enemy::{BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyDrops, EnemyType},
+    scenario_enemy::{
+        BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyDrops, EnemyMove, EnemyType,
+    },
     scenario_item::{ConsumableItem, ItemCatalogFile, ItemDefinition},
     scenario_manifest::Manifest,
     scenario_party::{PartyCatalog, PartyRow},
@@ -674,6 +676,81 @@ fn sleep_wakes_on_damage_stun_skips_and_silence_hides_abilities() {
     assert_eq!(caster.skip_turn_reason(), Some(StatusEffect::Stun));
     assert_eq!(caster.tick_statuses().expired, 1);
     assert!(caster.skip_turn_reason().is_none());
+}
+
+/// The troll shaman's move set is the game's only source of [`StatusEffect::Sleep`], so this
+/// test reads the shipped document rather than a hand-written fixture: if `charm` or `allure`
+/// is renamed there, the mapping in `enemy_ai` goes dead again and this fails.
+#[test]
+fn troll_shaman_charm_sleeps_its_target_and_allure_rolls_per_target() {
+    let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(
+        "../../../../assets/scenarios/rusted_kingdoms/data/enemies/boss_move_sets/troll_shaman_base.yaml"
+    ))
+    .unwrap();
+    let abilities = move_set
+        .ai
+        .moves
+        .iter()
+        .filter_map(|enemy_move| match enemy_move {
+            EnemyMove::Ability { id, .. } => Some(id.as_str()),
+            EnemyMove::Attack { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(abilities.contains(&"charm"));
+    assert!(abilities.contains(&"allure"));
+
+    // `charm` sleeps its single target outright, and the ability's own damage does not clear
+    // the sleep it carries — statuses are applied after the hit resolves.
+    let mut state = state_with(vec![
+        actor(BattleSide::Party, 0, 5, 200),
+        actor(BattleSide::Enemy, 0, 1, 200),
+    ]);
+    let shaman = state.actor(CombatantKey::enemy(0)).unwrap().clone();
+    resolve_enemy_ability(
+        &mut state,
+        &shaman,
+        "charm",
+        &[CombatantKey::party(0)],
+        &mut GameplayRng::from_seed(1),
+    );
+    let target = state.actor_mut(CombatantKey::party(0)).unwrap();
+    assert!(
+        target.health < 200,
+        "charm still resolves its ability damage"
+    );
+    assert_eq!(target.skip_turn_reason(), Some(StatusEffect::Sleep));
+
+    // A later hit wakes the sleeper; otherwise the authored two turns expire on their own.
+    target.apply_damage(1);
+    assert!(!target.has_status(StatusEffect::Sleep));
+    target.add_status(ActiveStatus::timed(StatusEffect::Sleep, 2));
+    assert_eq!(target.tick_statuses().expired, 0);
+    assert_eq!(target.tick_statuses().expired, 1);
+    assert!(target.skip_turn_reason().is_none());
+
+    // `allure` is authored as a 40%-per-target roll, so across seeds it neither always nor
+    // never lands.
+    let slept = (0..40)
+        .filter(|seed| {
+            let mut state = state_with(vec![
+                actor(BattleSide::Party, 0, 5, 2000),
+                actor(BattleSide::Enemy, 0, 1, 200),
+            ]);
+            let shaman = state.actor(CombatantKey::enemy(0)).unwrap().clone();
+            resolve_enemy_ability(
+                &mut state,
+                &shaman,
+                "allure",
+                &[CombatantKey::party(0)],
+                &mut GameplayRng::from_seed(*seed),
+            );
+            state
+                .actor(CombatantKey::party(0))
+                .unwrap()
+                .has_status(StatusEffect::Sleep)
+        })
+        .count();
+    assert!((1..40).contains(&slept), "allure landed {slept}/40 times");
 }
 
 #[test]

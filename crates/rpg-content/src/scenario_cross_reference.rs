@@ -988,6 +988,16 @@ impl<'a> Validator<'a> {
                             &format!("entries[{entry_index}].on_complete"),
                             index,
                         );
+                        for (choice_index, choice) in entry.choices.iter().enumerate() {
+                            self.validate_dialogue_actions(
+                                &choice.on_select,
+                                &file.path,
+                                &format!(
+                                    "entries[{entry_index}].choices[{choice_index}].on_select"
+                                ),
+                                index,
+                            );
+                        }
                     }
                 }
                 DialogueDocument::LinePool(_) => {}
@@ -1996,6 +2006,28 @@ fn collect_flag_edges(
                         &file.path,
                         &format!("entries[{i}].on_complete"),
                     );
+                    // Choices carry their own conditions and effects, so a flag can be both
+                    // consumed and produced without ever appearing on an entry.
+                    for (j, c) in e.choices.iter().enumerate() {
+                        add_conditions(
+                            &mut consumed,
+                            &c.condition,
+                            &file.path,
+                            format!("entries[{i}].choices[{j}].condition"),
+                        );
+                        add_conditions(
+                            &mut consumed,
+                            &c.enabled,
+                            &file.path,
+                            format!("entries[{i}].choices[{j}].enabled"),
+                        );
+                        add_actions(
+                            &mut defined,
+                            &c.on_select,
+                            &file.path,
+                            &format!("entries[{i}].choices[{j}].on_select"),
+                        );
+                    }
                 }
             }
             DialogueDocument::LinePool(_) => {}
