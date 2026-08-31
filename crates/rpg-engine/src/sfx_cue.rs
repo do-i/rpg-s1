@@ -89,6 +89,11 @@ pub(crate) mod cue {
     pub(crate) const ATK_CLAW: &str = "atk_claw";
     pub(crate) const ATK_SWORD: &str = "atk_sword";
 
+    /// The struck enemy's own reaction. Striking one used to play the party's weapon and nothing
+    /// back, while being struck played both the impact and the party's hurt — this restores the
+    /// symmetry.
+    pub(crate) const ENEMY_HIT: &str = "enemy_hit";
+
     /// Field-object and transition cues.
     pub(crate) const CHEST_OPEN: &str = "chest_open";
     pub(crate) const CHEST_CLOSE: &str = "chest_close";
@@ -119,7 +124,15 @@ pub(crate) mod cue {
         &[PARTY_HIT, "party_hit_2", "party_hit_3", "party_hit_4"],
         &[MISS, "miss_2", "miss_3", "miss_4"],
         &[ATK_CLAW, "atk_claw_2"],
-        &[ATK_SWORD, "atk_sword_2", "atk_sword_3"],
+        &[
+            ATK_SWORD,
+            "atk_sword_2",
+            "atk_sword_3",
+            "atk_sword_4",
+            "atk_sword_5",
+            "atk_sword_6",
+        ],
+        &[ENEMY_HIT, "enemy_hit_2", "enemy_hit_3"],
         &[CHEST_OPEN, "chest_open_2", "chest_open_3", "chest_open_4"],
         &[CHEST_CLOSE, "chest_close_2", "chest_close_3"],
         &[DOOR, "door_2"],
