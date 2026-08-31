@@ -1,0 +1,31 @@
+# data/dialogue/hearth_memory_aric.yaml
+#
+# Hearth Descent chamber 5. No counsel is taken here — this chamber is Aric's
+# own origin, and it produces `aric_hearth_named`, the extra requirement on the
+# Third Fire branch. A player can reach the Hearth without it; they simply
+# cannot take the third door.
+#
+# Continuity: the Ardel shrine keeper already told Aric he was found "swaddled
+# in ash, right where the altar stood" (ardel_shrine_keeper.yaml). This is the
+# altar.
+id: hearth_memory_aric
+type: npc
+
+entries:
+  - condition:
+      excludes: [aric_hearth_named]
+    lines:
+      - "There is a child on the altar and he is made of ash, and he is you, and you have always known it."
+      - "The keeper told you sixteen years late and thought she was breaking your heart."
+      - "You were not left here. You were *banked* here — the way you bank a fire you cannot afford to let go out."
+      - "Somebody stood where you are standing and decided the world could not carry the Hearth, and could not lose it either."
+      - "So they made something that could. And then they went home and never said."
+      - "...Say the word for what you are. Out loud. It is the only thing this room wants."
+    on_complete:
+      set_flag: aric_hearth_named
+
+  - condition:
+      requires: [aric_hearth_named]
+    lines:
+      - "The ash keeps your shape now. It does that for anyone who says it."
+      - "Down, then. It has been waiting the whole time."

@@ -1,0 +1,84 @@
+# data/dialogue/hearth_final_choice.yaml
+#
+# The point of no return. The Hearth is only present once
+# `boss_hearth_core_defeated` is set (see data/maps/zone_10_hearth_core.yaml),
+# so this conversation cannot be reached before the Ashen Crown falls.
+#
+# Three branches, gated exactly as plans/b0-ending-design.md records:
+#   Rekindling  always enabled — every run can reach an ending
+#   Release     counsel_release_elise + counsel_release_reiya
+#   Third Fire  all four counsel_third_* plus aric_hearth_named
+#
+# A branch the player has not earned still appears, greyed, the same
+# visible-but-disabled affordance Guardsman Pike uses. Each branch sets its
+# `ending_path_*` flag and transitions to the epilogue, which reads that flag.
+id: hearth_final_choice
+type: npc
+
+entries:
+  - lines:
+      - "You came down through everything I am and you did not once look away. That is the whole test. There was never another."
+      - "I am not a god and I am not a curse. I am a fire somebody could not put down and could not carry."
+      - "The rust is not my malice. It is what banking a fire for six hundred years does to the ground under it."
+      - "So. Three things can happen in this room, and you are the one standing in it."
+    choices:
+      - text: "Rekindle. Let the world be what it was."
+        target: rekindle
+      - text: "Release. Let the fire go out."
+        target: release
+        enabled:
+          requires: [counsel_release_elise, counsel_release_reiya]
+      - text: "Neither. I will carry it myself."
+        target: third
+        enabled:
+          requires:
+            - aric_hearth_named
+            - counsel_third_elise
+            - counsel_third_reiya
+            - counsel_third_jep
+            - counsel_third_kael
+
+  - node: rekindle
+    lines:
+      - "Then stand back, and let it up."
+      - "It goes up gold, the way it must have the first time, and the rust stops at the doorway and holds."
+      - "Holds. Not heals. Somebody will stand here again in six hundred years and you will not be able to tell them anything."
+      - "But there will be a somebody, and there will be a here, and today that is the whole of it."
+    end: true
+    on_complete:
+      set_flag: ending_path_rekindle
+      transition:
+        map: town_01_ardel_epilogue
+        position: [14, 5]
+        fade: in
+
+  - node: release
+    lines:
+      - "...You are sure. You are the first one who was sure."
+      - "It goes out the way a held breath goes out. No thunder. A room getting colder by a degree you would not notice if you had not been watching for it."
+      - "Every spell in the world is going with it. Elise's mending. Reiya's arithmetic. The lamps in Frostholm that were never lamps."
+      - "And the rust stops. Not holds — stops, and starts going backward, slower than a life but not slower than a country."
+      - "Go up and tell them what it cost. They will want to have been asked."
+    end: true
+    on_complete:
+      set_flag: ending_path_release
+      transition:
+        map: town_01_ardel_epilogue
+        position: [14, 5]
+        fade: in
+
+  - node: third
+    lines:
+      - "The third thing. Say it properly, because I will not do this on a guess."
+      - "...Yes. That is the word. You were banked here to be exactly this and nobody ever intended you to find out."
+      - "You will not be a boy afterward. You will be a thing that is warm, and that stays, and that four people are going to visit until they can't."
+      - "It does not hurt. That is the part I am sorriest about — you will want it to have hurt."
+      - "The rust stops. The fire stays. Nobody after you carries this alone, because you will still be here to carry it with them."
+      - "Sit down, {protagonist}. You have been standing since Ardel."
+    end: true
+    on_complete:
+      set_flag: ending_path_third
+      transition:
+        map: town_01_ardel_epilogue
+        position: [14, 5]
+        fade: in

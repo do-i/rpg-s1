@@ -1,0 +1,18 @@
+# data/maps/zone_10_hearth_core.yaml
+#
+# The Hearth itself. The true final boss stands in the middle of the chamber
+# (`boss_enemy` object in the TMX, allocated by data/encount/zone_10_hearth_core.yaml);
+# beyond it the Hearth answers, and the final choice is taken there.
+name: "The Hearth"
+warp_order: 250
+bgm: zone.dark
+
+npcs:
+  - id: hearth
+    name: "The Hearth"
+    position: [9, 4]
+    dialogue: hearth_final_choice
+    sprite: assets/sprites/npc/female_wiz_01.tsx
+    default_facing: down
+    present:
+      requires: [boss_hearth_core_defeated]

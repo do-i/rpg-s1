@@ -1,0 +1,41 @@
+# data/dialogue/hearth_threshold.yaml
+#
+# Hearth Descent chamber 6, the last room before the point of no return. No
+# counsel is taken here. The Warden reads back which doors are open, so the
+# disabled branches at the Hearth Core are legible in advance rather than a
+# locked choice with no explanation.
+#
+# Entry order is the precedence order: the most-earned reading wins.
+id: hearth_threshold
+type: npc
+
+entries:
+  # Third Fire earned: all four counsels plus Aric's own naming.
+  - condition:
+      requires:
+        - aric_hearth_named
+        - counsel_third_elise
+        - counsel_third_reiya
+        - counsel_third_jep
+        - counsel_third_kael
+    lines:
+      - "Three doors stand at the bottom. Most who come this far can open one."
+      - "You have opened all three, which I have not seen, and would rather not see twice."
+      - "You may light it. You may let it out. And you may take it up yourself — the ash has your shape and the four of them have already agreed."
+      - "Go down. Whichever you take, take it with your eyes open."
+
+  # Release earned: the cleric and the sorcerer both counselled letting go.
+  - condition:
+      requires: [counsel_release_elise, counsel_release_reiya]
+    lines:
+      - "Three doors stand at the bottom. Two of them will open for you."
+      - "You may light it. And you may let it out — the healer and the one who paid for her power both said so, and that is the pair the Hearth listens for."
+      - "The third door wants all four of them, and your own name besides. It will be shut."
+      - "Two is more than most. Go down."
+
+  # Nothing earned beyond the default.
+  - lines:
+      - "Three doors stand at the bottom. One of them will open for you."
+      - "You may light it again. That door is never barred; it is the door the world already knows how to walk through."
+      - "The others want to be argued for, and you have not argued. That is not a rebuke — most never do."
+      - "Go down. One door is a whole ending."

@@ -1,0 +1,29 @@
+# data/maps/town_01_ardel_epilogue.yaml
+#
+# The epilogue: the Ardel shrine, in whichever state the player's ending left
+# it. Geometry is a copy of town_01_ardel_shrine with the portal removed — the
+# scene has nowhere to walk out to, which is what guarantees the run reaches
+# credits once it reaches here.
+#
+# The party arrives at [14, 5] from hearth_final_choice's transition, with
+# Keeper Joss standing at [13, 5], one tile away.
+name: "Ardel Shrine"
+bgm: town.default
+
+npcs:
+  - id: epilogue_keeper
+    name: "Keeper Joss"
+    dialogue: ardel_epilogue
+    position: [13, 5]
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: right
+    animation:
+      mode: step
+      speed: 0.5
+
+  - id: epilogue_elise
+    name: "Elise"
+    dialogue: ardel_epilogue_elise
+    position: [8, 4]
+    sprite: assets/sprites/party/02_elise_walk.tsx
+    default_facing: down

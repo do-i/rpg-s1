@@ -1,0 +1,16 @@
+# data/maps/zone_10_hearth_descent_03.yaml
+#
+# Hearth Descent chamber 3 of 6. Encounter-free by design — no `enemy_spawn`
+# block and no `data/encount/` file — so the descent is dialogue, not grinding.
+# See plans/b0-ending-design.md for the ending-path model these chambers feed.
+name: "Hearth Descent — The Dig Crew"
+warp_order: 210
+bgm: zone.dark
+
+npcs:
+  - id: memory_jep
+    name: "Jep, as he was"
+    position: [9, 5]
+    dialogue: hearth_memory_jep
+    sprite: assets/sprites/party/04_jep_walk.tsx
+    default_facing: down

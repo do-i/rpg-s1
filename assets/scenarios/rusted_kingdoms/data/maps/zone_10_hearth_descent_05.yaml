@@ -1,0 +1,16 @@
+# data/maps/zone_10_hearth_descent_05.yaml
+#
+# Hearth Descent chamber 5 of 6. Encounter-free by design — no `enemy_spawn`
+# block and no `data/encount/` file — so the descent is dialogue, not grinding.
+# See plans/b0-ending-design.md for the ending-path model these chambers feed.
+name: "Hearth Descent — The Ash on the Altar"
+warp_order: 230
+bgm: zone.dark
+
+npcs:
+  - id: memory_aric
+    name: "A boy made of ash"
+    position: [9, 5]
+    dialogue: hearth_memory_aric
+    sprite: assets/sprites/party/01_aric_walk.tsx
+    default_facing: down

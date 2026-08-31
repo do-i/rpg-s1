@@ -1523,7 +1523,7 @@ mod tests {
             "{:?}",
             app.world().resource::<WorldEncounterState>().failure()
         );
-        assert_eq!(app.world().resource::<EnemyCatalog>().len(), 106);
+        assert_eq!(app.world().resource::<EnemyCatalog>().len(), 107);
         let expected_party_stats = {
             let world = app.world();
             let member = world

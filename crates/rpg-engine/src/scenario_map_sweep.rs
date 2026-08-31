@@ -1260,7 +1260,7 @@ item_boxes:
         let report = build_map_sweep(&root);
 
         assert!(report.load_error.is_none());
-        assert_eq!(report.entries.len(), 45);
+        assert_eq!(report.entries.len(), 53);
         assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert!(
             !report
@@ -1280,8 +1280,8 @@ item_boxes:
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
         let report = build_map_sweep(&root);
 
-        assert_eq!(report.entries.len(), 45);
-        assert_eq!(report.clean_count(), 43);
+        assert_eq!(report.entries.len(), 53);
+        assert_eq!(report.clean_count(), 51);
         assert_eq!(report.maps_with_findings(), 2);
         assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert_eq!(report.category_count(SweepCategory::Collision), 0);

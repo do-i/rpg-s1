@@ -1,0 +1,52 @@
+# The Ashen Crown — the Hearth's effigy, at the bottom of the descent.
+#
+# The fight is built around sleep, which nothing in the game could apply until
+# `charm`/`allure` were mapped in `battle/enemy_ai.rs` (RK-BTL-013). Below half
+# health it starts putting the party out one at a time; below a quarter it tries
+# the whole party at once. Waking a sleeper costs a turn of damage, so the fight
+# asks the player to choose who stays down.
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 35
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: shadow_slash      # 150% physical, single target
+      weight: 20
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: charm             # sleep single target, 2 turns
+      weight: 30
+    - condition:
+        hp_pct_below: 0.50
+      action: ability
+      id: dark_wave         # all party, 120% physical
+      weight: 40
+    - condition:
+        hp_pct_below: 0.25
+      action: ability
+      id: allure            # sleep all party, 40% chance each
+      weight: 45
+    - condition:
+        turn_mod:
+          every: 4
+      action: ability
+      id: soul_barrier      # MRES up 40% + DEF up 20% self, 2 turns
+      weight: 100
+
+targeting:
+  default: lowest_hp
+  overrides:
+    - ability: dark_wave
+      target: all_party
+    - ability: allure
+      target: all_party
+    - ability: soul_barrier
+      target: self
+    - ability: charm
+      target: highest_dex

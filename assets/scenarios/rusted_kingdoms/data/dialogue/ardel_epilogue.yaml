@@ -1,0 +1,61 @@
+# data/dialogue/ardel_epilogue.yaml
+#
+# B0.4 — the epilogue, in its three variants. Keeper Joss has kept the burnt
+# shrine for the whole game (ardel_shrine_keeper.yaml); she is the one who says
+# what the world turned into.
+#
+# The terminal line of each variant sets `game_complete`, which is what moves
+# the app into the credits (declared in manifest engine_managed_flags, consumed
+# by the engine rather than by content).
+id: ardel_epilogue
+type: npc
+
+entries:
+  # Third Fire — Aric is the Hearth now. The hardest ending to earn.
+  - condition:
+      requires: [ending_path_third]
+      excludes: [game_complete]
+    lines:
+      - "...Oh. Oh, child."
+      - "The stones are warm. Not sun-warm. Warm the way a hand is warm, and they have not been that since the night they burned."
+      - "You are in them, aren't you. That is what the four of them came back and would not say."
+      - "Sixteen years I swept ash off this floor and called it grief. It was never grief. It was housekeeping. I was keeping your room."
+      - "The rust stopped at the treeline in the spring. Children sit here now and complain that it is too warm to nap."
+      - "I will tell them whose warmth it is. Every one of them, until I can't."
+      - "Rest, {protagonist}. You have been standing since Ardel."
+    on_complete:
+      set_flag: game_complete
+
+  # Release — the fire is out, and the world is cold and healing.
+  - condition:
+      requires: [ending_path_release]
+      excludes: [game_complete]
+    lines:
+      - "You put it out."
+      - "I felt it go. Everyone felt it go — a whole country stopping mid-sentence at the same second and not knowing why."
+      - "Elise cannot mend a cut any more. She sat on the step there and cried about it, and then she went and learned to sew."
+      - "The lamps are only lamps now. The wells are only wells. It is a smaller world and I will not pretend otherwise."
+      - "But the rust is going *backward*, {protagonist}. Slowly. Not in my life, and not in yours. In somebody's."
+      - "That is more than this shrine has been able to promise in six hundred years. Sit down. You are allowed."
+    on_complete:
+      set_flag: game_complete
+
+  # Rekindling — the default ending, and the one that comes back around.
+  - condition:
+      requires: [ending_path_rekindle]
+      excludes: [game_complete]
+    lines:
+      - "It went up gold. We saw it from here — the whole sky the colour of the inside of a forge, for about as long as it takes to say a name."
+      - "And then everything was as it was. Which is what you wanted, and I will not spoil it by making a face."
+      - "The rust stopped at the doorway. It did not go back. It is standing there, being patient, the way it was patient before."
+      - "Somebody will walk down there again. Not you. Not anyone you will meet."
+      - "Still — there will be a somebody, and there will be a here for them to walk out of. Today that is the whole of it."
+      - "Come inside. The kettle is honestly the same kettle."
+    on_complete:
+      set_flag: game_complete
+
+  # After the credits have been reached, if the player is still here.
+  - condition:
+      requires: [game_complete]
+    lines:
+      - "Sit as long as you like. Nobody is coming to move you on."

@@ -1,0 +1,68 @@
+# data/dialogue/hearth_memory_elise.yaml
+#
+# Hearth Descent chamber 1. The memory is Elise's: the Ardel shrine burning on
+# the night the forest rusted, which is where her whole vocation starts.
+#
+# Every memory chamber has the same shape — the memory speaks, then asks what
+# Aric intends, and the answer is recorded as one `counsel_<path>_elise` flag.
+# The root retires itself by excluding all three, so a chamber can be answered
+# exactly once. See plans/b0-ending-design.md.
+id: hearth_memory_elise
+type: npc
+
+entries:
+  - condition:
+      excludes: [counsel_rekindle_elise, counsel_release_elise, counsel_third_elise]
+    lines:
+      - "She is sixteen here, and the shrine roof is already going."
+      - "You remember this wrong, you know. You remember running. I remember you turning back."
+      - "I have spent every year since asking the same thing of a fire, and never once getting an answer."
+      - "So ask me instead, {protagonist}. What do you mean to do when we reach the bottom?"
+    choices:
+      - text: "Light it again. The world was better warm."
+        target: rekindle
+        on_select:
+          set_flag: counsel_rekindle_elise
+      - text: "Let it go out. It has taken enough."
+        target: release
+        on_select:
+          set_flag: counsel_release_elise
+      - text: "I don't know yet. But it won't be either of those."
+        target: third
+        on_select:
+          set_flag: counsel_third_elise
+
+  - node: rekindle
+    lines:
+      - "Warm. Yes. I would like the world warm again."
+      - "I will not pretend that is the brave answer. It is only the one I want."
+    end: true
+
+  - node: release
+    lines:
+      - "...You would let it die."
+      - "Everything I know how to do runs on that fire. Every prayer, every mending."
+      - "And I have watched what it does to the ground it stands on. All right. All right."
+    end: true
+
+  - node: third
+    lines:
+      - "Neither. Of course neither — you never could take the door you were handed."
+      - "Then I will keep asking with you. That is the only part of this I was ever good at."
+    end: true
+
+  # Consuming the recorded counsel: what she says on the way back through.
+  - condition:
+      requires: [counsel_rekindle_elise]
+    lines:
+      - "Go on down. I have said my piece, and I meant it warm."
+
+  - condition:
+      requires: [counsel_release_elise]
+    lines:
+      - "Go on down. If it must go dark, let it go dark with someone watching."
+
+  - condition:
+      requires: [counsel_third_elise]
+    lines:
+      - "Go on down. Whatever the third thing is, I would like to see it."

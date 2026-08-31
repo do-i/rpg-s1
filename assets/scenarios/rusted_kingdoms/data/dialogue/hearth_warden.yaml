@@ -1,0 +1,17 @@
+# data/dialogue/hearth_warden.yaml
+#
+# The Ashen Warden seals the head of the Hearth stair while the Red Judicator
+# still stands. Portals carry no flag conditions, so the gate is this NPC: the
+# entry corridor of zone_10_hearth_descent_01 is one tile wide, and his
+# collision rect fills it. His map entry is `present.excludes:
+# [boss_zone10_defeated]`, so beating the Judicator removes him and opens the
+# way — there is no second dialogue state to author.
+id: hearth_warden
+type: npc
+
+entries:
+  - lines:
+      - "Back up the stair, and mind the step."
+      - "The Judicator still stands in the hall above you. While he stands, this way is his, and I keep it for him."
+      - "It is nothing personal. I kept it for the last one too, and the one before."
+      - "Kill him and I have no further instructions. That is how it has always ended."

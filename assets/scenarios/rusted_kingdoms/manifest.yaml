@@ -61,6 +61,9 @@ bootstrap_flags:
   - story_quest_started
 
 engine_managed_flags:
+  # Set by the epilogue's terminal line; consumed by the engine, which moves the
+  # app into the credits. Content never reads it, so it is declared here.
+  - game_complete
   - story_act2_started
   - story_act3_started
   - story_act4_started
