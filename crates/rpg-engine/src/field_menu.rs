@@ -40,7 +40,7 @@ use crate::{
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
     service_ui::ServiceUiState,
-    sfx_cue::{MenuSfx, PlaySfx},
+    sfx_cue::{MenuSfx, PlaySfx, cue},
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
     world_interaction::WorldInteractionState,
@@ -562,25 +562,27 @@ fn handle_field_menu_input(
         {
             return;
         }
+        // Opening the menu from the world is the moment the world stops, so it gets the pause cue
+        // rather than the plain confirm it shares with every in-menu acceptance.
         if keys.just_pressed(KeyCode::KeyM) || actions.just_pressed(AppAction::Back) {
             state.open(FieldMenuScreen::Main);
-            menu_sfx.confirm();
+            menu_sfx.play(cue::PAUSE);
         } else if keys.just_pressed(KeyCode::KeyI) {
             state.open(FieldMenuScreen::Items);
-            menu_sfx.confirm();
+            menu_sfx.play(cue::PAUSE);
         } else if keys.just_pressed(KeyCode::KeyS) {
             state.open(FieldMenuScreen::Status);
-            menu_sfx.confirm();
+            menu_sfx.play(cue::PAUSE);
         } else if keys.just_pressed(KeyCode::KeyQ) {
             state.open(FieldMenuScreen::Quests);
-            menu_sfx.confirm();
+            menu_sfx.play(cue::PAUSE);
         }
         return;
     }
 
     if keys.just_pressed(KeyCode::KeyM) {
         state.close();
-        menu_sfx.cancel();
+        menu_sfx.play(cue::UNPAUSE);
         return;
     }
     if actions.just_pressed(AppAction::Back) {
@@ -974,19 +976,30 @@ fn handle_field_menu_input(
                 if state.selected == 0 {
                     match unequip_item(&mut game, &member_id, slot) {
                         Ok(Some(_)) => {
+                            menu_sfx.play(cue::UNEQUIP);
                             state.message = "Equipment returned to the repository.".to_owned()
                         }
-                        Ok(None) => state.message = "That slot is already empty.".to_owned(),
-                        Err(error) => state.message = error.to_string(),
+                        Ok(None) => {
+                            menu_sfx.blocked();
+                            state.message = "That slot is already empty.".to_owned()
+                        }
+                        Err(error) => {
+                            menu_sfx.blocked();
+                            state.message = error.to_string()
+                        }
                     }
                 } else if let Some(id) = candidates.get(state.selected - 1) {
                     match equip_item(&mut game, &catalog, &member_id, id) {
                         Ok(_) => {
+                            menu_sfx.play(cue::EQUIP);
                             state.mode = FieldMenuMode::Browse;
                             state.selected = slot_index(slot);
                             state.message = "Equipment changed.".to_owned();
                         }
-                        Err(error) => state.message = error.to_string(),
+                        Err(error) => {
+                            menu_sfx.blocked();
+                            state.message = error.to_string()
+                        }
                     }
                 }
             }
@@ -1106,12 +1119,14 @@ fn handle_field_menu_input(
                     destination.position,
                     CardinalDirection::Down,
                 ) {
+                    menu_sfx.play(cue::TELEPORT);
                     game.party_mut()
                         .member_mut(&caster_id)
                         .expect("validated")
                         .spend_mana(ability.mp_cost);
                     state.close();
                 } else {
+                    menu_sfx.blocked();
                     state.message = "A map transition is already active.".to_owned();
                 }
             }

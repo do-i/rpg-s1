@@ -29,6 +29,7 @@ use crate::{
     scenario_spatial::{CardinalDirection, Position},
     scenario_yaml::{self, ScenarioYamlError},
     service_ui::{ServiceRequest, ServiceUiState},
+    sfx_cue::cue,
     ui_theme::UiTheme,
     world_actor::WorldNpc,
     world_dialogue::{DialogueEvent, DialoguePhase, DialogueSession, apply_flag_actions},
@@ -659,7 +660,8 @@ impl InteractionSound {
         match self {
             Self::Confirm | Self::Dialogue => "confirm",
             Self::Blocked => "denied",
-            Self::Box => "use_item",
+            // Opening a chest reused the item cue as a stand-in; it has its own sample now.
+            Self::Box => cue::CHEST_OPEN,
             Self::Cancel => "cancel",
         }
     }
@@ -1898,6 +1900,7 @@ mod tests {
         }
         assert_eq!(InteractionSound::Dialogue.source_key(), "confirm");
         assert_eq!(InteractionSound::Blocked.source_key(), "denied");
-        assert_eq!(InteractionSound::Box.source_key(), "use_item");
+        // Opening a chest used the item cue as a stand-in until the dungeon samples were indexed.
+        assert_eq!(InteractionSound::Box.source_key(), cue::CHEST_OPEN);
     }
 }

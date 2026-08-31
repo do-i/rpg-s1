@@ -17,9 +17,27 @@ battle:
   spell_water:    sfx/atk_magic/22_Water_02.mp3
   spell_wind:     sfx/atk_magic/25_Wind_01.mp3
   spell_earth:    sfx/atk_magic/30_Earth_02.mp3
+  # A whiff had no cue at all; the floating MISS label carried it alone.
+  miss:           sfx/battle/35_Miss_Evade_02.mp3
+  # Sleep and poison used to share the generic `debuff` cue with every other
+  # affliction. Both are distinctive enough in play to earn their own.
+  status_sleep:   sfx/buffs_heals/44_Sleep_01.mp3
+  status_poison:  sfx/atk_magic/46_Poison_01.mp3
+  speed_buff:     sfx/buffs_heals/48_Speed_up_02.mp3
+
+# Field-object and transition cues.
+world:
+  chest_open:     sfx/dungeon/01_chest_open_1.mp3
+  door:           sfx/dungeon/05_door_open_1.mp3
+  teleport:       sfx/player_movement/88_Teleport_02.mp3
 ui:
   hover:          sfx/ui_menu/001_Hover_01.mp3
   confirm:        sfx/ui_menu/013_Confirm_03.mp3
   cancel:         sfx/ui_menu/029_Decline_09.mp3
   denied:         sfx/ui_menu/033_Denied_03.mp3
   use_item:       sfx/ui_menu/051_use_item_01.mp3
+  equip:          sfx/ui_menu/070_Equip_10.mp3
+  unequip:        sfx/ui_menu/071_Unequip_01.mp3
+  buy_sell:       sfx/ui_menu/079_Buy_sell_01.mp3
+  pause:          sfx/ui_menu/092_Pause_04.mp3
+  unpause:        sfx/ui_menu/098_Unpause_04.mp3

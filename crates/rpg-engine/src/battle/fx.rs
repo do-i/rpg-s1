@@ -458,6 +458,15 @@ const fn item_spell_cue(element: ItemElement) -> Option<&'static str> {
 /// rally and a weakening — so the potency decides: a multiplier at or above 1.0 raises a stat, and
 /// a damage reduction is always in the wearer's favour. Everything else is an affliction.
 fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static str {
+    // Sleep and poison are read before potency: both are always harmful, and both are distinctive
+    // enough in play that sharing the generic debuff cue with every other affliction loses
+    // information the player can act on. Sleep is newly reachable content — nothing in the game
+    // could apply it until `battle::enemy_ai` mapped charm and allure.
+    match status_effect {
+        StatusEffect::Sleep => return cue::STATUS_SLEEP,
+        StatusEffect::Poison => return cue::STATUS_POISON,
+        _ => {}
+    }
     let beneficial = match potency {
         StatusPotency::Multiplier(factor) => factor >= 1.0,
         StatusPotency::Reduction(_) => true,
@@ -470,6 +479,9 @@ fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static s
         StatusEffect::DefenseModifier
         | StatusEffect::MagicResistanceModifier
         | StatusEffect::DamageReduction => cue::DEF_BUFF,
+        // A hit-chance buff is the closest thing the model has to a haste, and it has its own
+        // sample rather than sharing the attack-buff cue.
+        StatusEffect::HitChanceModifier => cue::SPEED_BUFF,
         _ => cue::ATK_BUFF,
     }
 }
@@ -491,8 +503,10 @@ fn push_knockout(knocked_out: bool, target: CombatantKey, cues: &mut Vec<&'stati
 fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
     let mut cues: Vec<&'static str> = Vec::new();
     match *event {
-        // The pinned engine plays no cue on a whiff; the floating MISS label carries it.
-        BattleEvent::Miss { .. } => {}
+        // The pinned engine plays no cue on a whiff and lets the floating MISS label carry it
+        // alone. Giving the whiff its own sample is a deliberate widening: a miss is the one
+        // battle outcome that otherwise makes no sound at all.
+        BattleEvent::Miss { .. } => cues.push(cue::MISS),
         BattleEvent::Damage {
             action,
             knocked_out,
@@ -641,12 +655,13 @@ mod tests {
             target: CombatantKey::party(0),
         };
 
-        // A whiff is silent; the floating label carries it.
+        // A whiff has its own cue. The pinned engine is silent here and lets the floating label
+        // carry it; sounding the miss is a deliberate widening, recorded in `cue::MISS`.
         assert_eq!(
             sfx_cues_for_event(&BattleEvent::Miss {
                 action: party_hits_enemy
             }),
-            Vec::<&str>::new()
+            vec![cue::MISS]
         );
 
         assert_eq!(
@@ -769,12 +784,19 @@ mod tests {
                 StatusPotency::Reduction(0.3),
                 cue::DEF_BUFF,
             ),
+            // Poison and sleep are read before potency and get their own samples.
             (
                 StatusEffect::Poison,
                 StatusPotency::DamagePerTurn(4),
-                cue::DEBUFF,
+                cue::STATUS_POISON,
             ),
-            (StatusEffect::Sleep, StatusPotency::None, cue::DEBUFF),
+            (StatusEffect::Sleep, StatusPotency::None, cue::STATUS_SLEEP),
+            // A hit-chance buff is the model's nearest thing to a haste.
+            (
+                StatusEffect::HitChanceModifier,
+                StatusPotency::Multiplier(1.2),
+                cue::SPEED_BUFF,
+            ),
         ] {
             assert_eq!(
                 sfx_cues_for_event(&BattleEvent::StatusApplied {

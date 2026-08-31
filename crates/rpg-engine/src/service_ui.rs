@@ -18,7 +18,7 @@ use crate::{
         RecipeAvailability, buy, can_sell, craft, exchange_magic_core, recipe_availability,
         rest_at_inn, sell, visible_stock,
     },
-    sfx_cue::{MenuSfx, PlaySfx},
+    sfx_cue::{MenuSfx, PlaySfx, cue},
 };
 
 mod sprites;
@@ -497,7 +497,11 @@ pub(crate) fn handle_service_input(
                 if settings.mc_exchange_confirm_large && is_high_value_core(&state, &catalog) {
                     state.page = Some(ServicePage::CoreConfirm);
                 } else {
-                    execute_pending(&mut state, &catalog, &mut game);
+                    if execute_pending(&mut state, &catalog, &mut game) {
+                        menu_sfx.play(cue::BUY_SELL);
+                    } else {
+                        menu_sfx.blocked();
+                    }
                 }
             }
         }
@@ -509,7 +513,11 @@ pub(crate) fn handle_service_input(
             }
             if keys.just_pressed(KeyCode::KeyY) || confirm {
                 menu_sfx.confirm();
-                execute_pending(&mut state, &catalog, &mut game);
+                if execute_pending(&mut state, &catalog, &mut game) {
+                    menu_sfx.play(cue::BUY_SELL);
+                } else {
+                    menu_sfx.blocked();
+                }
             }
         }
         Some(ServicePage::Equip) => {
@@ -652,9 +660,15 @@ fn sellable_tags(catalog: &FieldMenuCatalog, game: &GameState) -> Vec<String> {
     tags
 }
 
-fn execute_pending(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game: &mut GameState) {
+/// Commits the staged shop transaction, reporting whether it went through so the caller — which
+/// is the system that owns the audio writer — can sound the right cue.
+fn execute_pending(
+    state: &mut ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &mut GameState,
+) -> bool {
     let Some(id) = state.pending_id.clone() else {
-        return;
+        return false;
     };
     let quantity = state.quantity;
     let result = match state.pending {
@@ -675,10 +689,10 @@ fn execute_pending(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game:
                 exchange_magic_core(game.repository_mut(), item, quantity)
                     .map_err(|e| e.to_string())
             }),
-        None => return,
+        None => return false,
     };
     let Some(pending) = state.pending else {
-        return;
+        return false;
     };
     let name = catalog
         .item(&id)
@@ -703,10 +717,12 @@ fn execute_pending(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game:
                 }
                 _ => {}
             }
+            true
         }
         Err(error) => {
             state.page = Some(pending.origin());
             state.announce(error, ToastTone::Warn);
+            false
         }
     }
 }
@@ -764,7 +780,7 @@ fn equip_pending_purchase(
         .map_or_else(|| item_id.clone(), |item| item_name(item).to_owned());
     match equip_item(game, catalog, &member_id, &item_id) {
         Ok(_displaced) => {
-            menu_sfx.confirm();
+            menu_sfx.play(cue::EQUIP);
             state.pending_equip_id = None;
             state.return_to(ServicePage::Buy);
             state.announce(
@@ -1069,7 +1085,7 @@ mod tests {
         state.pending = Some(PendingTransaction::Exchange);
         state.pending_id = Some("mc_xs".to_owned());
         state.quantity = 1;
-        execute_pending(&mut state, &catalog, &mut game);
+        let _committed = execute_pending(&mut state, &catalog, &mut game);
         assert!(state.is_open(), "one core is left, so the list stays up");
         assert_eq!(state.page, Some(ServicePage::MagicCore));
 
@@ -1084,7 +1100,7 @@ mod tests {
         state.pending = Some(PendingTransaction::Exchange);
         state.pending_id = Some("mc_xs".to_owned());
         state.quantity = 1;
-        execute_pending(&mut state, catalog, &mut game);
+        let _committed = execute_pending(&mut state, catalog, &mut game);
         assert!(
             !state.is_open(),
             "the source closes rather than showing an empty exchange"

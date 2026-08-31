@@ -73,6 +73,30 @@ pub(crate) mod cue {
     pub(crate) const SPELL_WATER: &str = "spell_water";
     pub(crate) const SPELL_WIND: &str = "spell_wind";
     pub(crate) const SPELL_EARTH: &str = "spell_earth";
+
+    /// A whiff. The pinned engine plays nothing here and lets the floating MISS label carry the
+    /// beat on its own; giving it a cue is a deliberate widening, not a parity fix.
+    pub(crate) const MISS: &str = "miss";
+
+    /// Afflictions distinctive enough not to share the generic [`DEBUFF`] cue with every other
+    /// status. Sleep in particular is now reachable content — see `battle::enemy_ai`.
+    pub(crate) const STATUS_SLEEP: &str = "status_sleep";
+    pub(crate) const STATUS_POISON: &str = "status_poison";
+    pub(crate) const SPEED_BUFF: &str = "speed_buff";
+
+    /// Field-object and transition cues.
+    pub(crate) const CHEST_OPEN: &str = "chest_open";
+    pub(crate) const DOOR: &str = "door";
+    pub(crate) const TELEPORT: &str = "teleport";
+
+    /// Equipment and shop beats, which previously reused the plain confirm cue.
+    pub(crate) const EQUIP: &str = "equip";
+    pub(crate) const UNEQUIP: &str = "unequip";
+    pub(crate) const BUY_SELL: &str = "buy_sell";
+
+    /// Opening and closing the field menu, which is what stops and restarts the world.
+    pub(crate) const PAUSE: &str = "pause";
+    pub(crate) const UNPAUSE: &str = "unpause";
 }
 
 /// The four sounds every menu screen makes, as one injectable parameter.
