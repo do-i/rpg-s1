@@ -14,6 +14,10 @@ zone:
   open_plains:      bgm/Sun_Kissed_Horizon.mp3
   alpine:           bgm/Whispers_of_the_Alpine_Stream.mp3
   dark:             bgm/Whispers_in_the_Unfolding_Dark.mp3
+  # The Hearth Descent. The stronghold above it already owns `zone.dark`, and
+  # the descent is a different place — the memory chambers should not sound like
+  # the corridor the player fought through to reach them.
+  hearth:           bgm/Across_the_Sundered_Peaks_64.mp3
 
 overworld:
   golden_hour:      bgm/Golden_Hour_Haze.mp3

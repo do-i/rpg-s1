@@ -5,7 +5,7 @@
 # beyond it the Hearth answers, and the final choice is taken there.
 name: "The Hearth"
 warp_order: 250
-bgm: zone.dark
+bgm: zone.hearth
 
 npcs:
   - id: hearth

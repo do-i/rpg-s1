@@ -5,7 +5,7 @@
 # point of no return rather than a locked door with no explanation.
 name: "Hearth Descent — The Threshold"
 warp_order: 240
-bgm: zone.dark
+bgm: zone.hearth
 
 npcs:
   - id: threshold_warden
