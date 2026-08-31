@@ -5,7 +5,7 @@
 # See plans/b0-ending-design.md for the ending-path model these chambers feed.
 name: "Hearth Descent — The Burnt Shrine"
 warp_order: 190
-bgm: zone.dark
+bgm: zone.hearth
 
 npcs:
   # The stair is shut while the Red Judicator still stands. The entry corridor is

@@ -5,7 +5,7 @@
 # See plans/b0-ending-design.md for the ending-path model these chambers feed.
 name: "Hearth Descent — The Watch Unheld"
 warp_order: 220
-bgm: zone.dark
+bgm: zone.hearth
 
 npcs:
   - id: memory_kael
