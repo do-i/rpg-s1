@@ -14,7 +14,7 @@
 //! built, which covers every player uniformly.
 
 use bevy::{ecs::system::SystemParam, prelude::*};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
@@ -103,6 +103,32 @@ pub(crate) mod cue {
     /// Opening and closing the field menu, which is what stops and restarts the world.
     pub(crate) const PAUSE: &str = "pause";
     pub(crate) const UNPAUSE: &str = "unpause";
+
+    /// Cues that rotate through several authored samples instead of repeating one.
+    ///
+    /// Callers always write the base key — the first entry of a group — and the cue service
+    /// substitutes the next sample in rotation. The point is the beats a player hears hundreds of
+    /// times in an evening: every sword landing on the identical waveform is the thing that makes
+    /// a battle sound cheap.
+    ///
+    /// Rotation is a counter, not a random draw. Audio must not touch `GameplayRng`, because the
+    /// `record`/`replay` commands depend on that stream being consumed identically; a per-cue
+    /// cursor is varied to the ear and still perfectly reproducible.
+    pub(crate) const VARIANT_GROUPS: &[&[&str]] = &[
+        &[ATK_IMPACT, "atk_impact_2", "atk_impact_3", "atk_impact_4"],
+        &[PARTY_HIT, "party_hit_2", "party_hit_3", "party_hit_4"],
+        &[MISS, "miss_2", "miss_3", "miss_4"],
+        &[ATK_CLAW, "atk_claw_2"],
+        &[ATK_SWORD, "atk_sword_2", "atk_sword_3"],
+        &[CHEST_OPEN, "chest_open_2", "chest_open_3", "chest_open_4"],
+        &[CHEST_CLOSE, "chest_close_2", "chest_close_3"],
+        &[DOOR, "door_2"],
+    ];
+
+    /// The rotation group a cue belongs to, if it has one.
+    pub(crate) fn variants_of(key: &str) -> Option<&'static [&'static str]> {
+        VARIANT_GROUPS.iter().copied().find(|group| group[0] == key)
+    }
 }
 
 /// The four sounds every menu screen makes, as one injectable parameter.
@@ -151,6 +177,23 @@ impl MenuSfx<'_> {
 #[derive(Resource, Default)]
 pub(crate) struct SfxCatalog {
     index: Option<Handle<SfxIndex>>,
+    /// How many times each rotating cue has sounded, so its variants cycle in order.
+    rotations: BTreeMap<&'static str, usize>,
+}
+
+impl SfxCatalog {
+    /// Resolves a requested cue to the sample that should sound now, advancing its rotation.
+    ///
+    /// A cue with no authored variants returns itself and costs nothing.
+    fn next_sample(&mut self, key: &'static str) -> &'static str {
+        let Some(group) = cue::variants_of(key) else {
+            return key;
+        };
+        let turn = self.rotations.entry(key).or_default();
+        let sample = group[*turn % group.len()];
+        *turn = turn.wrapping_add(1);
+        sample
+    }
 }
 
 pub(crate) struct SfxCuePlugin;
@@ -199,7 +242,8 @@ fn play_requested_cues(
     };
 
     for key in requested {
-        let Some(path) = index.resolve_key(&root, key) else {
+        let sample = catalog.next_sample(key);
+        let Some(path) = index.resolve_key(&root, sample) else {
             continue;
         };
         commands.spawn((
@@ -322,11 +366,75 @@ mod tests {
             cue::SPELL_WATER,
             cue::SPELL_WIND,
             cue::SPELL_EARTH,
+            cue::MISS,
+            cue::STATUS_SLEEP,
+            cue::STATUS_POISON,
+            cue::SPEED_BUFF,
+            cue::ATK_CLAW,
+            cue::ATK_SWORD,
+            cue::CHEST_OPEN,
+            cue::CHEST_CLOSE,
+            cue::DOOR,
+            cue::TELEPORT,
+            cue::EQUIP,
+            cue::UNEQUIP,
+            cue::BUY_SELL,
+            cue::PAUSE,
+            cue::UNPAUSE,
         ] {
             assert!(
                 index.path_for_key(key).is_some(),
                 "cue `{key}` is not authored in the shipped sfx_index.yaml"
             );
+        }
+
+        // Every rotation variant has to resolve too, or a cue would fall silent partway
+        // through its cycle instead of failing loudly.
+        for group in cue::VARIANT_GROUPS {
+            for key in *group {
+                assert!(
+                    index.path_for_key(key).is_some(),
+                    "variant `{key}` is not authored in the shipped sfx_index.yaml"
+                );
+            }
+            let mut paths = group
+                .iter()
+                .map(|key| index.path_for_key(key).unwrap().as_str())
+                .collect::<Vec<_>>();
+            let authored = paths.len();
+            paths.sort_unstable();
+            paths.dedup();
+            assert_eq!(
+                paths.len(),
+                authored,
+                "rotation group `{}` points two variants at one sample",
+                group[0]
+            );
+        }
+    }
+
+    /// A rotating cue walks its group in order and wraps; a plain cue always returns itself.
+    #[test]
+    fn rotating_cues_cycle_their_variants_deterministically() {
+        let mut catalog = SfxCatalog::default();
+        let group = cue::variants_of(cue::CHEST_OPEN).expect("chest_open rotates");
+        let heard = (0..group.len() * 2)
+            .map(|_| catalog.next_sample(cue::CHEST_OPEN))
+            .collect::<Vec<_>>();
+        assert_eq!(heard[..group.len()], *group);
+        assert_eq!(heard[group.len()..], *group, "the rotation wraps");
+
+        assert!(cue::variants_of(cue::HOVER).is_none());
+        assert_eq!(catalog.next_sample(cue::HOVER), cue::HOVER);
+        assert_eq!(catalog.next_sample(cue::HOVER), cue::HOVER);
+    }
+
+    /// Groups are addressed by their first entry, which is the key callers actually write.
+    #[test]
+    fn every_rotation_group_is_named_by_a_real_base_cue() {
+        for group in cue::VARIANT_GROUPS {
+            assert!(group.len() > 1, "a one-sample group is not a rotation");
+            assert_eq!(cue::variants_of(group[0]), Some(*group));
         }
     }
 

@@ -3,6 +3,15 @@ battle:
   atk_slash:      sfx/battle/22_Slash_04.mp3
   atk_impact:     sfx/battle/15_Impact_flesh_02.mp3
   party_hit:      sfx/battle/77_flesh_02.mp3
+  # Rotation variants. The engine cycles these behind the base key above so the
+  # beats a player hears hundreds of times stop landing on one waveform; see
+  # `cue::VARIANT_GROUPS`. Callers never name a `_2`/`_3` key directly.
+  atk_impact_2:   sfx/dungeon/26_sword_hit_1.mp3
+  atk_impact_3:   sfx/dungeon/26_sword_hit_2.mp3
+  atk_impact_4:   sfx/dungeon/26_sword_hit_3.mp3
+  party_hit_2:    sfx/dungeon/11_human_damage_1.mp3
+  party_hit_3:    sfx/dungeon/11_human_damage_2.mp3
+  party_hit_4:    sfx/dungeon/11_human_damage_3.mp3
   defend:         sfx/battle/39_Block_03.mp3
   flee:           sfx/battle/51_Flee_02.mp3
   enemy_death:    sfx/battle/69_Enemy_death_01.mp3
@@ -19,6 +28,9 @@ battle:
   spell_earth:    sfx/atk_magic/30_Earth_02.mp3
   # A whiff had no cue at all; the floating MISS label carried it alone.
   miss:           sfx/battle/35_Miss_Evade_02.mp3
+  miss_2:         sfx/dungeon/27_sword_miss_1.mp3
+  miss_3:         sfx/dungeon/27_sword_miss_2.mp3
+  miss_4:         sfx/dungeon/27_sword_miss_3.mp3
   # Sleep and poison used to share the generic `debuff` cue with every other
   # affliction. Both are distinctive enough in play to earn their own.
   status_sleep:   sfx/buffs_heals/44_Sleep_01.mp3
@@ -26,13 +38,22 @@ battle:
   speed_buff:     sfx/buffs_heals/48_Speed_up_02.mp3
   # An enemy's basic attack, chosen by its authored type.
   atk_claw:       sfx/battle/03_Claw_03.mp3
+  atk_claw_2:     sfx/battle/08_Bite_04.mp3
   atk_sword:      sfx/dungeon/07_human_atk_sword_1.mp3
+  atk_sword_2:    sfx/dungeon/07_human_atk_sword_2.mp3
+  atk_sword_3:    sfx/dungeon/07_human_atk_sword_3.mp3
 
 # Field-object and transition cues.
 world:
   chest_open:     sfx/dungeon/01_chest_open_1.mp3
+  chest_open_2:   sfx/dungeon/01_chest_open_2.mp3
+  chest_open_3:   sfx/dungeon/01_chest_open_3.mp3
+  chest_open_4:   sfx/dungeon/01_chest_open_4.mp3
   chest_close:    sfx/dungeon/02_chest_close_1.mp3
+  chest_close_2:  sfx/dungeon/02_chest_close_2.mp3
+  chest_close_3:  sfx/dungeon/02_chest_close_3.mp3
   door:           sfx/dungeon/05_door_open_1.mp3
+  door_2:         sfx/dungeon/05_door_open_2.mp3
   teleport:       sfx/player_movement/88_Teleport_02.mp3
 ui:
   hover:          sfx/ui_menu/001_Hover_01.mp3
