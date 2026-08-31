@@ -11,6 +11,7 @@ use super::{
 use crate::{
     encounter::BattleSide,
     scenario_class::AbilityElement,
+    scenario_enemy::EnemyType,
     scenario_item::ItemElement,
     sfx_cue::{PlaySfx, cue},
 };
@@ -162,7 +163,14 @@ pub(super) fn route_battle_fx(
     for event in &state.feedback_events[router.next_event..] {
         // Audio is routed off the same cursor but independently of the visual cue: an event that
         // draws nothing may still need to be heard.
-        sfx.write_batch(sfx_cues_for_event(event).into_iter().map(PlaySfx::new));
+        let attacker_type = event_attacker(event)
+            .and_then(|key| state.actor(key))
+            .and_then(|actor| actor.enemy_type);
+        sfx.write_batch(
+            sfx_cues_for_event(event, attacker_type)
+                .into_iter()
+                .map(PlaySfx::new),
+        );
         // The attacker's animation is keyed off the same event that reports the hit, which is
         // where the source starts it (`battle_enemy_logic.py:53,69`).
         if let Some((attacker, kind)) = attack_for_event(event)
@@ -421,10 +429,36 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
 /// Mirrors the pinned engine, which plays two sounds when the party is struck — the physical
 /// impact and the party's own hurt cue (`battle_enemy_logic.py:55,57,82,84`) — and the swing alone
 /// when the party is the one connecting.
-const fn impact_cues(side: BattleSide) -> &'static [&'static str] {
+/// Who swung, for the events where that is meaningful to the sound.
+const fn event_attacker(event: &BattleEvent) -> Option<CombatantKey> {
+    match *event {
+        BattleEvent::Damage { action, .. } => Some(action.attacker()),
+        BattleEvent::EnemyAbilityDamage { source, .. } => Some(source),
+        _ => None,
+    }
+}
+
+/// The cues a landed hit makes, from the struck side's point of view.
+///
+/// `attacker_type` flavours the impact when an enemy is the one swinging; `None` — a party attack,
+/// or a status tick with no attacker at all — keeps the generic sample.
+fn impact_cues(side: BattleSide, attacker_type: Option<EnemyType>) -> Vec<&'static str> {
     match side {
-        BattleSide::Party => &[cue::ATK_IMPACT, cue::PARTY_HIT],
-        BattleSide::Enemy => &[cue::ATK_SLASH],
+        BattleSide::Party => vec![enemy_attack_cue(attacker_type), cue::PARTY_HIT],
+        BattleSide::Enemy => vec![cue::ATK_SLASH],
+    }
+}
+
+/// The sample an enemy's basic attack swings with, chosen by its authored type.
+///
+/// Only the two types with a genuinely distinctive sound are given one. Undead, demons and
+/// constructs keep the generic impact: the shipped set has no sample that fits them better, and
+/// forcing one on them would sound less right than sharing, not more.
+const fn enemy_attack_cue(enemy_type: Option<EnemyType>) -> &'static str {
+    match enemy_type {
+        Some(EnemyType::Beast) => cue::ATK_CLAW,
+        Some(EnemyType::Humanoid) => cue::ATK_SWORD,
+        Some(EnemyType::Construct | EnemyType::Demon | EnemyType::Undead) | None => cue::ATK_IMPACT,
     }
 }
 
@@ -500,7 +534,7 @@ fn push_knockout(knocked_out: bool, target: CombatantKey, cues: &mut Vec<&'stati
     }
 }
 
-fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
+fn sfx_cues_for_event(event: &BattleEvent, attacker_type: Option<EnemyType>) -> Vec<&'static str> {
     let mut cues: Vec<&'static str> = Vec::new();
     match *event {
         // The pinned engine plays no cue on a whiff and lets the floating MISS label carry it
@@ -513,7 +547,7 @@ fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
             ..
         } => {
             let target = action.target();
-            cues.extend_from_slice(impact_cues(target.side));
+            cues.extend(impact_cues(target.side, attacker_type));
             push_knockout(knocked_out, target, &mut cues);
         }
         BattleEvent::MagicDamage {
@@ -540,7 +574,7 @@ fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
             knocked_out,
             ..
         } => {
-            cues.extend_from_slice(impact_cues(target.side));
+            cues.extend(impact_cues(target.side, attacker_type));
             push_knockout(knocked_out, target, &mut cues);
         }
         // A blocked ability is the defensive beat the `defend` cue exists for.
@@ -559,7 +593,8 @@ fn sfx_cues_for_event(event: &BattleEvent) -> Vec<&'static str> {
             knocked_out,
             ..
         } => {
-            cues.extend_from_slice(impact_cues(target.side));
+            // A tick has no attacker, so it keeps the generic impact.
+            cues.extend(impact_cues(target.side, None));
             push_knockout(knocked_out, target, &mut cues);
         }
     }
@@ -658,48 +693,63 @@ mod tests {
         // A whiff has its own cue. The pinned engine is silent here and lets the floating label
         // carry it; sounding the miss is a deliberate widening, recorded in `cue::MISS`.
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Miss {
-                action: party_hits_enemy
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Miss {
+                    action: party_hits_enemy
+                },
+                None
+            ),
             vec![cue::MISS]
         );
 
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Damage {
-                action: party_hits_enemy,
-                amount: 9,
-                critical: false,
-                knocked_out: false,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Damage {
+                    action: party_hits_enemy,
+                    amount: 9,
+                    critical: false,
+                    knocked_out: false,
+                },
+                None
+            ),
             vec![cue::ATK_SLASH]
         );
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Damage {
-                action: enemy_hits_party,
-                amount: 9,
-                critical: false,
-                knocked_out: false,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Damage {
+                    action: enemy_hits_party,
+                    amount: 9,
+                    critical: false,
+                    knocked_out: false,
+                },
+                None
+            ),
             vec![cue::ATK_IMPACT, cue::PARTY_HIT]
         );
 
         // A killing blow appends the death cue, but only when an enemy is the one falling.
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Damage {
-                action: party_hits_enemy,
-                amount: 99,
-                critical: true,
-                knocked_out: true,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Damage {
+                    action: party_hits_enemy,
+                    amount: 99,
+                    critical: true,
+                    knocked_out: true,
+                },
+                None
+            ),
             vec![cue::ATK_SLASH, cue::ENEMY_DEATH]
         );
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Damage {
-                action: enemy_hits_party,
-                amount: 99,
-                critical: false,
-                knocked_out: true,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Damage {
+                    action: enemy_hits_party,
+                    amount: 99,
+                    critical: false,
+                    knocked_out: true,
+                },
+                None
+            ),
             vec![cue::ATK_IMPACT, cue::PARTY_HIT]
         );
 
@@ -712,53 +762,68 @@ mod tests {
             (AbilityElement::Holy, Vec::new()),
         ] {
             assert_eq!(
-                sfx_cues_for_event(&BattleEvent::MagicDamage {
-                    source: CombatantKey::party(1),
-                    target: CombatantKey::enemy(0),
-                    element,
-                    amount: 20,
-                    knocked_out: false,
-                }),
+                sfx_cues_for_event(
+                    &BattleEvent::MagicDamage {
+                        source: CombatantKey::party(1),
+                        target: CombatantKey::enemy(0),
+                        element,
+                        amount: 20,
+                        knocked_out: false,
+                    },
+                    None
+                ),
                 expected,
                 "element {element:?}"
             );
         }
 
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::ItemDamage {
-                source: CombatantKey::party(0),
-                target: CombatantKey::enemy(0),
-                element: ItemElement::Fire,
-                amount: 12,
-                knocked_out: true,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::ItemDamage {
+                    source: CombatantKey::party(0),
+                    target: CombatantKey::enemy(0),
+                    element: ItemElement::Fire,
+                    amount: 12,
+                    knocked_out: true,
+                },
+                None
+            ),
             vec![cue::USE_ITEM, cue::SPELL_FIRE, cue::ENEMY_DEATH]
         );
 
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::EnemyAbilityBlocked {
-                source: CombatantKey::enemy(0),
-                target: CombatantKey::party(0),
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::EnemyAbilityBlocked {
+                    source: CombatantKey::enemy(0),
+                    target: CombatantKey::party(0),
+                },
+                None
+            ),
             vec![cue::DEFEND]
         );
 
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Heal {
-                source: CombatantKey::party(1),
-                target: CombatantKey::party(0),
-                amount: 30,
-                revived: false,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Heal {
+                    source: CombatantKey::party(1),
+                    target: CombatantKey::party(0),
+                    amount: 30,
+                    revived: false,
+                },
+                None
+            ),
             vec![cue::HEAL]
         );
         assert_eq!(
-            sfx_cues_for_event(&BattleEvent::Heal {
-                source: CombatantKey::party(1),
-                target: CombatantKey::party(0),
-                amount: 30,
-                revived: true,
-            }),
+            sfx_cues_for_event(
+                &BattleEvent::Heal {
+                    source: CombatantKey::party(1),
+                    target: CombatantKey::party(0),
+                    amount: 30,
+                    revived: true,
+                },
+                None
+            ),
             vec![cue::REVIVE]
         );
 
@@ -799,19 +864,84 @@ mod tests {
             ),
         ] {
             assert_eq!(
-                sfx_cues_for_event(&BattleEvent::StatusApplied {
-                    source: CombatantKey::enemy(0),
-                    target: CombatantKey::party(0),
-                    status: ActiveStatus {
-                        effect,
-                        remaining_turns: Some(3),
-                        potency,
+                sfx_cues_for_event(
+                    &BattleEvent::StatusApplied {
+                        source: CombatantKey::enemy(0),
+                        target: CombatantKey::party(0),
+                        status: ActiveStatus {
+                            effect,
+                            remaining_turns: Some(3),
+                            potency,
+                        },
                     },
-                }),
+                    None
+                ),
                 vec![expected],
                 "{effect:?} with {potency:?}"
             );
         }
+    }
+
+    /// Only beasts and humanoids have a sample that fits them; everything else shares the
+    /// generic impact, and a party attack is never flavoured at all.
+    #[test]
+    fn an_enemy_attack_sounds_like_the_kind_of_enemy_making_it() {
+        let enemy_hits_party = BattleAction::Physical {
+            attacker: CombatantKey::enemy(0),
+            target: CombatantKey::party(0),
+        };
+        let event = BattleEvent::Damage {
+            action: enemy_hits_party,
+            amount: 9,
+            critical: false,
+            knocked_out: false,
+        };
+        for (enemy_type, expected) in [
+            (Some(EnemyType::Beast), cue::ATK_CLAW),
+            (Some(EnemyType::Humanoid), cue::ATK_SWORD),
+            (Some(EnemyType::Undead), cue::ATK_IMPACT),
+            (Some(EnemyType::Demon), cue::ATK_IMPACT),
+            (Some(EnemyType::Construct), cue::ATK_IMPACT),
+            (None, cue::ATK_IMPACT),
+        ] {
+            assert_eq!(
+                sfx_cues_for_event(&event, enemy_type),
+                vec![expected, cue::PARTY_HIT],
+                "{enemy_type:?}"
+            );
+        }
+
+        // The party swinging is the enemy's frame taking the hit, and carries no flavour.
+        let party_hits_enemy = BattleAction::Physical {
+            attacker: CombatantKey::party(0),
+            target: CombatantKey::enemy(0),
+        };
+        assert_eq!(
+            sfx_cues_for_event(
+                &BattleEvent::Damage {
+                    action: party_hits_enemy,
+                    amount: 9,
+                    critical: false,
+                    knocked_out: false,
+                },
+                Some(EnemyType::Beast)
+            ),
+            vec![cue::ATK_SLASH]
+        );
+    }
+
+    /// A poison tick has no attacker behind it, so it must not pick up a flavoured impact.
+    #[test]
+    fn a_status_tick_keeps_the_generic_impact() {
+        assert_eq!(
+            event_attacker(&BattleEvent::StatusDamage {
+                target: CombatantKey::party(0),
+                effect: StatusEffect::Poison,
+                amount: 3,
+                knocked_out: false,
+            }),
+            None
+        );
     }
 
     #[test]

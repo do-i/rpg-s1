@@ -84,8 +84,14 @@ pub(crate) mod cue {
     pub(crate) const STATUS_POISON: &str = "status_poison";
     pub(crate) const SPEED_BUFF: &str = "speed_buff";
 
+    /// What an enemy's basic attack sounds like, chosen by its authored type. Types with no
+    /// distinctive sample keep [`ATK_IMPACT`]; forcing one on them would be worse than sharing.
+    pub(crate) const ATK_CLAW: &str = "atk_claw";
+    pub(crate) const ATK_SWORD: &str = "atk_sword";
+
     /// Field-object and transition cues.
     pub(crate) const CHEST_OPEN: &str = "chest_open";
+    pub(crate) const CHEST_CLOSE: &str = "chest_close";
     pub(crate) const DOOR: &str = "door";
     pub(crate) const TELEPORT: &str = "teleport";
 

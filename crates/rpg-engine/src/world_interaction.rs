@@ -643,7 +643,7 @@ fn dismiss_treasure_reveal(actions: Res<ActionState>, mut state: ResMut<WorldInt
     }
     state.treasure = None;
     state.closed_this_frame = true;
-    state.pending_sounds.push(InteractionSound::Confirm);
+    state.pending_sounds.push(InteractionSound::BoxClosed);
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -652,6 +652,8 @@ enum InteractionSound {
     Blocked,
     Dialogue,
     Box,
+    /// Dismissing the loot reveal, which is the lid coming back down.
+    BoxClosed,
     Cancel,
 }
 
@@ -662,6 +664,7 @@ impl InteractionSound {
             Self::Blocked => "denied",
             // Opening a chest reused the item cue as a stand-in; it has its own sample now.
             Self::Box => cue::CHEST_OPEN,
+            Self::BoxClosed => cue::CHEST_CLOSE,
             Self::Cancel => "cancel",
         }
     }
@@ -1892,6 +1895,7 @@ mod tests {
             InteractionSound::Blocked,
             InteractionSound::Dialogue,
             InteractionSound::Box,
+            InteractionSound::BoxClosed,
             InteractionSound::Cancel,
         ] {
             let path = index.resolve_key(&root, sound.source_key()).unwrap();
