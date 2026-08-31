@@ -11,6 +11,7 @@ use crate::{
 use super::{
     action::BattleEvent,
     model::{BattleCombatant, BattlePhase, BattleState, CombatantKey},
+    rules::roll_succeeds,
     status::{ActiveStatus, StatusEffect},
 };
 
@@ -50,7 +51,7 @@ pub(super) fn resolve_enemy_turn(state: &mut BattleState, rng: &mut GameplayRng)
             state.resolve_physical(source_key, first, rng);
         }
         EnemyAction::Ability { id, once } => {
-            resolve_enemy_ability(state, &source, &id, &targets);
+            resolve_enemy_ability(state, &source, &id, &targets, rng);
             if once {
                 state.used_enemy_moves.insert((source_key, id));
             }
@@ -221,11 +222,12 @@ fn override_target(target: &EnemyTargetOverride) -> EnemyOverrideTarget {
     }
 }
 
-fn resolve_enemy_ability(
+pub(super) fn resolve_enemy_ability(
     state: &mut BattleState,
     source: &BattleCombatant,
     ability_id: &str,
     targets: &[CombatantKey],
+    rng: &mut GameplayRng,
 ) {
     let mut events = Vec::new();
     for &requested_target in targets {
@@ -270,7 +272,10 @@ fn resolve_enemy_ability(
             knocked_out: amount >= defender.health,
         });
         if state.actor(target).is_some_and(BattleCombatant::is_alive) {
-            for status in enemy_ability_statuses(ability_id, source.attack) {
+            for (chance, status) in enemy_ability_statuses(ability_id, source.attack) {
+                if !roll_succeeds(rng, chance) {
+                    continue;
+                }
                 if state
                     .actor_mut(target)
                     .expect("selected enemy ability target")
@@ -300,26 +305,46 @@ fn resolve_enemy_ability(
     state.phase = BattlePhase::Resolve;
 }
 
-fn enemy_ability_statuses(ability_id: &str, attack: i64) -> Vec<ActiveStatus> {
+/// The statuses an enemy ability inflicts, each paired with its application chance.
+///
+/// The troll shaman's `charm` and `allure` carry their intent in
+/// `enemies/boss_move_sets/troll_shaman_base.yaml` ("sleep single target, 2 turns" and
+/// "sleep all party, 40% chance each"); before they were mapped here they fell through to
+/// the empty arm, so nothing in the game could apply [`StatusEffect::Sleep`] at all.
+/// Sleep is applied after the ability's damage, so it is not cleared by the hit that
+/// carries it — a later hit still wakes the sleeper via
+/// [`BattleCombatant::apply_resolved_damage`].
+fn enemy_ability_statuses(ability_id: &str, attack: i64) -> Vec<(f64, ActiveStatus)> {
     match ability_id {
         "venom_bite" | "poison_bite" | "poison_tail" | "miasma" => {
-            vec![ActiveStatus::damage_over_time(
-                StatusEffect::Poison,
-                None,
-                (attack.max(0) as u32 / 10).max(1),
+            vec![(
+                1.0,
+                ActiveStatus::damage_over_time(
+                    StatusEffect::Poison,
+                    None,
+                    (attack.max(0) as u32 / 10).max(1),
+                ),
             )]
         }
         "plague_touch" => vec![
-            ActiveStatus::damage_over_time(
-                StatusEffect::Poison,
-                None,
-                (attack.max(0) as u32 / 10).max(1),
+            (
+                1.0,
+                ActiveStatus::damage_over_time(
+                    StatusEffect::Poison,
+                    None,
+                    (attack.max(0) as u32 / 10).max(1),
+                ),
             ),
-            ActiveStatus::persistent(StatusEffect::Silence),
+            (1.0, ActiveStatus::persistent(StatusEffect::Silence)),
         ],
+        "charm" => vec![(1.0, ActiveStatus::timed(StatusEffect::Sleep, SLEEP_TURNS))],
+        "allure" => vec![(0.40, ActiveStatus::timed(StatusEffect::Sleep, SLEEP_TURNS))],
         _ => Vec::new(),
     }
 }
+
+/// Authored sleep duration for the troll shaman's sleep moves.
+const SLEEP_TURNS: u32 = 2;
 
 fn blocked_override<'a>(
     source: &'a BattleCombatant,

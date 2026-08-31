@@ -779,28 +779,114 @@ mod tests {
         }
     }
 
-    #[test]
-    fn bridge_guard_zone5_traverses_only_the_authored_act_two_gate() {
+    fn bridge_guard(flags: &RuntimeFlags) -> DialogueSession {
         let dialogue = dialogue(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/dialogue/bridge_guard_zone5.yaml"
         ));
-        for flags in [vec![], vec!["story_act2_started", "boss_zone04_defeated"]] {
-            let flags = RuntimeFlags::from_bootstrap(flags);
-            assert!(
-                DialogueSession::resolve("bridge_guard_zone5", None, dialogue.clone(), &flags)
-                    .unwrap()
-                    .is_none()
-            );
-        }
-        let flags = RuntimeFlags::from_bootstrap(["story_act2_started"]);
-        let mut session = DialogueSession::resolve("bridge_guard_zone5", None, dialogue, &flags)
+        DialogueSession::resolve("bridge_guard_zone5", None, dialogue, flags)
             .unwrap()
-            .unwrap();
-        assert!(session.current_line().starts_with("The ruins to the south"));
+            .unwrap()
+    }
+
+    fn advance_to_choices(session: &mut DialogueSession, flags: &RuntimeFlags) {
+        for _ in 0..32 {
+            if session.phase() == DialoguePhase::Choosing {
+                return;
+            }
+            session.confirm(flags);
+        }
+        panic!("dialogue never offered its choices");
+    }
+
+    /// Guardsman Pike is the corpus's branching conversation: three choices, one of them
+    /// visible-but-disabled until Bram's whetstone errand is done, each landing on its own
+    /// terminal node with its own effects.
+    #[test]
+    fn bridge_guard_zone5_branches_on_the_act_two_crossing() {
+        // Before Act II the crossing is not yet the party's business, but Pike still speaks.
+        let flags = RuntimeFlags::default();
+        let mut session = bridge_guard(&flags);
+        assert!(session.current_line().starts_with("Bridge is shut"));
         assert_eq!(
             complete_linear(&mut session, &flags),
             [DialogueActions::default()]
         );
+
+        // Act II without the errand: the vouching line is listed but cannot be taken.
+        let flags = RuntimeFlags::from_bootstrap(["story_act2_started"]);
+        let mut session = bridge_guard(&flags);
+        assert!(session.current_line().starts_with("Hold there"));
+        advance_to_choices(&mut session, &flags);
+        assert_eq!(session.choices().len(), 3);
+        assert!(session.choices()[0].enabled());
+        assert!(session.choices()[1].text().starts_with("Bram of Ardel"));
+        assert!(!session.choices()[1].enabled());
+        assert!(session.move_choice(1));
+        assert_eq!(session.confirm(&flags), DialogueEvent::Blocked);
+
+        // Pledging records the answer and hands over nothing.
+        assert!(session.move_choice(-1));
+        let DialogueEvent::Apply(actions) = session.confirm(&flags) else {
+            panic!("the pledge branch should apply and jump");
+        };
+        assert_eq!(
+            actions[1].set_flag.as_ref().unwrap().as_slice(),
+            ["bridge_zone5_answered", "bridge_zone5_pledged"]
+        );
+        assert!(actions.iter().all(|action| action.give_items.is_empty()));
+        assert!(session.current_line().starts_with("Then go,"));
+        assert!(
+            complete_linear(&mut session, &flags)
+                .iter()
+                .all(|action| action.give_items.is_empty())
+        );
+
+        // With the errand done the same row is selectable, and only it pays out.
+        let flags = RuntimeFlags::from_bootstrap(["story_act2_started", "sq_smith_done"]);
+        let mut session = bridge_guard(&flags);
+        advance_to_choices(&mut session, &flags);
+        assert!(session.choices()[1].enabled());
+        assert!(session.move_choice(1));
+        let DialogueEvent::Apply(actions) = session.confirm(&flags) else {
+            panic!("the vouched branch should apply and jump");
+        };
+        assert_eq!(
+            actions[1].set_flag.as_ref().unwrap().as_slice(),
+            ["bridge_zone5_answered", "bridge_zone5_vouched"]
+        );
+        assert!(actions.iter().all(|action| action.give_items.is_empty()));
+        let granted = complete_linear(&mut session, &flags);
+        assert_eq!(granted.len(), 1);
+        assert_eq!(
+            granted[0]
+                .give_items
+                .iter()
+                .map(|grant| (grant.id.as_str(), grant.qty.get()))
+                .collect::<Vec<_>>(),
+            [("potion", 3), ("antidote", 2)]
+        );
+
+        // The recorded branch changes what Pike says afterwards, and the offer is spent.
+        for (branch, expected) in [
+            (
+                "bridge_zone5_vouched",
+                "Still shut, and still me. Tell Bram",
+            ),
+            ("bridge_zone5_pledged", "Still shut, and still me. You said"),
+            ("bridge_zone5_answered", "Changed your mind"),
+        ] {
+            let flags = RuntimeFlags::from_bootstrap([
+                "story_act2_started",
+                "bridge_zone5_answered",
+                branch,
+            ]);
+            let mut session = bridge_guard(&flags);
+            assert!(session.current_line().starts_with(expected));
+            assert_eq!(
+                complete_linear(&mut session, &flags),
+                [DialogueActions::default()]
+            );
+        }
     }
 
     #[test]
