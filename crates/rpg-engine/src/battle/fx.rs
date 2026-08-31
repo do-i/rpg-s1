@@ -445,7 +445,7 @@ const fn event_attacker(event: &BattleEvent) -> Option<CombatantKey> {
 fn impact_cues(side: BattleSide, attacker_type: Option<EnemyType>) -> Vec<&'static str> {
     match side {
         BattleSide::Party => vec![enemy_attack_cue(attacker_type), cue::PARTY_HIT],
-        BattleSide::Enemy => vec![cue::ATK_SLASH],
+        BattleSide::Enemy => vec![cue::ATK_SLASH, cue::ENEMY_HIT],
     }
 }
 
@@ -712,7 +712,7 @@ mod tests {
                 },
                 None
             ),
-            vec![cue::ATK_SLASH]
+            vec![cue::ATK_SLASH, cue::ENEMY_HIT]
         );
         assert_eq!(
             sfx_cues_for_event(
@@ -738,7 +738,7 @@ mod tests {
                 },
                 None
             ),
-            vec![cue::ATK_SLASH, cue::ENEMY_DEATH]
+            vec![cue::ATK_SLASH, cue::ENEMY_HIT, cue::ENEMY_DEATH]
         );
         assert_eq!(
             sfx_cues_for_event(
@@ -926,7 +926,7 @@ mod tests {
                 },
                 Some(EnemyType::Beast)
             ),
-            vec![cue::ATK_SLASH]
+            vec![cue::ATK_SLASH, cue::ENEMY_HIT]
         );
     }
 

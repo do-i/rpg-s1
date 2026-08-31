@@ -42,6 +42,13 @@ battle:
   atk_sword:      sfx/dungeon/07_human_atk_sword_1.mp3
   atk_sword_2:    sfx/dungeon/07_human_atk_sword_2.mp3
   atk_sword_3:    sfx/dungeon/07_human_atk_sword_3.mp3
+  atk_sword_4:    sfx/dungeon/17_orc_atk_sword_1.mp3
+  atk_sword_5:    sfx/dungeon/17_orc_atk_sword_2.mp3
+  atk_sword_6:    sfx/dungeon/17_orc_atk_sword_3.mp3
+  # The struck enemy's own reaction, which the party's weapon cue never covered.
+  enemy_hit:      sfx/dungeon/21_orc_damage_1.mp3
+  enemy_hit_2:    sfx/dungeon/21_orc_damage_2.mp3
+  enemy_hit_3:    sfx/dungeon/21_orc_damage_3.mp3
 
 # Field-object and transition cues.
 world:
