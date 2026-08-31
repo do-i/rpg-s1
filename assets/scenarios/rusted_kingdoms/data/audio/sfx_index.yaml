@@ -24,10 +24,14 @@ battle:
   status_sleep:   sfx/buffs_heals/44_Sleep_01.mp3
   status_poison:  sfx/atk_magic/46_Poison_01.mp3
   speed_buff:     sfx/buffs_heals/48_Speed_up_02.mp3
+  # An enemy's basic attack, chosen by its authored type.
+  atk_claw:       sfx/battle/03_Claw_03.mp3
+  atk_sword:      sfx/dungeon/07_human_atk_sword_1.mp3
 
 # Field-object and transition cues.
 world:
   chest_open:     sfx/dungeon/01_chest_open_1.mp3
+  chest_close:    sfx/dungeon/02_chest_close_1.mp3
   door:           sfx/dungeon/05_door_open_1.mp3
   teleport:       sfx/player_movement/88_Teleport_02.mp3
 ui:
