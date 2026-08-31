@@ -11,6 +11,7 @@ pub enum AppState {
     FieldMenu,
     PostBattle,
     GameOver,
+    Credits,
 }
 
 /// Requests a top-level application state change without constructing the target scene.
@@ -80,11 +81,12 @@ mod tests {
             AppState::FieldMenu,
             AppState::PostBattle,
             AppState::GameOver,
+            AppState::Credits,
         ];
 
         assert_eq!(
             states.map(|state| format!("{state:?}")).join(","),
-            "Boot,Title,NameEntry,Dialogue,World,Battle,FieldMenu,PostBattle,GameOver"
+            "Boot,Title,NameEntry,Dialogue,World,Battle,FieldMenu,PostBattle,GameOver,Credits"
         );
     }
 

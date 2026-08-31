@@ -3,6 +3,7 @@ pub mod app_state;
 mod autosave;
 mod battle;
 mod cli;
+mod credits;
 mod debug_launch;
 mod dialogue_portrait;
 mod dialogue_sweep;
@@ -86,6 +87,7 @@ use bevy::{
     prelude::*,
     window::{PresentMode, PrimaryWindow, WindowPlugin},
 };
+use credits::CreditsPlugin;
 use debug_launch::DebugLaunchPlugin;
 use encounter_assets::EncounterAssetPlugin;
 use engine_settings::EngineSettings;
@@ -224,7 +226,8 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(FieldMenuPlugin)
     .add_plugins(BattleEntryPlugin)
     .add_plugins(BattlePlugin)
-    .add_plugins(GameOverPlugin);
+    .add_plugins(GameOverPlugin)
+    .add_plugins(CreditsPlugin);
     if let Some(automation) = arguments.automation {
         app.insert_resource(automation);
     }
