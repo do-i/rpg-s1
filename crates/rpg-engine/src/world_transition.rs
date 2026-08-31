@@ -12,6 +12,7 @@ use crate::{
     scenario_root::ScenarioRoot,
     scenario_spatial::collision_occupancy::CollisionOccupancy,
     scenario_spatial::{CardinalDirection, Position},
+    sfx_cue::{PlaySfx, cue},
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tmx_header::{TmxMapDocument, TmxPropertyValue},
     tsx_atlas_asset::TsxAtlasAsset,
@@ -434,6 +435,7 @@ fn detect_portal_entry(
     game: Option<Res<GameState>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut transition: ResMut<WorldTransition>,
+    mut sfx: MessageWriter<PlaySfx>,
 ) {
     if transition.phase != TransitionPhase::Idle {
         return;
@@ -460,8 +462,11 @@ fn detect_portal_entry(
         return;
     }
     let entered = transition.detector.entered(&portals, player_rect).cloned();
-    if let Some(portal) = entered {
-        transition.request(&portal, game.map().facing());
+    if let Some(portal) = entered
+        && transition.request(&portal, game.map().facing())
+    {
+        // Walking through a doorway was silent; the fade carried it alone.
+        sfx.write(PlaySfx::new(cue::DOOR));
     }
 }
 
