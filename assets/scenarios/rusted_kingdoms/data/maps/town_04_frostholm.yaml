@@ -9,23 +9,18 @@ inn:
 shop:
   items:
     - id: hi_potion
-      qty: 5
       buy_price: 500
       unlock_flag: story_act2_started
     - id: hi_ether
-      qty: 3
       buy_price: 600
       unlock_flag: story_act3_started
     - id: remedy
-      qty: 5
       buy_price: 300
       unlock_flag: story_act2_started
     - id: smelling_salts
-      qty: 5
       buy_price: 60
-      unlock_flag: story_act2_started
+      unlock_flag: story_act3_started
     - id: rest_capsule
-      qty: 3
       buy_price: 500
       unlock_flag: story_act3_started
 

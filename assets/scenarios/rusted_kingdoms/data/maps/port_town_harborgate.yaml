@@ -3,16 +3,27 @@ name: Harborgate
 warp_order: 60
 bgm: town.default
 
+inn:
+  cost: 180
+  position: [5, 9]
+
 shop:
   items:
     - id: potion
-      qty: 5
       buy_price: 100
       unlock_flag: story_quest_started
     - id: antidote
-      qty: 5
       buy_price: 80
       unlock_flag: story_quest_started
+    - id: echo_herb
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: remedy
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: hi_potion
+      buy_price: 500
+      unlock_flag: story_act2_started
 
 npcs:
   - id: harborgate_dockhand

@@ -25,7 +25,7 @@ shop:
       unlock_flag: story_quest_started
     - id: tent
       name: Tent
-      buy_price: 500
+      buy_price: 300
       tags: [consumable, recovery]
       unlock_flag: story_quest_started
     - id: antidote
