@@ -358,6 +358,9 @@ pub struct BattleEntry {
 pub enum BuildBattleError {
     UnknownEnemy(String),
     EmptyFormation,
+    /// A `start_battle` named an enemy the zone gates behind a key item. A scripted duel has no
+    /// second enemy to fall back to, so this would build an empty formation.
+    BarrieredScriptedEnemy(String),
 }
 
 impl fmt::Display for BuildBattleError {
@@ -367,6 +370,10 @@ impl fmt::Display for BuildBattleError {
                 write!(formatter, "encounter references unknown enemy `{id}`")
             }
             Self::EmptyFormation => formatter.write_str("encounter produced no eligible enemies"),
+            Self::BarrieredScriptedEnemy(id) => write!(
+                formatter,
+                "scripted battle enemy `{id}` is a barrier enemy of this zone"
+            ),
         }
     }
 }
@@ -468,6 +475,64 @@ pub(crate) fn build_battle_entry(
         barrier_messages,
         return_context,
     })
+}
+
+/// Builds the one-enemy battle a dialogue asks for with `on_complete.start_battle`.
+///
+/// Framing differences from a wandering encounter, all of them deliberate:
+///
+/// - The formation is exactly the named enemy, so `barrier_enemies` cannot apply — a barrier is
+///   the world's way of refusing a *random* fight the player has no key for, and an authored duel
+///   is not that. A barriered id would silently produce an empty formation, so it is rejected.
+/// - `boss` comes from the enemy's own definition, which is what selects the boss battle theme.
+/// - `boss_completion_flag` is cleared even for a boss-flagged enemy: the zone's completion flag
+///   belongs to the zone's own boss encounter, and the dialogue that started this fight already
+///   owns whatever story flags it means to set.
+///
+/// The zone is still the source of the battle background, so a map hosting a scripted battle
+/// needs its `data/encount/<map_id>.yaml` — which may declare `density: 0.0` and no `entries`.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors build_battle_entry, which reads every catalog a battle is assembled from"
+)]
+pub(crate) fn build_scripted_battle_entry(
+    enemy_id: &str,
+    zone: &EncounterZone,
+    enemy_catalog: &EnemyCatalog,
+    item_catalog: &FieldMenuCatalog,
+    party: &RuntimeParty,
+    repository: &RuntimeRepository,
+    flags: &crate::runtime_flags::RuntimeFlags,
+    return_context: PreBattleReturnContext,
+) -> Result<BattleEntry, BuildBattleError> {
+    let enemy = enemy_catalog
+        .enemy(enemy_id)
+        .ok_or_else(|| BuildBattleError::UnknownEnemy(enemy_id.to_owned()))?;
+    if zone
+        .barrier_enemies
+        .iter()
+        .any(|barrier| barrier.enemy_id == enemy_id)
+    {
+        return Err(BuildBattleError::BarrieredScriptedEnemy(
+            enemy_id.to_owned(),
+        ));
+    }
+    let boss = enemy.boss;
+    let formation = [enemy_id.to_owned()];
+    let mut entry = build_battle_entry(
+        &format!("scripted:{enemy_id}"),
+        &formation,
+        zone,
+        enemy_catalog,
+        item_catalog,
+        party,
+        repository,
+        flags,
+        boss,
+        return_context,
+    )?;
+    entry.boss_completion_flag = None;
+    Ok(entry)
 }
 
 fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
@@ -732,6 +797,143 @@ mod tests {
         );
         assert_eq!(entry.bgm_key, "battle.normal");
         assert_eq!(entry.return_context, context);
+    }
+
+    /// A zone whose boss encounter is already spoken for, to prove a scripted duel fought on the
+    /// same map does not steal the boss's completion flag.
+    fn zone_with_boss() -> EncounterZone {
+        scenario_yaml::from_str(
+            "id: zone_mossy_track\n\
+             name: Mossy Track\n\
+             density: 0.35\n\
+             background: moss-track-bg-1280x468\n\
+             boss:\n\
+             \x20 id: clockwork_tyrant\n\
+             \x20 on_complete:\n\
+             \x20   set_flag: boss_mossy_track_defeated\n",
+        )
+        .unwrap()
+    }
+
+    fn scripted_context() -> PreBattleReturnContext {
+        PreBattleReturnContext {
+            map_id: "zone_mossy_track".to_owned(),
+            position: Position::new(3, 4),
+            facing: CardinalDirection::Up,
+            world_bgm_key: Some("zone.moss".to_owned()),
+            world_enemies: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_scripted_battle_fights_exactly_the_named_enemy() {
+        let game = game();
+        let entry = build_scripted_battle_entry(
+            "moss_hare",
+            &zone(),
+            &enemies(),
+            &FieldMenuCatalog::default(),
+            game.party(),
+            game.repository(),
+            game.flags(),
+            scripted_context(),
+        )
+        .unwrap();
+        let enemy_ids = entry
+            .participants
+            .iter()
+            .filter(|participant| participant.side == BattleSide::Enemy)
+            .map(|participant| participant.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(enemy_ids, ["moss_hare"]);
+        assert_eq!(entry.encounter_id, "scripted:moss_hare");
+        assert_eq!(entry.background_id, "moss-track-bg-1280x468");
+        assert_eq!(entry.bgm_key, "battle.normal");
+        assert_eq!(entry.return_context, scripted_context());
+    }
+
+    #[test]
+    fn a_boss_flagged_enemy_gets_boss_music_but_never_the_zone_boss_flag() {
+        let game = game();
+        let zone = zone_with_boss();
+        // The zone's own boss encounter still closes its flag.
+        let wandering = build_battle_entry(
+            "zone_mossy_track:boss",
+            &["clockwork_tyrant".to_owned()],
+            &zone,
+            &enemies(),
+            &FieldMenuCatalog::default(),
+            game.party(),
+            game.repository(),
+            game.flags(),
+            true,
+            scripted_context(),
+        )
+        .unwrap();
+        assert_eq!(
+            wandering.boss_completion_flag.as_deref(),
+            Some("boss_mossy_track_defeated")
+        );
+
+        let scripted = build_scripted_battle_entry(
+            "clockwork_tyrant",
+            &zone,
+            &enemies(),
+            &FieldMenuCatalog::default(),
+            game.party(),
+            game.repository(),
+            game.flags(),
+            scripted_context(),
+        )
+        .unwrap();
+        assert_eq!(scripted.bgm_key, "battle.boss");
+        assert_eq!(scripted.boss_completion_flag, None);
+    }
+
+    #[test]
+    fn a_scripted_battle_rejects_an_unknown_or_barriered_enemy() {
+        let game = game();
+        assert_eq!(
+            build_scripted_battle_entry(
+                "no_such_enemy",
+                &zone(),
+                &enemies(),
+                &FieldMenuCatalog::default(),
+                game.party(),
+                game.repository(),
+                game.flags(),
+                scripted_context(),
+            ),
+            Err(BuildBattleError::UnknownEnemy("no_such_enemy".to_owned()))
+        );
+        // A duel against an enemy this zone gates behind a key item would filter to an empty
+        // formation, so it is refused by name instead of failing as `EmptyFormation`.
+        let barriered: EncounterZone = scenario_yaml::from_str(
+            "id: zone_mossy_track\n\
+             name: Mossy Track\n\
+             density: 0.35\n\
+             background: moss-track-bg-1280x468\n\
+             barrier_enemies:\n\
+             \x20 - id: veil_wraith\n\
+             \x20   requires_item: invented_reed_charm\n\
+             \x20   blocked_message: The reeds turn aside your strike.\n",
+        )
+        .unwrap();
+        assert_eq!(
+            build_scripted_battle_entry(
+                "veil_wraith",
+                &barriered,
+                &enemies(),
+                &FieldMenuCatalog::default(),
+                game.party(),
+                game.repository(),
+                game.flags(),
+                scripted_context(),
+            ),
+            Err(BuildBattleError::BarrieredScriptedEnemy(
+                "veil_wraith".to_owned()
+            ))
+        );
     }
 
     #[test]
