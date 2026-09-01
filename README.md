@@ -239,6 +239,15 @@ evidence. Do not publish or redistribute the current asset bundle until every
 shipped entry is approved, replaced, or excluded; local parity use is not
 public redistribution permission.
 
+### Development assistance
+
+Large parts of this port were written with [Claude
+Code](https://claude.com/claude-code) (Anthropic) acting as a pair programmer,
+under human direction and review. This note is the project's single record of
+that; individual commits carry no `Co-Authored-By` or session trailers, so
+`git log` stays readable. Commit messages here are a subject line only — put
+the reasoning in `plans/`, `docs/`, or the pull request instead.
+
 ## Maintainer release flow
 
 `dev` is the integration branch. `main` only fast-forwards to a validated
