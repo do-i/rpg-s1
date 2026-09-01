@@ -448,6 +448,7 @@ def: 22
 mres: 19
 dex: 24
 exp: 235
+gp: 235
 drops:
   mc:
     - size: M
@@ -482,6 +483,7 @@ def: 22
 mres: 19
 dex: 25
 exp: 248
+gp: 248
 drops:
   mc:
     - size: M
@@ -665,6 +667,7 @@ def: 32
 mres: 28
 dex: 28
 exp: 615
+gp: 615
 drops:
   mc:
     - size: L

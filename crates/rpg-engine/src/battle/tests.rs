@@ -222,6 +222,9 @@ fn reward_enemy(id: &str, index: usize) -> BattleCombatant {
     enemy.boss = definition.boss;
     enemy.enemy_type = Some(definition.enemy_type);
     enemy.experience_yield = definition.experience.get();
+    enemy.gold_yield = definition
+        .gold
+        .map_or_else(|| definition.experience.get() / 3, |gold| gold.get());
     enemy.drops = Some(definition.drops);
     enemy
 }
@@ -249,6 +252,7 @@ pub(super) fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> Ba
         immunities: Vec::new(),
         behavior: None,
         experience_yield: 0,
+        gold_yield: 0,
         drops: None,
     }
 }
@@ -1301,9 +1305,13 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
         game.repository().item_tags("mc_xs").collect::<Vec<_>>(),
         ["magic_core"]
     );
-    assert_eq!(rewards.gp_gained, 0);
+    // B3.2: combat now pays gold. This enemy has no authored `gp`, so it yields the
+    // EXP-derived default, and the reward is actually credited to the party wallet -- the
+    // downstream `if gp_gained > 0` branch was dead in both engines until this row.
+    assert_eq!(rewards.gp_gained, 12);
+    assert_eq!(game.repository().gp(), 12);
     let summary = rewards.summary_lines();
-    assert_eq!(summary[0], "EXP 400  GP 0");
+    assert_eq!(summary[0], "EXP 400  GP 12");
     assert_eq!(summary[1], "Aric +400 EXP");
     assert!(summary[2].contains("Magic Core (XS) x2"));
     assert!(summary[2].contains("Magic Core (S) x1"));

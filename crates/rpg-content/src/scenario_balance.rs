@@ -41,6 +41,7 @@ impl Default for BalanceData {
                 flee_base_chance: UnitInterval::new(0.30).expect("constant is a unit interval"),
                 flee_rogue_dex_bonus: UnitInterval::new(0.02).expect("constant is a unit interval"),
                 party_defense_con_divisor: default_party_defense_con_divisor(),
+                gp_per_exp_percent: default_gp_per_exp_percent(),
             },
             spawner: SpawnerBalance {
                 rogue_chase_reduction: 2,
@@ -90,6 +91,16 @@ pub struct BattleBalance {
     /// and pins all incoming physical damage to the `max(1)` floor. Defaults as above.
     #[serde(default = "default_party_defense_con_divisor")]
     pub party_defense_con_divisor: PositiveInteger,
+    /// Percent of an enemy's EXP yield paid as gold when it has no authored `gp` (B3.2). Neither
+    /// engine paid combat gold at all; magic-core exchange was the only faucet, and it swings
+    /// from 8 GP per kill in zone 1 to over 5,000 in zone 10. Deriving from EXP keeps the new
+    /// faucet meaningful early, where money is tight, and negligible late, where cores dominate.
+    #[serde(default = "default_gp_per_exp_percent")]
+    pub gp_per_exp_percent: PositiveInteger,
+}
+
+fn default_gp_per_exp_percent() -> PositiveInteger {
+    PositiveInteger::new(33).expect("constant is nonzero")
 }
 
 fn default_hp_growth_con_divisor() -> PositiveInteger {

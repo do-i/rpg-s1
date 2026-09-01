@@ -49,6 +49,10 @@ pub struct EnemyDefinition {
     pub magic_resistance: NonZeroU32,
     pub dexterity: NonZeroU32,
     pub experience: NonZeroU32,
+    /// Gold this enemy pays out (B3.2). `None` means "derive it from `experience`" via
+    /// `BattleBalance::gp_per_exp_percent`; an authored value overrides that for enemies whose
+    /// theme warrants it (cutpurses, pirates). Neither engine paid combat gold at all before.
+    pub gold: Option<NonZeroU32>,
     pub size: EnemySize,
     pub sprite_scale_percent: NonZeroU32,
     pub drops: EnemyDrops,
@@ -102,6 +106,8 @@ struct EnemyDocument {
     dexterity: NonZeroU32,
     #[serde(rename = "exp")]
     experience: NonZeroU32,
+    #[serde(default, rename = "gp")]
+    gold: Option<NonZeroU32>,
     size: EnemySize,
     #[serde(default = "default_sprite_scale")]
     sprite_scale: NonZeroU32,
@@ -176,6 +182,7 @@ impl EnemyDocument {
             magic_resistance: self.magic_resistance,
             dexterity: self.dexterity,
             experience: self.experience,
+            gold: self.gold,
             size: self.size,
             sprite_scale_percent: self.sprite_scale,
             drops: self.drops,

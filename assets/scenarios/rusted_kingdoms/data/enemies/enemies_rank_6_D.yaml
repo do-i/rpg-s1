@@ -12,6 +12,7 @@ def: 8
 mres: 6
 dex: 15
 exp: 65
+gp: 65
 drops:
   mc:
     - size: XS
@@ -48,6 +49,7 @@ def: 8
 mres: 6
 dex: 16
 exp: 70
+gp: 70
 drops:
   mc:
     - size: XS
@@ -84,6 +86,7 @@ def: 9
 mres: 7
 dex: 14
 exp: 72
+gp: 72
 drops:
   mc:
     - size: XS
@@ -286,6 +289,7 @@ def: 7
 mres: 6
 dex: 16
 exp: 70
+gp: 70
 drops:
   mc:
     - size: XS
