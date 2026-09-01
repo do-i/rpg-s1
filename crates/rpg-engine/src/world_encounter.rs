@@ -738,6 +738,17 @@ fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
     ))
 }
 
+/// Resolves the loaded scenario's battle balance, falling back to the built-in defaults when no
+/// balance asset is present (the same pattern `update_world_enemies` uses for spawner values).
+fn resolve_battle_balance(
+    balances: &Assets<BalanceData>,
+) -> rpg_content::scenario_balance::BattleBalance {
+    balances.iter().next().map_or_else(
+        || BalanceData::default().battle,
+        |(_, balance)| balance.battle.clone(),
+    )
+}
+
 #[derive(SystemParam)]
 struct EnemySimulationAssets<'w> {
     collision: Option<Res<'w, WorldCollision>>,
@@ -997,6 +1008,7 @@ fn detect_enemy_contact(
     item_catalog: Res<FieldMenuCatalog>,
     zones: Res<Assets<EncounterZone>>,
     metadata_assets: Res<Assets<MapMetadata>>,
+    balances: Res<Assets<BalanceData>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
     mut battle_transition: ResMut<BattleTransition>,
@@ -1073,6 +1085,7 @@ fn detect_enemy_contact(
         game.party(),
         game.repository(),
         game.flags(),
+        &resolve_battle_balance(&balances),
         contact.boss,
         context,
     ) {
@@ -1127,6 +1140,7 @@ fn start_scripted_battle(
     item_catalog: Res<FieldMenuCatalog>,
     zones: Res<Assets<EncounterZone>>,
     metadata_assets: Res<Assets<MapMetadata>>,
+    balances: Res<Assets<BalanceData>>,
     mut state: ResMut<WorldEncounterState>,
     mut battle_transition: ResMut<BattleTransition>,
     enemies: Query<&WorldEnemy>,
@@ -1204,6 +1218,7 @@ fn start_scripted_battle(
         game.party(),
         game.repository(),
         game.flags(),
+        &resolve_battle_balance(&balances),
         context,
     ) {
         Ok(entry) => entry,
@@ -1675,6 +1690,25 @@ mod tests {
                 .unwrap();
             derived_stats(member, world.resource::<FieldMenuCatalog>())
         };
+        // B3.1: battle DEF is no longer the CON total. It is equipment CON plus a divided
+        // innate share, so armor -- not the level curve -- drives survivability.
+        let expected_party_defense = {
+            let world = app.world();
+            let member = world
+                .resource::<GameState>()
+                .party()
+                .members()
+                .next()
+                .unwrap();
+            crate::field_menu_domain::battle_defense(
+                member,
+                world.resource::<FieldMenuCatalog>(),
+                BalanceData::default()
+                    .battle
+                    .party_defense_con_divisor
+                    .get(),
+            )
+        };
         let mut query = app.world_mut().query::<&WorldEnemy>();
         let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
         assert_eq!(enemies.len(), 6);
@@ -1756,7 +1790,7 @@ mod tests {
             .find(|participant| participant.side == crate::encounter::BattleSide::Party)
             .unwrap();
         assert_eq!(party.attack, i64::from(expected_party_stats.strength));
-        assert_eq!(party.defense, i64::from(expected_party_stats.constitution));
+        assert_eq!(party.defense, i64::from(expected_party_defense));
         assert_eq!(
             party.magic_resistance,
             i64::from(expected_party_stats.intelligence)
@@ -2070,6 +2104,25 @@ mod tests {
                 .unwrap();
             derived_stats(member, world.resource::<FieldMenuCatalog>())
         };
+        // B3.1: battle DEF is no longer the CON total. It is equipment CON plus a divided
+        // innate share, so armor -- not the level curve -- drives survivability.
+        let expected_party_defense = {
+            let world = app.world();
+            let member = world
+                .resource::<GameState>()
+                .party()
+                .members()
+                .next()
+                .unwrap();
+            crate::field_menu_domain::battle_defense(
+                member,
+                world.resource::<FieldMenuCatalog>(),
+                BalanceData::default()
+                    .battle
+                    .party_defense_con_divisor
+                    .get(),
+            )
+        };
         let mut query = app.world_mut().query::<&WorldEnemy>();
         let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
         assert_eq!(enemies.len(), 19, "18 spawn_tile entries plus the boss");
@@ -2157,7 +2210,7 @@ mod tests {
             .find(|participant| participant.side == crate::encounter::BattleSide::Party)
             .unwrap();
         assert_eq!(party.attack, i64::from(expected_party_stats.strength));
-        assert_eq!(party.defense, i64::from(expected_party_stats.constitution));
+        assert_eq!(party.defense, i64::from(expected_party_defense));
         assert_eq!(
             party.magic_resistance,
             i64::from(expected_party_stats.intelligence)
@@ -2332,6 +2385,7 @@ mod tests {
                 game.party(),
                 game.repository(),
                 game.flags(),
+                &BalanceData::default().battle,
                 false,
                 barrier_context.clone(),
             )
@@ -2364,6 +2418,7 @@ mod tests {
                 game.party(),
                 game.repository(),
                 game.flags(),
+                &BalanceData::default().battle,
                 false,
                 barrier_context,
             )

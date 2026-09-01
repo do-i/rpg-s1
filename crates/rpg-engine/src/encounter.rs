@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, error::Error, fmt};
 use bevy::prelude::Resource;
 
 use crate::{
-    field_menu_domain::{FieldMenuCatalog, derived_stats},
+    field_menu_domain::{FieldMenuCatalog, battle_defense, derived_stats},
     gameplay_rng::GameplayRng,
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
@@ -393,6 +393,7 @@ pub(crate) fn build_battle_entry(
     party: &RuntimeParty,
     repository: &RuntimeRepository,
     flags: &crate::runtime_flags::RuntimeFlags,
+    battle_balance: &rpg_content::scenario_balance::BattleBalance,
     boss: bool,
     return_context: PreBattleReturnContext,
 ) -> Result<BattleEntry, BuildBattleError> {
@@ -410,7 +411,11 @@ pub(crate) fn build_battle_entry(
                 mana: member.mana(),
                 max_mana: member.max_mana(),
                 attack: i64::from(stats.strength),
-                defense: i64::from(stats.constitution),
+                defense: i64::from(battle_defense(
+                    member,
+                    item_catalog,
+                    battle_balance.party_defense_con_divisor.get(),
+                )),
                 magic_resistance: i64::from(stats.intelligence),
                 dexterity: i64::from(stats.dexterity),
                 abilities: item_catalog
@@ -503,6 +508,7 @@ pub(crate) fn build_scripted_battle_entry(
     party: &RuntimeParty,
     repository: &RuntimeRepository,
     flags: &crate::runtime_flags::RuntimeFlags,
+    battle_balance: &rpg_content::scenario_balance::BattleBalance,
     return_context: PreBattleReturnContext,
 ) -> Result<BattleEntry, BuildBattleError> {
     let enemy = enemy_catalog
@@ -528,6 +534,7 @@ pub(crate) fn build_scripted_battle_entry(
         party,
         repository,
         flags,
+        battle_balance,
         boss,
         return_context,
     )?;
@@ -771,6 +778,7 @@ mod tests {
             game.party(),
             game.repository(),
             game.flags(),
+            &BalanceData::default().battle,
             false,
             context.clone(),
         )
@@ -905,6 +913,7 @@ mod tests {
             game.party(),
             game.repository(),
             game.flags(),
+            &BalanceData::default().battle,
             scripted_context(),
         )
         .unwrap();
@@ -932,6 +941,7 @@ mod tests {
             game.party(),
             game.repository(),
             game.flags(),
+            &BalanceData::default().battle,
             scripted_context(),
         )
         .unwrap();
@@ -962,6 +972,7 @@ mod tests {
             game.party(),
             game.repository(),
             game.flags(),
+            &BalanceData::default().battle,
             true,
             scripted_context(),
         )
@@ -979,6 +990,7 @@ mod tests {
             game.party(),
             game.repository(),
             game.flags(),
+            &BalanceData::default().battle,
             scripted_context(),
         )
         .unwrap();
@@ -998,6 +1010,7 @@ mod tests {
                 game.party(),
                 game.repository(),
                 game.flags(),
+                &BalanceData::default().battle,
                 scripted_context(),
             ),
             Err(BuildBattleError::UnknownEnemy("no_such_enemy".to_owned()))
@@ -1024,6 +1037,7 @@ mod tests {
                 game.party(),
                 game.repository(),
                 game.flags(),
+                &BalanceData::default().battle,
                 scripted_context(),
             ),
             Err(BuildBattleError::BarrieredScriptedEnemy(
@@ -1053,6 +1067,7 @@ mod tests {
                 game.party(),
                 game.repository(),
                 game.flags(),
+                &BalanceData::default().battle,
                 false,
                 context,
             ),

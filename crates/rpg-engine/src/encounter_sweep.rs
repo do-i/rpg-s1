@@ -345,6 +345,9 @@ fn construct(
         context.game.party(),
         context.game.repository(),
         context.game.flags(),
+        // The sweep checks that every encounter is constructible, not its damage numbers, so
+        // the built-in balance is sufficient here.
+        &rpg_content::scenario_balance::BalanceData::default().battle,
         boss,
         PreBattleReturnContext {
             map_id: map_id.to_owned(),

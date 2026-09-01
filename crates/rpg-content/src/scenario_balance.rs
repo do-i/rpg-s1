@@ -30,6 +30,7 @@ impl Default for BalanceData {
             progression: ProgressionBalance {
                 level_cap: PositiveInteger::new(100).expect("constant is nonzero"),
                 exp_cap: PositiveInteger::new(1_000_000).expect("constant is nonzero"),
+                hp_growth_con_divisor: default_hp_growth_con_divisor(),
             },
             economy: EconomyBalance {
                 gp_cap: PositiveInteger::new(8_000_000).expect("constant is nonzero"),
@@ -39,6 +40,7 @@ impl Default for BalanceData {
             battle: BattleBalance {
                 flee_base_chance: UnitInterval::new(0.30).expect("constant is a unit interval"),
                 flee_rogue_dex_bonus: UnitInterval::new(0.02).expect("constant is a unit interval"),
+                party_defense_con_divisor: default_party_defense_con_divisor(),
             },
             spawner: SpawnerBalance {
                 rogue_chase_reduction: 2,
@@ -59,6 +61,12 @@ impl Default for BalanceData {
 pub struct ProgressionBalance {
     pub level_cap: PositiveInteger,
     pub exp_cap: PositiveInteger,
+    /// Divides post-growth CON before the flat bonus in the per-level HP gain (B3.1). The source
+    /// adds raw CON, which inflates level-22 HP to ~1,280 against a 78-ATK final boss; dividing
+    /// lands it near 420, the scale the shipped potion ladder was authored for. Defaults so a
+    /// scenario predating the field still loads.
+    #[serde(default = "default_hp_growth_con_divisor")]
+    pub hp_growth_con_divisor: PositiveInteger,
 }
 
 /// Economy inventory limits.
@@ -77,6 +85,19 @@ pub struct EconomyBalance {
 pub struct BattleBalance {
     pub flee_base_chance: UnitInterval,
     pub flee_rogue_dex_bonus: UnitInterval,
+    /// Divides a party member's innate CON when deriving battle defense, so equipment CON is the
+    /// dominant term (B3.1). The source uses raw CON, which exceeds every enemy ATK in the game
+    /// and pins all incoming physical damage to the `max(1)` floor. Defaults as above.
+    #[serde(default = "default_party_defense_con_divisor")]
+    pub party_defense_con_divisor: PositiveInteger,
+}
+
+fn default_hp_growth_con_divisor() -> PositiveInteger {
+    PositiveInteger::new(4).expect("constant is nonzero")
+}
+
+fn default_party_defense_con_divisor() -> PositiveInteger {
+    PositiveInteger::new(10).expect("constant is nonzero")
 }
 
 /// Field enemy-spawner modifiers.

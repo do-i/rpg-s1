@@ -7,6 +7,9 @@
 progression:
   level_cap: 100
   exp_cap:   1_000_000
+  # B3.1: per-level HP gain is con / divisor + 6. The source added raw CON, which
+  # ran level-22 HP to ~1,280 while the strongest enemy hits for 88.
+  hp_growth_con_divisor: 4
 
 economy:
   gp_cap:            8_000_000
@@ -16,6 +19,9 @@ economy:
 battle:
   flee_base_chance:     0.30
   flee_rogue_dex_bonus: 0.02
+  # B3.1: party battle DEF is equipment CON + innate con / divisor, so armor is the
+  # dominant term. The source used raw CON, which outran every enemy ATK in the game.
+  party_defense_con_divisor: 10
 
 spawner:
   rogue_chase_reduction:    2      # tiles

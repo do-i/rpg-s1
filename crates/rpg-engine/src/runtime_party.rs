@@ -193,6 +193,7 @@ mod tests {
         ProgressionBalance {
             level_cap: PositiveInteger::new(100).expect("test level cap is positive"),
             exp_cap: PositiveInteger::new(1_000_000).expect("test EXP cap is positive"),
+            hp_growth_con_divisor: PositiveInteger::new(4).expect("test divisor is positive"),
         }
     }
 
