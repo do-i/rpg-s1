@@ -27,3 +27,78 @@
   buy_price: null
   sell_price: 0
   description: "A sacred charm. Blocks Dullahan's Death Gaze."
+
+# --- B3.6: the shipped accessory slot held three entries, two of them rogue-only and none
+# granting a stat, so four of the five classes had exactly one accessory in the whole game
+# (holy_talisman, from the Ashenveil oracle) and it changed no number. These use the new
+# attribute shape and are open to every class, giving the slot a real choice per act.
+
+- id: leather_band
+  name: Leather Band
+  type: accessory
+  equippable: [all]
+  stats:
+    str: 2
+  buy_price: 400
+  sell_price: 200
+  description: "A worn wrist-wrap. Steadies a grip that has started to shake."
+
+- id: silver_ring
+  name: Silver Ring
+  type: accessory
+  equippable: [all]
+  stats:
+    int: 3
+  buy_price: 900
+  sell_price: 450
+  description: "Plain, unmarked, cold. Thought runs clearer with it on."
+
+- id: swift_anklet
+  name: Swift Anklet
+  type: accessory
+  equippable: [all]
+  stats:
+    dex: 4
+  buy_price: 1100
+  sell_price: 550
+  description: "Light chain at the ankle. The step lands before you decide to take it."
+
+- id: guardian_pendant
+  name: Guardian Pendant
+  type: accessory
+  equippable: [all]
+  stats:
+    con: 4
+  buy_price: 1200
+  sell_price: 600
+  description: "A soldier's charm, worn smooth. Someone came home wearing this."
+
+- id: titan_belt
+  name: Titan Belt
+  type: accessory
+  equippable: [all]
+  stats:
+    str: 6
+  buy_price: 2200
+  sell_price: 1100
+  description: "Broad and studded. The weight of it argues for standing your ground."
+
+- id: aegis_brooch
+  name: Aegis Brooch
+  type: accessory
+  equippable: [all]
+  stats:
+    con: 5
+  buy_price: 2400
+  sell_price: 1200
+  description: "A clasp of grey metal that turns a blow a hand's width wide."
+
+- id: archmage_seal
+  name: Archmage's Seal
+  type: accessory
+  equippable: [all]
+  stats:
+    int: 7
+  buy_price: 2600
+  sell_price: 1300
+  description: "The sigil of an order that burned. The authority in it did not."

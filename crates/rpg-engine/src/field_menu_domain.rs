@@ -21,8 +21,8 @@ use crate::{
     },
     scenario_inventory::ScenarioInventory,
     scenario_item::{
-        BodyStats, FieldUseCatalogFile, FieldUseDefinition, FullRecoveryTarget, HelmetStats,
-        ItemCatalogFile, ItemDefinition, ShieldStats, WeaponStats,
+        AccessoryStats, BodyStats, FieldUseCatalogFile, FieldUseDefinition, FullRecoveryTarget,
+        HelmetStats, ItemCatalogFile, ItemDefinition, ShieldStats, WeaponStats,
     },
     scenario_map::MapMetadata,
     scenario_quest::{QuestCatalogFile, QuestDefinition},
@@ -925,8 +925,14 @@ fn add_item_stats(totals: &mut DerivedStats, item: &ItemDefinition) {
             } = value.stats;
             add(None, dex, Some(con), intelligence);
         }
-        ItemDefinition::Accessory(_)
-        | ItemDefinition::Consumable(_)
+        // B3.6: accessories now contribute attributes. The encounter and ability-block shapes
+        // still grant no stats -- they act through the spawner and the boss move set instead.
+        ItemDefinition::Accessory(value) => {
+            if let AccessoryStats::Attribute(stats) = &value.stats {
+                add(stats.strength, stats.dex, stats.con, stats.intelligence);
+            }
+        }
+        ItemDefinition::Consumable(_)
         | ItemDefinition::Material(_)
         | ItemDefinition::Key(_)
         | ItemDefinition::MagicCore(_) => {}
@@ -1379,6 +1385,54 @@ pub(crate) mod tests {
         assert_eq!((goblin_attack - source_defense).max(1), 1);
     }
 
+    /// B3.6 regression. `AccessoryStats` shipped with only the encounter and ability-block
+    /// shapes, so `add_item_stats` matched accessories to a no-op and the slot could not change
+    /// a single number. Two of the three shipped accessories were rogue-only on top of that,
+    /// leaving four of five classes with one accessory that did nothing.
+    #[test]
+    fn accessories_grant_attributes_and_reach_every_class() {
+        let catalog = catalog();
+        let mut game = game([]);
+        let member = game.party_mut().member_mut("aric").unwrap();
+        let before = derived_stats(member, &catalog);
+
+        // A stat accessory reaches the derived totals.
+        member
+            .equip(EquipmentSlot::Accessory, "archmage_seal")
+            .unwrap();
+        let after = derived_stats(member, &catalog);
+        assert_eq!(after.intelligence - before.intelligence, 7);
+
+        // A CON accessory reaches battle defense too, since equipment CON is now the term
+        // that dominates it.
+        let divisor = BalanceData::default()
+            .battle
+            .party_defense_con_divisor
+            .get();
+        let plain = battle_defense(member, &catalog, divisor);
+        member
+            .equip(EquipmentSlot::Accessory, "aegis_brooch")
+            .unwrap();
+        assert_eq!(battle_defense(member, &catalog, divisor) - plain, 5);
+
+        // The encounter shape still grants no attributes -- it acts through the spawner.
+        member
+            .equip(EquipmentSlot::Accessory, "lure_charm")
+            .unwrap();
+        assert_eq!(derived_stats(member, &catalog), before);
+
+        // A Hero could not equip either encounter accessory; both are rogue-only.
+        let hero = game.party().member("aric").unwrap();
+        let cloak = catalog.item("stealth_cloak").unwrap();
+        assert!(matches!(
+            can_equip(hero, cloak, &catalog),
+            Err(MenuMutationError::ClassRestricted)
+        ));
+        for id in ["leather_band", "titan_belt", "archmage_seal"] {
+            assert!(can_equip(hero, catalog.item(id).unwrap(), &catalog).is_ok());
+        }
+    }
+
     pub(crate) fn catalog() -> FieldMenuCatalog {
         let item_documents = [
             include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/accessories.yaml"),
@@ -1486,9 +1540,9 @@ pub(crate) mod tests {
     #[test]
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
-        // 176 + 24 Act 3-4 equipment entries (B3.3/B3.4) + the Revival Herb (B3.5).
-        assert_eq!(catalog.items.len(), 201);
-        assert_eq!(catalog.item_order.len(), 201);
+        // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6).
+        assert_eq!(catalog.items.len(), 208);
+        assert_eq!(catalog.item_order.len(), 208);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [

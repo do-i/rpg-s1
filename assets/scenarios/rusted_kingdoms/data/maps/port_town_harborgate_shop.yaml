@@ -103,3 +103,9 @@ armor_shop:
     - id: stealth_cloak
       buy_price: 800
       unlock_flag: story_act2_started
+    - id: leather_band
+      buy_price: 400
+      unlock_flag: story_quest_started
+    - id: silver_ring
+      buy_price: 900
+      unlock_flag: story_act2_started

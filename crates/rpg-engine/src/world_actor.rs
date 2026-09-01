@@ -831,7 +831,8 @@ mod tests {
 
         assert_eq!(shop.shop.as_ref().unwrap().items.len(), 5);
         assert_eq!(shop.weapon_shop.as_ref().unwrap().items.len(), 6);
-        assert_eq!(shop.armor_shop.as_ref().unwrap().items.len(), 5);
+        // 5 + the Leather Band, the first of the B3.6 stat accessories.
+        assert_eq!(shop.armor_shop.as_ref().unwrap().items.len(), 6);
         let expected_shop_npcs = [
             (
                 "item_shop_keeper",

@@ -151,3 +151,12 @@ armor_shop:
     - id: adamantite_mail
       buy_price: 1600
       unlock_flag: story_act3_started
+    - id: silver_ring
+      buy_price: 900
+      unlock_flag: story_act2_started
+    - id: swift_anklet
+      buy_price: 1100
+      unlock_flag: story_act3_started
+    - id: guardian_pendant
+      buy_price: 1200
+      unlock_flag: story_act3_started

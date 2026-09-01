@@ -100,3 +100,6 @@ armor_shop:
     - id: light_armor
       buy_price: 300
       unlock_flag: story_act2_started
+    - id: leather_band
+      buy_price: 400
+      unlock_flag: story_quest_started

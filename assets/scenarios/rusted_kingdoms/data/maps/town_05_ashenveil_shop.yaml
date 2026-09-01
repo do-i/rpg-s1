@@ -178,3 +178,18 @@ armor_shop:
     - id: hiiroikane_mail
       buy_price: 3200
       unlock_flag: story_act4_started
+    - id: swift_anklet
+      buy_price: 1100
+      unlock_flag: story_act3_started
+    - id: guardian_pendant
+      buy_price: 1200
+      unlock_flag: story_act3_started
+    - id: titan_belt
+      buy_price: 2200
+      unlock_flag: story_act4_started
+    - id: aegis_brooch
+      buy_price: 2400
+      unlock_flag: story_act4_started
+    - id: archmage_seal
+      buy_price: 2600
+      unlock_flag: story_act4_started
