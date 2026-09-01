@@ -29,6 +29,16 @@
   sell_price: 0
   description: "Legendary panacea. Fully restores HP and MP for one ally."
 
+- id: revival_herb
+  name: Revival Herb
+  type: consumable
+  use_context: [battle, world_map, town, dungeon]
+  effect:
+    revive_hp_pct: 0.5
+  buy_price: 800
+  sell_price: 400
+  description: "A bitter root that argues with death. Revives a fallen ally at half strength."
+
 - id: ether
   name: Ether
   type: consumable

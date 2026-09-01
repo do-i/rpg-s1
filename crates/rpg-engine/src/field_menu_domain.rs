@@ -1486,11 +1486,11 @@ pub(crate) mod tests {
     #[test]
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
-        // 176 + the 24 Act 3-4 equipment entries added by B3.3/B3.4.
-        assert_eq!(catalog.items.len(), 200);
-        assert_eq!(catalog.item_order.len(), 200);
+        // 176 + 24 Act 3-4 equipment entries (B3.3/B3.4) + the Revival Herb (B3.5).
+        assert_eq!(catalog.items.len(), 201);
+        assert_eq!(catalog.item_order.len(), 201);
         assert_eq!(catalog.classes.len(), 5);
-        assert_eq!(catalog.field_uses.len(), 13);
+        assert_eq!(catalog.field_uses.len(), 14);
         for id in [
             "potion",
             "antidote",

@@ -73,6 +73,11 @@
   revive_hp_pct: 1.0
   target: single_ko
 
+- id: revival_herb
+  effect: revive
+  revive_hp_pct: 0.5
+  target: single_ko
+
 - id: phoenix_wing
   effect: revive
   revive_hp_pct: 0.30

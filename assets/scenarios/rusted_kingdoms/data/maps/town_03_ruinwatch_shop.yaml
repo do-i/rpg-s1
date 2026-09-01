@@ -22,6 +22,9 @@ shop:
     - id: ether
       buy_price: 150
       unlock_flag: story_quest_started
+    - id: revival_herb
+      buy_price: 800
+      unlock_flag: story_act2_started
 
 npcs:
   - id: item_shop_keeper
