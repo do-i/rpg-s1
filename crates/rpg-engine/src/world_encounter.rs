@@ -1663,7 +1663,8 @@ mod tests {
             "{:?}",
             app.world().resource::<WorldEncounterState>().failure()
         );
-        assert_eq!(app.world().resource::<EnemyCatalog>().len(), 107);
+        // 107 before roadmap B1.2 added the Cinder Marshal.
+        assert_eq!(app.world().resource::<EnemyCatalog>().len(), 108);
         let expected_party_stats = {
             let world = app.world();
             let member = world

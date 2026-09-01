@@ -753,3 +753,43 @@ drops:
         - item: void_core
           weight: 100
 ai_ref: boss_move_sets/hearth_effigy_ashen_crown.yaml
+
+---
+# Sub-Epic 7's duel of conviction. He is a former paladin who decided the Flame
+# should be let go rather than passed to another child, and he has been snuffing
+# Vessel-flames across the continent ever since. He is not evil; he is older than
+# hope, and he fights like a man finishing something he started long ago.
+#
+# He keeps the paladin's own repertoire — `divine_strike` and `holy_seal` — because
+# he never stopped being one. Sprites re-skin the Ash Wing atlas rather than ship
+# new art, the same way the Ashen Crown re-skins the Judicator's.
+#
+# Reached only through dialogue (`cinder_marshal_duel`, `on_complete.start_battle`);
+# no encounter zone spawns him, and the camp paints no spawn tiles at all.
+id: cinder_marshal
+name: The Cinder Marshal
+type: humanoid
+rank: SS
+size: large
+boss: true
+immune_to: [instant_kill]
+sprite_scale: 340
+hp: 700
+atk: 70
+def: 50
+mres: 48
+dex: 42
+exp: 1100
+drops:
+  mc:
+    - size: XL
+      qty: 1
+    - size: L
+      qty: 2
+  loot:
+    - pool:
+        - item: angel_feather
+          weight: 50
+        - item: ember_core
+          weight: 50
+ai_ref: boss_move_sets/cinder_marshal.yaml

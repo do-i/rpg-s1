@@ -5,11 +5,11 @@
  <tileset firstgid="2385" source="../tilesets/stone_tile_stares_16x16.tsx"/>
  <tileset firstgid="2641" source="../tilesets/sample_01.tsx"/>
  <objectgroup id="5" name="portals">
-  <object id="1" name="entry_zone_09_volcanic_region" x="-4" y="384" width="12" height="160">
+  <object id="1" name="entry_zone_09_marshal_camp" x="-4" y="384" width="12" height="160">
    <properties>
-    <property name="target_map" value="zone_09_volcanic_region"/>
-    <property name="target_position_x" type="int" value="47"/>
-    <property name="target_position_y" type="int" value="17"/>
+    <property name="target_map" value="zone_09_marshal_camp"/>
+    <property name="target_position_x" type="int" value="32"/>
+    <property name="target_position_y" type="int" value="11"/>
    </properties>
   </object>
   <object id="2" name="exit_town_01_ardel" x="544" y="-4" width="160" height="12">
