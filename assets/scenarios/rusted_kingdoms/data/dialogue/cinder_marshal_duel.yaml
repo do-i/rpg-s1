@@ -1,0 +1,133 @@
+# data/dialogue/cinder_marshal_duel.yaml
+#
+# Sub-Epic 7, "The Marshal's Last Stand". The source frames this as the story's
+# emotional pivot and is specific about its shape: he does not ambush the party
+# this time, he is waiting; he does not want to fight Aric, he wants to convince
+# him; and the confrontation is "as much dialogue as combat -- each companion
+# speaks, each is answered, and the Marshal's grief is laid bare."
+#
+# So the four companions speak in turn before Aric is asked anything, and the
+# player's answer decides which of the two endings the source names:
+#
+#   leaning toward release     -> he yields and the road opens without a fight
+#   leaning toward restoration -> he fights to the end, and his last words are
+#                                 the blessing the party did not expect
+#
+# The source has him *join* the party on the yield path. That would need a sixth
+# member -- party.yaml entry, class, portraits, and a battle UI that seats five --
+# so here he stands aside and sends them on instead. The scene resolves either
+# way; the join is the one beat deliberately left for later.
+#
+# He is the gate: `cinder_marshal_gate` fills the one opening in the wall until
+# `marshal_stand_resolved`, so the road to the stronghold stays shut until the
+# confrontation ends. Both endings set it.
+id: cinder_marshal_duel
+type: npc
+
+entries:
+  # He has already said his piece. The gate NPC is gone by now, so this is only
+  # reachable if something re-opens the conversation.
+  - condition:
+      requires: [marshal_stand_resolved]
+    lines:
+      - "The road is open. It was always going to be, one way or the other."
+
+  - lines:
+      - "The Cinder Marshal does not rise. He is sitting by a low fire, in the gap in the wall, with his back to the stronghold."
+      - "\"Sit, if you like. I have been waiting a long time and I have no hurry left in me.\""
+      - "\"I know what you carry, boy. I have met your kind before. I buried the last one.\""
+      - "\"So. Say what you came to say, all of you. I will hear it properly this time.\""
+    next: counsel_elise
+
+  - node: counsel_elise
+    lines:
+      - "Elise steps forward first. \"You've been putting them out. The flames. Every one you could find.\""
+      - "\"I have.\" He does not look away from her. \"Do you want the number? I know it.\""
+      - "\"I want to know how you sleep.\""
+      - "\"Badly. That is the whole of my answer, and I have never found a better one.\""
+    next: counsel_reiya
+
+  - node: counsel_reiya
+    lines:
+      - "Reiya's voice is flat. \"It was a covenant. You broke it.\""
+      - "\"It was a contract,\" he says, \"and the other party stopped signing a long time ago. The world is not sick, girl. It is asking to be let go.\""
+      - "\"That is not yours to grant.\""
+      - "\"No. It is his.\" He tips his head toward Aric. \"That is exactly why I am talking instead of swinging.\""
+    next: counsel_jep
+
+  - node: counsel_jep
+    lines:
+      - "Jep folds his arms. \"You could've told us. Ashenveil. Frostholm. Any of it. You let us walk the whole road blind.\""
+      - "\"Would you have believed me at the start?\""
+      - "Jep thinks about it longer than he wants to. \"No.\""
+      - "\"Then I did not let you walk it blind. I let you walk it.\""
+    next: counsel_kael
+
+  - node: counsel_kael
+    lines:
+      - "Kael has not moved since they entered. Her hand is on her sword and has been the whole time."
+      - "\"I swore an oath to hunt you,\" she says. \"I have carried it three years.\""
+      - "\"I know. I knew your saint. He would have hated what I became, and he would have understood it, and those are not the same thing.\""
+      - "Her hand does not leave the sword. But it does not draw, either."
+      - "\"...Then answer him. Not me.\""
+    next: the_question
+
+  - node: the_question
+    lines:
+      - "He stands, at last. The fire is between them, and it is very small."
+      - "\"Here it is, then. She was my companion, the one in Ashenveil. She burned and it was not enough, and they found another child, and another.\""
+      - "\"I am not asking you to lose. I am asking you not to make someone else do this again after you.\""
+      - "\"So say it plainly, and I will believe you. What have you come here to do?\""
+    choices:
+      - text: "\"The fire should be let go. You're right.\""
+        target: yields
+      - text: "\"The fire will be carried. By me.\""
+        target: refuses
+      - text: "Say nothing."
+        target: refuses_silent
+
+  - node: yields
+    lines:
+      - "\"...Say it again.\""
+      - "\"Say it once more so I know I did not invent it.\""
+      - "He hears it a second time. Something in his shoulders lets go that has been held for longer than Aric has been alive."
+      - "\"Then I have nothing to stop. Nothing to stop, and no reason to stand here.\""
+      - "He steps out of the gap in the wall and gestures at the road behind him, almost politely."
+      - "\"Go down and end it kindly. I would come with you, but I have graves here that no one else knows the names of, and I find I would rather finish those.\""
+      - "\"Whatever waits at the bottom -- it will try to make you feel chosen. Don't let it.\""
+    end: true
+    on_complete:
+      set_flag:
+        - marshal_stand_resolved
+        - marshal_yielded
+      give_items:
+        - id: holy_water
+          qty: 3
+
+  - node: refuses
+    lines:
+      - "He nods slowly, as though a long argument has ended exactly where he expected."
+      - "\"Good. Say it like that at the bottom, too. It will ask you the same thing in a kinder voice.\""
+      - "\"But I have buried one of you already, and I will not stand aside and watch it happen twice.\""
+      - "He puts his hand on his sword. The fire goes out between them, and it is not the wind that does it."
+      - "\"Come on, then. Show me it means something.\""
+    end: true
+    on_complete:
+      set_flag:
+        - marshal_stand_resolved
+        - marshal_fought
+      start_battle: cinder_marshal
+
+  - node: refuses_silent
+    lines:
+      - "Aric says nothing at all."
+      - "The Marshal waits. He waits longer than is comfortable, and then he lets out a breath."
+      - "\"That is an answer too. It is the one she gave me.\""
+      - "He puts his hand on his sword, without heat, the way a man picks up a tool he has used all his life."
+      - "\"Then I will have it out of you the old way. Forgive me. Or don't -- I have stopped asking.\""
+    end: true
+    on_complete:
+      set_flag:
+        - marshal_stand_resolved
+        - marshal_fought
+      start_battle: cinder_marshal

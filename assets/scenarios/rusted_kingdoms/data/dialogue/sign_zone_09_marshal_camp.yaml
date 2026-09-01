@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_09_marshal_camp.yaml
+id: sign_zone_09_marshal_camp
+type: board
+entries:
+  - lines:
+      - "Field Standard — unreadable"
+      - "A war banner driven into the ash, burned down to the pole. Two armies met here and neither name survived the telling."
+      - "Someone has been tending the graves. Recently. The rows are straight and the ash is swept back from every marker."

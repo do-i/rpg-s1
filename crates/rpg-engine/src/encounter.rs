@@ -825,6 +825,102 @@ mod tests {
         }
     }
 
+    /// Roadmap B1.2. The Marshal's Camp is the only scripted battle in the shipped scenario and
+    /// the only thing between zone 9 and the final stronghold, so it is worth pinning against
+    /// the real content rather than a fixture: the duel has to name an enemy the catalog has,
+    /// that enemy has to resolve its boss move set, and the camp's zone has to be able to frame
+    /// a fight it never spawns.
+    #[test]
+    fn the_shipped_marshal_duel_builds_a_real_one_enemy_boss_battle() {
+        use crate::scenario_dialogue::DialogueDocument;
+
+        let duel: DialogueDocument = scenario_yaml::from_str(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/cinder_marshal_duel.yaml"
+        ))
+        .unwrap();
+        let DialogueDocument::Entries(duel) = duel else {
+            panic!("the duel is an entry document");
+        };
+        let named = duel
+            .entries
+            .iter()
+            .filter_map(|entry| entry.on_complete.start_battle.as_deref())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            named,
+            ["cinder_marshal", "cinder_marshal"],
+            "both refusal branches fight, and nothing else does"
+        );
+
+        let zone: EncounterZone = scenario_yaml::from_str(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/encount/zone_09_marshal_camp.yaml"
+        ))
+        .unwrap();
+        assert_eq!(zone.background, "zone9-bg-1280x468");
+        assert!(
+            zone.entries.is_empty() && zone.boss.is_none(),
+            "the camp spawns nothing; the zone exists only to frame the scripted fight"
+        );
+
+        let file = EnemyCatalogFile::from_yaml_stream(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_1_SS.yaml"
+        ))
+        .unwrap();
+        let marshal = file
+            .entries()
+            .iter()
+            .find(|enemy| enemy.id == "cinder_marshal")
+            .expect("the duel's enemy must be in the shipped catalog")
+            .clone();
+        assert!(marshal.boss, "the duel is a boss fight");
+        let EnemyBehavior::Referenced { ai_ref } = &marshal.behavior else {
+            panic!("the Marshal should reference a boss move set, like every other boss");
+        };
+        assert_eq!(ai_ref.as_str(), "boss_move_sets/cinder_marshal.yaml");
+
+        // The whole SS file references ten other move sets, so resolve against a catalog holding
+        // just this fight rather than loading all of them to prove one link.
+        let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/enemies/boss_move_sets/cinder_marshal.yaml"
+        ))
+        .unwrap();
+        let mut catalog = EnemyCatalog::try_from_definitions([marshal]).unwrap();
+        catalog
+            .resolve_boss_move_sets([("boss_move_sets/cinder_marshal.yaml", &move_set)])
+            .expect("the Marshal's move set must resolve");
+        assert!(
+            matches!(
+                catalog.enemy("cinder_marshal").unwrap().behavior,
+                EnemyBehavior::Inline { .. }
+            ),
+            "resolving should inline the move set"
+        );
+
+        let game = game();
+        let entry = build_scripted_battle_entry(
+            "cinder_marshal",
+            &zone,
+            &catalog,
+            &FieldMenuCatalog::default(),
+            game.party(),
+            game.repository(),
+            game.flags(),
+            scripted_context(),
+        )
+        .unwrap();
+        let enemies = entry
+            .participants
+            .iter()
+            .filter(|participant| participant.side == BattleSide::Enemy)
+            .collect::<Vec<_>>();
+        assert_eq!(enemies.len(), 1, "a duel is one enemy");
+        assert_eq!(enemies[0].id, "cinder_marshal");
+        assert_eq!(entry.bgm_key, "battle.boss");
+        // The camp has no boss encounter of its own to close, and the dialogue owns its flags.
+        assert_eq!(entry.boss_completion_flag, None);
+        assert!(entry.barrier_messages.is_empty());
+    }
+
     #[test]
     fn a_scripted_battle_fights_exactly_the_named_enemy() {
         let game = game();

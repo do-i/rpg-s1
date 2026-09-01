@@ -1,0 +1,21 @@
+# data/dialogue/cinder_marshal_grave.yaml
+#
+# The fight path only. The source is specific that his dying words are "a blessing
+# the party did not expect" -- and a battle scene has nowhere to put a last line,
+# so the camp keeps it. The party buried him in his own row before going on.
+id: cinder_marshal_grave
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "The newest marker in the row. Someone -- Kael, probably -- has straightened it since."
+      - "\"Then carry it better than I did.\""
+      - "It was carried. Whether better is not a thing the marker can say."
+
+  - lines:
+      - "They buried him at the end of the row he had been keeping, because there was nowhere else and because it was obviously right."
+      - "He was still speaking at the end, and it was not a curse, which nobody had prepared for."
+      - "\"...Then carry it better than I did.\""
+      - "Kael set his sword at the head of the grave and did not explain herself, and nobody asked her to."

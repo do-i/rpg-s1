@@ -765,6 +765,54 @@ mod tests {
         assert_eq!(returns[0].target_position(), Position::new(24, 4));
     }
 
+    /// Roadmap B1.2. The camp is not optional scenery: it was inserted *into* the road, so
+    /// zone 9 no longer reaches the stronghold directly and the stronghold no longer reaches
+    /// zone 9. Every run now passes the Cinder Marshal.
+    #[test]
+    fn the_marshal_camp_sits_between_the_volcanic_region_and_the_final_stronghold() {
+        const VOLCANIC: &str = include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_09_volcanic_region.tmx"
+        );
+        const CAMP: &str = include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_09_marshal_camp.tmx"
+        );
+        const STRONGHOLD: &str = include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_10_final_stronghold.tmx"
+        );
+
+        assert_reversible_link(
+            "zone_09_volcanic_region",
+            VOLCANIC,
+            "zone_09_marshal_camp",
+            CAMP,
+        );
+        assert_reversible_link(
+            "zone_09_marshal_camp",
+            CAMP,
+            "zone_10_final_stronghold",
+            STRONGHOLD,
+        );
+
+        let volcanic = portals_for("zone_09_volcanic_region", VOLCANIC);
+        assert!(
+            !volcanic
+                .iter()
+                .any(|portal| portal.target_map().as_str() == "zone_10_final_stronghold"),
+            "the old direct road must be gone, or the camp can be walked past"
+        );
+        let stronghold = portals_for("zone_10_final_stronghold", STRONGHOLD);
+        assert!(
+            !stronghold
+                .iter()
+                .any(|portal| portal.target_map().as_str() == "zone_09_volcanic_region"),
+            "and gone in the returning direction too"
+        );
+
+        // Two ways in and out, and the eastern one is the single tile the Marshal stands in.
+        let camp = portals_for("zone_09_marshal_camp", CAMP);
+        assert_eq!(camp.len(), 2);
+    }
+
     #[test]
     fn ardel_shrine_portal_is_a_reversible_link() {
         assert_reversible_link(

@@ -1,0 +1,14 @@
+# data/encount/zone_09_marshal_camp.yaml
+#
+# The camp is encounter-free by design: the Marshal has been waiting here, and
+# nothing else in the wastes will come near him. No spawn tiles are painted and
+# `density` is zero, so nothing wanders.
+#
+# The file still has to exist. A dialogue-scripted battle (`on_complete.start_battle`)
+# takes its battle background from the zone of the map it is fought on, so the duel
+# needs this even though the map has no ambient encounters at all.
+id: zone_09_marshal_camp
+name: The Marshal's Camp
+density: 0.0
+background: zone9-bg-1280x468
+entries: []

@@ -10,11 +10,11 @@
     <property name="target_position_y" type="int" value="26"/>
    </properties>
   </object>
-  <object id="2" name="exit_zone_10_final_stronghold" x="1596" y="480" width="12" height="128">
+  <object id="2" name="exit_zone_09_marshal_camp" x="1596" y="480" width="12" height="128">
    <properties>
-    <property name="target_map" value="zone_10_final_stronghold"/>
-    <property name="target_position_x" type="int" value="2"/>
-    <property name="target_position_y" type="int" value="14"/>
+    <property name="target_map" value="zone_09_marshal_camp"/>
+    <property name="target_position_x" type="int" value="1"/>
+    <property name="target_position_y" type="int" value="11"/>
    </properties>
   </object>
  </objectgroup>

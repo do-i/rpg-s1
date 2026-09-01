@@ -1,0 +1,22 @@
+# data/dialogue/cinder_marshal_aftermath.yaml
+#
+# The yield path only. He stood aside rather than joining the descent, and stayed
+# to finish the graves -- see the header of `cinder_marshal_duel.yaml` for why the
+# source's "joins the party" beat is not implemented here.
+id: cinder_marshal_aftermath
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "He is kneeling at the end of a finished row. Every marker has a name on it now."
+      - "\"It's done, then. I felt it go.\""
+      - "\"I spent forty years certain I was the only one willing to do the hard thing. Turns out I was only the first to be asked.\""
+      - "\"Go home, boy. That is the whole of the reward and it is a very good one.\""
+
+  - lines:
+      - "He has gone back to the graves. There is a spade against the wall and a great many markers still blank."
+      - "\"Two hundred and eleven,\" he says, without being asked. \"I know the number of those too.\""
+      - "\"Down there it will show you her face, or your mother's, or mine. It does that. It is not lying, exactly -- it simply has nothing of its own left to show you.\""
+      - "\"End it kindly. And come back this way, if there is a way back. I would like to know how it went.\""

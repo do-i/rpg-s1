@@ -1,0 +1,39 @@
+# The duel opens as a paladin's fight and ends as a dying man's. He leads with the
+# order's own forms, and only once he is badly hurt does he stop holding back the
+# thing he became.
+ai:
+  pattern: conditional
+  moves:
+    - condition:
+        hp_pct_below: 1.0
+      action: attack
+      weight: 35
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: divine_strike     # the order's form, single target
+      weight: 30
+    - condition:
+        hp_pct_below: 1.0
+      action: ability
+      id: holy_seal
+      weight: 15
+    - condition:
+        hp_pct_below: 0.45
+      action: ability
+      id: dark_wave         # all party; what the grief actually looks like
+      weight: 45
+    - condition:
+        turn_mod:
+          every: 5
+      action: ability
+      id: soul_barrier      # self ward, the discipline he never lost
+      weight: 100
+
+targeting:
+  default: random_alive
+  overrides:
+    - ability: dark_wave
+      target: all_party
+    - ability: soul_barrier
+      target: self

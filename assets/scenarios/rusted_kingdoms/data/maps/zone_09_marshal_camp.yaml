@@ -1,0 +1,72 @@
+# data/maps/zone_09_marshal_camp.yaml
+#
+# Sub-Epic 7, "The Marshal's Last Stand": a battlefield graveyard in the rusted
+# wastes, split by a ruined gate wall. The graves fill the western field; the
+# Cinder Marshal is camped in the gateway itself, which is the only road left to
+# the final stronghold. He does not ambush the party here — he is waiting, and
+# has been for a long time.
+name: The Marshal's Camp
+warp_order: 175
+bgm: zone.volcanic
+
+npcs:
+  # He stands in the gap in the gate wall, so the road stays shut until the
+  # confrontation resolves one way or the other.
+  - id: cinder_marshal_gate
+    name: "The Cinder Marshal"
+    type: gate
+    position: [29, 11]
+    dialogue: cinder_marshal_duel
+    sprite: assets/sprites/npc/knight_01.tsx
+    default_facing: left
+    present:
+      excludes: [marshal_stand_resolved]
+
+  # Afterwards he is off the road: stood aside if he yielded, and remembered by
+  # his own fire if he did not.
+  - id: cinder_marshal_aftermath
+    name: "The Cinder Marshal"
+    position: [31, 14]
+    dialogue: cinder_marshal_aftermath
+    sprite: assets/sprites/npc/knight_01.tsx
+    default_facing: down
+    present:
+      requires: [marshal_yielded]
+
+  # If he fought instead, the party buried him at the end of his own row before
+  # going on, and his last words are here rather than in the battle scene.
+  - id: cinder_marshal_grave
+    name: "A New Marker"
+    position: [31, 9]
+    dialogue: cinder_marshal_grave
+    sprite: assets/sprites/npc/knight_01.tsx
+    default_facing: down
+    present:
+      requires: [marshal_fought]
+
+item_boxes:
+  - id: marshal_camp_chest_01
+    position: [5, 3]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: remedy
+          qty: 2
+  - id: marshal_camp_chest_02
+    position: [21, 16]
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+      magic_cores:
+        - size: l
+          qty: 2
+  - id: marshal_camp_chest_03
+    position: [10, 19]
+    loot:
+      items:
+        - id: elixir
+          qty: 1
+        - id: hi_ether
+          qty: 2
