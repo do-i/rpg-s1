@@ -1,0 +1,15 @@
+# data/dialogue/apothecary_ruinwatch.yaml
+#
+# B3.7: the scenario gates recipes behind acts 2-4 but shipped exactly one apothecary,
+# in the tutorial town, so late-game crafting meant walking the whole map backwards.
+id: apothecary_ruinwatch
+type: npc
+entries:
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "The pilgrims bring me what the ruins spit out. Bring me better, and I will make you something."
+    on_complete:
+      open_apothecary: true
+  - lines:
+      - "I sort relics from rubbish. Come back when you have something worth sorting."

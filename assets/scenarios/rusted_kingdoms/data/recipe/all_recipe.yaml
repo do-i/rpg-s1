@@ -127,3 +127,57 @@
       - { id: soul_fragment, qty: 1 }
   gp_cost: 800
   unlock_flag: story_act4_started
+
+# ── B3.7: Act 3-4 crafting ────────────────────────────
+# The shipped recipe list ends at one Act 4 entry, and every recipe outputs a consumable, so
+# crafting had no late-game payoff worth the detour. These three equipment recipes and the
+# revive give the Acts 3-4 apothecaries a reason to exist, and give nine previously stranded
+# materials their first sink.
+
+- id: recipe_revival_herb
+  scroll_name: "Waking Draught"
+  output: { item: revival_herb, qty: 2 }
+  inputs:
+    mc:
+      - { size: S, qty: 2 }
+    items:
+      - { id: soul_crystal, qty: 1 }
+      - { id: herb_red, qty: 2 }
+  gp_cost: 400
+  unlock_flag: story_act3_started
+
+- id: recipe_aegis_brooch
+  scroll_name: "Warding Clasp"
+  output: { item: aegis_brooch, qty: 1 }
+  inputs:
+    mc:
+      - { size: M, qty: 3 }
+    items:
+      - { id: cursed_stone, qty: 2 }
+      - { id: cave_crystal, qty: 2 }
+  gp_cost: 1000
+  unlock_flag: story_act4_started
+
+- id: recipe_astral_robe
+  scroll_name: "Skyweave Pattern"
+  output: { item: astral_robe, qty: 1 }
+  inputs:
+    mc:
+      - { size: L, qty: 1 }
+    items:
+      - { id: wraith_cloth, qty: 2 }
+      - { id: specter_veil, qty: 1 }
+  gp_cost: 1200
+  unlock_flag: story_act4_started
+
+- id: recipe_flamebrand
+  scroll_name: "Ember Quenching"
+  output: { item: flamebrand, qty: 1 }
+  inputs:
+    mc:
+      - { size: L, qty: 1 }
+    items:
+      - { id: magma_core, qty: 2 }
+      - { id: obsidian_shard, qty: 3 }
+  gp_cost: 1400
+  unlock_flag: story_act4_started

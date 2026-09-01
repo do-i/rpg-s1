@@ -22,6 +22,8 @@ drops:
           weight: 55
         - item: charm_crystal
           weight: 45
+        - item: cursed_stone
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -61,6 +63,8 @@ drops:
           weight: 50
         - item: silence_dust
           weight: 50
+        - item: cursed_stone
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -100,6 +104,8 @@ drops:
           weight: 50
         - item: void_shard
           weight: 50
+        - item: cursed_stone
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -387,6 +393,8 @@ drops:
           weight: 50
         - item: poison_mucus
           weight: 50
+        - item: cave_crystal
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -431,6 +439,8 @@ drops:
           weight: 50
         - item: charm_crystal
           weight: 50
+        - item: cave_crystal
+          weight: 30
 ai_ref: boss_move_sets/troll_shaman_base.yaml
 
 ---
@@ -458,6 +468,8 @@ drops:
           weight: 55
         - item: chimera_mane
           weight: 45
+        - item: obsidian_shard
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -500,6 +512,8 @@ drops:
           weight: 55
         - item: beast_core
           weight: 45
+        - item: obsidian_shard
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -539,6 +553,8 @@ drops:
           weight: 50
         - item: beast_core
           weight: 50
+        - item: obsidian_shard
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -575,6 +591,8 @@ drops:
           weight: 50
         - item: bear_claw
           weight: 50
+        - item: royal_claw
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -614,6 +632,8 @@ drops:
           weight: 50
         - item: dark_fang
           weight: 50
+        - item: royal_claw
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -653,6 +673,8 @@ drops:
           weight: 50
         - item: hellhound_fang
           weight: 50
+        - item: royal_claw
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -692,6 +714,8 @@ drops:
           weight: 55
         - item: rusty_blade
           weight: 45
+        - item: heat_sac
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -728,6 +752,8 @@ drops:
           weight: 50
         - item: cursed_blade
           weight: 50
+        - item: heat_sac
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -767,6 +793,8 @@ drops:
           weight: 45
         - item: cursed_blade
           weight: 55
+        - item: heat_sac
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -806,6 +834,8 @@ drops:
           weight: 55
         - item: fire_dragon_horn
           weight: 45
+        - item: magma_core
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -848,6 +878,8 @@ drops:
           weight: 50
         - item: ice_dragon_horn
           weight: 50
+        - item: magma_core
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -890,6 +922,8 @@ drops:
           weight: 50
         - item: stone_dragon_horn
           weight: 50
+        - item: magma_core
+          weight: 30
 ai:
   pattern: random
   moves:

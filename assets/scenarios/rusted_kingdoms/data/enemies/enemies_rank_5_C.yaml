@@ -435,4 +435,6 @@ drops:
           weight: 50
         - item: dark_armor_shard
           weight: 50
+        - item: soul_crystal
+          weight: 25
 ai_ref: boss_move_sets/skeleton_knight_base.yaml
