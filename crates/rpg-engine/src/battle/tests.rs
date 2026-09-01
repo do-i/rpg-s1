@@ -1281,7 +1281,8 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     .unwrap();
     let member = game.party().member("aric").unwrap();
     assert_eq!((member.level(), member.experience()), (2, 400));
-    assert_eq!((member.health(), member.mana()), (59, 24));
+    // 35, not the source's 59: B3.1 divides post-growth CON in the per-level HP gain.
+    assert_eq!((member.health(), member.mana()), (35, 24));
     assert_eq!(
         (
             state.actor(CombatantKey::party(0)).unwrap().health,
@@ -1289,7 +1290,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
             state.actor(CombatantKey::party(0)).unwrap().mana,
             state.actor(CombatantKey::party(0)).unwrap().max_mana,
         ),
-        (59, 59, 24, 24)
+        (35, 35, 24, 24)
     );
     assert_eq!(rewards.members[0].learned_abilities, ["Power Strike"]);
     assert!(game.flags().is_set("boss_zone01_defeated"));
@@ -1310,7 +1311,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     assert!(summary[3].contains("Aric learned Power Strike"));
     assert!(summary[3].contains("Boss cleared (boss_zone01_defeated)"));
     let detail = rewards.detail_message();
-    assert!(detail.contains("Aric Lv 1>2\nHP +37=59  MP +12=24"));
+    assert!(detail.contains("Aric Lv 1>2\nHP +13=35  MP +12=24"));
     assert!(detail.contains("STR +2=30  DEX +2=19  CON +3=31  INT +1=6"));
 
     let after = game.clone();

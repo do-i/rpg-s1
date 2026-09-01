@@ -844,6 +844,29 @@ pub(crate) fn derived_stats(member: &RuntimeMember, catalog: &FieldMenuCatalog) 
     totals
 }
 
+/// Battle defense for a party member (B3.1).
+///
+/// The source sets DEF to the equipment-inclusive CON total, but party CON starts at 28 and
+/// reaches ~95 while enemy ATK spans 9..88, so `max(1, atk - def)` pinned every incoming
+/// physical hit to the floor for the whole campaign — no armor value changed any outcome.
+/// Equipment CON is now the dominant term and innate CON a divided contribution, which puts
+/// armor choice back in control of survivability. Enemy DEF is authored directly and is
+/// deliberately left alone.
+pub(crate) fn battle_defense(
+    member: &RuntimeMember,
+    catalog: &FieldMenuCatalog,
+    con_divisor: u32,
+) -> i32 {
+    let mut equipment = DerivedStats::default();
+    for slot in EquipmentSlot::ALL {
+        if let Some(item) = member.equipment().get(slot).and_then(|id| catalog.item(id)) {
+            add_item_stats(&mut equipment, item);
+        }
+    }
+    let innate = member.stats().constitution() as i32 / con_divisor.max(1) as i32;
+    equipment.constitution + innate
+}
+
 pub(crate) fn preview_stats(
     member: &RuntimeMember,
     catalog: &FieldMenuCatalog,
@@ -1316,6 +1339,44 @@ pub(crate) mod tests {
         let document = parse_tmx_map_document(tmx, &path).unwrap();
         let portals = runtime_portals(&document).unwrap();
         (metadata, portals)
+    }
+
+    /// B3.1 regression. The source sets battle DEF to the equipment-inclusive CON total, so a
+    /// level-1 Aric fielded 31 DEF against zone-1 enemies whose ATK tops out at 11: every hit in
+    /// the game landed on the `max(1, atk - def)` floor, and no armor value changed any outcome
+    /// at any point in the campaign. This pins the replacement -- equipment CON dominates, innate
+    /// CON is a divided contribution -- and pins the property the row actually asks for: that
+    /// upgrading body armor reduces the damage a real enemy deals.
+    #[test]
+    fn armor_choice_changes_incoming_damage_where_the_source_pinned_it_to_the_floor() {
+        let catalog = catalog();
+        let divisor = BalanceData::default()
+            .battle
+            .party_defense_con_divisor
+            .get();
+        let mut game = game([]);
+        let member = game.party_mut().member_mut("aric").unwrap();
+        assert_eq!(member.level(), 1);
+        assert_eq!(member.stats().constitution(), 28);
+
+        // Shipped starting kit: buckler 1 + leather_hat 1 + leather_vest 2, innate 28 / 10.
+        let starting = battle_defense(member, &catalog, divisor);
+        assert_eq!(starting, 6);
+
+        member.equip(EquipmentSlot::Body, "chainmail").unwrap();
+        let upgraded = battle_defense(member, &catalog, divisor);
+        assert_eq!(upgraded, 9);
+
+        // A Goblin (zone 1, ATK 9) against each kit. The source floored both at 1.
+        let goblin_attack: i64 = 9;
+        assert_eq!((goblin_attack - i64::from(starting)).max(1), 3);
+        assert_eq!((goblin_attack - i64::from(upgraded)).max(1), 1);
+
+        // The rule the port replaced: raw CON, which already exceeds the strongest enemy in the
+        // game (Hearth Effigy, ATK 88) by level 22 and exceeds a Goblin from the first battle.
+        let source_defense = i64::from(derived_stats(member, &catalog).constitution);
+        assert_eq!(source_defense, 35);
+        assert_eq!((goblin_attack - source_defense).max(1), 1);
     }
 
     pub(crate) fn catalog() -> FieldMenuCatalog {

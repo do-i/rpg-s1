@@ -377,7 +377,10 @@ impl RuntimeMember {
             self.stats.dexterity = self.stats.dexterity.saturating_add(dexterity);
             self.stats.constitution = self.stats.constitution.saturating_add(constitution);
             self.stats.intelligence = self.stats.intelligence.saturating_add(intelligence);
-            let health = self.stats.constitution.saturating_add(6);
+            // B3.1: the source adds raw CON here, which inflates HP far past any enemy's
+            // reach. Dividing keeps CON meaningful without outrunning the damage scale.
+            let health = (self.stats.constitution / progression.hp_growth_con_divisor.get())
+                .saturating_add(6);
             let mana = self.stats.intelligence.saturating_add(6);
             self.max_health = self.max_health.saturating_add(health);
             self.max_mana = self.max_mana.saturating_add(mana);
@@ -835,6 +838,7 @@ mod tests {
         ProgressionBalance {
             level_cap: PositiveInteger::new(level_cap).expect("test level cap is positive"),
             exp_cap: PositiveInteger::new(experience_cap).expect("test EXP cap is positive"),
+            hp_growth_con_divisor: PositiveInteger::new(4).expect("test divisor is positive"),
         }
     }
 
@@ -936,7 +940,7 @@ mod tests {
     }
 
     #[test]
-    fn class_threshold_and_one_level_growth_match_source_formulas() {
+    fn class_threshold_and_one_level_growth_follow_the_stat_and_rescaled_hp_formulas() {
         let class = hero_class();
         assert_eq!(experience_required(&class, 2), 400);
         assert_eq!(experience_required(&class, 3), 900);
@@ -969,9 +973,13 @@ mod tests {
             ),
             (2, 2, 3, 1)
         );
-        assert_eq!((level.health, level.mana), (37, 12));
-        assert_eq!((member.max_health(), member.max_mana()), (59, 24));
-        assert_eq!((member.health(), member.mana()), (59, 24));
+        // Stat growth and the MP gain (`int + 6`) still match the source exactly. The HP gain
+        // deliberately does not: B3.1 divides post-growth CON, so this is `31 / 4 + 6 = 13`
+        // where the source's `con + 6` gives 37. See the accepted difference in the parity
+        // checklist -- raw CON inflated level-22 HP to ~1,280 against an 88-ATK final boss.
+        assert_eq!((level.health, level.mana), (13, 12));
+        assert_eq!((member.max_health(), member.max_mana()), (35, 24));
+        assert_eq!((member.health(), member.mana()), (35, 24));
         assert_eq!(member.experience_next(), 900);
     }
 
