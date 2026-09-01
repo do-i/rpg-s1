@@ -1712,10 +1712,14 @@ mod tests {
     /// to fail — so a missing sign clicked and then showed nothing, unlike the source.
     #[test]
     fn interacting_with_a_missing_sign_dialogue_stays_fully_silent() {
+        // The id is deliberately invented. This used to name `sign_zone_03_marshland`, a board
+        // the marshland really did paint with no dialogue behind it, but that gap is authored now
+        // (roadmap B1.3) — and the behaviour under test belongs to the engine, not to whichever
+        // sign happens to be unfinished this week.
         let mut app = interaction_app("zone_03_marshland", Position::new(5, 5));
         app.world_mut().spawn(WorldSign::for_test(
             "marsh_sign",
-            "sign_zone_03_marshland",
+            "sign_zone_03_marshland_no_such_board",
             Position::new(5, 6),
         ));
 

@@ -1,0 +1,29 @@
+# data/dialogue/stronghold_deserter.yaml
+#
+# Flavor NPC: a deserter camped outside the Final Stronghold gate. Zone 10
+# had zero NPCs, so the last approach in the game was completely silent.
+#
+# Present only until the stronghold falls — afterwards he has no reason to
+# be sitting outside it, so the map entry drops him on `boss_zone10_defeated`.
+id: stronghold_deserter
+type: npc
+
+entries:
+  - condition:
+      requires: [stronghold_deserter_confessed]
+    lines:
+      - "Still here. Still not going in. A man can know his own limit and still hate it."
+      - "Gate's unbarred. Whatever that's worth to you."
+
+  - lines:
+      - "Don't. Whatever you're about to say — don't. I've said it all to myself already."
+      - "I stood in that gate for an hour. Turned around. Been sitting here since."
+      - "There's a thing at the top that doesn't fight you so much as decide about you."
+      - "Take my rations. I'm not going to need the strength."
+    on_complete:
+      set_flag: stronghold_deserter_confessed
+      give_items:
+        - id: elixir
+          qty: 1
+        - id: smelling_salts
+          qty: 2

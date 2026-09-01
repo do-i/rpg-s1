@@ -18,9 +18,13 @@ zone:
   # the descent is a different place — the memory chambers should not sound like
   # the corridor the player fought through to reach them.
   hearth:           bgm/Across_the_Sundered_Peaks_64.mp3
-
-overworld:
-  golden_hour:      bgm/Golden_Hour_Haze.mp3
-  horizon:          bgm/The_Horizon_s_Call.mp3
-  sun_kissed:       bgm/Sun_Kissed_Horizon.mp3
-  neon_samurai:     bgm/Neon_Samurai_s_Lament.mp3
+  # The marshland and the Ancient Ruins arc declared no BGM at all, so both simply
+  # kept playing whichever town track the player arrived from. These three tracks
+  # shipped in the scenario and were reachable from nothing: they were filed under
+  # an `overworld:` group no map, scene or catalog ever named.
+  marsh:            bgm/Golden_Hour_Haze.mp3
+  ruins:            bgm/The_Horizon_s_Call.mp3
+  # Zones 7, 8, 9 and 10 all shared `zone.dark`, so the whole endgame ran on one
+  # track. The volcanic region is the one with its own character, and it is where
+  # the Cinder Marshal is met.
+  volcanic:         bgm/Neon_Samurai_s_Lament.mp3

@@ -1,0 +1,28 @@
+# data/dialogue/ruins_sanctum_penitent.yaml
+#
+# Flavor NPC: a penitent who walked into the sanctum and stayed. Gives the
+# arc a voice at its deepest point, where the zone-04 boss waits.
+id: ruins_sanctum_penitent
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone04_defeated]
+    lines:
+      - "It's quiet. I'd forgotten what the sanctum sounds like when nothing is listening back."
+      - "I'll walk out tomorrow. Or the day after. There's no hurry in a place with no hours."
+
+  - condition:
+      requires: [ruins_sanctum_penitent_blessed]
+    lines:
+      - "Kneel if you like. It doesn't help, but it steadies the hands."
+
+  - lines:
+      - "I came to ask the old stones a question. Eleven years and they haven't answered."
+      - "They do listen, though. That's the part nobody warns you about."
+      - "You've the look of someone who intends to go through rather than kneel. Take this, then."
+    on_complete:
+      set_flag: ruins_sanctum_penitent_blessed
+      give_items:
+        - id: hi_potion
+          qty: 2

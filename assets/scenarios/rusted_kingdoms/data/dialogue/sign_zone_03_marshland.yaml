@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_03_marshland.yaml
+id: sign_zone_03_marshland
+type: board
+entries:
+  - lines:
+      - "Sunken Marker — The Marshland"
+      - "Two boards stood here once. The reed water took the lower half of both, and most of what they said."
+      - "Keep to the raised path. What the marsh swallows, it keeps standing up."

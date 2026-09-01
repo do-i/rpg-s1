@@ -6,3 +6,38 @@ enemy_spawn:
   init: 4
   max: 8
   interval: 22.0
+
+npcs:
+  - id: sunken_cave_lampkeeper
+    name: "Lampkeeper Ovid"
+    position: [28, 10]
+    dialogue: sunken_cave_lampkeeper
+    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    default_facing: down
+
+item_boxes:
+  - id: sunken_cave_chest_01
+    position: [43, 5]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: echo_herb
+          qty: 2
+  - id: sunken_cave_chest_02
+    position: [12, 19]
+    loot:
+      items:
+        - id: shock_vial
+          qty: 3
+      magic_cores:
+        - size: l
+          qty: 2
+  - id: sunken_cave_chest_03
+    position: [38, 35]
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+        - id: hi_ether
+          qty: 2

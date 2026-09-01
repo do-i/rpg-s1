@@ -1,6 +1,6 @@
 name: Volcanic Region
 warp_order: 170
-bgm: zone.dark
+bgm: zone.volcanic
 
 enemy_spawn:
   init: 5
