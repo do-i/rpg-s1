@@ -74,7 +74,22 @@ const SPELLBOOK_VISIBLE_ROWS: usize = 7;
 const MAIN_COMMAND_ROWS: usize = 4;
 const QUEST_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
+/// Destination rows the teleport picker shows before it scrolls.
+///
+/// The modal is capped at 520px tall, and each row is 48px over a 9px gap, so six rows plus
+/// the modal's own chrome is what fits. The list itself is unbounded in principle — every
+/// visited non-submap with a `warp_order` is a destination, 29 of them in the shipped
+/// scenario — so without this window a late-game cast paints far past the canvas.
+const TELEPORT_VISIBLE_ROWS: usize = 6;
 const ITEM_MANAGE_VISIBLE_ROWS: usize = 8;
+/// Tag rows the editor shows before it scrolls.
+///
+/// Unlike the other lists here this one's length is scenario data, not code: it is the
+/// three curatorial tags plus `max_tags_per_item` custom ones plus the new-tag prompt, and
+/// `max_tags_per_item` lives in `data/balance.yaml`. At the shipped value of 5 the modal
+/// fits without scrolling; the window is what keeps a larger value from walking the list off
+/// the canvas, since the modal is centred and has no height cap of its own.
+const TAG_EDITOR_VISIBLE_ROWS: usize = 9;
 /// Item-action rows, in the order the modal lists them.
 const ITEM_ACTIONS: [(&str, &str); 4] = [
     ("Use", "apply this item"),
@@ -1662,18 +1677,79 @@ mod tests {
         assert_eq!(inventory_page_range(25, 24), final_page_start..25);
     }
 
+    /// The field-menu content box: the 766px logical canvas less the menu root's 30px padding
+    /// on each edge (`spawn_field_menu_overlay`). A centred modal gets all of it.
+    const MENU_CONTENT_HEIGHT: usize = 766 - 30 * 2;
+
+    /// What a page's columns row is left with: the content box less the fixed 64px page header,
+    /// the ~18px hint line under it, and the page's two 14px row gaps.
+    const PAGE_COLUMN_HEIGHT: usize = MENU_CONTENT_HEIGHT - 64 - 18 - 14 * 2;
+
+    /// Chrome a `spawn_status_panel` adds around its rows: padding and border from the caller's
+    /// node, then the panel's own title line (~1.2x its font size) and the 1px rule under it with
+    /// its 2px bottom margin, plus one row gap before and after that pair.
+    const fn panel_chrome(padding: usize, border: usize, title: usize, row_gap: usize) -> usize {
+        padding * 2 + border * 2 + title + 3 + row_gap * 2
+    }
+
+    /// Every scrolling list has to fit the box it is drawn in, or it paints over its neighbour.
+    ///
+    /// This is arithmetic rather than a layout assertion because none of these lists is measured
+    /// anywhere — the row heights, gaps and paddings are literals spread across the page modules,
+    /// and the only thing tying them to the canvas is the visible-row constant each list windows
+    /// by. Each row below states its chrome explicitly so a changed padding shows up as a failure
+    /// here instead of as content drawn outside a border.
     #[test]
     fn custom_menu_row_budgets_fit_the_baseline_canvas() {
-        let items_rows = INVENTORY_PAGE_ROWS * 40 + (INVENTORY_PAGE_ROWS - 1) * 5 + 15;
-        let equipment_rows =
-            EQUIPMENT_PICKER_VISIBLE_ROWS * 52 + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8 + 180;
-        let spell_rows = SPELLBOOK_VISIBLE_ROWS * 58 + (SPELLBOOK_VISIBLE_ROWS - 1) * 7;
-        let save_rows = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 206;
+        // Pouch list: 40px rows over 5px gaps plus a "PAGE nn/nn" footer, in a 14px-padded panel.
+        let items = INVENTORY_PAGE_ROWS * 40
+            + (INVENTORY_PAGE_ROWS - 1) * 5
+            + 15
+            + panel_chrome(14, 1, 17, 5);
+        // Equipment picker: 52px rows over 8px gaps, under the worn-item summary it sits below.
+        let equipment = EQUIPMENT_PICKER_VISIBLE_ROWS * 52
+            + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8
+            + 180
+            + panel_chrome(16, 1, 17, 8);
+        // Spellbook: 58px rows over 7px gaps in a 16px-padded panel.
+        let spellbook = SPELLBOOK_VISIBLE_ROWS * 58
+            + (SPELLBOOK_VISIBLE_ROWS - 1) * 7
+            + panel_chrome(16, 1, 17, 8);
+        // Quest register: 54px rows over 7px gaps plus the "QUEST nn OF nn" footer.
+        let quests = QUEST_VISIBLE_ROWS * 54
+            + (QUEST_VISIBLE_ROWS - 1) * 7
+            + 13
+            + panel_chrome(16, 1, 17, 7);
+        assert!(items <= PAGE_COLUMN_HEIGHT, "pouch list: {items}px");
+        assert!(
+            equipment <= PAGE_COLUMN_HEIGHT,
+            "equipment picker: {equipment}px"
+        );
+        assert!(spellbook <= PAGE_COLUMN_HEIGHT, "spellbook: {spellbook}px");
+        assert!(quests <= PAGE_COLUMN_HEIGHT, "quest register: {quests}px");
 
-        assert!(items_rows <= 480);
-        assert!(equipment_rows <= 480);
-        assert!(spell_rows <= 480);
-        assert!(save_rows <= 632);
+        // Centred modals are drawn over the whole content box rather than inside a column.
+        let save = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 206;
+        // Item management and the tag editor share the 48px modal row and its 9px gap.
+        let manage = ITEM_MANAGE_VISIBLE_ROWS * 48
+            + (ITEM_MANAGE_VISIBLE_ROWS - 1) * 9
+            + 16
+            + panel_chrome(16, 2, 17, 9);
+        let tags = TAG_EDITOR_VISIBLE_ROWS * 48
+            + (TAG_EDITOR_VISIBLE_ROWS - 1) * 9
+            + 16
+            + panel_chrome(16, 2, 17, 9);
+        assert!(save <= MENU_CONTENT_HEIGHT, "save slots: {save}px");
+        assert!(manage <= MENU_CONTENT_HEIGHT, "item management: {manage}px");
+        assert!(tags <= MENU_CONTENT_HEIGHT, "tag editor: {tags}px");
+
+        // The teleport picker caps itself at 520px rather than filling the content box.
+        let teleport = TELEPORT_VISIBLE_ROWS * 48
+            + (TELEPORT_VISIBLE_ROWS - 1) * 9
+            + 17
+            + 15
+            + panel_chrome(16, 2, 17, 9);
+        assert!(teleport <= 520, "teleport picker: {teleport}px");
     }
 
     #[test]

@@ -675,7 +675,14 @@ fn spawn_tag_editor(
         return;
     };
     spawn_status_text(parent, "EDIT TAGS", font, 13.0, status_muted());
-    for (index, row) in tag_editor_rows(game, id).into_iter().enumerate() {
+    let rows = tag_editor_rows(game, id);
+    let first = window_start(state.selected, rows.len(), TAG_EDITOR_VISIBLE_ROWS);
+    for (index, row) in rows
+        .into_iter()
+        .enumerate()
+        .skip(first)
+        .take(TAG_EDITOR_VISIBLE_ROWS)
+    {
         let selected = index == state.selected;
         match row {
             TagEditorRow::New => {

@@ -442,6 +442,7 @@ pub(in crate::field_menu) fn spawn_spell_overlay(
                     padding: UiRect::all(px(16)),
                     border: UiRect::all(px(2)),
                     border_radius: BorderRadius::all(px(7)),
+                    overflow: Overflow::clip(),
                     ..default()
                 },
                 &title.to_uppercase(),
@@ -485,7 +486,13 @@ pub(in crate::field_menu) fn spawn_spell_overlay(
                                     status_muted(),
                                 );
                             }
-                            for (index, destination) in destinations.into_iter().enumerate() {
+                            let first = teleport_window_start(state.selected, destinations.len());
+                            for (index, destination) in destinations
+                                .iter()
+                                .enumerate()
+                                .skip(first)
+                                .take(TELEPORT_VISIBLE_ROWS)
+                            {
                                 spawn_item_modal_row(
                                     modal,
                                     font,
@@ -494,12 +501,38 @@ pub(in crate::field_menu) fn spawn_spell_overlay(
                                     index == state.selected,
                                 );
                             }
+                            if let Some(footer) =
+                                teleport_footer(state.selected, first, destinations.len())
+                            {
+                                spawn_status_text(modal, footer, font, 11.0, status_faint());
+                            }
                         }
                         _ => {}
                     }
                 },
             );
         });
+}
+
+pub(in crate::field_menu) fn teleport_window_start(selected: usize, len: usize) -> usize {
+    window_start(selected, len, TELEPORT_VISIBLE_ROWS)
+}
+
+/// Reports the visible span, but only once the destination list actually scrolls.
+pub(in crate::field_menu) fn teleport_footer(
+    selected: usize,
+    first: usize,
+    len: usize,
+) -> Option<String> {
+    if len <= TELEPORT_VISIBLE_ROWS {
+        return None;
+    }
+    Some(format!(
+        "DESTINATION {:02} OF {len:02}   ·   SHOWING {:02}-{:02}",
+        selected + 1,
+        first + 1,
+        (first + TELEPORT_VISIBLE_ROWS).min(len)
+    ))
 }
 
 pub(in crate::field_menu) fn selected_spell_index(
@@ -568,5 +601,70 @@ pub(in crate::field_menu) fn spell_accent(ability: &Ability) -> Color {
         AbilityKind::Buff(_) => Color::srgb_u8(120, 190, 130),
         AbilityKind::Debuff(_) => status_ember(),
         AbilityKind::Physical(_) => status_gold(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The shipped scenario has 29 maps declaring `warp_order`, so a late-game cast can offer 28
+    /// destinations. Before windowing, every one of them spawned a 48px row into a 520px modal.
+    const SHIPPED_DESTINATION_CEILING: usize = 28;
+
+    #[test]
+    fn the_destination_window_keeps_the_selection_visible_at_both_ends() {
+        assert_eq!(teleport_window_start(0, SHIPPED_DESTINATION_CEILING), 0);
+        assert_eq!(
+            teleport_window_start(TELEPORT_VISIBLE_ROWS - 1, SHIPPED_DESTINATION_CEILING),
+            0
+        );
+        assert_eq!(
+            teleport_window_start(TELEPORT_VISIBLE_ROWS, SHIPPED_DESTINATION_CEILING),
+            1
+        );
+        assert_eq!(
+            teleport_window_start(SHIPPED_DESTINATION_CEILING - 1, SHIPPED_DESTINATION_CEILING),
+            SHIPPED_DESTINATION_CEILING - TELEPORT_VISIBLE_ROWS
+        );
+    }
+
+    #[test]
+    fn a_short_destination_list_never_scrolls() {
+        assert_eq!(teleport_window_start(0, 3), 0);
+        assert_eq!(teleport_window_start(2, 3), 0);
+        assert_eq!(teleport_window_start(0, TELEPORT_VISIBLE_ROWS), 0);
+        assert_eq!(
+            teleport_window_start(TELEPORT_VISIBLE_ROWS - 1, TELEPORT_VISIBLE_ROWS),
+            0
+        );
+    }
+
+    #[test]
+    fn the_footer_appears_only_once_the_destination_list_scrolls() {
+        assert_eq!(teleport_footer(2, 0, 5), None);
+        assert_eq!(teleport_footer(0, 0, TELEPORT_VISIBLE_ROWS), None);
+        assert_eq!(
+            teleport_footer(9, 4, 28).as_deref(),
+            Some("DESTINATION 10 OF 28   ·   SHOWING 05-10")
+        );
+    }
+
+    /// However long the list grows, the modal only ever spawns a window of it.
+    #[test]
+    fn the_window_never_exceeds_the_visible_row_budget() {
+        for len in 0..=SHIPPED_DESTINATION_CEILING {
+            for selected in 0..len.max(1) {
+                let first = teleport_window_start(selected, len);
+                let shown = len.saturating_sub(first).min(TELEPORT_VISIBLE_ROWS);
+                assert!(shown <= TELEPORT_VISIBLE_ROWS);
+                if len > 0 {
+                    assert!(
+                        (first..first + shown).contains(&selected),
+                        "selection {selected} fell outside the window for a list of {len}"
+                    );
+                }
+            }
+        }
     }
 }
