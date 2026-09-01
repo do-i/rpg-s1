@@ -1121,6 +1121,8 @@ mod tests {
         let shop = ruinwatch_metadata("town_03_ruinwatch_shop");
         let expected_inn = [("inn_keeper", Position::new(8, 4), "inn_ruinwatch")];
         let expected_shop = [
+            // B3.7 added a late-town apothecary here; the roster stays ungated.
+            ("apothecary", Position::new(8, 3), "apothecary_ruinwatch"),
             (
                 "item_shop_keeper",
                 Position::new(6, 3),

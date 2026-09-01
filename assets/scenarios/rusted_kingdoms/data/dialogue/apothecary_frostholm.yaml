@@ -1,0 +1,14 @@
+# data/dialogue/apothecary_frostholm.yaml
+#
+# B3.7: see apothecary_ruinwatch.
+id: apothecary_frostholm
+type: npc
+entries:
+  - condition:
+      requires: [story_act3_started]
+    lines:
+      - "Cold keeps a reagent honest. Set your materials on the slab and stand back."
+    on_complete:
+      open_apothecary: true
+  - lines:
+      - "The still is frozen through. Give it time, and give me a reason."

@@ -27,6 +27,16 @@ shop:
       unlock_flag: story_act2_started
 
 npcs:
+  - id: apothecary
+    name: "Sedge"
+    dialogue: apothecary_ruinwatch
+    position: [8, 3]
+    sprite: assets/sprites/npc/female_wiz_01.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.6
   - id: item_shop_keeper
     name: "Ansel"
     dialogue: item_shop_ruinwatch

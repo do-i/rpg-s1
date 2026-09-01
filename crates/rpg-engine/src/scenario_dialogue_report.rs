@@ -944,8 +944,9 @@ entries:
         let report = build_dialogue_report(&root);
         assert!(report.load_error.is_none());
         // 101 before roadmap B1.3, plus the two sign boards and six zone NPCs it authored, plus
-        // B1.2's marshal camp: its field standard, the duel, and its two aftermath documents.
-        assert_eq!(report.documents.len(), 113);
+        // B1.2's marshal camp: its field standard, the duel, and its two aftermath documents,
+        // plus B3.7's three late-town apothecaries.
+        assert_eq!(report.documents.len(), 116);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
         assert_eq!(report.documents_with_only_accepted_dead_entries(), 4);

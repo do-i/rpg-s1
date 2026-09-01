@@ -24,6 +24,8 @@ drops:
           weight: 50
         - item: cursed_blade
           weight: 50
+        - item: soul_crystal
+          weight: 25
 ai:
   pattern: random
   moves:
@@ -66,6 +68,8 @@ drops:
           weight: 55
         - item: stone_chunk
           weight: 45
+        - item: soul_crystal
+          weight: 25
 ai:
   pattern: random
   moves:
@@ -105,6 +109,8 @@ drops:
           weight: 55
         - item: dark_crystal
           weight: 45
+        - item: wraith_cloth
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -147,6 +153,8 @@ drops:
           weight: 50
         - item: shadow_shard
           weight: 50
+        - item: wraith_cloth
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -189,6 +197,8 @@ drops:
           weight: 50
         - item: blood_vial
           weight: 50
+        - item: wraith_cloth
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -228,6 +238,8 @@ drops:
           weight: 50
         - item: blood_vial
           weight: 50
+        - item: specter_veil
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -270,6 +282,8 @@ drops:
           weight: 50
         - item: angel_feather
           weight: 50
+        - item: specter_veil
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -309,6 +323,8 @@ drops:
           weight: 55
         - item: blood_vial
           weight: 45
+        - item: specter_veil
+          weight: 30
 ai:
   pattern: random
   moves:
@@ -393,6 +409,8 @@ drops:
           weight: 50
         - item: rune_fragment
           weight: 50
+        - item: cave_crystal
+          weight: 30
 ai:
   pattern: random
   moves:

@@ -1,0 +1,14 @@
+# data/dialogue/apothecary_ashenveil.yaml
+#
+# B3.7: see apothecary_ruinwatch. This is the last workshop before the Stronghold.
+id: apothecary_ashenveil
+type: npc
+entries:
+  - condition:
+      requires: [story_act4_started]
+    lines:
+      - "Everything I have left, I keep for people going that way. You are going that way."
+    on_complete:
+      open_apothecary: true
+  - lines:
+      - "Ash gets into the mixtures. I will work when there is a reason worth the waste."
