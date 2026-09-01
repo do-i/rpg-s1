@@ -40,3 +40,62 @@
   buy_price: 700
   sell_price: 350
   description: "Interlocking iron rings. Heavy, but it shrugs off steel."
+
+# --- B3.3 / B3.4: the Act 3-4 ladder the source's design note names but never authored
+# (docs/design/equipment.md:51, "lether vest, chainmail, adamantite, hiiroikane"), plus the
+# robe and leather lines that left the Sorcerer with one body armor for the whole game.
+
+- id: arcane_robe
+  name: Arcane Robe
+  type: body
+  slot_category: robe
+  stats:
+    con: 4
+    int: 3
+  buy_price: 1200
+  sell_price: 600
+  description: "Sigil-stitched wool. The wards hold a little more than the wool does."
+
+- id: shadowweave_vest
+  name: Shadowweave Vest
+  type: body
+  slot_category: leather
+  stats:
+    con: 6
+    dex: 2
+  buy_price: 1400
+  sell_price: 700
+  description: "Oiled hide sewn with night-thread. Moves quieter than it has any right to."
+
+- id: adamantite_mail
+  name: Adamantite Mail
+  type: body
+  slot_category: heavy_armor
+  stats:
+    con: 8
+    dex: -2
+  buy_price: 1600
+  sell_price: 800
+  description: "Ore that never took to the forge fire. It took to the hammer instead."
+
+- id: astral_robe
+  name: Astral Robe
+  type: body
+  slot_category: robe
+  stats:
+    con: 7
+    int: 6
+  buy_price: 2800
+  sell_price: 1400
+  description: "Woven from a sky that no longer exists. Cold to the touch, always."
+
+- id: hiiroikane_mail
+  name: Hiiroikane Mail
+  type: body
+  slot_category: heavy_armor
+  stats:
+    con: 12
+    dex: -3
+  buy_price: 3200
+  sell_price: 1600
+  description: "Scarlet metal from the old kingdom. The flame that made it is the one you hunt."

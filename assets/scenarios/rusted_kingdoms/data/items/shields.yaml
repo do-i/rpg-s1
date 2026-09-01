@@ -39,3 +39,51 @@
   buy_price: 650
   sell_price: 325
   description: "A wall of iron. You will not be moved."
+
+# --- B3.3 / B3.4: the shield ladder from docs/design/equipment.md:52
+# ("wood, steal, mythril, dragon scale"), plus the buckler and small-shield tiers that
+# left the Rogue with one shield and the Cleric with two for the whole campaign.
+
+- id: shadow_buckler
+  name: Shadow Buckler
+  type: shield
+  slot_category: buckler
+  stats:
+    con: 4
+    dex: 2
+  buy_price: 1200
+  sell_price: 600
+  description: "Blackened rim, no boss, no shine. Nothing about it catches the light."
+
+- id: blessed_shield
+  name: Blessed Shield
+  type: shield
+  slot_category: small_shield
+  stats:
+    con: 6
+    dex: 1
+  buy_price: 1400
+  sell_price: 700
+  description: "Consecrated at Ruinwatch. The prayer is older than the wood."
+
+- id: mythril_shield
+  name: Mythril Shield
+  type: shield
+  slot_category: kite_shield
+  stats:
+    con: 8
+    dex: -1
+  buy_price: 1500
+  sell_price: 750
+  description: "Light as tin, stubborn as stone. The smiths who made these are gone."
+
+- id: dragonscale_shield
+  name: Dragonscale Shield
+  type: shield
+  slot_category: tower_shield
+  stats:
+    con: 11
+    dex: -2
+  buy_price: 3000
+  sell_price: 1500
+  description: "Overlapping plates from something that outlived its own age."
