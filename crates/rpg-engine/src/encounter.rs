@@ -298,6 +298,8 @@ pub struct BattleParticipant {
     pub immunities: Vec<crate::scenario_enemy::EnemyImmunity>,
     pub behavior: Option<crate::scenario_enemy::EnemyBehavior>,
     pub experience_yield: u32,
+    /// Gold this combatant pays out on defeat (B3.2); always zero for party members.
+    pub gold_yield: u32,
     pub enemy_size: Option<EnemySize>,
     pub sprite_id: String,
     pub sprite_scale_percent: u32,
@@ -434,6 +436,7 @@ pub(crate) fn build_battle_entry(
                 immunities: Vec::new(),
                 behavior: None,
                 experience_yield: 0,
+                gold_yield: 0,
                 enemy_size: None,
                 sprite_id: String::new(),
                 sprite_scale_percent: 100,
@@ -459,7 +462,10 @@ pub(crate) fn build_battle_entry(
         let enemy = enemy_catalog
             .enemy(id)
             .ok_or_else(|| BuildBattleError::UnknownEnemy(id.clone()))?;
-        participants.push(enemy_participant(enemy));
+        participants.push(enemy_participant(
+            enemy,
+            battle_balance.gp_per_exp_percent.get(),
+        ));
         enemy_count += 1;
     }
     if enemy_count == 0 {
@@ -542,7 +548,16 @@ pub(crate) fn build_scripted_battle_entry(
     Ok(entry)
 }
 
-fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
+/// B3.2: an enemy's gold is its authored `gp` when present, otherwise a percentage of its EXP
+/// yield. Deriving the default keeps 108 enemies consistent without hand-authoring each one.
+fn enemy_gold_yield(enemy: &EnemyDefinition, gp_per_exp_percent: u32) -> u32 {
+    enemy.gold.map_or_else(
+        || enemy.experience.get().saturating_mul(gp_per_exp_percent) / 100,
+        |gold| gold.get(),
+    )
+}
+
+fn enemy_participant(enemy: &EnemyDefinition, gp_per_exp_percent: u32) -> BattleParticipant {
     BattleParticipant {
         side: BattleSide::Enemy,
         id: enemy.id.clone(),
@@ -565,6 +580,7 @@ fn enemy_participant(enemy: &EnemyDefinition) -> BattleParticipant {
         immunities: enemy.immunities.clone(),
         behavior: Some(enemy.behavior.clone()),
         experience_yield: enemy.experience.get(),
+        gold_yield: enemy_gold_yield(enemy, gp_per_exp_percent),
         enemy_size: Some(enemy.size),
         sprite_id: enemy.sprite_id().to_owned(),
         sprite_scale_percent: enemy.sprite_scale_percent.get(),
@@ -590,6 +606,35 @@ mod tests {
             "../../../tests/fixtures/encounter-regular-zone.yaml"
         ))
         .unwrap()
+    }
+
+    /// B3.2. Combat paid no gold in either engine -- `gp_gained` was hardcoded to zero and the
+    /// magic-core exchange was the only faucet. Enemies now yield gold, derived from EXP by
+    /// default so all 108 stay consistent, with an authored `gp` overriding it for the thief,
+    /// bandit and pirate archetypes that should carry coin.
+    #[test]
+    fn enemy_gold_is_derived_from_experience_unless_the_enemy_authors_its_own() {
+        let catalog = EnemyCatalog::try_from_definitions(
+            EnemyCatalogFile::from_yaml_stream(include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml"
+            ))
+            .unwrap()
+            .0,
+        )
+        .unwrap();
+        let percent = BalanceData::default().battle.gp_per_exp_percent.get();
+
+        // Authored: a cutpurse carries its full EXP value in coin.
+        let cutpurse = catalog.enemy("ratkin_cutpurse_base").unwrap();
+        assert_eq!(cutpurse.experience.get(), 65);
+        assert_eq!(cutpurse.gold.map(std::num::NonZeroU32::get), Some(65));
+        assert_eq!(enemy_gold_yield(cutpurse, percent), 65);
+
+        // Unauthored: the EXP-derived default, which stays small next to magic-core income.
+        let doctor = catalog.enemy("ratkin_plague_doctor_base").unwrap();
+        assert_eq!(doctor.experience.get(), 75);
+        assert_eq!(doctor.gold, None);
+        assert_eq!(enemy_gold_yield(doctor, percent), 75 * percent / 100);
     }
 
     fn enemies() -> EnemyCatalog {

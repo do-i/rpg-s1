@@ -114,6 +114,7 @@ pub(super) struct BattleCombatant {
     pub(super) immunities: Vec<crate::scenario_enemy::EnemyImmunity>,
     pub(super) behavior: Option<crate::scenario_enemy::EnemyBehavior>,
     pub(super) experience_yield: u32,
+    pub(super) gold_yield: u32,
     pub(super) drops: Option<crate::scenario_enemy::EnemyDrops>,
 }
 
@@ -150,6 +151,7 @@ impl BattleCombatant {
             immunities: participant.immunities.clone(),
             behavior: participant.behavior.clone(),
             experience_yield: participant.experience_yield,
+            gold_yield: participant.gold_yield,
             drops: participant.drops.clone(),
         }
     }

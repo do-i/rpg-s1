@@ -22,6 +22,8 @@ battle:
   # B3.1: party battle DEF is equipment CON + innate con / divisor, so armor is the
   # dominant term. The source used raw CON, which outran every enemy ATK in the game.
   party_defense_con_divisor: 10
+  # B3.2: an enemy with no authored `gp` pays this percent of its EXP yield as gold.
+  gp_per_exp_percent: 33
 
 spawner:
   rogue_chase_reduction:    2      # tiles
