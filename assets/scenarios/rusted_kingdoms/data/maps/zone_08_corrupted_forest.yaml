@@ -6,3 +6,39 @@ enemy_spawn:
   init: 4
   max: 8
   interval: 22.0
+
+npcs:
+  - id: corrupted_forest_warden
+    name: "Warden Ilse"
+    position: [29, 10]
+    dialogue: corrupted_forest_warden
+    sprite: assets/sprites/npc/archer_recurve_scout.tsx
+    default_facing: down
+
+item_boxes:
+  - id: corrupted_forest_chest_01
+    position: [6, 8]
+    loot:
+      items:
+        - id: remedy
+          qty: 2
+      magic_cores:
+        - size: l
+          qty: 2
+  - id: corrupted_forest_chest_02
+    position: [35, 17]
+    loot:
+      items:
+        - id: holy_water
+          qty: 3
+        - id: hi_potion
+          qty: 3
+  - id: corrupted_forest_chest_03
+    position: [6, 32]
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+      magic_cores:
+        - size: xl
+          qty: 1

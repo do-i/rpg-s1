@@ -1274,6 +1274,11 @@ item_boxes:
     /// Pins the exact finding inventory against the shipped scenario. This test exists to catch
     /// regressions in the sweep pipeline itself, not to bless the count — a real change in either
     /// direction (new findings, or findings that silently stop firing) is worth investigating.
+    ///
+    /// The sweep is fully clean as of roadmap B1.3. The two findings it used to carry were both
+    /// signs the player could walk up to and interact with that had no dialogue behind them —
+    /// `zone_03_marshland` (two of them) and `zone_06_mountain_pass_01` — which is exactly the
+    /// unfurnished-zone problem B1.3 exists to close. Both boards are now authored.
     #[test]
     fn the_shipped_scenario_matches_the_known_finding_inventory() {
         let root =
@@ -1281,23 +1286,20 @@ item_boxes:
         let report = build_map_sweep(&root);
 
         assert_eq!(report.entries.len(), 53);
-        assert_eq!(report.clean_count(), 51);
-        assert_eq!(report.maps_with_findings(), 2);
+        assert_eq!(report.clean_count(), 53);
+        assert_eq!(report.maps_with_findings(), 0);
         assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert_eq!(report.category_count(SweepCategory::Collision), 0);
         assert_eq!(report.category_count(SweepCategory::Npc), 0);
         assert_eq!(report.category_count(SweepCategory::Portal), 0);
-        assert_eq!(report.category_count(SweepCategory::Object), 2);
+        assert_eq!(report.category_count(SweepCategory::Object), 0);
 
-        let marshland = entry(&report, "zone_03_marshland");
-        assert_eq!(
-            findings(marshland, SweepCategory::Object),
-            ["2 sign(s) present but dialogue `sign_zone_03_marshland` is missing"]
-        );
-        let mountain_pass_01 = entry(&report, "zone_06_mountain_pass_01");
-        assert_eq!(
-            findings(mountain_pass_01, SweepCategory::Object),
-            ["1 sign(s) present but dialogue `sign_zone_06_mountain_pass_01` is missing"]
-        );
+        // The two boards that used to be silent now carry text, and their maps sweep clean.
+        for id in ["zone_03_marshland", "zone_06_mountain_pass_01"] {
+            assert!(
+                findings(entry(&report, id), SweepCategory::Object).is_empty(),
+                "{id} should no longer report a sign with no dialogue"
+            );
+        }
     }
 }

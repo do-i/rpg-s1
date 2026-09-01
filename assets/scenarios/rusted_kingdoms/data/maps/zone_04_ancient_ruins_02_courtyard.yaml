@@ -1,2 +1,22 @@
 name: Ruins Courtyard
 warp_order: 80
+bgm: zone.ruins
+
+item_boxes:
+  - id: ruins_courtyard_chest_01
+    position: [8, 6]
+    loot:
+      items:
+        - id: ether
+          qty: 2
+        - id: antidote
+          qty: 2
+  - id: ruins_courtyard_chest_02
+    position: [12, 19]
+    loot:
+      items:
+        - id: fire_vial
+          qty: 3
+      magic_cores:
+        - size: m
+          qty: 4

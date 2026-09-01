@@ -1,0 +1,28 @@
+# data/dialogue/ruins_gate_surveyor.yaml
+#
+# Flavor NPC: a surveyor camped outside the Ancient Ruins gate. The whole
+# zone-04 arc had no NPCs, so nothing in it explained what the ruins are.
+id: ruins_gate_surveyor
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone04_defeated]
+    lines:
+      - "You went in and came out. That puts you one ahead of every survey I've filed."
+      - "I'll write it down as 'passable.' The guild can argue with the corpses if they disagree."
+
+  - condition:
+      requires: [ruins_gate_surveyor_briefed]
+    lines:
+      - "Gate, courtyard, sanctum. Three doors, and the third one is the one that matters."
+
+  - lines:
+      - "Third season measuring this gate and I still can't tell you who built it."
+      - "The stone's older than the kingdom. Older than the language we'd need to ask it anything."
+      - "Take a lamp oil ration. Past the courtyard the daylight stops meaning much."
+    on_complete:
+      set_flag: ruins_gate_surveyor_briefed
+      give_items:
+        - id: ether
+          qty: 2

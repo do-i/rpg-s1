@@ -856,6 +856,22 @@ impl<'a> Validator<'a> {
                 probe_path(self.physical_root, self.canonical_root.as_deref(), &path)
                     != ScenarioPathProbeResult::File
             });
+            // Neither engine resets the track on a map change that names no BGM: the map simply
+            // keeps playing whatever was already sounding. So an unscored playable map does not
+            // fall silent, it inherits -- which is how the whole Ancient Ruins arc spent the
+            // game playing town music, and how the marshland did the same (roadmap B1.3).
+            // A map with no TMX of its own is reported separately below and is not playable, so
+            // it is not held to this.
+            if !tmx_missing && file.value.bgm.is_none() {
+                self.warning(
+                    "map.missing_bgm",
+                    &file.path,
+                    "bgm",
+                    "map declares no `bgm`, so it inherits whatever track was already playing"
+                        .to_owned(),
+                );
+            }
+
             // A map YAML with no same-stem TMX is unreadable at runtime either way: both engines
             // resolve per-map metadata by exact stem (`data/maps/<map_id>.yaml`), with no
             // parent-to-segment fallback anywhere.
@@ -2283,7 +2299,10 @@ abilities: []
 "#,
             );
             self.write("data/items/field_use.yaml", "[]\n");
-            self.write("data/maps/village.yaml", "name: Invented Village\n");
+            self.write(
+                "data/maps/village.yaml",
+                "name: Invented Village\nbgm: zone.village\n",
+            );
             self.write(
                 "data/dialogue/intro.yaml",
                 "id: intro\ntype: cutscene\nlines: [An invented beginning.]\n",
@@ -2316,7 +2335,8 @@ movement: {player_speed: 5}
             self.write("data/battle_backgrounds.yaml", "[]\n");
             self.write(
                 BGM_INDEX_PATH,
-                "title: {default: title.ogg}\nbattle: {normal: battle.ogg, boss: boss.ogg}\n",
+                "title: {default: title.ogg}\nbattle: {normal: battle.ogg, boss: boss.ogg}\n\
+                 zone: {village: village.ogg}\n",
             );
             self.write(
                 SFX_INDEX_PATH,
@@ -2360,6 +2380,7 @@ movement: {player_speed: 5}
                 "assets/audio/title.ogg",
                 "assets/audio/battle.ogg",
                 "assets/audio/boss.ogg",
+                "assets/audio/village.ogg",
             ] {
                 self.touch(asset);
             }
@@ -3022,6 +3043,49 @@ on_complete:
             .expect("a cutscene must not be able to start a battle");
         assert_eq!(finding.location.path.as_str(), "data/dialogue/intro.yaml");
         assert_eq!(finding.location.field_path, "on_complete.start_battle");
+    }
+
+    /// Roadmap B1.3: `zone_03_marshland.yaml` and all three `zone_04_ancient_ruins_*.yaml` were
+    /// two lines each and declared no BGM, so the marshland and the whole Ancient Ruins arc
+    /// played whichever town track the player walked in from. Nothing failed; it just sounded
+    /// wrong, for four maps, for the length of an act.
+    #[test]
+    fn a_playable_map_that_declares_no_bgm_is_reported() {
+        let fixture = InventedScenario::new();
+        fixture.write("data/maps/village.yaml", "name: Invented Village\n");
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        let finding = report
+            .warnings()
+            .find(|finding| finding.code == "map.missing_bgm")
+            .expect("an unscored playable map must be reported");
+        assert_eq!(finding.location.path.as_str(), "data/maps/village.yaml");
+        assert_eq!(finding.location.field_path, "bgm");
+    }
+
+    /// A metadata file with no TMX of its own is not playable, and already has its own louder
+    /// diagnostic, so it must not also be nagged about a track nothing would ever play.
+    #[test]
+    fn an_unplayable_map_is_not_also_reported_for_its_missing_bgm() {
+        let fixture = InventedScenario::new();
+        fixture.write("data/maps/orphan.yaml", "name: Orphan\n");
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        assert!(
+            report.warnings().any(|finding| {
+                finding.code == "source.unmatched_map_metadata"
+                    && finding.location.path.as_str() == "data/maps/orphan.yaml"
+            }),
+            "the TMX-less metadata file should still be reported as unmatched"
+        );
+        assert!(
+            !report.diagnostics.iter().any(|finding| {
+                finding.code == "map.missing_bgm"
+                    && finding.location.path.as_str() == "data/maps/orphan.yaml"
+            }),
+            "an unplayable map must not be held to the BGM check: {:#?}",
+            report.diagnostics
+        );
     }
 
     #[test]

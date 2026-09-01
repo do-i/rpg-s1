@@ -2171,7 +2171,13 @@ mod tests {
         );
         assert_eq!(entry.return_context.map_id, "zone_03_marshland");
         assert_eq!(entry.return_context.position, boss_position);
-        assert_eq!(entry.return_context.world_bgm_key, None);
+        // This was `None` until roadmap B1.3: the marshland declared no BGM, so returning from a
+        // battle restored nothing and the map went on playing whichever town track the player
+        // had walked in from.
+        assert_eq!(
+            entry.return_context.world_bgm_key.as_deref(),
+            Some("zone.marsh")
+        );
     }
 
     /// Covers W12.4's three Ancient Ruins maps through the production loaders. The map changes
@@ -2401,6 +2407,11 @@ mod tests {
             "zone_04_ancient_ruins_03_sanctum"
         );
         assert_eq!(entry.return_context.position, boss_position);
-        assert_eq!(entry.return_context.world_bgm_key, None);
+        // The whole Ancient Ruins arc declared no BGM until roadmap B1.3, so all three of its
+        // maps returned from battle with nothing to restore.
+        assert_eq!(
+            entry.return_context.world_bgm_key.as_deref(),
+            Some("zone.ruins")
+        );
     }
 }

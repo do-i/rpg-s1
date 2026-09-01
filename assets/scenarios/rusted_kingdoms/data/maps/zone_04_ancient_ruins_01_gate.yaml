@@ -1,2 +1,28 @@
 name: Ruins Gate
 warp_order: 70
+bgm: zone.ruins
+
+npcs:
+  - id: ruins_gate_surveyor
+    name: "Surveyor Adran"
+    position: [24, 3]
+    dialogue: ruins_gate_surveyor
+    sprite: assets/sprites/npc/male_old_02.tsx
+    default_facing: down
+
+item_boxes:
+  - id: ruins_gate_chest_01
+    position: [18, 7]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  - id: ruins_gate_chest_02
+    position: [35, 23]
+    loot:
+      items:
+        - id: smelling_salts
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 3

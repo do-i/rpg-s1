@@ -6,3 +6,40 @@ enemy_spawn:
   init: 5
   max: 10
   interval: 20.0
+
+npcs:
+  - id: stronghold_deserter
+    name: "Deserter Roque"
+    position: [17, 2]
+    dialogue: stronghold_deserter
+    sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+    default_facing: down
+    present:
+      excludes: [boss_zone10_defeated]
+
+item_boxes:
+  - id: stronghold_chest_01
+    position: [8, 5]
+    loot:
+      items:
+        - id: elixir
+          qty: 1
+        - id: hi_potion
+          qty: 4
+  - id: stronghold_chest_02
+    position: [32, 16]
+    loot:
+      items:
+        - id: life_crystal
+          qty: 2
+        - id: remedy
+          qty: 2
+  - id: stronghold_chest_03
+    position: [9, 22]
+    loot:
+      items:
+        - id: hi_ether
+          qty: 3
+      magic_cores:
+        - size: xl
+          qty: 2

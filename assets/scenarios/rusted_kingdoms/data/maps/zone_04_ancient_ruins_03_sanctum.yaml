@@ -1,2 +1,30 @@
 name: Ruins Sanctum
 warp_order: 90
+bgm: zone.ruins
+
+npcs:
+  - id: ruins_sanctum_penitent
+    name: "The Penitent"
+    position: [17, 2]
+    dialogue: ruins_sanctum_penitent
+    sprite: assets/sprites/npc/wizard_base.tsx
+    default_facing: down
+
+item_boxes:
+  - id: ruins_sanctum_chest_01
+    position: [29, 7]
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: remedy
+          qty: 1
+  - id: ruins_sanctum_chest_02
+    position: [9, 22]
+    loot:
+      items:
+        - id: hi_ether
+          qty: 2
+      magic_cores:
+        - size: l
+          qty: 1

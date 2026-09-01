@@ -1,0 +1,30 @@
+# data/dialogue/corrupted_forest_warden.yaml
+#
+# Flavor NPC: a forest warden whose patrol did not come back out. Zone 8 had
+# zero NPCs, which left the corruption entirely unexplained on the ground.
+id: corrupted_forest_warden
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "Green's coming back at the edges. Real green, not that other colour."
+      - "I walked the north line yesterday and nothing walked it with me. Best patrol of my life."
+
+  - condition:
+      requires: [corrupted_forest_warden_supplied]
+    lines:
+      - "Mark your trees. The paths move, but bark stays honest."
+
+  - lines:
+      - "Six wardens on this line. I'm what's left, and I'm only here because I was slow that morning."
+      - "The rot doesn't kill the trees. It makes them into something that remembers being trees."
+      - "Don't drink the standing water and don't sleep under anything with leaves. Take the cure — I've no one to share it with."
+    on_complete:
+      set_flag: corrupted_forest_warden_supplied
+      give_items:
+        - id: remedy
+          qty: 2
+        - id: holy_water
+          qty: 2

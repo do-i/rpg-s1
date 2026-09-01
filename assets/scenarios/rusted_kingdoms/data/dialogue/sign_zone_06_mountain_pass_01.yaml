@@ -1,0 +1,8 @@
+# data/dialogue/sign_zone_06_mountain_pass_01.yaml
+id: sign_zone_06_mountain_pass_01
+type: board
+entries:
+  - lines:
+      - "Trail Marker — Lower Pass"
+      - "The last dry camp before the ravine. Fill what you carry here; the springs above run white and bitter."
+      - "Snow closes this road early. Someone scratched a tally of winters below the text, and stopped at four."

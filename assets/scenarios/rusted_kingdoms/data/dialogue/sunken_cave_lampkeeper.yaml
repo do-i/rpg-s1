@@ -1,0 +1,30 @@
+# data/dialogue/sunken_cave_lampkeeper.yaml
+#
+# Flavor NPC: the last of a salvage crew, keeping a lamp lit at the cave
+# mouth for people who may not be coming back. Zone 7 had zero NPCs.
+id: sunken_cave_lampkeeper
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "I put the lamp out last night. Nobody left down there to find their way back to it."
+      - "Nine years I kept it burning. Feels strange, carrying the dark home instead."
+
+  - condition:
+      requires: [sunken_cave_lampkeeper_warned]
+    lines:
+      - "Lamp stays lit. Come back past it and I'll know you made it."
+
+  - lines:
+      - "Salvage crew of eleven went in. I'm the one who stayed to hold the lamp."
+      - "That was nine years ago. I still trim the wick every evening."
+      - "The water down there took the tunnels and kept them. Take this — it's what I'd want carried in for me."
+    on_complete:
+      set_flag: sunken_cave_lampkeeper_warned
+      give_items:
+        - id: hi_potion
+          qty: 2
+        - id: echo_herb
+          qty: 2

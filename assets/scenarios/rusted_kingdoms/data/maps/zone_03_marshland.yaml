@@ -1,2 +1,39 @@
 name: Marshland
 warp_order: 50
+bgm: zone.marsh
+
+npcs:
+  - id: marshland_reedcutter
+    name: "Reedcutter Sela"
+    position: [26, 10]
+    dialogue: marshland_reedcutter
+    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    default_facing: down
+
+item_boxes:
+  - id: marshland_chest_01
+    position: [24, 5]
+    loot:
+      items:
+        - id: antidote
+          qty: 2
+      magic_cores:
+        - size: s
+          qty: 4
+  - id: marshland_chest_02
+    position: [30, 18]
+    loot:
+      items:
+        - id: potion
+          qty: 3
+        - id: echo_herb
+          qty: 1
+  - id: marshland_chest_03
+    position: [8, 35]
+    loot:
+      items:
+        - id: ether
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 2

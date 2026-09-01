@@ -1,0 +1,31 @@
+# data/dialogue/marshland_reedcutter.yaml
+#
+# Flavor NPC: a reedcutter working the marsh causeway. The marshland had no
+# NPC at all, so the whole zone spoke only through two waterlogged signs.
+#
+# One-shot: she hands over antidotes the first time, because the marsh is
+# where the party first meets poison in quantity.
+id: marshland_reedcutter
+type: npc
+
+entries:
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "Water's running clear again. First season I've cut reeds without holding my breath."
+      - "Whatever you did up there, the marsh felt it before I did."
+
+  - condition:
+      requires: [marshland_reedcutter_helped]
+    lines:
+      - "Stay on the boards. The marsh doesn't drown you — it just waits until you're tired."
+
+  - lines:
+      - "Careful where you put your boots. Half this water's poison and the other half's worse."
+      - "The green stuff on the reeds — that's what does it. Gets in a cut and doesn't leave."
+      - "Here. I cut more of the cure than I can carry, and you look like you're heading deeper in."
+    on_complete:
+      set_flag: marshland_reedcutter_helped
+      give_items:
+        - id: antidote
+          qty: 3
