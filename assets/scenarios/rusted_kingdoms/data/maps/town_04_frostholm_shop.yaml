@@ -76,6 +76,27 @@ weapon_shop:
     - id: war_hammer
       buy_price: 500
       unlock_flag: story_act3_started
+    - id: steel_sword
+      buy_price: 900
+      unlock_flag: story_act3_started
+    - id: war_mace
+      buy_price: 1500
+      unlock_flag: story_act3_started
+    - id: assassin_dagger
+      buy_price: 1600
+      unlock_flag: story_act3_started
+    - id: blessed_wand
+      buy_price: 1600
+      unlock_flag: story_act3_started
+    - id: mythril_spear
+      buy_price: 1700
+      unlock_flag: story_act3_started
+    - id: elder_staff
+      buy_price: 1800
+      unlock_flag: story_act3_started
+    - id: great_axe
+      buy_price: 1800
+      unlock_flag: story_act3_started
 
 armor_shop:
   items:
@@ -90,4 +111,28 @@ armor_shop:
       unlock_flag: story_act3_started
     - id: chainmail
       buy_price: 700
+      unlock_flag: story_act3_started
+    - id: shadow_hood
+      buy_price: 1100
+      unlock_flag: story_act3_started
+    - id: shadow_buckler
+      buy_price: 1200
+      unlock_flag: story_act3_started
+    - id: arcane_robe
+      buy_price: 1200
+      unlock_flag: story_act3_started
+    - id: adamantite_helm
+      buy_price: 1300
+      unlock_flag: story_act3_started
+    - id: blessed_shield
+      buy_price: 1400
+      unlock_flag: story_act3_started
+    - id: shadowweave_vest
+      buy_price: 1400
+      unlock_flag: story_act3_started
+    - id: mythril_shield
+      buy_price: 1500
+      unlock_flag: story_act3_started
+    - id: adamantite_mail
+      buy_price: 1600
       unlock_flag: story_act3_started

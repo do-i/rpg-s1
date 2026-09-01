@@ -3,7 +3,7 @@
   type: weapon
   slot_category: staff
   stats:
-    str: 1
+    int: 1
   buy_price: 30
   sell_price: 15
   description: "A sturdy length of wood. Better than bare hands."
@@ -122,3 +122,121 @@
   buy_price: 450
   sell_price: 225
   description: "A rod etched with focusing sigils."
+
+# --- B3.3 / B3.4: the Act 3-4 weapon ladder. The Hero shipped with exactly two usable
+# weapons for the whole campaign and started already holding one of them; the Rogue and
+# Cleric fared little better. Every class gains at least one Act 3 and one Act 4 option.
+
+- id: steel_sword
+  name: Steel Sword
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 7
+  buy_price: 900
+  sell_price: 450
+  description: "Folded steel, plain hilt. It does the one thing well."
+
+- id: war_mace
+  name: War Mace
+  type: weapon
+  slot_category: mace
+  stats:
+    str: 8
+  buy_price: 1500
+  sell_price: 750
+  description: "Flanged head on an ash haft. Armor is a suggestion to it."
+
+- id: assassin_dagger
+  name: Assassin's Dagger
+  type: weapon
+  slot_category: dagger
+  stats:
+    str: 4
+    dex: 6
+  buy_price: 1600
+  sell_price: 800
+  description: "Needle-thin and weightless. Made for the space between plates."
+
+- id: blessed_wand
+  name: Blessed Wand
+  type: weapon
+  slot_category: wand
+  stats:
+    int: 6
+  buy_price: 1600
+  sell_price: 800
+  description: "White ash, capped in silver. Warm when a prayer lands."
+
+- id: mythril_spear
+  name: Mythril Spear
+  type: weapon
+  slot_category: spear
+  stats:
+    str: 8
+    dex: 1
+  buy_price: 1700
+  sell_price: 850
+  description: "A long reach that costs nothing to carry."
+
+- id: elder_staff
+  name: Elder Staff
+  type: weapon
+  slot_category: staff
+  stats:
+    int: 7
+  buy_price: 1800
+  sell_price: 900
+  description: "Cut from a tree that was old when the kingdom was young."
+
+- id: great_axe
+  name: Great Axe
+  type: weapon
+  slot_category: axe
+  stats:
+    str: 9
+    dex: -2
+  buy_price: 1800
+  sell_price: 900
+  description: "Two hands, one arc, no second chances either way."
+
+- id: long_bow
+  name: Long Bow
+  type: weapon
+  slot_category: bow
+  stats:
+    dex: 8
+  buy_price: 1800
+  sell_price: 900
+  description: "Yew, shoulder-high, drawn to the ear. Range the enemy cannot answer."
+
+- id: flamebrand
+  name: Flamebrand
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 11
+  buy_price: 2800
+  sell_price: 1400
+  description: "The blade keeps an ember at its core. It has not gone out in centuries."
+
+- id: arcane_rod
+  name: Arcane Rod
+  type: weapon
+  slot_category: rod
+  stats:
+    int: 9
+  buy_price: 3000
+  sell_price: 1500
+  description: "A focus of banded obsidian. It answers faster than you can finish the word."
+
+- id: dragonbone_hammer
+  name: Dragonbone Hammer
+  type: weapon
+  slot_category: hammer
+  stats:
+    str: 13
+    dex: -3
+  buy_price: 3000
+  sell_price: 1500
+  description: "A femur, capped in iron. Slow, and it only needs to land once."

@@ -37,3 +37,47 @@
   buy_price: 300
   sell_price: 150
   description: "A thin silver band that focuses thought."
+
+# --- B3.3 / B3.4: helmet tiers for Acts 3-4. The Rogue's two shipped helmets were
+# stat-identical (cloth_hood and leather_hat, both con 1), so the hood line gets a real
+# upgrade. Helmet stats are con-only or int-only by schema, so no mixed entries here.
+
+- id: shadow_hood
+  name: Shadow Hood
+  type: helmet
+  slot_category: hood
+  stats:
+    con: 4
+  buy_price: 1100
+  sell_price: 550
+  description: "Deep-cowled and unlined. Keeps a face out of the firelight."
+
+- id: adamantite_helm
+  name: Adamantite Helm
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 6
+  buy_price: 1300
+  sell_price: 650
+  description: "A full helm with a narrow slit. You hear your own breathing in it."
+
+- id: astral_circlet
+  name: Astral Circlet
+  type: helmet
+  slot_category: circlet
+  stats:
+    int: 5
+  buy_price: 2400
+  sell_price: 1200
+  description: "A thin band of star-iron. Thought moves easier under it."
+
+- id: dragonbone_helm
+  name: Dragonbone Helm
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 9
+  buy_price: 2600
+  sell_price: 1300
+  description: "Carved from a skull that took three men to lift."
