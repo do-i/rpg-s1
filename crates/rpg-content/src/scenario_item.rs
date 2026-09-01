@@ -363,12 +363,36 @@ pub struct BodyStats {
 pub enum AccessoryStats {
     Encounter(EncounterModifierStats),
     AbilityBlock(AbilityBlockStats),
+    /// B3.6: accessories that grant plain attributes. The source shipped only the encounter and
+    /// ability-block shapes, so the slot could never affect a stat.
+    Attribute(AccessoryAttributeStats),
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct EncounterModifierStats {
     pub encounter_modifier: SignedUnitInterval,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct AccessoryAttributeStats {
+    #[serde(
+        rename = "str",
+        default,
+        deserialize_with = "deserialize_present_option"
+    )]
+    pub strength: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub dex: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub con: Option<i32>,
+    #[serde(
+        rename = "int",
+        default,
+        deserialize_with = "deserialize_present_option"
+    )]
+    pub intelligence: Option<i32>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
