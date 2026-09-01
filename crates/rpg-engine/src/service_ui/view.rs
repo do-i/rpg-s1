@@ -386,7 +386,17 @@ fn spawn_buy_page(
                 return;
             };
             spawn_status_text(panel, item_name(item), font, 21.0, status_gold());
-            spawn_status_text(panel, item_description(item), font, 15.0, status_ink());
+            panel
+                .spawn(buy_description_node())
+                .with_children(|description| {
+                    spawn_status_text(
+                        description,
+                        item_description(item),
+                        font,
+                        15.0,
+                        status_ink(),
+                    );
+                });
             spawn_equipment_preview(panel, font, state, catalog, game, item);
         });
     });
@@ -1223,7 +1233,26 @@ fn buy_detail_panel_node() -> Node {
         height: px(BUY_DETAIL_HEIGHT),
         min_height: px(BUY_DETAIL_HEIGHT),
         max_height: px(BUY_DETAIL_HEIGHT),
+        // The footprint is reserved, so it has to be honoured in both directions: a long
+        // description plus all five preview rows overruns 500px, and without this the last row
+        // painted outside the panel border and over the column beside it.
+        overflow: Overflow::clip(),
         ..detail_panel_node()
+    }
+}
+
+/// Holds the item description, and gives up its own height before the preview rows give up theirs.
+///
+/// The preview rows are the fixed contract here (see `EQUIPMENT_PREVIEW_ROW_HEIGHT`) — every party
+/// member must stay visible and the cursor must not reflow the panel — so when a description runs
+/// long it is the description that gets trimmed, not the fifth member.
+fn buy_description_node() -> Node {
+    Node {
+        width: percent(100),
+        flex_shrink: 1.0,
+        min_height: px(0),
+        overflow: Overflow::clip(),
+        ..default()
     }
 }
 
@@ -1356,6 +1385,18 @@ mod tests {
         assert_eq!(node.height, px(BUY_DETAIL_HEIGHT));
         assert_eq!(node.min_height, px(BUY_DETAIL_HEIGHT));
         assert_eq!(node.max_height, px(BUY_DETAIL_HEIGHT));
+        // Five 64px rows plus the panel's own chrome leaves no slack, so the reserved footprint
+        // has to clip and the description has to be the part that yields.
+        assert_eq!(node.overflow, Overflow::clip());
+        let description = buy_description_node();
+        assert_eq!(description.flex_shrink, 1.0);
+        assert_eq!(description.min_height, px(0));
+        const {
+            assert!(
+                5.0 * EQUIPMENT_PREVIEW_ROW_HEIGHT < BUY_DETAIL_HEIGHT,
+                "the preview rows alone must fit the reserved footprint"
+            );
+        }
         for focused in [false, true] {
             let row = equipment_preview_row_node(focused);
             assert_eq!(row.height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
