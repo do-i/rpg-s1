@@ -24,6 +24,9 @@ shop:
     - id: hi_potion
       buy_price: 500
       unlock_flag: story_act2_started
+    - id: revival_herb
+      buy_price: 800
+      unlock_flag: story_act2_started
 
 npcs:
   - id: harborgate_dockhand

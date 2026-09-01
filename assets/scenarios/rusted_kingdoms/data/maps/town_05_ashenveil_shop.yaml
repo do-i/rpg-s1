@@ -19,6 +19,21 @@ shop:
     - id: warp_stone
       buy_price: 800
       unlock_flag: story_act4_started
+    - id: potion
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: antidote
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: ether
+      buy_price: 150
+      unlock_flag: story_quest_started
+    - id: revival_herb
+      buy_price: 800
+      unlock_flag: story_act2_started
 
 npcs:
   - id: item_shop_keeper
