@@ -5,23 +5,18 @@ bgm: town.bamboo
 shop:
   items:
     - id: hi_potion
-      qty: 5
       buy_price: 500
       unlock_flag: story_act2_started
     - id: hi_ether
-      qty: 3
       buy_price: 600
       unlock_flag: story_act3_started
     - id: remedy
-      qty: 5
       buy_price: 300
       unlock_flag: story_act2_started
     - id: smelling_salts
-      qty: 5
       buy_price: 60
-      unlock_flag: story_act2_started
+      unlock_flag: story_act3_started
     - id: rest_capsule
-      qty: 3
       buy_price: 500
       unlock_flag: story_act3_started
 
@@ -74,19 +69,19 @@ weapon_shop:
       unlock_flag: story_act2_started
     - id: steel_axe
       buy_price: 400
-      unlock_flag: story_act2_started
+      unlock_flag: story_act3_started
     - id: ritual_rod
       buy_price: 450
       unlock_flag: story_act3_started
     - id: war_hammer
       buy_price: 500
-      unlock_flag: story_act2_started
+      unlock_flag: story_act3_started
 
 armor_shop:
   items:
     - id: silver_circlet
       buy_price: 300
-      unlock_flag: story_act2_started
+      unlock_flag: story_act3_started
     - id: kite_shield
       buy_price: 400
       unlock_flag: story_act2_started

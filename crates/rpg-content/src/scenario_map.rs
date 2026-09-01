@@ -116,7 +116,6 @@ pub struct ShopMetadata {
 #[serde(untagged)]
 pub enum ShopItem {
     Detailed(DetailedShopItem),
-    Stocked(StockedShopItem),
     Equipment(EquipmentShopItem),
 }
 
@@ -124,7 +123,6 @@ impl ShopItem {
     pub fn id(&self) -> &str {
         match self {
             Self::Detailed(item) => &item.id,
-            Self::Stocked(item) => &item.id,
             Self::Equipment(item) => &item.id,
         }
     }
@@ -132,7 +130,6 @@ impl ShopItem {
     pub fn buy_price(&self) -> NonZeroU32 {
         match self {
             Self::Detailed(item) => item.buy_price,
-            Self::Stocked(item) => item.buy_price,
             Self::Equipment(item) => item.buy_price,
         }
     }
@@ -140,7 +137,6 @@ impl ShopItem {
     pub fn unlock_flag(&self) -> &str {
         match self {
             Self::Detailed(item) => &item.unlock_flag,
-            Self::Stocked(item) => &item.unlock_flag,
             Self::Equipment(item) => &item.unlock_flag,
         }
     }
@@ -155,17 +151,6 @@ pub struct DetailedShopItem {
     pub name: String,
     pub buy_price: NonZeroU32,
     pub tags: Vec<ShopItemTag>,
-    #[serde(deserialize_with = "deserialize_string")]
-    pub unlock_flag: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct StockedShopItem {
-    #[serde(deserialize_with = "deserialize_string")]
-    pub id: String,
-    pub buy_price: NonZeroU32,
-    pub qty: NonZeroU32,
     #[serde(deserialize_with = "deserialize_string")]
     pub unlock_flag: String,
 }
@@ -396,7 +381,7 @@ mod tests {
 
     use super::{
         EquipmentShopItem, MagicCoreSize, MapMetadata, NpcAnimationMode, NpcType, ShopItem,
-        ShopItemTag, StockedShopItem, TransportDestinations, TransportOrigin,
+        ShopItemTag, TransportDestinations, TransportOrigin,
     };
     use crate::scenario_spatial::{CardinalDirection, Position};
     use crate::scenario_yaml;
@@ -493,14 +478,13 @@ mod tests {
     }
 
     #[test]
-    fn loads_stocked_shop_boxes_spawn_and_transport_corpus_variants() {
+    fn loads_shop_boxes_spawn_and_transport_corpus_variants() {
         let map: MapMetadata = scenario_yaml::from_str(
             r#"name: Greenwood Forest
 shop:
   items:
     - id: potion
       buy_price: 100
-      qty: 5
       unlock_flag: story_quest_started
 item_boxes:
   - id: forest_chest_01
@@ -517,9 +501,11 @@ transport:
         )
         .expect("the remaining pinned map-metadata variants should deserialize");
 
+        // B3.9 removed the decorative `qty` from every shipped shop row, so the two-field
+        // shape is now the only stocked-shop spelling in the corpus.
         assert!(matches!(
             &map.shop.unwrap().items[0],
-            ShopItem::Stocked(StockedShopItem { qty, .. }) if *qty == NonZeroU32::new(5).unwrap()
+            ShopItem::Equipment(item) if item.id == "potion"
         ));
         assert_eq!(map.item_boxes[0].loot.items[0].qty.get(), 1);
         assert_eq!(map.item_boxes[0].loot.magic_cores[0].size, MagicCoreSize::M);
