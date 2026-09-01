@@ -13,7 +13,8 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     encounter::{
         BattleEntry, EnemyCatalog, PreBattleReturnContext, SpawnCadence, WorldEnemyReturnState,
-        build_battle_entry, party_encounter_modifiers, pick_weighted_formation,
+        build_battle_entry, build_scripted_battle_entry, party_encounter_modifiers,
+        pick_weighted_formation,
     },
     field_menu_domain::{CatalogStatus, FieldMenuCatalog},
     game_state::GameState,
@@ -73,6 +74,7 @@ impl Plugin for WorldEncounterPlugin {
                     (update_world_enemies, detect_enemy_contact)
                         .chain()
                         .run_if(crate::world_pause::world_simulation_running),
+                    start_scripted_battle,
                     advance_battle_transition,
                     update_battle_flash_overlay,
                 )
@@ -368,11 +370,12 @@ fn drive_active_encounter_assets(
     };
     let regular_spawns = spawn_tiles(map);
     let boss_spawn = boss_spawn_tile(map);
-    if regular_spawns.is_empty() && boss_spawn.is_none() {
-        state.status = WorldEncounterStatus::NoEncounters;
-        commands.remove_resource::<EnemyCatalog>();
-        return;
-    }
+    // A map with no spawn tiles has no wandering enemies, but it can still host a
+    // dialogue-scripted battle (`on_complete.start_battle`), which needs this map's zone for its
+    // battle background and the enemy catalog to build its formation from. So the load runs to
+    // completion and only the *spawning* is skipped, below. Nothing ambient turns on as a result:
+    // `detect_enemy_contact` gates on `Spawned`, which a spawn-tile-free map never reaches.
+    let has_spawn_tiles = !regular_spawns.is_empty() || boss_spawn.is_some();
 
     if state.zone.is_none() {
         if let Some(failure) = inventory.failure.as_ref() {
@@ -539,6 +542,13 @@ fn drive_active_encounter_assets(
     };
     if let Err(error) = catalog.resolve_boss_move_sets(move_sets) {
         fail_encounter(&mut state, error.to_string());
+        return;
+    }
+    if !has_spawn_tiles {
+        // The zone and catalog stay resident for a scripted battle; the status keeps the ambient
+        // encounter loop off and stops this system from re-entering.
+        commands.insert_resource(catalog);
+        state.status = WorldEncounterStatus::NoEncounters;
         return;
     }
     let Some(mut game) = game else {
@@ -1092,6 +1102,136 @@ fn detect_enemy_contact(
         cadence.reset();
     }
     commands.insert_resource(entry);
+}
+
+/// A battle a dialogue asked for with `on_complete.start_battle`.
+///
+/// Inserted by `world_interaction` only once the dialogue that requested it has closed, so the
+/// fight starts after the last line rather than under it.
+#[derive(Clone, Debug, Resource)]
+pub(crate) struct ScriptedBattleRequest {
+    pub(crate) enemy_id: String,
+}
+
+/// Hands a scripted battle to the same entry pipeline a wandering encounter uses.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "assembling a battle entry reads every catalog the encounter path reads"
+)]
+fn start_scripted_battle(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    request: Option<Res<ScriptedBattleRequest>>,
+    game: Option<Res<GameState>>,
+    enemy_catalog: Option<Res<EnemyCatalog>>,
+    item_catalog: Res<FieldMenuCatalog>,
+    zones: Res<Assets<EncounterZone>>,
+    metadata_assets: Res<Assets<MapMetadata>>,
+    mut state: ResMut<WorldEncounterState>,
+    mut battle_transition: ResMut<BattleTransition>,
+    enemies: Query<&WorldEnemy>,
+) {
+    let Some(request) = request else {
+        return;
+    };
+    if battle_transition.input_locked() {
+        return;
+    }
+    match state.status {
+        // The map's encounter assets are still settling; the request waits rather than failing.
+        WorldEncounterStatus::Idle | WorldEncounterStatus::Loading => return,
+        WorldEncounterStatus::Failed => {
+            commands.remove_resource::<ScriptedBattleRequest>();
+            return;
+        }
+        WorldEncounterStatus::NoEncounters | WorldEncounterStatus::Spawned => {}
+    }
+    let enemy_id = request.enemy_id.clone();
+    let (Some(game), Some(enemy_catalog)) = (game, enemy_catalog) else {
+        fail_scripted_battle(
+            &mut commands,
+            &mut state,
+            format!("scripted battle `{enemy_id}` has no enemy catalog on this map"),
+        );
+        return;
+    };
+    if item_catalog.status() != CatalogStatus::Ready {
+        return;
+    }
+    let Some(zone) = state.zone.as_ref().and_then(|handle| zones.get(handle)) else {
+        fail_scripted_battle(
+            &mut commands,
+            &mut state,
+            format!(
+                "scripted battle `{enemy_id}` needs this map's `data/encount/<map_id>.yaml` for \
+                 its battle background"
+            ),
+        );
+        return;
+    };
+    let Some(map_id) = game.map().current().map(|map| map.as_str().to_owned()) else {
+        return;
+    };
+    let world_bgm_key = state
+        .metadata
+        .as_ref()
+        .and_then(|handle| metadata_assets.get(handle))
+        .and_then(|metadata| metadata.bgm.clone());
+    let context = PreBattleReturnContext {
+        map_id,
+        position: game.map().position(),
+        facing: game.map().facing(),
+        world_bgm_key,
+        world_enemies: enemies
+            .iter()
+            .map(|enemy| WorldEnemyReturnState {
+                encounter_id: enemy.encounter_id.clone(),
+                formation: enemy.formation.clone(),
+                origin: enemy.origin,
+                position: enemy.position,
+                facing: enemy.facing,
+                boss: enemy.boss,
+                chase_range: enemy.chase_range,
+                active: enemy.active,
+            })
+            .collect(),
+    };
+    let entry = match build_scripted_battle_entry(
+        &enemy_id,
+        zone,
+        &enemy_catalog,
+        &item_catalog,
+        game.party(),
+        game.repository(),
+        game.flags(),
+        context,
+    ) {
+        Ok(entry) => entry,
+        Err(error) => {
+            fail_scripted_battle(&mut commands, &mut state, error.to_string());
+            return;
+        }
+    };
+    if !battle_transition.request() {
+        return;
+    }
+    if let Some(encounter_sfx) = state.encounter_sfx.clone() {
+        commands.spawn((
+            AudioPlayer::new(asset_server.load(encounter_sfx)),
+            PlaybackSettings::DESPAWN,
+        ));
+    }
+    if let Some(cadence) = state.cadence.as_mut() {
+        cadence.reset();
+    }
+    commands.remove_resource::<ScriptedBattleRequest>();
+    commands.insert_resource(entry);
+}
+
+/// Drops the request so a broken one cannot retry every frame, and records why.
+fn fail_scripted_battle(commands: &mut Commands, state: &mut WorldEncounterState, failure: String) {
+    commands.remove_resource::<ScriptedBattleRequest>();
+    fail_encounter(state, failure);
 }
 
 fn advance_battle_transition(

@@ -979,6 +979,7 @@ impl<'a> Validator<'a> {
                     &file.path,
                     "on_complete",
                     index,
+                    DialogueActionContext::Cutscene,
                 ),
                 DialogueDocument::Entries(document) => {
                     for (entry_index, entry) in document.entries.iter().enumerate() {
@@ -987,6 +988,7 @@ impl<'a> Validator<'a> {
                             &file.path,
                             &format!("entries[{entry_index}].on_complete"),
                             index,
+                            DialogueActionContext::Entries,
                         );
                         for (choice_index, choice) in entry.choices.iter().enumerate() {
                             self.validate_dialogue_actions(
@@ -996,6 +998,7 @@ impl<'a> Validator<'a> {
                                     "entries[{entry_index}].choices[{choice_index}].on_select"
                                 ),
                                 index,
+                                DialogueActionContext::Entries,
                             );
                         }
                     }
@@ -1011,6 +1014,7 @@ impl<'a> Validator<'a> {
         path: &str,
         base: &str,
         index: &ReferenceIndex,
+        context: DialogueActionContext,
     ) {
         for (item_index, item) in actions.give_items.iter().enumerate() {
             self.checked(
@@ -1038,6 +1042,24 @@ impl<'a> Validator<'a> {
                 path,
                 format!("{base}.transition.map"),
             );
+        }
+        if let Some(enemy) = &actions.start_battle {
+            if context == DialogueActionContext::Cutscene {
+                self.error(
+                    "dialogue.start_battle_in_cutscene",
+                    path,
+                    format!("{base}.start_battle"),
+                    "`start_battle` is npc-only; a cutscene has no world to return to".to_owned(),
+                );
+            } else {
+                self.checked(
+                    "enemy",
+                    &index.enemies,
+                    enemy,
+                    path,
+                    format!("{base}.start_battle"),
+                );
+            }
         }
     }
 
@@ -1427,6 +1449,15 @@ struct ReferenceIndex {
     enemy_root: String,
     tmx_root: String,
     catalog_ids: Vec<CatalogId>,
+}
+
+/// Which document kind an `on_complete` / `on_select` block was authored in.
+///
+/// Only `start_battle` cares: the source documents it as `npc`-only.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DialogueActionContext {
+    Cutscene,
+    Entries,
 }
 
 impl ReferenceIndex {
@@ -2877,6 +2908,120 @@ npcs:
                 .to_string()
                 .contains(fixture.0.to_string_lossy().as_ref())
         );
+    }
+
+    /// Adds one ordinary enemy plus its battler sprite, so a `start_battle` can resolve.
+    fn add_duel_enemy(fixture: &InventedScenario) {
+        fixture.write(
+            "data/enemies/enemies_rank_a.yaml",
+            r#"id: cinder_marshal
+name: Cinder Marshal
+type: humanoid
+rank: A
+hp: 900
+atk: 40
+def: 30
+mres: 25
+dex: 20
+exp: 500
+size: large
+ai:
+  pattern: random
+  moves:
+    - action: attack
+      weight: 100
+targeting:
+  default: random_alive
+"#,
+        );
+        fixture.touch("assets/sprites/enemies/cinder_marshal.tsx");
+    }
+
+    #[test]
+    fn a_branch_can_start_a_battle_against_a_catalogued_enemy() {
+        let fixture = InventedScenario::new();
+        add_duel_enemy(&fixture);
+        fixture.write(
+            "data/dialogue/marshal_duel.yaml",
+            r#"id: marshal_duel
+type: npc
+entries:
+  - lines: [Then draw.]
+    end: true
+    on_complete:
+      start_battle: cinder_marshal
+"#,
+        );
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        assert!(
+            !report
+                .diagnostics
+                .iter()
+                .any(|finding| finding.location.path.as_str() == "data/dialogue/marshal_duel.yaml"),
+            "a resolvable scripted battle should be clean: {:#?}",
+            report.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_start_battle_against_an_absent_enemy_is_a_missing_reference() {
+        let fixture = InventedScenario::new();
+        fixture.write(
+            "data/dialogue/marshal_duel.yaml",
+            r#"id: marshal_duel
+type: npc
+entries:
+  - lines: [Then draw.]
+    choices:
+      - text: Draw.
+        target: fight
+        on_select:
+          start_battle: absent_marshal
+  - node: fight
+    lines: [Steel meets steel.]
+    end: true
+"#,
+        );
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        let finding = report
+            .errors()
+            .find(|finding| {
+                finding.location.path.as_str() == "data/dialogue/marshal_duel.yaml"
+                    && finding.code == "reference.missing"
+            })
+            .expect("an unknown scripted-battle enemy must be reported");
+        assert_eq!(
+            finding.location.field_path,
+            "entries[0].choices[0].on_select.start_battle"
+        );
+        assert_eq!(finding.message, "unknown enemy id `absent_marshal`");
+    }
+
+    /// The source documents `start_battle` as `npc`-only: a cutscene plays with no world behind
+    /// it, so there is nowhere to return the player to when the fight ends.
+    #[test]
+    fn a_start_battle_inside_a_cutscene_is_rejected_even_when_the_enemy_exists() {
+        let fixture = InventedScenario::new();
+        add_duel_enemy(&fixture);
+        fixture.write(
+            "data/dialogue/intro.yaml",
+            r#"id: intro
+type: cutscene
+lines: [An invented beginning.]
+on_complete:
+  start_battle: cinder_marshal
+"#,
+        );
+
+        let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
+        let finding = report
+            .errors()
+            .find(|finding| finding.code == "dialogue.start_battle_in_cutscene")
+            .expect("a cutscene must not be able to start a battle");
+        assert_eq!(finding.location.path.as_str(), "data/dialogue/intro.yaml");
+        assert_eq!(finding.location.field_path, "on_complete.start_battle");
     }
 
     #[test]

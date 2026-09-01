@@ -157,6 +157,16 @@ pub struct DialogueActions {
     pub open_inn: Option<ActionTrigger>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub open_apothecary: Option<ActionTrigger>,
+    /// A scripted battle against one named enemy, fought as soon as the branch closes.
+    ///
+    /// The source wire form is a bare enemy id (`start_battle: cinder_marshal`), and the source
+    /// documents it as `npc`-only — a cutscene has no world to return to, so
+    /// `scenario_cross_reference` rejects it there rather than letting it load and strand the
+    /// player. The pinned Python engine parses the key and hands it back to its caller
+    /// (`dialogue_engine.py:119`); no caller ever read it, so the runtime behaviour below is this
+    /// port's, not a transcription.
+    #[serde(default, deserialize_with = "deserialize_optional_string")]
+    pub start_battle: Option<String>,
 }
 
 /// The source permits one flag string or an ordered list of flag strings.
@@ -265,6 +275,46 @@ mod tests {
     };
     use crate::scenario_spatial::Position;
     use crate::scenario_yaml;
+
+    #[test]
+    fn a_branch_can_name_the_enemy_it_starts_a_battle_with() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            "id: marshal_duel\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [\"Then draw.\"]\n\
+             \x20   end: true\n\
+             \x20   on_complete:\n\
+             \x20     set_flag: marshal_duel_begun\n\
+             \x20     start_battle: cinder_marshal\n",
+        )
+        .expect("the source wire form is a bare enemy id");
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("type: npc should select the entry document shape");
+        };
+        let actions = &dialogue.entries[0].on_complete;
+        assert_eq!(actions.start_battle.as_deref(), Some("cinder_marshal"));
+        assert_eq!(
+            actions.set_flag.as_ref().unwrap().as_slice(),
+            ["marshal_duel_begun"]
+        );
+    }
+
+    #[test]
+    fn a_branch_without_the_verb_leaves_it_unset() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            "id: plain\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [\"Fair weather.\"]\n\
+             \x20   end: true\n",
+        )
+        .unwrap();
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("type: npc should select the entry document shape");
+        };
+        assert_eq!(dialogue.entries[0].on_complete.start_battle, None);
+    }
 
     #[test]
     fn loads_source_shaped_intro_cutscene_without_changing_text_or_order() {

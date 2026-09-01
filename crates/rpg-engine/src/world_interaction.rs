@@ -33,6 +33,7 @@ use crate::{
     ui_theme::UiTheme,
     world_actor::WorldNpc,
     world_dialogue::{DialogueEvent, DialoguePhase, DialogueSession, apply_flag_actions},
+    world_encounter::ScriptedBattleRequest,
     world_object::{WorldItemBox, WorldSign},
     world_player::{WorldPlayer, WorldPlayerMotion},
     world_transition::WorldTransition,
@@ -84,6 +85,9 @@ pub(crate) struct WorldInteractionState {
     /// Set for the rest of the frame a Back press closes a dialogue, so the same press
     /// cannot fall through to the field menu.
     closed_this_frame: bool,
+    /// The enemy a completed branch's `start_battle` named, held until the dialogue closes so the
+    /// fight starts after the last line instead of under it.
+    pending_battle: Option<String>,
 }
 
 impl WorldInteractionState {
@@ -549,6 +553,7 @@ fn resolve_dialogue_request(
     reason = "driving a session reads the clock, input, settings, and every catalog it can apply"
 )]
 fn drive_dialogue_session(
+    mut commands: Commands,
     time: Res<Time>,
     actions: Res<ActionState>,
     settings: Res<EngineSettings>,
@@ -579,6 +584,9 @@ fn drive_dialogue_session(
         state.portrait = None;
         state.closed_this_frame = true;
         state.pending_sounds.push(InteractionSound::Cancel);
+        if let Some(request) = take_pending_battle(&mut state) {
+            commands.insert_resource(request);
+        }
         return;
     }
     if let Some(delta) = actions.menu_navigation() {
@@ -608,6 +616,9 @@ fn drive_dialogue_session(
             if let Some(request) = ServiceRequest::from_dialogue(&completion) {
                 service.open(request);
             }
+            if let Some(enemy_id) = completion.start_battle.as_deref() {
+                state.pending_battle = Some(enemy_id.to_owned());
+            }
             if let Err(error) =
                 apply_dialogue_actions(&completion, &mut game, party, balance, &catalog)
             {
@@ -623,6 +634,23 @@ fn drive_dialogue_session(
         state.session = None;
         state.portrait = None;
     }
+    if let Some(request) = take_pending_battle(&mut state) {
+        commands.insert_resource(request);
+    }
+}
+
+/// Releases a `start_battle` to the encounter plugin, but only once no dialogue is on screen.
+///
+/// The branch that named the enemy has already committed its flags and gifts, so a Back press
+/// that closes the dialogue afterwards still owes the player the fight.
+fn take_pending_battle(state: &mut WorldInteractionState) -> Option<ScriptedBattleRequest> {
+    if state.session.is_some() {
+        return None;
+    }
+    state
+        .pending_battle
+        .take()
+        .map(|enemy_id| ScriptedBattleRequest { enemy_id })
 }
 
 /// Closes the treasure reveal on the next press.
@@ -1326,6 +1354,59 @@ mod tests {
             }
         }
         panic!("linear dialogue did not complete");
+    }
+
+    #[test]
+    fn a_start_battle_branch_names_its_enemy_and_waits_for_the_dialogue_to_close() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            "id: marshal_duel\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [\"You came anyway.\", \"Then draw.\"]\n\
+             \x20   end: true\n\
+             \x20   on_complete:\n\
+             \x20     set_flag: marshal_duel_begun\n\
+             \x20     start_battle: cinder_marshal\n",
+        )
+        .unwrap();
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("type: npc should select the entry document shape");
+        };
+        let flags = crate::runtime_flags::RuntimeFlags::default();
+        let mut session = DialogueSession::resolve("marshal_duel", None, dialogue, &flags)
+            .unwrap()
+            .unwrap();
+        let actions = complete_linear_dialogue(&mut session, &flags);
+
+        let mut state = WorldInteractionState::default();
+        for completion in &actions {
+            if let Some(enemy_id) = completion.start_battle.as_deref() {
+                state.pending_battle = Some(enemy_id.to_owned());
+            }
+        }
+        assert_eq!(state.pending_battle.as_deref(), Some("cinder_marshal"));
+
+        // While the dialogue is still on screen the fight is held back, so the last line is not
+        // fought under.
+        state.session = Some(DialogueSession::message(
+            "held",
+            None,
+            vec!["...".to_owned()],
+        ));
+        assert!(take_pending_battle(&mut state).is_none());
+        assert_eq!(state.pending_battle.as_deref(), Some("cinder_marshal"));
+
+        state.session = None;
+        let request = take_pending_battle(&mut state).expect("a closed dialogue releases it");
+        assert_eq!(request.enemy_id, "cinder_marshal");
+        // Exactly once: a released request must not fire again on the next frame.
+        assert!(take_pending_battle(&mut state).is_none());
+    }
+
+    #[test]
+    fn a_dialogue_without_the_verb_never_arms_a_battle() {
+        let mut state = WorldInteractionState::default();
+        assert!(take_pending_battle(&mut state).is_none());
     }
 
     #[test]
