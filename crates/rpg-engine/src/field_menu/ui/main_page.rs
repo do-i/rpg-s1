@@ -13,6 +13,7 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     game: Option<Res<GameState>>,
     walk_sheets: Res<PartyWalkSheets>,
     atlases: Res<Assets<TsxAtlasAsset>>,
+    transport: Option<Res<TransportDomain>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuMainPage>>,
 ) {
@@ -31,7 +32,12 @@ pub(in crate::field_menu) fn sync_main_menu_page(
         return;
     };
     // The switch overlay draws sprite frames, so it also rebuilds as those sheets finish loading.
-    if !pages.is_empty() && !state.is_changed() && !atlases.is_changed() {
+    if !pages.is_empty()
+        && !state.is_changed()
+        && !atlases.is_changed()
+        && transport.as_ref().is_none_or(|domain| !domain.is_changed())
+        && !game.is_changed()
+    {
         return;
     }
     for entity in &pages {
@@ -43,7 +49,16 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     };
     let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_main_menu_page(parent, &font, &state, &game, &thumbnails);
+        spawn_main_menu_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &thumbnails,
+            transport
+                .as_deref()
+                .is_some_and(|domain| domain.any_convenience_unlocked(game.flags())),
+        );
     });
 }
 
@@ -93,6 +108,7 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
     state: &FieldMenuState,
     game: &GameState,
     thumbnails: &PartyWalkThumbnails,
+    show_atlas_hint: bool,
 ) {
     parent
         .spawn((
@@ -120,7 +136,11 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
             });
             spawn_status_text(
                 page,
-                "ARROWS   SELECT      ENTER   CONFIRM      M / ESC   CLOSE",
+                if show_atlas_hint {
+                    "ARROWS   SELECT      ENTER   CONFIRM      T   EMBER ATLAS      M / ESC   CLOSE"
+                } else {
+                    "ARROWS   SELECT      ENTER   CONFIRM      M / ESC   CLOSE"
+                },
                 font,
                 15.0,
                 status_muted(),

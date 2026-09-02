@@ -37,6 +37,7 @@ pub(crate) enum NormalizedAction {
     MenuDown,
     MenuLeft,
     MenuRight,
+    Travel,
     MoveUp,
     MoveLeft,
     MoveDown,

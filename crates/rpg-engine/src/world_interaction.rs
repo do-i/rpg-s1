@@ -20,7 +20,7 @@ use crate::{
     runtime_member::RuntimeMember,
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
     scenario_balance::BalanceData,
-    scenario_dialogue::{DialogueActions, DialogueDocument},
+    scenario_dialogue::{DialogueActions, DialogueDocument, DialogueTransportMode},
     scenario_inventory::ScenarioInventory,
     scenario_map::MagicCoreSize,
     scenario_party::PartyCatalog,
@@ -30,6 +30,8 @@ use crate::{
     scenario_yaml::{self, ScenarioYamlError},
     service_ui::{ServiceRequest, ServiceUiState},
     sfx_cue::cue,
+    transport_domain::TravelMode,
+    transport_ui::TransportUiState,
     ui_theme::UiTheme,
     world_actor::WorldNpc,
     world_dialogue::{DialogueEvent, DialoguePhase, DialogueSession, apply_flag_actions},
@@ -198,6 +200,7 @@ fn request_npc_dialogue(
     transition: Res<WorldTransition>,
     field_menu: Res<FieldMenuState>,
     service: Res<ServiceUiState>,
+    transport: Option<Res<TransportUiState>>,
     catalog: Res<FieldMenuCatalog>,
     layouts: Res<Assets<TextureAtlasLayout>>,
     game: Option<ResMut<GameState>>,
@@ -210,6 +213,9 @@ fn request_npc_dialogue(
     if state.input_locked()
         || field_menu.input_locked()
         || service.input_locked()
+        || transport
+            .as_deref()
+            .is_some_and(TransportUiState::input_locked)
         || transition.input_locked()
         || !actions.just_pressed(AppAction::Confirm)
     {
@@ -562,6 +568,7 @@ fn drive_dialogue_session(
     catalog: Res<FieldMenuCatalog>,
     game: Option<ResMut<GameState>>,
     mut service: ResMut<ServiceUiState>,
+    mut transport: Option<ResMut<TransportUiState>>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     let Some(mut game) = game else {
@@ -623,6 +630,13 @@ fn drive_dialogue_session(
                 apply_dialogue_actions(&completion, &mut game, party, balance, &catalog)
             {
                 state.failure = Some(error.to_string());
+            } else if let (Some(mode), Some(transport)) =
+                (completion.open_transport, transport.as_deref_mut())
+            {
+                transport.open_mode(match mode {
+                    DialogueTransportMode::Sail => TravelMode::Sail,
+                    DialogueTransportMode::Fly => TravelMode::Fly,
+                });
             }
         }
     }

@@ -193,6 +193,19 @@ impl FieldMenuCatalog {
             ..default()
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn atlas_warp_fixture() -> Self {
+        let mut catalog = Self::production_class_fixture();
+        catalog.warp_destinations.push(WarpDestination {
+            map_id: "town_01_ardel".to_owned(),
+            name: "Ardel".to_owned(),
+            position: Position::new(3, 4),
+            town: true,
+            order: 10,
+        });
+        catalog
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

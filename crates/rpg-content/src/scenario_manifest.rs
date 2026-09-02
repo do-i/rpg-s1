@@ -195,6 +195,8 @@ pub struct ManifestFlagsRefs {
 /// file references remain ordinary [`ScenarioRelativePath`] values.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestRefs {
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub transport: Option<ScenarioRelativePath>,
     pub party: ScenarioRelativePath,
     pub classes: ScenarioDirectoryPath,
     pub maps: ScenarioDirectoryPath,
@@ -208,6 +210,14 @@ pub struct ManifestRefs {
     pub battle_backgrounds: ScenarioRelativePath,
     pub assets: ScenarioDirectoryPath,
     pub tmx: ScenarioDirectoryPath,
+}
+
+fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    T::deserialize(deserializer).map(Some)
 }
 
 /// A source-authored directory reference within the active scenario package.
@@ -468,6 +478,7 @@ mod tests {
         assert_eq!(
             manifest.refs,
             ManifestRefs {
+                transport: Some("data/transport.yaml".try_into().unwrap()),
                 party: "data/party.yaml".try_into().unwrap(),
                 classes: "data/classes/".try_into().unwrap(),
                 maps: "data/maps/".try_into().unwrap(),

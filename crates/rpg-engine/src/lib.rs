@@ -52,6 +52,8 @@ mod sfx_cue;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;
+mod transport_domain;
+mod transport_ui;
 mod tsx_atlas_asset;
 mod ui_theme;
 mod world_actor;
@@ -70,8 +72,8 @@ pub use rpg_content::{
     scenario_battle_background, scenario_class, scenario_condition, scenario_cross_reference,
     scenario_dialogue, scenario_duplicate_id, scenario_encounter, scenario_enemy, scenario_item,
     scenario_manifest, scenario_map, scenario_party, scenario_path, scenario_quest,
-    scenario_recipe, scenario_root, scenario_validation_baseline, scenario_yaml, tmx_header,
-    tsx_metadata,
+    scenario_recipe, scenario_root, scenario_transport, scenario_validation_baseline,
+    scenario_yaml, tmx_header, tsx_metadata,
 };
 
 #[cfg(test)]
@@ -113,6 +115,8 @@ use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
 use service_ui::ServiceUiPlugin;
 use title_screen::TitleScreenPlugin;
 use tmx_ground_asset::TmxGroundAssetPlugin;
+use transport_domain::TransportDomainPlugin;
+use transport_ui::TransportUiPlugin;
 use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
 use world_actor::WorldActorPlugin;
@@ -194,6 +198,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_systems(Update, sync_window_title_from_manifest)
     .add_plugins(ScenarioNewGameAssetsPlugin)
     .add_plugins(FieldMenuDomainPlugin)
+    .add_plugins(TransportDomainPlugin)
     .add_plugins(TsxAtlasAssetPlugin)
     .add_plugins(TmxGroundAssetPlugin)
     .add_plugins(EncounterAssetPlugin)
@@ -224,6 +229,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(WorldPlayerPlugin)
     .add_plugins(WorldDebugOverlayPlugin)
     .add_plugins(FieldMenuPlugin)
+    .add_plugins(TransportUiPlugin)
     .add_plugins(BattleEntryPlugin)
     .add_plugins(BattlePlugin)
     .add_plugins(GameOverPlugin)

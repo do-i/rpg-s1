@@ -7,6 +7,18 @@ type: npc
 entries:
   - condition:
       requires: [story_act4_started]
+      excludes: [vault_flame_claimed]
+    lines:
+      - "It has waited two hundred years without moving. Now it is reaching for you."
+      - "Take it. If the king asks, tell him the sky chose first."
+    on_complete:
+      set_flag: [vault_flame_claimed, transport_fly_unlocked]
+      give_items:
+        - { id: sky_crystal, qty: 1 }
+      open_transport: fly
+
+  - condition:
+      requires: [story_act4_started, vault_flame_claimed]
     lines:
       - "The pedestal is empty and the king did not have me executed. Both of those are new."
       - "Whatever you took from this room, the cold has been losing its grip ever since."

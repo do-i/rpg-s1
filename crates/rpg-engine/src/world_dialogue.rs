@@ -8,6 +8,9 @@ use crate::{
     scenario_dialogue::{DialogueActions, DialogueChoice, EntryDialogue},
 };
 
+#[cfg(test)]
+use crate::scenario_dialogue::DialogueTransportMode;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum DialoguePhase {
     Typing,
@@ -2152,6 +2155,7 @@ mod tests {
             actions[0].set_flag.as_ref().unwrap().as_slice(),
             ["transport_sail_unlocked"]
         );
+        assert_eq!(actions[0].open_transport, Some(DialogueTransportMode::Sail));
 
         // Apply the effect exactly as production would, then re-resolve: the post-unlock
         // branch takes over and never re-fires the flag-set action (idempotent), while the
@@ -2169,10 +2173,10 @@ mod tests {
         .unwrap()
         .unwrap();
         assert!(session.current_line().starts_with("She's yours"));
-        assert_eq!(
-            complete_linear(&mut session, &post_unlock_flags),
-            [DialogueActions::default()]
-        );
+        let repeat = complete_linear(&mut session, &post_unlock_flags);
+        assert_eq!(repeat.len(), 1);
+        assert_eq!(repeat[0].open_transport, Some(DialogueTransportMode::Sail));
+        assert!(repeat[0].set_flag.is_none());
 
         // The post-unlock branch only requires the flag itself, not Act II — it stays
         // reachable even if a save somehow carries the sail flag without the story flag
@@ -2187,8 +2191,52 @@ mod tests {
         .unwrap()
         .unwrap();
         assert!(session.current_line().starts_with("She's yours"));
+        let repeat = complete_linear(&mut session, &sail_only_flags);
+        assert_eq!(repeat[0].open_transport, Some(DialogueTransportMode::Sail));
+        assert!(repeat[0].set_flag.is_none());
+    }
+
+    #[test]
+    fn frostholm_vault_grants_the_sky_crystal_once_and_reopens_only_as_repeat_dialogue() {
+        let dialogue = dialogue(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_vault_warden.yaml"
+        ));
+        let first_flags = RuntimeFlags::from_bootstrap(["story_act4_started"]);
+        let mut first = DialogueSession::resolve(
+            "frostholm_vault_warden",
+            None,
+            dialogue.clone(),
+            &first_flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(
+            first
+                .current_line()
+                .starts_with("It has waited two hundred years")
+        );
+        let actions = complete_linear(&mut first, &first_flags);
         assert_eq!(
-            complete_linear(&mut session, &sail_only_flags),
+            actions[0].set_flag.as_ref().unwrap().as_slice(),
+            ["vault_flame_claimed", "transport_fly_unlocked"]
+        );
+        assert_eq!(actions[0].give_items.len(), 1);
+        assert_eq!(actions[0].give_items[0].id, "sky_crystal");
+        assert_eq!(actions[0].give_items[0].qty.get(), 1);
+        assert_eq!(actions[0].open_transport, Some(DialogueTransportMode::Fly));
+
+        let repeat_flags = RuntimeFlags::from_bootstrap([
+            "story_act4_started",
+            "vault_flame_claimed",
+            "transport_fly_unlocked",
+        ]);
+        let mut repeat =
+            DialogueSession::resolve("frostholm_vault_warden", None, dialogue, &repeat_flags)
+                .unwrap()
+                .unwrap();
+        assert!(repeat.current_line().starts_with("The pedestal is empty"));
+        assert_eq!(
+            complete_linear(&mut repeat, &repeat_flags),
             [DialogueActions::default()]
         );
     }

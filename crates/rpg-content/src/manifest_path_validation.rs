@@ -142,8 +142,8 @@ fn directory_reference<'a>(
 /// Identifier fields such as `protagonist.id`, `protagonist.class`, and `start.map` deliberately
 /// do not appear here: they name records, not scenario files.  Their cross-catalog validation is
 /// owned by later milestones.
-pub fn manifest_path_references(manifest: &Manifest) -> [ManifestPathReference<'_>; 28] {
-    [
+pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReference<'_>> {
+    let mut references = vec![
         file_reference("title.image", &manifest.title.image),
         file_reference("title.cursor_icon", &manifest.title.cursor_icon),
         file_reference("font.path", &manifest.font.path),
@@ -175,7 +175,11 @@ pub fn manifest_path_references(manifest: &Manifest) -> [ManifestPathReference<'
         file_reference("refs.battle_backgrounds", &manifest.refs.battle_backgrounds),
         directory_reference("refs.assets", &manifest.refs.assets),
         directory_reference("refs.tmx", &manifest.refs.tmx),
-    ]
+    ];
+    if let Some(transport) = &manifest.refs.transport {
+        references.insert(15, file_reference("refs.transport", transport));
+    }
+    references
 }
 
 /// Validates every manifest path reference with a caller-supplied package probe.
@@ -185,27 +189,32 @@ pub fn manifest_path_references(manifest: &Manifest) -> [ManifestPathReference<'
 pub fn validate_manifest_paths<'a>(
     manifest: &'a Manifest,
     probe: &impl ScenarioPathProbe,
-) -> [ManifestPathValidation<'a>; 28] {
-    manifest_path_references(manifest).map(|reference| {
-        let result = match probe.probe(reference.path) {
-            ScenarioPathProbeResult::Missing => ManifestPathValidationResult::Missing,
-            ScenarioPathProbeResult::File if reference.expected_kind == ScenarioEntryKind::File => {
-                ManifestPathValidationResult::Exists
-            }
-            ScenarioPathProbeResult::Directory
-                if reference.expected_kind == ScenarioEntryKind::Directory =>
-            {
-                ManifestPathValidationResult::Exists
-            }
-            ScenarioPathProbeResult::File => ManifestPathValidationResult::WrongKind {
-                actual_kind: ScenarioEntryKind::File,
-            },
-            ScenarioPathProbeResult::Directory => ManifestPathValidationResult::WrongKind {
-                actual_kind: ScenarioEntryKind::Directory,
-            },
-        };
-        ManifestPathValidation { reference, result }
-    })
+) -> Vec<ManifestPathValidation<'a>> {
+    manifest_path_references(manifest)
+        .into_iter()
+        .map(|reference| {
+            let result = match probe.probe(reference.path) {
+                ScenarioPathProbeResult::Missing => ManifestPathValidationResult::Missing,
+                ScenarioPathProbeResult::File
+                    if reference.expected_kind == ScenarioEntryKind::File =>
+                {
+                    ManifestPathValidationResult::Exists
+                }
+                ScenarioPathProbeResult::Directory
+                    if reference.expected_kind == ScenarioEntryKind::Directory =>
+                {
+                    ManifestPathValidationResult::Exists
+                }
+                ScenarioPathProbeResult::File => ManifestPathValidationResult::WrongKind {
+                    actual_kind: ScenarioEntryKind::File,
+                },
+                ScenarioPathProbeResult::Directory => ManifestPathValidationResult::WrongKind {
+                    actual_kind: ScenarioEntryKind::Directory,
+                },
+            };
+            ManifestPathValidation { reference, result }
+        })
+        .collect()
 }
 
 #[cfg(test)]

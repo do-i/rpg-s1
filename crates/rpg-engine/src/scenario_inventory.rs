@@ -19,6 +19,7 @@ use crate::{
 
 #[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct ScenarioInventory {
+    pub(crate) transport: Option<ScenarioRelativePath>,
     pub(crate) font: Option<ScenarioRelativePath>,
     pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
@@ -117,6 +118,7 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
     })?;
 
     let mut inventory = ScenarioInventory {
+        transport: manifest.refs.transport.clone(),
         font: Some(manifest.font.path.clone()),
         menu_backdrop: Some(manifest.ui.menu_backdrop.clone()),
         service_art: ServiceArt {
