@@ -70,6 +70,7 @@ engine_managed_flags:
   - boss_zone10_defeated
 
 refs:
+  transport:  data/transport.yaml
   party:      data/party.yaml
   classes:    data/classes/
   maps:       data/maps/

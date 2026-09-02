@@ -7,8 +7,11 @@ entries:
       - "She's seaworthy. Take her where the wind goes."
     on_complete:
       set_flag: transport_sail_unlocked
+      open_transport: sail
 
   - condition:
       requires: [transport_sail_unlocked]
     lines:
       - "She's yours. Safe sailing."
+    on_complete:
+      open_transport: sail

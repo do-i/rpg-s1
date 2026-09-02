@@ -2277,6 +2277,33 @@ Additional evidence boundaries:
   pinned tree has no per-file generator credits for these exact images. Exact
   component creators, license choices, and required attribution remain unknown.
 
+### Asset entry: `ALI-0129` — Ember Atlas parchment base map
+
+| Field | Value |
+| --- | --- |
+| Stable entry ID | `ALI-0129` |
+| Source path | not-applicable — generated directly for B4.1; no pre-existing source asset was copied |
+| Destination path | `assets/scenarios/rusted_kingdoms/assets/images/ui/ember_atlas.png` |
+| Source SHA-256 | `fedc104155fd24406064ef471417fbaf828070c968f8d6d83fa6d481a54aa659` |
+| Destination SHA-256 | `fedc104155fd24406064ef471417fbaf828070c968f8d6d83fa6d481a54aa659` |
+| Asset kind | image |
+| Title/name | Ember Atlas parchment base map |
+| Creator/rightsholder | unknown pending project rights review |
+| Source/evidence | OpenAI image-generation output created for B4.1 on 2026-09-01; prompt: `wide hand-painted fantasy parchment world map, burned irregular edges, muted terrain silhouettes, no text, labels, pins, routes, UI, compass, or watermark` |
+| License identifier/name | unknown |
+| License text/notice location | unknown |
+| Required attribution | unknown |
+| Modification status/details | unmodified generated PNG; runtime code supplies all labels, pins, routes, and highlights |
+| Redistribution permission | unknown |
+| Commercial-use permission | unknown |
+| Derivative-work permission | unknown |
+| Review status | `needs-evidence` |
+| Reviewer/date | not yet reviewed |
+
+Notes/blocker: preserve the exact generated hash and establish the account/output terms and any
+required disclosure or notice before release approval. This entry records provenance only and does
+not treat generation as automatic redistribution clearance.
+
 ## Compact blank entry
 
 Copy this block for each new file. Retain every field; use `unknown` rather

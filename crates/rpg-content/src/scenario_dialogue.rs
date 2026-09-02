@@ -157,6 +157,8 @@ pub struct DialogueActions {
     pub open_inn: Option<ActionTrigger>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub open_apothecary: Option<ActionTrigger>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub open_transport: Option<DialogueTransportMode>,
     /// A scripted battle against one named enemy, fought as soon as the branch closes.
     ///
     /// The source wire form is a bare enemy id (`start_battle: cinder_marshal`), and the source
@@ -228,6 +230,14 @@ pub enum DialogueShopKind {
     Weapon,
     Armor,
     MagicCore,
+}
+
+/// Non-magical Ember Atlas mode requested after a dialogue branch closes.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DialogueTransportMode {
+    Sail,
+    Fly,
 }
 
 /// A presence-only action whose pinned source spelling must be `true`.

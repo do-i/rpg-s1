@@ -43,6 +43,7 @@ use crate::{
     scenario_quest::QuestCatalogFile,
     scenario_recipe::RecipeCatalogFile,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
+    scenario_transport::TransportCatalog,
     scenario_yaml,
 };
 
@@ -183,6 +184,7 @@ struct ScenarioCatalogs {
     backgrounds: Option<Located<BattleBackgroundCatalog>>,
     bgm: Option<Located<BgmIndex>>,
     sfx: Option<Located<SfxIndex>>,
+    transport: Option<Located<TransportCatalog>>,
 }
 
 /// Loads every manifest-selected typed catalog and validates the whole scenario.
@@ -267,6 +269,12 @@ impl<'a> Validator<'a> {
         self.validate_manifest_paths(&manifest);
 
         let party_path = manifest.refs.party.as_str().to_owned();
+        if let Some(transport) = &manifest.refs.transport {
+            let transport_path = transport.as_str().to_owned();
+            self.catalogs.transport = self
+                .read_yaml::<TransportCatalog>(&transport_path)
+                .map(|value| located(&transport_path, value));
+        }
         self.catalogs.party = self
             .read_yaml::<PartyCatalog>(&party_path)
             .map(|value| located(&party_path, value));
@@ -543,6 +551,7 @@ impl<'a> Validator<'a> {
         self.add_tmx_map_ids(&mut index);
         self.validate_duplicates(&index);
         self.validate_manifest_ids(&manifest, &index);
+        self.validate_transport(&index);
         self.validate_party(&index);
         self.validate_items(&index);
         self.validate_maps(&index);
@@ -1077,6 +1086,14 @@ impl<'a> Validator<'a> {
                 );
             }
         }
+        if actions.open_transport.is_some() && context == DialogueActionContext::Cutscene {
+            self.error(
+                "dialogue.open_transport_in_cutscene",
+                path,
+                format!("{base}.open_transport"),
+                "`open_transport` is npc-only; a cutscene has no World atlas to open",
+            );
+        }
     }
 
     fn validate_enemies(&mut self, index: &ReferenceIndex) {
@@ -1423,6 +1440,212 @@ impl<'a> Validator<'a> {
                     message: format!("flag `{flag}` is produced but never consumed"),
                 });
             }
+        }
+    }
+
+    fn validate_transport(&mut self, index: &ReferenceIndex) {
+        let Some(file) = self.catalogs.transport.clone() else {
+            return;
+        };
+        self.checked_path(&file.path, "map_image", file.value.map_image.as_str());
+        let mut regions = BTreeSet::new();
+        let mut assigned_maps = BTreeMap::<String, usize>::new();
+        for (region_index, region) in file.value.regions.iter().enumerate() {
+            if !regions.insert(region.id.clone()) {
+                self.error(
+                    "id.duplicate",
+                    &file.path,
+                    format!("regions[{region_index}].id"),
+                    format!("duplicate atlas region id `{}`", region.id),
+                );
+            }
+            for (map_index, map) in region.maps.iter().enumerate() {
+                self.checked(
+                    "map",
+                    &index.maps,
+                    &map.id,
+                    &file.path,
+                    format!("regions[{region_index}].maps[{map_index}].id"),
+                );
+                *assigned_maps.entry(map.id.clone()).or_default() += 1;
+            }
+        }
+        for map_id in &index.maps {
+            match assigned_maps.get(map_id).copied().unwrap_or_default() {
+                1 => {}
+                0 => self.error(
+                    "transport.region_missing",
+                    &file.path,
+                    "regions",
+                    format!("map `{map_id}` belongs to no atlas region"),
+                ),
+                count => self.error(
+                    "transport.region_multiple",
+                    &file.path,
+                    "regions",
+                    format!("map `{map_id}` belongs to {count} atlas regions"),
+                ),
+            }
+        }
+        let mut berth_ids = BTreeSet::new();
+        for (kind, anchors) in [
+            ("fly_anchors", &file.value.fly_anchors),
+            ("sail_berths", &file.value.sail_berths),
+        ] {
+            let mut ids = BTreeSet::new();
+            for (anchor_index, anchor) in anchors.iter().enumerate() {
+                if !ids.insert(anchor.id.clone()) {
+                    self.error(
+                        "id.duplicate",
+                        &file.path,
+                        format!("{kind}[{anchor_index}].id"),
+                        format!("duplicate transport anchor id `{}`", anchor.id),
+                    );
+                }
+                if kind == "sail_berths" {
+                    berth_ids.insert(anchor.id.clone());
+                }
+                self.checked(
+                    "map",
+                    &index.maps,
+                    &anchor.map,
+                    &file.path,
+                    format!("{kind}[{anchor_index}].map"),
+                );
+                if !regions.contains(&anchor.region) {
+                    self.error(
+                        "reference.missing",
+                        &file.path,
+                        format!("{kind}[{anchor_index}].region"),
+                        format!("unknown atlas region `{}`", anchor.region),
+                    );
+                } else if file
+                    .value
+                    .regions
+                    .iter()
+                    .find(|region| region.id == anchor.region)
+                    .is_some_and(|region| !region.maps.iter().any(|map| map.id == anchor.map))
+                {
+                    self.error(
+                        "transport.anchor_region",
+                        &file.path,
+                        format!("{kind}[{anchor_index}].map"),
+                        format!(
+                            "transport anchor `{}` lands on map `{}` outside region `{}`",
+                            anchor.id, anchor.map, anchor.region
+                        ),
+                    );
+                }
+                self.validate_transport_landing(
+                    &file.path,
+                    kind,
+                    anchor_index,
+                    &anchor.map,
+                    anchor.position,
+                );
+            }
+        }
+        let mut edges = BTreeSet::new();
+        for (edge_index, edge) in file.value.sail_edges.iter().enumerate() {
+            if let [a, b] = edge.between.as_slice() {
+                for (endpoint, berth) in [(0, a), (1, b)] {
+                    if !berth_ids.contains(berth) {
+                        self.error(
+                            "reference.missing",
+                            &file.path,
+                            format!("sail_edges[{edge_index}].between[{endpoint}]"),
+                            format!("unknown Sail berth `{berth}`"),
+                        );
+                    }
+                }
+                if a == b {
+                    self.error(
+                        "transport.edge_self",
+                        &file.path,
+                        format!("sail_edges[{edge_index}].between"),
+                        format!("Sail berth `{a}` cannot connect to itself"),
+                    );
+                }
+                let canonical = if a <= b {
+                    (a.clone(), b.clone())
+                } else {
+                    (b.clone(), a.clone())
+                };
+                if !edges.insert(canonical) {
+                    self.error(
+                        "id.duplicate",
+                        &file.path,
+                        format!("sail_edges[{edge_index}].between"),
+                        format!("duplicate Sail edge `{a}` to `{b}`"),
+                    );
+                }
+            } else {
+                self.error(
+                    "transport.edge_shape",
+                    &file.path,
+                    format!("sail_edges[{edge_index}].between"),
+                    "Sail edges require exactly two berth ids",
+                );
+            }
+        }
+    }
+
+    fn validate_transport_landing(
+        &mut self,
+        catalog_path: &str,
+        kind: &str,
+        index: usize,
+        map_id: &str,
+        position: crate::scenario_spatial::Position,
+    ) {
+        let Some(manifest) = self.catalogs.manifest.as_ref() else {
+            return;
+        };
+        let logical = format!("{}/{map_id}.tmx", manifest.refs.tmx.as_str());
+        let Some(xml) = self.read_text(&logical) else {
+            return;
+        };
+        let logical_path = ScenarioRelativePath::try_from(logical.as_str())
+            .expect("manifest TMX root and map id form a valid path");
+        let Ok(document) = crate::tmx_header::parse_tmx_map_document(&xml, &logical_path) else {
+            return;
+        };
+        let header = document.header();
+        let valid = position.x >= 0
+            && position.y >= 0
+            && (position.x as u32) < header.width()
+            && (position.y as u32) < header.height();
+        if !valid {
+            self.error(
+                "transport.landing_bounds",
+                catalog_path,
+                format!("{kind}[{index}].position"),
+                format!(
+                    "landing [{}, {}] is outside map `{map_id}` bounds {}x{}",
+                    position.x,
+                    position.y,
+                    header.width(),
+                    header.height()
+                ),
+            );
+            return;
+        }
+        if document
+            .tile_layers()
+            .iter()
+            .find(|layer| layer.name() == "collision")
+            .and_then(|layer| layer.gid_at(position.x as u32, position.y as u32))
+            .is_some_and(|gid| !gid.is_empty())
+        {
+            self.error(
+                "transport.landing_collision",
+                catalog_path,
+                format!("{kind}[{index}].position"),
+                format!(
+                    "landing [{}, {}] occupies collision on map `{map_id}`",
+                    position.x, position.y
+                ),
+            );
         }
     }
 
@@ -1946,6 +2169,35 @@ fn collect_flag_edges(
             engine_managed.insert(flag.clone());
         }
     }
+    if let Some(file) = &catalogs.transport {
+        add(
+            &mut consumed,
+            &file.value.sail_unlock_flag,
+            &file.path,
+            "sail_unlock_flag".to_owned(),
+        );
+        add(
+            &mut consumed,
+            &file.value.fly_unlock_flag,
+            &file.path,
+            "fly_unlock_flag".to_owned(),
+        );
+        for (kind, anchors) in [
+            ("fly_anchors", &file.value.fly_anchors),
+            ("sail_berths", &file.value.sail_berths),
+        ] {
+            for (index, anchor) in anchors.iter().enumerate() {
+                if let Some(flag) = &anchor.reveal_flag {
+                    add(
+                        &mut consumed,
+                        flag,
+                        &file.path,
+                        format!("{kind}[{index}].reveal_flag"),
+                    );
+                }
+            }
+        }
+    }
     if let Some(file) = &catalogs.party {
         for (index, member) in file.value.party.iter().enumerate() {
             add(
@@ -2021,16 +2273,6 @@ fn collect_flag_edges(
                         format!("{section}.items[{i}].unlock_flag"),
                     );
                 }
-            }
-        }
-        if let Some(t) = &file.value.transport {
-            for (mode, data) in [("sail", &t.sail), ("fly", &t.fly), ("warp", &t.warp)] {
-                add(
-                    &mut consumed,
-                    &data.unlock_flag,
-                    &file.path,
-                    format!("transport.{mode}.unlock_flag"),
-                );
             }
         }
     }
@@ -3297,18 +3539,11 @@ npcs:
             ])
         );
 
-        // Roadmap B2.3 owns this one: `sky_crystal` unlocks a transport system that does not exist.
-        assert_eq!(
-            warnings.len(),
-            1,
+        // B4.1 consumes the Sky Crystal's Fly unlock through the manifest-selected transport
+        // catalog, so the former orphan warning is intentionally gone.
+        assert!(
+            warnings.is_empty(),
             "shipped warnings changed:\n{warnings:#?}"
-        );
-        assert_eq!(
-            report
-                .warnings()
-                .filter_map(|finding| finding.message.split('`').nth(1))
-                .collect::<Vec<_>>(),
-            vec!["transport_fly_unlocked"]
         );
 
         // No unresolvable asset path or dangling id may ship again.

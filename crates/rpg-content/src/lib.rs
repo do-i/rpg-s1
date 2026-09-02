@@ -21,6 +21,7 @@ pub mod scenario_quest;
 pub mod scenario_recipe;
 pub mod scenario_root;
 pub mod scenario_spatial;
+pub mod scenario_transport;
 pub mod scenario_validation_baseline;
 pub mod scenario_yaml;
 pub mod tmx_header;

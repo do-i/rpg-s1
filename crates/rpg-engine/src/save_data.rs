@@ -631,6 +631,58 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn ember_atlas_unlocks_crystal_claim_and_visited_destinations_need_no_save_schema_change() {
+        let mut game = fixture_game();
+        for flag in [
+            "transport_sail_unlocked",
+            "transport_fly_unlocked",
+            "vault_flame_claimed",
+        ] {
+            game.flags_mut().set(flag);
+        }
+        let _ = game.repository_mut().add_item("sky_crystal", 1).unwrap();
+        game.map_mut().move_to(
+            RuntimeMapId::try_new("town_04_frostholm").unwrap(),
+            Position::new(9, 25),
+            CardinalDirection::Down,
+        );
+        let encoded = NativeSaveEnvelope::from_game_state(
+            &game,
+            "my_rpg_story",
+            "1.0.0",
+            1_700_000_000,
+            "Frostholm",
+        )
+        .unwrap()
+        .encode()
+        .unwrap();
+        let (_, restored) =
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+
+        for flag in [
+            "transport_sail_unlocked",
+            "transport_fly_unlocked",
+            "vault_flame_claimed",
+        ] {
+            assert!(restored.flags().is_set(flag));
+        }
+        assert_eq!(restored.repository().item_count("sky_crystal"), 1);
+        assert!(
+            restored
+                .map()
+                .has_visited(&RuntimeMapId::try_new("zone_01_starting_forest").unwrap())
+        );
+        assert_eq!(
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap()
+                .0
+                .format_version,
+            NATIVE_SAVE_FORMAT_VERSION
+        );
+    }
+
+    #[test]
     fn harmless_unknown_fields_are_forward_tolerant() {
         let encoded = String::from_utf8(fixture_envelope().encode().unwrap()).unwrap();
         let extended = encoded

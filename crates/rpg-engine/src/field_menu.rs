@@ -41,6 +41,8 @@ use crate::{
     scenario_spatial::CardinalDirection,
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, PlaySfx, cue},
+    transport_domain::TransportDomain,
+    transport_ui::TransportUiState,
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
     world_interaction::WorldInteractionState,
@@ -234,6 +236,10 @@ enum FieldMenuMode {
     ItemTarget,
     EquipmentPicker,
     SpellTarget,
+    #[allow(
+        dead_code,
+        reason = "legacy picker retained only for regression fixtures; runtime uses Ember Atlas"
+    )]
     TeleportPicker,
     SaveConfirm,
     QuitConfirm,
@@ -287,7 +293,7 @@ impl FieldMenuState {
         };
     }
 
-    fn close(&mut self) {
+    pub(crate) fn close(&mut self) {
         *self = Self::default();
     }
 
@@ -564,11 +570,19 @@ fn handle_field_menu_input(
     mut saves: ResMut<SaveSlotCatalog>,
     time: Res<Time<Real>>,
     mut state: ResMut<FieldMenuState>,
+    transport_ui: Option<ResMut<TransportUiState>>,
     mut keyboard: MessageReader<KeyboardInput>,
     mut exit: MessageWriter<AppExit>,
     mut menu_sfx: MenuSfx,
 ) {
     let Some(mut game) = game else { return };
+
+    if transport_ui
+        .as_deref()
+        .is_some_and(TransportUiState::input_locked)
+    {
+        return;
+    }
 
     if !state.open {
         if interaction.input_locked()
@@ -1051,9 +1065,16 @@ fn handle_field_menu_input(
                         if catalog.eligible_warp_destinations(game.map()).is_empty() {
                             state.message = "Nowhere eligible to teleport to yet.".to_owned();
                         } else {
-                            state.pending_id = Some(ability.id.clone());
-                            state.mode = FieldMenuMode::TeleportPicker;
-                            state.selected = 0;
+                            let Some(mut transport_ui) = transport_ui else {
+                                state.message = "The Ember Atlas is unavailable.".to_owned();
+                                return;
+                            };
+                            transport_ui.open_warp(
+                                caster.id().to_owned(),
+                                ability.id.clone(),
+                                ability.mp_cost,
+                            );
+                            state.close();
                         }
                     }
                     _ => {
@@ -1552,6 +1573,7 @@ mod tests {
                 &state,
                 &game,
                 &PartyWalkThumbnails::default(),
+                false,
             );
         });
     }

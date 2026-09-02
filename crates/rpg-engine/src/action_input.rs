@@ -11,16 +11,18 @@ pub(crate) enum AppAction {
     Down,
     Left,
     Right,
+    Travel,
 }
 
 impl AppAction {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 7] = [
         Self::Back,
         Self::Confirm,
         Self::Up,
         Self::Down,
         Self::Left,
         Self::Right,
+        Self::Travel,
     ];
 
     const fn index(self) -> usize {
@@ -31,6 +33,7 @@ impl AppAction {
             Self::Down => 3,
             Self::Left => 4,
             Self::Right => 5,
+            Self::Travel => 6,
         }
     }
 }
@@ -59,7 +62,7 @@ impl MovementAction {
 /// Keyboard bindings for semantic application-shell actions.
 #[derive(Resource)]
 pub(crate) struct ActionMap {
-    bindings: [Vec<KeyCode>; 6],
+    bindings: [Vec<KeyCode>; 7],
     movement_bindings: [Vec<KeyCode>; 4],
 }
 
@@ -73,6 +76,7 @@ impl Default for ActionMap {
                 vec![KeyCode::ArrowDown],
                 vec![KeyCode::ArrowLeft],
                 vec![KeyCode::ArrowRight],
+                vec![KeyCode::KeyT],
             ],
             movement_bindings: [
                 vec![KeyCode::ArrowUp],
@@ -97,7 +101,7 @@ impl ActionMap {
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
-    just_pressed: [bool; 6],
+    just_pressed: [bool; 7],
     movement_pressed: [bool; 4],
 }
 
@@ -170,6 +174,7 @@ impl ActionState {
             (AppAction::Down, NormalizedAction::MenuDown),
             (AppAction::Left, NormalizedAction::MenuLeft),
             (AppAction::Right, NormalizedAction::MenuRight),
+            (AppAction::Travel, NormalizedAction::Travel),
         ] {
             if self.just_pressed(action) {
                 normalized.push(value);
@@ -201,6 +206,7 @@ impl ActionState {
                 NormalizedAction::MenuDown => self.just_pressed[AppAction::Down.index()] = true,
                 NormalizedAction::MenuLeft => self.just_pressed[AppAction::Left.index()] = true,
                 NormalizedAction::MenuRight => self.just_pressed[AppAction::Right.index()] = true,
+                NormalizedAction::Travel => self.just_pressed[AppAction::Travel.index()] = true,
                 NormalizedAction::MoveUp => {
                     self.movement_pressed[MovementAction::Up.index()] = true
                 }
@@ -276,6 +282,7 @@ mod tests {
         assert_eq!(map.bindings(AppAction::Down), [KeyCode::ArrowDown]);
         assert_eq!(map.bindings(AppAction::Left), [KeyCode::ArrowLeft]);
         assert_eq!(map.bindings(AppAction::Right), [KeyCode::ArrowRight]);
+        assert_eq!(map.bindings(AppAction::Travel), [KeyCode::KeyT]);
         assert_eq!(
             map.movement_bindings(MovementAction::Up),
             [KeyCode::ArrowUp]
@@ -305,6 +312,7 @@ mod tests {
             (KeyCode::ArrowDown, AppAction::Down),
             (KeyCode::ArrowLeft, AppAction::Left),
             (KeyCode::ArrowRight, AppAction::Right),
+            (KeyCode::KeyT, AppAction::Travel),
         ];
 
         for (key, expected) in cases {

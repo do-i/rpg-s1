@@ -51,8 +51,6 @@ pub struct MapMetadata {
     pub item_boxes: Vec<ItemBoxMetadata>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub enemy_spawn: Option<EnemySpawnMetadata>,
-    #[serde(default, deserialize_with = "deserialize_present_option")]
-    pub transport: Option<TransportMetadata>,
 }
 
 impl MapMetadata {
@@ -82,7 +80,6 @@ impl MapMetadata {
             npcs: Vec::new(),
             item_boxes: Vec::new(),
             enemy_spawn: None,
-            transport: None,
         }
     }
 }
@@ -307,37 +304,6 @@ pub struct EnemySpawnMetadata {
     pub interval: PositiveFinite,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct TransportMetadata {
-    pub sail: TransportModeMetadata,
-    pub fly: TransportModeMetadata,
-    pub warp: TransportModeMetadata,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct TransportModeMetadata {
-    #[serde(deserialize_with = "deserialize_string")]
-    pub unlock_flag: String,
-    pub origin: TransportOrigin,
-    #[serde(default, deserialize_with = "deserialize_present_option")]
-    pub destinations: Option<TransportDestinations>,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum TransportOrigin {
-    PortTile,
-    WorldMapAny,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum TransportDestinations {
-    VisitedOnly,
-}
-
 fn default_facing() -> CardinalDirection {
     CardinalDirection::Down
 }
@@ -381,7 +347,7 @@ mod tests {
 
     use super::{
         EquipmentShopItem, MagicCoreSize, MapMetadata, NpcAnimationMode, NpcType, ShopItem,
-        ShopItemTag, TransportDestinations, TransportOrigin,
+        ShopItemTag,
     };
     use crate::scenario_spatial::{CardinalDirection, Position};
     use crate::scenario_yaml;
@@ -478,7 +444,7 @@ mod tests {
     }
 
     #[test]
-    fn loads_shop_boxes_spawn_and_transport_corpus_variants() {
+    fn loads_shop_boxes_and_spawn_corpus_variants() {
         let map: MapMetadata = scenario_yaml::from_str(
             r#"name: Greenwood Forest
 shop:
@@ -493,10 +459,6 @@ item_boxes:
       items: [{ id: potion }]
       magic_cores: [{ size: m, qty: 3 }]
 enemy_spawn: { init: 3, max: 6, interval: 25.0 }
-transport:
-  sail: { unlock_flag: transport_sail_unlocked, origin: port_tile }
-  fly: { unlock_flag: transport_fly_unlocked, origin: world_map_any }
-  warp: { unlock_flag: transport_warp_unlocked, origin: world_map_any, destinations: visited_only }
 "#,
         )
         .expect("the remaining pinned map-metadata variants should deserialize");
@@ -510,13 +472,6 @@ transport:
         assert_eq!(map.item_boxes[0].loot.items[0].qty.get(), 1);
         assert_eq!(map.item_boxes[0].loot.magic_cores[0].size, MagicCoreSize::M);
         assert_eq!(map.enemy_spawn.unwrap().interval.get(), 25.0);
-        let transport = map.transport.unwrap();
-        assert_eq!(transport.sail.origin, TransportOrigin::PortTile);
-        assert_eq!(transport.fly.origin, TransportOrigin::WorldMapAny);
-        assert_eq!(
-            transport.warp.destinations,
-            Some(TransportDestinations::VisitedOnly)
-        );
     }
 
     #[test]
