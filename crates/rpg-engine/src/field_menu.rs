@@ -2718,6 +2718,97 @@ mod tests {
         }
     }
 
+    /// The reported bug: casting Teleport showed the Ember Atlas but the destination list could
+    /// not be steered.
+    ///
+    /// The Confirm that picked Teleport out of the spell list was still `just_pressed` when
+    /// `handle_transport_input` ran later in the same `Update`, so the atlas opened and was
+    /// immediately answered — landing in `TransportPhase::Confirm` on whichever destination
+    /// happened to be first, a phase that ignores the arrow keys entirely. Both orderings are
+    /// exercised because nothing between the two plugins declares one.
+    #[test]
+    fn the_confirm_that_casts_teleport_does_not_also_answer_the_atlas_it_opens() {
+        use crate::{
+            action_input::ActionInputPlugin,
+            transport_domain::TransportDomain,
+            transport_ui::{TransportPhase, TransportUiState, handle_transport_input},
+        };
+
+        for field_menu_runs_first in [true, false] {
+            let mut game = fixture_game();
+            game.flags_mut().set("aric_teleport_unlocked");
+            let catalog = FieldMenuCatalog::atlas_warp_fixture();
+            let teleport =
+                learned_field_abilities(game.party().member("aric").unwrap(), &game, &catalog)
+                    .iter()
+                    .position(|ability| {
+                        matches!(
+                            ability.kind,
+                            AbilityKind::Utility(UtilityAbility::Warp { .. })
+                        )
+                    })
+                    .expect("aric knows Teleport once the flag is set");
+            let domain: TransportDomain = TransportDomain::try_from_catalog(
+                crate::scenario_yaml::from_str(include_str!(
+                    "../../../assets/scenarios/rusted_kingdoms/data/transport.yaml"
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins)
+                .init_resource::<ButtonInput<KeyCode>>()
+                .add_plugins(ActionInputPlugin)
+                .insert_resource(catalog)
+                .insert_resource(domain)
+                .insert_resource(WorldInteractionState::default())
+                .init_resource::<EngineSettings>()
+                .insert_resource(WorldTransition::idle_for_test())
+                .insert_resource(game)
+                .insert_resource(SaveStore::new(
+                    std::env::temp_dir().join("rpg-s1-atlas-open-test-unused"),
+                ))
+                .insert_resource(SaveSlotCatalog::default())
+                .insert_resource(Time::<Real>::default())
+                .init_resource::<TransportUiState>()
+                .insert_resource(FieldMenuState {
+                    open: true,
+                    screen: FieldMenuScreen::Spells,
+                    mode: FieldMenuMode::Browse,
+                    selected: teleport,
+                    ..default()
+                })
+                .add_message::<AppExit>()
+                .add_message::<PlaySfx>()
+                .add_message::<KeyboardInput>();
+            if field_menu_runs_first {
+                app.add_systems(
+                    Update,
+                    (handle_field_menu_input, handle_transport_input).chain(),
+                );
+            } else {
+                app.add_systems(
+                    Update,
+                    (handle_transport_input, handle_field_menu_input).chain(),
+                );
+            }
+
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Enter);
+            app.update();
+
+            let state = app.world().resource::<TransportUiState>();
+            assert_eq!(
+                state.phase,
+                TransportPhase::Browse,
+                "the atlas opened already answered (field menu first: {field_menu_runs_first})"
+            );
+            assert_eq!(state.selected, 0);
+        }
+    }
+
     #[test]
     fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
         let mut app = App::new();
