@@ -20,7 +20,13 @@
 #
 # He is the gate: `cinder_marshal_gate` fills the one opening in the wall until
 # `marshal_stand_resolved`, so the road to the stronghold stays shut until the
-# confrontation ends. Both endings set it.
+# confrontation ends. Both endings set it -- but not at the same moment. The yield
+# path resolves the instant he steps aside, because there is nothing left to do.
+# The two refusal paths hand `marshal_stand_resolved` and `marshal_fought` to
+# `start_battle.on_victory` instead, so they are set by *winning* the duel. An
+# `on_complete` flag is committed when the branch closes, which is before the first
+# blow; authoring the outcome there would open the road and raise his grave marker
+# for a player who fled the fight while he is still standing in the gap.
 id: cinder_marshal_duel
 type: npc
 
@@ -113,10 +119,11 @@ entries:
       - "\"Come on, then. Show me it means something.\""
     end: true
     on_complete:
-      set_flag:
-        - marshal_stand_resolved
-        - marshal_fought
-      start_battle: cinder_marshal
+      start_battle:
+        enemy: cinder_marshal
+        on_victory:
+          - marshal_stand_resolved
+          - marshal_fought
 
   - node: refuses_silent
     lines:
@@ -127,7 +134,8 @@ entries:
       - "\"Then I will have it out of you the old way. Forgive me. Or don't -- I have stopped asking.\""
     end: true
     on_complete:
-      set_flag:
-        - marshal_stand_resolved
-        - marshal_fought
-      start_battle: cinder_marshal
+      start_battle:
+        enemy: cinder_marshal
+        on_victory:
+          - marshal_stand_resolved
+          - marshal_fought

@@ -135,6 +135,7 @@ pub(super) fn apply_rewards(
     catalog: &FieldMenuCatalog,
     balance: &BalanceData,
     configured_boss_flag: Option<&str>,
+    victory_flags: &[String],
 ) -> Result<BattleRewards, RewardError> {
     if state.rewards.is_some() {
         return Err(RewardError::AlreadyApplied);
@@ -196,6 +197,12 @@ pub(super) fn apply_rewards(
     if boss_defeated && let Some(flag) = configured_boss_flag.filter(|flag| !flag.is_empty()) {
         staged.flags_mut().set(flag);
         rewards.boss_flag = Some(flag.to_owned());
+    }
+    // A scripted battle's own outcome. Reaching rewards *is* the victory, so unlike the zone boss
+    // flag these need no further test -- and they must not have one, because the enemy an
+    // authored duel names is not necessarily a boss.
+    for flag in victory_flags.iter().filter(|flag| !flag.is_empty()) {
+        staged.flags_mut().set(flag.clone());
     }
     for actor in state
         .combatants

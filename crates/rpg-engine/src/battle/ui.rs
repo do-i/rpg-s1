@@ -7,6 +7,7 @@ use crate::{
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    runtime_party::RuntimeParty,
     scenario_balance::BalanceData,
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
     scenario_enemy::EnemySize,
@@ -66,7 +67,10 @@ const PARTY_CARD_WIDTH: f32 = 108.0;
 const PARTY_CARD_HEIGHT: f32 = 202.0;
 const PARTY_CARD_GAP: f32 = 10.0;
 /// Every slot the party can ever fill, drawn whether or not it is occupied.
-const PARTY_SLOT_COUNT: usize = 5;
+///
+/// Read from [`RuntimeParty::MAX_MEMBERS`] rather than restated, so a party that grew past what
+/// this panel can seat is impossible by construction instead of merely unlikely.
+const PARTY_SLOT_COUNT: usize = RuntimeParty::MAX_MEMBERS;
 const PANEL_PADDING: f32 = 16.0;
 const COMMAND_ROW_BORDER: f32 = 1.0;
 const COMMAND_ROW_PADDING_X: f32 = 12.0;
@@ -1470,6 +1474,7 @@ fn handle_battle_input(
                 catalog,
                 balance,
                 entry.boss_completion_flag.as_deref(),
+                &entry.victory_flags,
             ) {
                 Ok(rewards) => {
                     debug_assert_eq!(state.rewards.as_ref(), Some(&rewards));

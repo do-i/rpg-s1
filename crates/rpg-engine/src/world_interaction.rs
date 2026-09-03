@@ -87,9 +87,9 @@ pub(crate) struct WorldInteractionState {
     /// Set for the rest of the frame a Back press closes a dialogue, so the same press
     /// cannot fall through to the field menu.
     closed_this_frame: bool,
-    /// The enemy a completed branch's `start_battle` named, held until the dialogue closes so the
-    /// fight starts after the last line instead of under it.
-    pending_battle: Option<String>,
+    /// The battle a completed branch's `start_battle` named, held until the dialogue closes so
+    /// the fight starts after the last line instead of under it.
+    pending_battle: Option<ScriptedBattleRequest>,
 }
 
 impl WorldInteractionState {
@@ -623,8 +623,11 @@ fn drive_dialogue_session(
             if let Some(request) = ServiceRequest::from_dialogue(&completion) {
                 service.open(request);
             }
-            if let Some(enemy_id) = completion.start_battle.as_deref() {
-                state.pending_battle = Some(enemy_id.to_owned());
+            if let Some(battle) = completion.start_battle.as_ref() {
+                state.pending_battle = Some(ScriptedBattleRequest {
+                    enemy_id: battle.enemy_id().to_owned(),
+                    victory_flags: battle.on_victory().to_vec(),
+                });
             }
             if let Err(error) =
                 apply_dialogue_actions(&completion, &mut game, party, balance, &catalog)
@@ -661,10 +664,7 @@ fn take_pending_battle(state: &mut WorldInteractionState) -> Option<ScriptedBatt
     if state.session.is_some() {
         return None;
     }
-    state
-        .pending_battle
-        .take()
-        .map(|enemy_id| ScriptedBattleRequest { enemy_id })
+    state.pending_battle.take()
 }
 
 /// Closes the treasure reveal on the next press.
@@ -1370,6 +1370,13 @@ mod tests {
         panic!("linear dialogue did not complete");
     }
 
+    fn pending_enemy(state: &WorldInteractionState) -> Option<&str> {
+        state
+            .pending_battle
+            .as_ref()
+            .map(|request| request.enemy_id.as_str())
+    }
+
     #[test]
     fn a_start_battle_branch_names_its_enemy_and_waits_for_the_dialogue_to_close() {
         let document: DialogueDocument = scenario_yaml::from_str(
@@ -1394,11 +1401,14 @@ mod tests {
 
         let mut state = WorldInteractionState::default();
         for completion in &actions {
-            if let Some(enemy_id) = completion.start_battle.as_deref() {
-                state.pending_battle = Some(enemy_id.to_owned());
+            if let Some(battle) = completion.start_battle.as_ref() {
+                state.pending_battle = Some(ScriptedBattleRequest {
+                    enemy_id: battle.enemy_id().to_owned(),
+                    victory_flags: battle.on_victory().to_vec(),
+                });
             }
         }
-        assert_eq!(state.pending_battle.as_deref(), Some("cinder_marshal"));
+        assert_eq!(pending_enemy(&state), Some("cinder_marshal"));
 
         // While the dialogue is still on screen the fight is held back, so the last line is not
         // fought under.
@@ -1408,7 +1418,7 @@ mod tests {
             vec!["...".to_owned()],
         ));
         assert!(take_pending_battle(&mut state).is_none());
-        assert_eq!(state.pending_battle.as_deref(), Some("cinder_marshal"));
+        assert_eq!(pending_enemy(&state), Some("cinder_marshal"));
 
         state.session = None;
         let request = take_pending_battle(&mut state).expect("a closed dialogue releases it");

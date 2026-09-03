@@ -1068,7 +1068,7 @@ impl<'a> Validator<'a> {
                 format!("{base}.transition.map"),
             );
         }
-        if let Some(enemy) = &actions.start_battle {
+        if let Some(battle) = &actions.start_battle {
             if context == DialogueActionContext::Cutscene {
                 self.error(
                     "dialogue.start_battle_in_cutscene",
@@ -1080,7 +1080,7 @@ impl<'a> Validator<'a> {
                 self.checked(
                     "enemy",
                     &index.enemies,
-                    enemy,
+                    battle.enemy_id(),
                     path,
                     format!("{base}.start_battle"),
                 );
@@ -2384,6 +2384,20 @@ fn add_actions(target: &mut FlagLocations, a: &DialogueActions, path: &str, base
                 .entry(f.clone())
                 .or_default()
                 .push(ScenarioLocation::new(path, format!("{base}.set_flag[{i}]")));
+        }
+    }
+    // A victory flag is set by the battle rather than by the branch, but it is defined here all
+    // the same -- otherwise the only place that names it is whatever gate consumes it, and the
+    // flag reads as undefined.
+    if let Some(battle) = &a.start_battle {
+        for (i, f) in battle.on_victory().iter().enumerate() {
+            target
+                .entry(f.clone())
+                .or_default()
+                .push(ScenarioLocation::new(
+                    path,
+                    format!("{base}.start_battle.on_victory[{i}]"),
+                ));
         }
     }
 }
