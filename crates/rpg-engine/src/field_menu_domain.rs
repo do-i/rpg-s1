@@ -11,7 +11,6 @@ use bevy::{
 };
 
 use crate::{
-    app_state::AppState,
     game_state::GameState,
     runtime_map::RuntimeMapState,
     runtime_member::{EquipmentSlot, RuntimeMember},
@@ -53,8 +52,12 @@ impl Plugin for FieldMenuDomainPlugin {
             .init_asset_loader::<QuestCatalogAssetLoader>()
             .init_resource::<FieldMenuCatalog>()
             .init_resource::<FieldMenuCatalogLoad>()
-            .add_systems(OnEnter(AppState::World), begin_catalog_load)
-            .add_systems(Update, track_catalog_load.run_if(in_state(AppState::World)));
+            // The debug launcher constructs a complete party while the app is still in Boot,
+            // and therefore needs class definitions before it can request World. Starting this
+            // scenario-global catalog only after entering World creates a Boot -> catalog ->
+            // World dependency cycle whose sole visible symptom is a permanently blank window.
+            .add_systems(Startup, begin_catalog_load)
+            .add_systems(Update, track_catalog_load);
     }
 }
 
