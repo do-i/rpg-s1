@@ -352,6 +352,13 @@ pub struct BattleEntry {
     pub background_asset: String,
     pub bgm_key: String,
     pub boss_completion_flag: Option<String>,
+    /// Flags a *scripted* battle sets on victory, and only on victory.
+    ///
+    /// Distinct from `boss_completion_flag`, which belongs to a zone's own boss encounter and is
+    /// gated on that boss dying. These are the dialogue's, apply to any scripted enemy, and are
+    /// how an authored fight reports its outcome back to the story that started it: flags in the
+    /// branch's `set_flag` are committed when the branch closes, which is before the first blow.
+    pub victory_flags: Vec<String>,
     pub barrier_messages: Vec<String>,
     pub return_context: PreBattleReturnContext,
 }
@@ -483,6 +490,7 @@ pub(crate) fn build_battle_entry(
             .flatten()
             .map(|boss| boss.completion.set_flag.clone())
             .filter(|flag| !flag.is_empty()),
+        victory_flags: Vec::new(),
         barrier_messages,
         return_context,
     })
@@ -497,8 +505,8 @@ pub(crate) fn build_battle_entry(
 ///   is not that. A barriered id would silently produce an empty formation, so it is rejected.
 /// - `boss` comes from the enemy's own definition, which is what selects the boss battle theme.
 /// - `boss_completion_flag` is cleared even for a boss-flagged enemy: the zone's completion flag
-///   belongs to the zone's own boss encounter, and the dialogue that started this fight already
-///   owns whatever story flags it means to set.
+///   belongs to the zone's own boss encounter. The dialogue reports its own outcome through
+///   `victory_flags` instead, which apply whether or not the enemy is a boss.
 ///
 /// The zone is still the source of the battle background, so a map hosting a scripted battle
 /// needs its `data/encount/<map_id>.yaml` — which may declare `density: 0.0` and no `entries`.
@@ -508,6 +516,7 @@ pub(crate) fn build_battle_entry(
 )]
 pub(crate) fn build_scripted_battle_entry(
     enemy_id: &str,
+    victory_flags: &[String],
     zone: &EncounterZone,
     enemy_catalog: &EnemyCatalog,
     item_catalog: &FieldMenuCatalog,
@@ -545,6 +554,11 @@ pub(crate) fn build_scripted_battle_entry(
         return_context,
     )?;
     entry.boss_completion_flag = None;
+    entry.victory_flags = victory_flags
+        .iter()
+        .filter(|flag| !flag.is_empty())
+        .cloned()
+        .collect();
     Ok(entry)
 }
 
@@ -885,7 +899,7 @@ mod tests {
     /// a fight it never spawns.
     #[test]
     fn the_shipped_marshal_duel_builds_a_real_one_enemy_boss_battle() {
-        use crate::scenario_dialogue::DialogueDocument;
+        use crate::scenario_dialogue::{DialogueDocument, StartBattleAction};
 
         let duel: DialogueDocument = scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/dialogue/cinder_marshal_duel.yaml"
@@ -897,12 +911,47 @@ mod tests {
         let named = duel
             .entries
             .iter()
-            .filter_map(|entry| entry.on_complete.start_battle.as_deref())
+            .filter_map(|entry| {
+                entry
+                    .on_complete
+                    .start_battle
+                    .as_ref()
+                    .map(StartBattleAction::enemy_id)
+            })
             .collect::<Vec<_>>();
         assert_eq!(
             named,
             ["cinder_marshal", "cinder_marshal"],
             "both refusal branches fight, and nothing else does"
+        );
+
+        // B1.5: the two branches that fight must not resolve the stand up front. Everything the
+        // world reads off this scene -- the gate NPC leaving, the grave marker appearing -- has
+        // to wait for the fight to actually be won, or fleeing opens the road exactly like
+        // winning does.
+        for entry in &duel.entries {
+            let Some(battle) = entry.on_complete.start_battle.as_ref() else {
+                continue;
+            };
+            assert_eq!(
+                battle.on_victory(),
+                ["marshal_stand_resolved", "marshal_fought"],
+                "a refusal branch reports its outcome through on_victory"
+            );
+            assert!(
+                entry.on_complete.set_flag.is_none(),
+                "a refusal branch commits no flag before the first blow"
+            );
+        }
+        let yields = duel
+            .entries
+            .iter()
+            .find(|entry| entry.node.as_deref() == Some("yields"))
+            .expect("the yield branch is authored");
+        assert_eq!(
+            yields.on_complete.set_flag.as_ref().unwrap().as_slice(),
+            ["marshal_stand_resolved", "marshal_yielded"],
+            "the yield path has no fight to wait for and resolves as it closes"
         );
 
         let zone: EncounterZone = scenario_yaml::from_str(include_str!(
@@ -952,6 +1001,7 @@ mod tests {
         let game = game();
         let entry = build_scripted_battle_entry(
             "cinder_marshal",
+            &[],
             &zone,
             &catalog,
             &FieldMenuCatalog::default(),
@@ -973,6 +1023,33 @@ mod tests {
         // The camp has no boss encounter of its own to close, and the dialogue owns its flags.
         assert_eq!(entry.boss_completion_flag, None);
         assert!(entry.barrier_messages.is_empty());
+
+        // Built from the branch the player actually took, the entry carries that branch's
+        // outcome into the battle.
+        let armed = build_scripted_battle_entry(
+            "cinder_marshal",
+            &[
+                "marshal_stand_resolved".to_owned(),
+                "marshal_fought".to_owned(),
+            ],
+            &zone,
+            &catalog,
+            &FieldMenuCatalog::default(),
+            game.party(),
+            game.repository(),
+            game.flags(),
+            &BalanceData::default().battle,
+            scripted_context(),
+        )
+        .unwrap();
+        assert_eq!(
+            armed.victory_flags,
+            ["marshal_stand_resolved", "marshal_fought"]
+        );
+        assert_eq!(
+            armed.boss_completion_flag, None,
+            "a victory flag is the dialogue's, never the zone's"
+        );
     }
 
     #[test]
@@ -980,6 +1057,7 @@ mod tests {
         let game = game();
         let entry = build_scripted_battle_entry(
             "moss_hare",
+            &[],
             &zone(),
             &enemies(),
             &FieldMenuCatalog::default(),
@@ -1029,6 +1107,7 @@ mod tests {
 
         let scripted = build_scripted_battle_entry(
             "clockwork_tyrant",
+            &[],
             &zone,
             &enemies(),
             &FieldMenuCatalog::default(),
@@ -1049,6 +1128,7 @@ mod tests {
         assert_eq!(
             build_scripted_battle_entry(
                 "no_such_enemy",
+                &[],
                 &zone(),
                 &enemies(),
                 &FieldMenuCatalog::default(),
@@ -1076,6 +1156,7 @@ mod tests {
         assert_eq!(
             build_scripted_battle_entry(
                 "veil_wraith",
+                &[],
                 &barriered,
                 &enemies(),
                 &FieldMenuCatalog::default(),

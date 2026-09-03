@@ -1124,6 +1124,8 @@ fn detect_enemy_contact(
 #[derive(Clone, Debug, Resource)]
 pub(crate) struct ScriptedBattleRequest {
     pub(crate) enemy_id: String,
+    /// Flags the branch asked for on `start_battle.on_victory`, set only if the player wins.
+    pub(crate) victory_flags: Vec<String>,
 }
 
 /// Hands a scripted battle to the same entry pipeline a wandering encounter uses.
@@ -1161,6 +1163,7 @@ fn start_scripted_battle(
         WorldEncounterStatus::NoEncounters | WorldEncounterStatus::Spawned => {}
     }
     let enemy_id = request.enemy_id.clone();
+    let victory_flags = request.victory_flags.clone();
     let (Some(game), Some(enemy_catalog)) = (game, enemy_catalog) else {
         fail_scripted_battle(
             &mut commands,
@@ -1212,6 +1215,7 @@ fn start_scripted_battle(
     };
     let entry = match build_scripted_battle_entry(
         &enemy_id,
+        &victory_flags,
         zone,
         &enemy_catalog,
         &item_catalog,

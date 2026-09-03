@@ -167,8 +167,63 @@ pub struct DialogueActions {
     /// player. The pinned Python engine parses the key and hands it back to its caller
     /// (`dialogue_engine.py:119`); no caller ever read it, so the runtime behaviour below is this
     /// port's, not a transcription.
-    #[serde(default, deserialize_with = "deserialize_optional_string")]
-    pub start_battle: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub start_battle: Option<StartBattleAction>,
+}
+
+/// Which enemy a branch fights, and what winning that fight means.
+///
+/// Two wire forms. The bare id is the source's and stays exactly as it was:
+///
+/// ```yaml
+/// start_battle: cinder_marshal
+/// ```
+///
+/// The mapping form adds flags that are set **only on victory**, which the sibling
+/// `set_flag` cannot express: `on_complete` runs when the branch closes, which is before the
+/// fight, so a flag authored there is already committed by the time the player flees. Outcomes
+/// the story depends on — a gate that should stay shut until the duel is actually won — belong
+/// here instead:
+///
+/// ```yaml
+/// start_battle:
+///   enemy: cinder_marshal
+///   on_victory: marshal_stand_resolved     # or a list, like `set_flag`
+/// ```
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum StartBattleAction {
+    Enemy(#[serde(deserialize_with = "deserialize_string")] String),
+    WithOutcome(StartBattleOutcome),
+}
+
+impl StartBattleAction {
+    pub fn enemy_id(&self) -> &str {
+        match self {
+            Self::Enemy(enemy_id) => enemy_id,
+            Self::WithOutcome(outcome) => &outcome.enemy,
+        }
+    }
+
+    /// Flags the fight sets when the player wins it, in authored order.
+    pub fn on_victory(&self) -> &[String] {
+        match self {
+            Self::Enemy(_) => &[],
+            Self::WithOutcome(outcome) => outcome
+                .on_victory
+                .as_ref()
+                .map_or(&[], SetFlagAction::as_slice),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct StartBattleOutcome {
+    #[serde(deserialize_with = "deserialize_string")]
+    pub enemy: String,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub on_victory: Option<SetFlagAction>,
 }
 
 /// The source permits one flag string or an ordered list of flag strings.
@@ -303,10 +358,71 @@ mod tests {
             panic!("type: npc should select the entry document shape");
         };
         let actions = &dialogue.entries[0].on_complete;
-        assert_eq!(actions.start_battle.as_deref(), Some("cinder_marshal"));
+        let battle = actions.start_battle.as_ref().expect("the branch fights");
+        assert_eq!(battle.enemy_id(), "cinder_marshal");
+        assert!(
+            battle.on_victory().is_empty(),
+            "the bare form promises nothing about the outcome"
+        );
         assert_eq!(
             actions.set_flag.as_ref().unwrap().as_slice(),
             ["marshal_duel_begun"]
+        );
+    }
+
+    #[test]
+    fn a_branch_can_name_flags_that_only_winning_the_battle_sets() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            "id: marshal_duel\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [\"Then draw.\"]\n\
+             \x20   end: true\n\
+             \x20   on_complete:\n\
+             \x20     set_flag: marshal_duel_begun\n\
+             \x20     start_battle:\n\
+             \x20       enemy: cinder_marshal\n\
+             \x20       on_victory: [marshal_stand_resolved, marshal_fought]\n",
+        )
+        .expect("the mapping form carries the battle's outcome");
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("type: npc should select the entry document shape");
+        };
+        let battle = dialogue.entries[0]
+            .on_complete
+            .start_battle
+            .as_ref()
+            .expect("the branch fights");
+        assert_eq!(battle.enemy_id(), "cinder_marshal");
+        assert_eq!(
+            battle.on_victory(),
+            ["marshal_stand_resolved", "marshal_fought"]
+        );
+
+        // One flag is as good as a list, exactly like `set_flag`.
+        let single: DialogueDocument = scenario_yaml::from_str(
+            "id: marshal_duel\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [\"Then draw.\"]\n\
+             \x20   end: true\n\
+             \x20   on_complete:\n\
+             \x20     start_battle:\n\
+             \x20       enemy: cinder_marshal\n\
+             \x20       on_victory: marshal_stand_resolved\n",
+        )
+        .expect("one victory flag needs no list");
+        let DialogueDocument::Entries(single) = single else {
+            panic!("type: npc should select the entry document shape");
+        };
+        assert_eq!(
+            single.entries[0]
+                .on_complete
+                .start_battle
+                .as_ref()
+                .unwrap()
+                .on_victory(),
+            ["marshal_stand_resolved"]
         );
     }
 

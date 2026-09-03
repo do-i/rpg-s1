@@ -22,6 +22,16 @@ pub struct RuntimeParty {
 }
 
 impl RuntimeParty {
+    /// The most members the game can hold at once.
+    ///
+    /// This is a presentation limit, not a design one: the battle UI seats exactly this many
+    /// cards (`battle::ui::PARTY_SLOT_COUNT`, bound to `CombatantKey::party(0..N)`) and the field
+    /// menu's status column is sized for the same count. `build_battle_entry` makes a combatant
+    /// of *every* member, so an over-cap member would take turns and be targetable with no card
+    /// on screen. Refusing the add is the honest failure; the two surfaces read this constant so
+    /// they cannot drift from it.
+    pub const MAX_MEMBERS: usize = 5;
+
     /// Builds a complete party, rejecting duplicate ids and invalid protagonist cardinality.
     pub fn try_from_members(
         members: impl IntoIterator<Item = RuntimeMember>,
@@ -105,6 +115,16 @@ impl RuntimeParty {
             });
         }
 
+        // Checked last so an already-present member still reports the duplicate rather than the
+        // capacity: re-running a recruit on a full party is a different mistake from over-filling
+        // one.
+        if self.members.len() >= Self::MAX_MEMBERS {
+            return Err(RuntimePartyError::PartyFull {
+                capacity: Self::MAX_MEMBERS,
+                rejected_id: member.id().to_owned(),
+            });
+        }
+
         self.members.push(member);
         Ok(())
     }
@@ -144,6 +164,11 @@ pub enum RuntimePartyError {
     MemberNotFound {
         member_id: String,
     },
+    /// The party already seats [`RuntimeParty::MAX_MEMBERS`].
+    PartyFull {
+        capacity: usize,
+        rejected_id: String,
+    },
 }
 
 impl fmt::Display for RuntimePartyError {
@@ -166,6 +191,13 @@ impl fmt::Display for RuntimePartyError {
             Self::MemberNotFound { member_id } => {
                 write!(formatter, "party member `{member_id}` was not found")
             }
+            Self::PartyFull {
+                capacity,
+                rejected_id,
+            } => write!(
+                formatter,
+                "party is full at {capacity} members; `{rejected_id}` cannot join"
+            ),
         }
     }
 }
@@ -272,6 +304,40 @@ mod tests {
             })
         );
         assert_eq!(party, before, "a rejected duplicate changed the party");
+    }
+
+    #[test]
+    fn the_party_refuses_a_member_past_capacity_without_changing_state() {
+        let source = catalog();
+        let mut party = RuntimeParty::try_from_members([runtime(&source.party[0])]).unwrap();
+        for index in 1..RuntimeParty::MAX_MEMBERS {
+            let mut recruit = source.party[1].clone();
+            with_id(&mut recruit, &format!("recruit_{index}"));
+            party
+                .try_add(runtime(&recruit))
+                .expect("a recruit below the cap should be accepted");
+        }
+        assert_eq!(party.len(), RuntimeParty::MAX_MEMBERS);
+
+        let mut overflow = source.party[1].clone();
+        with_id(&mut overflow, "one_too_many");
+        let before = party.clone();
+        assert_eq!(
+            party.try_add(runtime(&overflow)),
+            Err(RuntimePartyError::PartyFull {
+                capacity: RuntimeParty::MAX_MEMBERS,
+                rejected_id: "one_too_many".to_owned()
+            })
+        );
+        assert_eq!(party, before, "a refused member changed the party");
+
+        // A full party still reports a re-added member as the duplicate it is.
+        assert_eq!(
+            party.try_add(runtime(&source.party[0])),
+            Err(RuntimePartyError::DuplicateMemberId {
+                member_id: "ember".to_owned()
+            })
+        );
     }
 
     #[test]

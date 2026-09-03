@@ -1281,6 +1281,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
         &catalog,
         &balance,
         Some("boss_zone01_defeated"),
+        &[],
     )
     .unwrap();
     let member = game.party().member("aric").unwrap();
@@ -1330,6 +1331,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
             &catalog,
             &balance,
             Some("boss_zone01_defeated"),
+            &[],
         ),
         Err(RewardError::AlreadyApplied)
     ));
@@ -1352,11 +1354,41 @@ fn configured_boss_flag_is_ignored_for_a_regular_enemy_victory() {
         &catalog,
         &balance,
         Some("should_not_set"),
+        &[],
     )
     .unwrap();
 
     assert_eq!(rewards.boss_flag, None);
     assert!(!game.flags().is_set("should_not_set"));
+}
+
+/// B1.5: a scripted battle reports its own outcome, and reaching rewards is that outcome.
+///
+/// Unlike the zone boss flag above these are not gated on a boss dying, because an authored duel
+/// may name any enemy — and unlike the branch's own `set_flag` they are committed here rather
+/// than when the dialogue closed, so a player who flees the fight never sets them.
+#[test]
+fn a_scripted_battle_sets_its_victory_flags_even_against_a_regular_enemy() {
+    let (mut game, balance) = reward_game();
+    let catalog = FieldMenuCatalog::production_class_fixture();
+    let mut aric = actor(BattleSide::Party, 0, 10, 22);
+    aric.id = "aric".to_owned();
+    aric.class_id = "hero".to_owned();
+    let enemy = reward_enemy("goblin", 0);
+    let mut state = state_with(vec![aric, enemy]);
+
+    apply_rewards(
+        &mut state,
+        &mut game,
+        &catalog,
+        &balance,
+        None,
+        &["duel_won".to_owned(), "road_open".to_owned()],
+    )
+    .unwrap();
+
+    assert!(game.flags().is_set("duel_won"));
+    assert!(game.flags().is_set("road_open"));
 }
 
 fn full_battle_parity_transcript() -> Vec<String> {
@@ -1542,7 +1574,7 @@ fn reward_application_rolls_back_every_change_when_a_later_member_is_invalid() {
     let before = game.clone();
 
     assert!(matches!(
-        apply_rewards(&mut state, &mut game, &catalog, &balance, None),
+        apply_rewards(&mut state, &mut game, &catalog, &balance, None, &[]),
         Err(RewardError::MissingPartyMember(id)) if id == "not_in_runtime_party"
     ));
     assert_eq!(game, before);
