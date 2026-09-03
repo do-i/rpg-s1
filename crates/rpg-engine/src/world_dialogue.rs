@@ -58,6 +58,9 @@ pub(crate) struct DialogueSession {
     choices: Vec<ChoiceView>,
     selected_choice: usize,
     completed_entries: BTreeSet<usize>,
+    /// Lines already shown by earlier entries of the current `next:` run, so the page counter
+    /// numbers the conversation the player is reading rather than restarting at each hand-off.
+    pages_before_current: usize,
 }
 
 impl DialogueSession {
@@ -114,6 +117,7 @@ impl DialogueSession {
             choices: Vec::new(),
             selected_choice: 0,
             completed_entries: BTreeSet::new(),
+            pages_before_current: 0,
         };
         session.prime(flags);
         Ok(Some(session))
@@ -131,22 +135,56 @@ impl DialogueSession {
         self.phase
     }
 
-    /// One-based position of the line on screen, and how many the current entry holds.
+    /// One-based position of the line on screen, and how many the run holds.
     ///
-    /// `None` once the session is closed, and for a single-line entry — a sign that says one
-    /// thing has no progress to report, and `1/1` on every such box is noise rather than
-    /// information.
+    /// A *run* is everything the player will read before they are asked to do anything: the
+    /// current entry plus every entry it hands off to with `next:`. `next` targets a node by
+    /// name and resolves without consulting flags, so that chain is walkable in advance and the
+    /// Cinder Marshal's six-entry confrontation counts as one `1/25` conversation instead of
+    /// restarting at `1/4` for each companion who speaks.
     ///
-    /// The denominator is the *entry's* line count, not the whole traversal. An entry that hands
-    /// off with `next:` starts its successor's count again at `1`, which is the only honest
-    /// answer available: a graph with branches and flag-conditioned entries has no fixed total to
-    /// count down to, and guessing one would be wrong exactly when the player leans on it.
+    /// The run stops at a branch — an entry carrying `choices`, or one that ends. Which arm comes
+    /// next is the player's to pick and the arms differ in length, so there is no further total
+    /// to promise; the count starts again once they choose.
+    ///
+    /// `None` once the session is closed, and for a single-page run — a sign that says one thing
+    /// has no progress to report, and `1/1` on every such box is noise rather than information.
     pub(crate) fn page(&self) -> Option<(usize, usize)> {
         if self.phase == DialoguePhase::Closed {
             return None;
         }
-        let total = self.dialogue.entries[self.current].lines.len();
-        (total > 1).then_some((self.line + 1, total))
+        let total = self.pages_before_current + self.pages_remaining_in_run();
+        (total > 1).then_some((self.pages_before_current + self.line + 1, total))
+    }
+
+    /// Lines from the current entry to the end of its `next:` run.
+    ///
+    /// The visited set is a cycle guard: `validate_graph` rejects a target that does not exist,
+    /// but two entries may legally point at each other, and a counter is no reason to hang.
+    fn pages_remaining_in_run(&self) -> usize {
+        let mut index = self.current;
+        let mut seen = BTreeSet::new();
+        let mut total = 0;
+        while seen.insert(index) {
+            let entry = &self.dialogue.entries[index];
+            total += entry.lines.len();
+            if entry.end || !entry.choices.is_empty() {
+                break;
+            }
+            let Some(target) = entry.next.as_deref() else {
+                break;
+            };
+            let Some(next) = self
+                .dialogue
+                .entries
+                .iter()
+                .position(|entry| entry.node.as_deref() == Some(target))
+            else {
+                break;
+            };
+            index = next;
+        }
+        total
     }
 
     pub(crate) fn current_line(&self) -> &str {
@@ -294,6 +332,13 @@ impl DialogueSession {
         if entry.end || target.is_none() {
             self.phase = DialoguePhase::Closed;
         } else {
+            // A `next:` hand-off continues the same run of pages; a choice starts a new one,
+            // because the arms differ in length and nothing could have counted them in advance.
+            self.pages_before_current = if choice.is_some() {
+                0
+            } else {
+                self.pages_before_current + entry.lines.len()
+            };
             self.current = self
                 .dialogue
                 .entries
@@ -453,10 +498,9 @@ mod tests {
         );
     }
 
-    /// An entry that hands off with `next:` restarts the count, because the successor's length is
-    /// the only total that is knowable — a branching graph has no fixed page count.
+    /// A `next:` hand-off is invisible to the player, so it must be invisible to the counter too.
     #[test]
-    fn a_chained_entry_restarts_the_count_at_its_own_length() {
+    fn a_next_handoff_keeps_counting_through_the_whole_run() {
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve(
             "chain",
@@ -473,14 +517,56 @@ mod tests {
         .unwrap()
         .unwrap();
 
-        session.tick(0.0, TextSpeed::VeryFast);
-        assert_eq!(session.page(), Some((1, 2)));
+        // Five lines across two entries is one five-page conversation, counted from the start.
+        for expected in 1..=5 {
+            session.tick(0.0, TextSpeed::VeryFast);
+            assert_eq!(session.page(), Some((expected, 5)));
+            session.confirm(&flags);
+        }
+        assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    /// The reported bug: the Marshal's confrontation restarted at `1/4` for each companion who
+    /// spoke, so the box promised four pages six separate times.
+    #[test]
+    fn the_shipped_marshal_duel_counts_its_whole_confrontation_as_one_run() {
+        let flags = RuntimeFlags::default();
+        let document: crate::scenario_dialogue::DialogueDocument =
+            crate::scenario_yaml::from_str(include_str!(
+                "../../../assets/scenarios/rusted_kingdoms/data/dialogue/cinder_marshal_duel.yaml"
+            ))
+            .unwrap();
+        let crate::scenario_dialogue::DialogueDocument::Entries(duel) = document else {
+            panic!("the duel is an entry document");
+        };
+        let mut session = DialogueSession::resolve("duel", None, duel, &flags)
+            .unwrap()
+            .unwrap();
+
+        // Opening 4, then four companions at 4/4/4/5, then the question's own 4 before it asks.
+        let total = 4 + 4 + 4 + 4 + 5 + 4;
+        let mut seen = 0;
+        while session.phase() != DialoguePhase::Choosing {
+            session.tick(0.0, TextSpeed::VeryFast);
+            seen += 1;
+            assert_eq!(
+                session.page(),
+                Some((seen, total)),
+                "the counter must not restart when a companion hands off"
+            );
+            session.confirm(&flags);
+        }
+        assert_eq!(seen, total, "every page of the run was counted");
+
+        // Choosing an arm starts a new run: nothing could have counted the arms in advance.
+        session.move_choice(1);
         session.confirm(&flags);
         session.tick(0.0, TextSpeed::VeryFast);
-        assert_eq!(session.page(), Some((2, 2)));
-        session.confirm(&flags);
-        assert_eq!(session.page(), Some((1, 3)));
-        assert_eq!(session.current_line(), "Three");
+        assert_eq!(
+            session.page().map(|(page, _)| page),
+            Some(1),
+            "a chosen branch is a fresh run"
+        );
     }
 
     /// `dialogue.text_speed` in `assets/settings.yaml` reaches the typewriter.
