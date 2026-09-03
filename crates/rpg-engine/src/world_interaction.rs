@@ -168,6 +168,10 @@ struct WorldDialogueChoices;
 #[derive(Component)]
 struct WorldDialogueHint;
 
+/// `3/8` — which line of the current entry is on screen. Shares the hint's row.
+#[derive(Component)]
+struct WorldDialoguePageCount;
+
 fn begin_world_interactions(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
@@ -860,6 +864,7 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueBody>,
             Without<WorldDialogueChoices>,
             Without<WorldDialogueHint>,
+            Without<WorldDialoguePageCount>,
         ),
     >,
     mut bodies: Query<
@@ -869,6 +874,7 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueChoices>,
             Without<WorldDialogueHint>,
+            Without<WorldDialoguePageCount>,
         ),
     >,
     mut choices: Query<
@@ -878,6 +884,7 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
             Without<WorldDialogueHint>,
+            Without<WorldDialoguePageCount>,
         ),
     >,
     mut hints: Query<
@@ -887,6 +894,17 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
             Without<WorldDialogueChoices>,
+            Without<WorldDialoguePageCount>,
+        ),
+    >,
+    mut page_counts: Query<
+        &mut Text,
+        (
+            With<WorldDialoguePageCount>,
+            Without<WorldDialogueSpeaker>,
+            Without<WorldDialogueBody>,
+            Without<WorldDialogueChoices>,
+            Without<WorldDialogueHint>,
         ),
     >,
     mut plates: Query<&mut Node, With<WorldDialogueSpeakerPlate>>,
@@ -948,6 +966,12 @@ fn sync_dialogue_overlay(
             })
             .collect::<Vec<_>>()
             .join("\n");
+    }
+    if let Ok(mut page_count) = page_counts.single_mut() {
+        page_count.0 = session
+            .page()
+            .map(|(page, total)| format!("{page}/{total}"))
+            .unwrap_or_default();
     }
     if let Ok(mut hint) = hints.single_mut() {
         hint.0 = match session.phase() {
@@ -1091,20 +1115,39 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                         TextColor(theme.name_entry_input_color),
                         WorldDialogueChoices,
                     ));
-                    column.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font: font.into(),
-                            font_size: FontSize::Px(15.0),
+                    // Counter and hint share one line: the box has a fixed height, so giving the
+                    // page count a row of its own would come out of the body text.
+                    column
+                        .spawn(Node {
+                            width: percent(100),
+                            flex_direction: FlexDirection::Row,
+                            justify_content: JustifyContent::SpaceBetween,
+                            align_items: AlignItems::Center,
+                            column_gap: px(12),
                             ..default()
-                        },
-                        TextColor(theme.name_entry_hint_color),
-                        Node {
-                            align_self: AlignSelf::FlexEnd,
-                            ..default()
-                        },
-                        WorldDialogueHint,
-                    ));
+                        })
+                        .with_children(|footer| {
+                            footer.spawn((
+                                Text::new(""),
+                                TextFont {
+                                    font: font.clone().into(),
+                                    font_size: FontSize::Px(15.0),
+                                    ..default()
+                                },
+                                TextColor(theme.name_entry_hint_color),
+                                WorldDialoguePageCount,
+                            ));
+                            footer.spawn((
+                                Text::new(""),
+                                TextFont {
+                                    font: font.into(),
+                                    font_size: FontSize::Px(15.0),
+                                    ..default()
+                                },
+                                TextColor(theme.name_entry_hint_color),
+                                WorldDialogueHint,
+                            ));
+                        });
                 });
         });
 }

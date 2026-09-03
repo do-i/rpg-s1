@@ -131,6 +131,24 @@ impl DialogueSession {
         self.phase
     }
 
+    /// One-based position of the line on screen, and how many the current entry holds.
+    ///
+    /// `None` once the session is closed, and for a single-line entry — a sign that says one
+    /// thing has no progress to report, and `1/1` on every such box is noise rather than
+    /// information.
+    ///
+    /// The denominator is the *entry's* line count, not the whole traversal. An entry that hands
+    /// off with `next:` starts its successor's count again at `1`, which is the only honest
+    /// answer available: a graph with branches and flag-conditioned entries has no fixed total to
+    /// count down to, and guessing one would be wrong exactly when the player leans on it.
+    pub(crate) fn page(&self) -> Option<(usize, usize)> {
+        if self.phase == DialoguePhase::Closed {
+            return None;
+        }
+        let total = self.dialogue.entries[self.current].lines.len();
+        (total > 1).then_some((self.line + 1, total))
+    }
+
     pub(crate) fn current_line(&self) -> &str {
         self.dialogue.entries[self.current]
             .lines
@@ -387,6 +405,82 @@ mod tests {
         assert_eq!(session.confirm(&flags), DialogueEvent::Revealed);
         assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
         assert_eq!(session.phase(), DialoguePhase::Closed);
+    }
+
+    #[test]
+    fn the_page_counter_starts_at_one_and_advances_with_every_confirm() {
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve(
+            "linear",
+            None,
+            dialogue("id: linear\ntype: npc\nentries:\n  - lines: [One, Two, Three]\n"),
+            &flags,
+        )
+        .unwrap()
+        .unwrap();
+
+        // One-based from the first frame, before a single character is revealed.
+        assert_eq!(session.page(), Some((1, 3)));
+        session.tick(0.0, TextSpeed::VeryFast);
+        assert_eq!(session.page(), Some((1, 3)), "revealing is not advancing");
+
+        for expected in [2, 3] {
+            assert_eq!(session.confirm(&flags), DialogueEvent::Advanced);
+            assert_eq!(session.page(), Some((expected, 3)));
+            session.tick(0.0, TextSpeed::VeryFast);
+        }
+
+        assert!(matches!(session.confirm(&flags), DialogueEvent::Apply(_)));
+        assert_eq!(session.phase(), DialoguePhase::Closed);
+        assert_eq!(session.page(), None, "a closed box counts nothing");
+    }
+
+    #[test]
+    fn a_one_line_entry_reports_no_page_counter() {
+        let flags = RuntimeFlags::default();
+        let session = DialogueSession::resolve(
+            "sign",
+            None,
+            dialogue("id: sign\ntype: npc\nentries:\n  - lines: [\"Ardel, one mile.\"]\n"),
+            &flags,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            session.page(),
+            None,
+            "`1/1` on a one-line sign is noise, not progress"
+        );
+    }
+
+    /// An entry that hands off with `next:` restarts the count, because the successor's length is
+    /// the only total that is knowable — a branching graph has no fixed page count.
+    #[test]
+    fn a_chained_entry_restarts_the_count_at_its_own_length() {
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::resolve(
+            "chain",
+            None,
+            dialogue(
+                "id: chain\ntype: npc\nentries:\n\
+                 \x20 - lines: [One, Two]\n\
+                 \x20   next: second\n\
+                 \x20 - node: second\n\
+                 \x20   lines: [Three, Four, Five]\n",
+            ),
+            &flags,
+        )
+        .unwrap()
+        .unwrap();
+
+        session.tick(0.0, TextSpeed::VeryFast);
+        assert_eq!(session.page(), Some((1, 2)));
+        session.confirm(&flags);
+        session.tick(0.0, TextSpeed::VeryFast);
+        assert_eq!(session.page(), Some((2, 2)));
+        session.confirm(&flags);
+        assert_eq!(session.page(), Some((1, 3)));
+        assert_eq!(session.current_line(), "Three");
     }
 
     /// `dialogue.text_speed` in `assets/settings.yaml` reaches the typewriter.
