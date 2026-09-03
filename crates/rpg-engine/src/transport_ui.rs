@@ -76,6 +76,21 @@ pub(crate) struct TransportUiState {
     pub(crate) selected: usize,
     pub(crate) message: String,
     pub(crate) warp: Option<WarpContext>,
+    /// False for the frame the atlas is opened, so the Confirm press that opened it cannot also
+    /// answer it.
+    ///
+    /// Two of the three openers accept with Confirm and both live in systems that run *earlier*
+    /// in `Update` than [`handle_transport_input`]: the field menu's spell list
+    /// (`field_menu.rs`, `FieldMenuPlugin` is registered before `TransportUiPlugin`, and the two
+    /// systems both take `ResMut<TransportUiState>` so the executor cannot interleave them) and
+    /// the `open_transport` dialogue verb. Without the latch that same still-`just_pressed`
+    /// Confirm falls straight through into the browse handler, which promotes the atlas to
+    /// [`TransportPhase::Confirm`] on whichever destination happens to be first — and that phase
+    /// ignores the arrow keys, so the player gets a map they cannot steer.
+    ///
+    /// Lives on the state rather than on the opener, like [`super::world_interaction`]'s
+    /// treasure reveal, so it does not depend on which system runs first.
+    confirm_armed: bool,
     pending: Option<TravelRequest>,
     animation_elapsed: f32,
     animation_duration: f32,
@@ -89,6 +104,7 @@ impl Default for TransportUiState {
             selected: 0,
             message: String::new(),
             warp: None,
+            confirm_armed: false,
             pending: None,
             animation_elapsed: 0.0,
             animation_duration: 0.0,
@@ -154,7 +170,7 @@ fn cleanup_transport_ui(
     clippy::too_many_arguments,
     reason = "travel confirmation revalidates all mutable runtime dependencies"
 )]
-fn handle_transport_input(
+pub(crate) fn handle_transport_input(
     actions: Res<ActionState>,
     domain: Res<TransportDomain>,
     catalog: Res<FieldMenuCatalog>,
@@ -205,8 +221,16 @@ fn handle_transport_input(
         return;
     }
 
+    // The press that opened the atlas is still `just_pressed` on this frame. Spend it once here
+    // rather than letting it answer the screen it just raised; see `confirm_armed`. Back and the
+    // arrow keys are unaffected, so cancelling straight out of a freshly opened atlas still works.
+    let confirm = actions.just_pressed(AppAction::Confirm) && state.confirm_armed;
+    if !state.confirm_armed {
+        state.confirm_armed = true;
+    }
+
     if state.phase == TransportPhase::Animating {
-        if actions.just_pressed(AppAction::Confirm) {
+        if confirm {
             state.animation_elapsed = state.animation_duration;
         }
         return;
@@ -221,7 +245,7 @@ fn handle_transport_input(
         return;
     }
     if state.phase == TransportPhase::Confirm {
-        if actions.just_pressed(AppAction::Confirm) {
+        if confirm {
             let Some(request) = selected_request(&state, &domain, &catalog, &game) else {
                 state.phase = TransportPhase::Browse;
                 state.message = "That destination is no longer available.".to_owned();
@@ -289,7 +313,7 @@ fn handle_transport_input(
     if let Some(delta) = actions.menu_navigation() {
         state.selected = wrapped(state.selected, destinations.len(), delta);
     }
-    if actions.just_pressed(AppAction::Confirm) {
+    if confirm {
         if let Some(destination) = destinations.get(state.selected) {
             if destination.availability == TravelAvailability::Available {
                 state.phase = TransportPhase::Confirm;
