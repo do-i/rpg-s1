@@ -135,6 +135,22 @@ impl DialogueSession {
         self.phase
     }
 
+    /// Whether the next confirm closes this dialogue run and applies its completion actions.
+    ///
+    /// The final line used to carry the same "continue" hint as an intermediate page. That made
+    /// reward dialogue look complete before the confirm that actually commits its flags and
+    /// gifts. Keep the source's explicit final acknowledgement, but let the renderer name it as
+    /// a finish action.
+    pub(crate) fn finishes_on_confirm(&self) -> bool {
+        if self.phase != DialoguePhase::Ready {
+            return false;
+        }
+        let entry = &self.dialogue.entries[self.current];
+        self.line + 1 == entry.lines.len()
+            && entry.choices.is_empty()
+            && (entry.end || entry.next.is_none())
+    }
+
     /// One-based position of the line on screen, and how many the run holds.
     ///
     /// A *run* is everything the player will read before they are asked to do anything: the
@@ -496,6 +512,23 @@ mod tests {
             None,
             "`1/1` on a one-line sign is noise, not progress"
         );
+    }
+
+    #[test]
+    fn only_the_ready_terminal_page_reports_that_confirm_will_finish() {
+        let flags = RuntimeFlags::default();
+        let mut session = DialogueSession::message(
+            "reward",
+            Some("Warden".to_owned()),
+            vec!["Wait.".to_owned(), "Take it.".to_owned()],
+        );
+
+        assert!(!session.finishes_on_confirm());
+        session.tick(1.0, TextSpeed::VeryFast);
+        assert!(!session.finishes_on_confirm());
+        assert_eq!(session.confirm(&flags), DialogueEvent::Advanced);
+        session.tick(1.0, TextSpeed::VeryFast);
+        assert!(session.finishes_on_confirm());
     }
 
     /// A `next:` hand-off is invisible to the player, so it must be invisible to the counter too.

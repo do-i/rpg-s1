@@ -976,6 +976,9 @@ fn sync_dialogue_overlay(
     if let Ok(mut hint) = hints.single_mut() {
         hint.0 = match session.phase() {
             DialoguePhase::Typing => "ENTER · reveal     ESC · close",
+            DialoguePhase::Ready if session.finishes_on_confirm() => {
+                ">  ENTER · finish     ESC · close"
+            }
             DialoguePhase::Ready => ">  ENTER · continue     ESC · close",
             DialoguePhase::Choosing => "UP/DOWN · choose     ENTER · select     ESC · close",
             DialoguePhase::Closed => "",
