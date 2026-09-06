@@ -28,10 +28,20 @@ impl Default for UiTheme {
     fn default() -> Self {
         Self {
             clear_color: Color::srgb_u8(10, 10, 30),
-            panel_color: Color::srgba(0.0, 0.0, 0.0, 0.11),
-            menu_normal_color: Color::srgb_u8(170, 140, 100),
-            menu_selected_color: Color::srgb_u8(220, 140, 60),
-            menu_disabled_color: Color::srgb_u8(80, 70, 55),
+            // The source *intends* a half-opaque plate -- `title_scene.py` says "with a
+            // 50%-opacity box" directly above `pygame.draw.rect(box_surf, (0, 0, 0, 28), ...)`,
+            // and 28/255 is 11%, not 50%. The port inherited the 11% and with it the source's
+            // unreadable menu: the box lands on the bottom-centre of `title_lost_flame.webp`,
+            // which is the pale warm glow at the path's vanishing point, so warm menu text had
+            // almost nothing to sit against. This honours the comment over the constant.
+            panel_color: Color::srgba(0.0, 0.0, 0.0, 0.5),
+            // Weathered parchment, lit ember, cold ash -- the title art's own three notes. Read
+            // against the plate above the pale glow these hold roughly 3.3:1, 4.4:1 and 1.7:1,
+            // so selection now separates by brightness as well as hue while the disabled entry
+            // stays legibly dimmed rather than vanishing.
+            menu_normal_color: Color::srgb_u8(195, 186, 168),
+            menu_selected_color: Color::srgb_u8(255, 209, 102),
+            menu_disabled_color: Color::srgb_u8(138, 129, 117),
             status_color: Color::srgb_u8(220, 190, 145),
             menu_font_size: 30.0,
             status_font_size: 17.0,

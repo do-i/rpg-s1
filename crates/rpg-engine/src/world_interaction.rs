@@ -166,6 +166,15 @@ struct WorldDialogueBody;
 #[derive(Component)]
 struct WorldDialogueChoices;
 
+/// The `>` gutter beside the choice list, drawn in its own fixed-width column.
+///
+/// The marker used to be a `">"`/`" "` prefix inside the choice text itself, but the scenario font
+/// is proportional: `>` and a space are not the same width, so every label shifted sideways as the
+/// selection moved. `engine/title/menu_renderer.py` avoids this by laying the text out at
+/// `x + cursor_width` regardless of which row is selected, and this column is the same idea.
+#[derive(Component)]
+struct WorldDialogueChoiceCursors;
+
 #[derive(Component)]
 struct WorldDialogueHint;
 
@@ -906,6 +915,7 @@ fn sync_dialogue_overlay(
             With<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
             Without<WorldDialogueChoices>,
+            Without<WorldDialogueChoiceCursors>,
             Without<WorldDialogueHint>,
             Without<WorldDialoguePageCount>,
         ),
@@ -916,6 +926,7 @@ fn sync_dialogue_overlay(
             With<WorldDialogueBody>,
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueChoices>,
+            Without<WorldDialogueChoiceCursors>,
             Without<WorldDialogueHint>,
             Without<WorldDialoguePageCount>,
         ),
@@ -926,6 +937,18 @@ fn sync_dialogue_overlay(
             With<WorldDialogueChoices>,
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
+            Without<WorldDialogueChoiceCursors>,
+            Without<WorldDialogueHint>,
+            Without<WorldDialoguePageCount>,
+        ),
+    >,
+    mut choice_cursors: Query<
+        &mut Text,
+        (
+            With<WorldDialogueChoiceCursors>,
+            Without<WorldDialogueSpeaker>,
+            Without<WorldDialogueBody>,
+            Without<WorldDialogueChoices>,
             Without<WorldDialogueHint>,
             Without<WorldDialoguePageCount>,
         ),
@@ -937,6 +960,7 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
             Without<WorldDialogueChoices>,
+            Without<WorldDialogueChoiceCursors>,
             Without<WorldDialoguePageCount>,
         ),
     >,
@@ -947,6 +971,7 @@ fn sync_dialogue_overlay(
             Without<WorldDialogueSpeaker>,
             Without<WorldDialogueBody>,
             Without<WorldDialogueChoices>,
+            Without<WorldDialogueChoiceCursors>,
             Without<WorldDialogueHint>,
         ),
     >,
@@ -993,19 +1018,30 @@ fn sync_dialogue_overlay(
     if let Ok(mut body) = bodies.single_mut() {
         body.0 = session.visible_text();
     }
+    // The gutter and the labels are two columns of the same row count, so the marker can move
+    // without ever reflowing a label. Both write one `\n`-joined string into their own node.
+    if let Ok(mut cursor_text) = choice_cursors.single_mut() {
+        cursor_text.0 = session
+            .choices()
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                if index == session.selected_choice() {
+                    ">"
+                } else {
+                    ""
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+    }
     if let Ok(mut choice_text) = choices.single_mut() {
         choice_text.0 = session
             .choices()
             .iter()
-            .enumerate()
-            .map(|(index, choice)| {
-                let cursor = if index == session.selected_choice() {
-                    ">"
-                } else {
-                    " "
-                };
+            .map(|choice| {
                 let disabled = if choice.enabled() { "" } else { " [locked]" };
-                format!("{cursor} {}{disabled}", choice.text())
+                format!("{}{disabled}", choice.text())
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -1041,6 +1077,9 @@ const DIALOGUE_BOX_PADDING: f32 = 16.0;
 const DIALOGUE_PORTRAIT_SIZE: f32 = 96.0;
 /// The source's speaker plate straddles the box's top border rather than sitting inside it.
 const DIALOGUE_PLATE_HEIGHT: f32 = 30.0;
+/// Width of the choice-list marker column, mirroring `_CURSOR_PAD` in the source's menu renderer:
+/// wide enough for `>` plus the gap that separates it from the label.
+const DIALOGUE_CHOICE_CURSOR_WIDTH: f32 = 18.0;
 
 fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle<Font>) {
     commands
@@ -1151,16 +1190,47 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                         },
                         WorldDialogueBody,
                     ));
-                    column.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font: font.clone().into(),
-                            font_size: FontSize::Px(18.0),
+                    column
+                        .spawn(Node {
+                            width: percent(100),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::FlexStart,
                             ..default()
-                        },
-                        TextColor(theme.name_entry_input_color),
-                        WorldDialogueChoices,
-                    ));
+                        })
+                        .with_children(|choices| {
+                            choices.spawn((
+                                Text::new(""),
+                                TextFont {
+                                    font: font.clone().into(),
+                                    font_size: FontSize::Px(18.0),
+                                    ..default()
+                                },
+                                TextColor(theme.name_entry_input_color),
+                                TextLayout::new(Justify::Left, LineBreak::NoWrap),
+                                // A definite width is what keeps the labels still: the gutter
+                                // occupies the same box whether or not it holds the marker.
+                                Node {
+                                    width: px(DIALOGUE_CHOICE_CURSOR_WIDTH),
+                                    flex_shrink: 0.0,
+                                    ..default()
+                                },
+                                WorldDialogueChoiceCursors,
+                            ));
+                            choices.spawn((
+                                Text::new(""),
+                                TextFont {
+                                    font: font.clone().into(),
+                                    font_size: FontSize::Px(18.0),
+                                    ..default()
+                                },
+                                TextColor(theme.name_entry_input_color),
+                                Node {
+                                    flex_grow: 1.0,
+                                    ..default()
+                                },
+                                WorldDialogueChoices,
+                            ));
+                        });
                     // Counter and hint share one line: the box has a fixed height, so giving the
                     // page count a row of its own would come out of the body text.
                     column

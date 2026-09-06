@@ -24,12 +24,17 @@ const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
 /// Row height for one title menu entry.
 const MENU_ENTRY_HEIGHT: f32 = 42.0;
-/// Cursor footprint beside the selected entry. The shipped `arrow-head-right.webp` is 434x293, so
-/// 24x16 holds its aspect at a size that reads against 30px menu text. The slot is reserved on
-/// every row and only its visibility toggles, so selection never reflows the menu.
-const MENU_CURSOR_WIDTH: f32 = 24.0;
-const MENU_CURSOR_HEIGHT: f32 = 16.0;
-const MENU_CURSOR_GAP: f32 = 10.0;
+/// Empty gutter to the left of every menu entry, matching `_DEFAULT_CURSOR_W` in
+/// `engine/title/menu_renderer.py`.
+///
+/// The source reserves this width and lays every label out at `x + cursor_width`, then draws a
+/// cursor image into it *only* when one loaded. For this scenario none ever does:
+/// `rusted_kingdoms/manifest.yaml` names `assets/images/icons/arrow-head-red-right-01.webp`, which
+/// exists nowhere in the source tree, and `title_scene.py` guards the load with
+/// `if cursor_path.exists()`. So the original's title menu marks its selection by colour alone
+/// over an empty 40px gutter, and this port does the same. `title.cursor_icon` stays in the
+/// manifest schema — the port validates the path it names — but nothing renders it.
+const MENU_CURSOR_WIDTH: f32 = 40.0;
 /// Bounded wait for the Quit confirmation to reach the audio device.
 ///
 /// The chime is started, not awaited: shutdown must feel as immediate as the field menu's Quit,
@@ -75,10 +80,6 @@ impl TitleMenu {
 
 #[derive(Component)]
 struct MenuEntry(usize);
-
-/// Cursor image beside the entry of the same index.
-#[derive(Component)]
-struct MenuCursor(usize);
 
 /// Title text whose face is published from the manifest once it loads.
 ///
@@ -144,6 +145,9 @@ pub(crate) struct TitlePresentation {
 }
 
 impl TitlePresentation {
+    /// Test-only since the menu stopped gating a cursor image on it: nothing the title draws now
+    /// has to wait for the manifest, because colour needs no asset.
+    #[cfg(test)]
     pub(crate) const fn is_ready(&self) -> bool {
         matches!(self.status, TitlePresentationStatus::Ready)
     }
@@ -287,17 +291,11 @@ fn setup_title_screen(
                             ..default()
                         })
                         .with_children(|row| {
-                            row.spawn((
-                                ImageNode::default(),
-                                Node {
-                                    width: px(MENU_CURSOR_WIDTH),
-                                    height: px(MENU_CURSOR_HEIGHT),
-                                    margin: UiRect::right(px(MENU_CURSOR_GAP)),
-                                    ..default()
-                                },
-                                Visibility::Hidden,
-                                MenuCursor(index),
-                            ));
+                            row.spawn(Node {
+                                width: px(MENU_CURSOR_WIDTH),
+                                flex_shrink: 0.0,
+                                ..default()
+                            });
                             row.spawn((
                                 Text::new(label),
                                 TextFont {
@@ -350,7 +348,6 @@ fn apply_title_presentation(
     sfx_indexes: Res<Assets<SfxIndex>>,
     mut presentation: ResMut<TitlePresentation>,
     mut fonts: Query<&mut TextFont, With<TitleText>>,
-    mut cursors: Query<&mut ImageNode, With<MenuCursor>>,
     mut status: Single<&mut Text, With<StatusMessage>>,
 ) {
     if presentation.status != TitlePresentationStatus::Loading {
@@ -403,10 +400,6 @@ fn apply_title_presentation(
     let font = asset_server.load(scenario_root.resolve(&manifest.font.path));
     for mut text_font in &mut fonts {
         text_font.font = font.clone().into();
-    }
-    let cursor = asset_server.load(scenario_root.resolve(&manifest.title.cursor_icon));
-    for mut cursor_image in &mut cursors {
-        cursor_image.image = cursor.clone();
     }
     commands.spawn((
         Sprite::from_image(asset_server.load(scenario_root.resolve(&manifest.title.image))),
@@ -572,24 +565,14 @@ fn update_menu_colors(
     theme: Res<UiTheme>,
     presentation: Res<TitlePresentation>,
     mut entries: Query<(&MenuEntry, &mut TextColor)>,
-    mut cursors: Query<(&MenuCursor, &mut Visibility)>,
 ) {
     if !menu.is_changed() && !catalog.is_changed() && !presentation.is_changed() {
         return;
     }
 
+    // Colour is the whole of the source's selection feedback; see [`MENU_CURSOR_WIDTH`].
     for (entry, mut color) in &mut entries {
         color.0 = menu_entry_color(&theme, entry.0, menu.selected, catalog.has_valid());
-    }
-
-    // The cursor image only exists once the manifest publishes; showing the node before then would
-    // draw an untextured block.
-    for (cursor, mut visibility) in &mut cursors {
-        *visibility = if presentation.is_ready() && cursor.0 == menu.selected {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
     }
 }
 
@@ -628,10 +611,14 @@ mod tests {
         let theme = UiTheme::default();
 
         assert_eq!(theme.clear_color, Color::srgb_u8(10, 10, 30));
-        assert_eq!(theme.panel_color, Color::srgba(0.0, 0.0, 0.0, 0.11));
-        assert_eq!(theme.menu_normal_color, Color::srgb_u8(170, 140, 100));
-        assert_eq!(theme.menu_selected_color, Color::srgb_u8(220, 140, 60));
-        assert_eq!(theme.menu_disabled_color, Color::srgb_u8(80, 70, 55));
+        // The plate honours `title_scene.py`'s "50%-opacity box" comment rather than the 11% its
+        // code actually draws, and the menu palette is a deliberate readability divergence from
+        // the source. Both are recorded under "Approved accepted differences" in the parity
+        // checklist; see [`UiTheme::default`] for the measurement behind the colours.
+        assert_eq!(theme.panel_color, Color::srgba(0.0, 0.0, 0.0, 0.5));
+        assert_eq!(theme.menu_normal_color, Color::srgb_u8(195, 186, 168));
+        assert_eq!(theme.menu_selected_color, Color::srgb_u8(255, 209, 102));
+        assert_eq!(theme.menu_disabled_color, Color::srgb_u8(138, 129, 117));
         assert_eq!(theme.status_color, Color::srgb_u8(220, 190, 145));
         assert_eq!(theme.menu_font_size, 30.0);
         assert_eq!(theme.status_font_size, 17.0);
@@ -761,48 +748,57 @@ mod tests {
         );
     }
 
+    fn highlighted_entries(app: &mut App) -> Vec<usize> {
+        let selected = app.world().resource::<UiTheme>().menu_selected_color;
+        let world = app.world_mut();
+        let mut query = world.query::<(&MenuEntry, &TextColor)>();
+        let mut found = query
+            .iter(world)
+            .filter(|(_, color)| color.0 == selected)
+            .map(|(entry, _)| entry.0)
+            .collect::<Vec<_>>();
+        found.sort_unstable();
+        found
+    }
+
+    /// The source's title menu draws no cursor image and marks its selection by colour alone.
+    ///
+    /// `rusted_kingdoms/manifest.yaml` names `arrow-head-red-right-01.webp`, which exists nowhere
+    /// in the source tree, and `title_scene.py` only builds a cursor `if cursor_path.exists()`. The
+    /// gutter is still reserved on every row -- `menu_renderer.py` lays text out at
+    /// `x + cursor_width` whether or not a cursor loaded -- so no label moves as selection travels.
     #[test]
-    fn title_cursor_resolves_from_the_manifest_and_marks_only_the_selected_entry() {
+    fn the_title_menu_reserves_an_empty_gutter_and_marks_selection_by_colour() {
         let mut app = ready_minimal_demo_title_app();
 
         let world = app.world_mut();
-        let mut cursors = world.query::<(&MenuCursor, &ImageNode, &Visibility)>();
-        let mut published = cursors
+        assert_eq!(
+            world.query::<&ImageNode>().iter(world).count(),
+            0,
+            "the title menu must not draw a cursor image"
+        );
+        let gutters = world
+            .query::<&Node>()
             .iter(world)
-            .map(|(cursor, image, visibility)| (cursor.0, image.image.id(), *visibility))
-            .collect::<Vec<_>>();
-        published.sort_by_key(|(index, ..)| *index);
+            .filter(|node| node.width == px(MENU_CURSOR_WIDTH))
+            .count();
+        assert_eq!(
+            gutters,
+            MENU_LABELS.len(),
+            "every entry reserves the source's 40px cursor gutter"
+        );
 
-        let server = world.resource::<AssetServer>();
-        for (index, image, visibility) in &published {
-            assert_eq!(
-                server
-                    .get_path(*image)
-                    .map(|path| path.path().to_string_lossy().into_owned()),
-                Some("scenarios/minimal_demo/assets/cursor.webp".to_owned()),
-                "entry {index} must draw the manifest cursor"
-            );
-            let expected = if *index == 0 {
-                Visibility::Inherited
-            } else {
-                Visibility::Hidden
-            };
-            assert_eq!(*visibility, expected, "entry {index} visibility");
-        }
-        assert_eq!(published.len(), MENU_LABELS.len());
+        assert_eq!(highlighted_entries(&mut app), vec![0]);
 
-        // Selection moves the cursor rather than lighting a second one.
-        app.world_mut().resource_mut::<TitleMenu>().move_by(1);
+        // Quit is never disabled, so moving onto it isolates selection colour from the
+        // save-dependent disabled colour on Load Game.
+        app.world_mut().resource_mut::<TitleMenu>().move_by(-1);
         app.update();
-
-        let world = app.world_mut();
-        let mut shown = world.query::<(&MenuCursor, &Visibility)>();
-        let visible = shown
-            .iter(world)
-            .filter(|(_, visibility)| **visibility != Visibility::Hidden)
-            .map(|(cursor, _)| cursor.0)
-            .collect::<Vec<_>>();
-        assert_eq!(visible, vec![1]);
+        assert_eq!(
+            highlighted_entries(&mut app),
+            vec![MENU_LABELS.len() - 1],
+            "selection lights exactly one entry"
+        );
     }
 
     #[test]
@@ -1317,11 +1313,12 @@ mod tests {
         assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
         assert_eq!(world.query::<&Sprite>().iter(world).count(), 1);
-        // root + panel + status, then one row, cursor, and label per menu entry.
+        // root + panel + status, then one row, cursor gutter, and label per menu entry.
         assert_eq!(world.query::<&Node>().iter(world).count(), 12);
         assert_eq!(world.query::<&Text>().iter(world).count(), 4);
         assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 3);
-        assert_eq!(world.query::<&MenuCursor>().iter(world).count(), 3);
+        // The gutter is reserved but empty, so the title draws no UI image at all.
+        assert_eq!(world.query::<&ImageNode>().iter(world).count(), 0);
         assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 1);
         assert_eq!(
             world
