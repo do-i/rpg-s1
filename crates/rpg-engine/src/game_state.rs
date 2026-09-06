@@ -135,6 +135,21 @@ impl GameState {
         Ok(())
     }
 
+    /// Dismisses every companion and returns control to the protagonist.
+    ///
+    /// The operation is idempotent so a staged map can enforce its roster both on first arrival
+    /// and when an existing save is loaded directly into that map.
+    pub(crate) fn dismiss_companions(&mut self) -> usize {
+        let protagonist_id = self
+            .party
+            .protagonist()
+            .expect("validated game state always owns one protagonist")
+            .id()
+            .to_owned();
+        self.controlled_member_id = protagonist_id;
+        self.party.retain_protagonist()
+    }
+
     pub fn rng(&self) -> &GameplayRng {
         &self.rng
     }
@@ -370,6 +385,25 @@ mod tests {
         assert_eq!(state.controlled_member_id(), "ember");
         assert_eq!(state.set_controlled_member("mira"), Ok(()));
         assert_eq!(state.controlled_member_id(), "mira");
+    }
+
+    #[test]
+    fn dismissing_companions_restores_protagonist_control_and_is_idempotent() {
+        let mut parts = valid_parts();
+        parts.controlled_member_id = "mira".to_owned();
+        let mut state = GameState::try_from_parts(parts).unwrap();
+
+        assert_eq!(state.dismiss_companions(), 1);
+        assert_eq!(state.controlled_member_id(), "ember");
+        assert_eq!(
+            state
+                .party()
+                .members()
+                .map(RuntimeMember::id)
+                .collect::<Vec<_>>(),
+            ["ember"]
+        );
+        assert_eq!(state.dismiss_companions(), 0);
     }
 
     #[test]

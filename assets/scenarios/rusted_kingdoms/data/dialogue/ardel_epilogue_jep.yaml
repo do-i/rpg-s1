@@ -1,0 +1,22 @@
+# Jep's last companion word in the staged Ardel epilogue.
+id: ardel_epilogue_jep
+type: npc
+
+entries:
+  - condition:
+      requires: [ending_path_third]
+    lines:
+      - "I said somebody had to stay below. I still hate that it was you."
+      - "We'll keep the road down there open. You won't be alone."
+
+  - condition:
+      requires: [ending_path_release]
+    lines:
+      - "No magic left in the stone. A tunnel is just a tunnel again."
+      - "I can work with that."
+
+  - condition:
+      requires: [ending_path_rekindle]
+    lines:
+      - "We bought time. I know what borrowed time costs."
+      - "Let's spend it well."

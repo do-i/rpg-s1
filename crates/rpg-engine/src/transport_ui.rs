@@ -14,13 +14,13 @@ use crate::{
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
+    scenario_transport::AtlasRegion,
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, cue},
     transport_domain::{
-        TransportDomain, TransportStatus, TravelAvailability, TravelDestination, TravelMode,
-        TravelRequest,
+        TransportDomain, TransportStatus, TravelAvailability, TravelDeparture, TravelDestination,
+        TravelMode, TravelRequest,
     },
-    ui_theme::UiTheme,
     world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
@@ -31,6 +31,7 @@ const ATLAS_HEIGHT: f32 = 720.0;
 const MAP_WIDTH: f32 = 820.0;
 const MAP_HEIGHT: f32 = 548.0;
 const DESTINATION_ROWS: usize = 8;
+const PANEL_WIDTH: f32 = 370.0;
 
 pub(crate) struct TransportUiPlugin;
 
@@ -76,6 +77,7 @@ pub(crate) struct TransportUiState {
     pub(crate) selected: usize,
     pub(crate) message: String,
     pub(crate) warp: Option<WarpContext>,
+    departure: TravelDeparture,
     /// False for the frame the atlas is opened, so the Confirm press that opened it cannot also
     /// answer it.
     ///
@@ -104,6 +106,7 @@ impl Default for TransportUiState {
             selected: 0,
             message: String::new(),
             warp: None,
+            departure: TravelDeparture::Standard,
             confirm_armed: false,
             pending: None,
             animation_elapsed: 0.0,
@@ -121,6 +124,15 @@ impl TransportUiState {
         *self = Self {
             phase: TransportPhase::Browse,
             mode,
+            ..default()
+        };
+    }
+
+    pub(crate) fn open_scripted_mode(&mut self, mode: TravelMode) {
+        *self = Self {
+            phase: TransportPhase::Browse,
+            mode,
+            departure: TravelDeparture::Scripted,
             ..default()
         };
     }
@@ -254,7 +266,7 @@ pub(crate) fn handle_transport_input(
             let mode_availability = if request.mode == TravelMode::Warp {
                 TravelAvailability::Available
             } else {
-                domain.availability(request.mode, game.map(), game.flags())
+                mode_availability(&state, &domain, &game)
             };
             if let Some(reason) = mode_availability.reason() {
                 state.phase = TransportPhase::Browse;
@@ -301,8 +313,7 @@ pub(crate) fn handle_transport_input(
             state.message = if state.mode == TravelMode::Warp && state.warp.is_none() {
                 "Cast Teleport through Spells to choose Warp.".to_owned()
             } else {
-                domain
-                    .availability(state.mode, game.map(), game.flags())
+                mode_availability(&state, &domain, &game)
                     .reason()
                     .unwrap_or_default()
                     .to_owned()
@@ -427,7 +438,7 @@ fn destinations(
 ) -> Vec<TravelDestination> {
     match state.mode {
         TravelMode::Sail | TravelMode::Fly => {
-            domain.destinations(state.mode, game.map(), game.flags())
+            domain.destinations_for(state.mode, game.map(), game.flags(), state.departure)
         }
         TravelMode::Warp if state.warp.is_some() => catalog
             .eligible_warp_destinations(game.map())
@@ -447,6 +458,14 @@ fn destinations(
         TravelMode::Warp => Vec::new(),
         TravelMode::Closed => Vec::new(),
     }
+}
+
+fn mode_availability(
+    state: &TransportUiState,
+    domain: &TransportDomain,
+    game: &GameState,
+) -> TravelAvailability {
+    domain.availability_for(state.mode, game.map(), game.flags(), state.departure)
 }
 
 fn selected_request(
@@ -514,7 +533,6 @@ struct TransportOverlayParams<'w, 's> {
     asset_server: Res<'w, AssetServer>,
     root: Res<'w, ScenarioRoot>,
     inventory: Res<'w, ScenarioInventory>,
-    theme: Res<'w, UiTheme>,
     state: Res<'w, TransportUiState>,
     domain: Res<'w, TransportDomain>,
     catalog: Res<'w, FieldMenuCatalog>,
@@ -527,7 +545,6 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
         asset_server,
         root,
         inventory,
-        theme,
         state,
         domain,
         catalog,
@@ -593,18 +610,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
             Name::new("Ember Atlas"),
         ))
         .with_children(|overlay| {
-            overlay.spawn((
-                Text::new(format!(
-                    "EMBER ATLAS                         {}",
-                    mode_header(&state, &domain, &game)
-                )),
-                TextFont {
-                    font: font.clone().into(),
-                    font_size: FontSize::Px(28.0),
-                    ..default()
-                },
-                TextColor(Color::srgb_u8(246, 184, 88)),
-            ));
+            spawn_atlas_header(overlay, &font, &state, &domain, &game);
             overlay
                 .spawn((Node {
                     width: percent(100),
@@ -620,147 +626,37 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                             height: px(MAP_HEIGHT),
                             overflow: Overflow::clip(),
                             border: UiRect::all(px(2)),
+                            border_radius: BorderRadius::all(px(8)),
                             ..default()
                         },
                         ImageNode::new(map_image).with_mode(NodeImageMode::Stretch),
                         BorderColor::all(Color::srgb_u8(151, 89, 38)),
                         BackgroundColor(Color::srgb_u8(52, 32, 18)),
+                        BoxShadow::new(
+                            Color::srgba(0.0, 0.0, 0.0, 0.7),
+                            px(0),
+                            px(4),
+                            px(0),
+                            px(10),
+                        ),
                     ))
                     .with_children(|map| {
-                        spawn_route_preview(map, &font, &state, &domain, &game, selected);
+                        spawn_route_preview(map, &state, &domain, &game, selected);
                         for region in known_regions {
                             let current = current_region.is_some_and(|r| r.id == region.id);
                             let chosen = selected.is_some_and(|d| d.region_id == region.id);
-                            let base_size = if current { 28.0 } else { 22.0 };
-                            let mut pin = map.spawn((
-                                Node {
-                                    position_type: PositionType::Absolute,
-                                    left: percent((region.position.x.get() * 100.0) as f32),
-                                    top: percent((region.position.y.get() * 100.0) as f32),
-                                    width: px(base_size),
-                                    height: px(base_size),
-                                    border: UiRect::all(px(if current { 4 } else { 2 })),
-                                    border_radius: BorderRadius::all(percent(50)),
-                                    ..default()
-                                },
-                                BorderColor::all(if current {
-                                    Color::srgb_u8(255, 214, 92)
-                                } else if chosen {
-                                    Color::srgb_u8(255, 91, 31)
-                                } else {
-                                    Color::srgb_u8(238, 175, 74)
-                                }),
-                                BackgroundColor(Color::srgba(0.12, 0.04, 0.01, 0.72)),
-                                Name::new(format!("Atlas pin: {}", region.name)),
-                            ));
-                            if chosen {
-                                pin.insert(SelectedAtlasPin { base_size });
-                            }
-                            if current {
-                                pin.with_children(|outer| {
-                                    outer.spawn((
-                                        Node {
-                                            position_type: PositionType::Absolute,
-                                            left: px(5),
-                                            top: px(5),
-                                            width: px(14),
-                                            height: px(14),
-                                            border: UiRect::all(px(2)),
-                                            border_radius: BorderRadius::all(percent(50)),
-                                            ..default()
-                                        },
-                                        BorderColor::all(Color::srgb_u8(255, 225, 132)),
-                                    ));
+                            let place_name = rows
+                                .iter()
+                                .find(|destination| destination.region_id == region.id)
+                                .map_or(region.name.as_str(), |destination| {
+                                    destination.name.as_str()
                                 });
-                            }
+                            spawn_region_marker(
+                                map, &font, region, place_name, state.mode, current, chosen,
+                            );
                         }
                     });
-                    body.spawn((
-                        Node {
-                            width: px(370),
-                            height: px(MAP_HEIGHT),
-                            flex_direction: FlexDirection::Column,
-                            padding: UiRect::all(px(14)),
-                            row_gap: px(7),
-                            border: UiRect::all(px(2)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgba(0.10, 0.055, 0.025, 0.96)),
-                        BorderColor::all(Color::srgb_u8(137, 76, 33)),
-                    ))
-                    .with_children(|list| {
-                        list.spawn((
-                            Text::new("DESTINATIONS"),
-                            TextFont {
-                                font: font.clone().into(),
-                                font_size: FontSize::Px(22.0),
-                                ..default()
-                            },
-                            TextColor(Color::srgb_u8(244, 192, 104)),
-                        ));
-                        for (offset, destination) in
-                            rows.iter().skip(first).take(DESTINATION_ROWS).enumerate()
-                        {
-                            let index = first + offset;
-                            let lock = destination
-                                .availability
-                                .reason()
-                                .map_or("", |_| " [LOCKED]");
-                            list.spawn((
-                                Text::new(format!(
-                                    "{} {}{}",
-                                    if index == state.selected { ">" } else { " " },
-                                    destination.name,
-                                    lock
-                                )),
-                                TextFont {
-                                    font: font.clone().into(),
-                                    font_size: FontSize::Px(19.0),
-                                    ..default()
-                                },
-                                TextColor(if index == state.selected {
-                                    Color::srgb_u8(255, 180, 66)
-                                } else {
-                                    Color::srgb_u8(228, 215, 180)
-                                }),
-                            ));
-                        }
-                        list.spawn((
-                            Node {
-                                height: px(2),
-                                width: percent(100),
-                                margin: UiRect::vertical(px(6)),
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgb_u8(122, 71, 34)),
-                        ));
-                        let detail = selected
-                            .map(|d| {
-                                format!(
-                                    "{}\nVisited · {}\n{}",
-                                    domain
-                                        .region_for_map(&d.map_id)
-                                        .map_or("Unknown region", |r| r.name.as_str()),
-                                    state.mode.label(),
-                                    d.availability.reason().unwrap_or(match state.mode {
-                                        TravelMode::Sail => "No encounters · charted waterway",
-                                        TravelMode::Fly => "Direct flight · no encounters",
-                                        TravelMode::Warp => "Spell travel · normal MP cost",
-                                        _ => "",
-                                    })
-                                )
-                            })
-                            .unwrap_or_else(|| state.message.clone());
-                        list.spawn((
-                            Text::new(detail),
-                            TextFont {
-                                font: font.clone().into(),
-                                font_size: FontSize::Px(17.0),
-                                ..default()
-                            },
-                            TextColor(Color::srgb_u8(205, 190, 154)),
-                        ));
-                    });
+                    spawn_destination_panel(body, &font, &state, &domain, &rows, first, selected);
                 });
             overlay.spawn((
                 Text::new(footer(&state)),
@@ -769,9 +665,420 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                     font_size: FontSize::Px(17.0),
                     ..default()
                 },
-                TextColor(theme.name_entry_hint_color),
+                TextColor(Color::srgb_u8(205, 188, 151)),
+                TextShadow {
+                    offset: Vec2::new(1.0, 1.0),
+                    color: Color::BLACK,
+                },
             ));
         });
+}
+
+fn spawn_region_marker(
+    map: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    region: &AtlasRegion,
+    place_name: &str,
+    mode: TravelMode,
+    current: bool,
+    selected: bool,
+) {
+    let x = region.position.x.get() as f32;
+    let y = region.position.y.get() as f32;
+    let accent = mode_accent(mode);
+    let marker_color = if selected {
+        accent
+    } else if current {
+        Color::srgb_u8(255, 220, 126)
+    } else {
+        Color::srgb_u8(224, 171, 84)
+    };
+    let base_size = if selected {
+        30.0
+    } else if current {
+        26.0
+    } else {
+        20.0
+    };
+    let mut marker = map.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: percent(x * 100.0),
+            top: percent(y * 100.0),
+            width: px(base_size),
+            height: px(base_size),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            border: UiRect::all(px(if selected || current { 3 } else { 2 })),
+            border_radius: BorderRadius::all(percent(50)),
+            ..default()
+        },
+        UiTransform::from_xy(percent(-50), percent(-50)),
+        BorderColor::all(marker_color),
+        BackgroundColor(Color::srgba(0.055, 0.025, 0.012, 0.92)),
+        Outline::new(
+            px(if selected { 3 } else { 1 }),
+            px(1),
+            marker_color.with_alpha(if selected { 0.5 } else { 0.24 }),
+        ),
+        Name::new(format!("Atlas marker: {}", region.name)),
+    ));
+    if selected {
+        marker.insert(SelectedAtlasPin { base_size });
+    }
+    marker.with_children(|outer| {
+        outer.spawn((
+            Node {
+                width: px(if selected { 10 } else { 7 }),
+                height: px(if selected { 10 } else { 7 }),
+                border_radius: BorderRadius::all(percent(50)),
+                ..default()
+            },
+            BackgroundColor(marker_color),
+        ));
+    });
+
+    let label_offset = if y > 0.65 { -38.0 } else { 18.0 };
+    let label = if current {
+        format!("{place_name} - CURRENT")
+    } else {
+        place_name.to_owned()
+    };
+    map.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: percent(x * 100.0),
+            top: percent(y * 100.0),
+            padding: UiRect::axes(px(7), px(3)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(4)),
+            ..default()
+        },
+        UiTransform::from_xy(percent(-50), px(label_offset)),
+        BackgroundColor(if selected {
+            Color::srgba(0.08, 0.035, 0.015, 0.94)
+        } else {
+            Color::srgba(0.07, 0.045, 0.025, 0.82)
+        }),
+        BorderColor::all(marker_color.with_alpha(if selected { 0.9 } else { 0.55 })),
+        Text::new(label),
+        TextFont {
+            font: font.clone().into(),
+            font_size: FontSize::Px(if selected || current { 15.0 } else { 13.0 }),
+            ..default()
+        },
+        TextColor(if selected {
+            accent
+        } else {
+            Color::srgb_u8(244, 224, 182)
+        }),
+        TextShadow {
+            offset: Vec2::new(1.0, 1.0),
+            color: Color::BLACK,
+        },
+        Name::new(format!("Atlas label: {}", region.name)),
+    ));
+}
+
+fn spawn_destination_panel(
+    body: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    state: &TransportUiState,
+    domain: &TransportDomain,
+    rows: &[TravelDestination],
+    first: usize,
+    selected: Option<&TravelDestination>,
+) {
+    body.spawn((
+        Node {
+            width: px(PANEL_WIDTH),
+            height: px(MAP_HEIGHT),
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::all(px(12)),
+            row_gap: px(5),
+            border: UiRect::all(px(2)),
+            border_radius: BorderRadius::all(px(8)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.085, 0.045, 0.022, 0.97)),
+        BorderColor::all(Color::srgb_u8(137, 76, 33)),
+        BoxShadow::new(
+            Color::srgba(0.0, 0.0, 0.0, 0.65),
+            px(0),
+            px(4),
+            px(0),
+            px(10),
+        ),
+    ))
+    .with_children(|panel| {
+        panel
+            .spawn(Node {
+                width: percent(100),
+                height: px(42),
+                flex_direction: FlexDirection::Column,
+                flex_shrink: 0.0,
+                ..default()
+            })
+            .with_children(|heading| {
+                heading.spawn((
+                    Text::new("CHOOSE A DESTINATION"),
+                    TextFont {
+                        font: font.clone().into(),
+                        font_size: FontSize::Px(19.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb_u8(244, 192, 104)),
+                ));
+                heading.spawn((
+                    Text::new(destination_count_copy(first, rows.len())),
+                    TextFont {
+                        font: font.clone().into(),
+                        font_size: FontSize::Px(12.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb_u8(166, 143, 108)),
+                ));
+            });
+
+        if rows.is_empty() {
+            panel
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(86),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        padding: UiRect::all(px(12)),
+                        border: UiRect::all(px(1)),
+                        border_radius: BorderRadius::all(px(5)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.15, 0.09, 0.04, 0.7)),
+                    BorderColor::all(Color::srgb_u8(98, 71, 44)),
+                ))
+                .with_children(|empty| {
+                    empty.spawn((
+                        Text::new(if state.message.is_empty() {
+                            "No charted destinations are available."
+                        } else {
+                            state.message.as_str()
+                        }),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(16.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(196, 177, 143)),
+                        TextLayout::justify(Justify::Center),
+                    ));
+                });
+        } else {
+            for (offset, destination) in rows.iter().skip(first).take(DESTINATION_ROWS).enumerate()
+            {
+                spawn_destination_row(
+                    panel,
+                    font,
+                    state.mode,
+                    destination,
+                    first + offset == state.selected,
+                    domain,
+                );
+            }
+        }
+
+        panel.spawn(Node {
+            flex_grow: 1.0,
+            min_height: px(2),
+            ..default()
+        });
+        spawn_route_details(panel, font, state, domain, selected);
+    });
+}
+
+fn spawn_destination_row(
+    panel: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    mode: TravelMode,
+    destination: &TravelDestination,
+    selected: bool,
+    domain: &TransportDomain,
+) {
+    let accent = mode_accent(mode);
+    let available = destination.availability == TravelAvailability::Available;
+    panel
+        .spawn((
+            Node {
+                width: percent(100),
+                height: px(39),
+                flex_shrink: 0.0,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                padding: UiRect::horizontal(px(9)),
+                column_gap: px(8),
+                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                border_radius: BorderRadius::all(px(5)),
+                ..default()
+            },
+            BackgroundColor(if selected {
+                accent.with_alpha(0.18)
+            } else {
+                Color::srgba(0.14, 0.08, 0.035, 0.72)
+            }),
+            BorderColor::all(if selected {
+                accent
+            } else {
+                Color::srgb_u8(96, 67, 40)
+            }),
+        ))
+        .with_children(|row| {
+            row.spawn((
+                Node {
+                    width: px(if selected { 5 } else { 3 }),
+                    height: px(if selected { 24 } else { 16 }),
+                    flex_shrink: 0.0,
+                    border_radius: BorderRadius::all(px(2)),
+                    ..default()
+                },
+                BackgroundColor(if available {
+                    if selected {
+                        accent
+                    } else {
+                        accent.with_alpha(0.55)
+                    }
+                } else {
+                    Color::srgb_u8(101, 87, 68)
+                }),
+            ));
+            row.spawn((
+                Text::new(destination.name.clone()),
+                TextFont {
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(17.0),
+                    ..default()
+                },
+                TextColor(if available {
+                    if selected {
+                        Color::srgb_u8(255, 232, 183)
+                    } else {
+                        Color::srgb_u8(221, 207, 176)
+                    }
+                } else {
+                    Color::srgb_u8(139, 126, 103)
+                }),
+            ));
+            row.spawn(Node {
+                flex_grow: 1.0,
+                ..default()
+            });
+            let region = domain
+                .region_for_map(&destination.map_id)
+                .map_or("Unknown", |region| region.name.as_str());
+            row.spawn((
+                Text::new(if available { region } else { "LOCKED" }),
+                TextFont {
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(12.0),
+                    ..default()
+                },
+                TextColor(if selected && available {
+                    accent
+                } else {
+                    Color::srgb_u8(151, 132, 99)
+                }),
+            ));
+        });
+}
+
+fn spawn_route_details(
+    panel: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    state: &TransportUiState,
+    domain: &TransportDomain,
+    selected: Option<&TravelDestination>,
+) {
+    let accent = mode_accent(state.mode);
+    panel
+        .spawn((
+            Node {
+                width: percent(100),
+                min_height: px(78),
+                flex_direction: FlexDirection::Column,
+                flex_shrink: 0.0,
+                padding: UiRect::axes(px(10), px(7)),
+                row_gap: px(3),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(5)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.045, 0.025, 0.014, 0.82)),
+            BorderColor::all(accent.with_alpha(0.5)),
+        ))
+        .with_children(|details| {
+            details.spawn((
+                Text::new("ROUTE DETAILS"),
+                TextFont {
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(12.0),
+                    ..default()
+                },
+                TextColor(accent),
+            ));
+            details.spawn((
+                Text::new(route_detail_copy(state, domain, selected)),
+                TextFont {
+                    font: font.clone().into(),
+                    font_size: FontSize::Px(15.0),
+                    ..default()
+                },
+                TextColor(Color::srgb_u8(205, 190, 154)),
+            ));
+        });
+}
+
+fn route_detail_copy(
+    state: &TransportUiState,
+    domain: &TransportDomain,
+    selected: Option<&TravelDestination>,
+) -> String {
+    selected.map_or_else(
+        || {
+            if state.message.is_empty() {
+                "Select a destination to preview its route.".to_owned()
+            } else {
+                state.message.clone()
+            }
+        },
+        |destination| {
+            let region = domain
+                .region_for_map(&destination.map_id)
+                .map_or("Unknown region", |region| region.name.as_str());
+            let route = destination
+                .availability
+                .reason()
+                .unwrap_or(match state.mode {
+                    TravelMode::Sail => "Charted waterway / no encounters",
+                    TravelMode::Fly => "Direct flight / no encounters",
+                    TravelMode::Warp => "Spell travel / normal MP cost",
+                    TravelMode::Closed => "",
+                });
+            format!("{} / {}\n{}", region, state.mode.label(), route)
+        },
+    )
+}
+
+fn destination_count_copy(first: usize, len: usize) -> String {
+    if len == 0 {
+        "No charted places".to_owned()
+    } else if len > DESTINATION_ROWS {
+        format!(
+            "Showing {}-{} of {} charted places",
+            first + 1,
+            (first + DESTINATION_ROWS).min(len),
+            len
+        )
+    } else {
+        format!("{} charted place{}", len, if len == 1 { "" } else { "s" })
+    }
 }
 
 fn pulse_selected_pin(time: Res<Time>, mut pins: Query<(&SelectedAtlasPin, &mut Node)>) {
@@ -783,33 +1090,121 @@ fn pulse_selected_pin(time: Res<Time>, mut pins: Query<(&SelectedAtlasPin, &mut 
     }
 }
 
-fn mode_header(state: &TransportUiState, domain: &TransportDomain, game: &GameState) -> String {
-    TravelMode::ALL
-        .into_iter()
-        .map(|mode| {
-            let unlocked = match mode {
-                TravelMode::Warp => state.warp.is_some(),
-                _ => domain.mode_unlocked(mode, game.flags()),
-            };
-            format!(
-                "{}{}{}",
-                if mode == state.mode { "[" } else { "" },
-                if unlocked {
-                    mode.label().to_owned()
-                } else {
-                    format!("{} LOCKED", mode.label())
-                },
-                if mode == state.mode { "]" } else { "" }
-            )
+fn spawn_atlas_header(
+    overlay: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    state: &TransportUiState,
+    domain: &TransportDomain,
+    game: &GameState,
+) {
+    overlay
+        .spawn(Node {
+            width: percent(100),
+            height: px(48),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::SpaceBetween,
+            flex_shrink: 0.0,
+            ..default()
         })
-        .collect::<Vec<_>>()
-        .join("  │  ")
+        .with_children(|header| {
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                })
+                .with_children(|title| {
+                    title.spawn((
+                        Text::new("EMBER ATLAS"),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(28.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(246, 184, 88)),
+                        TextShadow {
+                            offset: Vec2::new(1.0, 2.0),
+                            color: Color::BLACK,
+                        },
+                    ));
+                    title.spawn((
+                        Text::new("Chart a course across the known realm"),
+                        TextFont {
+                            font: font.clone().into(),
+                            font_size: FontSize::Px(13.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb_u8(184, 151, 103)),
+                    ));
+                });
+            header
+                .spawn(Node {
+                    height: px(40),
+                    align_items: AlignItems::Center,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|tabs| {
+                    for mode in TravelMode::ALL {
+                        let selected = mode == state.mode;
+                        let unlocked = match mode {
+                            TravelMode::Warp => state.warp.is_some(),
+                            _ => domain.mode_unlocked(mode, game.flags()),
+                        };
+                        let accent = mode_accent(mode);
+                        tabs.spawn((
+                            Node {
+                                width: px(112),
+                                height: px(36),
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                padding: UiRect::horizontal(px(8)),
+                                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                                border_radius: BorderRadius::all(px(5)),
+                                ..default()
+                            },
+                            BackgroundColor(if selected {
+                                accent.with_alpha(0.22)
+                            } else {
+                                Color::srgba(0.10, 0.06, 0.03, 0.82)
+                            }),
+                            BorderColor::all(if selected {
+                                accent
+                            } else {
+                                Color::srgb_u8(105, 75, 45)
+                            }),
+                        ))
+                        .with_children(|tab| {
+                            tab.spawn((
+                                Text::new(if unlocked {
+                                    mode.label().to_uppercase()
+                                } else {
+                                    format!("{} LOCKED", mode.label().to_uppercase())
+                                }),
+                                TextFont {
+                                    font: font.clone().into(),
+                                    font_size: FontSize::Px(if unlocked { 16.0 } else { 12.0 }),
+                                    ..default()
+                                },
+                                TextColor(if unlocked {
+                                    if selected {
+                                        accent
+                                    } else {
+                                        Color::srgb_u8(219, 200, 164)
+                                    }
+                                } else {
+                                    Color::srgb_u8(126, 111, 88)
+                                }),
+                            ));
+                        });
+                    }
+                });
+        });
 }
 
 fn footer(state: &TransportUiState) -> String {
     match state.phase {
         TransportPhase::Browse => format!(
-            "←/→ MODE   ↑/↓ DESTINATION   ENTER TRAVEL   ESC BACK{}",
+            "LEFT/RIGHT MODE   UP/DOWN DESTINATION   ENTER TRAVEL   ESC BACK{}",
             if state.message.is_empty() {
                 String::new()
             } else {
@@ -826,7 +1221,6 @@ fn footer(state: &TransportUiState) -> String {
 
 fn spawn_route_preview(
     map: &mut ChildSpawnerCommands,
-    font: &Handle<Font>,
     state: &TransportUiState,
     domain: &TransportDomain,
     game: &GameState,
@@ -885,19 +1279,31 @@ fn spawn_route_preview(
             })
             .collect()
     } else {
-        vec![
-            (
-                current.position.x.get() as f32,
-                current.position.y.get() as f32,
-            ),
-            (
-                target.position.x.get() as f32,
-                target.position.y.get() as f32,
-            ),
-        ]
+        let start = (
+            current.position.x.get() as f32,
+            current.position.y.get() as f32,
+        );
+        let end = (
+            target.position.x.get() as f32,
+            target.position.y.get() as f32,
+        );
+        (0..=12)
+            .map(|step| {
+                let t = step as f32 / 12.0;
+                (
+                    start.0 + (end.0 - start.0) * t,
+                    start.1 + (end.1 - start.1) * t,
+                )
+            })
+            .collect()
     };
     for pair in points.windows(2) {
-        spawn_line(map, pair[0], pair[1]);
+        spawn_line(map, pair[0], pair[1], state.mode);
+    }
+    if state.mode == TravelMode::Sail && points.len() > 2 {
+        for point in points.iter().skip(1).take(points.len() - 2) {
+            spawn_route_waypoint(map, *point, state.mode);
+        }
     }
     if state.phase == TransportPhase::Animating {
         let t = (state.animation_elapsed / state.animation_duration.max(0.001)).clamp(0.0, 1.0);
@@ -907,15 +1313,13 @@ fn spawn_route_preview(
             let approach = t * 0.5;
             spawn_animation_token(
                 map,
-                font,
-                "◈",
+                state.mode,
                 start.0 + (end.0 - start.0) * approach,
                 start.1 + (end.1 - start.1) * approach,
             );
             spawn_animation_token(
                 map,
-                font,
-                "◈",
+                state.mode,
                 end.0 + (start.0 - end.0) * approach,
                 end.1 + (start.1 - end.1) * approach,
             );
@@ -927,64 +1331,99 @@ fn spawn_route_preview(
             let local = ((points.len() - 1) as f32 * t) - segment as f32;
             let x = points[segment].0 + (points[segment + 1].0 - points[segment].0) * local;
             let y = points[segment].1 + (points[segment + 1].1 - points[segment].1) * local;
-            spawn_animation_token(
-                map,
-                font,
-                match state.mode {
-                    TravelMode::Sail => "◆",
-                    TravelMode::Fly => "✦",
-                    TravelMode::Warp => "◈",
-                    _ => "",
-                },
-                x,
-                y,
-            );
+            spawn_animation_token(map, state.mode, x, y);
         }
     }
 }
 
-fn spawn_animation_token(
-    map: &mut ChildSpawnerCommands,
-    font: &Handle<Font>,
-    token: &'static str,
-    x: f32,
-    y: f32,
-) {
+fn spawn_animation_token(map: &mut ChildSpawnerCommands, mode: TravelMode, x: f32, y: f32) {
+    let accent = mode_accent(mode);
+    let (width, height, radius, rotation) = match mode {
+        TravelMode::Sail => (20.0, 11.0, 5.0, Rot2::IDENTITY),
+        TravelMode::Fly => (15.0, 15.0, 2.0, Rot2::radians(std::f32::consts::FRAC_PI_4)),
+        TravelMode::Warp => (19.0, 19.0, 50.0, Rot2::IDENTITY),
+        TravelMode::Closed => return,
+    };
     map.spawn((
-        Text::new(token),
-        TextFont {
-            font: font.clone().into(),
-            font_size: FontSize::Px(26.0),
-            ..default()
-        },
-        TextColor(Color::srgb_u8(255, 92, 35)),
         Node {
             position_type: PositionType::Absolute,
             left: percent(x * 100.0),
             top: percent(y * 100.0),
+            width: px(width),
+            height: px(height),
+            border: UiRect::all(px(3)),
+            border_radius: BorderRadius::all(px(radius)),
             ..default()
         },
+        UiTransform {
+            translation: Val2::new(percent(-50), percent(-50)),
+            rotation,
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.06, 0.025, 0.01, 0.92)),
+        BorderColor::all(accent),
+        Outline::new(px(3), px(1), accent.with_alpha(0.35)),
     ));
 }
 
-fn spawn_line(map: &mut ChildSpawnerCommands, from: (f32, f32), to: (f32, f32)) {
-    let dx = (to.0 - from.0) * MAP_WIDTH;
-    let dy = (to.1 - from.1) * MAP_HEIGHT;
-    let length = (dx * dx + dy * dy).sqrt();
-    let midpoint_x = (from.0 + to.0) * MAP_WIDTH * 0.5;
-    let midpoint_y = (from.1 + to.1) * MAP_HEIGHT * 0.5;
+fn spawn_route_waypoint(map: &mut ChildSpawnerCommands, point: (f32, f32), mode: TravelMode) {
+    let accent = mode_accent(mode);
     map.spawn((
         Node {
             position_type: PositionType::Absolute,
-            left: px(midpoint_x - length * 0.5),
-            top: px(midpoint_y - 2.0),
-            width: px(length),
-            height: px(4),
+            left: percent(point.0 * 100.0),
+            top: percent(point.1 * 100.0),
+            width: px(10),
+            height: px(10),
+            border: UiRect::all(px(2)),
+            border_radius: BorderRadius::all(percent(50)),
             ..default()
         },
-        BackgroundColor(Color::srgba(1.0, 0.28, 0.06, 0.82)),
-        UiTransform::from_rotation(Rot2::radians(dy.atan2(dx))),
+        UiTransform::from_xy(percent(-50), percent(-50)),
+        BackgroundColor(Color::srgba(0.05, 0.02, 0.01, 0.94)),
+        BorderColor::all(accent),
     ));
+}
+
+fn spawn_line(map: &mut ChildSpawnerCommands, from: (f32, f32), to: (f32, f32), mode: TravelMode) {
+    let dx = (to.0 - from.0) * MAP_WIDTH;
+    let dy = (to.1 - from.1) * MAP_HEIGHT;
+    let dash_scale = match mode {
+        TravelMode::Fly => 0.84,
+        TravelMode::Warp => 0.55,
+        _ => 1.0,
+    };
+    let length = (dx * dx + dy * dy).sqrt() * dash_scale;
+    let midpoint_x = (from.0 + to.0) * MAP_WIDTH * 0.5;
+    let midpoint_y = (from.1 + to.1) * MAP_HEIGHT * 0.5;
+    let rotation = Rot2::radians(dy.atan2(dx));
+    for (thickness, color) in [
+        (8.0, Color::srgba(0.055, 0.018, 0.008, 0.88)),
+        (3.0, mode_accent(mode).with_alpha(0.92)),
+    ] {
+        map.spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(midpoint_x - length * 0.5),
+                top: px(midpoint_y - thickness * 0.5),
+                width: px(length),
+                height: px(thickness),
+                border_radius: BorderRadius::all(px(thickness * 0.5)),
+                ..default()
+            },
+            BackgroundColor(color),
+            UiTransform::from_rotation(rotation),
+        ));
+    }
+}
+
+fn mode_accent(mode: TravelMode) -> Color {
+    match mode {
+        TravelMode::Sail => Color::srgb_u8(77, 205, 211),
+        TravelMode::Fly => Color::srgb_u8(247, 188, 72),
+        TravelMode::Warp => Color::srgb_u8(193, 139, 255),
+        TravelMode::Closed => Color::srgb_u8(180, 160, 120),
+    }
 }
 
 fn window_start(selected: usize, len: usize, visible: usize) -> usize {
@@ -1081,6 +1520,27 @@ mod tests {
             confirm_copy(&state, &destination),
             "Warp to Ardel for 10 MP?"
         );
+    }
+
+    #[test]
+    fn atlas_chrome_uses_only_ascii_text_supported_by_the_scenario_font() {
+        let mut state = TransportUiState {
+            phase: TransportPhase::Browse,
+            mode: TravelMode::Fly,
+            message: "Reach open ground before taking flight.".to_owned(),
+            ..default()
+        };
+        for copy in [
+            footer(&state),
+            destination_count_copy(0, 12),
+            destination_count_copy(0, 1),
+            destination_count_copy(0, 0),
+        ] {
+            assert!(copy.is_ascii(), "unsupported Atlas glyph in {copy:?}");
+        }
+
+        state.phase = TransportPhase::Animating;
+        assert!(footer(&state).is_ascii());
     }
 
     #[test]

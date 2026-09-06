@@ -51,6 +51,7 @@ entries:
         map: town_01_ardel_epilogue
         position: [14, 5]
         fade: in
+        facing: left
 
   - node: release
     lines:
@@ -66,6 +67,7 @@ entries:
         map: town_01_ardel_epilogue
         position: [14, 5]
         fade: in
+        facing: left
 
   - node: third
     lines:
@@ -82,3 +84,4 @@ entries:
         map: town_01_ardel_epilogue
         position: [14, 5]
         fade: in
+        facing: left

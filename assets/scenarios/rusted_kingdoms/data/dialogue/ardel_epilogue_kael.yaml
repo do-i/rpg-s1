@@ -1,0 +1,22 @@
+# Kael's last companion word in the staged Ardel epilogue.
+id: ardel_epilogue_kael
+type: npc
+
+entries:
+  - condition:
+      requires: [ending_path_third]
+    lines:
+      - "A watch is a promise that someone will still be standing when morning comes."
+      - "This watch is ours now. Rest."
+
+  - condition:
+      requires: [ending_path_release]
+    lines:
+      - "The old oaths named fire as though it were eternal."
+      - "I would rather make promises to people."
+
+  - condition:
+      requires: [ending_path_rekindle]
+    lines:
+      - "The threat is held, not ended. Then the watch continues."
+      - "Next time, the burden will not reach one person alone."

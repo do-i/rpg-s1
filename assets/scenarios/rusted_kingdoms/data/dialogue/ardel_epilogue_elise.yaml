@@ -13,7 +13,7 @@ entries:
       - "I keep putting my hand flat on the floor. Joss thinks I'm praying."
       - "I'm not. I'm checking."
       - "Reiya comes on the first of every month and sits exactly where you're standing and doesn't say anything for an hour."
-      - "Jep hasn't come yet. He will. He's the one who said somebody has to stay down there, and he's very angry that it wasn't him."
+      - "Jep hasn't said much yet. He's the one who said somebody had to stay down there, and he's very angry that it wasn't him."
 
   - condition:
       requires: [ending_path_release]

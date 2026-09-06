@@ -50,6 +50,18 @@ pub(crate) enum TravelMode {
     Closed,
 }
 
+/// How the Atlas was opened.
+///
+/// Scripted rewards may deliberately open Fly from the interior where the reward is granted. In
+/// that one Atlas session the script is also permission to depart; ordinary Travel-key use keeps
+/// the open-ground rule.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum TravelDeparture {
+    #[default]
+    Standard,
+    Scripted,
+}
+
 impl TravelMode {
     pub(crate) const ALL: [Self; 3] = [Self::Sail, Self::Fly, Self::Warp];
 
@@ -185,15 +197,25 @@ impl TransportDomain {
         map: &RuntimeMapState,
         flags: &RuntimeFlags,
     ) -> TravelAvailability {
+        self.availability_for(mode, map, flags, TravelDeparture::Standard)
+    }
+
+    pub(crate) fn availability_for(
+        &self,
+        mode: TravelMode,
+        map: &RuntimeMapState,
+        flags: &RuntimeFlags,
+        departure: TravelDeparture,
+    ) -> TravelAvailability {
         let Some(current) = map.current().map(RuntimeMapId::as_str) else {
             return TravelAvailability::Locked("Current location is unavailable.".to_owned());
         };
-        if let Some(reason) = self.mode_block_reason(mode, current, flags) {
+        if let Some(reason) = self.mode_block_reason(mode, current, flags, departure) {
             return TravelAvailability::Locked(reason);
         }
         if matches!(mode, TravelMode::Sail | TravelMode::Fly)
             && !self
-                .destinations(mode, map, flags)
+                .destinations_for(mode, map, flags, departure)
                 .iter()
                 .any(|destination| destination.availability == TravelAvailability::Available)
         {
@@ -204,11 +226,22 @@ impl TransportDomain {
         TravelAvailability::Available
     }
 
+    #[cfg(test)]
     pub(crate) fn destinations(
         &self,
         mode: TravelMode,
         map: &RuntimeMapState,
         flags: &RuntimeFlags,
+    ) -> Vec<TravelDestination> {
+        self.destinations_for(mode, map, flags, TravelDeparture::Standard)
+    }
+
+    pub(crate) fn destinations_for(
+        &self,
+        mode: TravelMode,
+        map: &RuntimeMapState,
+        flags: &RuntimeFlags,
+        departure: TravelDeparture,
     ) -> Vec<TravelDestination> {
         let Some(catalog) = &self.catalog else {
             return Vec::new();
@@ -223,7 +256,7 @@ impl TransportDomain {
         let current_region =
             current.and_then(|id| self.region_for_map(id).map(|region| &region.id));
         let mode_reason = current
-            .and_then(|id| self.mode_block_reason(mode, id, flags))
+            .and_then(|id| self.mode_block_reason(mode, id, flags, departure))
             .or_else(|| {
                 current
                     .is_none()
@@ -266,6 +299,7 @@ impl TransportDomain {
         mode: TravelMode,
         current: &str,
         flags: &RuntimeFlags,
+        departure: TravelDeparture,
     ) -> Option<String> {
         if !self.mode_unlocked(mode, flags) {
             return Some(
@@ -281,17 +315,21 @@ impl TransportDomain {
             TravelMode::Sail if self.origin_berth(current).is_none() => {
                 Some("Reach a charted berth.".to_owned())
             }
-            TravelMode::Fly if !self.is_outdoor(current) => Some(
-                if self
-                    .region_for_map(current)
-                    .is_some_and(|region| region.id == "hearth")
-                {
-                    "The Hearth seals away the open sky."
-                } else {
-                    "Reach open ground before taking flight."
-                }
-                .to_owned(),
-            ),
+            TravelMode::Fly
+                if !self.is_outdoor(current) && departure == TravelDeparture::Standard =>
+            {
+                Some(
+                    if self
+                        .region_for_map(current)
+                        .is_some_and(|region| region.id == "hearth")
+                    {
+                        "The Hearth seals away the open sky."
+                    } else {
+                        "Reach open ground before taking flight."
+                    }
+                    .to_owned(),
+                )
+            }
             _ => None,
         }
     }
@@ -577,6 +615,30 @@ mod tests {
         assert_eq!(
             domain.availability(TravelMode::Fly, &forest, &flags),
             TravelAvailability::Available
+        );
+    }
+
+    #[test]
+    fn a_scripted_fly_reward_can_depart_from_its_interior() {
+        let domain = domain();
+        let flags = RuntimeFlags::from_bootstrap(["transport_fly_unlocked"]);
+        let vault = map("town_04_frostholm_vault", &["town_01_ardel"]);
+
+        assert_eq!(
+            domain
+                .availability(TravelMode::Fly, &vault, &flags)
+                .reason(),
+            Some("Reach open ground before taking flight.")
+        );
+        assert_eq!(
+            domain.availability_for(TravelMode::Fly, &vault, &flags, TravelDeparture::Scripted,),
+            TravelAvailability::Available
+        );
+        assert!(
+            domain
+                .destinations_for(TravelMode::Fly, &vault, &flags, TravelDeparture::Scripted,)
+                .iter()
+                .all(|destination| destination.availability == TravelAvailability::Available)
         );
     }
 

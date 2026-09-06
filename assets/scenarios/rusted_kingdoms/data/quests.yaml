@@ -33,9 +33,17 @@
   name: "The Hearth at the End of the World"
   type: main
   location: "The Rusted Wastes"
-  description: "Cross the wastes where the Cinder Marshal waits, and descend to the buried Hearth. The Compact itself will ask what you have come to do."
+  description: "Cross the wastes where the Cinder Marshal waits, breach the Final Stronghold, and defeat the Red Judicator guarding the buried way."
   started_flag: story_act4_started
   completed_flag: boss_zone10_defeated
+
+- id: main_finale
+  name: "The Fire Below"
+  type: main
+  location: "Hearth Descent"
+  description: "Take the lower passage beneath the Final Stronghold. Speak with each figure, then continue through the passage on the right. Defeat the Ashen Crown and answer the Hearth; afterward, speak with Keeper Joss in Ardel."
+  started_flag: boss_zone10_defeated
+  completed_flag: game_complete
 
 - id: sq_smith
   name: "The Smith's Whetstone"

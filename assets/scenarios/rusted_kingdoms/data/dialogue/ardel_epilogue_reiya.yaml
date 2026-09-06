@@ -1,0 +1,22 @@
+# Reiya's last companion word in the staged Ardel epilogue.
+id: ardel_epilogue_reiya
+type: npc
+
+entries:
+  - condition:
+      requires: [ending_path_third]
+    lines:
+      - "I thought every problem had an answer if I could only write it correctly."
+      - "There is no symbol for choosing to become the answer. I checked."
+
+  - condition:
+      requires: [ending_path_release]
+    lines:
+      - "My head is quiet. I had no idea how loud magic was until it stopped."
+      - "I will miss it. I will learn what the silence can do."
+
+  - condition:
+      requires: [ending_path_rekindle]
+    lines:
+      - "The equations still balance. That is not the same as proving we chose correctly."
+      - "It means we have time to ask better questions."

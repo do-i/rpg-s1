@@ -213,7 +213,7 @@ fn spawn_member_card(
                         .with_children(|badge| {
                             spawn_battle_text(
                                 badge,
-                                format!("LEVEL UP  {} \u{2192} {}", row.level_from, row.level_to),
+                                format!("LEVEL UP  {} TO {}", row.level_from, row.level_to),
                                 font,
                                 15.0,
                                 Color::srgb_u8(24, 20, 12),
@@ -246,7 +246,7 @@ fn spawn_member_card(
                     for stat in &row.stats {
                         spawn_battle_text(
                             stats,
-                            format!("{} +{} \u{2192} {}", stat.label, stat.gained, stat.total),
+                            format!("{} +{}  TOTAL {}", stat.label, stat.gained, stat.total),
                             font,
                             14.0,
                             if stat.gained > 0 {
@@ -469,9 +469,9 @@ mod tests {
         let text = rendered_text(&rewards);
         assert!(text.contains(&"VICTORY".to_owned()));
         assert!(text.contains(&"EXP 120    GP 40".to_owned()));
-        assert!(text.contains(&"LEVEL UP  1 \u{2192} 2".to_owned()));
-        assert!(text.contains(&"HP +6 \u{2192} 28".to_owned()));
-        assert!(text.contains(&"INT +0 \u{2192} 5".to_owned()));
+        assert!(text.contains(&"LEVEL UP  1 TO 2".to_owned()));
+        assert!(text.contains(&"HP +6  TOTAL 28".to_owned()));
+        assert!(text.contains(&"INT +0  TOTAL 5".to_owned()));
         assert!(text.contains(&"Learned  Power Strike".to_owned()));
         assert!(text.contains(&"Potion  x2".to_owned()));
         assert!(text.contains(&"Press Enter to continue".to_owned()));
@@ -539,5 +539,24 @@ mod tests {
             ..row.clone()
         };
         assert_eq!(experience_label(&uncapped), "+30 EXP");
+    }
+
+    #[test]
+    fn the_modal_uses_only_ascii_text_supported_by_the_scenario_font() {
+        let rewards = rewards_with(vec![MemberReward {
+            member_id: "aric".to_owned(),
+            member_name: "Aric".to_owned(),
+            experience_gained: 40,
+            experience_applied: 40,
+            level_ups: vec![level_up(1, 2)],
+            learned_abilities: vec!["Power Strike".to_owned()],
+        }]);
+
+        for line in rendered_text(&rewards) {
+            assert!(
+                line.is_ascii(),
+                "unsupported victory-modal glyph in {line:?}"
+            );
+        }
     }
 }
