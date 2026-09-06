@@ -1,0 +1,30 @@
+# data/encount/town_01_ardel_epilogue.yaml
+#
+# The Ardel shrine after the Hearth is settled. Ardel sits at the mouth of the
+# starting forest, so the epilogue borrows zone 1's battle backdrop -- but
+# nothing walks out of that forest any more, which is the whole point of the
+# scene. `density: 0.0` and an empty `entries` list say that in data.
+#
+# Two reasons this file exists at all rather than being left absent (a missing
+# `data/encount/<id>.yaml` already means "encounters disabled", the way every
+# other town, inn, and shop map is authored):
+#
+#   1. It states the quiet deliberately instead of by omission. The epilogue is
+#      the one map where "no enemies" is a story beat rather than a category of
+#      map, and `town_01_ardel_epilogue.tmx` paints no `spawn_tile` layer, so
+#      any formation authored here would be unreachable data.
+#   2. With the zone resident, `drive_active_encounter_assets` keeps the enemy
+#      catalog loaded on this map (see world_encounter.rs, the `has_spawn_tiles`
+#      branch), which is what a dialogue-scripted `start_battle` would need if
+#      the epilogue ever gains one. It also stops the asset server logging the
+#      miss on arrival.
+#
+# Ambient encounters stay off either way: `detect_enemy_contact` gates on the
+# `Spawned` status, which a map with no spawn tiles never reaches.
+
+id: town_01_ardel_epilogue
+name: Ardel Shrine
+density: 0.0
+background: zone1-bg-1280x468
+
+entries: []
