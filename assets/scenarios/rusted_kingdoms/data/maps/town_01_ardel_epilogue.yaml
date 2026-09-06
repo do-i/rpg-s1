@@ -9,6 +9,7 @@
 # Keeper Joss standing at [13, 5], one tile away.
 name: "Ardel Shrine"
 bgm: town.default
+dismiss_companions: true
 
 npcs:
   - id: epilogue_keeper
@@ -26,4 +27,25 @@ npcs:
     dialogue: ardel_epilogue_elise
     position: [8, 4]
     sprite: assets/sprites/party/02_elise_walk.tsx
+    default_facing: down
+
+  - id: epilogue_reiya
+    name: "Reiya"
+    dialogue: ardel_epilogue_reiya
+    position: [6, 4]
+    sprite: assets/sprites/party/03_reiya_walk.tsx
+    default_facing: down
+
+  - id: epilogue_jep
+    name: "Jep"
+    dialogue: ardel_epilogue_jep
+    position: [3, 4]
+    sprite: assets/sprites/party/04_jep_walk.tsx
+    default_facing: down
+
+  - id: epilogue_kael
+    name: "Kael"
+    dialogue: ardel_epilogue_kael
+    position: [11, 4]
+    sprite: assets/sprites/party/05_kael_walk.tsx
     default_facing: down

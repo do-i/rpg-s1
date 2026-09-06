@@ -45,6 +45,12 @@ pub struct MapMetadata {
     pub weapon_shop: Option<ShopMetadata>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub armor_shop: Option<ShopMetadata>,
+    /// Permanently reduces the active roster to its protagonist when this map loads.
+    ///
+    /// This supports staged, terminal scenes whose former companions are represented by authored
+    /// NPCs instead of simultaneously appearing in the field menu's Status roster.
+    #[serde(default)]
+    pub dismiss_companions: bool,
     #[serde(default)]
     pub npcs: Vec<NpcMetadata>,
     #[serde(default)]
@@ -77,6 +83,7 @@ impl MapMetadata {
             shop: None,
             weapon_shop: None,
             armor_shop: None,
+            dismiss_companions: false,
             npcs: Vec::new(),
             item_boxes: Vec::new(),
             enemy_spawn: None,
@@ -429,6 +436,7 @@ mod tests {
         assert_eq!(map.effective_id("zone_99_test"), "zone_99_test");
         assert!(map.bgm.is_none());
         assert!(map.shop.is_none());
+        assert!(!map.dismiss_companions);
         assert!(map.item_boxes.is_empty());
 
         let npc = &map.npcs[0];

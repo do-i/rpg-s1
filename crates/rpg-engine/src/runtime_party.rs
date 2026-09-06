@@ -129,6 +129,13 @@ impl RuntimeParty {
         Ok(())
     }
 
+    /// Dismisses every companion while preserving the sole protagonist and their complete state.
+    pub(crate) fn retain_protagonist(&mut self) -> usize {
+        let previous_len = self.members.len();
+        self.members.retain(RuntimeMember::is_protagonist);
+        previous_len - self.members.len()
+    }
+
     pub fn row_of(&self, member_id: &str) -> Option<PartyRow> {
         self.member(member_id).map(RuntimeMember::row)
     }
@@ -304,6 +311,19 @@ mod tests {
             })
         );
         assert_eq!(party, before, "a rejected duplicate changed the party");
+    }
+
+    #[test]
+    fn retaining_the_protagonist_dismisses_companions_idempotently() {
+        let source = catalog();
+        let mut party = RuntimeParty::try_from_members(source.party.iter().map(runtime)).unwrap();
+
+        assert_eq!(party.retain_protagonist(), 1);
+        assert_eq!(
+            party.members().map(RuntimeMember::id).collect::<Vec<_>>(),
+            ["ember"]
+        );
+        assert_eq!(party.retain_protagonist(), 0);
     }
 
     #[test]

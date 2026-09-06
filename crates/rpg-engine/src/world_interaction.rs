@@ -17,6 +17,7 @@ use crate::{
     field_menu::FieldMenuState,
     field_menu_domain::{FieldMenuCatalog, item_name},
     game_state::GameState,
+    runtime_map::RuntimeMapId,
     runtime_member::RuntimeMember,
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
     scenario_balance::BalanceData,
@@ -573,6 +574,7 @@ fn drive_dialogue_session(
     game: Option<ResMut<GameState>>,
     mut service: ResMut<ServiceUiState>,
     mut transport: Option<ResMut<TransportUiState>>,
+    mut world_transition: ResMut<WorldTransition>,
     mut state: ResMut<WorldInteractionState>,
 ) {
     let Some(mut game) = game else {
@@ -624,6 +626,19 @@ fn drive_dialogue_session(
             .as_ref()
             .and_then(|handle| balance_assets.get(handle));
         for completion in completions {
+            let arrival = match dialogue_arrival(&completion, game.map().facing()) {
+                Ok(arrival) => arrival,
+                Err(error) => {
+                    state.failure = Some(error.to_string());
+                    continue;
+                }
+            };
+            // Validate the transition boundary before applying its sibling flags or rewards. A
+            // failed arrival must not leave an ending flag committed on the source map.
+            if arrival.is_some() && world_transition.input_locked() {
+                state.failure = Some(DialogueActionError::TransitionBusy.to_string());
+                continue;
+            }
             if let Some(request) = ServiceRequest::from_dialogue(&completion) {
                 service.open(request);
             }
@@ -637,10 +652,14 @@ fn drive_dialogue_session(
                 apply_dialogue_actions(&completion, &mut game, party, balance, &catalog)
             {
                 state.failure = Some(error.to_string());
+            } else if let Some((map, position, facing)) = arrival {
+                if !world_transition.request_destination(map, position, facing) {
+                    state.failure = Some(DialogueActionError::TransitionBusy.to_string());
+                }
             } else if let (Some(mode), Some(transport)) =
                 (completion.open_transport, transport.as_deref_mut())
             {
-                transport.open_mode(match mode {
+                transport.open_scripted_mode(match mode {
                     DialogueTransportMode::Sail => TravelMode::Sail,
                     DialogueTransportMode::Fly => TravelMode::Fly,
                 });
@@ -658,6 +677,22 @@ fn drive_dialogue_session(
     if let Some(request) = take_pending_battle(&mut state) {
         commands.insert_resource(request);
     }
+}
+
+fn dialogue_arrival(
+    actions: &DialogueActions,
+    fallback_facing: CardinalDirection,
+) -> Result<Option<(RuntimeMapId, Position, CardinalDirection)>, DialogueActionError> {
+    let Some(authored) = actions.transition.as_ref() else {
+        return Ok(None);
+    };
+    let map = RuntimeMapId::try_new(authored.map.clone())
+        .map_err(|_| DialogueActionError::InvalidTransitionMap(authored.map.clone()))?;
+    Ok(Some((
+        map,
+        authored.position,
+        authored.facing.unwrap_or(fallback_facing),
+    )))
 }
 
 /// Releases a `start_battle` to the encounter plugin, but only once no dialogue is on screen.
@@ -823,6 +858,8 @@ enum DialogueActionError {
     UnknownPartyMember(String),
     UnknownClass(String),
     PartyMember(String),
+    InvalidTransitionMap(String),
+    TransitionBusy,
 }
 
 impl fmt::Display for DialogueActionError {
@@ -838,6 +875,12 @@ impl fmt::Display for DialogueActionError {
                 write!(formatter, "joining member has unknown class `{id}`")
             }
             Self::PartyMember(error) => write!(formatter, "dialogue party join failed: {error}"),
+            Self::InvalidTransitionMap(map) => {
+                write!(formatter, "dialogue transition names invalid map `{map}`")
+            }
+            Self::TransitionBusy => {
+                formatter.write_str("dialogue transition could not start while another is active")
+            }
         }
     }
 }
@@ -1396,6 +1439,7 @@ mod tests {
         new_game::{NewGameScenario, build_new_game_state},
         runtime_map::RuntimeMapId,
         save_data::NativeSaveEnvelope,
+        save_data::tests::fixture_game,
         scenario_dialogue::DialogueDocument,
         scenario_manifest::Manifest,
         scenario_map::MapMetadata,
@@ -1477,6 +1521,70 @@ mod tests {
     fn a_dialogue_without_the_verb_never_arms_a_battle() {
         let mut state = WorldInteractionState::default();
         assert!(take_pending_battle(&mut state).is_none());
+    }
+
+    #[test]
+    fn a_completed_field_dialogue_requests_its_authored_arrival_and_facing() {
+        let document: DialogueDocument = scenario_yaml::from_str(
+            "id: ending\n\
+             type: npc\n\
+             entries:\n\
+             \x20 - lines: [Done.]\n\
+             \x20   end: true\n\
+             \x20   on_complete:\n\
+             \x20     set_flag: ending_chosen\n\
+             \x20     transition:\n\
+             \x20       map: town_01_ardel_epilogue\n\
+             \x20       position: [14, 5]\n\
+             \x20       fade: in\n\
+             \x20       facing: left\n",
+        )
+        .unwrap();
+        let DialogueDocument::Entries(dialogue) = document else {
+            panic!("type: npc should select the entry document shape");
+        };
+        let game = fixture_game();
+        let session = DialogueSession::resolve(
+            "ending",
+            Some("The Hearth".to_owned()),
+            dialogue,
+            game.flags(),
+        )
+        .unwrap()
+        .unwrap();
+        let mut actions = ActionState::default();
+        actions.replace_with_normalized(&[crate::input_record::NormalizedAction::Confirm]);
+
+        let mut app = App::new();
+        app.insert_resource(Time::<()>::default())
+            .insert_resource(actions)
+            .insert_resource(EngineSettings::default())
+            .insert_resource(Assets::<PartyCatalog>::default())
+            .insert_resource(Assets::<BalanceData>::default())
+            .insert_resource(FieldMenuCatalog::production_class_fixture())
+            .insert_resource(game)
+            .insert_resource(ServiceUiState::default())
+            .insert_resource(WorldTransition::idle_for_test())
+            .insert_resource(WorldInteractionState {
+                session: Some(session),
+                ..default()
+            })
+            .add_systems(Update, drive_dialogue_session);
+        // The first confirmation completes the typewriter; the second finishes the one-line
+        // entry and applies its actions.
+        app.update();
+        app.update();
+
+        let game = app.world().resource::<GameState>();
+        assert!(game.flags().is_set("ending_chosen"));
+        let pending = app
+            .world()
+            .resource::<WorldTransition>()
+            .pending()
+            .expect("the dialogue must start its authored transition");
+        assert_eq!(pending.target_map.as_str(), "town_01_ardel_epilogue");
+        assert_eq!(pending.target_position, Position::new(14, 5));
+        assert_eq!(pending.facing, CardinalDirection::Left);
     }
 
     #[test]

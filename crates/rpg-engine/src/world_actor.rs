@@ -257,6 +257,9 @@ fn drive_world_actor_load(
         state.status = WorldActorStatus::Failed;
         return;
     }
+    if metadata.dismiss_companions {
+        game.dismiss_companions();
+    }
     let present = present_npcs(metadata, game.flags());
 
     if state.status == WorldActorStatus::LoadingMetadata {
@@ -675,6 +678,13 @@ mod tests {
         .unwrap()
     }
 
+    fn ardel_epilogue_metadata() -> MapMetadata {
+        scenario_yaml::from_str(include_str!(
+            "../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_epilogue.yaml"
+        ))
+        .unwrap()
+    }
+
     fn millhaven_metadata() -> MapMetadata {
         scenario_yaml::from_str(include_str!(
             "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml"
@@ -750,6 +760,26 @@ mod tests {
                 .any(|npc| npc.id == "elise")
         );
         assert_eq!(present_npcs(&metadata, &joined).len(), 5);
+    }
+
+    #[test]
+    fn epilogue_stages_every_companion_as_an_npc_and_dismisses_the_active_roster() {
+        let metadata = ardel_epilogue_metadata();
+        assert!(metadata.dismiss_companions);
+        assert_eq!(
+            metadata
+                .npcs
+                .iter()
+                .map(|npc| npc.id.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "epilogue_keeper",
+                "epilogue_elise",
+                "epilogue_reiya",
+                "epilogue_jep",
+                "epilogue_kael",
+            ]
+        );
     }
 
     #[test]

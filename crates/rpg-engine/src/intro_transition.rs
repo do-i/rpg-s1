@@ -9,7 +9,7 @@ use crate::{
     intro_dialogue::{IntroDialogueCompleted, IntroDialogueSet},
     runtime_map::{RuntimeMapId, RuntimeMapIdError},
     scenario_dialogue::{DialogueFade, DialogueTransition},
-    scenario_spatial::Position,
+    scenario_spatial::{CardinalDirection, Position},
 };
 
 pub(crate) struct IntroTransitionPlugin;
@@ -34,6 +34,7 @@ pub(crate) struct WorldTransition {
     map: RuntimeMapId,
     position: Position,
     fade: DialogueFade,
+    facing: Option<CardinalDirection>,
 }
 
 impl WorldTransition {
@@ -42,6 +43,7 @@ impl WorldTransition {
             map: RuntimeMapId::try_new(authored.map.clone())?,
             position: authored.position,
             fade: authored.fade,
+            facing: authored.facing,
         })
     }
 
@@ -67,6 +69,10 @@ impl WorldTransition {
     )]
     pub(crate) const fn fade(&self) -> DialogueFade {
         self.fade
+    }
+
+    pub(crate) const fn facing(&self) -> Option<CardinalDirection> {
+        self.facing
     }
 }
 
@@ -138,7 +144,7 @@ fn apply_intro_transition(
         // All validation is complete before the infallible mutation below. This Update system is
         // ordered after the independent flag reader; the central transition request consumer is
         // in PostUpdate, so map and pending fade state are committed before World can be entered.
-        let facing = game.map().facing();
+        let facing = arrival.facing().unwrap_or_else(|| game.map().facing());
         game.map_mut()
             .move_to(arrival.map.clone(), arrival.position, facing);
         pending.0 = Some(arrival);

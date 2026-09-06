@@ -19,7 +19,7 @@ use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de};
 
 use crate::scenario_condition::FlagConditions;
-use crate::scenario_spatial::Position;
+use crate::scenario_spatial::{CardinalDirection, Position};
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 
 /// One complete YAML document beneath `data/dialogue/`.
@@ -150,7 +150,7 @@ pub struct DialogueActions {
     #[serde(default, deserialize_with = "deserialize_optional_string")]
     pub join_party: Option<String>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
-    pub transition: Option<DialogueTransition>,
+    pub transition: Option<Box<DialogueTransition>>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub open_shop: Option<DialogueShopKind>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
@@ -260,7 +260,7 @@ pub struct DialogueItemGrant {
     pub qty: NonZeroU32,
 }
 
-/// A source-authored map transition from the introductory cutscene.
+/// A source-authored map transition after dialogue completion.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DialogueTransition {
@@ -268,6 +268,11 @@ pub struct DialogueTransition {
     pub map: String,
     pub position: Position,
     pub fade: DialogueFade,
+    /// Optional arrival facing for field-dialogue transitions. The pinned intro omits this and
+    /// retains the protagonist's current facing; authored field arrivals can point the player at
+    /// the next interaction instead of leaving an ambiguous scene.
+    #[serde(default)]
+    pub facing: Option<CardinalDirection>,
 }
 
 /// The sole dialogue-transition fade value in the pinned corpus.
@@ -469,6 +474,7 @@ mod tests {
         assert_eq!(transition.map, "town_test_haven");
         assert_eq!(transition.position, Position::new(12, 8));
         assert_eq!(transition.fade, DialogueFade::In);
+        assert_eq!(transition.facing, None);
     }
 
     #[test]
