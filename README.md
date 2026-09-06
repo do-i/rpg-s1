@@ -12,6 +12,17 @@ Ancient Ruins/Ruinwatch and the later campaign waves still need their recorded
 playthrough checks. The bundled parity assets also include unresolved
 redistribution-rights blockers described under [Licensing and credits](#licensing-and-credits).
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/title-screen.png" alt="Chronicles of the Lost Flame title screen" width="49%">
+  <img src="docs/screenshots/ardel-overworld.png" alt="Ardel overworld with the player, townspeople, shops, and inn" width="49%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/volcanic-battle.png" alt="Five-character party battling two minotaur brutes in a volcanic region" width="49%">
+  <img src="docs/screenshots/field-menu.png" alt="Field menu showing status, spells, items, equipment, quests, character, save, and quit commands" width="49%">
+</p>
+
 ## Run the game
 
 ### From a packaged build
