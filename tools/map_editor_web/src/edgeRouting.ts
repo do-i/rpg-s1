@@ -1,5 +1,5 @@
-// Manhattan (orthogonal) edge routing, ported from the pygame editor
-// (tools/map_editor/scenes/graph_scene.py).
+// Manhattan (orthogonal) edge routing, originally ported from the pygame editor's
+// graph scene, which was not migrated into this repository.
 //
 // Each portal edge is anchored at its REAL tile positions: the exit point is
 // where the ray from the portal's source tile (on the source thumbnail)
