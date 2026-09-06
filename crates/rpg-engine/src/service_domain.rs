@@ -326,19 +326,17 @@ mod tests {
     };
 
     fn ardel_shop() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shop_01.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/town_01_ardel_shop_01.yaml"
+        )))
         .unwrap()
     }
 
     fn item(id: &str) -> ItemDefinition {
         for document in [
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml"
-            ),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/key_items.yaml"),
+            include_str!(scenario_file!("data/items/consumables_recovery.yaml")),
+            include_str!(scenario_file!("data/items/magic_cores.yaml")),
+            include_str!(scenario_file!("data/items/key_items.yaml")),
         ] {
             let catalog: ItemCatalogFile = scenario_yaml::from_str(document).unwrap();
             if let Some(item) = catalog.entries().iter().find(|item| item.id() == id) {
@@ -349,10 +347,8 @@ mod tests {
     }
 
     fn quest(id: &str) -> QuestDefinition {
-        let catalog: QuestCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/quests.yaml"
-        ))
-        .unwrap();
+        let catalog: QuestCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/quests.yaml"))).unwrap();
         catalog
             .entries()
             .iter()

@@ -6,14 +6,14 @@ version: "1.0.0"
 window_title: "Rusted Kingdoms"
 
 title:
-  image: assets/images/title_bg/title_lost_flame.webp
-  cursor_icon: assets/images/icons/arrow-head-red-right-01.webp
+  image: media/images/title_bg/title_lost_flame.webp
+  cursor_icon: media/images/icons/arrow-head-red-right-01.webp
 font:
-  path: assets/fonts/Philosopher-Regular.ttf
+  path: media/fonts/Philosopher-Regular.ttf
 ui:
-  menu_backdrop: assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp
+  menu_backdrop: media/images/battle_bg/zone4-sanctum-bg-1280x468.webp
 apothecary:
-  sprite: assets/sprites/npc/female_wiz_01.tsx
+  sprite: media/sprites/npc/female_wiz_01.tsx
 protagonist:
   id: aric
 start:

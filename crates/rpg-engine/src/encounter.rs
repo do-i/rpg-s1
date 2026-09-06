@@ -483,7 +483,7 @@ pub(crate) fn build_battle_entry(
         encounter_id: encounter_id.to_owned(),
         participants,
         background_id: zone.background.clone(),
-        background_asset: format!("assets/images/battle_bg/{}.webp", zone.background),
+        background_asset: format!("media/images/battle_bg/{}.webp", zone.background),
         bgm_key: if boss { "battle.boss" } else { "battle.normal" }.to_owned(),
         boss_completion_flag: boss
             .then_some(zone.boss.as_ref())
@@ -629,9 +629,9 @@ mod tests {
     #[test]
     fn enemy_gold_is_derived_from_experience_unless_the_enemy_authors_its_own() {
         let catalog = EnemyCatalog::try_from_definitions(
-            EnemyCatalogFile::from_yaml_stream(include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml"
-            ))
+            EnemyCatalogFile::from_yaml_stream(include_str!(scenario_file!(
+                "data/enemies/enemies_rank_6_D.yaml"
+            )))
             .unwrap()
             .0,
         )
@@ -860,7 +860,7 @@ mod tests {
         assert_eq!(entry.background_id, "moss-track-bg-1280x468");
         assert_eq!(
             entry.background_asset,
-            "assets/images/battle_bg/moss-track-bg-1280x468.webp"
+            "media/images/battle_bg/moss-track-bg-1280x468.webp"
         );
         assert_eq!(entry.bgm_key, "battle.normal");
         assert_eq!(entry.return_context, context);
@@ -901,9 +901,9 @@ mod tests {
     fn the_shipped_marshal_duel_builds_a_real_one_enemy_boss_battle() {
         use crate::scenario_dialogue::{DialogueDocument, StartBattleAction};
 
-        let duel: DialogueDocument = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/cinder_marshal_duel.yaml"
-        ))
+        let duel: DialogueDocument = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/dialogue/cinder_marshal_duel.yaml"
+        )))
         .unwrap();
         let DialogueDocument::Entries(duel) = duel else {
             panic!("the duel is an entry document");
@@ -954,9 +954,9 @@ mod tests {
             "the yield path has no fight to wait for and resolves as it closes"
         );
 
-        let zone: EncounterZone = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/encount/zone_09_marshal_camp.yaml"
-        ))
+        let zone: EncounterZone = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/encount/zone_09_marshal_camp.yaml"
+        )))
         .unwrap();
         assert_eq!(zone.background, "zone9-bg-1280x468");
         assert!(
@@ -964,9 +964,9 @@ mod tests {
             "the camp spawns nothing; the zone exists only to frame the scripted fight"
         );
 
-        let file = EnemyCatalogFile::from_yaml_stream(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_1_SS.yaml"
-        ))
+        let file = EnemyCatalogFile::from_yaml_stream(include_str!(scenario_file!(
+            "data/enemies/enemies_rank_1_SS.yaml"
+        )))
         .unwrap();
         let marshal = file
             .entries()
@@ -982,9 +982,9 @@ mod tests {
 
         // The whole SS file references ten other move sets, so resolve against a catalog holding
         // just this fight rather than loading all of them to prove one link.
-        let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/enemies/boss_move_sets/cinder_marshal.yaml"
-        ))
+        let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/enemies/boss_move_sets/cinder_marshal.yaml"
+        )))
         .unwrap();
         let mut catalog = EnemyCatalog::try_from_definitions([marshal]).unwrap();
         catalog

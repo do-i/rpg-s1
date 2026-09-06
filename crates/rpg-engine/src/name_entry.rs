@@ -932,7 +932,7 @@ mod tests {
         assert_eq!(texts, vec!["4/12", HINT, PROMPT, "Nyra|"]);
         assert_eq!(
             name_entry_font_paths(app.world_mut()),
-            vec!["scenarios/invented_campaign/assets/fonts/Philosopher-Regular.ttf"; 4]
+            vec!["scenarios/invented_campaign/media/fonts/Philosopher-Regular.ttf"; 4]
         );
         assert_eq!(app.world().resource::<NameEntryDraft>().name, "Nyra");
         assert_eq!(
@@ -954,7 +954,7 @@ mod tests {
     #[test]
     fn failed_manifest_renders_one_package_relative_error_and_no_default_prompt() {
         let broken = manifest_with_name("Nyra").replacen(
-            "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
+            "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
             "",
             1,
         );

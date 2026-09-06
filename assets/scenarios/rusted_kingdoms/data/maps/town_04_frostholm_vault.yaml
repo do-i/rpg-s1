@@ -7,7 +7,7 @@ npcs:
     name: "Warden Hild"
     dialogue: frostholm_vault_warden
     position: [8, 4]
-    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     default_facing: down
     animation:
       mode: step

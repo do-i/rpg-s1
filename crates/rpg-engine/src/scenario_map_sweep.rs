@@ -732,7 +732,7 @@ fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<Stri
 }
 
 /// Lists the files directly within `dir`, refusing to follow it outside `canonical_root`.
-/// Every directory this module reads (`data/maps`, `assets/maps`, `data/dialogue`) is flat in
+/// Every directory this module reads (`data/maps`, `media/maps`, `data/dialogue`) is flat in
 /// the pinned scenario corpus, so this deliberately does not recurse.
 fn safe_read_dir(dir: &Path, canonical_root: Option<&Path>) -> Option<Vec<PathBuf>> {
     let canonical_root = canonical_root?;
@@ -785,8 +785,8 @@ mod tests {
             ));
             fs::create_dir_all(root.join("data/maps")).unwrap();
             fs::create_dir_all(root.join("data/dialogue")).unwrap();
-            fs::create_dir_all(root.join("assets/maps")).unwrap();
-            fs::create_dir_all(root.join("assets/tilesets")).unwrap();
+            fs::create_dir_all(root.join("media/maps")).unwrap();
+            fs::create_dir_all(root.join("media/tilesets")).unwrap();
             let scenario = Self(root);
             scenario.write(
                 "manifest.yaml",
@@ -837,7 +837,7 @@ refs:
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: media/maps/
 "#,
             );
             scenario
@@ -895,8 +895,8 @@ refs:
     #[test]
     fn every_tmx_is_visited_even_when_one_fails_to_parse() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/broken.tmx", "not xml at all");
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/broken.tmx", "not xml at all");
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
 
         let report = build_map_sweep(&fixture.0);
 
@@ -922,7 +922,7 @@ refs:
   </layer>
 </map>
 "#;
-        fixture.write("assets/maps/ghost_tileset.tmx", xml);
+        fixture.write("media/maps/ghost_tileset.tmx", xml);
 
         let report = build_map_sweep(&fixture.0);
         let mapped = entry(&report, "ghost_tileset");
@@ -944,7 +944,7 @@ refs:
   </layer>
 </map>
 "#;
-        fixture.write("assets/maps/no_collision.tmx", xml);
+        fixture.write("media/maps/no_collision.tmx", xml);
 
         let report = build_map_sweep(&fixture.0);
         let mapped = entry(&report, "no_collision");
@@ -980,8 +980,8 @@ refs:
   </objectgroup>
 </map>
 "#;
-        fixture.write("assets/maps/origin.tmx", xml);
-        fixture.write("assets/maps/destination.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/origin.tmx", xml);
+        fixture.write("media/maps/destination.tmx", &minimal_map_xml("0,0,\n0,0"));
 
         let report = build_map_sweep(&fixture.0);
         let origin = entry(&report, "origin");
@@ -1028,9 +1028,9 @@ refs:
   </objectgroup>
 </map>
 "#;
-        fixture.write("assets/maps/origin.tmx", xml);
+        fixture.write("media/maps/origin.tmx", xml);
         // (1, 1) is solid; (0, 0) is open.
-        fixture.write("assets/maps/walled.tmx", &minimal_map_xml("0,0,\n0,1"));
+        fixture.write("media/maps/walled.tmx", &minimal_map_xml("0,0,\n0,1"));
 
         let report = build_map_sweep(&fixture.0);
         let origin = entry(&report, "origin");
@@ -1054,7 +1054,7 @@ refs:
     #[test]
     fn npc_flag_states_cover_empty_and_each_referenced_flag() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
         fixture.write(
             "data/maps/village.yaml",
             r#"name: Village
@@ -1080,7 +1080,7 @@ npcs:
     #[test]
     fn npc_out_of_bounds_position_and_unknown_dialogue_are_npc_findings() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
         fixture.write(
             "data/maps/village.yaml",
             r#"name: Village
@@ -1112,7 +1112,7 @@ npcs:
     #[test]
     fn tmx_without_metadata_yaml_sweeps_npc_free_with_zero_flag_states() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/cave.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/cave.tmx", &minimal_map_xml("0,0,\n0,0"));
 
         let report = build_map_sweep(&fixture.0);
         let cave = entry(&report, "cave");
@@ -1123,7 +1123,7 @@ npcs:
     #[test]
     fn item_box_out_of_bounds_and_empty_loot_are_object_findings() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
         fixture.write(
             "data/maps/village.yaml",
             r#"name: Village
@@ -1157,7 +1157,7 @@ item_boxes:
     fn an_item_box_with_no_open_tile_around_it_is_an_object_finding() {
         let fixture = TempScenario::new();
         // Only (0, 0) is open, and the box sits on it -- standing on a box never opens it.
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,1,\n1,1"));
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,1,\n1,1"));
         fixture.write(
             "data/maps/village.yaml",
             r#"name: Village
@@ -1188,7 +1188,7 @@ item_boxes:
     fn a_box_reachable_only_from_a_diagonal_tile_is_not_a_finding() {
         let fixture = TempScenario::new();
         // Open: (0, 0) and (1, 1). The box on (1, 1) is axis-blocked but diagonally open.
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,1,\n1,0"));
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,1,\n1,0"));
         fixture.write(
             "data/maps/village.yaml",
             r#"name: Village
@@ -1219,9 +1219,9 @@ item_boxes:
   <layer id="2" name="collision" width="1" height="1"><data encoding="csv">0</data></layer>
 </map>
 "#;
-        fixture.write("assets/maps/village.tmx", xml);
+        fixture.write("media/maps/village.tmx", xml);
         fixture.write(
-            "assets/tilesets/signboard.tsx",
+            "media/tilesets/signboard.tsx",
             r#"<?xml version="1.0" encoding="UTF-8"?>
 <tileset name="signboard" tilewidth="32" tileheight="32" tilecount="2" columns="2">
   <image source="signboard.png" width="64" height="32"/>
@@ -1240,8 +1240,8 @@ item_boxes:
     #[test]
     fn category_count_tallies_findings_by_category_across_maps() {
         let fixture = TempScenario::new();
-        fixture.write("assets/maps/broken.tmx", "not xml");
-        fixture.write("assets/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
+        fixture.write("media/maps/broken.tmx", "not xml");
+        fixture.write("media/maps/village.tmx", &minimal_map_xml("0,0,\n0,0"));
 
         let report = build_map_sweep(&fixture.0);
         assert_eq!(report.category_count(SweepCategory::Tmx), 1);
@@ -1255,8 +1255,7 @@ item_boxes:
     /// removed as dead data, so a TMX finding here means a real map regressed.
     #[test]
     fn the_shipped_scenario_sweeps_every_tmx_without_a_parse_finding() {
-        let root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let root = crate::test_support::scenario_package_dir();
         let report = build_map_sweep(&root);
 
         assert!(report.load_error.is_none());
@@ -1281,8 +1280,7 @@ item_boxes:
     /// unfurnished-zone problem B1.3 exists to close. Both boards are now authored.
     #[test]
     fn the_shipped_scenario_matches_the_known_finding_inventory() {
-        let root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let root = crate::test_support::scenario_package_dir();
         let report = build_map_sweep(&root);
 
         assert_eq!(report.entries.len(), 54);

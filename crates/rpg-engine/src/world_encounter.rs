@@ -621,7 +621,7 @@ fn drive_active_encounter_assets(
                 return;
             }
             let path = ScenarioRelativePath::try_from(
-                format!("assets/sprites/enemies/{sprite_id}.tsx").as_str(),
+                format!("media/sprites/enemies/{sprite_id}.tsx").as_str(),
             )
             .expect("validated enemy id produced a scenario-relative sprite path");
             state
@@ -1513,7 +1513,7 @@ mod tests {
 
     #[test]
     fn deterministic_chase_stays_open_and_avoids_other_enemies() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/test.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/test.tmx").unwrap();
         let document = crate::tmx_header::parse_tmx_map_document(
             "<map version=\"1.10\" orientation=\"orthogonal\" width=\"4\" height=\"3\" tilewidth=\"32\" tileheight=\"32\" infinite=\"0\"><layer id=\"1\" name=\"collision\" width=\"4\" height=\"3\"><data encoding=\"csv\">0,0,0,0,\n0,0,0,0,\n0,0,0,0</data></layer></map>",
             &owner,
@@ -1567,7 +1567,7 @@ mod tests {
 
     #[test]
     fn deterministic_wander_target_stays_bounded_open_and_unoccupied() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/test.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/test.tmx").unwrap();
         let document = crate::tmx_header::parse_tmx_map_document(
             "<map version=\"1.10\" orientation=\"orthogonal\" width=\"10\" height=\"10\" tilewidth=\"32\" tileheight=\"32\" infinite=\"0\"><layer id=\"1\" name=\"collision\" width=\"10\" height=\"10\"><data encoding=\"csv\">0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0,\n0,0,0,0,0,0,0,0,0,0</data></layer></map>",
             &owner,

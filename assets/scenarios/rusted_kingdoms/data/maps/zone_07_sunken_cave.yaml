@@ -12,7 +12,7 @@ npcs:
     name: "Lampkeeper Ovid"
     position: [28, 10]
     dialogue: sunken_cave_lampkeeper
-    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    sprite: media/sprites/npc/village_male_person_older_villager.tsx
     default_facing: down
 
 item_boxes:

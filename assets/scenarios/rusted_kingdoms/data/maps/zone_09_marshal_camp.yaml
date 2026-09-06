@@ -17,7 +17,7 @@ npcs:
     type: gate
     position: [29, 11]
     dialogue: cinder_marshal_duel
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     default_facing: left
     present:
       excludes: [marshal_stand_resolved]
@@ -28,7 +28,7 @@ npcs:
     name: "The Cinder Marshal"
     position: [31, 14]
     dialogue: cinder_marshal_aftermath
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     default_facing: down
     present:
       requires: [marshal_yielded]
@@ -39,7 +39,7 @@ npcs:
     name: "A New Marker"
     position: [31, 9]
     dialogue: cinder_marshal_grave
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     default_facing: down
     present:
       requires: [marshal_fought]

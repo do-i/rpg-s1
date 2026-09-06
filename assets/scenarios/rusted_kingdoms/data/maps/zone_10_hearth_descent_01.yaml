@@ -16,7 +16,7 @@ npcs:
     type: gate
     position: [5, 8]
     dialogue: hearth_warden
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     present:
       excludes: [boss_zone10_defeated]
 
@@ -24,5 +24,5 @@ npcs:
     name: "Elise, as she was"
     position: [9, 5]
     dialogue: hearth_memory_elise
-    sprite: assets/sprites/party/02_elise_walk.tsx
+    sprite: media/sprites/party/02_elise_walk.tsx
     default_facing: down

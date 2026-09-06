@@ -40,7 +40,7 @@ npcs:
     name: "Corm"
     dialogue: mc_shop_intro
     position: [10, 3]
-    sprite: assets/sprites/npc/male_blond_01.tsx
+    sprite: media/sprites/npc/male_blond_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -50,7 +50,7 @@ npcs:
     name: "Wilkin"
     dialogue: item_shop_ardel
     position: [6, 3]
-    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    sprite: media/sprites/npc/teen_halfmessy_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -60,7 +60,7 @@ npcs:
     name: "Yarrow"
     dialogue: apothecary_ardel
     position: [8, 3]
-    sprite: assets/sprites/npc/female_wiz_01.tsx
+    sprite: media/sprites/npc/female_wiz_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -70,7 +70,7 @@ npcs:
     name: Dagan
     dialogue: weapon_shop_ardel
     position: [5, 3]
-    sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+    sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -80,7 +80,7 @@ npcs:
     name: Hetta
     dialogue: armor_shop_ardel
     position: [12, 3]
-    sprite: assets/sprites/npc/village_female_person_apron_keeper.tsx
+    sprite: media/sprites/npc/village_female_person_apron_keeper.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

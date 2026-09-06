@@ -14,7 +14,7 @@ npcs:
     type: gate
     position: [4, 8]
     dialogue: bridge_guard_zone5
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     present:
       excludes: [boss_zone04_defeated]
 
@@ -24,7 +24,7 @@ npcs:
     type: gate
     position: [28, 8]
     dialogue: stronghold_gate_guard
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     present:
       excludes: [boss_zone09_defeated]
 

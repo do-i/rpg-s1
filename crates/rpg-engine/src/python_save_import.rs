@@ -944,10 +944,7 @@ mod tests {
     }
 
     fn catalog() -> PythonImportCatalog {
-        PythonImportCatalog::load(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms"),
-        )
-        .unwrap()
+        PythonImportCatalog::load(&crate::test_support::scenario_package_dir()).unwrap()
     }
 
     fn fixture() -> &'static [u8] {

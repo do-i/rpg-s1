@@ -163,7 +163,7 @@ mod tests {
         for path in [
             "manifest.yaml",
             "data/dialogue/opening.yaml",
-            "assets/maps/town_01_ardel.tmx",
+            "media/maps/town_01_ardel.tmx",
         ] {
             let validated = ScenarioRelativePath::try_from(path).unwrap();
             assert_eq!(validated.as_str(), path);
@@ -173,22 +173,22 @@ mod tests {
     #[test]
     fn normalizes_contained_dot_components_and_parent_traversal() {
         assert_eq!(
-            ScenarioRelativePath::try_from("./assets/maps/../tilesets/walls.tsx")
+            ScenarioRelativePath::try_from("./media/maps/../tilesets/walls.tsx")
                 .unwrap()
                 .as_str(),
-            "assets/tilesets/walls.tsx"
+            "media/tilesets/walls.tsx"
         );
     }
 
     #[test]
     fn resolves_containing_file_references_lexically_within_the_package() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/field.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/field.tmx").unwrap();
         assert_eq!(
             owner
                 .resolve_from_file("../tilesets/./ground.tsx")
                 .unwrap()
                 .as_str(),
-            "assets/tilesets/ground.tsx"
+            "media/tilesets/ground.tsx"
         );
         let root_owner = ScenarioRelativePath::try_from("map.tmx").unwrap();
         assert_eq!(
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn containing_file_resolution_rejects_aliases_and_package_escapes() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/field.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/field.tmx").unwrap();
         for reference in [
             "../../../outside.tsx",
             "/absolute.tsx",

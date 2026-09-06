@@ -564,11 +564,10 @@ mod tests {
     #[test]
     fn the_shipped_marshal_duel_counts_its_whole_confrontation_as_one_run() {
         let flags = RuntimeFlags::default();
-        let document: crate::scenario_dialogue::DialogueDocument =
-            crate::scenario_yaml::from_str(include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/dialogue/cinder_marshal_duel.yaml"
-            ))
-            .unwrap();
+        let document: crate::scenario_dialogue::DialogueDocument = crate::scenario_yaml::from_str(
+            include_str!(scenario_file!("data/dialogue/cinder_marshal_duel.yaml")),
+        )
+        .unwrap();
         let crate::scenario_dialogue::DialogueDocument::Entries(duel) = document else {
             panic!("the duel is an entry document");
         };
@@ -635,9 +634,9 @@ mod tests {
 
     #[test]
     fn guide_ardel_traverses_every_story_branch_to_a_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/guide_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/guide_ardel.yaml"
+        )));
         let cases = [
             (
                 vec!["story_quest_started", "transport_sail_unlocked"],
@@ -670,9 +669,9 @@ mod tests {
 
     #[test]
     fn ardel_smith_traverses_start_relay_reward_and_repeat_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_smith.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ardel_smith.yaml"
+        )));
         let cases = [
             (vec!["sq_smith_done"], "An edge like that'll last"),
             (vec!["sq_smith_relayed"], "Ha! So the boy DID"),
@@ -709,9 +708,9 @@ mod tests {
 
     #[test]
     fn ardel_apprentice_traverses_before_active_and_relayed_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_apprentice.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ardel_apprentice.yaml"
+        )));
         let cases = [
             (vec!["sq_smith_relayed"], "Tell Bram the new grind"),
             (vec!["sq_smith_started"], "The whetstone?"),
@@ -739,9 +738,9 @@ mod tests {
 
     #[test]
     fn ardel_fisherman_traverses_quest_terminals_and_accounts_for_dead_source_entries() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ardel_fisherman.yaml"
+        )));
         let cases = [
             (vec!["sq_stream_done"], "The keeper came down"),
             (vec!["sq_stream_relayed"], "He'll come?"),
@@ -806,9 +805,9 @@ mod tests {
 
     #[test]
     fn ardel_child_traverses_default_and_elise_joined_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_child.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ardel_child.yaml"
+        )));
         let cases = [
             (vec![], "Mama says don't go past the well"),
             (vec!["npc_elise_joined"], "Elise went with YOU?"),
@@ -829,9 +828,9 @@ mod tests {
 
     #[test]
     fn ardel_magic_core_intro_opens_only_after_the_story_starts() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/mc_shop_intro.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/mc_shop_intro.yaml"
+        )));
         assert!(
             DialogueSession::resolve(
                 "mc_shop_intro",
@@ -857,9 +856,9 @@ mod tests {
 
     #[test]
     fn ardel_item_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/item_shop_ardel.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("item_shop_ardel", None, dialogue, &flags)
             .unwrap()
@@ -875,9 +874,9 @@ mod tests {
 
     #[test]
     fn ardel_apothecary_traverses_locked_and_available_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/apothecary_ardel.yaml"
+        )));
         let cases = [
             (vec![], "My workshop isn't quite ready", false),
             (vec!["story_quest_started"], "Welcome to my workshop", true),
@@ -897,9 +896,9 @@ mod tests {
 
     #[test]
     fn ardel_weapon_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/weapon_shop_ardel.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("weapon_shop_ardel", None, dialogue, &flags)
             .unwrap()
@@ -915,9 +914,9 @@ mod tests {
 
     #[test]
     fn ardel_armor_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/armor_shop_ardel.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("armor_shop_ardel", None, dialogue, &flags)
             .unwrap()
@@ -933,9 +932,7 @@ mod tests {
 
     #[test]
     fn ardel_inn_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/inn_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!("data/dialogue/inn_ardel.yaml")));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("inn_ardel", None, dialogue, &flags)
             .unwrap()
@@ -952,9 +949,9 @@ mod tests {
 
     #[test]
     fn ardel_shrine_keeper_traverses_quest_and_story_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_shrine_keeper.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ardel_shrine_keeper.yaml"
+        )));
         // The Act II pair is the interesting one: the revelation grants Teleport and must fire
         // exactly once, with the repeat-visit entry taking over afterwards.
         let cases: [(Vec<&str>, &str, Option<&str>); 6] = [
@@ -996,9 +993,9 @@ mod tests {
     }
 
     fn bridge_guard(flags: &RuntimeFlags) -> DialogueSession {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/bridge_guard_zone5.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/bridge_guard_zone5.yaml"
+        )));
         DialogueSession::resolve("bridge_guard_zone5", None, dialogue, flags)
             .unwrap()
             .unwrap()
@@ -1107,9 +1104,9 @@ mod tests {
 
     #[test]
     fn stronghold_guard_traverses_only_the_authored_act_four_gate() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/stronghold_gate_guard.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/stronghold_gate_guard.yaml"
+        )));
         for flags in [vec![], vec!["story_act4_started", "boss_zone09_defeated"]] {
             let flags = RuntimeFlags::from_bootstrap(flags);
             assert!(
@@ -1131,9 +1128,9 @@ mod tests {
 
     #[test]
     fn ardel_notice_board_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_01_ardel.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_town_01_ardel.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("sign_town_01_ardel", None, dialogue, &flags)
             .unwrap()
@@ -1147,9 +1144,9 @@ mod tests {
 
     #[test]
     fn starting_forest_trail_marker_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_zone_01_starting_forest.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("sign_zone_01_starting_forest", None, dialogue, &flags)
@@ -1164,9 +1161,9 @@ mod tests {
 
     #[test]
     fn elise_join_traverses_before_join_offer_and_post_join_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/elise_join.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/elise_join.yaml"
+        )));
         let cases = [
             (
                 vec!["npc_elise_joined", "boss_zone01_defeated"],
@@ -1199,9 +1196,9 @@ mod tests {
 
     #[test]
     fn reiya_join_traverses_pre_offer_offer_and_post_join_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/reiya_join.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/reiya_join.yaml"
+        )));
         assert!(
             DialogueSession::resolve(
                 "reiya_join",
@@ -1250,9 +1247,9 @@ mod tests {
 
     #[test]
     fn millhaven_baker_traverses_start_relay_reward_and_repeat_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_baker.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_baker.yaml"
+        )));
         let cases = [
             (vec!["sq_flour_done"], "Half-batches it is"),
             (vec!["sq_flour_relayed"], "Old grain, he says?"),
@@ -1289,9 +1286,9 @@ mod tests {
 
     #[test]
     fn millhaven_granary_traverses_before_relay_and_after_relay_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_granary.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_granary.yaml"
+        )));
         let cases = [
             (vec!["sq_flour_relayed"], "Tell Senna what you like"),
             (vec!["sq_flour_started"], "Senna sent you?"),
@@ -1319,9 +1316,9 @@ mod tests {
 
     #[test]
     fn millhaven_miller_traverses_act_three_act_two_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_miller.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_miller.yaml"
+        )));
         let cases = [
             (vec!["story_act3_started"], "Hear that creak?"),
             (
@@ -1346,9 +1343,9 @@ mod tests {
 
     #[test]
     fn millhaven_elder_hint_traverses_every_story_branch_to_a_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_elder_hint.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_elder_hint.yaml"
+        )));
         assert!(
             DialogueSession::resolve(
                 "millhaven_elder_hint",
@@ -1390,9 +1387,9 @@ mod tests {
 
     #[test]
     fn millhaven_gossip_traverses_reiya_joined_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_gossip.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_gossip.yaml"
+        )));
         let cases = [
             (
                 vec!["npc_reiya_joined"],
@@ -1416,9 +1413,9 @@ mod tests {
 
     #[test]
     fn millhaven_carter_traverses_quest_terminals_and_accounts_for_dead_source_entries() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_carter.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/millhaven_carter.yaml"
+        )));
         let cases = [
             (
                 vec!["sq_millstone_done"],
@@ -1495,9 +1492,9 @@ mod tests {
 
     #[test]
     fn millhaven_item_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_millhaven.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/item_shop_millhaven.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("item_shop_millhaven", None, dialogue, &flags)
             .unwrap()
@@ -1517,9 +1514,9 @@ mod tests {
 
     #[test]
     fn millhaven_weapon_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_millhaven.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/weapon_shop_millhaven.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("weapon_shop_millhaven", None, dialogue, &flags)
             .unwrap()
@@ -1539,9 +1536,9 @@ mod tests {
 
     #[test]
     fn millhaven_armor_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_millhaven.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/armor_shop_millhaven.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("armor_shop_millhaven", None, dialogue, &flags)
             .unwrap()
@@ -1561,9 +1558,9 @@ mod tests {
 
     #[test]
     fn millhaven_inn_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/inn_millhaven.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/inn_millhaven.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("inn_millhaven", None, dialogue, &flags)
             .unwrap()
@@ -1580,9 +1577,9 @@ mod tests {
 
     #[test]
     fn millhaven_notice_board_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_02_millhaven.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_town_02_millhaven.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("sign_town_02_millhaven", None, dialogue, &flags)
@@ -1597,9 +1594,9 @@ mod tests {
 
     #[test]
     fn open_plains_trail_marker_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_zone_02_open_plains.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("sign_zone_02_open_plains", None, dialogue, &flags)
@@ -1614,9 +1611,9 @@ mod tests {
 
     #[test]
     fn harborgate_item_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_harborgate.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/item_shop_harborgate.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("item_shop_harborgate", None, dialogue, &flags)
             .unwrap()
@@ -1636,9 +1633,9 @@ mod tests {
 
     #[test]
     fn harborgate_weapon_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_harborgate.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/weapon_shop_harborgate.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("weapon_shop_harborgate", None, dialogue, &flags)
@@ -1659,9 +1656,9 @@ mod tests {
 
     #[test]
     fn harborgate_armor_shop_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_harborgate.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/armor_shop_harborgate.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("armor_shop_harborgate", None, dialogue, &flags)
             .unwrap()
@@ -1681,9 +1678,9 @@ mod tests {
 
     #[test]
     fn harborgate_inn_dialogue_reaches_its_service_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/inn_harborgate.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/inn_harborgate.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session = DialogueSession::resolve("inn_harborgate", None, dialogue, &flags)
             .unwrap()
@@ -1700,9 +1697,9 @@ mod tests {
 
     #[test]
     fn harborgate_notice_board_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_port_town_harborgate.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_port_town_harborgate.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("sign_port_town_harborgate", None, dialogue, &flags)
@@ -1717,9 +1714,9 @@ mod tests {
 
     #[test]
     fn harborgate_dockhand_traverses_act_three_act_two_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_dockhand.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_dockhand.yaml"
+        )));
         let cases = [
             (
                 vec!["story_act3_started"],
@@ -1744,9 +1741,9 @@ mod tests {
 
     #[test]
     fn harborgate_patient_traverses_act_three_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_patient.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_patient.yaml"
+        )));
         let cases = [
             (
                 vec!["story_act3_started"],
@@ -1770,9 +1767,9 @@ mod tests {
 
     #[test]
     fn harborgate_priestess_traverses_act_three_act_two_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_priestess.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_priestess.yaml"
+        )));
         let cases = [
             (
                 vec!["story_act3_started"],
@@ -1797,9 +1794,9 @@ mod tests {
 
     #[test]
     fn harborgate_clerk_traverses_quest_terminals_and_rewards_antidotes() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_clerk.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_clerk.yaml"
+        )));
         let cases = [
             (vec!["sq_manifest_done"], "Three crates unlogged"),
             (vec!["sq_manifest_relayed"], "Crates with no seal"),
@@ -1839,9 +1836,9 @@ mod tests {
 
     #[test]
     fn harborgate_stevedore_traverses_before_active_and_relayed_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_stevedore.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_stevedore.yaml"
+        )));
         let cases = [
             (vec!["sq_manifest_relayed"], "Glad it's off my back"),
             (
@@ -1872,9 +1869,9 @@ mod tests {
 
     #[test]
     fn harborgate_sailor_traverses_relay_reminder_sail_and_default_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_sailor.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_sailor.yaml"
+        )));
         let cases: [(Vec<&str>, &str, Option<&str>); 5] = [
             (
                 vec!["sq_catch_started"],
@@ -1920,9 +1917,9 @@ mod tests {
 
     #[test]
     fn harborgate_fishwife_traverses_quest_terminals_and_accounts_for_dead_source_entry() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_fishwife.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/harborgate_fishwife.yaml"
+        )));
         let cases = [
             (
                 vec!["sq_catch_done"],
@@ -1990,9 +1987,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_digger_traverses_quest_terminals_and_accounts_for_dead_source_entry() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_digger.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ruinwatch_digger.yaml"
+        )));
         let cases = [
             (vec!["sq_crew_done"], "Alive and walking south."),
             (vec!["sq_crew_relayed"], "She saw him? Walking out at dawn"),
@@ -2058,25 +2055,19 @@ mod tests {
         let cases = [
             (
                 "item_shop_ruinwatch",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_ruinwatch.yaml"
-                ),
+                include_str!(scenario_file!("data/dialogue/item_shop_ruinwatch.yaml")),
                 "Relics in the window",
                 crate::scenario_dialogue::DialogueShopKind::Item,
             ),
             (
                 "weapon_shop_ruinwatch",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/weapon_shop_ruinwatch.yaml"
-                ),
+                include_str!(scenario_file!("data/dialogue/weapon_shop_ruinwatch.yaml")),
                 "Half my stock's dug from the ruins",
                 crate::scenario_dialogue::DialogueShopKind::Weapon,
             ),
             (
                 "armor_shop_ruinwatch",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_ruinwatch.yaml"
-                ),
+                include_str!(scenario_file!("data/dialogue/armor_shop_ruinwatch.yaml")),
                 "Pilgrims buy relics",
                 crate::scenario_dialogue::DialogueShopKind::Armor,
             ),
@@ -2096,9 +2087,9 @@ mod tests {
         let mut session = DialogueSession::resolve(
             "inn_ruinwatch",
             None,
-            dialogue(include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/dialogue/inn_ruinwatch.yaml"
-            )),
+            dialogue(include_str!(scenario_file!(
+                "data/dialogue/inn_ruinwatch.yaml"
+            ))),
             &flags,
         )
         .unwrap()
@@ -2111,9 +2102,7 @@ mod tests {
 
     #[test]
     fn jep_join_traverses_every_branch_and_recruitment_is_idempotent() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/jep_join.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!("data/dialogue/jep_join.yaml")));
         let cases = [
             (
                 vec!["npc_jep_joined", "boss_zone03_defeated"],
@@ -2159,9 +2148,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_archivist_traverses_start_relay_reward_and_repeat_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_archivist.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ruinwatch_archivist.yaml"
+        )));
         let cases = [
             (
                 vec!["sq_glyph_done"],
@@ -2201,9 +2190,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_mason_traverses_millstone_and_glyph_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_mason.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ruinwatch_mason.yaml"
+        )));
         let cases = [
             (vec!["sq_millstone_started"], "Millhaven wants ME now?"),
             (vec!["sq_millstone_relayed"], "First thaw, like I said"),
@@ -2239,9 +2228,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_pilgrim_traverses_crew_and_story_terminals() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_pilgrim.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ruinwatch_pilgrim.yaml"
+        )));
         let cases = [
             (vec!["sq_crew_started"], "The young digger?"),
             (vec!["sq_crew_relayed"], "Go and ease the digger's mind"),
@@ -2273,9 +2262,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_scholar_hint_traverses_every_authored_story_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ruinwatch_scholar_hint.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/ruinwatch_scholar_hint.yaml"
+        )));
         assert!(
             DialogueSession::resolve(
                 "ruinwatch_scholar_hint",
@@ -2317,9 +2306,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_notice_board_traverses_its_authored_terminal() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_03_ruinwatch.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/sign_town_03_ruinwatch.yaml"
+        )));
         let flags = RuntimeFlags::default();
         let mut session =
             DialogueSession::resolve("sign_town_03_ruinwatch", None, dialogue, &flags)
@@ -2334,9 +2323,9 @@ mod tests {
 
     #[test]
     fn port_master_intro_gates_the_sail_unlock_on_act_two_and_is_idempotent_after_unlock() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/port_master_intro.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/port_master_intro.yaml"
+        )));
 
         // Before Act II starts, neither authored branch matches — the dialogue does not open
         // at all, matching every other Act-II-gated NPC in this wave (dockhand, priestess).
@@ -2411,9 +2400,9 @@ mod tests {
 
     #[test]
     fn frostholm_vault_grants_the_sky_crystal_once_and_reopens_only_as_repeat_dialogue() {
-        let dialogue = dialogue(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_vault_warden.yaml"
-        ));
+        let dialogue = dialogue(include_str!(scenario_file!(
+            "data/dialogue/frostholm_vault_warden.yaml"
+        )));
         let first_flags = RuntimeFlags::from_bootstrap(["story_act4_started"]);
         let mut first = DialogueSession::resolve(
             "frostholm_vault_warden",

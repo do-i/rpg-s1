@@ -4,7 +4,7 @@ party:
     name: "Ember"
     class: vanguard
     protagonist: true
-    portrait: assets/images/ember-profile.webp
+    portrait: media/images/ember-profile.webp
     join:
       condition: story_started
       map: harbor_town
@@ -32,7 +32,7 @@ party:
     name: "Mira"
     class: mystic
     protagonist: false
-    portrait: assets/images/mira-profile.webp
+    portrait: media/images/mira-profile.webp
     join:
       condition: story_chapter_two
       map: mountain_village

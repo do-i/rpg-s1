@@ -10,7 +10,7 @@ npcs:
     name: "Berta"
     dialogue: inn_ardel
     position: [5, 3]
-    sprite: assets/sprites/npc/female_blue_01.tsx
+    sprite: media/sprites/npc/female_blue_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

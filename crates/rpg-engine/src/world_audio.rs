@@ -572,7 +572,7 @@ mod tests {
             ));
             let scenario = asset_base.join("scenarios/invented");
             for directory in [
-                "assets/maps",
+                "media/maps",
                 "data/audio",
                 "data/classes",
                 "data/encount",
@@ -717,7 +717,7 @@ mod tests {
         assert_eq!(selection.key(), "town.default");
         assert_eq!(
             selection.asset_path(),
-            "scenarios/invented/assets/audio/bgm/Invented_Town.mp3"
+            "scenarios/invented/media/audio/bgm/Invented_Town.mp3"
         );
         let settings = app.world().get::<PlaybackSettings>(world_player).unwrap();
         assert!(matches!(settings.mode, PlaybackMode::Loop));
@@ -859,7 +859,7 @@ mod tests {
         let font = app
             .world()
             .resource::<AssetServer>()
-            .load::<Font>("scenarios/rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf");
+            .load::<Font>(scenario_asset!("media/fonts/Philosopher-Regular.ttf"));
         for _ in 0..5_000 {
             app.update();
             let inputs_ready = app.world().resource::<ActiveNewGameInputs>().status()
@@ -944,7 +944,7 @@ mod tests {
         assert_eq!(selection.key(), "town.default");
         assert_eq!(
             selection.asset_path(),
-            "scenarios/rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3"
+            scenario_asset!("media/audio/bgm/Whiteveil_Streets.mp3")
         );
         let audio_handle = player.0.clone();
 

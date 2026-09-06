@@ -16,7 +16,7 @@ npcs:
     name: "Keeper Joss"
     dialogue: ardel_epilogue
     position: [13, 5]
-    sprite: assets/sprites/npc/male_old_02.tsx
+    sprite: media/sprites/npc/male_old_02.tsx
     default_facing: right
     animation:
       mode: step
@@ -26,26 +26,26 @@ npcs:
     name: "Elise"
     dialogue: ardel_epilogue_elise
     position: [8, 4]
-    sprite: assets/sprites/party/02_elise_walk.tsx
+    sprite: media/sprites/party/02_elise_walk.tsx
     default_facing: down
 
   - id: epilogue_reiya
     name: "Reiya"
     dialogue: ardel_epilogue_reiya
     position: [6, 4]
-    sprite: assets/sprites/party/03_reiya_walk.tsx
+    sprite: media/sprites/party/03_reiya_walk.tsx
     default_facing: down
 
   - id: epilogue_jep
     name: "Jep"
     dialogue: ardel_epilogue_jep
     position: [3, 4]
-    sprite: assets/sprites/party/04_jep_walk.tsx
+    sprite: media/sprites/party/04_jep_walk.tsx
     default_facing: down
 
   - id: epilogue_kael
     name: "Kael"
     dialogue: ardel_epilogue_kael
     position: [11, 4]
-    sprite: assets/sprites/party/05_kael_walk.tsx
+    sprite: media/sprites/party/05_kael_walk.tsx
     default_facing: down

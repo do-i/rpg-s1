@@ -12,5 +12,5 @@ npcs:
     name: "Jep, as he was"
     position: [9, 5]
     dialogue: hearth_memory_jep
-    sprite: assets/sprites/party/04_jep_walk.tsx
+    sprite: media/sprites/party/04_jep_walk.tsx
     default_facing: down

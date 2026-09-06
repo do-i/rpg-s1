@@ -8,6 +8,45 @@ use bevy::{
 };
 use std::{path::Path, process::Command};
 
+/// Expands to an absolute path to one file in the shipped Rusted Kingdoms scenario package.
+///
+/// Tests pin exact scenario content with `include_str!`/`include_bytes!`, which need a literal
+/// path. Routing every one of them through this macro keeps the package location defined once:
+/// moving or renaming a scenario directory is a single edit here, not an edit per call site.
+///
+/// The expansion is anchored at `CARGO_MANIFEST_DIR` rather than a `../`-relative path, because
+/// `include_str!` resolves relative paths against the *invoking* file — so a relative form would
+/// still need a different prefix for every module depth.
+macro_rules! scenario_file {
+    ($scenario_relative_path:literal) => {
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../assets/scenarios/rusted_kingdoms/",
+            $scenario_relative_path
+        )
+    };
+}
+
+/// Expands to the AssetServer-logical path of one file in the shipped scenario package.
+///
+/// This is the logical counterpart to `scenario_file!`: it builds the `scenarios/<key>/...` string
+/// the runtime resolves against Bevy's asset base, for tests asserting what a subsystem loaded.
+///
+/// Deliberately not used by `ScenarioRoot`'s own tests in `rpg-content`, which must keep literal
+/// expectations — checking the resolver against a shared helper would assert nothing.
+macro_rules! scenario_asset {
+    ($scenario_relative_path:literal) => {
+        concat!("scenarios/rusted_kingdoms/", $scenario_relative_path)
+    };
+}
+
+/// The shipped Rusted Kingdoms package directory, for tests that read it at runtime.
+///
+/// The compile-time counterpart is `scenario_file!`; both keep the package location defined once.
+pub(crate) fn scenario_package_dir() -> std::path::PathBuf {
+    std::path::Path::new(scenario_file!("")).to_path_buf()
+}
+
 pub(crate) const PINNED_PYTHON_COMMIT: &str = "08970359d6cb03586948625d29b0d3351dbbf785";
 
 pub(crate) fn pinned_python_source() -> std::path::PathBuf {

@@ -404,7 +404,7 @@ mod tests {
         assert_eq!(elise.position, Position::new(12, 6));
         assert_eq!(
             elise.sprite.as_ref().unwrap().as_str(),
-            "assets/sprites/party/02_elise_walk.tsx"
+            "media/sprites/party/02_elise_walk.tsx"
         );
         assert_eq!(elise.default_facing, CardinalDirection::Down);
         assert_eq!(elise.present.excludes, ["npc_elise_joined"]);

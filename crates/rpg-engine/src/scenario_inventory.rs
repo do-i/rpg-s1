@@ -330,11 +330,11 @@ mod tests {
         assert_eq!(
             sprites,
             vec![
-                ("aric", "assets/sprites/party/01_aric_walk.tsx"),
-                ("elise", "assets/sprites/party/02_elise_walk.tsx"),
-                ("reiya", "assets/sprites/party/03_reiya_walk.tsx"),
-                ("jep", "assets/sprites/party/04_jep_walk.tsx"),
-                ("kael", "assets/sprites/party/05_kael_walk.tsx"),
+                ("aric", "media/sprites/party/01_aric_walk.tsx"),
+                ("elise", "media/sprites/party/02_elise_walk.tsx"),
+                ("reiya", "media/sprites/party/03_reiya_walk.tsx"),
+                ("jep", "media/sprites/party/04_jep_walk.tsx"),
+                ("kael", "media/sprites/party/05_kael_walk.tsx"),
             ]
         );
     }

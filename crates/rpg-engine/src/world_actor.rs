@@ -672,37 +672,35 @@ mod tests {
     use crate::{runtime_flags::RuntimeFlags, scenario_path::ScenarioRelativePath, scenario_yaml};
 
     fn ardel_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml"
-        ))
-        .unwrap()
+        scenario_yaml::from_str(include_str!(scenario_file!("data/maps/town_01_ardel.yaml")))
+            .unwrap()
     }
 
     fn ardel_epilogue_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_epilogue.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/town_01_ardel_epilogue.yaml"
+        )))
         .unwrap()
     }
 
     fn millhaven_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/town_02_millhaven.yaml"
+        )))
         .unwrap()
     }
 
     fn millhaven_interior_metadata(map_id: &str) -> MapMetadata {
         let document = match map_id {
-            "town_02_millhaven_inn" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_inn.yaml"
-            ),
-            "town_02_millhaven_mill" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_mill.yaml"
-            ),
-            "town_02_millhaven_shop" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop.yaml"
-            ),
+            "town_02_millhaven_inn" => {
+                include_str!(scenario_file!("data/maps/town_02_millhaven_inn.yaml"))
+            }
+            "town_02_millhaven_mill" => {
+                include_str!(scenario_file!("data/maps/town_02_millhaven_mill.yaml"))
+            }
+            "town_02_millhaven_shop" => {
+                include_str!(scenario_file!("data/maps/town_02_millhaven_shop.yaml"))
+            }
             _ => panic!("unknown Millhaven interior {map_id}"),
         };
         scenario_yaml::from_str(document).unwrap()
@@ -715,7 +713,7 @@ mod tests {
         let xml = format!(
             r#"<map orientation="orthogonal" width="9" height="9" tilewidth="32" tileheight="32"><layer id="1" name="collision" width="9" height="9"><data encoding="csv">{rows}</data></layer></map>"#
         );
-        let owner = ScenarioRelativePath::try_from("assets/maps/invented.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/invented.tmx").unwrap();
         let document = crate::tmx_header::parse_tmx_map_document(&xml, &owner).unwrap();
         CollisionOccupancy::from_tmx_document(&document).unwrap()
     }
@@ -901,23 +899,23 @@ mod tests {
     }
 
     fn harborgate_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/port_town_harborgate.yaml"
+        )))
         .unwrap()
     }
 
     fn harborgate_quarantine_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate_quarantine.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/port_town_harborgate_quarantine.yaml"
+        )))
         .unwrap()
     }
 
     fn harborgate_shop_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/port_town_harborgate_shop.yaml"
-        ))
+        scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/port_town_harborgate_shop.yaml"
+        )))
         .unwrap()
     }
 
@@ -1074,18 +1072,16 @@ mod tests {
 
     fn ruinwatch_metadata(map_id: &str) -> MapMetadata {
         let document = match map_id {
-            "town_03_ruinwatch" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch.yaml"
-            ),
-            "town_03_ruinwatch_inn" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_inn.yaml"
-            ),
-            "town_03_ruinwatch_shop" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_shop.yaml"
-            ),
-            "town_03_ruinwatch_monastery_vaults" => include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_monastery_vaults.yaml"
-            ),
+            "town_03_ruinwatch" => include_str!(scenario_file!("data/maps/town_03_ruinwatch.yaml")),
+            "town_03_ruinwatch_inn" => {
+                include_str!(scenario_file!("data/maps/town_03_ruinwatch_inn.yaml"))
+            }
+            "town_03_ruinwatch_shop" => {
+                include_str!(scenario_file!("data/maps/town_03_ruinwatch_shop.yaml"))
+            }
+            "town_03_ruinwatch_monastery_vaults" => include_str!(scenario_file!(
+                "data/maps/town_03_ruinwatch_monastery_vaults.yaml"
+            )),
             _ => panic!("unsupported Ruinwatch map fixture: {map_id}"),
         };
         scenario_yaml::from_str(document).unwrap()

@@ -35,14 +35,14 @@ npcs:
     name: "Emeth"
     dialogue: ruinwatch_scholar_hint
     position: [18, 27]
-    sprite: assets/sprites/npc/wizard_blue_robed_mage.tsx
+    sprite: media/sprites/npc/wizard_blue_robed_mage.tsx
     default_facing: down
 
   - id: ruinwatch_archivist
     name: "Archivist Hesta"
     dialogue: ruinwatch_archivist
     position: [12, 7]
-    sprite: assets/sprites/npc/village_female_person_elder_matron.tsx
+    sprite: media/sprites/npc/village_female_person_elder_matron.tsx
     default_facing: down
     animation:
       mode: step
@@ -52,7 +52,7 @@ npcs:
     name: "Mason Grote"
     dialogue: ruinwatch_mason
     position: [26, 7]
-    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    sprite: media/sprites/npc/village_male_person_older_villager.tsx
     default_facing: left
     animation:
       mode: step
@@ -62,7 +62,7 @@ npcs:
     name: "Sela"
     dialogue: ruinwatch_pilgrim
     position: [33, 15]
-    sprite: assets/sprites/npc/village_female_person_long_hair_green_skirt.tsx
+    sprite: media/sprites/npc/village_female_person_long_hair_green_skirt.tsx
     default_facing: down
     animation:
       mode: wander
@@ -73,7 +73,7 @@ npcs:
     name: "Ferd"
     dialogue: ruinwatch_digger
     position: [3, 23]
-    sprite: assets/sprites/npc/rogue_hooded_rogue.tsx
+    sprite: media/sprites/npc/rogue_hooded_rogue.tsx
     default_facing: right
     animation:
       mode: wander

@@ -78,6 +78,18 @@ impl CollisionOccupancy {
         self.height
     }
 
+    /// Tile dimensions this map authored in its own TMX header.
+    ///
+    /// Movement and collision math reads these instead of assuming a fixed size, so a scenario
+    /// package that authors a different tile grid stays correct.
+    pub(crate) const fn tile_width(&self) -> u32 {
+        self.tile_width
+    }
+
+    pub(crate) const fn tile_height(&self) -> u32 {
+        self.tile_height
+    }
+
     /// Returns `None` outside the finite map and otherwise whether the cell is blocked.
     pub(crate) fn is_blocked(&self, column: i32, row: i32) -> Option<bool> {
         let column = u32::try_from(column).ok()?;
@@ -169,7 +181,7 @@ mod tests {
     }
 
     fn invented_path() -> ScenarioRelativePath {
-        ScenarioRelativePath::try_from("assets/maps/invented.tmx").unwrap()
+        ScenarioRelativePath::try_from("media/maps/invented.tmx").unwrap()
     }
 
     #[test]
@@ -252,7 +264,7 @@ mod tests {
     #[ignore = "requires the separately pinned Python scenario checkout"]
     fn pinned_ardel_known_blocked_and_open_cells_match_source() {
         let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned media/maps directory");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()

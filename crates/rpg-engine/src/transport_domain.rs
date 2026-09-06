@@ -551,10 +551,8 @@ mod tests {
     use crate::{runtime_map::RuntimeMapState, scenario_spatial::CardinalDirection, scenario_yaml};
 
     fn domain() -> TransportDomain {
-        let catalog: TransportCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/transport.yaml"
-        ))
-        .unwrap();
+        let catalog: TransportCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/transport.yaml"))).unwrap();
         TransportDomain::try_from_catalog(catalog).unwrap()
     }
     fn map(current: &str, visited: &[&str]) -> RuntimeMapState {

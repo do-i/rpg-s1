@@ -12,7 +12,7 @@ npcs:
     name: "Warden Ilse"
     position: [29, 10]
     dialogue: corrupted_forest_warden
-    sprite: assets/sprites/npc/archer_recurve_scout.tsx
+    sprite: media/sprites/npc/archer_recurve_scout.tsx
     default_facing: down
 
 item_boxes:

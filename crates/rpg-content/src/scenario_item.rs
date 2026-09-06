@@ -732,9 +732,9 @@ mod tests {
 
     #[test]
     fn zone_one_migration_drop_repairs_are_bounded_materials() {
-        let catalog: ItemCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
-        ))
+        let catalog: ItemCatalogFile = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/items/migration_zone1_drops.yaml"
+        )))
         .unwrap();
         let materials = catalog
             .entries()

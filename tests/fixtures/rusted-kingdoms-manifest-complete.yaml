@@ -5,35 +5,35 @@ version: "1.0.0"
 window_title: "Rusted Kingdoms"
 
 title:
-  image: assets/images/title_bg/title_lost_flame.webp
-  cursor_icon: assets/images/icons/arrow-head-right.webp
+  image: media/images/title_bg/title_lost_flame.webp
+  cursor_icon: media/images/icons/arrow-head-right.webp
 font:
-  path: assets/fonts/Philosopher-Regular.ttf
+  path: media/fonts/Philosopher-Regular.ttf
 ui:
-  menu_backdrop: assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp
+  menu_backdrop: media/images/battle_bg/zone4-sanctum-bg-1280x468.webp
 
 apothecary:
-  sprite: assets/sprites/npc/female_wiz_01.tsx
+  sprite: media/sprites/npc/female_wiz_01.tsx
   icons:
-    locked: assets/images/icons/lock-locked-red-small.webp
-    ready: assets/images/icons/lock-unlocked-green-small.webp
-    missing: assets/images/icons/lock-unlocked-yellow-small.webp
+    locked: media/images/icons/lock-locked-red-small.webp
+    ready: media/images/icons/lock-unlocked-green-small.webp
+    missing: media/images/icons/lock-unlocked-yellow-small.webp
 inn:
-  sprite: assets/sprites/npc/female_blue_01.tsx
+  sprite: media/sprites/npc/female_blue_01.tsx
 item_shop:
-  sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+  sprite: media/sprites/npc/teen_halfmessy_01.tsx
 weapon_shop:
-  sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+  sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
 armor_shop:
-  sprite: assets/sprites/npc/plate_knight_base.tsx
+  sprite: media/sprites/npc/plate_knight_base.tsx
 item_box:
-  sprite: assets/sprites/objects/item_box.tsx
+  sprite: media/sprites/objects/item_box.tsx
 
 protagonist:
   id: aric
   name: Aric
   class: hero
-  sprite: assets/sprites/party/01_aric_walk.tsx
+  sprite: media/sprites/party/01_aric_walk.tsx
 start:
   map: town_01_ardel
   position: [14, 5]
@@ -59,8 +59,8 @@ refs:
   quests: data/quests.yaml
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
-  assets: assets/
-  tmx: assets/maps/
+  assets: media/
+  tmx: media/maps/
 
 # This known source section is not owned until its later schema milestone.
 signs:

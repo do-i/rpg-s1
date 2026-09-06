@@ -1696,18 +1696,12 @@ mod tests {
 
     #[test]
     fn elise_join_effect_uses_source_initial_state_and_is_idempotent() {
-        let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-        ))
-        .unwrap();
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap();
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
         let mut game = build_new_game_state(
             NewGameScenario {
                 manifest: &manifest,
@@ -1759,20 +1753,14 @@ mod tests {
 
     #[test]
     fn first_boss_elder_reward_advances_and_round_trips_the_act_two_boundary_once() {
-        let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-        ))
-        .unwrap();
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap();
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
         let DialogueDocument::Entries(dialogue) = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/dialogue/elder_intro.yaml"
+            scenario_file!("data/dialogue/elder_intro.yaml")
         ))
         .unwrap() else {
             panic!("elder_intro must remain a field-entry dialogue");
@@ -1877,18 +1865,12 @@ mod tests {
             // The typewriter reads its reveal rate from the settings file.
             .init_resource::<EngineSettings>();
 
-        let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-        ))
-        .unwrap();
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap();
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
         let mut game = build_new_game_state(
             NewGameScenario {
                 manifest: &manifest,
@@ -2030,21 +2012,15 @@ mod tests {
 
     #[test]
     fn source_forest_box_grants_once_and_reports_open_on_repeat() {
-        let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-        ))
-        .unwrap();
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap();
-        let metadata: MapMetadata = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml"
-        ))
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let metadata: MapMetadata = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/zone_01_starting_forest.yaml"
+        )))
         .unwrap();
         let mut game = build_new_game_state(
             NewGameScenario {
@@ -2217,10 +2193,9 @@ mod tests {
 
     #[test]
     fn required_interaction_sounds_resolve_through_source_index() {
-        let index: SfxIndex = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/audio/sfx_index.yaml"
-        ))
-        .unwrap();
+        let index: SfxIndex =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/audio/sfx_index.yaml")))
+                .unwrap();
         let root = ScenarioRoot::default();
 
         for sound in [
@@ -2232,7 +2207,7 @@ mod tests {
             InteractionSound::Cancel,
         ] {
             let path = index.resolve_key(&root, sound.source_key()).unwrap();
-            assert!(path.starts_with("scenarios/rusted_kingdoms/assets/audio/sfx/"));
+            assert!(path.starts_with(scenario_asset!("media/audio/sfx/")));
             assert!(path.ends_with(".mp3"));
         }
         assert_eq!(InteractionSound::Dialogue.source_key(), "confirm");

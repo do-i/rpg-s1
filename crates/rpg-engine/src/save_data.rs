@@ -504,21 +504,14 @@ pub(crate) mod tests {
     };
 
     pub(crate) fn fixture_balance() -> BalanceData {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap()
+        scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap()
     }
 
     pub(crate) fn fixture_game() -> GameState {
-        let manifest: Manifest = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-        ))
-        .unwrap();
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
         let balance = fixture_balance();
         let mut game = build_new_game_state(
             NewGameScenario {

@@ -72,7 +72,7 @@ impl MapReport {
     }
 }
 
-/// One map identity: either a `data/maps/*.yaml` stem, an `assets/maps/*.tmx` stem, or both.
+/// One map identity: either a `data/maps/*.yaml` stem, an `media/maps/*.tmx` stem, or both.
 pub(crate) struct MapReportEntry {
     pub(crate) id: String,
     pub(crate) name: Option<String>,
@@ -373,7 +373,7 @@ fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<Stri
 }
 
 /// Lists the files directly within `dir`, refusing to follow it outside `canonical_root`.
-/// Every directory this module reads (`data/maps`, `assets/maps`, `data/dialogue`) is flat in
+/// Every directory this module reads (`data/maps`, `media/maps`, `data/dialogue`) is flat in
 /// the pinned scenario corpus, so this deliberately does not recurse.
 fn safe_read_dir(dir: &Path, canonical_root: Option<&Path>) -> Option<Vec<PathBuf>> {
     let canonical_root = canonical_root?;
@@ -426,7 +426,7 @@ mod tests {
             ));
             fs::create_dir_all(root.join("data/maps")).unwrap();
             fs::create_dir_all(root.join("data/dialogue")).unwrap();
-            fs::create_dir_all(root.join("assets/maps")).unwrap();
+            fs::create_dir_all(root.join("media/maps")).unwrap();
             let scenario = Self(root);
             scenario.write(
                 "manifest.yaml",
@@ -476,7 +476,7 @@ refs:
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: media/maps/
 "#,
             );
             scenario
@@ -490,7 +490,7 @@ refs:
 
         fn touch_tmx(&self, stem: &str) {
             self.write(
-                &format!("assets/maps/{stem}.tmx"),
+                &format!("media/maps/{stem}.tmx"),
                 r#"<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="1" height="1" tilewidth="32" tileheight="32" infinite="0" nextlayerid="1" nextobjectid="1">
 </map>
@@ -615,7 +615,7 @@ npcs:
     fn dangling_portal_target_is_flagged_and_segment_target_is_resolvable() {
         let fixture = TempScenario::new();
         fixture.write(
-            "assets/maps/village.tmx",
+            "media/maps/village.tmx",
             r#"<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="1" height="1" tilewidth="32" tileheight="32" infinite="0" nextlayerid="2" nextobjectid="3">
   <objectgroup id="1" name="portals">

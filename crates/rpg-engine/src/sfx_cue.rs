@@ -329,8 +329,8 @@ mod tests {
         assert_eq!(
             player_paths(&mut app),
             vec![
-                "scenarios/minimal_demo/assets/audio/sfx/confirm.mp3".to_owned(),
-                "scenarios/minimal_demo/assets/audio/sfx/hover.mp3".to_owned(),
+                "scenarios/minimal_demo/media/audio/sfx/confirm.mp3".to_owned(),
+                "scenarios/minimal_demo/media/audio/sfx/hover.mp3".to_owned(),
             ]
         );
     }
@@ -353,9 +353,9 @@ mod tests {
     /// failure mode this whole module exists to end.
     #[test]
     fn every_cue_constant_resolves_against_the_shipped_index() {
-        let index: SfxIndex = crate::scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/audio/sfx_index.yaml"
-        ))
+        let index: SfxIndex = crate::scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/audio/sfx_index.yaml"
+        )))
         .expect("the shipped SFX index parses");
 
         for key in [

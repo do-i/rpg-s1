@@ -683,7 +683,7 @@ refs:
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: media/maps/
 "#,
             );
             scenario
@@ -790,9 +790,7 @@ entries:
         let fixture = TempScenario::new();
         fixture.write(
             "data/dialogue/ardel_fisherman.yaml",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/dialogue/ardel_fisherman.yaml"
-            ),
+            include_str!(scenario_file!("data/dialogue/ardel_fisherman.yaml")),
         );
 
         let report = build_dialogue_report(&fixture.0);
@@ -939,8 +937,7 @@ entries:
     /// dead entries) is as worth investigating as a rise.
     #[test]
     fn the_shipped_scenario_matches_the_known_dead_entry_inventory() {
-        let root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let root = crate::test_support::scenario_package_dir();
         let report = build_dialogue_report(&root);
         assert!(report.load_error.is_none());
         // 101 before roadmap B1.3, plus the two sign boards and six zone NPCs it authored, plus

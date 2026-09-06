@@ -891,7 +891,7 @@ impl<'a> Validator<'a> {
             // honours, and the suppression is exactly what hid `zone_05_mountain_foothills.yaml`
             // stranding a BGM key, a `warp_order`, and two unreachable chests (roadmap B2.1).
             // The pinned engine reaches the same conclusion: `_is_submap` builds its
-            // id set from `assets/maps/*.tmx` stems, so a parent with no TMX of its own is not a
+            // id set from `media/maps/*.tmx` stems, so a parent with no TMX of its own is not a
             // submap parent there either.
             //
             // So the segment case is now the *louder* one -- it means authored content exists and
@@ -1204,8 +1204,8 @@ impl<'a> Validator<'a> {
 
     fn validate_enemy_sprite(&mut self, owner_path: &str, base: &str, enemy_id: &str) {
         self.report.checked_references += 1;
-        let ordinary = format!("assets/sprites/enemies/{enemy_id}.tsx");
-        let battle = format!("assets/sprites/enemies/{enemy_id}_battle.tsx");
+        let ordinary = format!("media/sprites/enemies/{enemy_id}.tsx");
+        let battle = format!("media/sprites/enemies/{enemy_id}_battle.tsx");
         let exists = [ordinary.as_str(), battle.as_str()]
             .iter()
             .any(|candidate| {
@@ -1302,7 +1302,7 @@ impl<'a> Validator<'a> {
         }
         if let Some(backgrounds) = self.catalogs.backgrounds.clone() {
             for (background_index, background) in backgrounds.value.0.iter().enumerate() {
-                let asset = format!("assets/images/battle_bg/{}.webp", background.id);
+                let asset = format!("media/images/battle_bg/{}.webp", background.id);
                 self.checked_path(
                     &backgrounds.path,
                     format!("[{background_index}].$derived_image"),
@@ -2493,7 +2493,7 @@ refs:
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: media/maps/
 "#,
             );
             self.write(
@@ -2632,11 +2632,11 @@ movement: {player_speed: 5}
                 "assets/item_box.tsx",
                 "assets/maker.tsx",
                 "assets/maker_portrait.webp",
-                "assets/maps/village.tmx",
-                "assets/audio/title.ogg",
-                "assets/audio/battle.ogg",
-                "assets/audio/boss.ogg",
-                "assets/audio/village.ogg",
+                "media/maps/village.tmx",
+                "media/audio/title.ogg",
+                "media/audio/battle.ogg",
+                "media/audio/boss.ogg",
+                "media/audio/village.ogg",
             ] {
                 self.touch(asset);
             }
@@ -2659,7 +2659,7 @@ movement: {player_speed: 5}
                 "atk_buff",
                 "def_buff",
             ] {
-                self.touch(&format!("assets/audio/{key}.ogg"));
+                self.touch(&format!("media/audio/{key}.ogg"));
             }
         }
     }
@@ -2762,7 +2762,7 @@ entries:
     }
 
     fn remove_bgm_asset(fixture: &InventedScenario) {
-        fs::remove_file(fixture.0.join("assets/audio/title.ogg"))
+        fs::remove_file(fixture.0.join("media/audio/title.ogg"))
             .expect("invented BGM asset should exist before removal");
     }
 
@@ -3211,7 +3211,7 @@ targeting:
   default: random_alive
 "#,
         );
-        fixture.touch("assets/sprites/enemies/cinder_marshal.tsx");
+        fixture.touch("media/sprites/enemies/cinder_marshal.tsx");
     }
 
     #[test]
@@ -3378,8 +3378,8 @@ on_complete:
     fn parent_metadata_naming_only_segment_tmx_files_is_an_error_not_a_convention() {
         let fixture = InventedScenario::new();
         fixture.write("data/maps/vale.yaml", "name: Vale\nwarp_order: 10\n");
-        fixture.touch("assets/maps/vale_01.tmx");
-        fixture.touch("assets/maps/vale_02.tmx");
+        fixture.touch("media/maps/vale_01.tmx");
+        fixture.touch("media/maps/vale_02.tmx");
 
         let report = validate_scenario_directory(&ScenarioRoot::default(), &fixture.0);
         let finding = report
@@ -3405,7 +3405,7 @@ on_complete:
     #[test]
     fn tmx_only_map_id_satisfies_a_runtime_map_reference() {
         let fixture = InventedScenario::new();
-        fixture.touch("assets/maps/tmx_only.tmx");
+        fixture.touch("media/maps/tmx_only.tmx");
         fixture.write(
             "data/dialogue/intro.yaml",
             r#"id: intro
@@ -3509,20 +3509,11 @@ npcs:
         assert_eq!(missing.message, "unknown SFX id `spell_fire`");
     }
 
-    /// Pins the exact diagnostic inventory of the scenario this repository actually ships.
-    ///
-    /// The pinned-source audit below needs an env var and is `#[ignore]`d, so before this test
-    /// nothing ran the validator over `assets/scenarios/rusted_kingdoms` in CI at all. That is how
-    /// `manifest.yaml#title.cursor_icon` shipped naming a file that did not exist.
-    ///
-    /// Deliberately not "assert zero errors". The four Sorcerer ultimate flags are accepted
-    /// inherited source debt: those abilities are unobtainable in the original too, and granting
-    /// them would be new game design rather than validator cleanup. This pins the set instead: a
-    /// new diagnostic fails CI, and so does one that silently stops firing.
+    /// Pins the shipped scenario's exact diagnostics rather than asserting zero: four Sorcerer
+    /// ultimate flags are accepted inherited debt. A new or vanished diagnostic fails CI.
     #[test]
     fn the_shipped_scenario_matches_the_known_diagnostic_inventory() {
-        let physical_root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let physical_root = crate::test_support::scenario_package_dir();
         let report = validate_scenario_directory(&ScenarioRoot::default(), &physical_root);
 
         let errors = report.errors().map(ToString::to_string).collect::<Vec<_>>();

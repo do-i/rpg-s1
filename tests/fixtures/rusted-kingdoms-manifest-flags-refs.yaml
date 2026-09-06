@@ -28,5 +28,5 @@ refs:
   quests: data/quests.yaml
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
-  assets: assets/
-  tmx: assets/maps/
+  assets: media/
+  tmx: media/maps/

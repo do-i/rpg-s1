@@ -442,22 +442,13 @@ pub(crate) fn test_class(class_id: &str) -> ClassDefinition {
     fn parse(document: &str) -> ClassDefinition {
         crate::scenario_yaml::from_str(document).expect("shipped class should deserialize")
     }
-    const HERO: &str =
-        include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml");
+    const HERO: &str = include_str!(scenario_file!("data/classes/hero.yaml"));
     match class_id {
         "hero" => parse(HERO),
-        "cleric" => parse(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"
-        )),
-        "rogue" => parse(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"
-        )),
-        "sorcerer" => parse(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"
-        )),
-        "warrior" => parse(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"
-        )),
+        "cleric" => parse(include_str!(scenario_file!("data/classes/cleric.yaml"))),
+        "rogue" => parse(include_str!(scenario_file!("data/classes/rogue.yaml"))),
+        "sorcerer" => parse(include_str!(scenario_file!("data/classes/sorcerer.yaml"))),
+        "warrior" => parse(include_str!(scenario_file!("data/classes/warrior.yaml"))),
         invented => {
             let mut class = parse(HERO);
             class.class_id = invented.to_owned();
@@ -843,10 +834,7 @@ mod tests {
     }
 
     fn hero_class() -> ClassDefinition {
-        scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"
-        ))
-        .unwrap()
+        scenario_yaml::from_str(include_str!(scenario_file!("data/classes/hero.yaml"))).unwrap()
     }
 
     fn with_data(member: &mut PartyMember, mutate: impl FnOnce(&mut PartyMemberData)) {
@@ -861,10 +849,9 @@ mod tests {
     fn a_catalog_member_carries_its_class_threshold_before_earning_any_experience() {
         // The source derives exp_next when it attaches class data, so a member recruited
         // mid-run shows a real requirement immediately instead of `EXP 0 / 0`.
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .expect("the shipped party catalog should deserialize");
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml")))
+                .expect("the shipped party catalog should deserialize");
         let elise = party
             .party
             .iter()
@@ -946,10 +933,8 @@ mod tests {
         assert_eq!(experience_required(&class, 3), 900);
         assert_eq!(experience_required(&class, 10), 10_000);
 
-        let source: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
+        let source: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
         let mut member = RuntimeMember::try_from_catalog(
             &source.party[0],
             &test_class_of(&source.party[0]),
@@ -987,25 +972,23 @@ mod tests {
     fn every_production_class_threshold_curve_matches_the_source_values() {
         let fixtures = [
             (
-                include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
+                include_str!(scenario_file!("data/classes/cleric.yaml")),
                 [380, 855, 9_500],
             ),
             (
-                include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
+                include_str!(scenario_file!("data/classes/hero.yaml")),
                 [400, 900, 10_000],
             ),
             (
-                include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
+                include_str!(scenario_file!("data/classes/rogue.yaml")),
                 [360, 810, 9_000],
             ),
             (
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"
-                ),
+                include_str!(scenario_file!("data/classes/sorcerer.yaml")),
                 [380, 855, 9_500],
             ),
             (
-                include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+                include_str!(scenario_file!("data/classes/warrior.yaml")),
                 [440, 990, 11_000],
             ),
         ];
@@ -1027,10 +1010,8 @@ mod tests {
     #[test]
     fn one_experience_award_applies_every_crossed_level_once() {
         let class = hero_class();
-        let source: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
+        let source: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
         let mut member = RuntimeMember::try_from_catalog(
             &source.party[0],
             &test_class_of(&source.party[0]),

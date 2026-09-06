@@ -29,7 +29,7 @@ npcs:
     name: "Elder Corwin"
     dialogue: millhaven_elder_hint
     position: [9, 5]
-    sprite: assets/sprites/npc/village_male_person_older_villager.tsx
+    sprite: media/sprites/npc/village_male_person_older_villager.tsx
     default_facing: down
     animation:
       mode: step
@@ -38,7 +38,7 @@ npcs:
     name: "Reiya"
     dialogue: reiya_join
     position: [12, 7]
-    sprite: assets/sprites/party/03_reiya_walk.tsx
+    sprite: media/sprites/party/03_reiya_walk.tsx
     default_facing: left
     present:
       excludes: [npc_reiya_joined]
@@ -51,7 +51,7 @@ npcs:
     name: "Senna"
     dialogue: millhaven_baker
     position: [14, 9]
-    sprite: assets/sprites/npc/village_female_person_apron_keeper.tsx
+    sprite: media/sprites/npc/village_female_person_apron_keeper.tsx
     default_facing: down
     animation:
       mode: step
@@ -61,14 +61,14 @@ npcs:
     name: "Weck"
     dialogue: millhaven_granary
     position: [30, 9]
-    sprite: assets/sprites/npc/village_male_person_field_hand.tsx
+    sprite: media/sprites/npc/village_male_person_field_hand.tsx
     default_facing: left
 
   - id: millhaven_carter
     name: "Hobb"
     dialogue: millhaven_carter
     position: [22, 12]
-    sprite: assets/sprites/npc/merchant_traveling_merchant.tsx
+    sprite: media/sprites/npc/merchant_traveling_merchant.tsx
     default_facing: down
     animation:
       mode: wander
@@ -79,7 +79,7 @@ npcs:
     name: "Prue"
     dialogue: millhaven_gossip
     position: [6, 16]
-    sprite: assets/sprites/npc/village_female_person_headscarf_neighbor.tsx
+    sprite: media/sprites/npc/village_female_person_headscarf_neighbor.tsx
     default_facing: right
     animation:
       mode: step

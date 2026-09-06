@@ -410,9 +410,9 @@ mod tests {
 
     #[test]
     fn known_ardel_sign_cells_route_to_the_configured_tileset_profile() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/town_01_ardel.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/town_01_ardel.tmx").unwrap();
         let map = parse_tmx_map_document(
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
             &owner,
         )
         .unwrap();
@@ -432,11 +432,9 @@ mod tests {
 
     #[test]
     fn ruinwatch_sign_cells_route_to_the_configured_tileset_profile() {
-        let owner = ScenarioRelativePath::try_from("assets/maps/town_03_ruinwatch.tmx").unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/town_03_ruinwatch.tmx").unwrap();
         let map = parse_tmx_map_document(
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_03_ruinwatch.tmx")),
             &owner,
         )
         .unwrap();

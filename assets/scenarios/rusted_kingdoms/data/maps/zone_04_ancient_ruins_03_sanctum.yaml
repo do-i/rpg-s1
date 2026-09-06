@@ -7,7 +7,7 @@ npcs:
     name: "The Penitent"
     position: [17, 2]
     dialogue: ruins_sanctum_penitent
-    sprite: assets/sprites/npc/wizard_base.tsx
+    sprite: media/sprites/npc/wizard_base.tsx
     default_facing: down
 
 item_boxes:

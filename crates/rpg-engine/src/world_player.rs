@@ -583,12 +583,8 @@ mod tests {
     };
 
     const REPOSITORY_ASSET_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-    const ARIC_PNG: &[u8] = include_bytes!(
-        "../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.png"
-    );
-    const ARIC_TSX: &str = include_str!(
-        "../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx"
-    );
+    const ARIC_PNG: &[u8] = include_bytes!(scenario_file!("media/sprites/party/01_aric_walk.png"));
+    const ARIC_TSX: &str = include_str!(scenario_file!("media/sprites/party/01_aric_walk.tsx"));
     static NEXT_PACKAGE: AtomicU64 = AtomicU64::new(0);
 
     struct TestAssetBase {
@@ -618,7 +614,7 @@ mod tests {
                 .root
                 .join("scenarios")
                 .join(package_key)
-                .join("assets/sprites/party");
+                .join("media/sprites/party");
             fs::create_dir_all(&party).unwrap();
             let invalid = ARIC_TSX
                 .replace("tilecount=\"36\"", "tilecount=\"45\"")
@@ -820,7 +816,7 @@ mod tests {
 
         let shipped: PartyCatalog = scenario_yaml::from_str(
             &fs::read_to_string(
-                Path::new(REPOSITORY_ASSET_BASE).join("scenarios/rusted_kingdoms/data/party.yaml"),
+                Path::new(REPOSITORY_ASSET_BASE).join(scenario_asset!("data/party.yaml")),
             )
             .unwrap(),
         )

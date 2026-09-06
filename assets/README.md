@@ -14,8 +14,6 @@ evaluating the Rust and Bevy direction.
   clear grant to embed the copied files in a distributable game are not yet
   evidenced. See `../docs/asset-license-inventory.md` for the required proof
   or replacement path.
-- `fonts/Philosopher-Regular.ttf`: Philosopher font, licensed under the SIL Open
-  Font License 1.1; see `fonts/Philosopher-OFL.txt`.
 
 The title artwork and title music are currently blocked from public release:
 their audits did not find sufficient redistribution evidence. See
@@ -37,16 +35,17 @@ Scenario assets preserve their source-relative layout beneath
   source-authored Elise, Ardel NPC, elder, guide, and notice-board documents.
   These text assets remain blocked from public release under the same pending
   project-authored redistribution grant.
-- `scenarios/rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` is the
+- `scenarios/rusted_kingdoms/media/fonts/Philosopher-Regular.ttf` is the
   manifest-selected copy of Philosopher under the SIL Open Font License 1.1;
-  its exact source notice is preserved beside it as `Philosopher-OFL.txt`.
+  its exact source notice is preserved as
+  `scenarios/rusted_kingdoms/credits/Philosopher-OFL.txt`.
 - `scenarios/rusted_kingdoms/data/audio/bgm_index.yaml` maps Ardel's authored
   `town.default` key to
-  `scenarios/rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3`.
-  `assets/audio/README-audio.md` preserves the source-tree generation prompt
+  `scenarios/rusted_kingdoms/media/audio/bgm/Whiteveil_Streets.mp3`.
+  `media/audio/README-audio.md` preserves the source-tree generation prompt
   and YouTube source link, but does not provide a redistribution license. The
   local parity copy of this music is therefore a public-release blocker.
-- `scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx` registers
+- `scenarios/rusted_kingdoms/media/sprites/party/01_aric_walk.tsx` registers
   Aric's four-direction walk atlas and refers to the sibling
   `01_aric_walk.png` image.
 - The Aric sprite is derived from Liberated Pixel Cup artwork and is
@@ -62,19 +61,19 @@ Scenario assets preserve their source-relative layout beneath
   these exact hashes. They are local parity inputs and remain blocked from
   public release until exact layer provenance, license choices, and attribution
   are reconstructed or the sprites are replaced.
-- `scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx` is the canonical
+- `scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` is the canonical
   30-by-20 Ardel map. Its visible ground, terrain, and decoration layers use
   the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, Astral Pixels
   `finestre`, and `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas
   references are intentionally not runtime rendering dependencies.
-- `scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` and its
+- `scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` and its
   same-stem map metadata provide the Gate 5 reversible interior. Its eight
   visible Astral Pixels TSX/PNG pairs preserve the source-relative layout and
   the existing `astralpixels/credit.txt` source notice. As with `finestre`, the
   notice identifies a plausible asset page but does not prove the exact files'
   acquisition or redistribution terms, so these parity copies remain blocked
   from public release.
-- `scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`
+- `scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`
   preserves the complete LPC terrain attribution. The terrain atlas is
   distributed under CC BY-SA 3.0 with that notice. The byte-identical TMX
   copy remains blocked from public release until the project-authored map's

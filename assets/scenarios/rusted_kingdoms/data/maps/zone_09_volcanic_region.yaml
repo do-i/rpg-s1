@@ -23,5 +23,5 @@ npcs:
     name: "Warden Malc"
     dialogue: stronghold_gate_guard
     position: [46, 17]
-    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     default_facing: left

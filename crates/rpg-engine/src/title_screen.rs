@@ -29,7 +29,7 @@ const MENU_ENTRY_HEIGHT: f32 = 42.0;
 ///
 /// The source reserves this width and lays every label out at `x + cursor_width`, then draws a
 /// cursor image into it *only* when one loaded. For this scenario none ever does:
-/// `rusted_kingdoms/manifest.yaml` names `assets/images/icons/arrow-head-red-right-01.webp`, which
+/// `rusted_kingdoms/manifest.yaml` names `media/images/icons/arrow-head-red-right-01.webp`, which
 /// exists nowhere in the source tree, and `title_scene.py` guards the load with
 /// `if cursor_path.exists()`. So the original's title menu marks its selection by colour alone
 /// over an empty 40px gutter, and this port does the same. `title.cursor_icon` stays in the
@@ -708,7 +708,7 @@ mod tests {
         assert_eq!(image_path, "scenarios/minimal_demo/assets/title.webp");
         assert_eq!(
             music_path,
-            "scenarios/minimal_demo/assets/audio/bgm/minimal-theme.mp3"
+            "scenarios/minimal_demo/media/audio/bgm/minimal-theme.mp3"
         );
         assert!(!image_path.contains("rusted_kingdoms"));
         assert!(!music_path.contains("rusted_kingdoms"));
@@ -1069,7 +1069,7 @@ mod tests {
             .into_owned();
         assert_eq!(
             confirm_path,
-            "scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3"
+            scenario_asset!("media/audio/sfx/ui_menu/013_Confirm_03.mp3")
         );
 
         world.resource_mut::<TitleMenu>().selected = 0;
@@ -1261,7 +1261,9 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             backgrounds,
-            ["scenarios/rusted_kingdoms/assets/images/title_bg/title_lost_flame.webp"]
+            [scenario_asset!(
+                "media/images/title_bg/title_lost_flame.webp"
+            )]
         );
 
         assert_eq!(title_music.len(), 1);
@@ -1273,7 +1275,7 @@ mod tests {
             .into_owned();
         assert_eq!(
             title_music_path,
-            "scenarios/rusted_kingdoms/assets/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3"
+            scenario_asset!("media/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3")
         );
         assert!(matches!(title_music[0].1, PlaybackMode::Loop));
         assert_eq!(title_music[0].2, Volume::Linear(0.65));

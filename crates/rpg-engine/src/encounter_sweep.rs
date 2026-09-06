@@ -403,11 +403,7 @@ fn collect_assets(
         .filter(|participant| participant.side == BattleSide::Enemy)
     {
         if let Ok(path) = ScenarioRelativePath::try_from(
-            format!(
-                "assets/sprites/enemies/{}_battle.tsx",
-                participant.sprite_id
-            )
-            .as_str(),
+            format!("media/sprites/enemies/{}_battle.tsx", participant.sprite_id).as_str(),
         ) {
             atlases.insert(path);
         }
@@ -527,7 +523,7 @@ mod tests {
         let report = build_encounter_sweep(
             Path::new("/nonexistent/assets"),
             &ScenarioRoot::default(),
-            Path::new("/nonexistent/assets/scenarios/rusted_kingdoms"),
+            Path::new("/nonexistent/assets/scenarios/missing_package"),
         );
 
         assert!(!report.is_valid());

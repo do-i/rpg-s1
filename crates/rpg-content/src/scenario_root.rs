@@ -207,10 +207,13 @@ mod tests {
 
     impl Error for ParseError {}
 
+    /// These expectations stay spelled out rather than using `scenario_asset!`: this test is what
+    /// pins the `scenarios/<key>/...` layout, and the macro encodes that same layout. Building the
+    /// expected strings from it would compare the resolver against a copy of itself.
     #[test]
     fn default_manifest_and_nested_path_resolve_under_rusted_kingdoms() {
         let root = ScenarioRoot::default();
-        let map_path = ScenarioRelativePath::try_from("assets/maps/town_01_ardel.tmx").unwrap();
+        let map_path = ScenarioRelativePath::try_from("media/maps/town_01_ardel.tmx").unwrap();
 
         assert_eq!(root.package_key(), DEFAULT_SCENARIO_PACKAGE_KEY);
         assert_eq!(root.logical_root(), "scenarios/rusted_kingdoms");
@@ -220,7 +223,7 @@ mod tests {
         );
         assert_eq!(
             root.resolve(&map_path),
-            "scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"
+            "scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx"
         );
     }
 
@@ -285,7 +288,7 @@ mod tests {
     fn logical_asset_paths_remain_relative() {
         let root = ScenarioRoot::default();
         let manifest_path = ScenarioRelativePath::try_from("manifest.yaml").unwrap();
-        let audio_path = ScenarioRelativePath::try_from("assets/audio/overworld.ogg").unwrap();
+        let audio_path = ScenarioRelativePath::try_from("media/audio/overworld.ogg").unwrap();
 
         for path in [
             root.logical_root().to_owned(),
