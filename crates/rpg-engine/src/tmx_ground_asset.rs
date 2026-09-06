@@ -43,7 +43,7 @@ use crate::{
     tsx_atlas_asset::{TsxAtlasAsset, TsxAtlasTileError},
 };
 
-pub(crate) const ARDEL_TMX_PATH: &str = "assets/maps/town_01_ardel.tmx";
+pub(crate) const ARDEL_TMX_PATH: &str = "media/maps/town_01_ardel.tmx";
 const GROUND_LAYER_NAME: &str = "ground";
 const COLLISION_LAYER_NAME: &str = "collision";
 const GROUND_Z: f32 = 0.0;
@@ -696,20 +696,16 @@ mod tests {
     };
 
     const ASSET_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-    const TERRAIN_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx";
-    const TERRAIN_IMAGE_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.png";
-    const GRASS_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx";
-    const ICONS_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx";
+    const TERRAIN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.tsx");
+    const TERRAIN_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.png");
+    const GRASS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/grass_cave_walls_24x14.tsx");
+    const ICONS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/icon_table_stage_14x9.tsx");
     const STONE_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx";
+        scenario_asset!("media/tilesets/stone_tile_stares_16x16.tsx");
     const WALL_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx";
+        scenario_asset!("media/tilesets/astralpixels/muro_tileset_wall.tsx");
     const WINDOWS_TSX_ASSET_PATH: &str =
-        "scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx";
+        scenario_asset!("media/tilesets/astralpixels/finestre.tsx");
 
     fn ground_app() -> App {
         let mut app = App::new();
@@ -732,7 +728,7 @@ mod tests {
         let handle = app
             .world()
             .resource::<AssetServer>()
-            .load(format!("scenarios/rusted_kingdoms/{relative}"));
+            .load(format!("{}{relative}", scenario_asset!("")));
         for _ in 0..2_000 {
             app.update();
             let server = app.world().resource::<AssetServer>();
@@ -759,7 +755,7 @@ mod tests {
     #[test]
     fn starting_forest_keeps_spawn_markers_semantic_and_out_of_visible_projection() {
         let mut app = ground_app();
-        let handle = load_map(&mut app, "assets/maps/zone_01_starting_forest.tmx");
+        let handle = load_map(&mut app, "media/maps/zone_01_starting_forest.tmx");
         let maps = app.world().resource::<Assets<TmxGroundAsset>>();
         let map = maps.get(&handle).unwrap();
         let spawn = map
@@ -790,7 +786,7 @@ mod tests {
     #[test]
     fn ardel_house_loads_all_visible_dependencies_and_applies_tiled_transforms() {
         let mut app = ground_app();
-        let handle = load_map(&mut app, "assets/maps/town_01_ardel_house_01.tmx");
+        let handle = load_map(&mut app, "media/maps/town_01_ardel_house_01.tmx");
         let maps = app.world().resource::<Assets<TmxGroundAsset>>();
         let map = maps.get(&handle).unwrap();
         assert_eq!(
@@ -1041,35 +1037,34 @@ mod tests {
     fn copied_ardel_ground_source_graph_is_byte_identical_to_pinned_scenario() {
         let source_root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
             .expect("RPG_S1_PINNED_SCENARIO_DIR must name rusted_kingdoms");
-        let destination_root =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let destination_root = crate::test_support::scenario_package_dir();
         for relative in [
-            "assets/maps/town_01_ardel.tmx",
-            "assets/maps/town_01_ardel_house_01.tmx",
-            "assets/tilesets/grass_cave_walls_24x14.tsx",
-            "assets/tilesets/grass_cave_walls_24x14.png",
-            "assets/tilesets/icon_table_stage_14x9.tsx",
-            "assets/tilesets/icon_table_stage_14x9.png",
-            "assets/tilesets/astralpixels/finestre.tsx",
-            "assets/tilesets/astralpixels/finestre.png",
-            "assets/tilesets/astralpixels/muro_tileset_wall.tsx",
-            "assets/tilesets/astralpixels/muro_tileset.png",
-            "assets/tilesets/astralpixels/cucina.tsx",
-            "assets/tilesets/astralpixels/cucina.png",
-            "assets/tilesets/astralpixels/mensole.tsx",
-            "assets/tilesets/astralpixels/mensole.png",
-            "assets/tilesets/astralpixels/terreno.tsx",
-            "assets/tilesets/astralpixels/terreno.png",
-            "assets/tilesets/astralpixels/mobili.tsx",
-            "assets/tilesets/astralpixels/mobili.png",
-            "assets/tilesets/astralpixels/altro.tsx",
-            "assets/tilesets/astralpixels/altro.png",
-            "assets/tilesets/astralpixels/scale.tsx",
-            "assets/tilesets/astralpixels/scale.png",
-            "assets/tilesets/astralpixels/credit.txt",
-            "assets/tilesets/ground/terrain-v7.tsx",
-            "assets/tilesets/ground/terrain-v7.png",
-            "assets/tilesets/ground/CREDITS-terrain.txt",
+            "media/maps/town_01_ardel.tmx",
+            "media/maps/town_01_ardel_house_01.tmx",
+            "media/tilesets/grass_cave_walls_24x14.tsx",
+            "media/tilesets/grass_cave_walls_24x14.png",
+            "media/tilesets/icon_table_stage_14x9.tsx",
+            "media/tilesets/icon_table_stage_14x9.png",
+            "media/tilesets/astralpixels/finestre.tsx",
+            "media/tilesets/astralpixels/finestre.png",
+            "media/tilesets/astralpixels/muro_tileset_wall.tsx",
+            "media/tilesets/astralpixels/muro_tileset.png",
+            "media/tilesets/astralpixels/cucina.tsx",
+            "media/tilesets/astralpixels/cucina.png",
+            "media/tilesets/astralpixels/mensole.tsx",
+            "media/tilesets/astralpixels/mensole.png",
+            "media/tilesets/astralpixels/terreno.tsx",
+            "media/tilesets/astralpixels/terreno.png",
+            "media/tilesets/astralpixels/mobili.tsx",
+            "media/tilesets/astralpixels/mobili.png",
+            "media/tilesets/astralpixels/altro.tsx",
+            "media/tilesets/astralpixels/altro.png",
+            "media/tilesets/astralpixels/scale.tsx",
+            "media/tilesets/astralpixels/scale.png",
+            "media/tilesets/astralpixels/credit.txt",
+            "media/tilesets/ground/terrain-v7.tsx",
+            "media/tilesets/ground/terrain-v7.png",
+            "media/tilesets/ground/CREDITS-terrain.txt",
             "data/maps/town_01_ardel_house_01.yaml",
         ] {
             assert_eq!(

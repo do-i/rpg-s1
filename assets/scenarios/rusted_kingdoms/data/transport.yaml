@@ -1,4 +1,4 @@
-map_image: assets/images/ui/ember_atlas.png
+map_image: media/images/ui/ember_atlas.png
 sail_unlock_flag: transport_sail_unlocked
 fly_unlock_flag: transport_fly_unlocked
 

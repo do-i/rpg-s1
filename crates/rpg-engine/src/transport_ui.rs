@@ -1443,10 +1443,9 @@ mod tests {
     use crate::{input_record::NormalizedAction, save_data::tests::fixture_game, sfx_cue::PlaySfx};
 
     fn production_domain() -> TransportDomain {
-        let catalog = crate::scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/transport.yaml"
-        ))
-        .unwrap();
+        let catalog =
+            crate::scenario_yaml::from_str(include_str!(scenario_file!("data/transport.yaml")))
+                .unwrap();
         TransportDomain::try_from_catalog(catalog).unwrap()
     }
 

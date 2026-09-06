@@ -40,7 +40,7 @@ npcs:
     name: "Bryn"
     dialogue: apothecary_frostholm
     position: [8, 3]
-    sprite: assets/sprites/npc/female_wiz_01.tsx
+    sprite: media/sprites/npc/female_wiz_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -50,7 +50,7 @@ npcs:
     name: "Ingrid"
     dialogue: item_shop_frostholm
     position: [6, 3]
-    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    sprite: media/sprites/npc/village_female_person_practical_pants.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -60,7 +60,7 @@ npcs:
     name: "Halvar"
     dialogue: mc_shop_intro
     position: [10, 3]
-    sprite: assets/sprites/npc/wizard_base.tsx
+    sprite: media/sprites/npc/wizard_base.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -70,7 +70,7 @@ npcs:
     name: Sten
     dialogue: weapon_shop_frostholm
     position: [5, 3]
-    sprite: assets/sprites/npc/plate_knight_mace_knight.tsx
+    sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -80,7 +80,7 @@ npcs:
     name: Ylva
     dialogue: armor_shop_frostholm
     position: [12, 3]
-    sprite: assets/sprites/npc/plate_knight_open_helmet.tsx
+    sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

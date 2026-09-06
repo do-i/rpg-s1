@@ -9,7 +9,7 @@ protagonist:
   id: aric
   name: "Aric"
   class: hero
-  sprite: assets/sprites/party/01_aric_walk.tsx
+  sprite: media/sprites/party/01_aric_walk.tsx
 
 start:
   map: town_01_ardel

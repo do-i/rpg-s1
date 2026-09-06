@@ -44,7 +44,7 @@ npcs:
     name: "Elise"
     dialogue: elise_join
     position: [12, 6]
-    sprite: assets/sprites/party/02_elise_walk.tsx
+    sprite: media/sprites/party/02_elise_walk.tsx
     default_facing: down
     present:
       excludes: [npc_elise_joined]
@@ -59,7 +59,7 @@ npcs:
     dialogue: guide_ardel
     excuses: guide_excuses
     position: [5, 6]
-    sprite: assets/sprites/npc/teen_wiz_01.tsx
+    sprite: media/sprites/npc/teen_wiz_01.tsx
     default_facing: down
     animation:
       mode: wander
@@ -70,7 +70,7 @@ npcs:
     name: "Bram"
     dialogue: ardel_smith
     position: [20, 6]
-    sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+    sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down
     animation:
       mode: step
@@ -80,7 +80,7 @@ npcs:
     name: "Tomas"
     dialogue: ardel_apprentice
     position: [24, 10]
-    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    sprite: media/sprites/npc/teen_halfmessy_01.tsx
     default_facing: left
     animation:
       mode: wander
@@ -91,14 +91,14 @@ npcs:
     name: "Old Marn"
     dialogue: ardel_fisherman
     position: [3, 8]
-    sprite: assets/sprites/npc/male_old_02.tsx
+    sprite: media/sprites/npc/male_old_02.tsx
     default_facing: right
 
   - id: ardel_child
     name: "Pip"
     dialogue: ardel_child
     position: [15, 8]
-    sprite: assets/sprites/npc/village_female_person_basket_carrier.tsx
+    sprite: media/sprites/npc/village_female_person_basket_carrier.tsx
     default_facing: down
     animation:
       mode: wander

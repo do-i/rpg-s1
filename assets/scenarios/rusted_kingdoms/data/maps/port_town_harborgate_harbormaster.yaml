@@ -7,7 +7,7 @@ npcs:
     name: "Harbormaster Vance"
     dialogue: port_master_intro
     position: [5, 5]
-    sprite: assets/sprites/npc/male_old_02.tsx
+    sprite: media/sprites/npc/male_old_02.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

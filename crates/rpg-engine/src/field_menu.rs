@@ -1538,10 +1538,9 @@ mod tests {
 
     /// A new game starts with the protagonist alone; the switch overlay needs someone to switch to.
     fn fixture_game_with_recruit() -> GameState {
-        let catalog: crate::scenario_party::PartyCatalog = crate::scenario_yaml::from_str(
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/party.yaml"),
-        )
-        .unwrap();
+        let catalog: crate::scenario_party::PartyCatalog =
+            crate::scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml")))
+                .unwrap();
         let elise = catalog
             .party
             .iter()
@@ -1781,11 +1780,11 @@ mod tests {
         assert_eq!(member_emblem("  "), "?");
         assert_eq!(
             profile_portrait_path("aric"),
-            "assets/images/aric_profile.png"
+            "media/images/aric_profile.png"
         );
         assert_eq!(
             large_status_portrait_path("aric"),
-            "assets/images/party_portraits_large/aric_status_portrait.webp"
+            "media/images/party_portraits_large/aric_status_portrait.webp"
         );
     }
 
@@ -2749,10 +2748,8 @@ mod tests {
                     })
                     .expect("aric knows Teleport once the flag is set");
             let domain: TransportDomain = TransportDomain::try_from_catalog(
-                crate::scenario_yaml::from_str(include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/data/transport.yaml"
-                ))
-                .unwrap(),
+                crate::scenario_yaml::from_str(include_str!(scenario_file!("data/transport.yaml")))
+                    .unwrap(),
             )
             .unwrap();
 

@@ -12,5 +12,5 @@ npcs:
     name: "A boy made of ash"
     position: [9, 5]
     dialogue: hearth_memory_aric
-    sprite: assets/sprites/party/01_aric_walk.tsx
+    sprite: media/sprites/party/01_aric_walk.tsx
     default_facing: down

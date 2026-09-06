@@ -7,7 +7,7 @@ npcs:
     name: "Ashenveil Oracle"
     dialogue: ashenveil_oracle_hint
     position: [8, 4]
-    sprite: assets/sprites/npc/village_female_person_elder_matron.tsx
+    sprite: media/sprites/npc/village_female_person_elder_matron.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

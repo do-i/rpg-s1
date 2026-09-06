@@ -12,7 +12,7 @@ npcs:
     name: "Deserter Roque"
     position: [17, 2]
     dialogue: stronghold_deserter
-    sprite: assets/sprites/npc/male_sword_fighter_axe_fighter.tsx
+    sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down
     present:
       excludes: [boss_zone10_defeated]

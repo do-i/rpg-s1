@@ -693,7 +693,7 @@ mod tests {
         include_str!("../../../tests/fixtures/tsx-metadata/invented-animation.tsx");
 
     fn owner() -> ScenarioRelativePath {
-        ScenarioRelativePath::try_from("assets/tilesets/ground/invented.tsx").unwrap()
+        ScenarioRelativePath::try_from("media/tilesets/ground/invented.tsx").unwrap()
     }
 
     #[test]
@@ -705,7 +705,7 @@ mod tests {
         assert_eq!(metadata.tile_count(), 5);
         assert_eq!(
             metadata.image().source().as_str(),
-            "assets/images/invented.png"
+            "media/images/invented.png"
         );
         assert_eq!(
             (metadata.image().width(), metadata.image().height()),
@@ -932,7 +932,7 @@ mod tests {
         let scenario_root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
             .expect("RPG_S1_PINNED_SCENARIO_DIR must name the pinned rusted_kingdoms directory");
         let logical =
-            ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx").unwrap();
+            ScenarioRelativePath::try_from("media/sprites/party/01_aric_walk.tsx").unwrap();
         let xml = fs::read_to_string(Path::new(&scenario_root).join(logical.as_str()))
             .expect("Aric TSX should be readable");
         let metadata = parse_tsx_tileset_metadata(&xml, &logical).unwrap();

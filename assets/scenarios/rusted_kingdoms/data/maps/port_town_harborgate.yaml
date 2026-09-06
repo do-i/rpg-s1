@@ -33,7 +33,7 @@ npcs:
     name: "Cobb"
     dialogue: harborgate_dockhand
     position: [21, 14]
-    sprite: assets/sprites/npc/village_male_person_market_runner.tsx
+    sprite: media/sprites/npc/village_male_person_market_runner.tsx
     default_facing: down
     animation:
       mode: wander
@@ -44,7 +44,7 @@ npcs:
     name: "Clerk Isolde"
     dialogue: harborgate_clerk
     position: [12, 7]
-    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    sprite: media/sprites/npc/village_female_person_practical_pants.tsx
     default_facing: down
     animation:
       mode: step
@@ -54,14 +54,14 @@ npcs:
     name: "Brant"
     dialogue: harborgate_stevedore
     position: [30, 9]
-    sprite: assets/sprites/npc/male_sword_fighter_base.tsx
+    sprite: media/sprites/npc/male_sword_fighter_base.tsx
     default_facing: left
 
   - id: harborgate_sailor
     name: "Tam"
     dialogue: harborgate_sailor
     position: [33, 17]
-    sprite: assets/sprites/npc/man_01.tsx
+    sprite: media/sprites/npc/man_01.tsx
     default_facing: down
     animation:
       mode: wander
@@ -72,5 +72,5 @@ npcs:
     name: "Marla"
     dialogue: harborgate_fishwife
     position: [5, 16]
-    sprite: assets/sprites/npc/village_female_person_basket_carrier.tsx
+    sprite: media/sprites/npc/village_female_person_basket_carrier.tsx
     default_facing: right

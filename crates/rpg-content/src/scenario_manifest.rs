@@ -362,18 +362,18 @@ mod tests {
             manifest,
             ManifestTitleFontUi {
                 title: ManifestTitle {
-                    image: "assets/images/title_bg/title_lost_flame.webp"
+                    image: "media/images/title_bg/title_lost_flame.webp"
                         .try_into()
                         .unwrap(),
-                    cursor_icon: "assets/images/icons/arrow-head-right.webp"
+                    cursor_icon: "media/images/icons/arrow-head-right.webp"
                         .try_into()
                         .unwrap(),
                 },
                 font: ManifestFont {
-                    path: "assets/fonts/Philosopher-Regular.ttf".try_into().unwrap(),
+                    path: "media/fonts/Philosopher-Regular.ttf".try_into().unwrap(),
                 },
                 ui: ManifestUi {
-                    menu_backdrop: "assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
+                    menu_backdrop: "media/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
                         .try_into()
                         .unwrap(),
                 },
@@ -392,39 +392,39 @@ mod tests {
             manifest,
             ManifestServiceSprites {
                 apothecary: ManifestApothecary {
-                    sprite: "assets/sprites/npc/female_wiz_01.tsx".try_into().unwrap(),
+                    sprite: "media/sprites/npc/female_wiz_01.tsx".try_into().unwrap(),
                     icons: ManifestApothecaryIcons {
-                        locked: "assets/images/icons/lock-locked-red-small.webp"
+                        locked: "media/images/icons/lock-locked-red-small.webp"
                             .try_into()
                             .unwrap(),
-                        ready: "assets/images/icons/lock-unlocked-green-small.webp"
+                        ready: "media/images/icons/lock-unlocked-green-small.webp"
                             .try_into()
                             .unwrap(),
-                        missing: "assets/images/icons/lock-unlocked-yellow-small.webp"
+                        missing: "media/images/icons/lock-unlocked-yellow-small.webp"
                             .try_into()
                             .unwrap(),
                     },
                 },
                 inn: ManifestServiceSprite {
-                    sprite: "assets/sprites/npc/female_blue_01.tsx".try_into().unwrap(),
+                    sprite: "media/sprites/npc/female_blue_01.tsx".try_into().unwrap(),
                 },
                 item_shop: ManifestServiceSprite {
-                    sprite: "assets/sprites/npc/teen_halfmessy_01.tsx"
+                    sprite: "media/sprites/npc/teen_halfmessy_01.tsx"
                         .try_into()
                         .unwrap(),
                 },
                 weapon_shop: ManifestServiceSprite {
-                    sprite: "assets/sprites/npc/male_sword_fighter_axe_fighter.tsx"
+                    sprite: "media/sprites/npc/male_sword_fighter_axe_fighter.tsx"
                         .try_into()
                         .unwrap(),
                 },
                 armor_shop: ManifestServiceSprite {
-                    sprite: "assets/sprites/npc/plate_knight_base.tsx"
+                    sprite: "media/sprites/npc/plate_knight_base.tsx"
                         .try_into()
                         .unwrap(),
                 },
                 item_box: ManifestServiceSprite {
-                    sprite: "assets/sprites/objects/item_box.tsx".try_into().unwrap(),
+                    sprite: "media/sprites/objects/item_box.tsx".try_into().unwrap(),
                 },
             }
         );
@@ -444,7 +444,7 @@ mod tests {
                     id: "aric".to_owned(),
                     name: "Aric".to_owned(),
                     class: "hero".to_owned(),
-                    sprite: "assets/sprites/party/01_aric_walk.tsx".try_into().unwrap(),
+                    sprite: "media/sprites/party/01_aric_walk.tsx".try_into().unwrap(),
                 },
                 start: ManifestStart {
                     map: "town_01_ardel".to_owned(),
@@ -490,12 +490,12 @@ mod tests {
                 quests: "data/quests.yaml".try_into().unwrap(),
                 balance: "data/balance.yaml".try_into().unwrap(),
                 battle_backgrounds: "data/battle_backgrounds.yaml".try_into().unwrap(),
-                assets: "assets/".try_into().unwrap(),
-                tmx: "assets/maps/".try_into().unwrap(),
+                assets: "media/".try_into().unwrap(),
+                tmx: "media/maps/".try_into().unwrap(),
             }
         );
         assert_eq!(manifest.refs.classes.as_str(), "data/classes");
-        assert_eq!(manifest.refs.tmx.as_relative_path().as_str(), "assets/maps");
+        assert_eq!(manifest.refs.tmx.as_relative_path().as_str(), "media/maps");
     }
 
     #[test]
@@ -543,11 +543,11 @@ mod tests {
         assert_eq!(manifest.id, "my_rpg_story");
         assert_eq!(
             manifest.title.cursor_icon.as_str(),
-            "assets/images/icons/arrow-head-right.webp"
+            "media/images/icons/arrow-head-right.webp"
         );
         assert_eq!(
             manifest.inn.sprite.as_str(),
-            "assets/sprites/npc/female_blue_01.tsx"
+            "media/sprites/npc/female_blue_01.tsx"
         );
         assert_eq!(manifest.start.position, Position::new(14, 5));
         assert_eq!(manifest.refs.encount.as_str(), "data/encount");
@@ -597,7 +597,7 @@ mod tests {
         let document =
             include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
                 .replacen(
-                    "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
+                    "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
                     "",
                     1,
                 );

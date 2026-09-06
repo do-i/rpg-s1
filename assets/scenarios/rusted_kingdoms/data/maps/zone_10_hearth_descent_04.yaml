@@ -12,5 +12,5 @@ npcs:
     name: "Kael, as he was"
     position: [9, 5]
     dialogue: hearth_memory_kael
-    sprite: assets/sprites/party/05_kael_walk.tsx
+    sprite: media/sprites/party/05_kael_walk.tsx
     default_facing: down

@@ -291,7 +291,7 @@ mod tests {
         assert_eq!(protagonist.data().class_id, "vanguard");
         assert_eq!(
             protagonist.data().portrait.as_str(),
-            "assets/images/ember-profile.webp"
+            "media/images/ember-profile.webp"
         );
         assert_eq!(protagonist.data().join.condition, "story_started");
         assert_eq!(protagonist.data().join.map, "harbor_town");

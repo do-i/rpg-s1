@@ -339,7 +339,7 @@ mod tests {
     #[test]
     fn malformed_manifest_fails_with_relative_context_and_publishes_nothing() {
         let malformed = invented_manifest().replacen(
-            "  cursor_icon: assets/images/icons/arrow-head-right.webp\n",
+            "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
             "",
             1,
         );

@@ -802,9 +802,9 @@ pub(in crate::field_menu) fn load_status_image(
 }
 
 pub(in crate::field_menu) fn profile_portrait_path(member_id: &str) -> String {
-    format!("assets/images/{member_id}_profile.png")
+    format!("media/images/{member_id}_profile.png")
 }
 
 pub(in crate::field_menu) fn large_status_portrait_path(member_id: &str) -> String {
-    format!("assets/images/party_portraits_large/{member_id}_status_portrait.webp")
+    format!("media/images/party_portraits_large/{member_id}_status_portrait.webp")
 }

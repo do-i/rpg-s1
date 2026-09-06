@@ -225,7 +225,7 @@ assets, including:
 
 - `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` for the
   Liberated Pixel Cup components used by Aric;
-- `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`
+- `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`
   for the LPC terrain atlas;
 - the bundled SIL Open Font License notices for Philosopher and Quintessential;
   and

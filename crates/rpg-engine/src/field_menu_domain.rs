@@ -178,11 +178,11 @@ impl FieldMenuCatalog {
     #[cfg(test)]
     pub(crate) fn production_class_fixture() -> Self {
         let classes = [
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+            include_str!(scenario_file!("data/classes/cleric.yaml")),
+            include_str!(scenario_file!("data/classes/hero.yaml")),
+            include_str!(scenario_file!("data/classes/rogue.yaml")),
+            include_str!(scenario_file!("data/classes/sorcerer.yaml")),
+            include_str!(scenario_file!("data/classes/warrior.yaml")),
         ]
         .into_iter()
         .map(|document| {
@@ -1357,7 +1357,7 @@ pub(crate) mod tests {
     /// fixtures that compute against actual shipped `rusted_kingdoms` data.
     fn parsed_map(stem: &str, tmx: &str, yaml: &str) -> (MapMetadata, Vec<RuntimePortal>) {
         let metadata: MapMetadata = scenario_yaml::from_str(yaml).unwrap();
-        let path = ScenarioRelativePath::try_from(format!("assets/maps/{stem}.tmx")).unwrap();
+        let path = ScenarioRelativePath::try_from(format!("media/maps/{stem}.tmx")).unwrap();
         let document = parse_tmx_map_document(tmx, &path).unwrap();
         let portals = runtime_portals(&document).unwrap();
         (metadata, portals)
@@ -1451,36 +1451,26 @@ pub(crate) mod tests {
 
     pub(crate) fn catalog() -> FieldMenuCatalog {
         let item_documents = [
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/accessories.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/body.yaml"),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/consumables_field.yaml"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/consumables_status_cure.yaml"
-            ),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/helmets.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/key_items.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/materials.yaml"),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml"
-            ),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/shields.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/items/weapons.yaml"),
+            include_str!(scenario_file!("data/items/accessories.yaml")),
+            include_str!(scenario_file!("data/items/body.yaml")),
+            include_str!(scenario_file!("data/items/consumables_battle_throw.yaml")),
+            include_str!(scenario_file!("data/items/consumables_field.yaml")),
+            include_str!(scenario_file!("data/items/consumables_recovery.yaml")),
+            include_str!(scenario_file!("data/items/consumables_status_cure.yaml")),
+            include_str!(scenario_file!("data/items/helmets.yaml")),
+            include_str!(scenario_file!("data/items/key_items.yaml")),
+            include_str!(scenario_file!("data/items/magic_cores.yaml")),
+            include_str!(scenario_file!("data/items/materials.yaml")),
+            include_str!(scenario_file!("data/items/migration_zone1_drops.yaml")),
+            include_str!(scenario_file!("data/items/shields.yaml")),
+            include_str!(scenario_file!("data/items/weapons.yaml")),
         ];
         let class_documents = [
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+            include_str!(scenario_file!("data/classes/cleric.yaml")),
+            include_str!(scenario_file!("data/classes/hero.yaml")),
+            include_str!(scenario_file!("data/classes/rogue.yaml")),
+            include_str!(scenario_file!("data/classes/sorcerer.yaml")),
+            include_str!(scenario_file!("data/classes/warrior.yaml")),
         ];
         let mut items = BTreeMap::new();
         let mut item_order = Vec::new();
@@ -1491,10 +1481,9 @@ pub(crate) mod tests {
                 assert!(items.insert(item.id().to_owned(), item).is_none());
             }
         }
-        let field_use: FieldUseCatalogFile = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/items/field_use.yaml"
-        ))
-        .unwrap();
+        let field_use: FieldUseCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/items/field_use.yaml")))
+                .unwrap();
         let field_uses = field_use
             .0
             .into_iter()
@@ -1520,14 +1509,10 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn game(flags: impl IntoIterator<Item = &'static str>) -> GameState {
-        let party_source: PartyCatalog = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        ))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        ))
-        .unwrap();
+        let party_source: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
         let members = party_source.party[..2].iter().map(|source| {
             RuntimeMember::try_from_catalog(
                 source,
@@ -1916,56 +1901,32 @@ pub(crate) mod tests {
         );
     }
 
-    // -- Parity fixtures: `compute_warp_destinations` vs the pinned `engine/world/warp_logic.py`
-    // (parity plan P1.1). Expected values below were cross-checked two ways against this exact
-    // scenario copy: by hand from the TMX/YAML, and by running the actual pinned `warp_logic.py`
-    // module (with a real PyYAML available in a sibling checkout) against
-    // `assets/scenarios/rusted_kingdoms`.
-
     #[test]
     fn warp_destinations_match_pinned_scenario_for_a_representative_visited_set() {
         let ardel = parsed_map(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
-            include_str!("../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
+            include_str!(scenario_file!("data/maps/town_01_ardel.yaml")),
         );
-        // Real submap: `town_01_ardel_shop_01` extends `town_01_ardel`'s id with `_`, and
-        // `town_01_ardel` has its own TMX, so `_is_submap` excludes it (warp_logic.py:68-78).
         let ardel_shop = parsed_map(
             "town_01_ardel_shop_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shop_01.yaml"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_shop_01.tmx")),
+            include_str!(scenario_file!("data/maps/town_01_ardel_shop_01.yaml")),
         );
         let forest = parsed_map(
             "zone_01_starting_forest",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml"
-            ),
+            include_str!(scenario_file!("media/maps/zone_01_starting_forest.tmx")),
+            include_str!(scenario_file!("data/maps/zone_01_starting_forest.yaml")),
         );
         let plains = parsed_map(
             "zone_02_open_plains",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains.yaml"
-            ),
+            include_str!(scenario_file!("media/maps/zone_02_open_plains.tmx")),
+            include_str!(scenario_file!("data/maps/zone_02_open_plains.yaml")),
         );
         let millhaven = parsed_map(
             "town_02_millhaven",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml"
-            ),
+            include_str!(scenario_file!("media/maps/town_02_millhaven.tmx")),
+            include_str!(scenario_file!("data/maps/town_02_millhaven.yaml")),
         );
 
         let sources: Vec<(&str, &MapMetadata, &[RuntimePortal])> = vec![
@@ -2024,28 +1985,28 @@ pub(crate) mod tests {
         // `zone_05_mountain_foothills_01/02/03` are numbered segments of the conceptual zone
         // `zone_05_mountain_foothills`, but that parent id has no `.tmx` of its own in the pinned
         // scenario — only `data/maps/zone_05_mountain_foothills.yaml`. `_is_submap`
-        // checks each candidate's prefix against `all_ids`, built from `assets/maps/*.tmx` stems
+        // checks each candidate's prefix against `all_ids`, built from `media/maps/*.tmx` stems
         // only (warp_logic.py:68-78, 152), so a parent id with no TMX never enters that set and
         // its segments are *not* submaps of one another under the literal algorithm — confirmed
         // by running the pinned `warp_logic.py` against this scenario copy. Both are therefore
         // independent, real warp destinations.
         let segment_02 = parsed_map(
             "zone_05_mountain_foothills_02",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_02.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_02.yaml"
-            ),
+            include_str!(scenario_file!(
+                "media/maps/zone_05_mountain_foothills_02.tmx"
+            )),
+            include_str!(scenario_file!(
+                "data/maps/zone_05_mountain_foothills_02.yaml"
+            )),
         );
         let segment_03 = parsed_map(
             "zone_05_mountain_foothills_03",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_03.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_03.yaml"
-            ),
+            include_str!(scenario_file!(
+                "media/maps/zone_05_mountain_foothills_03.tmx"
+            )),
+            include_str!(scenario_file!(
+                "data/maps/zone_05_mountain_foothills_03.yaml"
+            )),
         );
 
         let sources: Vec<(&str, &MapMetadata, &[RuntimePortal])> = vec![
@@ -2092,18 +2053,18 @@ pub(crate) mod tests {
         // one behavior.
         let sanctum = parsed_map(
             "zone_04_ancient_ruins_03_sanctum",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx"
-            ),
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_03_sanctum.yaml"
-            ),
+            include_str!(scenario_file!(
+                "media/maps/zone_04_ancient_ruins_03_sanctum.tmx"
+            )),
+            include_str!(scenario_file!(
+                "data/maps/zone_04_ancient_ruins_03_sanctum.yaml"
+            )),
         );
-        let foothills_01_tmx = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_05_mountain_foothills_01.tmx"
-        );
-        let path = ScenarioRelativePath::try_from("assets/maps/zone_05_mountain_foothills_01.tmx")
-            .unwrap();
+        let foothills_01_tmx = include_str!(scenario_file!(
+            "media/maps/zone_05_mountain_foothills_01.tmx"
+        ));
+        let path =
+            ScenarioRelativePath::try_from("media/maps/zone_05_mountain_foothills_01.tmx").unwrap();
         let document = parse_tmx_map_document(foothills_01_tmx, &path).unwrap();
         let foothills_01_portals = runtime_portals(&document).unwrap();
         let foothills_01_metadata: MapMetadata = scenario_yaml::from_str(

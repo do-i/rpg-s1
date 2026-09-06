@@ -25,7 +25,7 @@ npcs:
     name: "Petra"
     dialogue: item_shop_millhaven
     position: [6, 3]
-    sprite: assets/sprites/npc/teen_halfmessy_01.tsx
+    sprite: media/sprites/npc/teen_halfmessy_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -35,7 +35,7 @@ npcs:
     name: "Tibbs"
     dialogue: mc_shop_intro
     position: [10, 3]
-    sprite: assets/sprites/npc/male_blond_01.tsx
+    sprite: media/sprites/npc/male_blond_01.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -45,7 +45,7 @@ npcs:
     name: Corvin
     dialogue: weapon_shop_millhaven
     position: [5, 3]
-    sprite: assets/sprites/npc/male_sword_fighter_base.tsx
+    sprite: media/sprites/npc/male_sword_fighter_base.tsx
     default_facing: down
     interaction_range: 2.5
     animation:
@@ -55,7 +55,7 @@ npcs:
     name: Maud
     dialogue: armor_shop_millhaven
     position: [12, 3]
-    sprite: assets/sprites/npc/village_female_person_headscarf_neighbor.tsx
+    sprite: media/sprites/npc/village_female_person_headscarf_neighbor.tsx
     default_facing: down
     interaction_range: 2.5
     animation:

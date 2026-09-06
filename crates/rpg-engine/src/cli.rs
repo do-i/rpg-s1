@@ -2187,11 +2187,11 @@ refs:
   balance: data/balance.yaml
   battle_backgrounds: data/battle_backgrounds.yaml
   assets: assets/
-  tmx: assets/maps/
+  tmx: media/maps/
 "#;
         fs::write(collection.join(package_key).join("manifest.yaml"), manifest)
             .expect("temporary manifest should be writable");
-        fs::create_dir_all(collection.join(package_key).join("assets/maps"))
+        fs::create_dir_all(collection.join(package_key).join("media/maps"))
             .expect("temporary empty TMX directory should be creatable");
     }
 
@@ -2234,10 +2234,10 @@ refs:
     fn map_report_renders_a_single_dialogue_refs_and_findings_line_for_a_tmx_only_map() {
         let collection = TempCollection::new("caves");
         write_manifest_only_scenario(&collection.0, "caves");
-        fs::create_dir_all(collection.0.join("caves/assets/maps"))
+        fs::create_dir_all(collection.0.join("caves/media/maps"))
             .expect("temporary tmx directory should be creatable");
         fs::write(
-            collection.0.join("caves/assets/maps/cave_only.tmx"),
+            collection.0.join("caves/media/maps/cave_only.tmx"),
             r#"<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="1" height="1" tilewidth="32" tileheight="32" infinite="0" nextlayerid="1" nextobjectid="1">
 </map>

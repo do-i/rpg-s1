@@ -199,7 +199,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0005` |
 | Source path | `rusted_kingdoms/assets/sprites/party/01_aric_walk.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_walk.png` |
 | Source SHA-256 | `bf728f9c5f37acbd8818ea3a9966cc261de90f2a0dd489866f816795d8500ef1` |
 | Destination SHA-256 | `bf728f9c5f37acbd8818ea3a9966cc261de90f2a0dd489866f816795d8500ef1` |
 | Asset kind | image |
@@ -224,7 +224,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0006` |
 | Source path | `rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_walk.tsx` |
 | Source SHA-256 | `6349f6d0253ef916fff749fe03d712736725685b807fc3c605225453e7f0654a` |
 | Destination SHA-256 | `6349f6d0253ef916fff749fe03d712736725685b807fc3c605225453e7f0654a` |
 | Asset kind | TSX |
@@ -274,7 +274,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0008` |
 | Source path | `rusted_kingdoms/assets/maps/town_01_ardel.tmx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` |
 | Source SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
 | Destination SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
 | Asset kind | TMX |
@@ -299,7 +299,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0009` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.png` |
 | Source SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
 | Destination SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
 | Asset kind | tileset image |
@@ -307,8 +307,8 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | bluecarrot16; Lanea Zimmerman (Sharm); Daniel Eddeland (Daneeklu); Richard Kettering (Jetrel); Zachariah Husiar (Zabin); Hyptosis; Casper Nilsson; Buko Studios; Nushio; ZaPaper; billknye; William Thompson; caeles; Redshrike; Bertram; Rayane Félix (RayaneFLX), as recorded by the pinned terrain credit |
 | Source/evidence | Exact pinned source file and source LFS declaration; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); pinned `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`, which identifies every component collection, creator, license choice, and OpenGameArt source URL; source README Credits and Attribution section; inspected 2026-08-10 |
 | License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`). The preserved source notice offers CC BY-SA 3.0 for every ShareAlike component and CC BY 3.0 for the two attribution-only components; CC BY-SA 3.0 is the selected distribution license for the combined atlas. |
-| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); complete local attribution at `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
-| Required attribution | Preserve the complete creator, component-title, license, and source-link record in `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`; identify the combined terrain atlas as LPC artwork distributed under CC BY-SA 3.0; keep the notice reasonably discoverable in a shipped game. |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); complete local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
+| Required attribution | Preserve the complete creator, component-title, license, and source-link record in `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`; identify the combined terrain atlas as LPC artwork distributed under CC BY-SA 3.0; keep the notice reasonably discoverable in a shipped game. |
 | Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
 | Redistribution permission | yes, conditional on attribution, the CC BY-SA 3.0 notice, and ShareAlike terms |
 | Commercial-use permission | yes, conditional on CC BY-SA 3.0 compliance |
@@ -324,7 +324,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0010` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.tsx` |
 | Source SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
 | Destination SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
 | Asset kind | TSX |
@@ -332,7 +332,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Ninja is the source import author; the credited LPC terrain contributors are the rightsholders of the referenced atlas. |
 | Source/evidence | Exact pinned source file; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); companion pinned terrain image and `CREDITS-terrain.txt`; inspected 2026-08-10 |
 | License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`) for distribution as companion metadata to the reviewed terrain atlas |
-| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); local attribution at `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
 | Required attribution | Preserve the companion terrain credit and CC BY-SA 3.0 notice with this metadata and its referenced image. |
 | Modification status/details | Unmodified: source and destination are byte-for-byte identical. The TSX retains its sibling `terrain-v7.png` reference, 32-pixel tiles, 32 columns, 2,048 tiles, and Wang metadata. |
 | Redistribution permission | yes, conditional on the companion attribution and CC BY-SA 3.0 terms |
@@ -349,7 +349,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0011` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
 | Source SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
 | Destination SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
 | Asset kind | license text |
@@ -374,7 +374,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0012` |
 | Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/grass_cave_walls_24x14.png` |
 | Source SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
 | Destination SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
 | Asset kind | tileset image |
@@ -399,7 +399,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0013` |
 | Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/grass_cave_walls_24x14.tsx` |
 | Source SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
 | Destination SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
 | Asset kind | TSX |
@@ -424,7 +424,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0014` |
 | Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/icon_table_stage_14x9.png` |
 | Source SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
 | Destination SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
 | Asset kind | tileset image |
@@ -449,7 +449,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0015` |
 | Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/icon_table_stage_14x9.tsx` |
 | Source SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
 | Destination SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
 | Asset kind | TSX |
@@ -474,7 +474,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0016` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/finestre.png` |
 | Source SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
 | Destination SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
 | Asset kind | tileset image |
@@ -499,7 +499,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0017` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/finestre.tsx` |
 | Source SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
 | Destination SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
 | Asset kind | TSX |
@@ -507,7 +507,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Ninja is the source import author; AstralPixels is the identified creator of the referenced artwork. |
 | Source/evidence | Exact pinned source file and source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; companion image `ALI-0016`; pinned `astralpixels/credit.txt`; inspected 2026-08-10 |
 | License identifier/name | unknown for the project-authored metadata; companion artwork has candidate official asset-page terms. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016` |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016` |
 | Required attribution | Preserve the companion voluntary credit while provenance is unresolved. |
 | Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, five columns, and 25 tiles. |
 | Redistribution permission | unknown |
@@ -524,7 +524,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0018` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` |
 | Source SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
 | Destination SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
 | Asset kind | attribution/source notice |
@@ -649,7 +649,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0023` |
 | Source path | `rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-Regular.ttf` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/fonts/Philosopher-Regular.ttf` |
 | Source SHA-256 | `9b9dced466f89eedbe6e9c6900e6bbcde6ad9bf3042b6e7715cd9ebed1125bd9` |
 | Destination SHA-256 | `9b9dced466f89eedbe6e9c6900e6bbcde6ad9bf3042b6e7715cd9ebed1125bd9` |
 | Asset kind | font |
@@ -657,7 +657,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | The Philosopher Project Authors, copyright 2011, as stated by the companion OFL notice. |
 | Source/evidence | Exact pinned source font and import commit `69f9dc104b1dc448b0dbf13325c34532050eb32d`; exact companion `Philosopher-OFL.txt`; inspected 2026-08-10 |
 | License identifier/name | SIL Open Font License 1.1 (`OFL-1.1`) |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/credits/Philosopher-OFL.txt` |
 | Required attribution | Distribute the copyright notice and OFL-1.1 license with the font; do not sell the font by itself or use a Reserved Font Name for a modified version without permission. |
 | Modification status/details | Unmodified: source and destination are byte-for-byte identical. The scenario-scoped copy is intentional because the manifest resolves fonts relative to its package root. |
 | Redistribution permission | yes, conditional on OFL-1.1 |
@@ -674,7 +674,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0024` |
 | Source path | `rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/fonts/Philosopher-OFL.txt` |
+| Destination path | `assets/scenarios/rusted_kingdoms/credits/Philosopher-OFL.txt` |
 | Source SHA-256 | `a812c3a94bd45b79bb8eb94a349f72a66b859f08dbdbb49777e9e9e81b8c9575` |
 | Destination SHA-256 | `a812c3a94bd45b79bb8eb94a349f72a66b859f08dbdbb49777e9e9e81b8c9575` |
 | Asset kind | license text |
@@ -749,7 +749,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0027` |
 | Source path | `rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Whiteveil_Streets.mp3` |
 | Source SHA-256 | `1c2411d98b665d011b216c8f96c6ceb4321892afd25a4a355c526f9245ef3584` |
 | Destination SHA-256 | `1c2411d98b665d011b216c8f96c6ceb4321892afd25a4a355c526f9245ef3584` |
 | Asset kind | audio |
@@ -774,7 +774,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0028` |
 | Source path | `rusted_kingdoms/assets/audio/README-audio.md` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/README-audio.md` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` |
 | Source SHA-256 | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` |
 | Destination SHA-256 | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` |
 | Asset kind | provenance record |
@@ -799,7 +799,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0029` |
 | Source path | `rusted_kingdoms/assets/audio/bgm/Storming_the_Citadel.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Storming_the_Citadel.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Storming_the_Citadel.mp3` |
 | Source SHA-256 | `d9e1b4d0147ecec36af88c8fda49fccad6c52a452d243af9b607872b7fed7761` |
 | Destination SHA-256 | `d9e1b4d0147ecec36af88c8fda49fccad6c52a452d243af9b607872b7fed7761` |
 | Asset kind | audio |
@@ -824,7 +824,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0030` |
 | Source path | `rusted_kingdoms/assets/audio/sfx/CREDIT` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT` |
 | Source SHA-256 | `69fa0da996ecd8f098f35b087f570a06e84d3723e5c5c5b80d1223544800dae0` |
 | Destination SHA-256 | `69fa0da996ecd8f098f35b087f570a06e84d3723e5c5c5b80d1223544800dae0` |
 | Asset kind | attribution notice |
@@ -849,7 +849,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0031` |
 | Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/013_Confirm_03.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/sfx/ui_menu/013_Confirm_03.mp3` |
 | Source SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
 | Destination SHA-256 | `81aabb9231ec1c3e2e2459f82bfc9878edfa7713890e6b4161e4ebba4d708c31` |
 | Asset kind | audio |
@@ -857,7 +857,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
 | Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
 | License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
 | Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -874,7 +874,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0032` |
 | Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/029_Decline_09.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/029_Decline_09.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/sfx/ui_menu/029_Decline_09.mp3` |
 | Source SHA-256 | `2aec75f16066739d5784eb6e5cdbff881899b89e76b18085797978c706a1b9dc` |
 | Destination SHA-256 | `2aec75f16066739d5784eb6e5cdbff881899b89e76b18085797978c706a1b9dc` |
 | Asset kind | audio |
@@ -882,7 +882,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
 | Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
 | License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
 | Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -899,7 +899,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0033` |
 | Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/033_Denied_03.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/033_Denied_03.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/sfx/ui_menu/033_Denied_03.mp3` |
 | Source SHA-256 | `0e10087d9bacf942fdb66ee0cb3fec88401208e55e6f67a2e41c21724e21bf2d` |
 | Destination SHA-256 | `0e10087d9bacf942fdb66ee0cb3fec88401208e55e6f67a2e41c21724e21bf2d` |
 | Asset kind | audio |
@@ -907,7 +907,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
 | Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
 | License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
 | Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -924,7 +924,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0034` |
 | Source path | `rusted_kingdoms/assets/audio/sfx/ui_menu/051_use_item_01.mp3` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/051_use_item_01.mp3` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/audio/sfx/ui_menu/051_use_item_01.mp3` |
 | Source SHA-256 | `647c787d41bcdd38a31fb40b557f221f95015fe2cf68fc4ec679184dd3c500fd` |
 | Destination SHA-256 | `647c787d41bcdd38a31fb40b557f221f95015fe2cf68fc4ec679184dd3c500fd` |
 | Asset kind | audio |
@@ -932,7 +932,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Leohpaz is identified as creator by the pinned SFX credit; exact-file acquisition is not independently proven. |
 | Source/evidence | Exact pinned source file and LFS object; import commit `33261e5133f7b0d6614ed1e6b799ee7c7a1a926c`; pinned SFX credit and candidate official pack terms recorded by `ALI-0003` and `ALI-0004`; inspected 2026-08-10. |
 | License identifier/name | Stated itch.io pack terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`; candidate store terms are recorded by `ALI-0003`. |
 | Required attribution | Retain voluntary credit `Sound effect created by Leohpaz — https://leohpaz.itch.io` if later approved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -949,7 +949,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0035` |
 | Source path | `rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` |
 | Source SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
 | Destination SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
 | Asset kind | Tiled map |
@@ -974,7 +974,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0036` |
 | Source path | `rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/maps/zone_01_starting_forest.tmx` |
 | Source SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
 | Destination SHA-256 | `eff9b31c2da8e8a1703dc90a3acbe604d392643d1d58d120f193e78c3b340f12` |
 | Asset kind | Tiled map |
@@ -999,7 +999,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0037` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/knight_01.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/knight_01.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/knight_01.png` |
 | Source SHA-256 | `6369914f762d144ee58b5335fee83216a12fc2ff8bc60df2551adf9b7ae647e6` |
 | Destination SHA-256 | `6369914f762d144ee58b5335fee83216a12fc2ff8bc60df2551adf9b7ae647e6` |
 | Asset kind | image |
@@ -1024,7 +1024,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0038` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/knight_01.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/knight_01.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/knight_01.tsx` |
 | Source SHA-256 | `7c74a85552fa791256c08dc44e0e8a5d232da5c88d05352080bad3e9d77da90c` |
 | Destination SHA-256 | `7c74a85552fa791256c08dc44e0e8a5d232da5c88d05352080bad3e9d77da90c` |
 | Asset kind | Tiled TSX metadata |
@@ -1049,7 +1049,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0039` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/male_old_02.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_old_02.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/male_old_02.png` |
 | Source SHA-256 | `d454f4a3e85f34a9b1cde126965bf433e0dba8a41423e5f48f4bc8920581fee0` |
 | Destination SHA-256 | `d454f4a3e85f34a9b1cde126965bf433e0dba8a41423e5f48f4bc8920581fee0` |
 | Asset kind | image |
@@ -1074,7 +1074,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0040` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/male_old_02.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_old_02.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/male_old_02.tsx` |
 | Source SHA-256 | `4e2b4285ffced6b53d32e8b1050e24a963151f3664a8c574778359957a0ba61b` |
 | Destination SHA-256 | `4e2b4285ffced6b53d32e8b1050e24a963151f3664a8c574778359957a0ba61b` |
 | Asset kind | Tiled TSX metadata |
@@ -1099,7 +1099,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0041` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/male_sword_fighter_axe_fighter.png` |
 | Source SHA-256 | `bede99be95ba589244f21539ed4ea1ec1e7353fe9e0bcc9c2214a79d09caec1d` |
 | Destination SHA-256 | `bede99be95ba589244f21539ed4ea1ec1e7353fe9e0bcc9c2214a79d09caec1d` |
 | Asset kind | image |
@@ -1124,7 +1124,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0042` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/male_sword_fighter_axe_fighter.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/male_sword_fighter_axe_fighter.tsx` |
 | Source SHA-256 | `41d6594e437433d6e5df6c5f8303304b1d8cc8d06210d9b6909f4b9d63469312` |
 | Destination SHA-256 | `41d6594e437433d6e5df6c5f8303304b1d8cc8d06210d9b6909f4b9d63469312` |
 | Asset kind | Tiled TSX metadata |
@@ -1149,7 +1149,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0043` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/teen_halfmessy_01.png` |
 | Source SHA-256 | `72afc55330c9ffc6a3e936035cfb87523eafc2461ab759d02873eff662f7d6ec` |
 | Destination SHA-256 | `72afc55330c9ffc6a3e936035cfb87523eafc2461ab759d02873eff662f7d6ec` |
 | Asset kind | image |
@@ -1174,7 +1174,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0044` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_halfmessy_01.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/teen_halfmessy_01.tsx` |
 | Source SHA-256 | `52116e9c6c5eec8d4d73c546517a36778ba966cb4854d96f1a828b2ccbdb80bd` |
 | Destination SHA-256 | `52116e9c6c5eec8d4d73c546517a36778ba966cb4854d96f1a828b2ccbdb80bd` |
 | Asset kind | Tiled TSX metadata |
@@ -1199,7 +1199,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0045` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/teen_wiz_01.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_wiz_01.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/teen_wiz_01.png` |
 | Source SHA-256 | `5ad63590c3a76b022cf586c041d28c3099b1f7d842a6f6d314f74a75a79d32cd` |
 | Destination SHA-256 | `5ad63590c3a76b022cf586c041d28c3099b1f7d842a6f6d314f74a75a79d32cd` |
 | Asset kind | image |
@@ -1224,7 +1224,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0046` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/teen_wiz_01.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/teen_wiz_01.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/teen_wiz_01.tsx` |
 | Source SHA-256 | `4ba455e94a22b5d25a1539f3397cb16025d3b5925993c6a3e27a4c8fbbc84879` |
 | Destination SHA-256 | `4ba455e94a22b5d25a1539f3397cb16025d3b5925993c6a3e27a4c8fbbc84879` |
 | Asset kind | Tiled TSX metadata |
@@ -1249,7 +1249,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0047` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/village_female_person_basket_carrier.png` |
 | Source SHA-256 | `f73f271a7aec85a7550e42a26e7a4dd61099500f7c3032f21c73076dcb1167a9` |
 | Destination SHA-256 | `f73f271a7aec85a7550e42a26e7a4dd61099500f7c3032f21c73076dcb1167a9` |
 | Asset kind | image |
@@ -1274,7 +1274,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0048` |
 | Source path | `rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/npc/village_female_person_basket_carrier.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/npc/village_female_person_basket_carrier.tsx` |
 | Source SHA-256 | `2718f2e22fbc223cd9de7a22ddf0672c31acf320fbabe80811a6aef978f4d3a3` |
 | Destination SHA-256 | `2718f2e22fbc223cd9de7a22ddf0672c31acf320fbabe80811a6aef978f4d3a3` |
 | Asset kind | Tiled TSX metadata |
@@ -1299,7 +1299,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0049` |
 | Source path | `rusted_kingdoms/assets/sprites/objects/item_box.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/objects/item_box.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/objects/item_box.png` |
 | Source SHA-256 | `b2e0c5bb594fcf9ff8fe427922fe22aaf4b4ac85928a84be1d032040beb31ca1` |
 | Destination SHA-256 | `b2e0c5bb594fcf9ff8fe427922fe22aaf4b4ac85928a84be1d032040beb31ca1` |
 | Asset kind | image |
@@ -1324,7 +1324,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0050` |
 | Source path | `rusted_kingdoms/assets/sprites/objects/item_box.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/objects/item_box.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/objects/item_box.tsx` |
 | Source SHA-256 | `d038d160a110c8e1ceeb4a0909775bde713c4777dffffcd265a454dd43077ed5` |
 | Destination SHA-256 | `d038d160a110c8e1ceeb4a0909775bde713c4777dffffcd265a454dd43077ed5` |
 | Asset kind | Tiled TSX metadata |
@@ -1349,7 +1349,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0051` |
 | Source path | `rusted_kingdoms/assets/sprites/party/02_elise_walk.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/party/02_elise_walk.png` |
 | Source SHA-256 | `d54dab0913dd5a31714aa0ffea31dd95c19cf65124f4be5263d69a3cacefef9c` |
 | Destination SHA-256 | `d54dab0913dd5a31714aa0ffea31dd95c19cf65124f4be5263d69a3cacefef9c` |
 | Asset kind | image |
@@ -1374,7 +1374,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0052` |
 | Source path | `rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/sprites/party/02_elise_walk.tsx` |
 | Source SHA-256 | `c70c101ff81ac9bec876037f278704f830908787028b32e768dfc5a0afa0d0d4` |
 | Destination SHA-256 | `c70c101ff81ac9bec876037f278704f830908787028b32e768dfc5a0afa0d0d4` |
 | Asset kind | Tiled TSX metadata |
@@ -1399,7 +1399,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0053` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/altro.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/altro.png` |
 | Source SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
 | Destination SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
 | Asset kind | image |
@@ -1407,7 +1407,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1424,7 +1424,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0054` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/altro.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/altro.tsx` |
 | Source SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
 | Destination SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
 | Asset kind | Tiled TSX metadata |
@@ -1432,7 +1432,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1449,7 +1449,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0055` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/cucina.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/cucina.png` |
 | Source SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
 | Destination SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
 | Asset kind | image |
@@ -1457,7 +1457,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1474,7 +1474,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0056` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/cucina.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/cucina.tsx` |
 | Source SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
 | Destination SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
 | Asset kind | Tiled TSX metadata |
@@ -1482,7 +1482,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1499,7 +1499,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0057` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mensole.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mensole.png` |
 | Source SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
 | Destination SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
 | Asset kind | image |
@@ -1507,7 +1507,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1524,7 +1524,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0058` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mensole.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mensole.tsx` |
 | Source SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
 | Destination SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
 | Asset kind | Tiled TSX metadata |
@@ -1532,7 +1532,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1549,7 +1549,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0059` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mobili.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mobili.png` |
 | Source SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
 | Destination SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
 | Asset kind | image |
@@ -1557,7 +1557,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1574,7 +1574,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0060` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/mobili.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mobili.tsx` |
 | Source SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
 | Destination SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
 | Asset kind | Tiled TSX metadata |
@@ -1582,7 +1582,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1599,7 +1599,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0061` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/muro_tileset.png` |
 | Source SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
 | Destination SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
 | Asset kind | image |
@@ -1607,7 +1607,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1624,7 +1624,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0062` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/muro_tileset_wall.tsx` |
 | Source SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
 | Destination SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
 | Asset kind | Tiled TSX metadata |
@@ -1632,7 +1632,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1649,7 +1649,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0063` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/scale.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/scale.png` |
 | Source SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
 | Destination SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
 | Asset kind | image |
@@ -1657,7 +1657,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1674,7 +1674,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0064` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/scale.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/scale.tsx` |
 | Source SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
 | Destination SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
 | Asset kind | Tiled TSX metadata |
@@ -1682,7 +1682,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1699,7 +1699,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0065` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/terreno.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/terreno.png` |
 | Source SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
 | Destination SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
 | Asset kind | image |
@@ -1707,7 +1707,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1724,7 +1724,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0066` |
 | Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/terreno.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/terreno.tsx` |
 | Source SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
 | Destination SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
 | Asset kind | Tiled TSX metadata |
@@ -1732,7 +1732,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
 | Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
 | License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
+| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
 | Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
 | Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
 | Redistribution permission | unknown |
@@ -1749,7 +1749,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0067` |
 | Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/stone_tile_stares_16x16.png` |
 | Source SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
 | Destination SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
 | Asset kind | image |
@@ -1774,7 +1774,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0068` |
 | Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/stone_tile_stares_16x16.tsx` |
 | Source SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
 | Destination SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
 | Asset kind | Tiled TSX metadata |
@@ -2205,7 +2205,7 @@ for M6. Each row is a distinct ledger entry. Shared review fields for every row:
 | ALI-0099 | `rusted_kingdoms/data/items/materials.yaml` | `assets/scenarios/rusted_kingdoms/data/items/materials.yaml` | `f2075beb9f90e328aa8665023c471ac09c1f063cb96da5e077cec4dc813a0423` | scenario YAML / materials |
 | ALI-0100 | `rusted_kingdoms/data/items/shields.yaml` | `assets/scenarios/rusted_kingdoms/data/items/shields.yaml` | `91a30788b08956721faee27ee7e573938d2f930a3dfad2063245f0ea9591672c` | scenario YAML / shields |
 | ALI-0101 | `rusted_kingdoms/data/items/weapons.yaml` | `assets/scenarios/rusted_kingdoms/data/items/weapons.yaml` | `1ae20ab1b6a6d75c13d0aa30032c05c6c73f88f6cea1a70ed6304c707b13e063` | scenario YAML / weapons |
-| ALI-0102 | `rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `9eee6b2ff027e44069abe52de82d6195a3e56d8ee0c2baa373be0a18b5c38f3c` | image / field-menu backdrop |
+| ALI-0102 | `rusted_kingdoms/assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone4-sanctum-bg-1280x468.webp` | `9eee6b2ff027e44069abe52de82d6195a3e56d8ee0c2baa373be0a18b5c38f3c` | image / field-menu backdrop |
 
 Target-authored Milestone 12 compatibility data (not copied third-party
 content):
@@ -2244,22 +2244,22 @@ unless a more specific fact is recorded below:
 | ALI-0110 | `rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `62d198d2c9b04d00b785d004d4c93b25468136f189ce966cf672a5adc17b1da2` | scenario YAML / rank E enemies |
 | ALI-0111 | `rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `09d277f1d69e1cde6dfc27d693bf729fccc063087b2c902f588e42be4b65c483` | scenario YAML / rank F enemies |
 | ALI-0112 | `rusted_kingdoms/data/battle_backgrounds.yaml` | `assets/scenarios/rusted_kingdoms/data/battle_backgrounds.yaml` | `483aa5150c74fc5c3acc060b4a7622d012ad1018e6407c346bad186e564ffdee` | scenario YAML / battle-background catalog |
-| ALI-0113 | `rusted_kingdoms/assets/images/battle_bg/zone1-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/assets/images/battle_bg/zone1-bg-1280x468.webp` | `b388cb588279b1e6bcdcafd18b850dc8f9baefc383c84dc5ea00a905c35bc80e` | image / zone-one battle background |
-| ALI-0114 | `rusted_kingdoms/assets/audio/bgm/Pixelated_Crusade.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Pixelated_Crusade.mp3` | `6a6c1d757c052e0b23720b5b7f0ca7255265ab74c3d216fee93d5e7f0ef109e4` | audio / normal battle BGM |
-| ALI-0115 | `rusted_kingdoms/assets/audio/bgm/Crimson_Storm_s_Echo.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/bgm/Crimson_Storm_s_Echo.mp3` | `ecccf83691b31031aaa47dc6ad9ed505d1cf382d0a38caf81824ac14e73d2fd6` | audio / boss battle BGM |
-| ALI-0116 | `rusted_kingdoms/assets/audio/sfx/battle/55_Encounter_02.mp3` | `assets/scenarios/rusted_kingdoms/assets/audio/sfx/battle/55_Encounter_02.mp3` | `8d6f7e5b52ba81b82e08d10c97fa24e58fa445fef79e24ad88eaecdd619625bd` | audio / encounter SFX |
-| ALI-0117 | `rusted_kingdoms/assets/sprites/enemies/goblin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin.png` | `13a7183f5d5372d5f2ed7db2b2d511feee68af070dd9c6178c964511c21c6f14` | image / Goblin world sprite |
-| ALI-0118 | `rusted_kingdoms/assets/sprites/enemies/goblin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin.tsx` | `7fde2ca3abc890679e901089afa359ded6ca2bcae30135a8247b04c53a1f8303` | Tiled TSX / Goblin world sprite |
-| ALI-0119 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.png` | `590b5b2d6890087e092ad29616f6917ff07773bdca56e4fa8045bf265cd0f40b` | image / Goblin Scout world sprite |
-| ALI-0120 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.tsx` | `c291515bc5d0a4e104a048375d040cbf3ee2a38967ff73aa5c38e4c82fdd5039` | Tiled TSX / Goblin Scout world sprite |
-| ALI-0121 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.png` | `8f3fa3e878c35a23728122621d83d0941338ff35d75442296454036272fc5953` | image / Hooded Goblin world sprite |
-| ALI-0122 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `29e14c2d53ff71d0576ac475d923414c1cf15db7646610da481d2f2caa953649` | Tiled TSX / Hooded Goblin world sprite |
-| ALI-0123 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.png` | `c7010905c160222b0ad571528a50095c8f0b0e5d762fdf29a175c4dbb228293c` | image / Sling Scout world sprite |
-| ALI-0124 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.tsx` | `e4778f7bb41264d35830badaf06e4b75bcd25e35e41e795968c9c472bb08ff65` | Tiled TSX / Sling Scout world sprite |
-| ALI-0125 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_warrior.png` | `c4d573e3aba47317471d954d77616e4d64726dc2549cf3ff678e0e9f72d575b0` | image / Goblin Warrior world sprite |
-| ALI-0126 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/goblin_warrior.tsx` | `80c1a9800368465335f1ae30b814512c21dd76beb0082c7da3653f37e485c64d` | Tiled TSX / Goblin Warrior world sprite |
-| ALI-0127 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.png` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/grik_the_grin.png` | `8fc2dc90937967a824d0a18552d05cf987e388d6da6ff0c2f47bf757db17bdf0` | image / Grik the Grin boss sprite |
-| ALI-0128 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.tsx` | `assets/scenarios/rusted_kingdoms/assets/sprites/enemies/grik_the_grin.tsx` | `b6540c7deb52b649ea3863fa47d497807a528f1f9b552a7a6639e3e54cb9fe65` | Tiled TSX / Grik the Grin boss sprite |
+| ALI-0113 | `rusted_kingdoms/assets/images/battle_bg/zone1-bg-1280x468.webp` | `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone1-bg-1280x468.webp` | `b388cb588279b1e6bcdcafd18b850dc8f9baefc383c84dc5ea00a905c35bc80e` | image / zone-one battle background |
+| ALI-0114 | `rusted_kingdoms/assets/audio/bgm/Pixelated_Crusade.mp3` | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Pixelated_Crusade.mp3` | `6a6c1d757c052e0b23720b5b7f0ca7255265ab74c3d216fee93d5e7f0ef109e4` | audio / normal battle BGM |
+| ALI-0115 | `rusted_kingdoms/assets/audio/bgm/Crimson_Storm_s_Echo.mp3` | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Crimson_Storm_s_Echo.mp3` | `ecccf83691b31031aaa47dc6ad9ed505d1cf382d0a38caf81824ac14e73d2fd6` | audio / boss battle BGM |
+| ALI-0116 | `rusted_kingdoms/assets/audio/sfx/battle/55_Encounter_02.mp3` | `assets/scenarios/rusted_kingdoms/media/audio/sfx/battle/55_Encounter_02.mp3` | `8d6f7e5b52ba81b82e08d10c97fa24e58fa445fef79e24ad88eaecdd619625bd` | audio / encounter SFX |
+| ALI-0117 | `rusted_kingdoms/assets/sprites/enemies/goblin.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin.png` | `13a7183f5d5372d5f2ed7db2b2d511feee68af070dd9c6178c964511c21c6f14` | image / Goblin world sprite |
+| ALI-0118 | `rusted_kingdoms/assets/sprites/enemies/goblin.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin.tsx` | `7fde2ca3abc890679e901089afa359ded6ca2bcae30135a8247b04c53a1f8303` | Tiled TSX / Goblin world sprite |
+| ALI-0119 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_base.png` | `590b5b2d6890087e092ad29616f6917ff07773bdca56e4fa8045bf265cd0f40b` | image / Goblin Scout world sprite |
+| ALI-0120 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_base.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_base.tsx` | `c291515bc5d0a4e104a048375d040cbf3ee2a38967ff73aa5c38e4c82fdd5039` | Tiled TSX / Goblin Scout world sprite |
+| ALI-0121 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_hooded_goblin.png` | `8f3fa3e878c35a23728122621d83d0941338ff35d75442296454036272fc5953` | image / Hooded Goblin world sprite |
+| ALI-0122 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_hooded_goblin.tsx` | `29e14c2d53ff71d0576ac475d923414c1cf15db7646610da481d2f2caa953649` | Tiled TSX / Hooded Goblin world sprite |
+| ALI-0123 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_sling_scout.png` | `c7010905c160222b0ad571528a50095c8f0b0e5d762fdf29a175c4dbb228293c` | image / Sling Scout world sprite |
+| ALI-0124 | `rusted_kingdoms/assets/sprites/enemies/goblin_scout_sling_scout.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_scout_sling_scout.tsx` | `e4778f7bb41264d35830badaf06e4b75bcd25e35e41e795968c9c472bb08ff65` | Tiled TSX / Sling Scout world sprite |
+| ALI-0125 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_warrior.png` | `c4d573e3aba47317471d954d77616e4d64726dc2549cf3ff678e0e9f72d575b0` | image / Goblin Warrior world sprite |
+| ALI-0126 | `rusted_kingdoms/assets/sprites/enemies/goblin_warrior.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/goblin_warrior.tsx` | `80c1a9800368465335f1ae30b814512c21dd76beb0082c7da3653f37e485c64d` | Tiled TSX / Goblin Warrior world sprite |
+| ALI-0127 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/grik_the_grin.png` | `8fc2dc90937967a824d0a18552d05cf987e388d6da6ff0c2f47bf757db17bdf0` | image / Grik the Grin boss sprite |
+| ALI-0128 | `rusted_kingdoms/assets/sprites/enemies/grik_the_grin.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/grik_the_grin.tsx` | `b6540c7deb52b649ea3863fa47d497807a528f1f9b552a7a6639e3e54cb9fe65` | Tiled TSX / Grik the Grin boss sprite |
 
 Additional evidence boundaries:
 
@@ -2283,7 +2283,7 @@ Additional evidence boundaries:
 | --- | --- |
 | Stable entry ID | `ALI-0129` |
 | Source path | not-applicable — generated directly for B4.1; no pre-existing source asset was copied |
-| Destination path | `assets/scenarios/rusted_kingdoms/assets/images/ui/ember_atlas.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/images/ui/ember_atlas.png` |
 | Source SHA-256 | `fedc104155fd24406064ef471417fbaf828070c968f8d6d83fa6d481a54aa659` |
 | Destination SHA-256 | `fedc104155fd24406064ef471417fbaf828070c968f8d6d83fa6d481a54aa659` |
 | Asset kind | image |

@@ -3,7 +3,7 @@
 //! The pinned Rusted Kingdoms scenario keeps its two indexes at
 //! `data/audio/bgm_index.yaml` and `data/audio/sfx_index.yaml`. Both are mapping-root
 //! documents whose category and event names are authored strings and whose values are paths
-//! relative to the scenario's `assets/audio` directory. This module validates and resolves that
+//! relative to the scenario's `media/audio` directory. This module validates and resolves that
 //! data only; audio playback, Bevy loading, volume, looping, and existence checks remain in
 //! later tasks.
 
@@ -17,7 +17,7 @@ pub const BGM_INDEX_PATH: &str = "data/audio/bgm_index.yaml";
 /// Scenario-relative location of the sound-effect index.
 pub const SFX_INDEX_PATH: &str = "data/audio/sfx_index.yaml";
 /// Base directory for the paths contained by both source index files.
-pub const AUDIO_ASSET_ROOT: &str = "assets/audio";
+pub const AUDIO_ASSET_ROOT: &str = "media/audio";
 
 /// A lossless category-indexed BGM catalog.
 ///
@@ -126,7 +126,7 @@ impl SfxIndex {
     }
 }
 
-/// Resolves one index value beneath `assets/audio` and the active scenario package.
+/// Resolves one index value beneath `media/audio` and the active scenario package.
 pub fn resolve_audio_path(
     root: &ScenarioRoot,
     audio_relative_path: &ScenarioRelativePath,
@@ -259,7 +259,7 @@ mod tests {
         );
         assert_eq!(
             bgm.resolve_key(&root, "battle.normal"),
-            Some("scenarios/rusted_kingdoms/assets/audio/bgm/Invented_March.mp3".to_owned())
+            Some(scenario_asset!("media/audio/bgm/Invented_March.mp3").to_owned())
         );
         assert_eq!(sfx.categories.len(), 2);
         assert_eq!(
@@ -268,7 +268,7 @@ mod tests {
         );
         assert_eq!(
             sfx.resolve_key(&root, "confirm"),
-            Some("scenarios/rusted_kingdoms/assets/audio/sfx/ui/confirm.mp3".to_owned())
+            Some(scenario_asset!("media/audio/sfx/ui/confirm.mp3").to_owned())
         );
         assert_eq!(bgm.resolve_key(&root, "battle"), None);
         assert_eq!(bgm.resolve_key(&root, "battle.unknown"), None);
@@ -432,13 +432,11 @@ mod tests {
         );
         assert_eq!(
             bgm.resolve_key(&scenario_root, "town.default"),
-            Some("scenarios/rusted_kingdoms/assets/audio/bgm/Whiteveil_Streets.mp3".to_owned())
+            Some(scenario_asset!("media/audio/bgm/Whiteveil_Streets.mp3").to_owned())
         );
         assert_eq!(
             sfx.resolve_key(&scenario_root, "use_item"),
-            Some(
-                "scenarios/rusted_kingdoms/assets/audio/sfx/ui_menu/051_use_item_01.mp3".to_owned()
-            )
+            Some(scenario_asset!("media/audio/sfx/ui_menu/051_use_item_01.mp3").to_owned())
         );
     }
 }

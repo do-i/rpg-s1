@@ -12,5 +12,5 @@ npcs:
     name: "The Ashen Warden"
     position: [9, 5]
     dialogue: hearth_threshold
-    sprite: assets/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/knight_01.tsx
     default_facing: down

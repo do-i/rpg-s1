@@ -1,5 +1,10 @@
 //! Generic scenario-package primitives shared by the game runtime and content tools.
 
+// Declared before every other module so `scenario_asset!` is textually in scope for their tests.
+#[cfg(test)]
+#[macro_use]
+mod test_support;
+
 pub mod engine_config;
 pub mod manifest_path_validation;
 pub mod scenario_audio;

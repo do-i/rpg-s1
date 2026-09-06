@@ -1933,7 +1933,7 @@ mod tests {
     }
 
     fn invented_path() -> ScenarioRelativePath {
-        ScenarioRelativePath::try_from("assets/maps/region/invented.tmx").unwrap()
+        ScenarioRelativePath::try_from("media/maps/region/invented.tmx").unwrap()
     }
 
     fn invented_tileset_metadata(tile_count: u32) -> TsxTilesetMetadata {
@@ -1942,7 +1942,7 @@ mod tests {
         );
         parse_tsx_tileset_metadata(
             &xml,
-            &ScenarioRelativePath::try_from("assets/tilesets/invented.tsx").unwrap(),
+            &ScenarioRelativePath::try_from("media/tilesets/invented.tsx").unwrap(),
         )
         .unwrap()
     }
@@ -2028,12 +2028,12 @@ mod tests {
         for (raw_gid, expected_source, expected_local_id) in [
             (
                 TILED_HORIZONTAL_FLIP_FLAG | 1,
-                "assets/tilesets/ground.tsx",
+                "media/tilesets/ground.tsx",
                 0,
             ),
-            (3, "assets/tilesets/ground.tsx", 2),
-            (4, "assets/tilesets/walls.tsx", 0),
-            (5, "assets/tilesets/walls.tsx", 1),
+            (3, "media/tilesets/ground.tsx", 2),
+            (4, "media/tilesets/walls.tsx", 0),
+            (5, "media/tilesets/walls.tsx", 1),
         ] {
             let gid = TmxTileGid::decode_orthogonal(raw_gid).unwrap();
             let resolved = ranges.resolve(gid).unwrap().unwrap();
@@ -2237,12 +2237,12 @@ mod tests {
         assert_eq!(document.external_tilesets()[0].first_gid(), 1);
         assert_eq!(
             document.external_tilesets()[0].source().as_str(),
-            "assets/tilesets/ground.tsx"
+            "media/tilesets/ground.tsx"
         );
         assert_eq!(document.external_tilesets()[1].first_gid(), 257);
         assert_eq!(
             document.external_tilesets()[1].source().as_str(),
-            "assets/maps/tilesets/walls.tsx"
+            "media/maps/tilesets/walls.tsx"
         );
         assert!(document.tile_layers().is_empty());
         assert_eq!(document.object_groups().len(), 1);
@@ -2779,7 +2779,7 @@ mod tests {
             );
         }
 
-        let wrong_owner = ScenarioRelativePath::try_from("assets/maps/invented.xml").unwrap();
+        let wrong_owner = ScenarioRelativePath::try_from("media/maps/invented.xml").unwrap();
         let error = parse_tmx_map_document(&invented_document(""), &wrong_owner).unwrap_err();
         assert_eq!(
             error.detail,

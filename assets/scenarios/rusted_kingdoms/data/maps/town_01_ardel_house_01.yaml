@@ -7,7 +7,7 @@ npcs:
     name: "Elder Maeve"
     dialogue: elder_intro
     position: [11, 4]
-    sprite: assets/sprites/npc/male_old_02.tsx
+    sprite: media/sprites/npc/male_old_02.tsx
     default_facing: up
     animation:
       mode: wander

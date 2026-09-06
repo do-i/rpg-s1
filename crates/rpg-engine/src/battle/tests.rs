@@ -119,11 +119,11 @@ print(f"REWARD exp={rewards.total_exp} awards={awards} loot={','.join(sorted(loo
 
 fn ability(id: &str) -> Ability {
     [
-        include_str!("../../../../assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml"),
-        include_str!("../../../../assets/scenarios/rusted_kingdoms/data/classes/hero.yaml"),
-        include_str!("../../../../assets/scenarios/rusted_kingdoms/data/classes/rogue.yaml"),
-        include_str!("../../../../assets/scenarios/rusted_kingdoms/data/classes/sorcerer.yaml"),
-        include_str!("../../../../assets/scenarios/rusted_kingdoms/data/classes/warrior.yaml"),
+        include_str!(scenario_file!("data/classes/cleric.yaml")),
+        include_str!(scenario_file!("data/classes/hero.yaml")),
+        include_str!(scenario_file!("data/classes/rogue.yaml")),
+        include_str!(scenario_file!("data/classes/sorcerer.yaml")),
+        include_str!(scenario_file!("data/classes/warrior.yaml")),
     ]
     .into_iter()
     .map(|document| scenario_yaml::from_str::<ClassDefinition>(document).unwrap())
@@ -141,9 +141,9 @@ fn enemy_behavior(document: &str) -> EnemyBehavior {
 }
 
 fn first_zone_enemy_behavior(id: &str) -> EnemyBehavior {
-    EnemyCatalogFile::from_yaml_stream(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml"
-    ))
+    EnemyCatalogFile::from_yaml_stream(include_str!(scenario_file!(
+        "data/enemies/enemies_rank_8_F.yaml"
+    )))
     .unwrap()
     .0
     .into_iter()
@@ -154,15 +154,9 @@ fn first_zone_enemy_behavior(id: &str) -> EnemyBehavior {
 
 fn consumable(id: &str) -> ConsumableItem {
     [
-        include_str!(
-            "../../../../assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml"
-        ),
-        include_str!(
-            "../../../../assets/scenarios/rusted_kingdoms/data/items/consumables_status_cure.yaml"
-        ),
-        include_str!(
-            "../../../../assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml"
-        ),
+        include_str!(scenario_file!("data/items/consumables_recovery.yaml")),
+        include_str!(scenario_file!("data/items/consumables_status_cure.yaml")),
+        include_str!(scenario_file!("data/items/consumables_battle_throw.yaml")),
     ]
     .into_iter()
     .map(|document| scenario_yaml::from_str::<ItemCatalogFile>(document).unwrap())
@@ -175,18 +169,12 @@ fn consumable(id: &str) -> ConsumableItem {
 }
 
 fn reward_game() -> (GameState, BalanceData) {
-    let manifest: Manifest = scenario_yaml::from_str(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/manifest.yaml"
-    ))
-    .unwrap();
-    let party: PartyCatalog = scenario_yaml::from_str(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-    ))
-    .unwrap();
-    let balance: BalanceData = scenario_yaml::from_str(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-    ))
-    .unwrap();
+    let manifest: Manifest =
+        scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+    let party: PartyCatalog =
+        scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+    let balance: BalanceData =
+        scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
     let game = build_new_game_state(
         NewGameScenario {
             manifest: &manifest,
@@ -201,9 +189,9 @@ fn reward_game() -> (GameState, BalanceData) {
 }
 
 fn reward_enemy(id: &str, index: usize) -> BattleCombatant {
-    let definition = EnemyCatalogFile::from_yaml_stream(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml"
-    ))
+    let definition = EnemyCatalogFile::from_yaml_stream(include_str!(scenario_file!(
+        "data/enemies/enemies_rank_8_F.yaml"
+    )))
     .unwrap()
     .0
     .into_iter()
@@ -687,9 +675,9 @@ fn sleep_wakes_on_damage_stun_skips_and_silence_hides_abilities() {
 /// is renamed there, the mapping in `enemy_ai` goes dead again and this fails.
 #[test]
 fn troll_shaman_charm_sleeps_its_target_and_allure_rolls_per_target() {
-    let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/data/enemies/boss_move_sets/troll_shaman_base.yaml"
-    ))
+    let move_set: BossMoveSet = scenario_yaml::from_str(include_str!(scenario_file!(
+        "data/enemies/boss_move_sets/troll_shaman_base.yaml"
+    )))
     .unwrap();
     let abilities = move_set
         .ai

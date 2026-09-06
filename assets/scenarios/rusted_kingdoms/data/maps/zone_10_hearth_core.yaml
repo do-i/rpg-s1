@@ -12,7 +12,7 @@ npcs:
     name: "The Hearth"
     position: [9, 4]
     dialogue: hearth_final_choice
-    sprite: assets/sprites/npc/female_wiz_01.tsx
+    sprite: media/sprites/npc/female_wiz_01.tsx
     default_facing: down
     present:
       requires: [boss_hearth_core_defeated]

@@ -1,3 +1,8 @@
+// Declared before every other module so `scenario_file!` is textually in scope for their tests.
+#[cfg(test)]
+#[macro_use]
+mod test_support;
+
 mod action_input;
 pub mod app_state;
 mod autosave;
@@ -75,9 +80,6 @@ pub use rpg_content::{
     scenario_recipe, scenario_root, scenario_transport, scenario_validation_baseline,
     scenario_yaml, tmx_header, tsx_metadata,
 };
-
-#[cfg(test)]
-mod test_support;
 
 use action_input::ActionInputPlugin;
 use app_state::{AppState, AppStateTransitionPlugin};

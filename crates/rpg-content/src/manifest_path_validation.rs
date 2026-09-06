@@ -284,50 +284,44 @@ mod tests {
                 .map(|reference| (reference.field_path, reference.path.as_str()))
                 .collect::<Vec<_>>(),
             vec![
-                (
-                    "title.image",
-                    "assets/images/title_bg/title_lost_flame.webp"
-                ),
+                ("title.image", "media/images/title_bg/title_lost_flame.webp"),
                 (
                     "title.cursor_icon",
-                    "assets/images/icons/arrow-head-right.webp"
+                    "media/images/icons/arrow-head-right.webp"
                 ),
-                ("font.path", "assets/fonts/Philosopher-Regular.ttf"),
+                ("font.path", "media/fonts/Philosopher-Regular.ttf"),
                 (
                     "ui.menu_backdrop",
-                    "assets/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
+                    "media/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
                 ),
-                ("apothecary.sprite", "assets/sprites/npc/female_wiz_01.tsx"),
+                ("apothecary.sprite", "media/sprites/npc/female_wiz_01.tsx"),
                 (
                     "apothecary.icons.locked",
-                    "assets/images/icons/lock-locked-red-small.webp"
+                    "media/images/icons/lock-locked-red-small.webp"
                 ),
                 (
                     "apothecary.icons.ready",
-                    "assets/images/icons/lock-unlocked-green-small.webp"
+                    "media/images/icons/lock-unlocked-green-small.webp"
                 ),
                 (
                     "apothecary.icons.missing",
-                    "assets/images/icons/lock-unlocked-yellow-small.webp"
+                    "media/images/icons/lock-unlocked-yellow-small.webp"
                 ),
-                ("inn.sprite", "assets/sprites/npc/female_blue_01.tsx"),
+                ("inn.sprite", "media/sprites/npc/female_blue_01.tsx"),
                 (
                     "item_shop.sprite",
-                    "assets/sprites/npc/teen_halfmessy_01.tsx"
+                    "media/sprites/npc/teen_halfmessy_01.tsx"
                 ),
                 (
                     "weapon_shop.sprite",
-                    "assets/sprites/npc/male_sword_fighter_axe_fighter.tsx"
+                    "media/sprites/npc/male_sword_fighter_axe_fighter.tsx"
                 ),
                 (
                     "armor_shop.sprite",
-                    "assets/sprites/npc/plate_knight_base.tsx"
+                    "media/sprites/npc/plate_knight_base.tsx"
                 ),
-                ("item_box.sprite", "assets/sprites/objects/item_box.tsx"),
-                (
-                    "protagonist.sprite",
-                    "assets/sprites/party/01_aric_walk.tsx"
-                ),
+                ("item_box.sprite", "media/sprites/objects/item_box.tsx"),
+                ("protagonist.sprite", "media/sprites/party/01_aric_walk.tsx"),
                 ("start.intro_dialogue", "data/dialogue/intro_cutscene.yaml"),
                 ("refs.party", "data/party.yaml"),
                 ("refs.classes", "data/classes"),
@@ -340,8 +334,8 @@ mod tests {
                 ("refs.quests", "data/quests.yaml"),
                 ("refs.balance", "data/balance.yaml"),
                 ("refs.battle_backgrounds", "data/battle_backgrounds.yaml"),
-                ("refs.assets", "assets"),
-                ("refs.tmx", "assets/maps"),
+                ("refs.assets", "media"),
+                ("refs.tmx", "media/maps"),
             ]
         );
     }
@@ -365,7 +359,7 @@ mod tests {
         let manifest = manifest();
         let mut probe = successful_probe(&manifest);
         probe.0.insert(
-            "assets/images/icons/arrow-head-right.webp".to_owned(),
+            "media/images/icons/arrow-head-right.webp".to_owned(),
             ScenarioPathProbeResult::Missing,
         );
         let results = validate_manifest_paths(&manifest, &probe);
@@ -377,7 +371,7 @@ mod tests {
         assert_eq!(missing.result, ManifestPathValidationResult::Missing);
         assert_eq!(
             missing.to_string(),
-            "title.cursor_icon: assets/images/icons/arrow-head-right.webp: expected file but it is missing"
+            "title.cursor_icon: media/images/icons/arrow-head-right.webp: expected file but it is missing"
         );
     }
 

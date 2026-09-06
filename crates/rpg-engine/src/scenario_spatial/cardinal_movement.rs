@@ -22,8 +22,6 @@ use crate::{
     },
 };
 
-const RUSTED_KINGDOMS_TILE_WIDTH: u32 = 32;
-const RUSTED_KINGDOMS_TILE_HEIGHT: u32 = 32;
 const PLAYER_SPEED_PIXELS_PER_SECOND: f32 = 5.0 * 60.0;
 const MAX_COLLISION_STEP_PIXELS: f32 = 5.0;
 const MAX_MOVEMENT_DELTA_SECONDS: f32 = 0.1;
@@ -132,7 +130,7 @@ fn smooth_step(
     boxes: &Query<&WorldItemBox>,
 ) -> Vec2 {
     let full = clamp_top_left(current + delta, collision);
-    if dynamic_collision(full, npcs, boxes) {
+    if dynamic_collision(full, collision, npcs, boxes) {
         return current;
     }
     if !tile_collision(full, collision) {
@@ -140,11 +138,14 @@ fn smooth_step(
     }
 
     let horizontal = clamp_top_left(current + Vec2::new(delta.x, 0.0), collision);
-    if !dynamic_collision(horizontal, npcs, boxes) && !tile_collision(horizontal, collision) {
+    if !dynamic_collision(horizontal, collision, npcs, boxes)
+        && !tile_collision(horizontal, collision)
+    {
         return horizontal;
     }
     let vertical = clamp_top_left(current + Vec2::new(0.0, delta.y), collision);
-    if !dynamic_collision(vertical, npcs, boxes) && !tile_collision(vertical, collision) {
+    if !dynamic_collision(vertical, collision, npcs, boxes) && !tile_collision(vertical, collision)
+    {
         return vertical;
     }
     current
@@ -154,13 +155,13 @@ fn clamp_top_left(position: Vec2, collision: &CollisionOccupancy) -> Vec2 {
     Vec2::new(
         position.x.clamp(
             -CHARACTER_COLLISION_OFFSET_X,
-            collision.width() as f32 * RUSTED_KINGDOMS_TILE_WIDTH as f32
+            collision.width() as f32 * collision.tile_width() as f32
                 - CHARACTER_COLLISION_OFFSET_X
                 - CHARACTER_COLLISION_WIDTH,
         ),
         position.y.clamp(
             -CHARACTER_COLLISION_OFFSET_Y,
-            collision.height() as f32 * RUSTED_KINGDOMS_TILE_HEIGHT as f32
+            collision.height() as f32 * collision.tile_height() as f32
                 - CHARACTER_COLLISION_OFFSET_Y
                 - CHARACTER_COLLISION_HEIGHT,
         ),
@@ -174,18 +175,21 @@ fn tile_collision(top_left: Vec2, collision: &CollisionOccupancy) -> bool {
 
 fn dynamic_collision(
     top_left: Vec2,
+    collision: &CollisionOccupancy,
     npcs: &Query<&WorldNpc>,
     boxes: &Query<&WorldItemBox>,
 ) -> bool {
+    let tile_width = collision.tile_width() as f32;
+    let tile_height = collision.tile_height() as f32;
     let rect = player_rect(top_left);
     npcs.iter().any(|npc| rect.overlaps(npc.collision_rect()))
         || boxes.iter().any(|item_box| {
             let tile = item_box.tile_position();
             rect.overlaps(CharacterCollisionRect {
-                x: tile.x as f32 * RUSTED_KINGDOMS_TILE_WIDTH as f32,
-                y: tile.y as f32 * RUSTED_KINGDOMS_TILE_HEIGHT as f32,
-                width: RUSTED_KINGDOMS_TILE_WIDTH as f32,
-                height: RUSTED_KINGDOMS_TILE_HEIGHT as f32,
+                x: tile.x as f32 * tile_width,
+                y: tile.y as f32 * tile_height,
+                width: tile_width,
+                height: tile_height,
             })
         })
 }
@@ -253,9 +257,8 @@ mod tests {
     };
 
     const PLAYER_Z: f32 = 7.0;
-    const COPIED_ARIC_TSX: &str = include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx"
-    );
+    const WALK_ATLAS_WITH_ANIMATIONS_TSX: &str =
+        include_str!(scenario_file!("media/sprites/party/01_aric_walk.tsx"));
 
     fn game_state() -> GameState {
         let manifest: Manifest = scenario_yaml::from_str(include_str!(
@@ -308,14 +311,14 @@ mod tests {
                 </layer>
             </map>"#
         );
-        let path = ScenarioRelativePath::try_from("assets/maps/invented.tmx").unwrap();
+        let path = ScenarioRelativePath::try_from("media/maps/invented.tmx").unwrap();
         let document = parse_tmx_map_document(&xml, &path).unwrap();
         CollisionOccupancy::from_tmx_document(&document).unwrap()
     }
 
     fn player_animation() -> WorldPlayerAnimation {
-        let path = ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx").unwrap();
-        let metadata = parse_tsx_tileset_metadata(COPIED_ARIC_TSX, &path).unwrap();
+        let path = ScenarioRelativePath::try_from("media/sprites/party/01_aric_walk.tsx").unwrap();
+        let metadata = parse_tsx_tileset_metadata(WALK_ATLAS_WITH_ANIMATIONS_TSX, &path).unwrap();
         let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata).unwrap();
         WorldPlayerAnimation::new(layout, CardinalDirection::Down)
     }

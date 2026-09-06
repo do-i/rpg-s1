@@ -22,7 +22,7 @@ party:
     name: "Aric"
     class: hero
     protagonist: true
-    portrait: assets/images/aric_profile.png
+    portrait: media/images/aric_profile.png
     join:
       condition: story_quest_started
       map: town_01_ardel
@@ -51,7 +51,7 @@ party:
     name: "Elise"
     class: cleric
     protagonist: false
-    portrait: assets/images/elise_profile.png
+    portrait: media/images/elise_profile.png
     join:
       condition: story_quest_started
       map: town_01_ardel
@@ -84,7 +84,7 @@ party:
     name: "Reiya"
     class: sorcerer
     protagonist: false
-    portrait: assets/images/reiya_profile.png
+    portrait: media/images/reiya_profile.png
     join:
       condition: story_act2_started
       map: town_02_millhaven
@@ -117,7 +117,7 @@ party:
     name: "Jep"
     class: rogue
     protagonist: false
-    portrait: assets/images/jep_profile.png
+    portrait: media/images/jep_profile.png
     join:
       condition: story_act3_started
       map: town_03_ruinwatch_monastery_vaults
@@ -150,7 +150,7 @@ party:
     name: "Kael"
     class: warrior
     protagonist: false
-    portrait: assets/images/kael_profile.png
+    portrait: media/images/kael_profile.png
     join:
       condition: story_act4_started
       map: town_04_frostholm

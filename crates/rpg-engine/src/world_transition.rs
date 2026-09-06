@@ -586,7 +586,7 @@ mod tests {
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
 
     fn portals_for(map_id: &str, document: &str) -> Vec<RuntimePortal> {
-        let owner = ScenarioRelativePath::try_from(format!("assets/maps/{map_id}.tmx")).unwrap();
+        let owner = ScenarioRelativePath::try_from(format!("media/maps/{map_id}.tmx")).unwrap();
         let document = parse_tmx_map_document(document, &owner).unwrap();
         runtime_portals(&document).unwrap()
     }
@@ -594,7 +594,7 @@ mod tests {
     fn ardel_portals() -> Vec<RuntimePortal> {
         portals_for(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
         )
     }
 
@@ -664,33 +664,23 @@ mod tests {
         let return_documents = [
             (
                 "town_01_ardel_house_01",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_01_ardel_house_01.tmx")),
             ),
             (
                 "town_01_ardel_shop_01",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_01_ardel_shop_01.tmx")),
             ),
             (
                 "town_01_ardel_inn_01",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_01_ardel_inn_01.tmx")),
             ),
             (
                 "town_01_ardel_shrine",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_01_ardel_shrine.tmx")),
             ),
             (
                 "zone_01_starting_forest",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/zone_01_starting_forest.tmx")),
             ),
         ];
         for (map_id, document) in return_documents {
@@ -709,17 +699,13 @@ mod tests {
     fn ardel_house_portal_is_a_reversible_link() {
         assert_reversible_link(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
             "town_01_ardel_house_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_house_01.tmx")),
         );
         let returns = portals_for(
             "town_01_ardel_house_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_house_01.tmx")),
         );
         assert_eq!(returns.len(), 1);
         assert_eq!(returns[0].target_position(), Position::new(3, 4));
@@ -729,17 +715,13 @@ mod tests {
     fn ardel_shop_portal_is_a_reversible_link() {
         assert_reversible_link(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
             "town_01_ardel_shop_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_shop_01.tmx")),
         );
         let returns = portals_for(
             "town_01_ardel_shop_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_shop_01.tmx")),
         );
         assert_eq!(returns.len(), 1);
         assert_eq!(returns[0].target_position(), Position::new(15, 4));
@@ -749,17 +731,13 @@ mod tests {
     fn ardel_inn_portal_is_a_reversible_link() {
         assert_reversible_link(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
             "town_01_ardel_inn_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_inn_01.tmx")),
         );
         let returns = portals_for(
             "town_01_ardel_inn_01",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_inn_01.tmx")),
         );
         assert_eq!(returns.len(), 1);
         assert_eq!(returns[0].target_position(), Position::new(24, 4));
@@ -770,15 +748,11 @@ mod tests {
     /// zone 9. Every run now passes the Cinder Marshal.
     #[test]
     fn the_marshal_camp_sits_between_the_volcanic_region_and_the_final_stronghold() {
-        const VOLCANIC: &str = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_09_volcanic_region.tmx"
-        );
-        const CAMP: &str = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_09_marshal_camp.tmx"
-        );
-        const STRONGHOLD: &str = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_10_final_stronghold.tmx"
-        );
+        const VOLCANIC: &str =
+            include_str!(scenario_file!("media/maps/zone_09_volcanic_region.tmx"));
+        const CAMP: &str = include_str!(scenario_file!("media/maps/zone_09_marshal_camp.tmx"));
+        const STRONGHOLD: &str =
+            include_str!(scenario_file!("media/maps/zone_10_final_stronghold.tmx"));
 
         assert_reversible_link(
             "zone_09_volcanic_region",
@@ -817,17 +791,13 @@ mod tests {
     fn ardel_shrine_portal_is_a_reversible_link() {
         assert_reversible_link(
             "town_01_ardel",
-            include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel.tmx"),
+            include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
             "town_01_ardel_shrine",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_shrine.tmx")),
         );
         let returns = portals_for(
             "town_01_ardel_shrine",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/town_01_ardel_shrine.tmx")),
         );
         assert_eq!(returns.len(), 1);
         assert_eq!(returns[0].target_position(), Position::new(3, 18));
@@ -835,9 +805,8 @@ mod tests {
 
     #[test]
     fn starting_forest_portals_cover_both_ardel_routes_and_the_reversible_wave_boundary() {
-        let forest_document = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx"
-        );
+        let forest_document =
+            include_str!(scenario_file!("media/maps/zone_01_starting_forest.tmx"));
         let forest = portals_for("zone_01_starting_forest", forest_document);
         assert_eq!(forest.len(), 3);
         let destinations = forest
@@ -863,16 +832,12 @@ mod tests {
             "zone_01_starting_forest",
             forest_document,
             "zone_02_open_plains",
-            include_str!(
-                "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx"
-            ),
+            include_str!(scenario_file!("media/maps/zone_02_open_plains.tmx")),
         );
     }
 
     fn open_plains_document() -> &'static str {
-        include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains.tmx"
-        )
+        include_str!(scenario_file!("media/maps/zone_02_open_plains.tmx"))
     }
 
     fn open_plains_portals() -> Vec<RuntimePortal> {
@@ -880,7 +845,7 @@ mod tests {
     }
 
     fn millhaven_document() -> &'static str {
-        include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven.tmx")
+        include_str!(scenario_file!("media/maps/town_02_millhaven.tmx"))
     }
 
     fn millhaven_portals() -> Vec<RuntimePortal> {
@@ -908,12 +873,10 @@ mod tests {
     #[test]
     fn open_plains_cave_chain_links_plains_and_cave_02_and_cave_01_with_no_direct_plains_cave_01_link()
      {
-        let cave_01_document = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains_cave_01.tmx"
-        );
-        let cave_02_document = include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_02_open_plains_cave_02.tmx"
-        );
+        let cave_01_document =
+            include_str!(scenario_file!("media/maps/zone_02_open_plains_cave_01.tmx"));
+        let cave_02_document =
+            include_str!(scenario_file!("media/maps/zone_02_open_plains_cave_02.tmx"));
         let cave_01 = portals_for("zone_02_open_plains_cave_01", cave_01_document);
         let cave_02 = portals_for("zone_02_open_plains_cave_02", cave_02_document);
 
@@ -978,23 +941,17 @@ mod tests {
         let interiors = [
             (
                 "town_02_millhaven_inn",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_02_millhaven_inn.tmx")),
                 Position::new(9, 25),
             ),
             (
                 "town_02_millhaven_mill",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_mill.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_02_millhaven_mill.tmx")),
                 Position::new(20, 6),
             ),
             (
                 "town_02_millhaven_shop",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_02_millhaven_shop.tmx")),
                 Position::new(36, 6),
             ),
         ];
@@ -1015,7 +972,7 @@ mod tests {
     }
 
     fn marshland_document() -> &'static str {
-        include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_03_marshland.tmx")
+        include_str!(scenario_file!("media/maps/zone_03_marshland.tmx"))
     }
 
     fn marshland_portals() -> Vec<RuntimePortal> {
@@ -1023,9 +980,7 @@ mod tests {
     }
 
     fn harborgate_document() -> &'static str {
-        include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate.tmx"
-        )
+        include_str!(scenario_file!("media/maps/port_town_harborgate.tmx"))
     }
 
     fn harborgate_portals() -> Vec<RuntimePortal> {
@@ -1093,30 +1048,26 @@ mod tests {
         let interiors = [
             (
                 "port_town_harborgate_quarantine",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_quarantine.tmx"
-                ),
+                include_str!(scenario_file!(
+                    "media/maps/port_town_harborgate_quarantine.tmx"
+                )),
                 Position::new(20, 6),
             ),
             (
                 "port_town_harborgate_shop",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_shop.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/port_town_harborgate_shop.tmx")),
                 Position::new(36, 6),
             ),
             (
                 "port_town_harborgate_inn",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_inn.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/port_town_harborgate_inn.tmx")),
                 Position::new(9, 25),
             ),
             (
                 "port_town_harborgate_harbormaster",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/port_town_harborgate_harbormaster.tmx"
-                ),
+                include_str!(scenario_file!(
+                    "media/maps/port_town_harborgate_harbormaster.tmx"
+                )),
                 Position::new(35, 26),
             ),
         ];
@@ -1142,25 +1093,25 @@ mod tests {
     }
 
     fn ancient_ruins_gate_document() -> &'static str {
-        include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_01_gate.tmx"
-        )
+        include_str!(scenario_file!(
+            "media/maps/zone_04_ancient_ruins_01_gate.tmx"
+        ))
     }
 
     fn ancient_ruins_courtyard_document() -> &'static str {
-        include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_02_courtyard.tmx"
-        )
+        include_str!(scenario_file!(
+            "media/maps/zone_04_ancient_ruins_02_courtyard.tmx"
+        ))
     }
 
     fn ancient_ruins_sanctum_document() -> &'static str {
-        include_str!(
-            "../../../assets/scenarios/rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx"
-        )
+        include_str!(scenario_file!(
+            "media/maps/zone_04_ancient_ruins_03_sanctum.tmx"
+        ))
     }
 
     fn ruinwatch_document() -> &'static str {
-        include_str!("../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx")
+        include_str!(scenario_file!("media/maps/town_03_ruinwatch.tmx"))
     }
 
     #[test]
@@ -1248,23 +1199,19 @@ mod tests {
         let interiors = [
             (
                 "town_03_ruinwatch_inn",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_03_ruinwatch_inn.tmx")),
                 Position::new(9, 25),
             ),
             (
                 "town_03_ruinwatch_shop",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx"
-                ),
+                include_str!(scenario_file!("media/maps/town_03_ruinwatch_shop.tmx")),
                 Position::new(36, 6),
             ),
             (
                 "town_03_ruinwatch_monastery_vaults",
-                include_str!(
-                    "../../../assets/scenarios/rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx"
-                ),
+                include_str!(scenario_file!(
+                    "media/maps/town_03_ruinwatch_monastery_vaults.tmx"
+                )),
                 Position::new(20, 6),
             ),
         ];

@@ -294,24 +294,23 @@ mod tests {
         tsx_metadata::parse_tsx_tileset_metadata,
     };
 
-    const COPIED_ARIC_TSX: &str = include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/01_aric_walk.tsx"
-    );
+    const WALK_ATLAS_WITH_ANIMATIONS_TSX: &str =
+        include_str!(scenario_file!("media/sprites/party/01_aric_walk.tsx"));
     /// A shipped recruit sheet: the same geometry as Aric's, with no `<animation>` blocks.
-    const COPIED_ELISE_TSX: &str = include_str!(
-        "../../../../assets/scenarios/rusted_kingdoms/assets/sprites/party/02_elise_walk.tsx"
-    );
+    const WALK_ATLAS_WITHOUT_ANIMATIONS_TSX: &str =
+        include_str!(scenario_file!("media/sprites/party/02_elise_walk.tsx"));
 
     fn metadata(xml: &str) -> crate::tsx_metadata::TsxTilesetMetadata {
-        let owner = ScenarioRelativePath::try_from("assets/sprites/party/01_aric_walk.tsx")
+        let owner = ScenarioRelativePath::try_from("media/sprites/party/01_aric_walk.tsx")
             .expect("fixture owner should be safe");
         parse_tsx_tileset_metadata(xml, &owner).expect("fixture TSX should parse")
     }
 
     #[test]
     fn copied_aric_metadata_slices_576_by_256_into_nine_by_four_64_pixel_cells() {
-        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX))
-            .expect("copied Aric metadata should match its authored atlas");
+        let layout =
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(WALK_ATLAS_WITH_ANIMATIONS_TSX))
+                .expect("copied Aric metadata should match its authored atlas");
 
         assert_eq!(layout.frame_width(), 64);
         assert_eq!(layout.frame_height(), 64);
@@ -341,11 +340,13 @@ mod tests {
 
     #[test]
     fn a_sheet_without_animations_walks_on_its_geometric_rows_like_the_python_slicer() {
-        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ELISE_TSX))
-            .expect("a bare recruit sheet of matching geometry should be accepted");
+        let layout =
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(WALK_ATLAS_WITHOUT_ANIMATIONS_TSX))
+                .expect("a bare recruit sheet of matching geometry should be accepted");
 
-        let authored = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX))
-            .expect("the authored protagonist sheet still parses");
+        let authored =
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(WALK_ATLAS_WITH_ANIMATIONS_TSX))
+                .expect("the authored protagonist sheet still parses");
         for direction in [
             CardinalDirection::Up,
             CardinalDirection::Left,
@@ -373,7 +374,9 @@ mod tests {
 
     #[test]
     fn cardinal_directions_select_the_exact_tsx_animation_owner_base_frames() {
-        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
+        let layout =
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(WALK_ATLAS_WITH_ANIMATIONS_TSX))
+                .unwrap();
 
         for ((direction, expected_tile), expected_y) in [
             (CardinalDirection::Up, 0_u32),
@@ -395,7 +398,9 @@ mod tests {
 
     #[test]
     fn cardinal_walks_retain_exact_authored_frame_ids_and_durations() {
-        let layout = CardinalCharacterAtlas::from_tsx_metadata(&metadata(COPIED_ARIC_TSX)).unwrap();
+        let layout =
+            CardinalCharacterAtlas::from_tsx_metadata(&metadata(WALK_ATLAS_WITH_ANIMATIONS_TSX))
+                .unwrap();
 
         for (direction, expected_tiles) in [
             (CardinalDirection::Up, 1_u32..=8),
@@ -417,7 +422,7 @@ mod tests {
 
     #[test]
     fn rejects_non_aric_geometry_before_exposing_slices() {
-        let taller = COPIED_ARIC_TSX
+        let taller = WALK_ATLAS_WITH_ANIMATIONS_TSX
             .replace("tilecount=\"36\"", "tilecount=\"45\"")
             .replace("height=\"256\"", "height=\"320\"");
 
@@ -433,7 +438,8 @@ mod tests {
 
     #[test]
     fn rejects_direction_rows_that_do_not_match_the_tsx_animation_owners() {
-        let wrong_owner = COPIED_ARIC_TSX.replacen("<tile id=\"9\">", "<tile id=\"10\">", 1);
+        let wrong_owner =
+            WALK_ATLAS_WITH_ANIMATIONS_TSX.replacen("<tile id=\"9\">", "<tile id=\"10\">", 1);
 
         assert_eq!(
             CardinalCharacterAtlas::from_tsx_metadata(&metadata(&wrong_owner)),

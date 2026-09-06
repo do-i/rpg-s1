@@ -7,7 +7,7 @@ npcs:
     name: "Reedcutter Sela"
     position: [26, 10]
     dialogue: marshland_reedcutter
-    sprite: assets/sprites/npc/village_female_person_practical_pants.tsx
+    sprite: media/sprites/npc/village_female_person_practical_pants.tsx
     default_facing: down
 
 item_boxes:

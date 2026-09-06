@@ -867,7 +867,7 @@ on_complete:
             .into_owned();
         assert_eq!(
             font_path,
-            "scenarios/invented_campaign/assets/fonts/Philosopher-Regular.ttf"
+            "scenarios/invented_campaign/media/fonts/Philosopher-Regular.ttf"
         );
 
         let hint = world

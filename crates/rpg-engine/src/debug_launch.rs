@@ -354,8 +354,7 @@ mod tests {
 
     #[test]
     fn production_map_and_position_are_validated_before_launch() {
-        let package =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let package = crate::test_support::scenario_package_dir();
         let config = |map: &str, position| DebugLaunchConfig {
             start_map: Some(map.to_owned()),
             start_position: Some(position),
@@ -385,8 +384,7 @@ mod tests {
 
     #[test]
     fn production_full_party_preset_installs_all_five_members() {
-        let package =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/scenarios/rusted_kingdoms");
+        let package = crate::test_support::scenario_package_dir();
         let manifest: Manifest =
             scenario_yaml::from_str(&fs::read_to_string(package.join("manifest.yaml")).unwrap())
                 .unwrap();

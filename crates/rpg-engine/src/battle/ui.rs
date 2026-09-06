@@ -249,9 +249,7 @@ impl BattleAssetState {
 fn battle_enemy_atlas_path(
     sprite_id: &str,
 ) -> Result<ScenarioRelativePath, ScenarioRelativePathError> {
-    ScenarioRelativePath::try_from(
-        format!("assets/sprites/enemies/{sprite_id}_battle.tsx").as_str(),
-    )
+    ScenarioRelativePath::try_from(format!("media/sprites/enemies/{sprite_id}_battle.tsx").as_str())
 }
 
 fn enter_battle(
@@ -668,7 +666,7 @@ fn spawn_party_card(
     font: &Handle<Font>,
 ) {
     let portrait = ScenarioRelativePath::try_from(
-        format!("assets/images/{}_profile.png", participant.id).as_str(),
+        format!("media/images/{}_profile.png", participant.id).as_str(),
     )
     .ok()
     .map(|path| asset_server.load(root.resolve(&path)))
@@ -1995,7 +1993,7 @@ mod tests {
     fn battle_uses_dedicated_enemy_sheet() {
         assert_eq!(
             battle_enemy_atlas_path("goblin").unwrap().as_str(),
-            "assets/sprites/enemies/goblin_battle.tsx"
+            "media/sprites/enemies/goblin_battle.tsx"
         );
     }
 
