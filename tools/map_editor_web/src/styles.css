@@ -1,0 +1,495 @@
+:root {
+  color-scheme: dark;
+  --bg: #0e0e14;
+  --panel-bg: #16161e;
+  --border: #34344a;
+  --text: #e4e4ea;
+  --text-dim: #9a9ab0;
+  --accent: #f0dc78;
+  --marker: #5ce67a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+}
+
+.topbar .title {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.topbar .counts {
+  color: var(--text-dim);
+}
+
+.topbar .toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.main-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.flow-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── nodes ── */
+
+.map-node {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1c1c24;
+  overflow: hidden;
+}
+
+.map-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.map-node.interior {
+  opacity: 0.92;
+}
+
+.thumb-wrap {
+  position: relative;
+  line-height: 0;
+}
+
+.thumb-wrap img {
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+.portal-marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--marker);
+  border: 1px solid #0a3a16;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Portal-tile handles: click to select the edge, drag to start a link. */
+.react-flow__handle.portal-marker-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  background: var(--marker);
+  border: 1.5px solid #0a3a16;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: width 0.08s ease, height 0.08s ease, box-shadow 0.08s ease;
+  z-index: 5;
+}
+
+.react-flow__handle.portal-marker-handle:hover {
+  width: 19px;
+  height: 19px;
+  box-shadow: 0 0 0 3px rgba(92, 230, 122, 0.35);
+}
+
+/* While a link is being dragged, dots must not steal the drop from the
+   whole-node target cover. */
+.map-node.connect-target .react-flow__handle.portal-marker-handle {
+  pointer-events: none;
+}
+
+.arrival-marker {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f0b04a;
+  border: 1px solid #6a4207;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.map-node.connect-target {
+  outline: 2px dashed var(--marker);
+  outline-offset: 3px;
+}
+
+.map-node-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+  background: #232330;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.map-node-label .badges {
+  font-size: 11px;
+}
+
+.source-handle {
+  width: 13px !important;
+  height: 13px !important;
+  background: var(--marker) !important;
+  border: 2px solid #0a3a16 !important;
+  cursor: crosshair;
+  transition: width 0.08s ease, height 0.08s ease;
+}
+
+.source-handle:hover {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.react-flow__handle.target-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* While a link is dragged, the whole node accepts the drop. */
+.react-flow__handle.target-cover {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  transform: none !important;
+  border-radius: 0;
+  border: none;
+  opacity: 0;
+  z-index: 10;
+}
+
+/* ── side panel ── */
+
+.side-panel {
+  width: 340px;
+  border-left: 1px solid var(--border);
+  background: var(--panel-bg);
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.side-panel h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.side-panel h3 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+}
+
+.side-panel dl {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 4px 10px;
+  margin: 10px 0;
+}
+
+.side-panel dt {
+  color: var(--text-dim);
+}
+
+.side-panel dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.panel-thumb {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  image-rendering: pixelated;
+}
+
+.npc-list {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.npc-list li {
+  margin-bottom: 3px;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #7ab8f0;
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.panel-hint p {
+  color: var(--text-dim);
+}
+
+.fatal-error {
+  padding: 40px;
+}
+
+/* ── buttons ── */
+
+button {
+  background: #232330;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 5px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #2e2e40;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary {
+  background: #2c4a2f;
+  border-color: #4a7a50;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #38603c;
+}
+
+button.danger {
+  background: #4a2426;
+  border-color: #7a4044;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #613034;
+}
+
+.topbar .hint {
+  font-size: 12px;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ── modals ── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  max-width: 96vw;
+  max-height: 92vh;
+  overflow: auto;
+}
+
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.picker-row {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── tile picker ── */
+
+.tile-picker-canvas {
+  position: relative;
+  line-height: 0;
+  cursor: crosshair;
+  border: 1px solid var(--border);
+}
+
+.tile-picker-canvas img {
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+.tile-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+
+.hover-cell {
+  position: absolute;
+  pointer-events: none;
+  outline: 2px solid rgba(240, 220, 120, 0.8);
+  outline-offset: -1px;
+}
+
+.picked-cell {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(92, 230, 122, 0.35);
+  outline: 2px solid var(--marker);
+  outline-offset: -1px;
+}
+
+.tile-picker-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  min-height: 18px;
+}
+
+/* ── toast ── */
+
+.toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1d3a26;
+  border: 1px solid #3f7a50;
+  color: #dff5e4;
+  border-radius: 6px;
+  padding: 8px 18px;
+  z-index: 60;
+  max-width: 80vw;
+}
+
+/* React Flow theme tweaks */
+
+.react-flow__edge-path {
+  stroke: #6e82a0;
+  stroke-width: 2;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #a8c0e0;
+  stroke-width: 3;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 3.5;
+}
+
+.edge-label {
+  position: absolute;
+  background: #1c1c24;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 2px 7px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.panel-divider {
+  width: 7px;
+  cursor: col-resize;
+  background: var(--border);
+  flex: 0 0 auto;
+  touch-action: none;
+}
+
+.panel-divider:hover,
+.panel-divider:active {
+  background: #5a5a80;
+}
+
+.react-flow__minimap {
+  background: var(--panel-bg);
+}
+
+.react-flow__controls button {
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.react-flow__controls button:hover {
+  background: #232330;
+}

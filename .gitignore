@@ -11,7 +11,12 @@
 # Scratch: run evidence screenshots and save-file backups kept out of history.
 /temp/
 
-# Derived output from the external map editors. Existing tracked source
-# backups remain tracked; newly generated backups and thumbnails do not.
+# Derived output from the map editor (tools/map_editor) and from Tiled. Existing tracked
+# source backups remain tracked; newly generated backups and thumbnails do not.
 *.tmx.bak
 /assets/scenarios/*/.cache/
+
+# The map editor's Python environment and bytecode. Its dependencies are declared in
+# tools/requirements.txt and installed by scripts/map-editor.sh setup.
+/tools/.venv/
+__pycache__/

@@ -83,7 +83,7 @@ sudo pacman -S --needed vulkan-swrast vulkan-tools
 
 Alternatively, run `lazymenu-cli` from the repository root and select **Play -
 Seed 1**. The menu also exposes the test suite, validation and sweep commands,
-record/replay, debug-map launches, both map editors, and release utilities. Use
+record/replay, debug-map launches, the map editor, and release utilities. Use
 `/` to search and `q`, Escape, or Ctrl+C to leave the launcher.
 
 ## Controls
@@ -203,8 +203,9 @@ cargo run -- replay /tmp/rpg-s1-check.yaml
 Replay verifies the game/scenario identity and every recorded state checkpoint
 and exits unsuccessfully at the first divergence. Use
 `scripts/map-editor.sh setup` and `scripts/map-editor.sh check` before launching
-the Pygame or web editor; review the TMX diff and run the validation, sweep,
-debug-map, and replay commands above after every authored change.
+the web map editor (`scripts/map-editor.sh web`); review the TMX diff and run the
+validation, sweep, debug-map, and replay commands above after every authored
+change. The editor lives in `tools/map_editor` and needs no external checkout.
 
 ## Current game coverage
 
