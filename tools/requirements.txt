@@ -1,0 +1,20 @@
+# Python dependencies for the scenario map editor (tools/map_editor).
+#
+# This is the editor's whole dependency set. It reads TMX and scenario YAML directly and does
+# not import the game, so nothing here is a build or runtime dependency of rpg-s1 itself --
+# `cargo run` never touches this file.
+#
+# Versions are the ones the editor was migrated on, pinned so a working checkout stays working.
+# Installed by `scripts/map-editor.sh setup` into tools/.venv.
+
+# TMX parsing and the surface rendering behind map thumbnails.
+pygame==2.6.1
+PyTMX==3.32
+
+# Scenario manifest and map-data YAML.
+PyYAML==6.0.3
+
+# The editor backend the browser UI talks to.
+fastapi==0.139.0
+pydantic==2.13.4
+uvicorn==0.51.0

@@ -121,21 +121,21 @@ description = "Run the complete Rust workspace test suite"
 
 [[items]]
 id = "editor-setup"
-label = "Map editors - Setup/check"
+label = "Map editor - Setup/check"
 key = "s"
 command = ["scripts/map-editor.sh", "setup"]
 group = "Authoring"
-tags = ["editor", "setup", "prerequisite", "pygame", "web", "map"]
-description = "Prepare the pinned external editor checkout, Python environment, and web frontend"
+tags = ["editor", "setup", "prerequisite", "web", "map"]
+description = "Build tools/.venv and the web frontend, then verify the scenario loads"
 
 [[items]]
-id = "editor-pygame"
-label = "Map editor - Pygame"
+id = "editor-check"
+label = "Map editor - Check"
 key = "i"
-command = ["scripts/map-editor.sh", "pygame"]
+command = ["scripts/map-editor.sh", "check"]
 group = "Authoring"
-tags = ["editor", "pygame", "portal", "tmx", "map"]
-description = "Launch the pinned Pygame portal editor against the Rust scenario tree"
+tags = ["editor", "check", "verify", "tmx", "map"]
+description = "Report how many maps and portals the editor loads from the scenario tree"
 
 [[items]]
 id = "editor-web"
@@ -144,7 +144,7 @@ key = "w"
 command = ["scripts/map-editor.sh", "web"]
 group = "Authoring"
 tags = ["editor", "web", "browser", "portal", "tmx", "map"]
-description = "Launch the pinned web portal editor against the Rust scenario tree"
+description = "Launch the in-tree web portal editor against the Rust scenario tree"
 
 [[items]]
 id = "build-release"
