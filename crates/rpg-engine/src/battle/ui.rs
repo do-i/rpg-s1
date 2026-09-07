@@ -62,6 +62,19 @@ pub(super) const BATTLE_ROOT_Z: i32 = 200;
 /// Layer of a combatant's badge stack within its own frame, above the portrait and the meters.
 const BADGE_Z: i32 = 15;
 const BADGE_INSET: f32 = 5.0;
+
+/// Where a combatant's badge stack sits on its card.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum BadgeAnchor {
+    /// Pinned into the top-right corner of the frame it annotates, stacked downwards — the
+    /// source's placement (`battle_party_panel_renderer.py:141-151`).
+    FrameCorner,
+    /// A centred row flowing on the combatant's health bar line, laid out after the bar.
+    ///
+    /// An enemy's sprite is the whole of its frame, so a corner stack buried the very thing the
+    /// pills annotate; the bar line is the one strip of the card that is already chrome.
+    HealthBarLine,
+}
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
 const PARTY_CARD_HEIGHT: f32 = 202.0;
@@ -446,7 +459,6 @@ fn spawn_enemy_area(
                                             },
                                         ));
                                     });
-                                spawn_status_badges(frame, CombatantKey::enemy(index), font);
                             });
                             card.spawn((
                                 Node {
@@ -486,6 +498,12 @@ fn spawn_enemy_area(
                                 )
                                 .insert(BattleEnemyLabel(index));
                             });
+                            spawn_status_badges(
+                                card,
+                                CombatantKey::enemy(index),
+                                BadgeAnchor::HealthBarLine,
+                                font,
+                            );
                         });
                 }
             });
@@ -717,7 +735,12 @@ fn spawn_party_card(
                 font,
             );
         }
-        spawn_status_badges(card, CombatantKey::party(index), font);
+        spawn_status_badges(
+            card,
+            CombatantKey::party(index),
+            BadgeAnchor::FrameCorner,
+            font,
+        );
     });
 }
 
@@ -822,34 +845,42 @@ fn spawn_party_meter(
         });
 }
 
-/// Stacks the combatant's status pills into the top-right corner of its frame.
+/// Lays out the combatant's status pills where [`BadgeAnchor`] puts them.
 ///
 /// Every slot is spawned up front and hidden; [`sync_status_badges`] only ever toggles and
-/// re-colors them. The source pins its single badge to the same corner
-/// (`battle_party_panel_renderer.py:141-151`).
+/// re-colors them. An empty stack therefore measures zero, so a health-bar row costs the card no
+/// height until something actually lands.
 ///
-/// The stack sits inside its frame's own inset, so it is layered with a plain [`ZIndex`] and not a
+/// The stack sits inside its own parent, so it is layered with a plain [`ZIndex`] and not a
 /// `GlobalZIndex` — see [`BATTLE_ROOT_Z`] for why the global form would have hidden it behind the
 /// battle screen entirely.
 fn spawn_status_badges(
     parent: &mut ChildSpawnerCommands<'_>,
     key: CombatantKey,
+    anchor: BadgeAnchor,
     font: &Handle<Font>,
 ) {
+    let node = match anchor {
+        BadgeAnchor::FrameCorner => Node {
+            position_type: PositionType::Absolute,
+            top: px(BADGE_INSET),
+            right: px(BADGE_INSET),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::FlexEnd,
+            row_gap: px(2),
+            ..default()
+        },
+        BadgeAnchor::HealthBarLine => Node {
+            width: percent(100),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            column_gap: px(2),
+            ..default()
+        },
+    };
     parent
-        .spawn((
-            Node {
-                position_type: PositionType::Absolute,
-                top: px(BADGE_INSET),
-                right: px(BADGE_INSET),
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::FlexEnd,
-                row_gap: px(2),
-                ..default()
-            },
-            ZIndex(BADGE_Z),
-            Pickable::IGNORE,
-        ))
+        .spawn((node, ZIndex(BADGE_Z), Pickable::IGNORE))
         .with_children(|stack| {
             for slot in 0..super::badge::MAX_BADGES {
                 stack
@@ -2211,8 +2242,18 @@ mod tests {
             .commands()
             .spawn(Node::default())
             .with_children(|root| {
-                spawn_status_badges(root, CombatantKey::party(0), &font);
-                spawn_status_badges(root, CombatantKey::enemy(0), &font);
+                spawn_status_badges(
+                    root,
+                    CombatantKey::party(0),
+                    BadgeAnchor::FrameCorner,
+                    &font,
+                );
+                spawn_status_badges(
+                    root,
+                    CombatantKey::enemy(0),
+                    BadgeAnchor::HealthBarLine,
+                    &font,
+                );
             });
         app.update();
 
@@ -2315,11 +2356,21 @@ mod tests {
             .with_children(|root| {
                 root.spawn((Node::default(), BattlePartyCard(0)))
                     .with_children(|card| {
-                        spawn_status_badges(card, CombatantKey::party(0), &font);
+                        spawn_status_badges(
+                            card,
+                            CombatantKey::party(0),
+                            BadgeAnchor::FrameCorner,
+                            &font,
+                        );
                     });
-                root.spawn((Node::default(), BattleEnemyFrame(0)))
-                    .with_children(|frame| {
-                        spawn_status_badges(frame, CombatantKey::enemy(0), &font);
+                root.spawn((Node::default(), BattleEnemyCard(0)))
+                    .with_children(|card| {
+                        spawn_status_badges(
+                            card,
+                            CombatantKey::enemy(0),
+                            BadgeAnchor::HealthBarLine,
+                            &font,
+                        );
                     });
             })
             .id();
@@ -2346,7 +2397,63 @@ mod tests {
         assert_eq!(
             badge_stacks,
             vec![BADGE_Z; 2],
-            "both stacks keep a local raise over the frame contents they overlap"
+            "both stacks keep a local raise over the card contents they share a line with"
+        );
+    }
+
+    /// An enemy's frame is nothing but its sprite, so a corner stack sat on top of the creature it
+    /// was describing. The pills belong on the health bar's line instead: in the card's flow, after
+    /// the bar, not absolutely positioned over anything.
+    #[test]
+    fn an_enemys_badges_ride_the_health_bar_line_rather_than_its_sprite() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+
+        let font = Handle::<Font>::default();
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|card| {
+                spawn_status_badges(
+                    card,
+                    CombatantKey::enemy(0),
+                    BadgeAnchor::HealthBarLine,
+                    &font,
+                );
+                spawn_status_badges(
+                    card,
+                    CombatantKey::party(0),
+                    BadgeAnchor::FrameCorner,
+                    &font,
+                );
+            });
+        app.update();
+
+        let mut stacks = app.world_mut().query::<(&Node, &Children)>();
+        let rows = stacks
+            .iter(app.world())
+            .filter_map(|(node, children)| {
+                let slot = children
+                    .iter()
+                    .find_map(|child| app.world().get::<BattleStatusBadge>(child))?;
+                Some((slot.key.side, node.position_type, node.flex_direction))
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            rows.contains(&(
+                BattleSide::Enemy,
+                PositionType::Relative,
+                FlexDirection::Row
+            )),
+            "the enemy stack flows in the card next to its bar, laid out across it: {rows:?}"
+        );
+        assert!(
+            rows.contains(&(
+                BattleSide::Party,
+                PositionType::Absolute,
+                FlexDirection::Column
+            )),
+            "the party card keeps the source's corner stack: {rows:?}"
         );
     }
 
@@ -2361,7 +2468,14 @@ mod tests {
         app.world_mut()
             .commands()
             .spawn(Node::default())
-            .with_children(|root| spawn_status_badges(root, CombatantKey::party(0), &font));
+            .with_children(|root| {
+                spawn_status_badges(
+                    root,
+                    CombatantKey::party(0),
+                    BadgeAnchor::FrameCorner,
+                    &font,
+                )
+            });
 
         // A downed member is drawn dimmed, and a poison badge on a corpse reads as still ticking.
         let mut party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
