@@ -463,6 +463,14 @@ pub(in crate::field_menu) fn spawn_item_chips(
             if game.repository().is_locked(id) {
                 spawn_item_chip(chips, font, "LOCKED", status_violet());
             }
+            for tag in game.repository().item_tags(id) {
+                spawn_item_chip(
+                    chips,
+                    font,
+                    &tag.replace('_', " ").to_uppercase(),
+                    status_gold(),
+                );
+            }
         });
 }
 
@@ -563,7 +571,12 @@ pub(in crate::field_menu) fn spawn_item_modal(
                     modal.spawn(ItemActionModal);
                     match state.mode {
                         FieldMenuMode::ItemActions => {
-                            for (index, (label, subtitle)) in ITEM_ACTIONS.into_iter().enumerate() {
+                            let id = state
+                                .pending_id
+                                .as_deref()
+                                .expect("item actions require an item");
+                            for index in 0..ITEM_ACTIONS.len() {
+                                let (label, subtitle) = item_action_row(index, game, id);
                                 spawn_item_modal_row(
                                     modal,
                                     font,

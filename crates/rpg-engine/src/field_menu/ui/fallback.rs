@@ -224,7 +224,12 @@ pub(in crate::field_menu) fn render_items(
         FieldMenuMode::ItemActions => ITEM_ACTIONS
             .iter()
             .enumerate()
-            .map(|(index, (label, _))| {
+            .map(|(index, _)| {
+                let id = state
+                    .pending_id
+                    .as_deref()
+                    .expect("item actions require an item");
+                let (label, _) = item_action_row(index, game, id);
                 format!(
                     "{} {label}",
                     if index == state.selected { ">" } else { " " }

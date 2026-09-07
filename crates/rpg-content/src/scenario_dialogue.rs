@@ -258,6 +258,16 @@ pub struct DialogueItemGrant {
     #[serde(deserialize_with = "deserialize_string")]
     pub id: String,
     pub qty: NonZeroU32,
+    /// Optional repository tags applied when this authored gift is received.
+    ///
+    /// This is a native content extension: the pinned source only authored `id` and `qty`.
+    #[serde(default, deserialize_with = "deserialize_strings")]
+    pub tags: Vec<String>,
+    /// Protects the resulting stack from sale and discard until the player unlocks it.
+    ///
+    /// This is a native content extension; omission preserves the source's unlocked default.
+    #[serde(default)]
+    pub locked: bool,
 }
 
 /// A source-authored map transition after dialogue completion.
@@ -340,8 +350,8 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        ActionTrigger, DialogueDocument, DialogueFade, DialogueShopKind, EntryDialogueKind,
-        SetFlagAction,
+        ActionTrigger, DialogueActions, DialogueDocument, DialogueFade, DialogueShopKind,
+        EntryDialogueKind, SetFlagAction,
     };
     use crate::scenario_spatial::Position;
     use crate::scenario_yaml;
@@ -512,6 +522,8 @@ mod tests {
         assert_eq!(invitation.on_complete.join_party.as_deref(), Some("mira"));
         assert_eq!(invitation.on_complete.give_items[0].id, "field_tonic");
         assert_eq!(invitation.on_complete.give_items[0].qty.get(), 2);
+        assert!(invitation.on_complete.give_items[0].tags.is_empty());
+        assert!(!invitation.on_complete.give_items[0].locked);
 
         assert_eq!(
             dialogue.entries[2].on_complete.open_inn,
@@ -521,6 +533,17 @@ mod tests {
             dialogue.entries[3].on_complete.open_apothecary,
             Some(ActionTrigger)
         );
+    }
+
+    #[test]
+    fn dialogue_gifts_accept_optional_repository_tags_and_lock_protection() {
+        let actions: DialogueActions = scenario_yaml::from_str(
+            "give_items: [{ id: warp_stone, qty: 1, tags: [travel], locked: true }]\n",
+        )
+        .expect("native gift metadata should deserialize");
+
+        assert_eq!(actions.give_items[0].tags, ["travel"]);
+        assert!(actions.give_items[0].locked);
     }
 
     #[test]

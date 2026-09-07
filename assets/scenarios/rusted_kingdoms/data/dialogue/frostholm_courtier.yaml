@@ -29,6 +29,8 @@ entries:
       give_items:
         - id: warp_stone
           qty: 1
+          tags: [travel]
+          locked: true
 
   # Started, purse not yet delivered
   - condition:

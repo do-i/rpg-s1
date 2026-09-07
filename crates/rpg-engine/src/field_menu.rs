@@ -93,13 +93,15 @@ const ITEM_MANAGE_VISIBLE_ROWS: usize = 8;
 /// the canvas, since the modal is centred and has no height cap of its own.
 const TAG_EDITOR_VISIBLE_ROWS: usize = 9;
 /// Item-action rows, in the order the modal lists them.
-const ITEM_ACTIONS: [(&str, &str); 4] = [
+const ITEM_ACTIONS: [(&str, &str); 5] = [
     ("Use", "apply this item"),
     ("Discard", "remove from pouch"),
     ("Hide", "hide for this session"),
     ("Edit Tags", "curate and add tags"),
+    ("Lock", "protect from discard and sale"),
 ];
 const ITEM_ACTION_TAGS: usize = 3;
+const ITEM_ACTION_LOCK: usize = 4;
 const QUIT_COMMAND_INDEX: usize = 3;
 const SAVE_COMMAND_INDEX: usize = 4;
 const CHARACTER_COMMAND_INDEX: usize = 7;
@@ -860,6 +862,7 @@ fn handle_field_menu_input(
                         state.mode = FieldMenuMode::ItemTags;
                         state.selected = 0;
                     }
+                    ITEM_ACTION_LOCK => toggle_item_lock(&mut game, &mut state, &id),
                     _ => unreachable!(),
                 }
             }
@@ -1371,6 +1374,26 @@ fn toggle_item_tag(game: &mut GameState, state: &mut FieldMenuState, item_id: &s
     }
 }
 
+/// Toggles the repository's persistent discard/sale protection for one owned stack.
+fn toggle_item_lock(game: &mut GameState, state: &mut FieldMenuState, item_id: &str) {
+    let locked = !game.repository().is_locked(item_id);
+    game.repository_mut().set_locked(item_id, locked);
+    state.message = if locked {
+        "Locked against discarding and selling.".to_owned()
+    } else {
+        "Unlocked for discarding and selling.".to_owned()
+    };
+}
+
+/// Returns the live label for an item action; lock protection is the only stateful row.
+fn item_action_row(index: usize, game: &GameState, item_id: &str) -> (&'static str, &'static str) {
+    if index == ITEM_ACTION_LOCK && game.repository().is_locked(item_id) {
+        ("Unlock", "allow discard and sale")
+    } else {
+        ITEM_ACTIONS[index]
+    }
+}
+
 /// Validates and stores the drafted custom tag, keeping the prompt open on rejection.
 ///
 /// Ports `item_scene._commit_new_tag`, which distinguishes an invalid tag, a duplicate, and the
@@ -1864,6 +1887,26 @@ mod tests {
     }
 
     #[test]
+    fn toggling_a_lock_updates_protection_and_the_live_action_label() {
+        let mut game = fixture_game();
+        let mut state = FieldMenuState::default();
+
+        assert!(game.repository().is_locked("potion"));
+        assert_eq!(
+            item_action_row(ITEM_ACTION_LOCK, &game, "potion").0,
+            "Unlock"
+        );
+        toggle_item_lock(&mut game, &mut state, "potion");
+        assert!(!game.repository().is_locked("potion"));
+        assert_eq!(state.message, "Unlocked for discarding and selling.");
+        assert_eq!(item_action_row(ITEM_ACTION_LOCK, &game, "potion").0, "Lock");
+
+        toggle_item_lock(&mut game, &mut state, "potion");
+        assert!(game.repository().is_locked("potion"));
+        assert_eq!(state.message, "Locked against discarding and selling.");
+    }
+
+    #[test]
     fn a_custom_tag_is_normalized_and_rejected_reasons_are_distinguished() {
         assert_eq!(
             normalize_custom_tag("  Sell Later "),
@@ -2040,6 +2083,39 @@ mod tests {
         assert!(labels.contains(&"Use"));
         assert!(labels.contains(&"Discard"));
         assert!(labels.contains(&"Hide"));
+        assert!(labels.contains(&"Unlock"));
+    }
+
+    #[test]
+    fn item_details_show_repository_tags_and_locked_actions_offer_unlock() {
+        let mut game = fixture_game();
+        game.repository_mut()
+            .add_tags("potion", ["travel"])
+            .unwrap();
+        game.repository_mut().set_locked("potion", true);
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Items,
+                mode: FieldMenuMode::ItemActions,
+                pending_id: Some("potion".to_owned()),
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_items_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"TRAVEL"));
+        assert!(labels.contains(&"LOCKED"));
+        assert!(labels.contains(&"Unlock"));
     }
 
     #[test]
