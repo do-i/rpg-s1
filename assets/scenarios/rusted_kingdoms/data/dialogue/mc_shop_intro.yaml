@@ -5,6 +5,6 @@ entries:
   - condition:
       requires: [story_quest_started]
     lines:
-      - "Magic Cores? I'll take them. Fair rates, no questions."
+      - "Magic Cores? I buy XS and S for GP. Keep M, L, and XL for an apothecary."
     on_complete:
       open_shop: magic_core

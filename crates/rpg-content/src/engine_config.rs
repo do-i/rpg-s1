@@ -142,7 +142,7 @@ pub struct EngineConfig {
     pub font_scale: f32,
     /// Ask before an item that targets the whole party is spent.
     pub use_aoe_confirm: bool,
-    /// Ask before exchanging an L or XL magic core.
+    /// Ask before exchanging a scenario-authored magic core worth at least 1,000 GP.
     pub mc_exchange_confirm_large: bool,
 }
 

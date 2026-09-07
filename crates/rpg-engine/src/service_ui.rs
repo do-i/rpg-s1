@@ -370,7 +370,7 @@ pub(crate) fn handle_service_input(
                 state.close();
                 return;
             }
-            let rows = owned_cores(&catalog, &game);
+            let rows = owned_exchangeable_cores(&catalog, &game);
             if let Some(delta) = delta {
                 state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
             }
@@ -628,7 +628,8 @@ fn is_high_value_core(state: &ServiceUiState, catalog: &FieldMenuCatalog) -> boo
             .and_then(|id| catalog.item(id))
             .is_some_and(|item| {
                 matches!(item, ItemDefinition::MagicCore(core)
-                    if core.exchange_rate.get() >= HIGH_VALUE_CORE_RATE)
+                    if core.exchange_rate.is_some_and(|rate|
+                        rate.get() >= HIGH_VALUE_CORE_RATE))
             })
 }
 
@@ -712,7 +713,9 @@ fn execute_pending(
                 PendingTransaction::Buy => offer_equip_after_purchase(state, catalog, game, &id),
                 // The source closes the exchange rather than showing an empty list once the
                 // last core is spent (`magic_core_shop_scene.py:96-101`).
-                PendingTransaction::Exchange if owned_cores(catalog, game).is_empty() => {
+                PendingTransaction::Exchange
+                    if owned_exchangeable_cores(catalog, game).is_empty() =>
+                {
                     state.close();
                 }
                 _ => {}
@@ -855,10 +858,15 @@ fn sell_rows<'a>(
         .collect()
 }
 
-fn owned_cores<'a>(catalog: &'a FieldMenuCatalog, game: &GameState) -> Vec<&'a ItemDefinition> {
+fn owned_exchangeable_cores<'a>(
+    catalog: &'a FieldMenuCatalog,
+    game: &GameState,
+) -> Vec<&'a ItemDefinition> {
     owned_items(catalog, game)
         .into_iter()
-        .filter(|item| matches!(item, ItemDefinition::MagicCore(_)))
+        .filter(
+            |item| matches!(item, ItemDefinition::MagicCore(core) if core.exchange_rate.is_some()),
+        )
         .collect()
 }
 
@@ -1090,6 +1098,23 @@ mod tests {
         assert_eq!(state.page, Some(ServicePage::MagicCore));
 
         execute_pending_last_core(&catalog);
+    }
+
+    #[test]
+    fn core_exchange_lists_only_scenario_authored_gp_tiers() {
+        let catalog = catalog();
+        let mut game = game([]);
+        for id in ["mc_xs", "mc_s", "mc_m", "mc_l", "mc_xl"] {
+            let _outcome = game.repository_mut().add_item(id, 1).unwrap();
+        }
+
+        assert_eq!(
+            owned_exchangeable_cores(&catalog, &game)
+                .into_iter()
+                .map(ItemDefinition::id)
+                .collect::<Vec<_>>(),
+            ["mc_s", "mc_xs"]
+        );
     }
 
     fn execute_pending_last_core(catalog: &FieldMenuCatalog) {

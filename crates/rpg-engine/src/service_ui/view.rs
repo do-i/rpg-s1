@@ -4,12 +4,14 @@
 //! changes — the same contract the field-menu pages use. Nothing here mutates game state; the
 //! parent module owns every transition.
 
+use std::num::NonZeroU32;
+
 use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use super::{
     PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
-    ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment, owned_cores, pending_max,
-    sell_rows, sellable_tags,
+    ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment, owned_exchangeable_cores,
+    pending_max, sell_rows, sellable_tags,
     sprites::{RecipeIcon, ServiceKeeper, ServiceSprites},
 };
 use crate::{
@@ -586,7 +588,7 @@ fn spawn_core_page(
     catalog: &FieldMenuCatalog,
     game: &GameState,
 ) {
-    let rows = owned_cores(catalog, game);
+    let rows = owned_exchangeable_cores(catalog, game);
     spawn_status_panel(parent, stacked_panel_node(), "CORES", font, |panel| {
         if rows.is_empty() {
             spawn_status_text(
@@ -608,7 +610,9 @@ fn spawn_core_page(
             let ItemDefinition::MagicCore(core) = item else {
                 continue;
             };
-            let rate = core.exchange_rate.get();
+            let Some(rate) = core.exchange_rate.map(NonZeroU32::get) else {
+                continue;
+            };
             spawn_list_row(
                 panel,
                 font,
@@ -1007,7 +1011,7 @@ fn unit_price(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameSta
             .map(|row| row.buy_price().get()),
         Some(PendingTransaction::Sell) => catalog.item(id).and_then(sell_price),
         Some(PendingTransaction::Exchange) => match catalog.item(id) {
-            Some(ItemDefinition::MagicCore(core)) => Some(core.exchange_rate.get()),
+            Some(ItemDefinition::MagicCore(core)) => core.exchange_rate.map(NonZeroU32::get),
             _ => None,
         },
         None => None,

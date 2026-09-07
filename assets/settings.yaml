@@ -29,7 +29,7 @@ saves:
 movement:
   smooth_collision: true   # axis-separation sliding on walls and NPCs
 
-# Consumed: confirm before exchanging an L or XL magic core.
+# Consumed: confirm before exchanging any scenario-authored core worth at least 1,000 GP.
 shop:
   mc_exchange_confirm_large: true
 
