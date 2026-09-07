@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from scripts.check_asset_rights import LedgerEntry, audit, parse_ledger
+from scripts.release_assets import copy_release_assets, parse_exclusion_list
 
 
 class ParseLedgerTests(unittest.TestCase):
@@ -103,6 +104,60 @@ class AuditTests(unittest.TestCase):
                 [entry.entry_id for entry, _actual in result.hash_mismatches],
                 ["ALI-0003"],
             )
+
+
+class ReleaseAssetTests(unittest.TestCase):
+    def test_exclusion_list_accepts_only_unique_normalized_asset_paths(self):
+        paths, errors = parse_exclusion_list(
+            """
+# retained authoring files
+assets/scenarios/demo/media/unused.png
+
+assets/scenarios/demo/media/unused.tsx
+../escape.png
+docs/not-an-asset.md
+assets/scenarios/demo/../alias.png
+assets/scenarios/demo/media/unused.png
+"""
+        )
+
+        self.assertEqual(
+            paths,
+            (
+                "assets/scenarios/demo/media/unused.png",
+                "assets/scenarios/demo/media/unused.tsx",
+            ),
+        )
+        self.assertEqual(len(errors), 4)
+
+    def test_copy_release_assets_preserves_layout_and_refuses_missing_sources(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "assets/scenarios/demo/manifest.yaml"
+            source.parent.mkdir(parents=True)
+            source.write_text("id: demo\n", encoding="utf-8")
+            destination = root / "dist/assets"
+
+            errors = copy_release_assets(
+                root,
+                destination,
+                ["assets/scenarios/demo/manifest.yaml"],
+            )
+            self.assertEqual(errors, ())
+            self.assertEqual(
+                (destination / "scenarios/demo/manifest.yaml").read_text(
+                    encoding="utf-8"
+                ),
+                "id: demo\n",
+            )
+
+            missing_errors = copy_release_assets(
+                root,
+                root / "other/assets",
+                ["assets/scenarios/demo/missing.png"],
+            )
+            self.assertEqual(len(missing_errors), 1)
+            self.assertIn("not a readable regular file", missing_errors[0])
 
 
 if __name__ == "__main__":

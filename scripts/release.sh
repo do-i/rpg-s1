@@ -173,8 +173,8 @@ check_local_dev_pushed() {
     fi
 }
 
-# The release workflow copies every tracked file under assets/, so the rights
-# gate audits that exact payload rather than a hand-maintained subset.
+# The release workflow copies the tracked files selected after applying
+# release-assets-exclude.txt, so the rights gate audits that exact payload.
 check_asset_rights() {
     echo "Checking asset rights..."
     python3 scripts/check_asset_rights.py

@@ -1,0 +1,6 @@
+id: marsh_farmer
+type: npc
+
+entries:
+  - lines:
+      - "The dry patches shift every season. Test the ground before you trust it."

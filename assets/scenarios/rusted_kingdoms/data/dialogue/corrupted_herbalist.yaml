@@ -1,0 +1,6 @@
+id: corrupted_herbalist
+type: npc
+
+entries:
+  - lines:
+      - "Even poisoned soil grows medicine. The trick is knowing which leaf lies."

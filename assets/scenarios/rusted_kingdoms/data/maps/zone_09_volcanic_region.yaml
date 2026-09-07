@@ -19,6 +19,13 @@ item_boxes:
           qty: 1
 
 npcs:
+  - id: volcanic_refugee
+    name: "Refugee Hal"
+    dialogue: volcanic_refugee
+    position: [21, 8]
+    sprite: media/sprites/npc/village_male_person_base.tsx
+    default_facing: down
+
   - id: stronghold_gate_guard
     name: "Warden Malc"
     dialogue: stronghold_gate_guard

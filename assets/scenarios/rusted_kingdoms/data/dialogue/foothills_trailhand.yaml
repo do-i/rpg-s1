@@ -1,0 +1,6 @@
+id: foothills_trailhand
+type: npc
+
+entries:
+  - lines:
+      - "Snow hides the loose stone. Follow the worn ground, even when the climb looks longer."

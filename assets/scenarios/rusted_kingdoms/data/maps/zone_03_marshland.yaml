@@ -3,6 +3,13 @@ warp_order: 50
 bgm: zone.marsh
 
 npcs:
+  - id: marsh_farmer
+    name: "Fen Farmer Olan"
+    position: [42, 25]
+    dialogue: marsh_farmer
+    sprite: media/sprites/npc/farmer_male_base.tsx
+    default_facing: left
+
   - id: marshland_reedcutter
     name: "Reedcutter Sela"
     position: [26, 10]

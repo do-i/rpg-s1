@@ -9,6 +9,13 @@ enemy_spawn:
   interval: 25.0
 
 npcs:
+  - id: forest_ranger
+    name: "Ranger Toma"
+    position: [8, 14]
+    dialogue: forest_ranger
+    sprite: media/sprites/npc/archer_base.tsx
+    default_facing: right
+
   - id: bridge_guard_zone5
     name: "Guardsman Pike"
     type: gate

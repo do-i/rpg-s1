@@ -6,6 +6,15 @@ enemy_spawn:
   init: 4
   max: 8
   interval: 22.0
+
+npcs:
+  - id: foothills_trailhand
+    name: "Trailhand Corin"
+    position: [15, 17]
+    dialogue: foothills_trailhand
+    sprite: media/sprites/npc/farmer_male_straw_hat_worker.tsx
+    default_facing: down
+
 item_boxes:
   - id: foothills_chest_01
     position: [43, 5]

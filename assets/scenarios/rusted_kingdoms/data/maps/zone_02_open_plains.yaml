@@ -6,6 +6,15 @@ enemy_spawn:
   init: 4
   max: 8
   interval: 20.0
+
+npcs:
+  - id: plains_scout
+    name: "Scout Bren"
+    position: [20, 8]
+    dialogue: plains_scout
+    sprite: media/sprites/npc/archer_crossbow_hunter.tsx
+    default_facing: left
+
 item_boxes:
   - id: plains_chest_01
     position: [10, 6]

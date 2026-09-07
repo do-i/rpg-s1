@@ -1,0 +1,6 @@
+id: mountain_pilgrim
+type: npc
+
+entries:
+  - lines:
+      - "The mountain keeps every promise made upon it. Choose yours carefully."
