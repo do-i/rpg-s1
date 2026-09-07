@@ -8,6 +8,13 @@ enemy_spawn:
   interval: 22.0
 
 npcs:
+  - id: corrupted_herbalist
+    name: "Herbalist Veya"
+    position: [40, 19]
+    dialogue: corrupted_herbalist
+    sprite: media/sprites/npc/village_female_person_base.tsx
+    default_facing: left
+
   - id: corrupted_forest_warden
     name: "Warden Ilse"
     position: [29, 10]

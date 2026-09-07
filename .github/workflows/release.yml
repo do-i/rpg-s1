@@ -62,9 +62,10 @@ jobs:
           echo "name=rpg-s1-$version-x86_64-linux" >> "$GITHUB_OUTPUT"
           echo "building rpg-s1 $version from $ref"
 
-      # The bundle step copies the complete tracked assets/ tree. Refuse the
-      # release unless every one of those files has a current approved ledger
-      # entry; this is intentionally stricter than the report-only CI check.
+      # The bundle step copies the tracked assets selected by
+      # release-assets-exclude.txt. Refuse the release unless every selected
+      # file has a current approved ledger entry; this is intentionally
+      # stricter than the report-only CI check.
       - name: Verify release asset rights
         run: python3 scripts/check_asset_rights.py
 
@@ -100,7 +101,7 @@ jobs:
           set -euo pipefail
           mkdir -p "dist/$NAME"
           cp target/release/rpg-s1 "dist/$NAME/"
-          cp -r assets "dist/$NAME/"
+          python3 scripts/package_release_assets.py "dist/$NAME/assets"
           cp LICENSE README.md "dist/$NAME/" 2>/dev/null || true
           tar -czf "dist/$NAME.tar.gz" -C dist "$NAME"
           ls -la dist/
@@ -112,6 +113,20 @@ jobs:
             echo "tarball is implausibly small - did Git LFS resolve?" >&2
             exit 1
           fi
+
+      # Validate from outside the checkout with only the staged payload beside
+      # the binary. This catches an exclusion that later becomes a runtime
+      # reference, as well as accidental repository-relative asset loading.
+      - name: Validate packaged scenario
+        env:
+          NAME: ${{ steps.ver.outputs.name }}
+        run: |
+          set -euo pipefail
+          rehearsal="$(mktemp -d)"
+          cd "$rehearsal"
+          "$GITHUB_WORKSPACE/dist/$NAME/rpg-s1" \
+            validate-scenario rusted_kingdoms \
+            --baseline "$GITHUB_WORKSPACE/dist/$NAME/assets/scenarios/rusted_kingdoms/validation-baseline.txt"
 
       - name: Publish the release
         env:

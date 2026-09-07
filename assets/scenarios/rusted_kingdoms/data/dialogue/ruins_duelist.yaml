@@ -1,0 +1,6 @@
+id: ruins_duelist
+type: npc
+
+entries:
+  - lines:
+      - "These halls punish haste. Keep your guard high and your footing deliberate."

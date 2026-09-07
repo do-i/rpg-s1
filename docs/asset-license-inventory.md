@@ -1,11 +1,12 @@
 # Asset License Inventory
 
-Status: active; the 2026-09-07 automated payload audit found 1,060 tracked
-release assets, 129 ledger entries (10 approved and 119 needing evidence), 935
+Status: active; the 2026-09-07 automated payload audit found 1,012 selected
+release assets, 129 ledger entries (10 approved and 119 needing evidence), 887
 payload files without an ALI entry, 115 non-approved payload entries, and 26
 destination-hash mismatches. The release is blocked until all findings are
 resolved. Run `python3 scripts/check_asset_rights.py --report-only` for the
-current report; this dated snapshot is not a substitute for rerunning it.
+current report; this dated snapshot includes the nine new zone-NPC dialogue
+files and is not a substitute for rerunning the audit from a committed tree.
 
 This ledger records the provenance and release rights of every asset copied
 into, or shipped from, this repository. It supports the Rusted Kingdoms port
@@ -65,10 +66,13 @@ set the entry back to `needs-review` (or `needs-evidence` if proof is missing).
    destination path and content hash. Resolve mismatches before shipment.
 
 `scripts/check_asset_rights.py` performs that comparison against the exact set
-of tracked files copied by the release workflow. It is a strict local and
-GitHub release gate. During ongoing evidence work, `--report-only` prints the
-same findings without treating unresolved rights as a command failure; ledger
-syntax and structural errors still fail in either mode.
+of tracked files selected by the release workflow after applying
+`release-assets-exclude.txt`. The exclusion list is for repository files kept
+as authoring/source material and is not a substitute for rights approval when
+a file is selected for shipment. The checker is a strict local and GitHub
+release gate. During ongoing evidence work, `--report-only` prints the same
+findings without treating unresolved rights as a command failure; ledger syntax
+and structural errors still fail in either mode.
 
 ## Entry fields
 

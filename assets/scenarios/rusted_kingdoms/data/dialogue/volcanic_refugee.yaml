@@ -1,0 +1,6 @@
+id: volcanic_refugee
+type: npc
+
+entries:
+  - lines:
+      - "We left before the last road burned. There is nothing behind us worth turning back for."

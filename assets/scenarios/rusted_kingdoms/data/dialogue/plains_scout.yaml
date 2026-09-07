@@ -1,0 +1,6 @@
+id: plains_scout
+type: npc
+
+entries:
+  - lines:
+      - "You can see trouble coming out here. That does not always mean you can outrun it."

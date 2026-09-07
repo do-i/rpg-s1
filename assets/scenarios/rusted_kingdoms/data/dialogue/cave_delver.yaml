@@ -1,0 +1,6 @@
+id: cave_delver
+type: npc
+
+entries:
+  - lines:
+      - "Sound carries strangely below. If you hear one step, wait for the second."

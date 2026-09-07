@@ -13,6 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
+try:
+    from scripts.release_assets import release_asset_paths
+except ModuleNotFoundError:  # Direct execution adds scripts/, not the repo root.
+    from release_assets import release_asset_paths
+
 
 ENTRY_HEADING = re.compile(r"^### Asset entry: `(?P<id>ALI-\d{4})`")
 COMPACT_ID = re.compile(r"^ALI-\d{4}$")
@@ -145,20 +150,6 @@ def parse_ledger(text: str) -> tuple[list[LedgerEntry], list[str]]:
     return entries, errors
 
 
-def tracked_asset_paths(repo_root: Path) -> list[str]:
-    result = subprocess.run(
-        ["git", "ls-files", "-z", "--", "assets"],
-        cwd=repo_root,
-        check=True,
-        capture_output=True,
-    )
-    return sorted(
-        path.decode("utf-8")
-        for path in result.stdout.split(b"\0")
-        if path
-    )
-
-
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -231,7 +222,7 @@ def print_report(result: AuditResult, entry_count: int, limit: int) -> None:
         f"{status}={count}" for status, count in sorted(result.status_counts.items())
     )
     print("Asset rights audit")
-    print(f"  tracked release assets: {result.payload_count}")
+    print(f"  selected release assets: {result.payload_count}")
     print(f"  ledger entries: {entry_count} ({statuses})")
     print(f"  missing ledger entries: {len(result.missing_entries)}")
     print(f"  non-approved payload entries: {len(result.nonapproved_entries)}")
@@ -311,7 +302,8 @@ def main(argv: Sequence[str] = ()) -> int:
     if not inventory_path.is_absolute():
         inventory_path = repo_root / inventory_path
     entries, errors = parse_ledger(inventory_path.read_text(encoding="utf-8"))
-    result = audit(repo_root, entries, tracked_asset_paths(repo_root), errors)
+    payload, selection_errors = release_asset_paths(repo_root)
+    result = audit(repo_root, entries, payload, (*errors, *selection_errors))
     print_report(result, len(entries), sys.maxsize if args.show_all else 20)
     if result.errors:
         return 2

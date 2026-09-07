@@ -1,0 +1,6 @@
+id: forest_ranger
+type: npc
+
+entries:
+  - lines:
+      - "The old trail is still passable. Watch the brush where the light turns thin."

@@ -6,6 +6,15 @@ enemy_spawn:
   init: 4
   max: 8
   interval: 22.0
+
+npcs:
+  - id: mountain_pilgrim
+    name: "Pilgrim Edras"
+    position: [30, 15]
+    dialogue: mountain_pilgrim
+    sprite: media/sprites/npc/old_man_01.tsx
+    default_facing: left
+
 item_boxes:
   - id: pass_chest_01
     position: [17, 10]

@@ -3,6 +3,13 @@ warp_order: 70
 bgm: zone.ruins
 
 npcs:
+  - id: ruins_duelist
+    name: "Duelist Mirel"
+    position: [8, 7]
+    dialogue: ruins_duelist
+    sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
+    default_facing: right
+
   - id: ruins_gate_surveyor
     name: "Surveyor Adran"
     position: [24, 3]

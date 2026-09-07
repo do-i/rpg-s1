@@ -8,6 +8,13 @@ enemy_spawn:
   interval: 22.0
 
 npcs:
+  - id: cave_delver
+    name: "Delver Nox"
+    position: [24, 33]
+    dialogue: cave_delver
+    sprite: media/sprites/npc/rogue_base.tsx
+    default_facing: up
+
   - id: sunken_cave_lampkeeper
     name: "Lampkeeper Ovid"
     position: [28, 10]
