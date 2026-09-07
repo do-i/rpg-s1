@@ -62,6 +62,12 @@ jobs:
           echo "name=rpg-s1-$version-x86_64-linux" >> "$GITHUB_OUTPUT"
           echo "building rpg-s1 $version from $ref"
 
+      # The bundle step copies the complete tracked assets/ tree. Refuse the
+      # release unless every one of those files has a current approved ledger
+      # entry; this is intentionally stricter than the report-only CI check.
+      - name: Verify release asset rights
+        run: python3 scripts/check_asset_rights.py
+
       # Same set ci.yml installs: Bevy links X11/Wayland, ALSA, and udev.
       - name: Install native build dependencies
         run: |

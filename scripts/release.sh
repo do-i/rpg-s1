@@ -26,9 +26,10 @@
 #     than guessing what to do.
 #
 # What "cut" does:
-#   1. Refuses a dirty tree, or a local dev with unpushed commits (they'd be
-#      silently left out), or an origin/main that is not an ancestor of
-#      origin/dev (a direct push to main since the last release).
+#   1. Refuses a dirty tree, an asset payload without complete approved rights,
+#      a local dev with unpushed commits (they'd be silently left out), or an
+#      origin/main that is not an ancestor of origin/dev (a direct push to main
+#      since the last release).
 #   2. Bumps Cargo.toml + Cargo.lock to the new version and pushes that commit
 #      to dev, unless Cargo.toml is already at the target version.
 #   3. Waits for a green ci.yml run on dev's tip.
@@ -172,6 +173,13 @@ check_local_dev_pushed() {
     fi
 }
 
+# The release workflow copies every tracked file under assets/, so the rights
+# gate audits that exact payload rather than a hand-maintained subset.
+check_asset_rights() {
+    echo "Checking asset rights..."
+    python3 scripts/check_asset_rights.py
+}
+
 # Returns "<status> <conclusion>" for the newest ci.yml run on $1, or the
 # empty string when no run exists for that commit yet.
 ci_run_state() {
@@ -256,6 +264,7 @@ common_guards() {
         exit 1
     fi
     check_on_dev_branch
+    check_asset_rights
     fetch_all
     check_local_dev_pushed
     check_not_diverged
