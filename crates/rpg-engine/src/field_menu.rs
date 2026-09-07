@@ -20,8 +20,8 @@ use crate::{
     menu_chrome::{
         location_display_name, spawn_header_bars, spawn_meter, spawn_section_rule,
         spawn_status_panel, spawn_status_text, status_border, status_border_active, status_ember,
-        status_faint, status_gold, status_ink, status_muted, status_teal, status_violet,
-        window_start,
+        status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
+        status_violet, window_start,
     },
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
@@ -37,8 +37,10 @@ use crate::{
     scenario_party::PartyRow,
     scenario_path::ScenarioRelativePath,
     scenario_quest::{QuestDefinition, QuestKind},
+    scenario_recipe::RecipeDefinition,
     scenario_root::ScenarioRoot,
     scenario_spatial::CardinalDirection,
+    service_domain::{RecipeAvailability, recipe_availability, recipe_input_requirements},
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, PlaySfx, cue},
     transport_domain::TransportDomain,
@@ -66,15 +68,16 @@ use ui::{
     cleanup_field_menu, large_status_portrait_path, load_status_image, profile_portrait_path,
     sync_custom_field_menu_content_visibility, sync_equipment_page, sync_field_menu_generic_text,
     sync_field_menu_overlay_lifecycle, sync_items_page, sync_main_menu_page, sync_quests_page,
-    sync_save_page, sync_spells_page, sync_status_page,
+    sync_recipes_page, sync_save_page, sync_spells_page, sync_status_page,
 };
 
 const INVENTORY_PAGE_ROWS: usize = 10;
 const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 const SPELLBOOK_VISIBLE_ROWS: usize = 7;
-/// Rows per column on the two-column main command deck.
+/// Rows per column on the main command deck; the deck grows a column as commands are added.
 const MAIN_COMMAND_ROWS: usize = 4;
 const QUEST_VISIBLE_ROWS: usize = 7;
+const RECIPE_VISIBLE_ROWS: usize = 7;
 const SAVE_VISIBLE_ROWS: usize = 6;
 /// Destination rows the teleport picker shows before it scrolls.
 ///
@@ -114,7 +117,7 @@ struct MainCommand {
     screen: Option<FieldMenuScreen>,
 }
 
-const MAIN_COMMANDS: [MainCommand; 8] = [
+const MAIN_COMMANDS: [MainCommand; 9] = [
     MainCommand {
         label: "Status",
         badge: "ST",
@@ -163,6 +166,12 @@ const MAIN_COMMANDS: [MainCommand; 8] = [
         description: "control a different party member",
         screen: None,
     },
+    MainCommand {
+        label: "Recipes",
+        badge: "RC",
+        description: "study known recipes and ingredients",
+        screen: Some(FieldMenuScreen::Recipes),
+    },
 ];
 
 const STATUS_PARTY_WIDTH: f32 = 316.0;
@@ -181,6 +190,8 @@ const MAIN_DECK_WIDTH: f32 = 772.0;
 const MAIN_DECK_COLUMN_GAP: f32 = 14.0;
 const QUEST_LIST_WIDTH: f32 = 512.0;
 const QUEST_COLUMN_GAP: f32 = 18.0;
+const RECIPE_LIST_WIDTH: f32 = 512.0;
+const RECIPE_COLUMN_GAP: f32 = 18.0;
 
 pub(crate) struct FieldMenuPlugin;
 
@@ -208,6 +219,7 @@ impl Plugin for FieldMenuPlugin {
                     sync_equipment_page,
                     sync_spells_page,
                     sync_quests_page,
+                    sync_recipes_page,
                     sync_save_page,
                 )
                     .chain()
@@ -226,6 +238,8 @@ enum FieldMenuScreen {
     Equipment,
     Spells,
     Quests,
+    /// Read-only recipe book. Crafting stays with the apothecary service (roadmap B4.4).
+    Recipes,
     Save,
 }
 
@@ -472,6 +486,15 @@ struct SpellTargetOverlay;
 
 #[derive(Component)]
 struct FieldMenuQuestsPage;
+
+#[derive(Component)]
+struct FieldMenuRecipesPage;
+
+#[derive(Component)]
+struct RecipeBookRow;
+
+#[derive(Component)]
+struct SelectedRecipeBookRow;
 
 #[derive(Component)]
 struct QuestBoardRow;
@@ -1189,6 +1212,13 @@ fn handle_field_menu_input(
                 state.selected = wrapped_or_zero(state.selected, catalog.quests().len(), delta);
             }
         }
+        // Browsing is the whole screen. Deliberately no Confirm arm: the recipe book is a
+        // reference, and crafting stays with the apothecary service (roadmap B4.4).
+        (FieldMenuScreen::Recipes, FieldMenuMode::Browse) => {
+            if let Some(delta) = vertical {
+                state.selected = wrapped_or_zero(state.selected, catalog.recipes().len(), delta);
+            }
+        }
         _ => {}
     }
 }
@@ -1640,6 +1670,17 @@ mod tests {
     ) {
         commands.spawn(Node::default()).with_children(|parent| {
             spawn_items_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+        });
+    }
+
+    fn spawn_fixture_recipes_page(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+        catalog: Res<FieldMenuCatalog>,
+    ) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_recipes_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
         });
     }
 
@@ -2653,6 +2694,7 @@ mod tests {
         assert_eq!(main_command_screen(2), Some(FieldMenuScreen::Items));
         assert_eq!(main_command_screen(5), Some(FieldMenuScreen::Equipment));
         assert_eq!(main_command_screen(6), Some(FieldMenuScreen::Quests));
+        assert_eq!(main_command_screen(8), Some(FieldMenuScreen::Recipes));
         // Character and Quit open modals rather than screens.
         assert!(main_command_screen(CHARACTER_COMMAND_INDEX).is_none());
         assert_eq!(
@@ -2672,25 +2714,32 @@ mod tests {
 
     #[test]
     fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
-        // Left column holds Status, Spells, Items, Quit; right holds Save, Equipment, Quests,
-        // Character.
+        // Column 0 holds Status, Spells, Items, Quit; column 1 holds Save, Equipment, Quests,
+        // Character; column 2 holds Recipes alone.
         assert_eq!(stepped_main_command(0, Some(1), None), 1);
         assert_eq!(stepped_main_command(3, Some(1), None), 0);
         assert_eq!(stepped_main_command(0, Some(-1), None), 3);
         assert_eq!(stepped_main_command(4, Some(-1), None), 7);
 
         assert_eq!(stepped_main_command(1, None, Some(1)), 5);
-        assert_eq!(stepped_main_command(5, None, Some(1)), 1);
         assert_eq!(stepped_main_command(5, None, Some(-1)), 1);
+        // Rightward out of the last column wraps back to the first.
+        assert_eq!(stepped_main_command(8, None, Some(1)), 0);
+        // A lone command in column 2 catches every row that crosses into it.
+        assert_eq!(stepped_main_command(5, None, Some(1)), 8);
+        // Vertical movement inside a one-command column stays put rather than dividing by zero.
+        assert_eq!(stepped_main_command(8, Some(1), None), 8);
+        assert_eq!(stepped_main_command(8, Some(-1), None), 8);
     }
 
     #[test]
     fn crossing_into_the_short_column_clamps_to_its_last_command() {
-        // Adding Character filled the deck: eight commands are two whole columns, so the clamp has
-        // nothing to trim today. It still guards the cursor if a command is ever added or removed.
-        assert_eq!(main_command_columns(), 2);
+        // Adding Recipes opened a third column holding one command, so the clamp is now load
+        // bearing: every row crossing into it has to land on that single entry.
+        assert_eq!(main_command_columns(), 3);
         assert_eq!(main_command_column_len(0), 4);
         assert_eq!(main_command_column_len(1), 4);
+        assert_eq!(main_command_column_len(2), 1);
 
         assert_eq!(stepped_main_command(3, None, Some(1)), 7);
         for row in 0..MAIN_COMMAND_ROWS {
@@ -2698,6 +2747,14 @@ mod tests {
             assert_eq!(
                 crossed % MAIN_COMMAND_ROWS,
                 row.min(main_command_column_len(1) - 1)
+            );
+        }
+        // Crossing from the full middle column into the short one collapses onto Recipes.
+        for row in 0..MAIN_COMMAND_ROWS {
+            assert_eq!(
+                stepped_main_command(MAIN_COMMAND_ROWS + row, None, Some(1)),
+                MAIN_COMMANDS.len() - 1,
+                "row {row} must clamp onto the lone command in the last column"
             );
         }
     }
@@ -2719,6 +2776,8 @@ mod tests {
 
     #[test]
     fn main_page_matches_the_source_command_deck_structure() {
+        // The first eight are the source deck in source order. `Recipes` is appended rather than
+        // inserted (roadmap B4.4) so every index the deck constants pin stays where it was.
         assert_eq!(
             MAIN_COMMANDS.map(|command| command.label),
             [
@@ -2729,9 +2788,13 @@ mod tests {
                 "Save",
                 "Equipment",
                 "Quests",
-                "Character"
+                "Character",
+                "Recipes"
             ]
         );
+        assert_eq!(MAIN_COMMANDS[QUIT_COMMAND_INDEX].label, "Quit");
+        assert_eq!(MAIN_COMMANDS[SAVE_COMMAND_INDEX].label, "Save");
+        assert_eq!(MAIN_COMMANDS[CHARACTER_COMMAND_INDEX].label, "Character");
 
         let mut app = App::new();
         app.insert_resource(fixture_game())
@@ -2763,6 +2826,217 @@ mod tests {
         assert!(labels.contains(&"PARTY COMMAND DECK"));
         assert!(labels.contains(&"cast field magic and utilities"));
         assert!(labels.contains(&"exit the game to desktop"));
+    }
+
+    /// Every recipe is listed so the tally is honest, but an unmet unlock flag keeps the formula
+    /// itself unreadable. A new game bootstraps `story_quest_started`, so the Act 1 recipes are
+    /// already legible while the later acts stay sealed.
+    #[test]
+    fn the_recipe_book_lists_the_catalog_and_withholds_sealed_formulae() {
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let recipe_count = catalog.recipes().len();
+        assert!(recipe_count > 0, "the shipped catalog must carry recipes");
+
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(catalog)
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Recipes,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_recipes_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(
+            world.query::<&FieldMenuRecipesPage>().iter(world).count(),
+            1
+        );
+        assert_eq!(
+            world.query::<&RecipeBookRow>().iter(world).count(),
+            RECIPE_VISIBLE_ROWS.min(recipe_count)
+        );
+        assert_eq!(
+            world.query::<&SelectedRecipeBookRow>().iter(world).count(),
+            1
+        );
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "RECIPE BOOK"));
+        assert!(labels.iter().any(|label| label == "Sealed Formula"));
+        assert!(labels.iter().any(|label| label == "SEALED"));
+        assert!(
+            labels
+                .iter()
+                .any(|label| label == "Brewing is done at an apothecary."),
+            "the book must say where crafting actually happens"
+        );
+        // Act 1 is bootstrapped, so its formula reads normally.
+        assert!(labels.iter().any(|label| label == "Purging Salve"));
+        // Act 2 is not, so its scroll name must not appear anywhere on the page.
+        assert!(
+            !labels.iter().any(|label| label == "Vital Brew"),
+            "a sealed formula must not leak its scroll name: {labels:?}"
+        );
+    }
+
+    #[test]
+    fn an_unsealed_recipe_shows_its_ingredients_against_what_the_party_carries() {
+        let mut game = fixture_game();
+        game.flags_mut().set("story_quest_started");
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Recipes,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_recipes_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "Purging Salve"));
+        // The fixture carries none of the salve's inputs, so both read as carried zero.
+        assert!(
+            labels
+                .iter()
+                .any(|label| label == "Venom Sac   x2   (carried 0)"),
+            "ingredient rows must show the required and carried counts: {labels:?}"
+        );
+    }
+
+    /// The acceptance condition for roadmap B4.4: the book is a reference, not a second workshop.
+    #[test]
+    fn confirming_in_the_recipe_book_never_crafts_anything() {
+        use crate::action_input::ActionInputPlugin;
+
+        let mut game = fixture_game();
+        // Unseal an Act 1 recipe and stock every input, so the only thing standing between the
+        // player and a craft is the absence of a crafting path on this screen.
+        game.flags_mut().set("story_quest_started");
+        let batch = game.repository_mut().start_loot_batch();
+        let _ = game
+            .repository_mut()
+            .add_item_in_batch("venom_sac", 9, batch)
+            .unwrap();
+        let _ = game
+            .repository_mut()
+            .add_item_in_batch("herb_red", 9, batch)
+            .unwrap();
+        let before_gp = game.repository().gp();
+        let before_remedy = game.repository().item_count("remedy");
+        let before_venom = game.repository().item_count("venom_sac");
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<ButtonInput<KeyCode>>()
+            .add_plugins(ActionInputPlugin)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(WorldInteractionState::default())
+            .init_resource::<EngineSettings>()
+            .insert_resource(WorldTransition::idle_for_test())
+            .insert_resource(game)
+            .insert_resource(SaveStore::new(
+                std::env::temp_dir().join("rpg-s1-recipe-book-test-unused"),
+            ))
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(Time::<Real>::default())
+            .init_resource::<ServiceUiState>()
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Recipes,
+                ..default()
+            })
+            .add_message::<AppExit>()
+            .add_message::<PlaySfx>()
+            .add_message::<KeyboardInput>()
+            .add_systems(Update, handle_field_menu_input);
+
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        app.update();
+
+        let state = app.world().resource::<FieldMenuState>();
+        assert_eq!(
+            state.screen,
+            FieldMenuScreen::Recipes,
+            "Confirm must not navigate out of the book"
+        );
+        assert_eq!(
+            state.mode,
+            FieldMenuMode::Browse,
+            "Confirm must not open a crafting mode"
+        );
+        let repository = app.world().resource::<GameState>().repository();
+        assert_eq!(repository.gp(), before_gp, "Confirm must not spend GP");
+        assert_eq!(
+            repository.item_count("remedy"),
+            before_remedy,
+            "Confirm must not produce the recipe output"
+        );
+        assert_eq!(
+            repository.item_count("venom_sac"),
+            before_venom,
+            "Confirm must not consume ingredients"
+        );
+    }
+
+    #[test]
+    fn the_recipe_book_cursor_wraps_across_the_whole_catalog() {
+        use crate::action_input::ActionInputPlugin;
+
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let last = catalog.recipes().len() - 1;
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<ButtonInput<KeyCode>>()
+            .add_plugins(ActionInputPlugin)
+            .insert_resource(catalog)
+            .insert_resource(WorldInteractionState::default())
+            .init_resource::<EngineSettings>()
+            .insert_resource(WorldTransition::idle_for_test())
+            .insert_resource(fixture_game())
+            .insert_resource(SaveStore::new(
+                std::env::temp_dir().join("rpg-s1-recipe-cursor-test-unused"),
+            ))
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(Time::<Real>::default())
+            .init_resource::<ServiceUiState>()
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Recipes,
+                ..default()
+            })
+            .add_message::<AppExit>()
+            .add_message::<PlaySfx>()
+            .add_message::<KeyboardInput>()
+            .add_systems(Update, handle_field_menu_input);
+
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowUp);
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<FieldMenuState>().selected,
+            last,
+            "stepping up from the first recipe wraps to the last"
+        );
     }
 
     #[test]

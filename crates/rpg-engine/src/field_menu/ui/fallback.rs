@@ -8,6 +8,7 @@ pub(in crate::field_menu) fn screen_title(state: &FieldMenuState) -> &'static st
         FieldMenuScreen::Equipment => "Equipment",
         FieldMenuScreen::Spells => "Spells",
         FieldMenuScreen::Quests => "Quest Board",
+        FieldMenuScreen::Recipes => "Recipe Book",
         FieldMenuScreen::Save => "Save Game",
     }
 }
@@ -34,6 +35,7 @@ pub(in crate::field_menu) fn render_body(
         FieldMenuScreen::Equipment => render_equipment(state, game, catalog),
         FieldMenuScreen::Spells => render_spells(state, game, catalog),
         FieldMenuScreen::Quests => render_quests(state, game, catalog),
+        FieldMenuScreen::Recipes => render_recipes(state, game, catalog),
         FieldMenuScreen::Save => render_save(state, saves),
     };
     if !state.message.is_empty() {
@@ -41,6 +43,61 @@ pub(in crate::field_menu) fn render_body(
         text.push_str(&state.message);
     }
     text
+}
+
+/// The recipe book's text mirror. Sealed formulae stay unreadable here too.
+pub(in crate::field_menu) fn render_recipes(
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) -> String {
+    let recipes = catalog.recipes();
+    if recipes.is_empty() {
+        return "No recipes are known.".to_owned();
+    }
+    let rows = recipes
+        .iter()
+        .enumerate()
+        .map(|(index, recipe)| {
+            let availability = recipe_availability(recipe, game.flags(), game.repository());
+            let sealed = availability == RecipeAvailability::Locked;
+            format!(
+                "{} [{:<8}] {:<30}",
+                if index == state.selected { ">" } else { " " },
+                recipe_state_label(availability),
+                if sealed {
+                    "Sealed Formula"
+                } else {
+                    recipe.scroll_name.as_str()
+                }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let detail = recipes.get(state.selected).map_or_else(
+        || "Nothing selected.".to_owned(),
+        |recipe| {
+            if recipe_availability(recipe, game.flags(), game.repository())
+                == RecipeAvailability::Locked
+            {
+                return "This formula is still sealed.".to_owned();
+            }
+            let ingredients = recipe_input_requirements(recipe)
+                .into_iter()
+                .map(|(id, required)| {
+                    format!("  {id} x{required} (carried {})", {
+                        game.repository().item_count(&id)
+                    })
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!(
+                "{}\n{} GP\n{ingredients}",
+                recipe.scroll_name, recipe.gp_cost
+            )
+        },
+    );
+    format!("{rows}\n\n{detail}\n\nBrewing is done at an apothecary.")
 }
 
 pub(in crate::field_menu) fn render_quests(
@@ -532,6 +589,7 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "LEFT/RIGHT member  UP/DOWN spell  ENTER cast  ESC back"
         }
         (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
+        (FieldMenuScreen::Recipes, _) => "UP/DOWN recipe  ESC back  M close",
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
             "UP/DOWN slot  ENTER save  ESC back  M close"
         }

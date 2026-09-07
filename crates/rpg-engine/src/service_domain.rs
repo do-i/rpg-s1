@@ -274,6 +274,26 @@ fn has_recipe_inputs(recipe: &RecipeDefinition, repository: &RuntimeRepository) 
         .all(|(id, quantity)| repository.item_count(&id) >= quantity)
 }
 
+/// A recipe's ingredients in authored order as `(item id, required quantity)`.
+///
+/// Unlike [`aggregated_inputs`], this preserves the authored order and does not merge duplicate
+/// requirements, because both readers are displays that mirror the recipe as it was written.
+pub(crate) fn recipe_input_requirements(recipe: &RecipeDefinition) -> Vec<(String, u32)> {
+    recipe
+        .inputs
+        .items
+        .iter()
+        .map(|input| (input.id.clone(), input.qty.get()))
+        .chain(
+            recipe
+                .inputs
+                .mc
+                .iter()
+                .map(|input| (core_id(input.size).to_owned(), input.qty.get())),
+        )
+        .collect()
+}
+
 fn aggregated_inputs(recipe: &RecipeDefinition) -> BTreeMap<String, u32> {
     let mut inputs = BTreeMap::new();
     for item in &recipe.inputs.items {
