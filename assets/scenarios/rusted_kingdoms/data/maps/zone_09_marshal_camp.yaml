@@ -55,6 +55,8 @@ item_boxes:
           qty: 2
   - id: marshal_camp_chest_02
     position: [21, 16]
+    trap:
+      damage: 55
     loot:
       items:
         - id: life_crystal
