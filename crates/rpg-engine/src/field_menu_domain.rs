@@ -1496,12 +1496,18 @@ pub(crate) mod tests {
                 (class.class_id.clone(), class)
             })
             .collect();
+        // The recipe corpus is one shipped file, and both readers of it -- the apothecary service
+        // and the field recipe book -- are only meaningful against real recipes.
+        let recipes: RecipeCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/recipe/all_recipe.yaml")))
+                .unwrap();
         FieldMenuCatalog {
             status: CatalogStatus::Ready,
             items,
             field_uses,
             classes,
             item_order,
+            recipes: recipes.0,
             warp_destinations: Vec::new(),
             failure: None,
             ..default()

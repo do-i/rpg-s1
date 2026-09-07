@@ -29,9 +29,11 @@ use crate::{
     scenario_dialogue::DialogueShopKind,
     scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
-    scenario_recipe::{MagicCoreSize, RecipeDefinition},
+    scenario_recipe::RecipeDefinition,
     scenario_root::ScenarioRoot,
-    service_domain::{RecipeAvailability, can_sell, recipe_availability, sell_price},
+    service_domain::{
+        RecipeAvailability, can_sell, recipe_availability, recipe_input_requirements, sell_price,
+    },
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
 };
@@ -886,7 +888,7 @@ fn spawn_recipe_detail(
     );
     spawn_section_rule(parent);
     spawn_status_text(parent, "Inputs:", font, 14.0, status_ink());
-    for (id, required) in recipe_inputs(recipe) {
+    for (id, required) in recipe_input_requirements(recipe) {
         let owned = game.repository().item_count(&id);
         let name = catalog
             .item(&id)
@@ -923,26 +925,6 @@ fn spawn_recipe_detail(
         13.0,
         status_muted(),
     );
-}
-
-/// Flattens a recipe's item and magic-core inputs into `(item id, required quantity)` pairs.
-fn recipe_inputs(recipe: &RecipeDefinition) -> Vec<(String, u32)> {
-    let items = recipe
-        .inputs
-        .items
-        .iter()
-        .map(|input| (input.id.clone(), input.qty.get()));
-    let cores = recipe.inputs.mc.iter().map(|input| {
-        let id = match input.size {
-            MagicCoreSize::XS => "mc_xs",
-            MagicCoreSize::S => "mc_s",
-            MagicCoreSize::M => "mc_m",
-            MagicCoreSize::L => "mc_l",
-            MagicCoreSize::XL => "mc_xl",
-        };
-        (id.to_owned(), input.qty.get())
-    });
-    items.chain(cores).collect()
 }
 
 fn availability_color(availability: RecipeAvailability) -> Color {
