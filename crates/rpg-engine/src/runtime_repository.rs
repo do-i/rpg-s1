@@ -285,6 +285,9 @@ impl RuntimeRepository {
                 item_id: item_id.to_owned(),
             });
         }
+        if tags.is_empty() {
+            return Ok(());
+        }
         let current = self.item_tags.entry(item_id.to_owned()).or_default();
         let count = current.union(&tags).count();
         if count > self.max_tags_per_item as usize {
@@ -673,6 +676,19 @@ mod tests {
             repository.add_item("zero", 0),
             Err(RepositoryError::ZeroAmount)
         );
+        assert_eq!(repository, before);
+    }
+
+    #[test]
+    fn adding_no_tags_is_a_metadata_noop() {
+        let mut rules = balance(10, 5);
+        rules.max_tags_per_item = 5;
+        let mut repository = RuntimeRepository::from_balance(&rules);
+        let _outcome = repository.add_item("potion", 1).unwrap();
+        let before = repository.clone();
+
+        repository.add_tags("potion", std::iter::empty()).unwrap();
+
         assert_eq!(repository, before);
     }
 

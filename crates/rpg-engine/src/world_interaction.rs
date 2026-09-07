@@ -821,19 +821,33 @@ fn apply_dialogue_actions(
     balance: Option<&BalanceData>,
     catalog: &FieldMenuCatalog,
 ) -> Result<(), DialogueActionError> {
-    apply_flag_actions(actions, game.flags_mut());
-    let gift_batch =
-        (!actions.give_items.is_empty()).then(|| game.repository_mut().start_loot_batch());
+    // Stage the whole gift group so invalid authored metadata cannot leave a partial reward.
+    // This also lets a gift attach repository tags and protection at the same boundary as its
+    // quantity, instead of briefly exposing an unclassified or unlocked stack.
+    let mut repository = game.repository().clone();
+    let gift_batch = (!actions.give_items.is_empty()).then(|| repository.start_loot_batch());
     for gift in &actions.give_items {
-        let _outcome = game
-            .repository_mut()
+        let outcome = repository
             .add_item_in_batch(
                 &gift.id,
                 gift.qty.get(),
                 gift_batch.expect("nonempty dialogue gift list started a batch"),
             )
             .map_err(|error| DialogueActionError::Item(error.to_string()))?;
+        if outcome.added() > 0 {
+            repository
+                .add_tags(&gift.id, gift.tags.iter().map(String::as_str))
+                .map_err(|error| DialogueActionError::Item(error.to_string()))?;
+            if gift.locked {
+                repository.set_locked(&gift.id, true);
+            }
+        }
     }
+    *game.repository_mut() = repository;
+    // Commit sibling flags only after the reward succeeds. Otherwise a full player-authored tag
+    // set could reject the metadata, set the quest's completion flag, and make its gift
+    // permanently unreachable.
+    apply_flag_actions(actions, game.flags_mut());
     let Some(member_id) = actions.join_party.as_deref() else {
         return Ok(());
     };
@@ -1843,6 +1857,90 @@ mod tests {
         assert!(restored.flags().is_set("npc_elder_reward_given"));
         assert!(restored.flags().is_set("story_act2_started"));
         assert_eq!(restored.repository(), &rewarded_repository);
+    }
+
+    #[test]
+    fn frostholm_courtier_reward_is_a_tagged_and_protected_travel_supply() {
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let DialogueDocument::Entries(dialogue) = scenario_yaml::from_str(include_str!(
+            scenario_file!("data/dialogue/frostholm_courtier.yaml")
+        ))
+        .unwrap() else {
+            panic!("frostholm_courtier must remain a field-entry dialogue");
+        };
+        let reward = &dialogue.entries[1].on_complete;
+        assert_eq!(reward.give_items[0].tags, ["travel"]);
+        assert!(reward.give_items[0].locked);
+
+        let mut game = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+
+        apply_dialogue_actions(
+            reward,
+            &mut game,
+            Some(&party),
+            Some(&balance),
+            &FieldMenuCatalog::production_class_fixture(),
+        )
+        .unwrap();
+
+        assert_eq!(game.repository().item_count("warp_stone"), 1);
+        assert_eq!(
+            game.repository()
+                .item_tags("warp_stone")
+                .collect::<Vec<_>>(),
+            ["travel"]
+        );
+        assert!(game.repository().is_locked("warp_stone"));
+
+        // A player may already own this store-stocked item and curate all five tag slots before
+        // returning for the quest. The reward must then fail atomically rather than marking the
+        // quest complete and making its Warp Stone unreachable.
+        let mut conflicted = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+        let _outcome = conflicted
+            .repository_mut()
+            .add_item("warp_stone", 1)
+            .unwrap();
+        conflicted
+            .repository_mut()
+            .add_tags("warp_stone", ["one", "two", "three", "four", "five"])
+            .unwrap();
+        let repository_before = conflicted.repository().clone();
+
+        assert!(
+            apply_dialogue_actions(
+                reward,
+                &mut conflicted,
+                Some(&party),
+                Some(&balance),
+                &FieldMenuCatalog::production_class_fixture(),
+            )
+            .is_err()
+        );
+        assert_eq!(conflicted.repository(), &repository_before);
+        assert!(!conflicted.flags().is_set("sq_alms_done"));
     }
 
     /// Builds a headless World app wired for interaction, with a fresh game session standing at
