@@ -13,7 +13,9 @@ use std::{
 };
 
 use crate::{
-    debug_launch::{DebugLaunchConfig, DebugPartyPreset, validate_debug_launch},
+    debug_launch::{
+        DebugBattleFixture, DebugLaunchConfig, DebugPartyPreset, validate_debug_launch,
+    },
     dialogue_sweep::{DialogueTraversalReport, build_dialogue_traversal_sweep},
     encounter_sweep::{EncounterSweepReport, build_encounter_sweep},
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
@@ -41,7 +43,7 @@ use crate::{
 pub(crate) const EXIT_SUCCESS: u8 = 0;
 pub(crate) const EXIT_VALIDATION_FAILED: u8 = 1;
 pub(crate) const EXIT_USAGE: u8 = 2;
-const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.";
+const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.";
 
 enum Command {
     Play(PlayArguments),
@@ -619,6 +621,7 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     let mut start_map = None;
     let mut start_position = None;
     let mut party_preset = None;
+    let mut battle_fixture = None;
     let mut flag_overrides = std::collections::BTreeMap::new();
     let mut index = 0;
     while index < arguments.len() {
@@ -678,6 +681,30 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                     return Err(UsageError("--party-preset may appear only once".to_owned()));
                 }
             }
+            "--battle-fixture" => {
+                index += 1;
+                let value = arguments.get(index).ok_or_else(|| {
+                    UsageError(
+                        "--battle-fixture requires feedback|status|enemy-ai|rewards".to_owned(),
+                    )
+                })?;
+                let fixture = match value.as_str() {
+                    "feedback" => DebugBattleFixture::Feedback,
+                    "status" => DebugBattleFixture::Status,
+                    "enemy-ai" => DebugBattleFixture::EnemyAi,
+                    "rewards" => DebugBattleFixture::Rewards,
+                    _ => {
+                        return Err(UsageError(
+                            "--battle-fixture requires feedback|status|enemy-ai|rewards".to_owned(),
+                        ));
+                    }
+                };
+                if battle_fixture.replace(fixture).is_some() {
+                    return Err(UsageError(
+                        "--battle-fixture may appear only once".to_owned(),
+                    ));
+                }
+            }
             option @ ("--set-flag" | "--unset-flag") => {
                 index += 1;
                 let value = arguments
@@ -711,10 +738,35 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
             "--start-map and --start-position must be supplied together".to_owned(),
         ));
     }
+    if battle_fixture.is_some() && start_map.is_none() {
+        start_map = Some("zone_01_starting_forest".to_owned());
+        start_position = Some(crate::scenario_spatial::Position::new(29, 1));
+    }
+    if let Some(fixture) = battle_fixture {
+        let required = match fixture {
+            DebugBattleFixture::EnemyAi | DebugBattleFixture::Rewards => DebugPartyPreset::Solo,
+            DebugBattleFixture::Feedback | DebugBattleFixture::Status => DebugPartyPreset::Full,
+        };
+        match party_preset {
+            None => party_preset = Some(required),
+            Some(actual) if actual != required => {
+                return Err(UsageError(format!(
+                    "--battle-fixture {} requires --party-preset {}",
+                    battle_fixture_label(fixture),
+                    match required {
+                        DebugPartyPreset::Solo => "solo",
+                        DebugPartyPreset::Full => "full",
+                    }
+                )));
+            }
+            Some(_) => {}
+        }
+    }
     let debug = DebugLaunchConfig {
         start_map,
         start_position,
         party_preset,
+        battle_fixture,
         flag_overrides,
     };
     Ok(PlayArguments {
@@ -731,6 +783,15 @@ fn valid_debug_flag_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'))
+}
+
+const fn battle_fixture_label(fixture: DebugBattleFixture) -> &'static str {
+    match fixture {
+        DebugBattleFixture::Feedback => "feedback",
+        DebugBattleFixture::Status => "status",
+        DebugBattleFixture::EnemyAi => "enemy-ai",
+        DebugBattleFixture::Rewards => "rewards",
+    }
 }
 
 fn prepare_record(
@@ -815,6 +876,13 @@ fn write_debug_log(output: &mut impl Write, debug: Option<&DebugLaunchConfig>) {
             DebugPartyPreset::Full => "full",
         };
         let _ = writeln!(output, "Debug party preset: {label}");
+    }
+    if let Some(fixture) = debug.battle_fixture {
+        let _ = writeln!(
+            output,
+            "Debug battle fixture: {}",
+            battle_fixture_label(fixture)
+        );
     }
     for (flag, value) in &debug.flag_overrides {
         let _ = writeln!(
@@ -2790,6 +2858,57 @@ refs:
             play.debug.as_ref().unwrap().party_preset,
             Some(DebugPartyPreset::Solo)
         );
+    }
+
+    #[test]
+    fn battle_fixtures_supply_an_isolated_map_and_required_party_shape() {
+        for (name, fixture, preset) in [
+            (
+                "feedback",
+                DebugBattleFixture::Feedback,
+                DebugPartyPreset::Full,
+            ),
+            ("status", DebugBattleFixture::Status, DebugPartyPreset::Full),
+            (
+                "enemy-ai",
+                DebugBattleFixture::EnemyAi,
+                DebugPartyPreset::Solo,
+            ),
+            (
+                "rewards",
+                DebugBattleFixture::Rewards,
+                DebugPartyPreset::Solo,
+            ),
+        ] {
+            let Command::Play(play) =
+                parse_command(["play".into(), "--battle-fixture".into(), name.into()]).unwrap()
+            else {
+                unreachable!()
+            };
+            let debug = play.debug.unwrap();
+            assert_eq!(debug.battle_fixture, Some(fixture));
+            assert_eq!(debug.party_preset, Some(preset));
+            assert_eq!(debug.start_map.as_deref(), Some("zone_01_starting_forest"));
+            assert_eq!(
+                debug.start_position,
+                Some(crate::scenario_spatial::Position::new(29, 1))
+            );
+        }
+    }
+
+    #[test]
+    fn a_battle_fixture_rejects_a_party_shape_that_would_invalidate_it() {
+        let error = match parse_command([
+            "play".into(),
+            "--battle-fixture".into(),
+            "rewards".into(),
+            "--party-preset".into(),
+            "full".into(),
+        ]) {
+            Ok(_) => panic!("an incompatible explicit party shape should fail"),
+            Err(error) => error,
+        };
+        assert!(error.0.contains("requires --party-preset solo"));
     }
 
     #[test]
