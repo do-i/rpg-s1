@@ -24,6 +24,7 @@ use crate::{
     scenario_spatial::{CardinalDirection, Position, collision_occupancy::CollisionOccupancy},
     scenario_yaml,
     tmx_header::parse_tmx_map_document,
+    world_encounter::ScriptedBattleRequest,
 };
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -31,6 +32,26 @@ use crate::{
 pub(crate) enum DebugPartyPreset {
     Solo,
     Full,
+}
+
+/// Focused, session-only battle setups used for the remaining manual parity observations.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum DebugBattleFixture {
+    Feedback,
+    Status,
+    EnemyAi,
+    Rewards,
+}
+
+impl DebugBattleFixture {
+    pub(crate) const fn enemy_id(self) -> &'static str {
+        match self {
+            Self::Feedback => "goblin_warrior",
+            Self::Status | Self::EnemyAi => "troll_shaman_base",
+            Self::Rewards => "hearth_effigy_ashen_crown",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize, Resource)]
@@ -42,6 +63,8 @@ pub(crate) struct DebugLaunchConfig {
     pub(crate) start_position: Option<Position>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) party_preset: Option<DebugPartyPreset>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) battle_fixture: Option<DebugBattleFixture>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) flag_overrides: BTreeMap<String, bool>,
 }
@@ -51,6 +74,7 @@ impl DebugLaunchConfig {
         self.start_map.is_some()
             || self.start_position.is_some()
             || self.party_preset.is_some()
+            || self.battle_fixture.is_some()
             || !self.flag_overrides.is_empty()
     }
 }
@@ -204,9 +228,17 @@ fn install_debug_session(
     });
     match result {
         Ok(game) => {
+            let battle_fixture = config.battle_fixture;
             commands.queue(move |world: &mut World| {
                 world.insert_resource(game);
                 world.insert_resource(DebugSession);
+                if let Some(fixture) = battle_fixture {
+                    world.insert_resource(ScriptedBattleRequest {
+                        enemy_id: fixture.enemy_id().to_owned(),
+                        victory_flags: Vec::new(),
+                        battle_fixture: Some(fixture),
+                    });
+                }
                 world.remove_resource::<GameplayRng>();
                 world.remove_resource::<Playtime>();
             });
@@ -334,6 +366,7 @@ mod tests {
             start_map: Some("invented_map".to_owned()),
             start_position: Some(Position::new(3, 4)),
             party_preset: Some(DebugPartyPreset::Full),
+            battle_fixture: None,
             flag_overrides: BTreeMap::from([
                 ("debug_enabled".to_owned(), true),
                 ("story_quest_started".to_owned(), false),
