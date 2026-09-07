@@ -9,11 +9,11 @@
  <tileset firstgid="1087" source="../tilesets/stone_tile_stares_16x16.tsx"/>
  <tileset firstgid="1343" source="../tilesets/astralpixels/terreno.tsx"/>
  <objectgroup id="4" name="portals">
-  <object id="1" name="port_town_harborgate" x="160.242" y="349.003" width="31.6364" height="3.32955">
+  <object id="1" name="town_03_harborgate" x="160.242" y="349.003" width="31.6364" height="3.32955">
    <properties>
-    <property name="target_map" value="port_town_harborgate"/>
-    <property name="target_position_x" type="int" value="20"/>
-    <property name="target_position_y" type="int" value="6"/>
+    <property name="target_map" value="town_03_harborgate"/>
+    <property name="target_position_x" type="int" value="9"/>
+    <property name="target_position_y" type="int" value="25"/>
    </properties>
   </object>
  </objectgroup>

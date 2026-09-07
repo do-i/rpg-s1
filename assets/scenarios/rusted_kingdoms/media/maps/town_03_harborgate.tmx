@@ -10,28 +10,28 @@
  <objectgroup id="8" name="portals">
   <object id="12" name="quarantine" x="624" y="192" width="64" height="5">
    <properties>
-    <property name="target_map" value="port_town_harborgate_quarantine"/>
+    <property name="target_map" value="town_03_harborgate_quarantine"/>
     <property name="target_position_x" type="int" value="5"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
   <object id="13" name="item_shop" x="1136" y="192" width="64" height="5">
    <properties>
-    <property name="target_map" value="port_town_harborgate_shop"/>
+    <property name="target_map" value="town_03_harborgate_shop"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
   <object id="14" name="inn" x="272" y="800" width="64" height="5">
    <properties>
-    <property name="target_map" value="port_town_harborgate_inn"/>
+    <property name="target_map" value="town_03_harborgate_inn"/>
     <property name="target_position_x" type="int" value="5"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
   <object id="15" name="harbormaster" x="1104" y="832" width="64" height="5">
    <properties>
-    <property name="target_map" value="port_town_harborgate_harbormaster"/>
+    <property name="target_map" value="town_03_harborgate_harbormaster"/>
     <property name="target_position_x" type="int" value="10"/>
     <property name="target_position_y" type="int" value="11"/>
    </properties>

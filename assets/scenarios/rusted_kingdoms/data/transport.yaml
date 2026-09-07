@@ -29,11 +29,11 @@ regions:
     name: Harborgate
     position: { x: 0.34, y: 0.75 }
     maps:
-      - { id: port_town_harborgate, outdoor: true }
-      - { id: port_town_harborgate_harbormaster }
-      - { id: port_town_harborgate_inn }
-      - { id: port_town_harborgate_quarantine }
-      - { id: port_town_harborgate_shop }
+      - { id: town_03_harborgate, outdoor: true }
+      - { id: town_03_harborgate_harbormaster }
+      - { id: town_03_harborgate_inn }
+      - { id: town_03_harborgate_quarantine }
+      - { id: town_03_harborgate_shop }
       - { id: zone_03_marshland, outdoor: true }
   - id: ruinwatch
     name: Ruinwatch
@@ -101,7 +101,7 @@ regions:
 fly_anchors:
   - { id: ardel, name: Ardel, region: heartlands, map: town_01_ardel, position: [3, 4] }
   - { id: millhaven, name: Millhaven, region: plains, map: town_02_millhaven, position: [9, 25] }
-  - { id: harborgate, name: Harborgate, region: harborgate, map: port_town_harborgate, position: [35, 26] }
+  - { id: harborgate, name: Harborgate, region: harborgate, map: town_03_harborgate, position: [35, 26] }
   - { id: ruinwatch, name: Ruinwatch, region: ruinwatch, map: town_03_ruinwatch, position: [9, 25] }
   - { id: frostholm, name: Frostholm, region: frostmarch, map: town_04_frostholm, position: [9, 25] }
   - { id: ashenveil, name: Ashenveil, region: ashen_road, map: town_05_ashenveil, position: [9, 25] }
@@ -112,7 +112,7 @@ fly_anchors:
 sail_berths:
   - { id: ardel_landing, name: Ardel Landing, region: heartlands, map: town_01_ardel, position: [3, 4] }
   - { id: millhaven_lock, name: Millhaven Lock, region: plains, map: town_02_millhaven, position: [9, 25] }
-  - { id: harborgate, name: Harborgate, region: harborgate, map: port_town_harborgate, position: [35, 26] }
+  - { id: harborgate, name: Harborgate, region: harborgate, map: town_03_harborgate, position: [35, 26] }
   - { id: ruinwatch_ferry, name: Ruinwatch Ferry, region: ruinwatch, map: town_03_ruinwatch, position: [9, 25] }
   - { id: ashenveil_quay, name: Ashenveil Quay, region: ashen_road, map: town_05_ashenveil, position: [9, 25] }
 

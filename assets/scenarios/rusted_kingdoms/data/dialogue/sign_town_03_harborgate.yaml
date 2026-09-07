@@ -1,5 +1,5 @@
-# data/dialogue/sign_port_town_harborgate.yaml
-id: sign_port_town_harborgate
+# data/dialogue/sign_town_03_harborgate.yaml
+id: sign_town_03_harborgate
 type: board
 entries:
   - lines:

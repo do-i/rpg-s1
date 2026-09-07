@@ -980,11 +980,11 @@ mod tests {
     }
 
     fn harborgate_document() -> &'static str {
-        include_str!(scenario_file!("media/maps/port_town_harborgate.tmx"))
+        include_str!(scenario_file!("media/maps/town_03_harborgate.tmx"))
     }
 
     fn harborgate_portals() -> Vec<RuntimePortal> {
-        portals_for("port_town_harborgate", harborgate_document())
+        portals_for("town_03_harborgate", harborgate_document())
     }
 
     #[test]
@@ -999,7 +999,7 @@ mod tests {
             [
                 ("zone_02_open_plains", Position::new(3, 18)),
                 ("zone_04_ancient_ruins_01_gate", Position::new(39, 14)),
-                ("port_town_harborgate", Position::new(4, 1)),
+                ("town_03_harborgate", Position::new(4, 1)),
             ]
         );
 
@@ -1037,55 +1037,55 @@ mod tests {
         assert_eq!(
             destinations,
             [
-                ("port_town_harborgate_quarantine", Position::new(5, 9)),
-                ("port_town_harborgate_shop", Position::new(7, 10)),
-                ("port_town_harborgate_inn", Position::new(5, 9)),
-                ("port_town_harborgate_harbormaster", Position::new(10, 11)),
+                ("town_03_harborgate_quarantine", Position::new(5, 9)),
+                ("town_03_harborgate_shop", Position::new(7, 10)),
+                ("town_03_harborgate_inn", Position::new(5, 9)),
+                ("town_03_harborgate_harbormaster", Position::new(10, 11)),
                 ("zone_03_marshland", Position::new(21, 37)),
             ]
         );
 
         let interiors = [
             (
-                "port_town_harborgate_quarantine",
+                "town_03_harborgate_quarantine",
                 include_str!(scenario_file!(
-                    "media/maps/port_town_harborgate_quarantine.tmx"
+                    "media/maps/town_03_harborgate_quarantine.tmx"
                 )),
                 Position::new(20, 6),
             ),
             (
-                "port_town_harborgate_shop",
-                include_str!(scenario_file!("media/maps/port_town_harborgate_shop.tmx")),
+                "town_03_harborgate_shop",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_shop.tmx")),
                 Position::new(36, 6),
             ),
             (
-                "port_town_harborgate_inn",
-                include_str!(scenario_file!("media/maps/port_town_harborgate_inn.tmx")),
+                "town_03_harborgate_inn",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_inn.tmx")),
                 Position::new(9, 25),
             ),
             (
-                "port_town_harborgate_harbormaster",
+                "town_03_harborgate_harbormaster",
                 include_str!(scenario_file!(
-                    "media/maps/port_town_harborgate_harbormaster.tmx"
+                    "media/maps/town_03_harborgate_harbormaster.tmx"
                 )),
                 Position::new(35, 26),
             ),
         ];
         for (map_id, document, expected_return_position) in interiors {
             assert_reversible_link(
-                "port_town_harborgate",
+                "town_03_harborgate",
                 harborgate_document(),
                 map_id,
                 document,
             );
             let returns = portals_for(map_id, document);
             assert_eq!(returns.len(), 1);
-            assert_eq!(returns[0].target_map().as_str(), "port_town_harborgate");
+            assert_eq!(returns[0].target_map().as_str(), "town_03_harborgate");
             assert_eq!(returns[0].target_position(), expected_return_position);
         }
 
         assert_reversible_link(
-            "port_town_harborgate",
+            "town_03_harborgate",
             harborgate_document(),
             "zone_03_marshland",
             marshland_document(),

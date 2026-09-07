@@ -185,7 +185,7 @@ impl NativeSaveEnvelope {
             return Err(NativeSaveError::UnsupportedVersion(probe.format_version));
         }
         let deserializer = serde_yaml_ng::Deserializer::from_str(document);
-        let envelope: Self = serde_path_to_error::deserialize(deserializer)
+        let mut envelope: Self = serde_path_to_error::deserialize(deserializer)
             .map_err(|error| NativeSaveError::Decode(error.to_string()))?;
         if envelope.scenario_id != expected_scenario_id
             || envelope.scenario_version != expected_scenario_version
@@ -196,6 +196,9 @@ impl NativeSaveEnvelope {
                 expected_id: expected_scenario_id.to_owned(),
                 expected_version: expected_scenario_version.to_owned(),
             });
+        }
+        if envelope.scenario_id == "my_rpg_story" {
+            envelope.migrate_legacy_harborgate_map_ids();
         }
         let game = envelope.payload.clone().into_game_state(balance)?;
         envelope.validate_metadata(&game)?;
@@ -221,6 +224,32 @@ impl NativeSaveEnvelope {
             ));
         }
         Ok(())
+    }
+
+    fn migrate_legacy_harborgate_map_ids(&mut self) {
+        self.payload.map.current = migrate_legacy_harborgate_map_id(&self.payload.map.current);
+        self.payload.map.visited = self
+            .payload
+            .map
+            .visited
+            .drain(..)
+            .map(|id| migrate_legacy_harborgate_map_id(&id))
+            .collect();
+        for opened_box in &mut self.payload.opened_boxes {
+            opened_box.map_id = migrate_legacy_harborgate_map_id(&opened_box.map_id);
+        }
+        self.metadata.location = migrate_legacy_harborgate_map_id(&self.metadata.location);
+    }
+}
+
+pub(crate) fn migrate_legacy_harborgate_map_id(id: &str) -> String {
+    match id {
+        "port_town_harborgate" => "town_03_harborgate".to_owned(),
+        "port_town_harborgate_harbormaster" => "town_03_harborgate_harbormaster".to_owned(),
+        "port_town_harborgate_inn" => "town_03_harborgate_inn".to_owned(),
+        "port_town_harborgate_quarantine" => "town_03_harborgate_quarantine".to_owned(),
+        "port_town_harborgate_shop" => "town_03_harborgate_shop".to_owned(),
+        _ => id.to_owned(),
     }
 }
 
@@ -672,6 +701,54 @@ pub(crate) mod tests {
                 .0
                 .format_version,
             NATIVE_SAVE_FORMAT_VERSION
+        );
+    }
+
+    #[test]
+    fn rusted_kingdoms_harborgate_map_rename_migrates_existing_native_saves() {
+        let mut envelope = fixture_envelope();
+        envelope.metadata.location = "port_town_harborgate".to_owned();
+        envelope.payload.map.current = "port_town_harborgate".to_owned();
+        envelope.payload.map.visited = vec![
+            "port_town_harborgate_harbormaster".to_owned(),
+            "port_town_harborgate_inn".to_owned(),
+            "port_town_harborgate_quarantine".to_owned(),
+            "port_town_harborgate_shop".to_owned(),
+        ];
+        envelope.payload.opened_boxes[0].map_id = "port_town_harborgate_inn".to_owned();
+
+        let (decoded, restored) = NativeSaveEnvelope::decode(
+            &envelope.encode().unwrap(),
+            "my_rpg_story",
+            "1.0.0",
+            &fixture_balance(),
+        )
+        .unwrap();
+
+        assert_eq!(decoded.metadata.location, "town_03_harborgate");
+        assert_eq!(decoded.payload.map.current, "town_03_harborgate");
+        assert_eq!(
+            decoded.payload.map.visited,
+            [
+                "town_03_harborgate_harbormaster",
+                "town_03_harborgate_inn",
+                "town_03_harborgate_quarantine",
+                "town_03_harborgate_shop",
+            ]
+        );
+        assert_eq!(
+            restored.map().current().unwrap().as_str(),
+            "town_03_harborgate"
+        );
+        assert_eq!(
+            restored
+                .opened_boxes()
+                .iter()
+                .next()
+                .unwrap()
+                .map_id()
+                .as_str(),
+            "town_03_harborgate_inn"
         );
     }
 

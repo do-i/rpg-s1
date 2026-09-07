@@ -18,7 +18,7 @@ use crate::{
     save_data::{
         ImportProvenance, NATIVE_SAVE_FORMAT_VERSION, NativeSaveEnvelope, SaveEquipment, SaveMap,
         SaveMember, SaveMetadata, SaveOpenedBox, SavePayload, SaveRepository, SaveRepositoryItem,
-        SaveStats,
+        SaveStats, migrate_legacy_harborgate_map_id,
     },
     save_store::{SaveStore, SaveStoreError},
     scenario_balance::BalanceData,
@@ -146,7 +146,7 @@ pub(crate) fn convert_python_save(
     let original_location = nonempty(legacy.meta.location_display.clone());
     let location = original_location
         .clone()
-        .unwrap_or_else(|| legacy.map.current.clone());
+        .unwrap_or_else(|| migrate_legacy_harborgate_map_id(&legacy.map.current));
     let payload = legacy.into_native_payload(catalog)?;
     let game = payload
         .clone()
@@ -499,14 +499,21 @@ impl PythonSave {
                 "controlled member `{controlled_member_id}` is not in the party"
             )));
         }
-        if !catalog.maps.contains_key(&self.map.current) {
+        let current = migrate_legacy_harborgate_map_id(&self.map.current);
+        if !catalog.maps.contains_key(&current) {
             return Err(PythonImportError::Content(format!(
                 "map `{}` is not available in the selected Rust scenario",
                 self.map.current
             )));
         }
+        let mut visited = self
+            .map
+            .visited
+            .into_iter()
+            .map(|id| migrate_legacy_harborgate_map_id(&id))
+            .collect::<Vec<_>>();
         let mut visited_seen = BTreeSet::new();
-        for id in &self.map.visited {
+        for id in &visited {
             if !catalog.maps.contains_key(id) {
                 return Err(PythonImportError::Content(format!(
                     "visited map `{id}` is not available in the selected Rust scenario"
@@ -522,37 +529,39 @@ impl PythonSave {
         let mut opened_seen = BTreeSet::new();
         let mut opened_boxes = Vec::new();
         for entry in self.opened_boxes {
-            let (map_id, box_id) = entry.split_once(':').ok_or_else(|| {
+            let (legacy_map_id, box_id) = entry.split_once(':').ok_or_else(|| {
                 PythonImportError::Content(format!("opened-box entry `{entry}` is malformed"))
             })?;
-            let map = catalog.maps.get(map_id).ok_or_else(|| {
-                PythonImportError::Content(format!("opened-box map `{map_id}` is unavailable"))
+            let map_id = migrate_legacy_harborgate_map_id(legacy_map_id);
+            let map = catalog.maps.get(&map_id).ok_or_else(|| {
+                PythonImportError::Content(format!(
+                    "opened-box map `{legacy_map_id}` is unavailable"
+                ))
             })?;
             if !map.item_boxes.iter().any(|item_box| item_box.id == box_id) {
                 return Err(PythonImportError::Content(format!(
                     "opened box `{map_id}:{box_id}` is not in current map metadata"
                 )));
             }
-            if !opened_seen.insert((map_id.to_owned(), box_id.to_owned())) {
+            if !opened_seen.insert((map_id.clone(), box_id.to_owned())) {
                 return Err(PythonImportError::Content(format!(
                     "opened box `{entry}` appears more than once"
                 )));
             }
             opened_boxes.push(SaveOpenedBox {
-                map_id: map_id.to_owned(),
+                map_id,
                 box_id: box_id.to_owned(),
             });
         }
         opened_boxes.sort_by(|left, right| {
             (&left.map_id, &left.box_id).cmp(&(&right.map_id, &right.box_id))
         });
-        let mut visited = self.map.visited;
         visited.sort();
         let normalized = serde_yaml_ng::to_string(&(
             &party,
             &repository,
             &flags,
-            &self.map.current,
+            &current,
             self.map.position,
             &visited,
             &opened_boxes,
@@ -572,7 +581,7 @@ impl PythonSave {
             party,
             repository,
             map: SaveMap {
-                current: self.map.current,
+                current,
                 position: self.map.position,
                 facing: CardinalDirection::Down,
                 visited,
@@ -1087,6 +1096,44 @@ map:
         assert!(!provenance.checksum_verified);
         assert_eq!(provenance.original_timestamp, None);
         assert_eq!(provenance.original_location, None);
+    }
+
+    #[test]
+    fn harborgate_map_rename_is_applied_while_importing_python_saves() {
+        let legacy = br#"meta:
+  playtime_seconds: 42
+party:
+- id: aric
+  name: Harbor Aric
+  protagonist: true
+  class: hero
+  level: 1
+  exp: 0
+  hp: 22
+  hp_max: 22
+  mp: 12
+  mp_max: 12
+  str: 28
+  dex: 17
+  con: 28
+  int: 5
+  equipped: {}
+party_repository:
+  items: []
+flags: []
+map:
+  current: port_town_harborgate
+  position: [21, 14]
+  visited:
+  - port_town_harborgate_inn
+opened_boxes: []
+"#;
+
+        let envelope = convert_python_save(legacy, true, &catalog(), 99).unwrap();
+
+        assert_eq!(envelope.metadata.location, "town_03_harborgate");
+        assert_eq!(envelope.payload.map.current, "town_03_harborgate");
+        assert_eq!(envelope.payload.map.visited, ["town_03_harborgate_inn"]);
     }
 
     #[test]

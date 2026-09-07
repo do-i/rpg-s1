@@ -2018,7 +2018,7 @@ mod tests {
     /// Covers W12.3's `zone_03_marshland` encounters end to end: the 18 authored `spawn_tile`
     /// entries plus the boss spawn from `data/encount/zone_03_marshland.yaml` and the TMX
     /// `spawn_tile`/`boss_enemy` layers, a full respawn round-trip through a neighboring town with
-    /// no encounter zone at all (`port_town_harborgate`, which has no `data/encount/*.yaml`), and
+    /// no encounter zone at all (`town_03_harborgate`, which has no `data/encount/*.yaml`), and
     /// the boss contact battle handoff. Marshland is also the first map in wave order with no
     /// `bgm:` field at all (`data/maps/zone_03_marshland.yaml` is two lines: `name` and
     /// `warp_order`, byte-identical to the pinned source) — `return_context.world_bgm_key` must
@@ -2140,13 +2140,13 @@ mod tests {
         let boss_encounter_id = boss.encounter_id().to_owned();
 
         // Walk into a neighboring map with no `data/encount/*.yaml` at all
-        // (`port_town_harborgate`) and confirm every enemy despawns and the zone goes to
+        // (`town_03_harborgate`) and confirm every enemy despawns and the zone goes to
         // `NoEncounters`, exactly like the W12.1/W12.2 town fixtures.
         app.world_mut()
             .resource_mut::<GameState>()
             .map_mut()
             .move_to(
-                RuntimeMapId::try_new("port_town_harborgate").unwrap(),
+                RuntimeMapId::try_new("town_03_harborgate").unwrap(),
                 Position::new(21, 37),
                 CardinalDirection::Up,
             );
