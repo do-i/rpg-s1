@@ -191,6 +191,26 @@ are logged and remain session-only unless you explicitly save. Set
 `RPG_S1_MUTE_AUDIO=1` to mute audio or `RPG_S1_DEBUG_COLLISION=1` to draw world
 collision and portal outlines.
 
+The four focused battle-acceptance fixtures enter battle directly and use a
+safe Starting Forest return point. Keep their saves isolated from campaign
+slots (and leave audio enabled when checking cues):
+
+```sh
+RPG_S1_SAVE_DIR=/tmp/rpg-s1-battle-acceptance cargo run -- play --seed 7 --battle-fixture feedback
+RPG_S1_SAVE_DIR=/tmp/rpg-s1-battle-acceptance cargo run -- play --seed 7 --battle-fixture status
+RPG_S1_SAVE_DIR=/tmp/rpg-s1-battle-acceptance cargo run -- play --seed 17 --battle-fixture enemy-ai
+RPG_S1_SAVE_DIR=/tmp/rpg-s1-battle-acceptance cargo run -- play --seed 23 --battle-fixture rewards
+```
+
+`feedback` supplies matched front/back attackers, Power Strike for normal hit
+comparison, Shadow Step for a guaranteed critical, and a 5%-hit basic attack
+for MISS feedback. `status` supplies Rally, War Cry, guaranteed-stun Boulder
+Crash, and a Charm-only Troll Sage. `enemy-ai` starts the Troll Sage at full HP
+and gives Aric Rally so its first turn exercises the no-eligible-move fallback;
+repeat the same inputs at seed 17 to compare later choices. `rewards` ends in
+one hit and awards exactly 1,000 EXP plus deterministic authored loot, taking
+Aric from level 1 to 3.
+
 Record normalized actions to a fresh path, then replay them without physical
 input:
 

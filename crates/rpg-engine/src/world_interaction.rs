@@ -655,6 +655,7 @@ fn drive_dialogue_session(
                 state.pending_battle = Some(ScriptedBattleRequest {
                     enemy_id: battle.enemy_id().to_owned(),
                     victory_flags: battle.on_victory().to_vec(),
+                    battle_fixture: None,
                 });
             }
             if let Err(error) =
@@ -1579,6 +1580,7 @@ mod tests {
                 state.pending_battle = Some(ScriptedBattleRequest {
                     enemy_id: battle.enemy_id().to_owned(),
                     victory_flags: battle.on_victory().to_vec(),
+                    battle_fixture: None,
                 });
             }
         }

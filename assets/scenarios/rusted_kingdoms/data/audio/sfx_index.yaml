@@ -36,6 +36,9 @@ battle:
   status_sleep:   sfx/buffs_heals/44_Sleep_01.mp3
   status_poison:  sfx/atk_magic/46_Poison_01.mp3
   speed_buff:     sfx/buffs_heals/48_Speed_up_02.mp3
+  # A dedicated logical cue lets the reward reveal evolve independently while
+  # reusing the shipped 3.33-second rising flourish.
+  level_up:       sfx/buffs_heals/16_Atk_buff_04.mp3
   # An enemy's basic attack, chosen by its authored type.
   atk_claw:       sfx/battle/03_Claw_03.mp3
   atk_claw_2:     sfx/battle/08_Bite_04.mp3
