@@ -24,17 +24,6 @@ const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
 /// Row height for one title menu entry.
 const MENU_ENTRY_HEIGHT: f32 = 42.0;
-/// Empty gutter to the left of every menu entry, matching `_DEFAULT_CURSOR_W` in
-/// `engine/title/menu_renderer.py`.
-///
-/// The source reserves this width and lays every label out at `x + cursor_width`, then draws a
-/// cursor image into it *only* when one loaded. For this scenario none ever does:
-/// `rusted_kingdoms/manifest.yaml` names `media/images/icons/arrow-head-red-right-01.webp`, which
-/// exists nowhere in the source tree, and `title_scene.py` guards the load with
-/// `if cursor_path.exists()`. So the original's title menu marks its selection by colour alone
-/// over an empty 40px gutter, and this port does the same. `title.cursor_icon` stays in the
-/// manifest schema — the port validates the path it names — but nothing renders it.
-const MENU_CURSOR_WIDTH: f32 = 40.0;
 /// Bounded wait for the Quit confirmation to reach the audio device.
 ///
 /// The chime is started, not awaited: shutdown must feel as immediate as the field menu's Quit,
@@ -291,11 +280,6 @@ fn setup_title_screen(
                             ..default()
                         })
                         .with_children(|row| {
-                            row.spawn(Node {
-                                width: px(MENU_CURSOR_WIDTH),
-                                flex_shrink: 0.0,
-                                ..default()
-                            });
                             row.spawn((
                                 Text::new(label),
                                 TextFont {
@@ -570,12 +554,23 @@ fn update_menu_colors(
         return;
     }
 
-    // Colour is the whole of the source's selection feedback; see [`MENU_CURSOR_WIDTH`].
+    // Colour is the whole of the selection feedback; see [`menu_entry_color`].
     for (entry, mut color) in &mut entries {
         color.0 = menu_entry_color(&theme, entry.0, menu.selected, catalog.has_valid());
     }
 }
 
+/// Colour is the whole of the title menu's selection feedback.
+///
+/// The source reserves `_DEFAULT_CURSOR_W` in `engine/title/menu_renderer.py` and lays every
+/// left-aligned label out at `x + cursor_width`, then draws a cursor image into that gutter *only*
+/// when one loaded. For this scenario none ever does: `rusted_kingdoms/manifest.yaml` names
+/// `media/images/icons/arrow-head-red-right-01.webp`, which exists nowhere in the source tree, and
+/// `title_scene.py` guards the load with `if cursor_path.exists()`. `title.cursor_icon` stays in
+/// the manifest schema — the port validates the path it names — but nothing renders it.
+///
+/// The port centres its labels instead of left-aligning them, so it reserves no gutter either: an
+/// empty column inside a centred row only pushes every label off-centre by half its width.
 fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize, has_valid_save: bool) -> Color {
     if index == LOAD_GAME_INDEX && !has_valid_save {
         theme.menu_disabled_color
@@ -761,14 +756,15 @@ mod tests {
         found
     }
 
-    /// The source's title menu draws no cursor image and marks its selection by colour alone.
+    /// The title menu draws no cursor image, reserves no gutter for one, and marks its selection
+    /// by colour alone.
     ///
     /// `rusted_kingdoms/manifest.yaml` names `arrow-head-red-right-01.webp`, which exists nowhere
-    /// in the source tree, and `title_scene.py` only builds a cursor `if cursor_path.exists()`. The
-    /// gutter is still reserved on every row -- `menu_renderer.py` lays text out at
-    /// `x + cursor_width` whether or not a cursor loaded -- so no label moves as selection travels.
+    /// in the source tree, and `title_scene.py` only builds a cursor `if cursor_path.exists()`, so
+    /// no label moves as selection travels. Since the port centres its labels, a reserved gutter
+    /// would only shift each one right by half its width; see [`menu_entry_color`].
     #[test]
-    fn the_title_menu_reserves_an_empty_gutter_and_marks_selection_by_colour() {
+    fn the_title_menu_centres_its_labels_and_marks_selection_by_colour() {
         let mut app = ready_minimal_demo_title_app();
 
         let world = app.world_mut();
@@ -777,15 +773,15 @@ mod tests {
             0,
             "the title menu must not draw a cursor image"
         );
-        let gutters = world
-            .query::<&Node>()
-            .iter(world)
-            .filter(|node| node.width == px(MENU_CURSOR_WIDTH))
-            .count();
+        // Root, panel, and one row per entry. The status message carries a node of its own but is
+        // paired with text, so anything else counted here is an empty column beside a label.
         assert_eq!(
-            gutters,
-            MENU_LABELS.len(),
-            "every entry reserves the source's 40px cursor gutter"
+            world
+                .query_filtered::<&Node, Without<Text>>()
+                .iter(world)
+                .count(),
+            2 + MENU_LABELS.len(),
+            "a menu row holds its label alone, with no gutter to push it off-centre"
         );
 
         assert_eq!(highlighted_entries(&mut app), vec![0]);
@@ -1315,11 +1311,11 @@ mod tests {
         assert_eq!(world.resource::<State<AppState>>().get(), &AppState::Title);
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
         assert_eq!(world.query::<&Sprite>().iter(world).count(), 1);
-        // root + panel + status, then one row, cursor gutter, and label per menu entry.
-        assert_eq!(world.query::<&Node>().iter(world).count(), 12);
+        // root + panel + status, then one row and one label per menu entry.
+        assert_eq!(world.query::<&Node>().iter(world).count(), 9);
         assert_eq!(world.query::<&Text>().iter(world).count(), 4);
         assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 3);
-        // The gutter is reserved but empty, so the title draws no UI image at all.
+        // Selection is marked by colour alone, so the title draws no UI image at all.
         assert_eq!(world.query::<&ImageNode>().iter(world).count(), 0);
         assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 1);
         assert_eq!(
