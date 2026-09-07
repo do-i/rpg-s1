@@ -112,7 +112,9 @@ pub struct MagicCoreItem {
     #[serde(deserialize_with = "deserialize_string")]
     pub name: String,
     pub tags: Vec<ItemTag>,
-    pub exchange_rate: NonZeroU32,
+    /// GP paid by a magic-core shop, or `null` when this tier is reserved for crafting.
+    #[serde(deserialize_with = "deserialize_required_nullable")]
+    pub exchange_rate: Option<NonZeroU32>,
     #[serde(deserialize_with = "deserialize_string")]
     pub description: String,
 }
@@ -728,6 +730,34 @@ mod tests {
             total += file.entries().len();
         }
         assert_eq!(total, 25);
+    }
+
+    #[test]
+    fn magic_core_exchange_policy_is_explicit_and_nullable() {
+        let crafting_only: ItemCatalogFile = scenario_yaml::from_str(
+            r#"
+- id: mc_m
+  name: Magic Core (M)
+  type: magic_core
+  tags: [magic_core]
+  exchange_rate: null
+  description: Reserved for crafting.
+"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            &crafting_only.entries()[0],
+            ItemDefinition::MagicCore(core) if core.exchange_rate.is_none()
+        ));
+
+        let missing_policy = r#"
+- id: mc_m
+  name: Magic Core (M)
+  type: magic_core
+  tags: [magic_core]
+  description: Ambiguous core.
+"#;
+        assert!(scenario_yaml::from_str::<ItemCatalogFile>(missing_policy).is_err());
     }
 
     #[test]

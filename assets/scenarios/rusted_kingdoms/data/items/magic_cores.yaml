@@ -1,34 +1,35 @@
+# B4.6 tier policy: XS/S exchange for GP; M/L/XL are crafting-only.
 - id: mc_xl
   name: "Magic Core (XL)"
   type: magic_core
   tags: [magic_core]
-  exchange_rate: 10000
-  description: "An immense crystallized soul. Exchanged for spells of the highest order."
+  exchange_rate: null
+  description: "An immense crystallized soul. Reserved for end-game crafting."
 
 - id: mc_l
   name: "Magic Core (L)"
   type: magic_core
   tags: [magic_core]
-  exchange_rate: 1000
-  description: "A large crystallized soul. Exchanged for major spells at the apothecary."
+  exchange_rate: null
+  description: "A large crystallized soul. Reserved for advanced crafting."
 
 - id: mc_m
   name: "Magic Core (M)"
   type: magic_core
   tags: [magic_core]
-  exchange_rate: 100
-  description: "A medium crystallized soul. Exchanged for mid-tier spells."
+  exchange_rate: null
+  description: "A medium crystallized soul. The standard core for crafting."
 
 - id: mc_s
   name: "Magic Core (S)"
   type: magic_core
   tags: [magic_core]
   exchange_rate: 10
-  description: "A small crystallized soul. Exchanged for basic spells."
+  description: "A small crystallized soul. Exchanged for GP at a magic-core shop."
 
 - id: mc_xs
   name: "Magic Core (XS)"
   type: magic_core
   tags: [magic_core]
   exchange_rate: 1
-  description: "A faint crystallized soul. The smallest unit of magical exchange."
+  description: "A faint crystallized soul. The smallest unit exchanged for GP."

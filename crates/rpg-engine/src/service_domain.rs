@@ -44,6 +44,7 @@ pub(crate) enum ServiceError {
     Locked,
     NotSellable,
     WrongCore,
+    NotExchangeable,
     Recipe(RecipeAvailability),
     Repository(String),
 }
@@ -59,6 +60,7 @@ impl fmt::Display for ServiceError {
             Self::Locked => formatter.write_str("That item is locked."),
             Self::NotSellable => formatter.write_str("That cannot be sold."),
             Self::WrongCore => formatter.write_str("That is not a magic core."),
+            Self::NotExchangeable => formatter.write_str("That core is reserved for crafting."),
             Self::Recipe(state) => fmt::Display::fmt(state, formatter),
             Self::Repository(error) => formatter.write_str(error),
         }
@@ -171,6 +173,7 @@ pub(crate) fn exchange_magic_core(
         return Err(ServiceError::NotOwned);
     }
     let total = exchange_rate
+        .ok_or(ServiceError::NotExchangeable)?
         .get()
         .checked_mul(quantity)
         .ok_or(ServiceError::Overflow)?;
@@ -322,6 +325,7 @@ mod tests {
         scenario_item::{ItemCatalogFile, ItemStatus},
         scenario_map::MapMetadata,
         scenario_quest::{QuestCatalogFile, QuestDefinition},
+        scenario_recipe::RecipeCatalogFile,
         scenario_yaml,
     };
 
@@ -400,7 +404,7 @@ mod tests {
         let _outcome = game.repository_mut().add_item("mc_s", 2).unwrap();
         let before_core_gp = game.repository().gp();
         let rate = match &core {
-            ItemDefinition::MagicCore(value) => value.exchange_rate.get(),
+            ItemDefinition::MagicCore(value) => value.exchange_rate.unwrap().get(),
             _ => unreachable!(),
         };
         assert_eq!(
@@ -409,6 +413,15 @@ mod tests {
         );
         assert_eq!(game.repository().item_count("mc_s"), 0);
         assert_eq!(game.repository().gp(), before_core_gp + rate * 2);
+
+        let crafting_core = item("mc_m");
+        let _outcome = game.repository_mut().add_item("mc_m", 1).unwrap();
+        let before_crafting_exchange = game.repository().clone();
+        assert_eq!(
+            exchange_magic_core(game.repository_mut(), &crafting_core, 1),
+            Err(ServiceError::NotExchangeable)
+        );
+        assert_eq!(game.repository(), &before_crafting_exchange);
 
         game.repository_mut().set_locked("potion", true);
         let locked = game.repository().clone();
@@ -419,6 +432,46 @@ mod tests {
         );
         assert_eq!(game.repository(), &locked);
         assert_eq!(sell_price(&item("phoenix_wing")), None);
+    }
+
+    #[test]
+    fn production_core_tiers_do_not_overlap_exchange_and_crafting() {
+        let cores: ItemCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/items/magic_cores.yaml")))
+                .unwrap();
+        let exchangeable = cores
+            .entries()
+            .iter()
+            .filter_map(|item| match item {
+                ItemDefinition::MagicCore(core) if core.exchange_rate.is_some() => {
+                    Some(core.id.as_str())
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(exchangeable, ["mc_s", "mc_xs"]);
+
+        let recipes: RecipeCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/recipe/all_recipe.yaml")))
+                .unwrap();
+        let mut crafting_tiers = std::collections::BTreeSet::new();
+        for recipe in recipes.entries() {
+            for ingredient in &recipe.inputs.mc {
+                let id = core_id(ingredient.size);
+                crafting_tiers.insert(id);
+                let core = cores
+                    .entries()
+                    .iter()
+                    .find(|item| item.id() == id)
+                    .expect("recipe core tier should exist");
+                assert!(
+                    matches!(core, ItemDefinition::MagicCore(core) if core.exchange_rate.is_none()),
+                    "recipe {} consumes exchangeable tier {id}",
+                    recipe.id
+                );
+            }
+        }
+        assert_eq!(crafting_tiers, ["mc_l", "mc_m", "mc_xl"].into());
     }
 
     #[test]
