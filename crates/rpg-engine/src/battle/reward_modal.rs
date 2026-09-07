@@ -4,7 +4,7 @@
 //! level-up payoff. This modal owns the whole canvas for the [`BattlePhase::Rewards`]
 //! step so a level-up is impossible to miss.
 
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 
 use super::{
     model::{BattlePhase, BattleState},
@@ -14,23 +14,47 @@ use super::{
         battle_panel, battle_row, battle_row_border, battle_teal, battle_violet, spawn_battle_text,
     },
 };
+use crate::sfx_cue::{PlaySfx, cue};
 
 const MODAL_WIDTH: f32 = 860.0;
 const MODAL_Z: i32 = 300;
+/// Matches the authored level-up flourish, which is exactly 10/3 seconds long.
+const LEVEL_UP_PRELUDE_SECONDS: f32 = 10.0 / 3.0;
 
 #[derive(Component)]
 pub(super) struct BattleRewardModal;
+
+/// Locks reward dismissal while a level-up flourish builds to the modal reveal.
+#[derive(Resource)]
+pub(super) struct BattleRewardPrelude(Timer);
+
+impl BattleRewardPrelude {
+    fn new() -> Self {
+        Self(Timer::from_seconds(
+            LEVEL_UP_PRELUDE_SECONDS,
+            TimerMode::Once,
+        ))
+    }
+}
+
+#[derive(SystemParam)]
+pub(super) struct RewardModalContext<'w> {
+    state: Option<Res<'w, BattleState>>,
+    assets: Option<Res<'w, BattleAssetState>>,
+    prelude: Option<ResMut<'w, BattleRewardPrelude>>,
+    time: Res<'w, Time>,
+}
 
 /// Spawns the modal once rewards are applied and tears it down if the phase
 /// leaves [`BattlePhase::Rewards`].
 pub(super) fn sync_reward_modal(
     mut commands: Commands,
-    state: Option<Res<BattleState>>,
-    assets: Option<Res<BattleAssetState>>,
+    mut context: RewardModalContext,
     existing: Query<Entity, With<BattleRewardModal>>,
+    mut sfx: MessageWriter<PlaySfx>,
     mut spawned: Local<bool>,
 ) {
-    let (Some(state), Some(assets)) = (state, assets) else {
+    let (Some(state), Some(assets)) = (context.state.as_deref(), context.assets.as_deref()) else {
         return;
     };
     let showing = state.phase == BattlePhase::Rewards;
@@ -38,6 +62,7 @@ pub(super) fn sync_reward_modal(
         for entity in &existing {
             commands.entity(entity).despawn();
         }
+        commands.remove_resource::<BattleRewardPrelude>();
         *spawned = false;
         return;
     }
@@ -46,6 +71,21 @@ pub(super) fn sync_reward_modal(
     };
     if *spawned {
         return;
+    }
+    if rewards
+        .members
+        .iter()
+        .any(|member| !member.level_ups.is_empty())
+    {
+        let Some(prelude) = context.prelude.as_deref_mut() else {
+            commands.insert_resource(BattleRewardPrelude::new());
+            sfx.write(PlaySfx::new(cue::LEVEL_UP));
+            return;
+        };
+        if !prelude.0.tick(context.time.delta()).just_finished() {
+            return;
+        }
+        commands.remove_resource::<BattleRewardPrelude>();
     }
     *spawned = true;
     spawn_reward_modal(&mut commands, rewards, &assets.font);
@@ -338,6 +378,8 @@ mod tests {
     use super::*;
     use crate::battle::rewards::{LootReward, MemberReward, RewardStatDelta};
     use crate::runtime_member::RuntimeLevelUp;
+    use bevy::time::TimeUpdateStrategy;
+    use std::time::Duration;
 
     fn level_up(old_level: u32, new_level: u32) -> RuntimeLevelUp {
         RuntimeLevelUp {
@@ -366,6 +408,104 @@ mod tests {
             loot: Vec::new(),
             boss_flag: None,
         }
+    }
+
+    fn reward_reveal_app(rewards: BattleRewards) -> App {
+        let mut state = crate::battle::tests::state_with(Vec::new());
+        state.phase = BattlePhase::Rewards;
+        state.rewards = Some(rewards);
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<PlaySfx>()
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs(1)))
+            .insert_resource(state)
+            .insert_resource(BattleAssetState::test_stub())
+            .add_systems(Update, sync_reward_modal);
+        app
+    }
+
+    #[test]
+    fn level_up_flourish_finishes_before_the_modal_reveal() {
+        let rewards = rewards_with(vec![MemberReward {
+            member_id: "aric".to_owned(),
+            member_name: "Aric".to_owned(),
+            experience_gained: 40,
+            experience_applied: 40,
+            level_ups: vec![level_up(1, 2)],
+            learned_abilities: Vec::new(),
+        }]);
+        let mut app = reward_reveal_app(rewards);
+
+        app.update();
+        assert!(app.world().contains_resource::<BattleRewardPrelude>());
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            0
+        );
+        let mut cues = app.world().resource::<Messages<PlaySfx>>().get_cursor();
+        assert_eq!(
+            cues.read(app.world().resource::<Messages<PlaySfx>>())
+                .copied()
+                .collect::<Vec<_>>(),
+            [PlaySfx::new(cue::LEVEL_UP)]
+        );
+
+        // Virtual time clamps a one-second manual step to 250 ms, so thirteen
+        // updates reach 3.25 seconds without finishing the 10/3-second cue.
+        for _ in 0..13 {
+            app.update();
+        }
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            0,
+            "the modal must stay hidden while the 3.33-second cue is playing"
+        );
+
+        app.update();
+        assert!(!app.world().contains_resource::<BattleRewardPrelude>());
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn rewards_without_a_level_up_open_immediately_and_play_no_flourish() {
+        let rewards = rewards_with(vec![MemberReward {
+            member_id: "aric".to_owned(),
+            member_name: "Aric".to_owned(),
+            experience_gained: 20,
+            experience_applied: 20,
+            level_ups: Vec::new(),
+            learned_abilities: Vec::new(),
+        }]);
+        let mut app = reward_reveal_app(rewards);
+
+        app.update();
+
+        assert!(!app.world().contains_resource::<BattleRewardPrelude>());
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            1
+        );
+        let mut cues = app.world().resource::<Messages<PlaySfx>>().get_cursor();
+        assert_eq!(
+            cues.read(app.world().resource::<Messages<PlaySfx>>())
+                .count(),
+            0
+        );
     }
 
     #[test]

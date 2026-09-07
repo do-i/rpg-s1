@@ -84,6 +84,9 @@ pub(crate) mod cue {
     pub(crate) const STATUS_POISON: &str = "status_poison";
     pub(crate) const SPEED_BUFF: &str = "speed_buff";
 
+    /// A short rising flourish that finishes before level-up rewards are revealed.
+    pub(crate) const LEVEL_UP: &str = "level_up";
+
     /// What an enemy's basic attack sounds like, chosen by its authored type. Types with no
     /// distinctive sample keep [`ATK_IMPACT`]; forcing one on them would be worse than sharing.
     pub(crate) const ATK_CLAW: &str = "atk_claw";
@@ -383,6 +386,7 @@ mod tests {
             cue::STATUS_SLEEP,
             cue::STATUS_POISON,
             cue::SPEED_BUFF,
+            cue::LEVEL_UP,
             cue::ATK_CLAW,
             cue::ATK_SWORD,
             cue::CHEST_OPEN,
