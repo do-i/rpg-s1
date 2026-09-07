@@ -900,21 +900,21 @@ mod tests {
 
     fn harborgate_metadata() -> MapMetadata {
         scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/port_town_harborgate.yaml"
+            "data/maps/town_03_harborgate.yaml"
         )))
         .unwrap()
     }
 
     fn harborgate_quarantine_metadata() -> MapMetadata {
         scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/port_town_harborgate_quarantine.yaml"
+            "data/maps/town_03_harborgate_quarantine.yaml"
         )))
         .unwrap()
     }
 
     fn harborgate_shop_metadata() -> MapMetadata {
         scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/port_town_harborgate_shop.yaml"
+            "data/maps/town_03_harborgate_shop.yaml"
         )))
         .unwrap()
     }

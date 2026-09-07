@@ -7,9 +7,9 @@
  <tileset firstgid="1460" source="../tilesets/astralpixels/finestre.tsx"/>
  <tileset firstgid="1485" source="../tilesets/astralpixels/altro.tsx"/>
  <objectgroup id="4" name="portals">
-  <object id="1" name="port_town_harborgate" x="224.458" y="350.019" width="31" height="1.64773">
+  <object id="1" name="town_03_harborgate" x="224.458" y="350.019" width="31" height="1.64773">
    <properties>
-    <property name="target_map" value="port_town_harborgate"/>
+    <property name="target_map" value="town_03_harborgate"/>
     <property name="target_position_x" type="int" value="36"/>
     <property name="target_position_y" type="int" value="6"/>
    </properties>

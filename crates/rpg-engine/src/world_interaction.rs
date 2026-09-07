@@ -1971,10 +1971,10 @@ mod tests {
     /// frames later than before, once the async load actually confirms a match — never eagerly.
     #[test]
     fn interacting_with_an_authored_sign_dialogue_opens_and_plays_its_sound() {
-        let mut app = interaction_app("port_town_harborgate", Position::new(5, 5));
+        let mut app = interaction_app("town_03_harborgate", Position::new(5, 5));
         app.world_mut().spawn(WorldSign::for_test(
             "harborgate_sign",
-            "sign_port_town_harborgate",
+            "sign_town_03_harborgate",
             Position::new(5, 6),
         ));
 

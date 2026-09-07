@@ -1698,11 +1698,11 @@ mod tests {
     #[test]
     fn harborgate_notice_board_traverses_its_authored_terminal() {
         let dialogue = dialogue(include_str!(scenario_file!(
-            "data/dialogue/sign_port_town_harborgate.yaml"
+            "data/dialogue/sign_town_03_harborgate.yaml"
         )));
         let flags = RuntimeFlags::default();
         let mut session =
-            DialogueSession::resolve("sign_port_town_harborgate", None, dialogue, &flags)
+            DialogueSession::resolve("sign_town_03_harborgate", None, dialogue, &flags)
                 .unwrap()
                 .unwrap();
         assert_eq!(session.current_line(), "Notice Board — Harborgate");

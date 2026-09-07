@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn map_ids_lose_their_grouping_prefix_and_ordering_numbers() {
         assert_eq!(location_display_name("town_02_millhaven"), "Millhaven");
-        assert_eq!(location_display_name("port_town_harborgate"), "Harborgate");
+        assert_eq!(location_display_name("town_03_harborgate"), "Harborgate");
         assert_eq!(
             location_display_name("town_03_ruinwatch_monastery_vaults"),
             "Ruinwatch Monastery Vaults"

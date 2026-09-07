@@ -18,9 +18,9 @@
     <property name="target_position_y" type="int" value="14"/>
    </properties>
   </object>
-  <object id="14" name="port_town_harborgate" x="643.333" y="1268" width="96" height="28">
+  <object id="14" name="town_03_harborgate" x="643.333" y="1268" width="96" height="28">
    <properties>
-    <property name="target_map" value="port_town_harborgate"/>
+    <property name="target_map" value="town_03_harborgate"/>
     <property name="target_position_x" type="int" value="4"/>
     <property name="target_position_y" type="int" value="1"/>
    </properties>

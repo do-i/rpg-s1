@@ -9,9 +9,9 @@
  <tileset firstgid="261" source="../tilesets/astralpixels/altro.tsx"/>
  <tileset firstgid="286" source="../tilesets/astralpixels/scale.tsx"/>
  <objectgroup id="5" name="portals">
-  <object id="3" name="port_town_harborgate" x="323.92" y="413.841" width="23.2727" height="2.34091">
+  <object id="3" name="town_03_harborgate" x="323.92" y="413.841" width="23.2727" height="2.34091">
    <properties>
-    <property name="target_map" value="port_town_harborgate"/>
+    <property name="target_map" value="town_03_harborgate"/>
     <property name="target_position_x" type="int" value="35"/>
     <property name="target_position_y" type="int" value="26"/>
    </properties>
