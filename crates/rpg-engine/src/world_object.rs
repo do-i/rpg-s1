@@ -11,7 +11,7 @@ use crate::{
     runtime_opened_boxes::OpenedBoxKey,
     scenario_inventory::ScenarioInventory,
     scenario_manifest::{Manifest, ManifestSigns},
-    scenario_map::{ItemBoxLoot, MapMetadata, optional_scenario_asset_is_missing},
+    scenario_map::{ItemBoxLoot, ItemBoxTrap, MapMetadata, optional_scenario_asset_is_missing},
     scenario_path::ScenarioRelativePath,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
     scenario_spatial::Position,
@@ -112,6 +112,7 @@ pub(crate) struct WorldItemBox {
     id: String,
     position: Position,
     loot: ItemBoxLoot,
+    trap: Option<ItemBoxTrap>,
 }
 
 impl WorldItemBox {
@@ -121,12 +122,14 @@ impl WorldItemBox {
         id: impl Into<String>,
         position: Position,
         loot: ItemBoxLoot,
+        trap: Option<ItemBoxTrap>,
     ) -> Self {
         Self {
             map_id,
             id: id.into(),
             position,
             loot,
+            trap,
         }
     }
 
@@ -140,6 +143,10 @@ impl WorldItemBox {
 
     pub(crate) const fn loot(&self) -> &ItemBoxLoot {
         &self.loot
+    }
+
+    pub(crate) const fn trap(&self) -> Option<ItemBoxTrap> {
+        self.trap
     }
 
     pub(crate) fn key(&self) -> OpenedBoxKey {
@@ -321,6 +328,7 @@ fn drive_world_object_load(
                 id: item_box.id.clone(),
                 position: item_box.position,
                 loot: item_box.loot.clone(),
+                trap: item_box.trap,
             },
         ));
     }
