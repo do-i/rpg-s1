@@ -23,7 +23,7 @@ use crate::{
     scenario_balance::BalanceData,
     scenario_dialogue::{DialogueActions, DialogueDocument, DialogueTransportMode},
     scenario_inventory::ScenarioInventory,
-    scenario_map::MagicCoreSize,
+    scenario_map::{ItemBoxTrap, MagicCoreSize},
     scenario_party::PartyCatalog,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -460,6 +460,13 @@ fn open_item_box(
         };
     }
 
+    // The lid comes off before anything is granted, so a rigged box wounds the party even when
+    // it turns out to hold nothing (roadmap B4.2).
+    let mut rows = match item_box.trap() {
+        Some(trap) => vec![spring_trap(trap, game, catalog)],
+        None => Vec::new(),
+    };
+
     let mut grants = Vec::new();
     let batch = (!item_box.loot().items.is_empty() || !item_box.loot().magic_cores.is_empty())
         .then(|| game.repository_mut().start_loot_batch());
@@ -503,10 +510,53 @@ fn open_item_box(
         // placeholder row rather than a sentence (`item_box_scene.py::_build_lines`).
         grants.push("(empty)".to_owned());
     }
+    rows.extend(grants);
     ItemBoxOutcome {
         message: String::new(),
-        rows: grants,
+        rows,
         opened: true,
+    }
+}
+
+/// The first conscious member whose class carries `chest_trap_detect`, by party order.
+///
+/// Only the Rogue declares the passive in shipped content, but the lookup goes through the class
+/// catalog rather than a class id so a scenario can grant it to anyone.
+fn trap_scout(game: &GameState, catalog: &FieldMenuCatalog) -> Option<String> {
+    game.party()
+        .members()
+        .find(|member| {
+            !member.is_knocked_out()
+                && catalog
+                    .class(member.class_id())
+                    .and_then(|class| class.passive_bonuses.as_ref())
+                    .is_some_and(|bonuses| bonuses.chest_trap_detect)
+        })
+        .map(|member| member.name().to_owned())
+}
+
+/// Resolves a rigged lid and returns the one reveal row describing what happened.
+///
+/// A scout disarms it outright -- there is no detection roll, so the passive reads as a flat
+/// party-wide immunity rather than a chance. Otherwise every conscious member is wounded, floored
+/// at one health: the field has no game-over path of its own, so a chest must never wipe the party.
+fn spring_trap(trap: ItemBoxTrap, game: &mut GameState, catalog: &FieldMenuCatalog) -> String {
+    if let Some(scout) = trap_scout(game, catalog) {
+        return format!("{scout} spots the trap and disarms it.");
+    }
+    let damage = trap.damage.get();
+    let mut lost = 0;
+    for member in game.party_mut().members_mut() {
+        if member.is_knocked_out() {
+            continue;
+        }
+        let survivable = damage.min(member.health().saturating_sub(1));
+        lost += member.apply_damage(survivable);
+    }
+    if lost == 0 {
+        "A trap springs from the lid, but the party is too battered to bruise.".to_owned()
+    } else {
+        format!("A trap springs from the lid! The party loses {lost} health.")
     }
 }
 
@@ -1517,7 +1567,7 @@ impl Error for SfxIndexAssetError {}
 
 #[cfg(test)]
 mod tests {
-    use std::{thread, time::Duration};
+    use std::{num::NonZeroU32, thread, time::Duration};
 
     use super::*;
     use crate::{
@@ -1527,7 +1577,7 @@ mod tests {
         save_data::tests::fixture_game,
         scenario_dialogue::DialogueDocument,
         scenario_manifest::Manifest,
-        scenario_map::MapMetadata,
+        scenario_map::{ItemBoxLoot, MapMetadata},
         scenario_yaml,
         test_support::headless_title_app_with_asset_base,
     };
@@ -2138,6 +2188,7 @@ mod tests {
             source.id.clone(),
             source.position,
             source.loot.clone(),
+            source.trap,
         );
 
         let catalog = crate::field_menu_domain::tests::catalog();
@@ -2170,6 +2221,196 @@ mod tests {
         assert_eq!(game.repository().item_count("mc_s"), 10);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
+    }
+
+    /// Builds a fresh protagonist-only session plus the shipped catalog, for the trap cases.
+    fn trap_session() -> (GameState, FieldMenuCatalog, BalanceData) {
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let game = build_new_game_state(
+            NewGameScenario {
+                manifest: &manifest,
+                party: &party,
+                balance: &balance,
+                protagonist_class: &crate::runtime_member::test_class(&manifest.protagonist.class),
+            },
+            Duration::ZERO,
+        )
+        .unwrap();
+        (game, crate::field_menu_domain::tests::catalog(), balance)
+    }
+
+    /// Adds the shipped rogue recruit, who is the only member carrying `chest_trap_detect`.
+    fn recruit_the_rogue(game: &mut GameState, balance: &BalanceData) {
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let jep = party
+            .party
+            .iter()
+            .find(|member| member.data().id == "jep")
+            .expect("the shipped party has the rogue");
+        game.party_mut()
+            .try_add(
+                crate::runtime_member::RuntimeMember::try_from_catalog(
+                    jep,
+                    &crate::runtime_member::test_class("rogue"),
+                    &balance.progression,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+    }
+
+    /// Each box needs its own id: two boxes sharing one key would make the second open report
+    /// the box as already looted instead of springing its trap.
+    fn trapped_box(id: &str, damage: u32) -> WorldItemBox {
+        WorldItemBox::for_test(
+            RuntimeMapId::try_new("zone_07_sunken_cave").unwrap(),
+            id,
+            Position::new(4, 4),
+            ItemBoxLoot::default(),
+            Some(ItemBoxTrap {
+                damage: NonZeroU32::new(damage).expect("test damage is non-zero"),
+            }),
+        )
+    }
+
+    #[test]
+    fn an_undetected_chest_trap_wounds_the_whole_party_and_still_yields_the_loot() {
+        let (mut game, catalog, _balance) = trap_session();
+        let before = game
+            .party()
+            .members()
+            .map(|member| (member.id().to_owned(), member.health()))
+            .collect::<Vec<_>>();
+        assert!(
+            before.iter().all(|(_, health)| *health > 9),
+            "the trap must be survivable for this fixture: {before:?}"
+        );
+
+        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog);
+
+        assert!(outcome.opened, "a trap does not keep the lid shut");
+        assert_eq!(
+            outcome.rows,
+            vec![
+                format!(
+                    "A trap springs from the lid! The party loses {} health.",
+                    9 * before.len()
+                ),
+                "(empty)".to_owned(),
+            ]
+        );
+        for (id, health) in before {
+            let now = game.party().member(&id).expect("member survives").health();
+            assert_eq!(now, health - 9, "{id} should lose exactly the trap damage");
+        }
+    }
+
+    #[test]
+    fn a_rogue_in_the_party_disarms_a_chest_trap_without_a_roll() {
+        let (mut game, catalog, balance) = trap_session();
+        recruit_the_rogue(&mut game, &balance);
+        let before = game
+            .party()
+            .members()
+            .map(|member| (member.id().to_owned(), member.health()))
+            .collect::<Vec<_>>();
+
+        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog);
+
+        assert_eq!(
+            outcome.rows,
+            vec![
+                "Jep spots the trap and disarms it.".to_owned(),
+                "(empty)".to_owned(),
+            ]
+        );
+        for (id, health) in before {
+            assert_eq!(
+                game.party().member(&id).expect("member survives").health(),
+                health,
+                "{id} must be untouched once the trap is disarmed"
+            );
+        }
+    }
+
+    /// The field has no game-over path of its own, so a chest must never be able to wipe a party.
+    #[test]
+    fn a_chest_trap_floors_every_victim_at_one_health() {
+        let (mut game, catalog, _balance) = trap_session();
+        let ids = game
+            .party()
+            .members()
+            .map(|member| member.id().to_owned())
+            .collect::<Vec<_>>();
+
+        let outcome = open_item_box(&trapped_box("crusher_chest", 9_999), &mut game, &catalog);
+
+        assert!(outcome.opened);
+        for id in &ids {
+            assert_eq!(
+                game.party().member(id).expect("member survives").health(),
+                1,
+                "{id} must be left standing on one health"
+            );
+        }
+
+        // A second rigged box finds nobody left to wound and says so rather than reporting zero.
+        let again = open_item_box(
+            &trapped_box("second_crusher_chest", 9_999),
+            &mut game,
+            &catalog,
+        );
+        assert_eq!(
+            again.rows.first().map(String::as_str),
+            Some("A trap springs from the lid, but the party is too battered to bruise.")
+        );
+    }
+
+    /// Ties the passive to shipped content: the traps below are the reason it has a consumer.
+    #[test]
+    fn the_shipped_corpus_authors_traps_the_rogue_passive_can_answer() {
+        let rogue = crate::runtime_member::test_class("rogue");
+        assert!(
+            rogue
+                .passive_bonuses
+                .as_ref()
+                .is_some_and(|bonuses| bonuses.chest_trap_detect),
+            "the rogue must keep the passive these traps consume"
+        );
+
+        let trapped = [
+            include_str!(scenario_file!(
+                "data/maps/zone_04_ancient_ruins_02_courtyard.yaml"
+            )),
+            include_str!(scenario_file!(
+                "data/maps/zone_04_ancient_ruins_03_sanctum.yaml"
+            )),
+            include_str!(scenario_file!("data/maps/zone_07_sunken_cave.yaml")),
+            include_str!(scenario_file!("data/maps/zone_09_marshal_camp.yaml")),
+            include_str!(scenario_file!("data/maps/zone_10_final_stronghold.yaml")),
+        ]
+        .into_iter()
+        .map(|document| {
+            let metadata: MapMetadata = scenario_yaml::from_str(document).unwrap();
+            metadata
+                .item_boxes
+                .iter()
+                .filter(|item_box| item_box.trap.is_some())
+                .count()
+        })
+        .collect::<Vec<_>>();
+
+        assert_eq!(
+            trapped,
+            vec![1, 1, 1, 1, 1],
+            "each trapped zone authors exactly one rigged chest"
+        );
     }
 
     /// The source crops the head out of the walking sheet rather than loading a portrait asset,
@@ -2217,7 +2458,7 @@ mod tests {
     #[test]
     fn an_id_the_catalog_does_not_define_reads_as_words_not_as_an_identifier() {
         assert_eq!(humanize_item_id("hi_potion"), "Hi Potion");
-        assert_eq!(humanize_item_id("mimic_key"), "Mimic Key");
+        assert_eq!(humanize_item_id("iron_key"), "Iron Key");
         assert_eq!(humanize_item_id("potion"), "Potion");
         // Real ids carry digits and doubled separators; neither may produce an empty word.
         assert_eq!(humanize_item_id("zone_01__drop"), "Zone 01 Drop");

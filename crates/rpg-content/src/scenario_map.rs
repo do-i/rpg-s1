@@ -265,6 +265,20 @@ pub struct ItemBoxMetadata {
     pub present: FlagConditions,
     #[serde(default)]
     pub loot: ItemBoxLoot,
+    /// Absent on an ordinary box. Present means the lid is rigged (roadmap B4.2); an explicit
+    /// `trap: null` is rejected the same way every other optional block here rejects it.
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub trap: Option<ItemBoxTrap>,
+}
+
+/// A rigged lid. The smallest authored contract that gives the Rogue's `chest_trap_detect`
+/// passive a consumer: one required damage figure, no reveal state and no disarm minigame.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ItemBoxTrap {
+    /// Health each conscious party member loses when nobody spots the trap. Never lethal: the
+    /// field has no death path of its own, so the engine floors every victim at one health.
+    pub damage: NonZeroU32,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
@@ -480,6 +494,78 @@ enemy_spawn: { init: 3, max: 6, interval: 25.0 }
         assert_eq!(map.item_boxes[0].loot.items[0].qty.get(), 1);
         assert_eq!(map.item_boxes[0].loot.magic_cores[0].size, MagicCoreSize::M);
         assert_eq!(map.enemy_spawn.unwrap().interval.get(), 25.0);
+    }
+
+    /// An ordinary box parses with no trap at all; a rigged one carries its required damage.
+    #[test]
+    fn an_item_box_trap_is_optional_and_carries_a_required_damage() {
+        let map: MapMetadata = scenario_yaml::from_str(
+            r#"name: Sunken Cave
+item_boxes:
+  - id: plain_chest
+    position: [1, 1]
+    loot:
+      items: [{ id: potion }]
+  - id: rigged_chest
+    position: [2, 2]
+    trap:
+      damage: 40
+    loot:
+      items: [{ id: potion }]
+"#,
+        )
+        .expect("an authored trap should deserialize");
+
+        assert_eq!(map.item_boxes[0].trap, None);
+        assert_eq!(
+            map.item_boxes[1]
+                .trap
+                .expect("the rigged box is trapped")
+                .damage
+                .get(),
+            40
+        );
+    }
+
+    #[test]
+    fn an_item_box_trap_rejects_a_null_block_a_zero_damage_and_an_unknown_field() {
+        let map = |trap: &str| {
+            scenario_yaml::from_str::<MapMetadata>(&format!(
+                "name: Sunken Cave
+item_boxes:
+  - id: rigged_chest
+    position: [2, 2]
+{trap}"
+            ))
+        };
+
+        // An explicit null is rejected the same way every other optional block here rejects it.
+        assert!(
+            map("    trap: null
+")
+            .is_err()
+        );
+        // Damage is a NonZeroU32, so a harmless trap cannot be authored by accident.
+        assert!(
+            map("    trap:
+      damage: 0
+")
+            .is_err()
+        );
+        // The block is closed, so a misspelled or speculative knob fails loudly.
+        assert!(
+            map("    trap:
+      damage: 5
+      disarm_chance: 0.5
+")
+            .is_err()
+        );
+        assert!(
+            map("    trap:
+      damage: 5
+")
+            .is_ok()
+        );
     }
 
     #[test]

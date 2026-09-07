@@ -21,6 +21,8 @@ item_boxes:
           qty: 1
   - id: ruins_sanctum_chest_02
     position: [9, 22]
+    trap:
+      damage: 30
     loot:
       items:
         - id: hi_ether

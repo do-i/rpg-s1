@@ -36,6 +36,8 @@ item_boxes:
           qty: 2
   - id: stronghold_chest_03
     position: [9, 22]
+    trap:
+      damage: 70
     loot:
       items:
         - id: hi_ether

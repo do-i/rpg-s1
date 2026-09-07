@@ -33,6 +33,8 @@ item_boxes:
           qty: 2
   - id: sunken_cave_chest_02
     position: [12, 19]
+    trap:
+      damage: 40
     loot:
       items:
         - id: shock_vial

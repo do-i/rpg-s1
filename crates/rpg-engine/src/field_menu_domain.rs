@@ -1541,9 +1541,10 @@ pub(crate) mod tests {
     #[test]
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
-        // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6).
-        assert_eq!(catalog.items.len(), 208);
-        assert_eq!(catalog.item_order.len(), 208);
+        // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
+        // less the Mimic Key that B4.2 cut when mimics went formally out of scope.
+        assert_eq!(catalog.items.len(), 207);
+        assert_eq!(catalog.item_order.len(), 207);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [

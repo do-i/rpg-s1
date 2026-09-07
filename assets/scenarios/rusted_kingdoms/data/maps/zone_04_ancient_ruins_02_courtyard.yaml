@@ -13,6 +13,8 @@ item_boxes:
           qty: 2
   - id: ruins_courtyard_chest_02
     position: [12, 19]
+    trap:
+      damage: 25
     loot:
       items:
         - id: fire_vial

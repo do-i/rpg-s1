@@ -194,12 +194,6 @@
   sell_price: 90
   description: "A pale orb that hums in cold rooms. The bound dead, in glass."
 
-- id: mimic_key
-  name: Mimic Key
-  type: material
-  sell_price: 120
-  description: "A wrought key recovered from inside a mimic. Opens nothing — yet."
-
 - id: rare_coin
   name: Rare Coin
   type: material
