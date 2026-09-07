@@ -1,7 +1,11 @@
 # Asset License Inventory
 
-Status: active; two title-screen assets have completed evidence audits and are
-blocked from release pending the proof recorded below.
+Status: active; the 2026-09-07 automated payload audit found 1,060 tracked
+release assets, 129 ledger entries (10 approved and 119 needing evidence), 935
+payload files without an ALI entry, 115 non-approved payload entries, and 26
+destination-hash mismatches. The release is blocked until all findings are
+resolved. Run `python3 scripts/check_asset_rights.py --report-only` for the
+current report; this dated snapshot is not a substitute for rerunning it.
 
 This ledger records the provenance and release rights of every asset copied
 into, or shipped from, this repository. It supports the Rusted Kingdoms port
@@ -59,6 +63,12 @@ set the entry back to `needs-review` (or `needs-evidence` if proof is missing).
    `unknown`, with conditions in notes. Review the entry and choose a status.
 7. Before packaging, compare every shipped asset against approved entries by
    destination path and content hash. Resolve mismatches before shipment.
+
+`scripts/check_asset_rights.py` performs that comparison against the exact set
+of tracked files copied by the release workflow. It is a strict local and
+GitHub release gate. During ongoing evidence work, `--report-only` prints the
+same findings without treating unresolved rights as a command failure; ledger
+syntax and structural errors still fail in either mode.
 
 ## Entry fields
 
@@ -2298,11 +2308,15 @@ Additional evidence boundaries:
 | Commercial-use permission | unknown |
 | Derivative-work permission | unknown |
 | Review status | `needs-evidence` |
-| Reviewer/date | not yet reviewed |
+| Reviewer/date | Codex evidence audit, 2026-09-07; approval still requires a named authorized reviewer |
 
-Notes/blocker: preserve the exact generated hash and establish the account/output terms and any
-required disclosure or notice before release approval. This entry records provenance only and does
-not treat generation as automatic redistribution clearance.
+Notes/blocker: preserve the exact generated hash and establish which OpenAI product and account
+terms governed the generation, retain the applicable dated output-rights evidence, and determine
+any required disclosure or notice before release approval. The current official
+[OpenAI API data-control documentation](https://developers.openai.com/api/docs/guides/your-data)
+confirms image-generation handling but does not identify the account/product terms that applied to
+this tool-created file. This entry records provenance only and does not treat generation as
+automatic redistribution clearance.
 
 ## Compact blank entry
 
