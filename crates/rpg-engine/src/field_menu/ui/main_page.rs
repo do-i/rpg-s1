@@ -246,7 +246,13 @@ pub(in crate::field_menu) fn spawn_main_command_column(
                 .skip(column * MAIN_COMMAND_ROWS)
                 .take(MAIN_COMMAND_ROWS)
             {
-                spawn_main_command_row(list, font, command, index, index == state.selected);
+                spawn_main_command_row(
+                    list,
+                    font,
+                    command,
+                    index,
+                    index == state.main_command_cursor(),
+                );
             }
         });
 }
