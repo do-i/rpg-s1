@@ -287,6 +287,20 @@ impl FieldMenuState {
         self.open
     }
 
+    /// Which command the deck behind a modal should keep highlighted.
+    ///
+    /// [`Self::selected`] is a single cursor shared by every mode, so while the switch overlay is
+    /// up it holds a *party member* index — and the command deck underneath the translucent modal
+    /// was reading it as a command index, walking its highlight down Items, Equipment, Spells as
+    /// the player moved between members. The deck is not the thing being steered, so it pins to
+    /// the command that opened the modal, exactly where [`Self::back`] returns the cursor.
+    const fn main_command_cursor(&self) -> usize {
+        match self.mode {
+            FieldMenuMode::CharacterSwitch => CHARACTER_COMMAND_INDEX,
+            _ => self.selected,
+        }
+    }
+
     fn open(&mut self, screen: FieldMenuScreen) {
         *self = Self {
             open: true,
@@ -2535,6 +2549,61 @@ mod tests {
         assert!(labels.iter().any(|label| label == "Elise"));
         // Only the protagonist is controlled, so exactly one row carries the badge.
         assert_eq!(labels.iter().filter(|label| *label == "ACTIVE").count(), 1);
+    }
+
+    /// The reported bug: the deck showing through the switch overlay's translucent backdrop moved
+    /// too. `selected` is one cursor shared by every mode, so a roster index of 1 lit up command 1
+    /// behind the modal, and walking the party walked the deck's highlight down with it.
+    #[test]
+    fn the_deck_behind_the_switch_overlay_stays_on_the_character_command() {
+        let highlighted = |member: usize| {
+            let mut app = App::new();
+            app.insert_resource(fixture_game_with_recruit())
+                .insert_resource(FieldMenuState {
+                    open: true,
+                    selected: member,
+                    mode: FieldMenuMode::CharacterSwitch,
+                    ..default()
+                })
+                .add_systems(Update, spawn_fixture_main_page);
+            app.update();
+
+            let world = app.world_mut();
+            world
+                .query::<(&SelectedMainCommandRow, &Name)>()
+                .iter(world)
+                .map(|(_, name)| name.to_string())
+                .collect::<Vec<_>>()
+        };
+
+        for member in 0..2 {
+            assert_eq!(
+                highlighted(member),
+                vec!["Character command".to_owned()],
+                "roster row {member} must not drag the deck's highlight with it"
+            );
+        }
+
+        // Browsing still steers the deck itself — the pin is scoped to the modal.
+        let mut app = App::new();
+        app.insert_resource(fixture_game_with_recruit())
+            .insert_resource(FieldMenuState {
+                open: true,
+                selected: 1,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_main_page);
+        app.update();
+        let world = app.world_mut();
+        let browsing = world
+            .query::<(&SelectedMainCommandRow, &Name)>()
+            .iter(world)
+            .map(|(_, name)| name.to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            browsing,
+            vec![format!("{} command", MAIN_COMMANDS[1].label)]
+        );
     }
 
     #[test]
