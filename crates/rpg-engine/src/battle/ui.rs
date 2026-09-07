@@ -1331,6 +1331,7 @@ struct BattleInputContext<'w> {
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<ResMut<'w, GameState>>,
     entry: Option<Res<'w, BattleEntry>>,
+    reward_prelude: Option<Res<'w, super::reward_modal::BattleRewardPrelude>>,
 }
 
 fn handle_battle_input(
@@ -1513,7 +1514,9 @@ fn handle_battle_input(
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
             }
         }
-        BattlePhase::Rewards if actions.just_pressed(AppAction::Confirm) => {
+        BattlePhase::Rewards
+            if context.reward_prelude.is_none() && actions.just_pressed(AppAction::Confirm) =>
+        {
             restore_world(&mut commands, &mut game, entry);
             transitions.write(AppStateTransitionRequest::new(AppState::World));
         }
@@ -2007,6 +2010,7 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
     }
     commands.remove_resource::<BattleState>();
     commands.remove_resource::<BattleAssetState>();
+    commands.remove_resource::<super::reward_modal::BattleRewardPrelude>();
     commands.remove_resource::<super::fx::BattleFxRouter>();
     commands.remove_resource::<super::fx::BattleAttackAnimations>();
 }
