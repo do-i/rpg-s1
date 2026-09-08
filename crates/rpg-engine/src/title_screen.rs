@@ -20,8 +20,10 @@ use crate::{
     world_audio::LogicalBgmPlayer,
 };
 
-const MENU_LABELS: [&str; 3] = ["New Game", "Load Game", "Quit"];
+const MENU_LABELS: [&str; 4] = ["New Game", "Load Game", "Options", "Quit"];
 const LOAD_GAME_INDEX: usize = 1;
+const OPTIONS_INDEX: usize = 2;
+const QUIT_INDEX: usize = 3;
 /// Row height for one title menu entry.
 const MENU_ENTRY_HEIGHT: f32 = 42.0;
 /// Bounded wait for the Quit confirmation to reach the audio device.
@@ -36,6 +38,7 @@ pub struct TitleScreenPlugin;
 impl Plugin for TitleScreenPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TitleMenu>()
+            .init_resource::<crate::options_ui::OptionsReturn>()
             .init_resource::<QuitLifecycle>()
             .init_resource::<TitlePresentation>()
             .init_resource::<UiTheme>()
@@ -89,6 +92,7 @@ struct QuitConfirmSound;
 #[derive(SystemParam)]
 struct TitleMenuInputOutput<'w, 's> {
     status: Single<'w, 's, &'static mut Text, With<StatusMessage>>,
+    options_return: ResMut<'w, crate::options_ui::OptionsReturn>,
     asset_server: Res<'w, AssetServer>,
     transitions: MessageWriter<'w, AppStateTransitionRequest>,
     commands: Commands<'w, 's>,
@@ -211,6 +215,7 @@ enum TitleMenuAction {
     NewGame,
     LoadGame,
     LoadGameDisabled,
+    Options,
     Quit,
 }
 
@@ -219,7 +224,8 @@ fn title_menu_action(selected: usize, has_valid_save: bool) -> TitleMenuAction {
         0 => TitleMenuAction::NewGame,
         LOAD_GAME_INDEX if has_valid_save => TitleMenuAction::LoadGame,
         LOAD_GAME_INDEX => TitleMenuAction::LoadGameDisabled,
-        2 => TitleMenuAction::Quit,
+        OPTIONS_INDEX => TitleMenuAction::Options,
+        QUIT_INDEX => TitleMenuAction::Quit,
         _ => unreachable!("menu selection must refer to a title menu entry"),
     }
 }
@@ -485,6 +491,20 @@ fn handle_menu_input(
             load_menu.open(catalog.slots());
         }
         TitleMenuAction::LoadGameDisabled => {}
+        TitleMenuAction::Options => {
+            if let Some(path) = presentation.confirm_sfx.as_ref() {
+                output.commands.spawn((
+                    AudioPlayer::new(output.asset_server.load(path)),
+                    PlaybackSettings::DESPAWN,
+                    TitleScreenEntity,
+                ));
+            }
+            output.status.0.clear();
+            output.options_return.0 = AppState::Title;
+            output
+                .transitions
+                .write(AppStateTransitionRequest::new(AppState::Options));
+        }
         TitleMenuAction::Quit => {
             if reduce_quit_lifecycle(&mut quit, time.elapsed(), QuitLifecycleEvent::Activate)
                 == Some(QuitLifecycleEffect::SpawnConfirm)
@@ -739,6 +759,7 @@ mod tests {
                 Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
                 Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
                 Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
+                Some("scenarios/minimal_demo/assets/font.ttf".to_owned()),
             ]
         );
     }
@@ -842,7 +863,7 @@ mod tests {
         let mut menu = TitleMenu::default();
 
         menu.move_by(-1);
-        assert_eq!(menu.selected, 2);
+        assert_eq!(menu.selected, MENU_LABELS.len() - 1);
 
         menu.move_by(1);
         assert_eq!(menu.selected, 0);
@@ -859,7 +880,11 @@ mod tests {
             title_menu_action(LOAD_GAME_INDEX, true),
             TitleMenuAction::LoadGame
         );
-        assert_eq!(title_menu_action(2, false), TitleMenuAction::Quit);
+        assert_eq!(
+            title_menu_action(OPTIONS_INDEX, false),
+            TitleMenuAction::Options
+        );
+        assert_eq!(title_menu_action(QUIT_INDEX, false), TitleMenuAction::Quit);
     }
 
     #[test]
@@ -1041,7 +1066,7 @@ mod tests {
     fn headless_quit_input_spawns_one_marked_confirmation_and_suppresses_input() {
         let mut app = title_app(AppState::Title);
         app.update();
-        app.world_mut().resource_mut::<TitleMenu>().selected = 2;
+        app.world_mut().resource_mut::<TitleMenu>().selected = QUIT_INDEX;
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
             .press(KeyCode::Enter);
@@ -1226,7 +1251,8 @@ mod tests {
             [
                 (0, "New Game".into()),
                 (1, "Load Game".into()),
-                (2, "Quit".into())
+                (2, "Options".into()),
+                (3, "Quit".into())
             ]
         );
 
@@ -1312,9 +1338,18 @@ mod tests {
         assert_eq!(world.query::<&Camera2d>().iter(world).count(), 1);
         assert_eq!(world.query::<&Sprite>().iter(world).count(), 1);
         // root + panel + status, then one row and one label per menu entry.
-        assert_eq!(world.query::<&Node>().iter(world).count(), 9);
-        assert_eq!(world.query::<&Text>().iter(world).count(), 4);
-        assert_eq!(world.query::<&MenuEntry>().iter(world).count(), 3);
+        assert_eq!(
+            world.query::<&Node>().iter(world).count(),
+            3 + 2 * MENU_LABELS.len()
+        );
+        assert_eq!(
+            world.query::<&Text>().iter(world).count(),
+            1 + MENU_LABELS.len()
+        );
+        assert_eq!(
+            world.query::<&MenuEntry>().iter(world).count(),
+            MENU_LABELS.len()
+        );
         // Selection is marked by colour alone, so the title draws no UI image at all.
         assert_eq!(world.query::<&ImageNode>().iter(world).count(), 0);
         assert_eq!(world.query::<&StatusMessage>().iter(world).count(), 1);

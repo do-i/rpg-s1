@@ -33,7 +33,9 @@ mod menu_chrome;
 mod name_entry;
 pub mod new_game;
 mod new_game_install;
+mod options_domain;
 mod options_store;
+mod options_ui;
 pub mod playtime;
 mod python_save_import;
 pub mod runtime_flags;
@@ -216,6 +218,8 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(ActionInputPlugin)
     .add_plugins(InputRecordPlugin)
     .add_plugins(FixedGameplayCanvasPlugin)
+    .add_plugins(gameplay_canvas::pointer::CanvasPointerPlugin)
+    .add_plugins(options_ui::OptionsScreenPlugin)
     .add_plugins(TitleScreenPlugin)
     .add_plugins(SaveUiPlugin)
     .add_plugins(NameEntryPlugin)
