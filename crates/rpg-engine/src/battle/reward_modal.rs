@@ -18,22 +18,27 @@ use crate::sfx_cue::{PlaySfx, cue};
 
 const MODAL_WIDTH: f32 = 860.0;
 const MODAL_Z: i32 = 300;
-/// Matches the authored level-up flourish, which is exactly 10/3 seconds long.
+/// Matches the authored victory and level-up samples.
+const VICTORY_PRELUDE_SECONDS: f32 = 8.0 / 3.0;
 const LEVEL_UP_PRELUDE_SECONDS: f32 = 10.0 / 3.0;
 
 #[derive(Component)]
 pub(super) struct BattleRewardModal;
 
-/// Locks reward dismissal while a level-up flourish builds to the modal reveal.
+/// Locks reward dismissal while victory and optional level-up flourishes build
+/// to the modal reveal.
 #[derive(Resource)]
-pub(super) struct BattleRewardPrelude(Timer);
+pub(super) struct BattleRewardPrelude {
+    timer: Timer,
+    level_up_pending: bool,
+}
 
 impl BattleRewardPrelude {
-    fn new() -> Self {
-        Self(Timer::from_seconds(
-            LEVEL_UP_PRELUDE_SECONDS,
-            TimerMode::Once,
-        ))
+    fn new(level_up_pending: bool) -> Self {
+        Self {
+            timer: Timer::from_seconds(VICTORY_PRELUDE_SECONDS, TimerMode::Once),
+            level_up_pending,
+        }
     }
 }
 
@@ -72,21 +77,26 @@ pub(super) fn sync_reward_modal(
     if *spawned {
         return;
     }
-    if rewards
-        .members
-        .iter()
-        .any(|member| !member.level_ups.is_empty())
-    {
-        let Some(prelude) = context.prelude.as_deref_mut() else {
-            commands.insert_resource(BattleRewardPrelude::new());
-            sfx.write(PlaySfx::new(cue::LEVEL_UP));
-            return;
-        };
-        if !prelude.0.tick(context.time.delta()).just_finished() {
-            return;
-        }
-        commands.remove_resource::<BattleRewardPrelude>();
+    let Some(prelude) = context.prelude.as_deref_mut() else {
+        commands.insert_resource(BattleRewardPrelude::new(
+            rewards
+                .members
+                .iter()
+                .any(|member| !member.level_ups.is_empty()),
+        ));
+        sfx.write(PlaySfx::boosted(cue::VICTORY, 220));
+        return;
+    };
+    if !prelude.timer.tick(context.time.delta()).just_finished() {
+        return;
     }
+    if prelude.level_up_pending {
+        prelude.level_up_pending = false;
+        prelude.timer = Timer::from_seconds(LEVEL_UP_PRELUDE_SECONDS, TimerMode::Once);
+        sfx.write(PlaySfx::boosted(cue::LEVEL_UP, 250));
+        return;
+    }
+    commands.remove_resource::<BattleRewardPrelude>();
     *spawned = true;
     spawn_reward_modal(&mut commands, rewards, &assets.font);
 }
@@ -450,11 +460,31 @@ mod tests {
             cues.read(app.world().resource::<Messages<PlaySfx>>())
                 .copied()
                 .collect::<Vec<_>>(),
-            [PlaySfx::new(cue::LEVEL_UP)]
+            [PlaySfx::boosted(cue::VICTORY, 220)]
         );
 
-        // Virtual time clamps a one-second manual step to 250 ms, so thirteen
-        // updates reach 3.25 seconds without finishing the 10/3-second cue.
+        // Virtual time clamps a one-second manual step to 250 ms. Eleven more
+        // updates finish the 2.67-second victory sting and start level-up audio.
+        for _ in 0..10 {
+            app.update();
+        }
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            0,
+            "the modal must stay hidden while the victory sting is playing"
+        );
+
+        app.update();
+        assert!(app.world().contains_resource::<BattleRewardPrelude>());
+        assert_eq!(
+            cues.read(app.world().resource::<Messages<PlaySfx>>())
+                .copied()
+                .collect::<Vec<_>>(),
+            [PlaySfx::boosted(cue::LEVEL_UP, 250)]
+        );
         for _ in 0..13 {
             app.update();
         }
@@ -464,9 +494,8 @@ mod tests {
                 .iter(app.world())
                 .count(),
             0,
-            "the modal must stay hidden while the 3.33-second cue is playing"
+            "the modal must stay hidden while the level-up cue is playing"
         );
-
         app.update();
         assert!(!app.world().contains_resource::<BattleRewardPrelude>());
         assert_eq!(
@@ -479,7 +508,7 @@ mod tests {
     }
 
     #[test]
-    fn rewards_without_a_level_up_open_immediately_and_play_no_flourish() {
+    fn rewards_without_a_level_up_wait_for_the_victory_sting() {
         let rewards = rewards_with(vec![MemberReward {
             member_id: "aric".to_owned(),
             member_name: "Aric".to_owned(),
@@ -492,6 +521,26 @@ mod tests {
 
         app.update();
 
+        assert!(app.world().contains_resource::<BattleRewardPrelude>());
+        assert_eq!(
+            app.world()
+                .resource::<Messages<PlaySfx>>()
+                .get_cursor()
+                .read(app.world().resource::<Messages<PlaySfx>>())
+                .copied()
+                .collect::<Vec<_>>(),
+            [PlaySfx::boosted(cue::VICTORY, 220)]
+        );
+        assert_eq!(
+            app.world_mut()
+                .query::<&BattleRewardModal>()
+                .iter(app.world())
+                .count(),
+            0
+        );
+        for _ in 0..11 {
+            app.update();
+        }
         assert!(!app.world().contains_resource::<BattleRewardPrelude>());
         assert_eq!(
             app.world_mut()
@@ -499,12 +548,6 @@ mod tests {
                 .iter(app.world())
                 .count(),
             1
-        );
-        let mut cues = app.world().resource::<Messages<PlaySfx>>().get_cursor();
-        assert_eq!(
-            cues.read(app.world().resource::<Messages<PlaySfx>>())
-                .count(),
-            0
         );
     }
 
