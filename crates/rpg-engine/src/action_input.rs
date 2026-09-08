@@ -1,102 +1,19 @@
-use bevy::{input::InputSystems, prelude::*};
+use bevy::{input::InputSystems, input::gamepad::Gamepad, prelude::*};
 
-use crate::input_record::NormalizedAction;
+use crate::{
+    input_bindings::{BindingTarget, InputBindings},
+    input_record::NormalizedAction,
+    options_store::PlayerOptions,
+};
 
-/// A semantic menu action shared by application-shell screens.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum AppAction {
-    Back,
-    Confirm,
-    Up,
-    Down,
-    Left,
-    Right,
-    Travel,
-}
+pub(crate) use crate::input_bindings::{AppAction, MovementAction};
 
-impl AppAction {
-    const ALL: [Self; 7] = [
-        Self::Back,
-        Self::Confirm,
-        Self::Up,
-        Self::Down,
-        Self::Left,
-        Self::Right,
-        Self::Travel,
-    ];
-
-    const fn index(self) -> usize {
-        match self {
-            Self::Back => 0,
-            Self::Confirm => 1,
-            Self::Up => 2,
-            Self::Down => 3,
-            Self::Left => 4,
-            Self::Right => 5,
-            Self::Travel => 6,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-enum MovementAction {
-    Up,
-    Left,
-    Down,
-    Right,
-}
-
-impl MovementAction {
-    const ALL: [Self; 4] = [Self::Up, Self::Left, Self::Down, Self::Right];
-
-    const fn index(self) -> usize {
-        match self {
-            Self::Up => 0,
-            Self::Left => 1,
-            Self::Down => 2,
-            Self::Right => 3,
-        }
-    }
-}
-
-/// Keyboard bindings for semantic application-shell actions.
-#[derive(Resource)]
-pub(crate) struct ActionMap {
-    bindings: [Vec<KeyCode>; 7],
-    movement_bindings: [Vec<KeyCode>; 4],
-}
-
-impl Default for ActionMap {
-    fn default() -> Self {
-        Self {
-            bindings: [
-                vec![KeyCode::Escape],
-                vec![KeyCode::Enter, KeyCode::Space, KeyCode::NumpadEnter],
-                vec![KeyCode::ArrowUp],
-                vec![KeyCode::ArrowDown],
-                vec![KeyCode::ArrowLeft],
-                vec![KeyCode::ArrowRight],
-                vec![KeyCode::KeyT],
-            ],
-            movement_bindings: [
-                vec![KeyCode::ArrowUp],
-                vec![KeyCode::ArrowLeft],
-                vec![KeyCode::ArrowDown],
-                vec![KeyCode::ArrowRight],
-            ],
-        }
-    }
-}
-
-impl ActionMap {
-    fn bindings(&self, action: AppAction) -> &[KeyCode] {
-        &self.bindings[action.index()]
-    }
-
-    fn movement_bindings(&self, action: MovementAction) -> &[KeyCode] {
-        &self.movement_bindings[action.index()]
-    }
-}
+/// How far a stick must leave center before it counts as a direction.
+///
+/// Chosen above the resting drift of a worn stick and below a deliberate half-push. The same
+/// threshold serves menus and walking so that a player who can steer the world can also steer the
+/// menu that world opens.
+const STICK_DEADZONE: f32 = 0.4;
 
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
@@ -224,32 +141,138 @@ impl ActionState {
     }
 }
 
+/// One frame's stick position, quantized to the nine directions a menu understands.
+///
+/// Screen convention, not stick convention: `vertical == 1` means down the screen, matching
+/// [`ActionState::movement`]. A gamepad reports +Y as up, so the sign is flipped once, here.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct StickDirection {
+    horizontal: i8,
+    vertical: i8,
+}
+
+impl StickDirection {
+    fn from_stick(stick: Vec2) -> Self {
+        let quantize = |value: f32| {
+            if value >= STICK_DEADZONE {
+                1
+            } else if value <= -STICK_DEADZONE {
+                -1
+            } else {
+                0
+            }
+        };
+        Self {
+            horizontal: quantize(stick.x),
+            vertical: quantize(-stick.y),
+        }
+    }
+}
+
+/// The previous frame's stick direction, so a stick can drive edge-triggered menu navigation.
+///
+/// Menu actions are edge-triggered; a stick reports a level. Without this, holding the stick would
+/// step a menu every frame — the one behavior the keyboard path is careful never to do. An edge is
+/// emitted only when an axis newly leaves center or reverses, and there is deliberately no
+/// auto-repeat, because the keyboard has none either.
+#[derive(Resource, Default)]
+pub(crate) struct StickNavigation {
+    previous: StickDirection,
+}
+
+impl StickNavigation {
+    /// Advances to `current`, returning the directions that began this frame.
+    fn advance(&mut self, current: StickDirection) -> StickDirection {
+        let edge = |now: i8, before: i8| if now != 0 && now != before { now } else { 0 };
+        let began = StickDirection {
+            horizontal: edge(current.horizontal, self.previous.horizontal),
+            vertical: edge(current.vertical, self.previous.vertical),
+        };
+        self.previous = current;
+        began
+    }
+}
+
 pub(crate) struct ActionInputPlugin;
 
 impl Plugin for ActionInputPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ActionMap>()
+        app.init_resource::<PlayerOptions>()
             .init_resource::<ActionState>()
+            .init_resource::<StickNavigation>()
             .add_systems(PreUpdate, update_action_state.after(InputSystems));
+    }
+}
+
+/// The stick of the connected pad that is pushed furthest.
+///
+/// Several pads can be connected at once and Bevy reports each separately. Taking the furthest
+/// rather than the first means an idle second controller cannot cancel out the one being played.
+fn dominant_left_stick(gamepads: &Query<&Gamepad>) -> Vec2 {
+    gamepads
+        .iter()
+        .map(Gamepad::left_stick)
+        .fold(Vec2::ZERO, |furthest, stick| {
+            if stick.length_squared() > furthest.length_squared() {
+                stick
+            } else {
+                furthest
+            }
+        })
+}
+
+fn menu_stick_edge(action: AppAction, began: StickDirection) -> bool {
+    match action {
+        AppAction::Up => began.vertical == -1,
+        AppAction::Down => began.vertical == 1,
+        AppAction::Left => began.horizontal == -1,
+        AppAction::Right => began.horizontal == 1,
+        AppAction::Back | AppAction::Confirm | AppAction::Travel => false,
+    }
+}
+
+fn movement_stick_held(action: MovementAction, current: StickDirection) -> bool {
+    match action {
+        MovementAction::Up => current.vertical == -1,
+        MovementAction::Down => current.vertical == 1,
+        MovementAction::Left => current.horizontal == -1,
+        MovementAction::Right => current.horizontal == 1,
     }
 }
 
 pub(crate) fn update_action_state(
     keys: Res<ButtonInput<KeyCode>>,
-    map: Res<ActionMap>,
+    gamepads: Query<&Gamepad>,
+    options: Res<PlayerOptions>,
+    mut stick_navigation: ResMut<StickNavigation>,
     mut actions: ResMut<ActionState>,
 ) {
+    let bindings: &InputBindings = &options.bindings;
+    let stick = StickDirection::from_stick(dominant_left_stick(&gamepads));
+    let began = stick_navigation.advance(stick);
+
     for action in AppAction::ALL {
-        actions.just_pressed[action.index()] = map
-            .bindings(action)
+        let target = BindingTarget::Menu(action);
+        let from_keyboard = bindings
+            .keys(target)
             .iter()
             .any(|key| keys.just_pressed(*key));
+        let from_gamepad = bindings
+            .buttons(target)
+            .iter()
+            .any(|button| gamepads.iter().any(|gamepad| gamepad.just_pressed(*button)));
+        actions.just_pressed[action.index()] =
+            from_keyboard || from_gamepad || menu_stick_edge(action, began);
     }
     for action in MovementAction::ALL {
-        actions.movement_pressed[action.index()] = map
-            .movement_bindings(action)
+        let target = BindingTarget::Movement(action);
+        let from_keyboard = bindings.keys(target).iter().any(|key| keys.pressed(*key));
+        let from_gamepad = bindings
+            .buttons(target)
             .iter()
-            .any(|key| keys.pressed(*key));
+            .any(|button| gamepads.iter().any(|gamepad| gamepad.pressed(*button)));
+        actions.movement_pressed[action.index()] =
+            from_keyboard || from_gamepad || movement_stick_held(action, stick);
     }
 }
 
@@ -271,32 +294,50 @@ mod tests {
 
     #[test]
     fn default_keyboard_bindings_are_exact() {
-        let map = ActionMap::default();
+        let bindings = InputBindings::default();
 
-        assert_eq!(map.bindings(AppAction::Back), [KeyCode::Escape]);
         assert_eq!(
-            map.bindings(AppAction::Confirm),
+            bindings.keys(BindingTarget::Menu(AppAction::Back)),
+            [KeyCode::Escape]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Menu(AppAction::Confirm)),
             [KeyCode::Enter, KeyCode::Space, KeyCode::NumpadEnter]
         );
-        assert_eq!(map.bindings(AppAction::Up), [KeyCode::ArrowUp]);
-        assert_eq!(map.bindings(AppAction::Down), [KeyCode::ArrowDown]);
-        assert_eq!(map.bindings(AppAction::Left), [KeyCode::ArrowLeft]);
-        assert_eq!(map.bindings(AppAction::Right), [KeyCode::ArrowRight]);
-        assert_eq!(map.bindings(AppAction::Travel), [KeyCode::KeyT]);
         assert_eq!(
-            map.movement_bindings(MovementAction::Up),
+            bindings.keys(BindingTarget::Menu(AppAction::Up)),
             [KeyCode::ArrowUp]
         );
         assert_eq!(
-            map.movement_bindings(MovementAction::Left),
-            [KeyCode::ArrowLeft]
-        );
-        assert_eq!(
-            map.movement_bindings(MovementAction::Down),
+            bindings.keys(BindingTarget::Menu(AppAction::Down)),
             [KeyCode::ArrowDown]
         );
         assert_eq!(
-            map.movement_bindings(MovementAction::Right),
+            bindings.keys(BindingTarget::Menu(AppAction::Left)),
+            [KeyCode::ArrowLeft]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Menu(AppAction::Right)),
+            [KeyCode::ArrowRight]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Menu(AppAction::Travel)),
+            [KeyCode::KeyT]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Movement(MovementAction::Up)),
+            [KeyCode::ArrowUp]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Movement(MovementAction::Left)),
+            [KeyCode::ArrowLeft]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Movement(MovementAction::Down)),
+            [KeyCode::ArrowDown]
+        );
+        assert_eq!(
+            bindings.keys(BindingTarget::Movement(MovementAction::Right)),
             [KeyCode::ArrowRight]
         );
     }
@@ -542,5 +583,142 @@ mod tests {
             1,
             "two physical confirm keys must collapse to one semantic action"
         );
+    }
+
+    #[test]
+    fn a_rebound_key_takes_effect_on_the_next_frame() {
+        let mut app = action_app();
+        app.update();
+
+        app.world_mut()
+            .resource_mut::<PlayerOptions>()
+            .bindings
+            .bind_key(BindingTarget::Menu(AppAction::Travel), KeyCode::KeyG)
+            .expect("a free key");
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::KeyG);
+        app.update();
+
+        assert!(action_state(&app, AppAction::Travel));
+    }
+
+    #[test]
+    fn stick_direction_flips_the_gamepad_y_axis_to_screen_space() {
+        // A gamepad reports +Y as up; the port's movement vector reports +1 as down.
+        assert_eq!(
+            StickDirection::from_stick(Vec2::new(0.0, 1.0)),
+            StickDirection {
+                horizontal: 0,
+                vertical: -1
+            }
+        );
+        assert_eq!(
+            StickDirection::from_stick(Vec2::new(0.0, -1.0)),
+            StickDirection {
+                horizontal: 0,
+                vertical: 1
+            }
+        );
+    }
+
+    #[test]
+    fn a_stick_inside_the_deadzone_reports_center() {
+        for drift in [0.0, 0.2, 0.39, -0.39] {
+            assert_eq!(
+                StickDirection::from_stick(Vec2::splat(drift)),
+                StickDirection::default(),
+                "{drift} is resting drift, not a direction"
+            );
+        }
+        assert_eq!(
+            StickDirection::from_stick(Vec2::new(0.4, 0.0)),
+            StickDirection {
+                horizontal: 1,
+                vertical: 0
+            },
+            "the threshold itself counts as a push"
+        );
+    }
+
+    #[test]
+    fn a_held_stick_produces_one_menu_edge_and_walks_every_frame() {
+        let mut navigation = StickNavigation::default();
+        let down = StickDirection {
+            horizontal: 0,
+            vertical: 1,
+        };
+
+        // Frame one: the stick leaves center, so the menu takes one step.
+        assert_eq!(navigation.advance(down), down);
+        // Frames two and three: still held. The menu must not step again, but walking continues,
+        // which is why the level (`down`), not the edge, drives movement.
+        assert_eq!(navigation.advance(down), StickDirection::default());
+        assert_eq!(navigation.advance(down), StickDirection::default());
+        assert!(movement_stick_held(MovementAction::Down, down));
+
+        // Returning to center and pushing again is a fresh edge.
+        assert_eq!(
+            navigation.advance(StickDirection::default()),
+            StickDirection::default()
+        );
+        assert_eq!(navigation.advance(down), down);
+    }
+
+    #[test]
+    fn reversing_the_stick_without_passing_through_center_is_a_new_edge() {
+        let mut navigation = StickNavigation::default();
+        let left = StickDirection {
+            horizontal: -1,
+            vertical: 0,
+        };
+        let right = StickDirection {
+            horizontal: 1,
+            vertical: 0,
+        };
+
+        assert_eq!(navigation.advance(left), left);
+        // A fast flick can skip the center sample entirely; that must still register.
+        assert_eq!(navigation.advance(right), right);
+    }
+
+    #[test]
+    fn a_diagonal_push_edges_only_the_axis_that_changed() {
+        let mut navigation = StickNavigation::default();
+        let down = StickDirection {
+            horizontal: 0,
+            vertical: 1,
+        };
+        let down_right = StickDirection {
+            horizontal: 1,
+            vertical: 1,
+        };
+
+        assert_eq!(navigation.advance(down), down);
+        assert_eq!(
+            navigation.advance(down_right),
+            StickDirection {
+                horizontal: 1,
+                vertical: 0
+            },
+            "vertical was already held, so only Right begins"
+        );
+    }
+
+    #[test]
+    fn menu_stick_edges_reach_only_the_directional_actions() {
+        let down_right = StickDirection {
+            horizontal: 1,
+            vertical: 1,
+        };
+
+        assert!(menu_stick_edge(AppAction::Down, down_right));
+        assert!(menu_stick_edge(AppAction::Right, down_right));
+        assert!(!menu_stick_edge(AppAction::Up, down_right));
+        // A stick can never confirm or cancel: those need a real button, so that leaning on the
+        // stick cannot dismiss a dialogue.
+        assert!(!menu_stick_edge(AppAction::Confirm, down_right));
+        assert!(!menu_stick_edge(AppAction::Back, down_right));
+        assert!(!menu_stick_edge(AppAction::Travel, down_right));
     }
 }
