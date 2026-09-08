@@ -431,11 +431,6 @@ impl InputBindings {
         *self.buttons_mut(target) = deduplicated;
         Ok(())
     }
-
-    /// Whether any row differs from the shipped defaults.
-    pub(crate) fn is_default(&self) -> bool {
-        *self == Self::default()
-    }
 }
 
 #[cfg(test)]
@@ -632,16 +627,5 @@ mod tests {
             .set_keys(TRAVEL, vec![KeyCode::KeyG, KeyCode::KeyG, KeyCode::KeyH])
             .expect("a nonempty row");
         assert_eq!(bindings.keys(TRAVEL), [KeyCode::KeyG, KeyCode::KeyH]);
-    }
-
-    #[test]
-    fn is_default_tracks_any_edit() {
-        let mut bindings = InputBindings::default();
-        assert!(bindings.is_default());
-
-        bindings
-            .bind_key(TRAVEL, KeyCode::KeyG)
-            .expect("a free key");
-        assert!(!bindings.is_default());
     }
 }
