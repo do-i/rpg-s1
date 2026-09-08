@@ -585,6 +585,7 @@ fn drive_dialogue_session(
     mut transport: Option<ResMut<TransportUiState>>,
     mut world_transition: ResMut<WorldTransition>,
     mut state: ResMut<WorldInteractionState>,
+    options: Res<crate::options_store::PlayerOptions>,
 ) {
     let Some(mut game) = game else {
         return;
@@ -599,7 +600,10 @@ fn drive_dialogue_session(
     let Some(session) = state.session.as_mut() else {
         return;
     };
-    session.tick(time.delta_secs(), settings.text_speed);
+    session.tick(
+        time.delta_secs(),
+        options.effective_text_speed(settings.text_speed),
+    );
     if actions.just_pressed(AppAction::Back) {
         session.cancel();
         state.session = None;
@@ -1645,6 +1649,7 @@ mod tests {
         app.insert_resource(Time::<()>::default())
             .insert_resource(actions)
             .insert_resource(EngineSettings::default())
+            .init_resource::<crate::options_store::PlayerOptions>()
             .insert_resource(Assets::<PartyCatalog>::default())
             .insert_resource(Assets::<BalanceData>::default())
             .insert_resource(FieldMenuCatalog::production_class_fixture())
@@ -1963,7 +1968,8 @@ mod tests {
             // `SpritePlugin` registers this in the real app; the headless harness has no renderer.
             .init_asset::<TextureAtlasLayout>()
             // The typewriter reads its reveal rate from the settings file.
-            .init_resource::<EngineSettings>();
+            .init_resource::<EngineSettings>()
+            .init_resource::<crate::options_store::PlayerOptions>();
 
         let manifest: Manifest =
             scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();

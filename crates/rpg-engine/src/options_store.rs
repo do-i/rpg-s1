@@ -86,6 +86,17 @@ pub(crate) struct PlayerOptions {
     pub(crate) text_speed: Option<TextSpeed>,
 }
 
+impl PlayerOptions {
+    /// The typewriter speed to actually use.
+    ///
+    /// An unset override is not the same as pinning the shipped value: it means the settings file
+    /// stays in charge, so editing `dialogue.text_speed` there still moves a player who never
+    /// opened the options screen.
+    pub(crate) fn effective_text_speed(&self, settings: TextSpeed) -> TextSpeed {
+        self.text_speed.unwrap_or(settings)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // On-disk shape
 // ---------------------------------------------------------------------------
@@ -541,6 +552,28 @@ mod tests {
 
         assert_ne!(saves, config);
         assert!(!config.starts_with(&saves));
+    }
+
+    #[test]
+    fn an_unset_text_speed_follows_the_settings_file_and_a_set_one_overrides_it() {
+        let mut options = PlayerOptions::default();
+
+        // Unset means the settings file still decides, so a later edit to that file is honored.
+        assert_eq!(
+            options.effective_text_speed(TextSpeed::Slow),
+            TextSpeed::Slow
+        );
+        assert_eq!(
+            options.effective_text_speed(TextSpeed::VeryFast),
+            TextSpeed::VeryFast
+        );
+
+        options.text_speed = Some(TextSpeed::Fast);
+        assert_eq!(
+            options.effective_text_speed(TextSpeed::Slow),
+            TextSpeed::Fast,
+            "the player's choice outranks the shipped file"
+        );
     }
 
     #[test]

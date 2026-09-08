@@ -42,16 +42,6 @@ pub(crate) struct CanvasPointer {
 }
 
 impl CanvasPointer {
-    /// The cursor position, or `None` when it is off-window or in a bar.
-    pub(crate) fn position(&self) -> Option<CanvasPointerPosition> {
-        self.position
-    }
-
-    /// Where the cursor is inside the canvas, for screens that reason in canvas coordinates.
-    pub(crate) fn canvas_position(&self) -> Option<Vec2> {
-        self.position.map(|position| position.canvas)
-    }
-
     /// Whether the primary button went down this frame while over the canvas.
     ///
     /// A click that began in a bar is not reported at all, rather than reported at the nearest
