@@ -32,10 +32,12 @@ const ROW_HEIGHT: f32 = 30.0;
 const LABEL_WIDTH: f32 = 200.0;
 const CELL_WIDTH: f32 = 250.0;
 
-/// Where Confirm on the options row should return to.
+/// Which state leaving the options screen should return to.
 ///
-/// The screen is reachable from the title and from the field menu, and it must go back to
-/// whichever one opened it rather than to a fixed state.
+/// Only the title screen opens options today, so this always holds [`AppState::Title`] in
+/// practice. It is a resource rather than a constant because the opener sets it: the field menu is
+/// the obvious second entry point, and a screen that hardcoded its way home would have to be
+/// rewritten rather than extended when that lands.
 #[derive(Resource, Clone, Copy, Debug)]
 pub(crate) struct OptionsReturn(pub(crate) AppState);
 

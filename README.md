@@ -98,10 +98,35 @@ record/replay, debug-map launches, the map editor, and release utilities. Use
 | Field shortcuts | `I` opens Items, `S` opens Status, and `Q` opens Quests. |
 | Battle | Up/Down selects a command, ability, item, or target; Enter or Space confirms; Escape cancels a nested choice or attempts to flee from the command menu. |
 | Confirmations | `Y` or any confirm key accepts save-overwrite and quit prompts; `N` declines. |
+| Gamepad | South confirms, East backs out, the D-pad navigates and walks, North travels, and the left stick both walks and steps menus. |
+| Mouse | On the title and options screens, hovering highlights a row and clicking activates it. Clicks in the letterbox bars are ignored. |
+| Options | Choose Options on the title screen. Up/Down picks a row, Left/Right switches between the keyboard and gamepad column, Confirm starts a rebind, Delete removes a binding, and Escape cancels a rebind or leaves. |
 
 The field menu contains Status, Spells, Items, Equipment, Quests, Save, and
 Quit. Opening any full-screen overlay pauses world movement, encounters, NPC
 wandering, interaction, and transitions until the overlay closes.
+
+## Options
+
+The Options entry on the title screen edits keyboard and gamepad bindings and
+the dialogue text speed. Every action keeps at least one binding: assigning an
+input that another action in the same category already holds moves it, but an
+action's last binding is never taken away, and the screen says which action
+would have been left unbound. Menu bindings and movement bindings are separate
+categories, so the same arrow key can step a menu and walk the world.
+
+Changes are written immediately. Options-file precedence is:
+
+1. `RPG_S1_CONFIG_DIR`, when set;
+2. `$XDG_CONFIG_HOME/rpg-s1/options.yaml`, when `XDG_CONFIG_HOME` is set; or
+3. `$HOME/.config/rpg-s1/options.yaml`.
+
+The file is plain YAML and safe to hand-edit. Deleting it restores the shipped
+defaults, as does the screen's own Reset To Defaults row. A row the game cannot
+honor is reported and left at its default rather than dropped silently, and a
+file written by a newer build is refused rather than partly applied. Options
+live apart from saves on purpose, so moving `RPG_S1_SAVE_DIR` between fixture
+slots does not reset the player's bindings.
 
 ## Saves
 
