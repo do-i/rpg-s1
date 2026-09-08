@@ -50,6 +50,22 @@ impl CanvasPointer {
         self.clicked && self.position.is_some()
     }
 
+    /// Builds a pointer sitting at a known viewport position.
+    ///
+    /// Layout normally supplies these coordinates, and no headless test has a laid-out window, so
+    /// screens that hit-test the mouse get their fixture from here rather than reaching into the
+    /// private fields.
+    #[cfg(test)]
+    pub(crate) fn at_viewport_position(viewport: Vec2, clicked: bool) -> Self {
+        Self {
+            position: Some(CanvasPointerPosition {
+                canvas: viewport,
+                viewport,
+            }),
+            clicked,
+        }
+    }
+
     /// Whether the cursor is inside `node`, which must be a UI node laid out by the canvas camera.
     pub(crate) fn is_over(&self, node: &ComputedNode, transform: &UiGlobalTransform) -> bool {
         self.position.is_some_and(|position| {

@@ -436,6 +436,32 @@ fn persist_options(
 mod tests {
     use super::*;
     use crate::input_bindings::BindingTarget;
+    use bevy::math::Affine2;
+
+    /// Places a row and its two cells where layout would have put them.
+    ///
+    /// `UiGlobalTransform` carries the node's center and `ComputedNode` its size, which is exactly
+    /// what `contains_point` inverts, so a hand-built pair hit-tests identically to a laid-out one.
+    fn spawn_row(app: &mut App, index: usize, center_y: f32) {
+        for (device, center_x) in [(Device::Keyboard, 300.0), (Device::Gamepad, 600.0)] {
+            app.world_mut().spawn((
+                OptionsCellNode { row: index, device },
+                ComputedNode {
+                    size: Vec2::new(200.0, 20.0),
+                    ..default()
+                },
+                UiGlobalTransform::from(Affine2::from_translation(Vec2::new(center_x, center_y))),
+            ));
+        }
+        app.world_mut().spawn((
+            OptionsRowNode(index),
+            ComputedNode {
+                size: Vec2::new(700.0, 20.0),
+                ..default()
+            },
+            UiGlobalTransform::from(Affine2::from_translation(Vec2::new(400.0, center_y))),
+        ));
+    }
 
     /// A headless app with the screen's resources but no rendering, for input-routing tests.
     fn options_app() -> App {
@@ -566,5 +592,81 @@ mod tests {
             [KeyCode::Enter, KeyCode::Space]
         );
         assert!(app.world().resource::<OptionsDirty>().0);
+    }
+
+    #[test]
+    fn hovering_a_row_moves_the_highlight_without_activating_it() {
+        let mut app = options_app();
+        spawn_row(&mut app, 3, 100.0);
+        app.update();
+
+        app.world_mut()
+            .insert_resource(CanvasPointer::at_viewport_position(
+                Vec2::new(400.0, 100.0),
+                false,
+            ));
+        app.update();
+
+        let screen = app.world().resource::<OptionsScreen>();
+        assert_eq!(screen.selected(), 3, "the mouse moved the highlight");
+        assert!(!screen.is_capturing(), "hovering must not start a rebind");
+    }
+
+    #[test]
+    fn clicking_a_device_cell_selects_that_column_and_starts_a_rebind() {
+        let mut app = options_app();
+        spawn_row(&mut app, 3, 100.0);
+        app.update();
+
+        // 600 is the gamepad cell's center; the keyboard cell is at 300.
+        app.world_mut()
+            .insert_resource(CanvasPointer::at_viewport_position(
+                Vec2::new(600.0, 100.0),
+                true,
+            ));
+        app.update();
+
+        let screen = app.world().resource::<OptionsScreen>();
+        assert_eq!(screen.selected(), 3);
+        assert_eq!(
+            screen.device(),
+            Device::Gamepad,
+            "clicking a column picks that device"
+        );
+        assert!(screen.is_capturing());
+    }
+
+    #[test]
+    fn a_click_outside_every_row_does_nothing() {
+        let mut app = options_app();
+        spawn_row(&mut app, 3, 100.0);
+        app.update();
+
+        // Well below the only row. A click that reaches the screen but lands on nothing must not
+        // activate the nearest row.
+        app.world_mut()
+            .insert_resource(CanvasPointer::at_viewport_position(
+                Vec2::new(400.0, 900.0),
+                true,
+            ));
+        app.update();
+
+        let screen = app.world().resource::<OptionsScreen>();
+        assert_eq!(screen.selected(), 0, "the highlight never moved");
+        assert!(!screen.is_capturing());
+    }
+
+    #[test]
+    fn a_pointer_in_a_letterbox_bar_reaches_no_row_at_all() {
+        let mut app = options_app();
+        spawn_row(&mut app, 3, 100.0);
+        app.update();
+
+        // The default pointer is the off-canvas state the mapping produces for bar space: no
+        // position at all, so no row can be hovered however the bars happen to line up.
+        app.world_mut().insert_resource(CanvasPointer::default());
+        app.update();
+
+        assert_eq!(app.world().resource::<OptionsScreen>().selected(), 0);
     }
 }
