@@ -6,6 +6,7 @@ use bevy::{
 };
 
 pub(crate) mod camera_follow;
+pub(crate) mod pointer;
 
 pub const LOGICAL_CANVAS_WIDTH: u32 = 1280;
 pub const LOGICAL_CANVAS_HEIGHT: u32 = 766;
@@ -41,13 +42,13 @@ pub fn fixed_gameplay_camera() -> impl Bundle {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-struct PhysicalCanvasViewport {
-    position: UVec2,
-    size: UVec2,
+pub(crate) struct PhysicalCanvasViewport {
+    pub(crate) position: UVec2,
+    pub(crate) size: UVec2,
 }
 
 impl PhysicalCanvasViewport {
-    fn fit(window_size: UVec2) -> Option<Self> {
+    pub(crate) fn fit(window_size: UVec2) -> Option<Self> {
         if window_size.x == 0 || window_size.y == 0 {
             return None;
         }
