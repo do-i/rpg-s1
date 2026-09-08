@@ -16,7 +16,7 @@ use bevy::{
     asset::{
         AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState, io::Reader,
     },
-    audio::{PlaybackMode, Volume},
+    audio::{AudioSink, AudioSinkPlayback, PlaybackMode, Volume},
     ecs::system::SystemParam,
     prelude::*,
     reflect::TypePath,
@@ -34,6 +34,7 @@ use crate::{
 };
 
 const WORLD_BGM_VOLUME: f32 = 0.3;
+const WORLD_BGM_FADE_SECONDS: f32 = 1.0;
 
 /// Loads and owns the looping BGM selected by the active map metadata.
 pub(crate) struct WorldAudioPlugin;
@@ -44,7 +45,12 @@ impl Plugin for WorldAudioPlugin {
             .init_asset_loader::<MapMetadataAssetLoader>()
             .init_resource::<WorldBgmState>()
             .add_systems(OnEnter(AppState::World), begin_world_audio)
-            .add_systems(Update, drive_world_audio.run_if(in_state(AppState::World)))
+            .add_systems(
+                Update,
+                (drive_world_audio, fade_in_world_audio)
+                    .chain()
+                    .run_if(in_state(AppState::World)),
+            )
             .add_systems(OnExit(AppState::World), cleanup_world_audio);
     }
 }
@@ -56,6 +62,10 @@ impl Plugin for WorldAudioPlugin {
 #[derive(Component)]
 pub(crate) struct LogicalBgmPlayer;
 
+/// Requests a fade-in for the map music restored after a battle.
+#[derive(Default, Resource)]
+pub(crate) struct WorldBgmFadeInRequest;
+
 /// Identifies the active scenario-selected World loop for diagnostics and lifecycle tests.
 #[derive(Component, Debug, Eq, PartialEq)]
 pub(crate) struct WorldBgmPlayer {
@@ -63,6 +73,9 @@ pub(crate) struct WorldBgmPlayer {
     key: String,
     asset_path: String,
 }
+
+#[derive(Component)]
+struct WorldBgmFadeIn(Timer);
 
 impl WorldBgmPlayer {
     #[cfg_attr(
@@ -110,6 +123,7 @@ pub(crate) struct WorldBgmState {
     player: Option<Entity>,
     status: WorldBgmStatus,
     failure: Option<WorldBgmFailure>,
+    fade_in_on_spawn: bool,
 }
 
 impl WorldBgmState {
@@ -187,10 +201,15 @@ impl Error for WorldBgmFailure {}
 fn begin_world_audio(
     mut commands: Commands,
     logical_players: Query<Entity, With<LogicalBgmPlayer>>,
+    fade_request: Option<Res<WorldBgmFadeInRequest>>,
     mut state: ResMut<WorldBgmState>,
 ) {
     stop_logical_players(&mut commands, &logical_players);
     *state = WorldBgmState::default();
+    if fade_request.is_some() {
+        state.fade_in_on_spawn = true;
+        commands.remove_resource::<WorldBgmFadeInRequest>();
+    }
 }
 
 #[derive(SystemParam)]
@@ -391,26 +410,63 @@ fn drive_world_audio(
         return;
     }
 
-    let player = commands
-        .spawn((
-            AudioPlayer::new(assets.server.load(asset_path.clone())),
-            PlaybackSettings {
-                mode: PlaybackMode::Loop,
-                volume: Volume::Linear(WORLD_BGM_VOLUME),
-                ..default()
-            },
-            LogicalBgmPlayer,
-            WorldBgmPlayer {
-                map_id: map_id.to_owned(),
-                key: key.to_owned(),
-                asset_path,
-            },
-        ))
-        .id();
+    let player = commands.spawn((
+        AudioPlayer::new(assets.server.load(asset_path.clone())),
+        PlaybackSettings {
+            mode: PlaybackMode::Loop,
+            volume: Volume::Linear(if state.fade_in_on_spawn {
+                0.0
+            } else {
+                WORLD_BGM_VOLUME
+            }),
+            ..default()
+        },
+        LogicalBgmPlayer,
+        WorldBgmPlayer {
+            map_id: map_id.to_owned(),
+            key: key.to_owned(),
+            asset_path,
+        },
+    ));
+    let player = player.id();
+    if state.fade_in_on_spawn {
+        commands
+            .entity(player)
+            .insert(WorldBgmFadeIn(Timer::from_seconds(
+                WORLD_BGM_FADE_SECONDS,
+                TimerMode::Once,
+            )));
+        state.fade_in_on_spawn = false;
+    }
     state.player = Some(player);
     state.request.as_mut().expect("checked above").resolved = true;
     state.status = WorldBgmStatus::Playing;
     state.failure = None;
+}
+
+fn fade_in_world_audio(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut players: Query<(
+        Entity,
+        &mut PlaybackSettings,
+        Option<&mut AudioSink>,
+        &mut WorldBgmFadeIn,
+    )>,
+) {
+    for (entity, mut settings, sink, mut fade) in &mut players {
+        let finished = fade.0.tick(time.delta()).just_finished();
+        let progress = fade.0.fraction();
+        let volume = WORLD_BGM_VOLUME * progress;
+        settings.volume = Volume::Linear(volume);
+        if let Some(mut sink) = sink {
+            sink.set_volume(Volume::Linear(volume));
+        }
+        if finished {
+            settings.volume = Volume::Linear(WORLD_BGM_VOLUME);
+            commands.entity(entity).remove::<WorldBgmFadeIn>();
+        }
+    }
 }
 
 fn fail(

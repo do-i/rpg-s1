@@ -16,7 +16,8 @@ use crate::{
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx, cue},
     tsx_atlas_asset::TsxAtlasAsset,
-    world_encounter::WorldEncounterRestore,
+    world_audio::WorldBgmFadeInRequest,
+    world_encounter::{BattleBgmFadeOut, WorldEncounterRestore},
 };
 
 use super::{
@@ -111,6 +112,7 @@ pub(crate) struct BattlePlugin;
 impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySfx>()
+            .add_message::<BattleBgmFadeOut>()
             .add_systems(OnEnter(AppState::Battle), enter_battle)
             .add_systems(
                 Update,
@@ -119,6 +121,7 @@ impl Plugin for BattlePlugin {
                     position_enemy_cards,
                     animate_enemy_breathing,
                     handle_battle_input,
+                    request_battle_bgm_fade,
                     super::fx::route_battle_fx,
                     super::fx::animate_battle_fx,
                     super::fx::animate_battle_shake,
@@ -1537,6 +1540,27 @@ fn handle_battle_input(
     }
 }
 
+fn request_battle_bgm_fade(
+    state: Option<Res<BattleState>>,
+    mut fade_requests: MessageWriter<BattleBgmFadeOut>,
+    mut requested: Local<bool>,
+) {
+    let defeated = state.is_some_and(|state| {
+        let enemies = state
+            .combatants
+            .iter()
+            .filter(|actor| actor.key.side == BattleSide::Enemy);
+        let mut enemies = enemies.peekable();
+        enemies.peek().is_some() && enemies.all(|actor| actor.health == 0)
+    });
+    if defeated && !*requested {
+        fade_requests.write(BattleBgmFadeOut);
+        *requested = true;
+    } else if !defeated {
+        *requested = false;
+    }
+}
+
 /// Confirm, or Right — the pinned engine accepts both on the command and sub-menus
 /// (`battle_input.py:80,93`). Target selection is deliberately excluded: there Right steps the
 /// pool instead.
@@ -1715,6 +1739,7 @@ fn attempt_flee(
 
 fn restore_world(commands: &mut Commands, game: &mut GameState, entry: &BattleEntry) {
     if restore_pre_battle_context(game, &entry.return_context).is_ok() {
+        commands.insert_resource(WorldBgmFadeInRequest);
         commands.insert_resource(WorldEncounterRestore {
             map_id: entry.return_context.map_id.clone(),
             enemies: entry.return_context.world_enemies.clone(),

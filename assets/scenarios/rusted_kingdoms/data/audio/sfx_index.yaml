@@ -39,6 +39,8 @@ battle:
   # A dedicated logical cue lets the reward reveal evolve independently while
   # reusing the shipped 3.33-second rising flourish.
   level_up:       sfx/buffs_heals/16_Atk_buff_04.mp3
+  # The 2.67-second earth impact is a strong, self-contained victory sting.
+  victory:        sfx/atk_magic/30_Earth_02.mp3
   # An enemy's basic attack, chosen by its authored type.
   atk_claw:       sfx/battle/03_Claw_03.mp3
   atk_claw_2:     sfx/battle/08_Bite_04.mp3

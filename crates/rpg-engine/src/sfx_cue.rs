@@ -13,8 +13,8 @@
 //! Muting is not handled here: `RPG_S1_MUTE_AUDIO` sets the global volume to zero when the app is
 //! built, which covers every player uniformly.
 
-use bevy::{ecs::system::SystemParam, prelude::*};
-use std::collections::{BTreeMap, BTreeSet};
+use bevy::{audio::Volume, ecs::system::SystemParam, prelude::*};
+use std::collections::BTreeMap;
 
 use crate::{
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
@@ -29,15 +29,28 @@ use crate::{
 #[derive(Clone, Copy, Debug, Eq, Message, PartialEq)]
 pub(crate) struct PlaySfx {
     key: &'static str,
+    /// Percentage of the authored sample volume (100 is the normal mix).
+    gain_percent: u16,
 }
 
 impl PlaySfx {
     pub(crate) const fn new(key: &'static str) -> Self {
-        Self { key }
+        Self {
+            key,
+            gain_percent: 100,
+        }
+    }
+
+    pub(crate) const fn boosted(key: &'static str, gain_percent: u16) -> Self {
+        Self { key, gain_percent }
     }
 
     pub(crate) const fn key(self) -> &'static str {
         self.key
+    }
+
+    pub(crate) const fn gain_percent(self) -> u16 {
+        self.gain_percent
     }
 }
 
@@ -86,6 +99,9 @@ pub(crate) mod cue {
 
     /// A short rising flourish that finishes before level-up rewards are revealed.
     pub(crate) const LEVEL_UP: &str = "level_up";
+
+    /// The victory sting that precedes the optional level-up flourish.
+    pub(crate) const VICTORY: &str = "victory";
 
     /// What an enemy's basic attack sounds like, chosen by its authored type. Types with no
     /// distinctive sample keep [`ATK_IMPACT`]; forcing one on them would be worse than sharing.
@@ -240,10 +256,16 @@ fn play_requested_cues(
     mut catalog: ResMut<SfxCatalog>,
     mut requests: MessageReader<PlaySfx>,
 ) {
-    let requested = requests
-        .read()
-        .map(|request| request.key())
-        .collect::<BTreeSet<_>>();
+    let requested = requests.read().fold(
+        BTreeMap::<&'static str, u16>::new(),
+        |mut requested, request| {
+            requested
+                .entry(request.key())
+                .and_modify(|gain| *gain = (*gain).max(request.gain_percent()))
+                .or_insert(request.gain_percent());
+            requested
+        },
+    );
     if requested.is_empty() {
         return;
     }
@@ -257,14 +279,17 @@ fn play_requested_cues(
         return;
     };
 
-    for key in requested {
+    for (key, gain_percent) in requested {
         let sample = catalog.next_sample(key);
         let Some(path) = index.resolve_key(&root, sample) else {
             continue;
         };
         commands.spawn((
             AudioPlayer::new(asset_server.load(path)),
-            PlaybackSettings::DESPAWN,
+            PlaybackSettings {
+                volume: Volume::Linear(f32::from(gain_percent) / 100.0),
+                ..PlaybackSettings::DESPAWN
+            },
         ));
     }
 }
@@ -387,6 +412,7 @@ mod tests {
             cue::STATUS_POISON,
             cue::SPEED_BUFF,
             cue::LEVEL_UP,
+            cue::VICTORY,
             cue::ATK_CLAW,
             cue::ATK_SWORD,
             cue::CHEST_OPEN,
