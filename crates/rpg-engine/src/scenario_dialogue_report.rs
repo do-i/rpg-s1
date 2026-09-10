@@ -15,16 +15,20 @@
 //! `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` carry the identical pattern
 //! and are accepted the same way as inherited source data.
 //!
-//! Running this report against the shipped scenario turns up the same shape of dead trailing
-//! entry in three more pinned dialogues (`ashenveil_ashgatherer`, `elder_intro`,
-//! `frostholm_courtier`) — every one a sub-quest giver whose first four
-//! entries already exhaustively partition the relevant `sq_*_started`/`_relayed`/`_done` states
-//! (or, for `elder_intro`, a reward entry and its own source-commented "safety fallback"
-//! duplicate), leaving the trailing flavor or story-flag entry unreachable under the pinned
-//! first-match rule regardless of any other flag. None of these are in
-//! [`DOCUMENTED_DEAD_ENTRIES`], so they surface as `DialogueReachability::Dead` findings, not
-//! `DeadAccepted` ones; they are accepted only once a wave reaches them and the ledger names
-//! them. This module does not alter the pinned YAML — it reports what is there.
+//! This report used to turn up the same shape of dead trailing entry in three more dialogues
+//! (`ashenveil_ashgatherer`, `elder_intro`, `frostholm_courtier`). W12.5-6-DIALOG **revived** all
+//! three rather than adding them to [`DOCUMENTED_DEAD_ENTRIES`], because the port has passed the
+//! source it was ported from and inheriting the original's unreachable content is inheriting its
+//! incompleteness. The two sub-quest givers gained a `sq_*_met` state, so their trailing flavor is
+//! now the first conversation and the errand is offered on the second; `frostholm_courtier`'s Act
+//! IV entry moved above the quest chain, gated on the finished errand so it cannot strand it; and
+//! `elder_intro`'s source-commented "safety fallback" duplicate became the epilogue congratulation
+//! the elder never had. No prose was written or deleted — only the conditions that decide when
+//! each existing line is reached.
+//!
+//! `ardel_fisherman`, `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` still
+//! carry the identical pattern and remain in [`DOCUMENTED_DEAD_ENTRIES`]; reviving them the same
+//! way is real, uncommitted work that needs owner approval before it enters the ledger.
 //!
 //! Like [`crate::scenario_map_report`], this command is informational only: it never fails the
 //! process, and it deliberately does not repeat the item/flag reference checks
@@ -965,24 +969,66 @@ entries:
             }
         }
 
-        let expected_new_dead: &[(&str, &[usize])] = &[
-            ("ashenveil_ashgatherer", &[5]),
-            ("elder_intro", &[2]),
-            ("frostholm_courtier", &[4, 5]),
-        ];
-        assert_eq!(
-            report.documents_with_new_dead_entries(),
-            expected_new_dead.len()
-        );
-        for (id, dead_indices) in expected_new_dead {
-            let document = report.documents.iter().find(|doc| doc.id == *id).unwrap();
-            let found = document
+        // W12.5-6-DIALOG revived all three of the former new findings, so the shipped scenario now
+        // has none. `ashenveil_ashgatherer` and `frostholm_courtier` gained a `sq_*_met` state that
+        // gives their trailing flavor its own first conversation, `frostholm_courtier`'s Act IV
+        // entry was hoisted above the quest chain, and `elder_intro`'s duplicate reward entry
+        // became the epilogue line the elder never had.
+        assert_eq!(report.documents_with_new_dead_entries(), 0);
+        for id in ["ashenveil_ashgatherer", "elder_intro", "frostholm_courtier"] {
+            let document = report.documents.iter().find(|doc| doc.id == id).unwrap();
+            let dead = document
                 .entries
                 .iter()
-                .filter(|entry| entry.is_new_dead())
+                .filter(|entry| entry.reachability.is_dead())
                 .map(|entry| entry.index)
                 .collect::<Vec<_>>();
-            assert_eq!(&found, dead_indices, "unexpected dead entries in `{id}`");
+            assert!(dead.is_empty(), "`{id}` regressed to dead entries {dead:?}");
+        }
+    }
+
+    /// The revived entries are reachable *and* still reached in the intended order.
+    ///
+    /// Reachability alone would pass if the flavor entry were reachable only in some corner the
+    /// player never occupies, so this walks the two sub-quest givers through the states a real
+    /// playthrough visits and pins which entry answers at each step.
+    #[test]
+    fn the_revived_subquest_flavor_plays_before_its_errand_is_offered() {
+        let root = crate::test_support::scenario_package_dir();
+        let report = build_dialogue_report(&root);
+
+        for (id, met, started) in [
+            (
+                "ashenveil_ashgatherer",
+                "sq_locket_met",
+                "sq_locket_started",
+            ),
+            ("frostholm_courtier", "sq_alms_met", "sq_alms_started"),
+        ] {
+            let document = report.documents.iter().find(|doc| doc.id == id).unwrap();
+            let flavor = document
+                .entries
+                .iter()
+                .find(|entry| entry.excludes.iter().any(|flag| flag == met))
+                .unwrap_or_else(|| panic!("`{id}` must gate its flavor on `{met}`"));
+            let offer = document
+                .entries
+                .iter()
+                .find(|entry| entry.requires.iter().any(|flag| flag == met))
+                .unwrap_or_else(|| panic!("`{id}` must gate its errand on `{met}`"));
+
+            assert!(
+                flavor.index < offer.index,
+                "`{id}` must answer with flavor before the errand: first match wins"
+            );
+            assert!(
+                flavor.effects.set_flags.iter().any(|flag| flag == met),
+                "`{id}`'s flavor entry must set `{met}`, or the errand is never reached"
+            );
+            assert!(
+                offer.excludes.iter().any(|flag| flag == started),
+                "`{id}`'s errand must stop offering itself once started"
+            );
         }
     }
 }
