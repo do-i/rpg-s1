@@ -44,8 +44,26 @@ entries:
     lines:
       - "The mourner keeps to the square. Show her the locket — she knows every grief in this city."
 
-  # First meeting — offer the errand
+  # First meeting — flavor only, and it is what makes the errand land.
+  #
+  # These lines used to sit at the bottom with no condition at all, where the
+  # errand entry below caught every state they could have described, so they
+  # never played. They read as a first impression rather than a repeatable idle
+  # — "Ash keeps no secrets. People do." is the thought the locket then tests —
+  # so they are now the first conversation, and the errand waits for the second.
+  # A sweeper who hands a stranger someone's whole heart the moment they walk up
+  # was always the weaker reading.
   - condition:
+      excludes: [sq_locket_met]
+    lines:
+      - "Sweep at dawn, sweep at dusk, and still the ash comes. It falls from the volcano, they say."
+      - "I don't mind. Ash keeps no secrets. People do."
+    on_complete:
+      set_flag: sq_locket_met
+
+  # Second meeting — offer the errand
+  - condition:
+      requires: [sq_locket_met]
       excludes: [sq_locket_started]
     lines:
       - "Swept this out of the drifts this morning. Silver locket, portrait inside, name worn off."
@@ -53,7 +71,3 @@ entries:
       - "The mourner in the square knows every family's grief. Would you show it to her?"
     on_complete:
       set_flag: sq_locket_started
-
-  - lines:
-      - "Sweep at dawn, sweep at dusk, and still the ash comes. It falls from the volcano, they say."
-      - "I don't mind. Ash keeps no secrets. People do."

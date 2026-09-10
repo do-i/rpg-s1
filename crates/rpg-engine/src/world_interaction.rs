@@ -1875,7 +1875,14 @@ mod tests {
         .unwrap() else {
             panic!("frostholm_courtier must remain a field-entry dialogue");
         };
-        let reward = &dialogue.entries[1].on_complete;
+        // Located by its effect rather than by index: the courtier's entry order is content that
+        // changes when a state is added above it, and this test is about the reward's item tags.
+        let reward = &dialogue
+            .entries
+            .iter()
+            .find(|entry| !entry.on_complete.give_items.is_empty())
+            .expect("the courtier hands over exactly one reward")
+            .on_complete;
         assert_eq!(reward.give_items[0].tags, ["travel"]);
         assert!(reward.give_items[0].locked);
 

@@ -3,6 +3,20 @@ id: elder_intro
 type: npc
 
 entries:
+  # Epilogue — outranks everything, the way the Ashenveil gatherer's does.
+  #
+  # This line used to sit below the reward entry with `requires:
+  # [boss_zone01_defeated]` and no excludes, where the two entries above it
+  # covered every state that condition could describe, so it never played. It is
+  # a congratulation, and the elder had none for the one deed that deserves it:
+  # the forest boss already has the reward entry, and after that he repeats the
+  # eastward warning through every remaining act. Moved to the final victory,
+  # unchanged.
+  - condition:
+      requires: [boss_zone10_defeated]
+    lines:
+      - "You've done something remarkable today."
+
   # After reward given — acknowledge and hint forward
   - condition:
       requires: [npc_elder_reward_given]
@@ -27,14 +41,6 @@ entries:
           qty: 2
         - id: tent
           qty: 1
-
-  # After zone 1 cleared but before reward — should not normally trigger
-  # (same condition as reward entry without excludes — kept as safety fallback)
-  - condition:
-      requires: [boss_zone01_defeated]
-      excludes: []
-    lines:
-      - "You've done something remarkable today."
 
   # Default — quest started, nothing done yet
   - condition:
