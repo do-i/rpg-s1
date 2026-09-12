@@ -6,7 +6,7 @@ use super::{
     action::BattleEvent,
     model::{BattleState, CombatantKey},
     status::{StatusEffect, StatusPotency},
-    ui::{BattleAssetState, BattleEnemyFrame, BattlePartyCard, BattleUi},
+    ui::{BattleAssetState, BattleEnemyFrame, BattleEnemyImage, BattlePartyCard, BattleUi},
 };
 use crate::{
     encounter::BattleSide,
@@ -30,6 +30,8 @@ const FRAME_FLASH_Z: i32 = 10;
 /// root — including above the floats, which it tints along with everything else.
 const SCREEN_FLASH_Z: i32 = super::ui::BATTLE_ROOT_Z + 60;
 const FLASH_DURATION_SECONDS: f32 = 0.14;
+const FLASH_PEAK_ALPHA: f32 = 0.72;
+const FLOAT_FONT_SIZE: f32 = 22.0;
 const SCREEN_FLASH_DURATION_SECONDS: f32 = 0.26;
 /// Fraction of the screen flash spent at full strength before it fades out.
 const SCREEN_FLASH_HOLD_FRACTION: f32 = 0.3;
@@ -41,6 +43,26 @@ const SHAKE_AMPLITUDE_PIXELS: f32 = 4.0;
 const SHAKE_FREQUENCY: f32 = 22.0;
 /// How long an attacker plays its sprite-row animation (`battle_fx.py:18`).
 const ATTACK_DURATION_SECONDS: f32 = 0.5;
+/// How long an elemental or status overlay lingers on the struck frame.
+///
+/// Deliberately longer than the white hit flash. A plain hit's flash is punctuation — the number
+/// carries the meaning — but an element or a newly applied status says something the number does
+/// not, and the player has to read it off the colour before it goes.
+const DECAL_DURATION_SECONDS: f32 = 0.34;
+const DECAL_PEAK_ALPHA: f32 = 0.55;
+/// A critical scales the effects an ordinary hit already has rather than adding an effect of its
+/// own, so a crit reads as "more of that" at a glance instead of as a different kind of event.
+const CRITICAL_FLOAT_SCALE: f32 = 1.45;
+const CRITICAL_SHAKE_SCALE: f32 = 2.0;
+/// A dodge steps aside once and returns, rather than oscillating like the hurt shake: the target
+/// moved on purpose, and borrowing the wobble would read as a hit that happened to deal no damage.
+const DODGE_DURATION_SECONDS: f32 = 0.24;
+const DODGE_DISTANCE_PIXELS: f32 = 10.0;
+/// How long a defeated combatant takes to fade out.
+///
+/// Without this an enemy frame flips to `Display::None` on the frame it dies and simply vanishes
+/// mid-swing, which reads as a rendering glitch rather than a kill.
+const DISSOLVE_DURATION_SECONDS: f32 = 0.45;
 
 #[derive(Debug, Default, Resource)]
 pub(super) struct BattleFxRouter {
@@ -95,10 +117,25 @@ impl BattleAttackAnimations {
     }
 }
 
-/// The hurt shake riding on one combatant's frame.
+/// How a struck frame moves.
+///
+/// One component drives both because both write `Node::left`, and two components racing for the
+/// same field would let whichever ran last win silently.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum ImpactMotion {
+    /// The source's damped wobble, for a hit that landed.
+    Hurt,
+    /// A single deliberate step aside, for a hit that did not.
+    Dodge,
+}
+
+/// The hurt shake or dodge riding on one combatant's frame.
 #[derive(Component)]
 pub(super) struct BattleHurtShake {
     elapsed: f32,
+    motion: ImpactMotion,
+    /// Scales the hurt wobble for a critical; a dodge ignores it, being a fixed step.
+    amplitude_scale: f32,
 }
 
 #[derive(Component)]
@@ -106,9 +143,30 @@ pub(super) struct BattleFxFloat {
     elapsed: f32,
 }
 
+/// The overlay washed across a struck frame.
+///
+/// White for a plain hit, the element's colour for an elemental one, the status colour when a
+/// status lands. The tint is what makes this an elemental decal rather than a second flash.
 #[derive(Component)]
 pub(super) struct BattleHitFlash {
     elapsed: f32,
+    tint: Color,
+    /// Plain hits snap; tinted decals linger, because their colour carries information.
+    duration: f32,
+    peak_alpha: f32,
+}
+
+/// The fade-out a combatant plays on the way off the field.
+#[derive(Component)]
+pub(super) struct BattleDeathDissolve {
+    elapsed: f32,
+}
+
+impl BattleDeathDissolve {
+    /// Whether the frame should still be drawn, so the UI does not hide it mid-fade.
+    pub(super) fn is_running(&self) -> bool {
+        self.elapsed < DISSOLVE_DURATION_SECONDS
+    }
 }
 
 /// Full-canvas tint raised whenever the party itself takes a hit.
@@ -127,12 +185,69 @@ enum FxColor {
     Miss,
 }
 
+/// How hard this cue hits, for the one case that scales several channels at once.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum FxEmphasis {
+    #[default]
+    Normal,
+    Critical,
+}
+
+impl FxEmphasis {
+    fn float_font_size(self) -> f32 {
+        match self {
+            Self::Normal => FLOAT_FONT_SIZE,
+            Self::Critical => FLOAT_FONT_SIZE * CRITICAL_FLOAT_SCALE,
+        }
+    }
+
+    const fn shake_scale(self) -> f32 {
+        match self {
+            Self::Normal => 1.0,
+            Self::Critical => CRITICAL_SHAKE_SCALE,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 struct FxCue {
     target: CombatantKey,
     label: String,
     color: FxColor,
-    flash: bool,
+    /// The frame overlay, or `None` for a cue that draws only a float.
+    overlay: Option<FxOverlay>,
+    motion: Option<ImpactMotion>,
+    emphasis: FxEmphasis,
+    /// Whether this event also took the target off the field.
+    dissolve: bool,
+}
+
+/// One frame overlay: its colour and how long it stays.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct FxOverlay {
+    tint: Color,
+    duration: f32,
+    peak_alpha: f32,
+}
+
+impl FxOverlay {
+    /// The white punctuation flash a plain hit makes.
+    const fn plain() -> Self {
+        Self {
+            tint: Color::WHITE,
+            duration: FLASH_DURATION_SECONDS,
+            peak_alpha: FLASH_PEAK_ALPHA,
+        }
+    }
+
+    /// A tinted decal, which lingers so its colour can be read.
+    const fn decal(tint: Color) -> Self {
+        Self {
+            tint,
+            duration: DECAL_DURATION_SECONDS,
+            peak_alpha: DECAL_PEAK_ALPHA,
+        }
+    }
 }
 
 #[expect(
@@ -192,18 +307,30 @@ pub(super) fn route_battle_fx(
         };
         let Some(target) = target else { continue };
         // `fx.hit()` in the source is flash *and* shake, always together (`battle_fx.py:88-91`);
-        // re-inserting restarts a shake already running, matching its keyed-dict overwrite.
-        if cue.flash {
+        // re-inserting restarts a motion already running, matching its keyed-dict overwrite.
+        if let Some(motion) = cue.motion {
+            commands.entity(target).insert(BattleHurtShake {
+                elapsed: 0.0,
+                motion,
+                amplitude_scale: cue.emphasis.shake_scale(),
+            });
+        }
+        // Inserted on the frame the killing blow lands, so the fade overlaps the damage float
+        // rather than starting after it. Enemies only: a downed party member keeps its card on
+        // screen and is already greyed by `sync_party_cards`, which would fight a fade every frame.
+        if cue.dissolve && cue.target.side == BattleSide::Enemy {
             commands
                 .entity(target)
-                .insert(BattleHurtShake { elapsed: 0.0 });
+                .insert(BattleDeathDissolve { elapsed: 0.0 });
         }
+        let overlay = cue.overlay;
+        let font_size = cue.emphasis.float_font_size();
         commands.entity(target).with_children(|parent| {
             parent.spawn((
                 Text::new(cue.label),
                 TextFont {
                     font: assets.font.clone().into(),
-                    font_size: FontSize::Px(22.0),
+                    font_size: FontSize::Px(font_size),
                     ..default()
                 },
                 TextColor(color(cue.color, 1.0)),
@@ -217,7 +344,7 @@ pub(super) fn route_battle_fx(
                 GlobalZIndex(FLOAT_Z),
                 BattleFxFloat { elapsed: 0.0 },
             ));
-            if cue.flash {
+            if let Some(overlay) = overlay {
                 parent.spawn((
                     Node {
                         position_type: PositionType::Absolute,
@@ -227,10 +354,15 @@ pub(super) fn route_battle_fx(
                         height: percent(100),
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.72)),
+                    BackgroundColor(overlay.tint.with_alpha(overlay.peak_alpha)),
                     ZIndex(FRAME_FLASH_Z),
                     Pickable::IGNORE,
-                    BattleHitFlash { elapsed: 0.0 },
+                    BattleHitFlash {
+                        elapsed: 0.0,
+                        tint: overlay.tint,
+                        duration: overlay.duration,
+                        peak_alpha: overlay.peak_alpha,
+                    },
                 ));
             }
         });
@@ -288,8 +420,8 @@ pub(super) fn animate_battle_fx(
     }
     for (entity, mut effect, mut background) in &mut flashes {
         effect.elapsed += delta;
-        let (alpha, expired) = flash_frame(effect.elapsed);
-        background.0 = Color::srgba(1.0, 1.0, 1.0, alpha * 0.72);
+        let (alpha, expired) = overlay_frame(effect.elapsed, effect.duration);
+        background.0 = effect.tint.with_alpha(alpha * effect.peak_alpha);
         if expired {
             commands.entity(entity).despawn();
         }
@@ -316,10 +448,38 @@ pub(super) fn animate_battle_shake(
     let delta = time.delta_secs().max(0.0);
     for (entity, mut shake, mut node) in &mut shakes {
         shake.elapsed += delta;
-        let (offset, expired) = shake_frame(shake.elapsed);
+        let (offset, expired) = match shake.motion {
+            ImpactMotion::Hurt => shake_frame(shake.elapsed, shake.amplitude_scale),
+            ImpactMotion::Dodge => dodge_frame(shake.elapsed),
+        };
         node.left = px(offset);
         if expired {
             commands.entity(entity).remove::<BattleHurtShake>();
+        }
+    }
+}
+
+/// Fades a defeated enemy's sprite out, then leaves the component in place at zero.
+///
+/// The component is deliberately *not* removed when the fade ends: [`super::ui`] asks it whether
+/// the frame is still dissolving before hiding the card, and removing it would flip the card back
+/// to visible for the frame between the fade ending and the hide landing.
+///
+/// The fade is applied to the sprite's own [`ImageNode`]s rather than to the frame, because the
+/// frame carries only a border — there is no single node whose alpha stands for the whole enemy.
+pub(super) fn animate_battle_dissolve(
+    time: Res<Time>,
+    mut dissolving: Query<(&mut BattleDeathDissolve, &BattleEnemyFrame)>,
+    mut sprites: Query<(&BattleEnemyImage, &mut ImageNode)>,
+) {
+    let delta = time.delta_secs().max(0.0);
+    for (mut dissolve, frame) in &mut dissolving {
+        dissolve.elapsed += delta;
+        let alpha = dissolve_frame(dissolve.elapsed);
+        for (sprite, mut image) in &mut sprites {
+            if sprite.index == frame.0 {
+                image.color = image.color.with_alpha(alpha);
+            }
         }
     }
 }
@@ -345,19 +505,74 @@ const fn attack_for_event(event: &BattleEvent) -> Option<(CombatantKey, AttackKi
     })
 }
 
+/// The decal colour for a spell's element.
+///
+/// Chosen to survive the white hit flash they replace and to stay distinct from the float palette
+/// in [`color`], so the overlay never reads as a bigger copy of the number sitting on top of it.
+const fn ability_element_tint(element: AbilityElement) -> Color {
+    match element {
+        AbilityElement::Fire => Color::srgb(1.0, 0.42, 0.12),
+        AbilityElement::Water => Color::srgb(0.25, 0.60, 1.0),
+        AbilityElement::Wind => Color::srgb(0.45, 0.95, 0.62),
+        AbilityElement::Earth => Color::srgb(0.78, 0.58, 0.31),
+        AbilityElement::Holy => Color::srgb(1.0, 0.95, 0.62),
+    }
+}
+
+/// The decal colour for a thrown item's element.
+///
+/// `ItemElement` has no Earth, so this is the ability table minus that arm rather than a second
+/// palette: a Fire Vial and a Fire spell must mark the frame the same way.
+const fn item_element_tint(element: ItemElement) -> Color {
+    match element {
+        ItemElement::Fire => ability_element_tint(AbilityElement::Fire),
+        ItemElement::Water => ability_element_tint(AbilityElement::Water),
+        ItemElement::Wind => ability_element_tint(AbilityElement::Wind),
+        ItemElement::Holy => ability_element_tint(AbilityElement::Holy),
+    }
+}
+
+/// The decal colour for a status landing, grouped by what the status does to the player's plan.
+const fn status_tint(effect: StatusEffect) -> Color {
+    match effect {
+        StatusEffect::Poison => Color::srgb(0.58, 0.85, 0.30),
+        StatusEffect::Burn => ability_element_tint(AbilityElement::Fire),
+        StatusEffect::Freeze => ability_element_tint(AbilityElement::Water),
+        // The three that take a turn away from you share one colour, because what matters is that
+        // the combatant is not acting, not which of the three caused it.
+        StatusEffect::Sleep | StatusEffect::Stun | StatusEffect::Knockback => {
+            Color::srgb(0.62, 0.55, 0.95)
+        }
+        StatusEffect::Silence => Color::srgb(0.72, 0.42, 0.78),
+        StatusEffect::Taunt | StatusEffect::RedirectDamage => Color::srgb(0.95, 0.45, 0.55),
+        // Every stat adjustment shares one colour. They differ in which number moves, which the
+        // badge already says; the decal only has to report that a buff or debuff landed at all.
+        StatusEffect::AttackModifier
+        | StatusEffect::DefenseModifier
+        | StatusEffect::MagicResistanceModifier
+        | StatusEffect::HitChanceModifier
+        | StatusEffect::DamageReduction => Color::srgb(0.85, 0.78, 0.45),
+    }
+}
+
 fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
     let cue = match *event {
         BattleEvent::Miss { action } => FxCue {
             target: action.target(),
             label: "MISS".to_owned(),
             color: FxColor::Miss,
-            flash: false,
+            // No overlay at all: a miss must not paint the frame, or it reads as a hit whose
+            // number failed to draw. The sidestep is the whole treatment.
+            overlay: None,
+            motion: Some(ImpactMotion::Dodge),
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
         BattleEvent::Damage {
             action,
             amount,
             critical,
-            ..
+            knocked_out,
         } => FxCue {
             target: action.target(),
             label: if critical {
@@ -370,22 +585,83 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
             } else {
                 FxColor::Damage
             },
-            flash: true,
+            overlay: Some(FxOverlay::plain()),
+            motion: Some(ImpactMotion::Hurt),
+            emphasis: if critical {
+                FxEmphasis::Critical
+            } else {
+                FxEmphasis::Normal
+            },
+            dissolve: knocked_out,
         },
-        BattleEvent::MagicDamage { target, amount, .. }
-        | BattleEvent::EnemyAbilityDamage { target, amount, .. }
-        | BattleEvent::ItemDamage { target, amount, .. }
-        | BattleEvent::StatusDamage { target, amount, .. } => FxCue {
+        BattleEvent::MagicDamage {
+            target,
+            element,
+            amount,
+            knocked_out,
+            ..
+        } => FxCue {
             target,
             label: amount.to_string(),
             color: FxColor::Damage,
-            flash: true,
+            overlay: Some(FxOverlay::decal(ability_element_tint(element))),
+            motion: Some(ImpactMotion::Hurt),
+            emphasis: FxEmphasis::Normal,
+            dissolve: knocked_out,
+        },
+        BattleEvent::ItemDamage {
+            target,
+            element,
+            amount,
+            knocked_out,
+            ..
+        } => FxCue {
+            target,
+            label: amount.to_string(),
+            color: FxColor::Damage,
+            overlay: Some(FxOverlay::decal(item_element_tint(element))),
+            motion: Some(ImpactMotion::Hurt),
+            emphasis: FxEmphasis::Normal,
+            dissolve: knocked_out,
+        },
+        BattleEvent::StatusDamage {
+            target,
+            effect,
+            amount,
+            knocked_out,
+        } => FxCue {
+            target,
+            label: amount.to_string(),
+            color: FxColor::Damage,
+            // A poison tick is marked in the status's own colour, so damage arriving with no
+            // attacker still says where it came from.
+            overlay: Some(FxOverlay::decal(status_tint(effect))),
+            motion: Some(ImpactMotion::Hurt),
+            emphasis: FxEmphasis::Normal,
+            dissolve: knocked_out,
+        },
+        BattleEvent::EnemyAbilityDamage {
+            target,
+            amount,
+            knocked_out,
+            ..
+        } => FxCue {
+            target,
+            label: amount.to_string(),
+            color: FxColor::Damage,
+            overlay: Some(FxOverlay::plain()),
+            motion: Some(ImpactMotion::Hurt),
+            emphasis: FxEmphasis::Normal,
+            dissolve: knocked_out,
         },
         BattleEvent::EnemyAbilityBlocked { target, .. } => FxCue {
             target,
             label: "BLOCKED".to_owned(),
             color: FxColor::Miss,
-            flash: false,
+            overlay: None,
+            motion: Some(ImpactMotion::Dodge),
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
         BattleEvent::Heal {
             target,
@@ -400,25 +676,39 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
                 format!("+{amount}")
             },
             color: FxColor::Recovery,
-            flash: false,
+            overlay: None,
+            motion: None,
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
         BattleEvent::ManaRestored { target, amount, .. } => FxCue {
             target,
             label: format!("+{amount} MP"),
             color: FxColor::Mana,
-            flash: false,
+            overlay: None,
+            motion: None,
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
         BattleEvent::StatusApplied { target, status, .. } => FxCue {
             target,
             label: format!("{:?}", status.effect).to_uppercase(),
             color: FxColor::Status,
-            flash: false,
+            // The infliction cue: the frame is washed in the status's colour as the badge appears,
+            // so a status landing is visible without reading the badge strip.
+            overlay: Some(FxOverlay::decal(status_tint(status.effect))),
+            motion: None,
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
         BattleEvent::StatusCured { target, .. } => FxCue {
             target,
             label: "CURED".to_owned(),
             color: FxColor::Recovery,
-            flash: false,
+            overlay: None,
+            motion: None,
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
         },
     };
     Some(cue)
@@ -610,23 +900,54 @@ fn float_frame(elapsed: f32) -> (f32, f32, bool) {
     )
 }
 
-fn flash_frame(elapsed: f32) -> (f32, bool) {
-    let progress = (elapsed / FLASH_DURATION_SECONDS).clamp(0.0, 1.0);
-    (1.0 - progress, elapsed >= FLASH_DURATION_SECONDS)
+/// Linear fade of a frame overlay, over whatever window that overlay asked for.
+fn overlay_frame(elapsed: f32, duration: f32) -> (f32, bool) {
+    if duration <= 0.0 {
+        return (0.0, true);
+    }
+    let progress = (elapsed / duration).clamp(0.0, 1.0);
+    (1.0 - progress, elapsed >= duration)
 }
 
 /// A damped sine, truncated to whole pixels the way the source's `int()` does
 /// (`battle_fx.py:50-53`).
-fn shake_frame(elapsed: f32) -> (f32, bool) {
+///
+/// `amplitude_scale` is the critical's only change to the motion: the frequency and the decay
+/// envelope stay exactly as the source pins them, so a crit is the same wobble swung wider rather
+/// than a different wobble.
+fn shake_frame(elapsed: f32, amplitude_scale: f32) -> (f32, bool) {
     let expired = elapsed >= SHAKE_DURATION_SECONDS;
     if expired {
         return (0.0, true);
     }
     let decay = (1.0 - elapsed / SHAKE_DURATION_SECONDS).max(0.0);
     (
-        (SHAKE_AMPLITUDE_PIXELS * decay * (elapsed * SHAKE_FREQUENCY).sin()).trunc(),
+        (SHAKE_AMPLITUDE_PIXELS * amplitude_scale * decay * (elapsed * SHAKE_FREQUENCY).sin())
+            .trunc(),
         false,
     )
+}
+
+/// One step aside and back: half a sine, so the frame leaves and returns exactly once.
+///
+/// Truncated to whole pixels like [`shake_frame`], for the same reason — a UI node nudged by a
+/// fractional pixel shimmers against the canvas scale.
+fn dodge_frame(elapsed: f32) -> (f32, bool) {
+    let expired = elapsed >= DODGE_DURATION_SECONDS;
+    if expired {
+        return (0.0, true);
+    }
+    let progress = elapsed / DODGE_DURATION_SECONDS;
+    (
+        (-DODGE_DISTANCE_PIXELS * (progress * std::f32::consts::PI).sin()).trunc(),
+        false,
+    )
+}
+
+/// Opacity of a combatant partway through its death fade.
+fn dissolve_frame(elapsed: f32) -> f32 {
+    let progress = (elapsed / DISSOLVE_DURATION_SECONDS).clamp(0.0, 1.0);
+    1.0 - progress
 }
 
 fn attack_progress(elapsed: f32) -> f32 {
@@ -635,8 +956,11 @@ fn attack_progress(elapsed: f32) -> f32 {
 
 /// Only damage landing on the party shakes the whole canvas; hits the party
 /// deals out already read clearly from the enemy's own frame flash.
+///
+/// Keyed off the hurt motion rather than the overlay, because a status landing now paints an
+/// overlay too and must not wash the screen for what is not damage.
 fn triggers_screen_flash(cue: &FxCue) -> bool {
-    cue.flash && cue.target.side == BattleSide::Party
+    cue.motion == Some(ImpactMotion::Hurt) && cue.target.side == BattleSide::Party
 }
 
 /// Holds the tint at full strength, then fades it linearly to nothing.
@@ -956,7 +1280,10 @@ mod tests {
                 target: CombatantKey::enemy(0),
                 label: "MISS".to_owned(),
                 color: FxColor::Miss,
-                flash: false,
+                overlay: None,
+                motion: Some(ImpactMotion::Dodge),
+                emphasis: FxEmphasis::Normal,
+                dissolve: false,
             }
         );
         let critical = cue_for_event(&BattleEvent::Damage {
@@ -968,7 +1295,8 @@ mod tests {
         .unwrap();
         assert_eq!(critical.label, "CRIT 15");
         assert_eq!(critical.color, FxColor::Critical);
-        assert!(critical.flash);
+        assert_eq!(critical.overlay, Some(FxOverlay::plain()));
+        assert_eq!(critical.emphasis, FxEmphasis::Critical);
         let status = cue_for_event(&BattleEvent::StatusDamage {
             target: CombatantKey::party(0),
             effect: StatusEffect::Poison,
@@ -977,7 +1305,12 @@ mod tests {
         })
         .unwrap();
         assert_eq!(status.label, "3");
-        assert!(status.flash);
+        assert_eq!(status.motion, Some(ImpactMotion::Hurt));
+        assert_eq!(
+            status.overlay.map(|overlay| overlay.tint),
+            Some(status_tint(StatusEffect::Poison)),
+            "a poison tick is marked in poison's own colour"
+        );
     }
 
     #[test]
@@ -985,8 +1318,11 @@ mod tests {
         assert_eq!(float_frame(0.0), (-8.0, 1.0, false));
         assert_eq!(float_frame(FLOAT_DURATION_SECONDS), (-50.0, 0.0, true));
         assert_eq!(float_frame(9.0), (-50.0, 0.0, true));
-        assert_eq!(flash_frame(0.0), (1.0, false));
-        assert_eq!(flash_frame(FLASH_DURATION_SECONDS), (0.0, true));
+        assert_eq!(overlay_frame(0.0, FLASH_DURATION_SECONDS), (1.0, false));
+        assert_eq!(
+            overlay_frame(FLASH_DURATION_SECONDS, FLASH_DURATION_SECONDS),
+            (0.0, true)
+        );
     }
 
     /// Pins the shape of the ported shake, including the one part of it that surprises.
@@ -999,15 +1335,15 @@ mod tests {
     /// "fix" it into a two-sided wobble without deciding to diverge on purpose.
     #[test]
     fn the_hurt_shake_punches_out_once_and_snaps_back_to_zero() {
-        assert_eq!(shake_frame(0.0), (0.0, false));
-        let peak = shake_frame(0.07).0;
+        assert_eq!(shake_frame(0.0, 1.0), (0.0, false));
+        let peak = shake_frame(0.07, 1.0).0;
         assert_eq!(
             peak, 2.0,
             "the quarter-swing lands at 2px once decay and truncation are applied"
         );
 
         let sampled = (0..22)
-            .map(|step| shake_frame(step as f32 * 0.01).0)
+            .map(|step| shake_frame(step as f32 * 0.01, 1.0).0)
             .collect::<Vec<_>>();
         assert!(
             sampled
@@ -1018,11 +1354,11 @@ mod tests {
         // Whole pixels only, like the source's int().
         assert!(sampled.iter().all(|&offset| offset == offset.trunc()));
         // And it does come back on its own, well before the timer runs out.
-        assert_eq!(shake_frame(0.16).0, 0.0);
+        assert_eq!(shake_frame(0.16, 1.0).0, 0.0);
 
         // Never leaves the frame parked off-center.
-        assert_eq!(shake_frame(SHAKE_DURATION_SECONDS), (0.0, true));
-        assert_eq!(shake_frame(9.0), (0.0, true));
+        assert_eq!(shake_frame(SHAKE_DURATION_SECONDS, 1.0), (0.0, true));
+        assert_eq!(shake_frame(9.0, 1.0), (0.0, true));
     }
 
     /// Every event that hit-flashes must also shake: the source calls them together as `fx.hit()`,
@@ -1054,13 +1390,23 @@ mod tests {
                 knocked_out: false,
             },
         ] {
+            let cue = cue_for_event(&event).expect("damage draws a cue");
             assert!(
-                cue_for_event(&event).is_some_and(|cue| cue.flash),
-                "{event:?} should flash, and so shake"
+                cue.overlay.is_some(),
+                "{event:?} should mark the frame it landed on"
+            );
+            assert_eq!(
+                cue.motion,
+                Some(ImpactMotion::Hurt),
+                "{event:?} should wobble the frame it landed on"
             );
         }
-        // A whiff neither flashes nor shakes — nothing landed.
-        assert!(cue_for_event(&BattleEvent::Miss { action }).is_some_and(|cue| !cue.flash));
+
+        // A whiff paints nothing — an overlay would read as a hit whose number failed to draw —
+        // but it does move the target, which is the whole of the explicit MISS treatment.
+        let miss = cue_for_event(&BattleEvent::Miss { action }).expect("a miss draws a cue");
+        assert_eq!(miss.overlay, None);
+        assert_eq!(miss.motion, Some(ImpactMotion::Dodge));
     }
 
     #[test]
@@ -1347,5 +1693,284 @@ mod tests {
         assert!(cue_for_event(&event).is_some());
         assert_eq!(phase, BattlePhase::Resolve);
         assert_eq!(health, 35);
+    }
+
+    // ---------------------------------------------------------------------
+    // B4.8 battle-effects polish
+    // ---------------------------------------------------------------------
+
+    #[test]
+    fn every_element_marks_the_frame_in_its_own_colour() {
+        let tints = [
+            AbilityElement::Fire,
+            AbilityElement::Water,
+            AbilityElement::Wind,
+            AbilityElement::Earth,
+            AbilityElement::Holy,
+        ]
+        .map(ability_element_tint);
+
+        for (index, tint) in tints.iter().enumerate() {
+            assert!(
+                !tints[index + 1..].contains(tint),
+                "two elements share a decal colour, so neither can be read off it"
+            );
+            assert_ne!(
+                *tint,
+                Color::WHITE,
+                "an elemental decal must be distinguishable from the plain hit flash"
+            );
+        }
+    }
+
+    #[test]
+    fn a_thrown_vial_marks_the_frame_exactly_as_the_matching_spell_does() {
+        // The player should not have to learn two colour languages for one element.
+        for (item, ability) in [
+            (ItemElement::Fire, AbilityElement::Fire),
+            (ItemElement::Water, AbilityElement::Water),
+            (ItemElement::Wind, AbilityElement::Wind),
+            (ItemElement::Holy, AbilityElement::Holy),
+        ] {
+            assert_eq!(item_element_tint(item), ability_element_tint(ability));
+        }
+    }
+
+    #[test]
+    fn an_elemental_hit_swaps_the_white_flash_for_a_longer_tinted_decal() {
+        let cue = cue_for_event(&BattleEvent::MagicDamage {
+            source: CombatantKey::party(0),
+            target: CombatantKey::enemy(0),
+            element: AbilityElement::Fire,
+            amount: 12,
+            knocked_out: false,
+        })
+        .expect("magic damage draws a cue");
+        let overlay = cue.overlay.expect("an elemental hit marks the frame");
+
+        assert_eq!(overlay.tint, ability_element_tint(AbilityElement::Fire));
+        assert!(
+            overlay.duration > FLASH_DURATION_SECONDS,
+            "a decal must outlast the plain flash to be readable"
+        );
+        // A physical hit of the same shape keeps the plain white punctuation.
+        let physical = cue_for_event(&BattleEvent::Damage {
+            action: BattleAction::Physical {
+                attacker: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+            },
+            amount: 12,
+            critical: false,
+            knocked_out: false,
+        })
+        .expect("damage draws a cue");
+        assert_eq!(physical.overlay, Some(FxOverlay::plain()));
+    }
+
+    #[test]
+    fn a_critical_scales_the_float_and_the_shake_without_inventing_an_effect() {
+        let critical = cue_for_event(&BattleEvent::Damage {
+            action: BattleAction::Physical {
+                attacker: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+            },
+            amount: 30,
+            critical: true,
+            knocked_out: false,
+        })
+        .expect("a critical draws a cue");
+
+        assert_eq!(critical.emphasis, FxEmphasis::Critical);
+        assert!(critical.emphasis.float_font_size() > FxEmphasis::Normal.float_font_size());
+        assert!(critical.emphasis.shake_scale() > FxEmphasis::Normal.shake_scale());
+        // Same overlay and same motion as an ordinary hit: the crit is louder, not different.
+        assert_eq!(critical.overlay, Some(FxOverlay::plain()));
+        assert_eq!(critical.motion, Some(ImpactMotion::Hurt));
+    }
+
+    #[test]
+    fn a_critical_shake_swings_wider_on_the_sources_own_envelope() {
+        // Scaling amplitude alone keeps the pinned 22Hz frequency and linear decay intact.
+        for step in 1..22 {
+            let elapsed = step as f32 * 0.01;
+            let normal = shake_frame(elapsed, 1.0).0;
+            let critical = shake_frame(elapsed, CRITICAL_SHAKE_SCALE).0;
+            assert!(
+                critical.abs() >= normal.abs(),
+                "crit shake must never be smaller at {elapsed}"
+            );
+            assert!(
+                normal == 0.0 || critical.signum() == normal.signum(),
+                "crit shake must swing the same way at {elapsed}"
+            );
+        }
+        assert_eq!(
+            shake_frame(SHAKE_DURATION_SECONDS, CRITICAL_SHAKE_SCALE),
+            (0.0, true),
+            "a louder shake still ends on the source's schedule"
+        );
+    }
+
+    #[test]
+    fn a_dodge_steps_aside_once_and_returns_to_zero() {
+        assert_eq!(dodge_frame(0.0), (0.0, false));
+
+        let mid = dodge_frame(DODGE_DURATION_SECONDS / 2.0).0;
+        assert!(mid < 0.0, "the target steps back from the swing");
+        assert!(mid.abs() <= DODGE_DISTANCE_PIXELS);
+
+        // One departure and one return: unlike the hurt shake this never crosses zero mid-flight.
+        let offsets: Vec<f32> = (0..24)
+            .map(|step| dodge_frame(step as f32 * DODGE_DURATION_SECONDS / 24.0).0)
+            .collect();
+        assert!(
+            offsets.iter().all(|offset| *offset <= 0.0),
+            "a dodge must not oscillate like a hurt shake: {offsets:?}"
+        );
+        assert_eq!(dodge_frame(DODGE_DURATION_SECONDS), (0.0, true));
+        assert_eq!(dodge_frame(5.0), (0.0, true));
+    }
+
+    #[test]
+    fn a_dodge_is_a_whole_number_of_pixels_like_the_hurt_shake() {
+        // A fractional nudge shimmers once the canvas is scaled to a non-integer factor.
+        for step in 0..24 {
+            let offset = dodge_frame(step as f32 * 0.01).0;
+            assert_eq!(offset, offset.trunc(), "fractional dodge offset {offset}");
+        }
+    }
+
+    #[test]
+    fn a_killing_blow_starts_a_dissolve_and_an_ordinary_one_does_not() {
+        let action = BattleAction::Physical {
+            attacker: CombatantKey::party(0),
+            target: CombatantKey::enemy(0),
+        };
+        let survived = cue_for_event(&BattleEvent::Damage {
+            action,
+            amount: 5,
+            critical: false,
+            knocked_out: false,
+        })
+        .unwrap();
+        let killed = cue_for_event(&BattleEvent::Damage {
+            action,
+            amount: 5,
+            critical: false,
+            knocked_out: true,
+        })
+        .unwrap();
+
+        assert!(!survived.dissolve);
+        assert!(killed.dissolve);
+        // Every channel that can report a knockout does, including damage with no attacker.
+        for event in [
+            BattleEvent::MagicDamage {
+                source: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+                element: AbilityElement::Fire,
+                amount: 5,
+                knocked_out: true,
+            },
+            BattleEvent::ItemDamage {
+                source: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+                element: ItemElement::Fire,
+                amount: 5,
+                knocked_out: true,
+            },
+            BattleEvent::EnemyAbilityDamage {
+                source: CombatantKey::enemy(0),
+                target: CombatantKey::party(0),
+                amount: 5,
+                knocked_out: true,
+            },
+            BattleEvent::StatusDamage {
+                target: CombatantKey::enemy(0),
+                effect: StatusEffect::Poison,
+                amount: 5,
+                knocked_out: true,
+            },
+        ] {
+            assert!(
+                cue_for_event(&event).is_some_and(|cue| cue.dissolve),
+                "{event:?} killed its target and must dissolve it"
+            );
+        }
+    }
+
+    #[test]
+    fn a_dissolve_fades_to_nothing_and_reports_when_it_is_done() {
+        assert_eq!(dissolve_frame(0.0), 1.0);
+        assert!(dissolve_frame(DISSOLVE_DURATION_SECONDS / 2.0) < 1.0);
+        assert_eq!(dissolve_frame(DISSOLVE_DURATION_SECONDS), 0.0);
+        // Clamped, so a long frame cannot drive the alpha negative.
+        assert_eq!(dissolve_frame(60.0), 0.0);
+
+        let mut dissolve = BattleDeathDissolve { elapsed: 0.0 };
+        assert!(dissolve.is_running(), "the card stays drawn while fading");
+        dissolve.elapsed = DISSOLVE_DURATION_SECONDS;
+        assert!(
+            !dissolve.is_running(),
+            "once faded the card may finally be hidden"
+        );
+    }
+
+    #[test]
+    fn an_applied_status_marks_the_frame_in_that_statuss_colour_without_a_screen_flash() {
+        let cue = cue_for_event(&BattleEvent::StatusApplied {
+            source: CombatantKey::enemy(0),
+            target: CombatantKey::party(0),
+            status: ActiveStatus::timed(StatusEffect::Poison, 3),
+        })
+        .expect("a status application draws a cue");
+
+        assert_eq!(
+            cue.overlay.map(|overlay| overlay.tint),
+            Some(status_tint(StatusEffect::Poison))
+        );
+        assert_eq!(cue.motion, None, "a status landing is not a blow");
+        assert!(
+            !triggers_screen_flash(&cue),
+            "only damage washes the canvas; a status must not"
+        );
+    }
+
+    #[test]
+    fn statuses_that_mean_different_things_do_not_share_a_colour() {
+        // Grouped deliberately: the three turn-skippers share one, and the stat modifiers share
+        // another. Across groups the colours must differ, or the decal says nothing.
+        let poison = status_tint(StatusEffect::Poison);
+        let sleep = status_tint(StatusEffect::Sleep);
+        let silence = status_tint(StatusEffect::Silence);
+        let modifier = status_tint(StatusEffect::AttackModifier);
+
+        assert_eq!(sleep, status_tint(StatusEffect::Stun));
+        assert_eq!(sleep, status_tint(StatusEffect::Knockback));
+        assert_eq!(modifier, status_tint(StatusEffect::DefenseModifier));
+        for (left, right) in [
+            (poison, sleep),
+            (poison, silence),
+            (poison, modifier),
+            (sleep, silence),
+            (sleep, modifier),
+            (silence, modifier),
+        ] {
+            assert_ne!(left, right);
+        }
+    }
+
+    #[test]
+    fn an_overlay_fades_over_whatever_window_it_asked_for() {
+        assert_eq!(overlay_frame(0.0, DECAL_DURATION_SECONDS), (1.0, false));
+        assert_eq!(
+            overlay_frame(DECAL_DURATION_SECONDS, DECAL_DURATION_SECONDS),
+            (0.0, true)
+        );
+        // A plain flash is already finished at the point a decal is only part-way down.
+        assert!(overlay_frame(FLASH_DURATION_SECONDS, DECAL_DURATION_SECONDS).0 > 0.0);
+        assert!(overlay_frame(FLASH_DURATION_SECONDS, FLASH_DURATION_SECONDS).1);
+        // A zero-length window expires immediately rather than dividing by zero.
+        assert_eq!(overlay_frame(0.0, 0.0), (0.0, true));
     }
 }
