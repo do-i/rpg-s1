@@ -125,6 +125,7 @@ impl Plugin for BattlePlugin {
                     super::fx::route_battle_fx,
                     super::fx::animate_battle_fx,
                     super::fx::animate_battle_shake,
+                    super::fx::animate_battle_dissolve,
                     sync_party_cards,
                     sync_party_meters,
                     sync_status_badges,
@@ -151,8 +152,8 @@ enum EnemySpritePart {
 }
 
 #[derive(Component)]
-struct BattleEnemyImage {
-    index: usize,
+pub(super) struct BattleEnemyImage {
+    pub(super) index: usize,
     part: EnemySpritePart,
     split_fraction: f32,
 }
@@ -1974,9 +1975,18 @@ fn sync_enemy_cards(
     state: Option<Res<BattleState>>,
     mut cards: Query<(&BattleEnemyCard, &mut Node)>,
     mut frames: Query<(&BattleEnemyFrame, &mut BorderColor)>,
+    dissolves: Query<(&BattleEnemyFrame, &super::fx::BattleDeathDissolve)>,
 ) {
     let Some(state) = state else { return };
-    if !state.is_changed() {
+    // A dissolving enemy is still being drawn, so this cannot idle on an unchanged state: the
+    // card has to stay flexed for the whole fade and then be hidden on the frame it ends, which
+    // is a change in this system's output with no change in `BattleState` behind it.
+    let dissolving: Vec<usize> = dissolves
+        .iter()
+        .filter(|(_, dissolve)| dissolve.is_running())
+        .map(|(frame, _)| frame.0)
+        .collect();
+    if !state.is_changed() && dissolving.is_empty() {
         return;
     }
     let selected_target = state.target.as_ref().map(TargetSelector::selected);
@@ -1984,7 +1994,7 @@ fn sync_enemy_cards(
         let Some(enemy) = state.actor(CombatantKey::enemy(marker.0)) else {
             continue;
         };
-        node.display = if enemy.is_alive() {
+        node.display = if enemy.is_alive() || dissolving.contains(&marker.0) {
             Display::Flex
         } else {
             Display::None
@@ -2545,6 +2555,7 @@ mod tests {
                     super::super::fx::route_battle_fx,
                     super::super::fx::animate_battle_fx,
                     super::super::fx::animate_battle_shake,
+                    super::super::fx::animate_battle_dissolve,
                 )
                     .chain(),
             );
