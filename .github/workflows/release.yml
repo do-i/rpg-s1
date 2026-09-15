@@ -117,16 +117,41 @@ jobs:
       # Validate from outside the checkout with only the staged payload beside
       # the binary. This catches an exclusion that later becomes a runtime
       # reference, as well as accidental repository-relative asset loading.
+      #
+      # `validate-scenario` checks that every referenced path *exists*. It never
+      # opens the file, so a present-but-unreadable asset passes it. That is not
+      # hypothetical: an unsmudged Git LFS pointer is a 130-byte text file
+      # sitting at exactly the right path, and it is the failure this job's
+      # `lfs: true` and tarball-size check already try to guess at.
+      #
+      # Measured against a payload with one tileset PNG replaced by a pointer
+      # stub: `validate-scenario --baseline` exits 0 and the release ships a
+      # game that cannot draw its own maps; `map-sweep` exits 1. So the sweeps
+      # are what make the claim above true, not the line before them.
+      #
+      # All three load what they check -- map-sweep runs every map for five
+      # headless frames, encounter-sweep constructs every formation and loads
+      # its battle art, dialogue-sweep walks every branch -- and each runs from
+      # the same unrelated directory, against the payload alone.
       - name: Validate packaged scenario
         env:
           NAME: ${{ steps.ver.outputs.name }}
+          # The sweeps start a real Bevy app. A hosted runner has no sound card,
+          # and none of these checks is about audio playback, so take the device
+          # out of the picture rather than depend on the backend degrading
+          # gracefully. Any value silences it; the variable is a presence check.
+          RPG_S1_MUTE_AUDIO: "1"
         run: |
           set -euo pipefail
+          payload="$GITHUB_WORKSPACE/dist/$NAME"
           rehearsal="$(mktemp -d)"
           cd "$rehearsal"
-          "$GITHUB_WORKSPACE/dist/$NAME/rpg-s1" \
+          "$payload/rpg-s1" \
             validate-scenario rusted_kingdoms \
-            --baseline "$GITHUB_WORKSPACE/dist/$NAME/assets/scenarios/rusted_kingdoms/validation-baseline.txt"
+            --baseline "$payload/assets/scenarios/rusted_kingdoms/validation-baseline.txt"
+          "$payload/rpg-s1" map-sweep rusted_kingdoms
+          "$payload/rpg-s1" encounter-sweep rusted_kingdoms
+          "$payload/rpg-s1" dialogue-sweep rusted_kingdoms
 
       - name: Publish the release
         env:
