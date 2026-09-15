@@ -212,6 +212,7 @@ impl serde::de::Visitor<'_> for PositiveIntegerVisitor {
 mod tests {
     use super::BalanceData;
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
     use std::fs;
 
     #[test]
@@ -294,11 +295,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_balance_file_when_requested() {
-        let path = std::env::var_os("RPG_S1_PINNED_BALANCE_FILE")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_BALANCE_FILE must name the pinned data/balance.yaml file");
+    fn audits_the_complete_shipped_balance_file() {
+        let path = scenario_package_dir().join("data/balance.yaml");
         let document = fs::read_to_string(&path)
             .unwrap_or_else(|error| panic!("{} should be readable: {error}", path.display()));
         let balance: BalanceData = scenario_yaml::from_str(&document)

@@ -181,7 +181,7 @@ impl Error for NewGameStateError {
 #[cfg(test)]
 mod tests {
     use crate::runtime_member::test_class;
-    use std::{fs, path::Path, process::Command};
+    use std::{fs, path::Path};
 
     use super::*;
     use crate::{
@@ -462,14 +462,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires RPG_S1_PINNED_SOURCE_DIR at the clean pinned Python source checkout"]
-    fn audits_exact_new_game_values_from_the_pinned_python_source() {
-        const PIN: &str = "08970359d6cb03586948625d29b0d3351dbbf785";
-        let source = std::env::var_os("RPG_S1_PINNED_SOURCE_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("set RPG_S1_PINNED_SOURCE_DIR");
-        assert_clean_pin(&source, PIN);
-        let scenario_root = source.join("rusted_kingdoms");
+    fn audits_exact_new_game_values_from_the_shipped_scenario() {
+        let scenario_root = crate::test_support::scenario_package_dir();
         let manifest: Manifest = read_yaml(&scenario_root.join("manifest.yaml"));
         let party: PartyCatalog = read_yaml(&scenario_root.join(manifest.refs.party.as_str()));
         let balance: BalanceData = read_yaml(&scenario_root.join(manifest.refs.balance.as_str()));
@@ -483,7 +477,7 @@ mod tests {
             },
             Duration::from_secs(123),
         )
-        .expect("pinned source should build a valid new game");
+        .expect("the shipped scenario should build a valid new game");
 
         assert_eq!(state.controlled_member_id(), "aric");
         assert_eq!(
@@ -534,9 +528,14 @@ mod tests {
         );
         assert_eq!(state.map().position(), Position::new(14, 5));
         assert_eq!(state.map().facing(), CardinalDirection::Down);
+        // One bootstrap flag, where the pinned manifest had two. The second was
+        // `aric_teleport_unlocked`, and the source's own comment called it a DEBUG line that
+        // "should instead be set by a mid-game story event; remove this line to restore the
+        // intended mid-game unlock". The port removed it, and `ardel_shrine_keeper.yaml` now
+        // grants the skill in dialogue, so a new game starts without Teleport as intended.
         assert_eq!(
             state.flags().iter().collect::<Vec<_>>(),
-            ["aric_teleport_unlocked", "story_quest_started"]
+            ["story_quest_started"]
         );
     }
 
@@ -545,28 +544,5 @@ mod tests {
             .unwrap_or_else(|error| panic!("{} should be readable: {error}", path.display()));
         scenario_yaml::from_str(&document)
             .unwrap_or_else(|error| panic!("{} should deserialize: {error}", path.display()))
-    }
-
-    fn assert_clean_pin(source: &Path, pin: &str) {
-        let head = Command::new("git")
-            .arg("-C")
-            .arg(source)
-            .args(["rev-parse", "HEAD"])
-            .output()
-            .expect("source HEAD query should run");
-        assert!(head.status.success(), "source HEAD query failed");
-        assert_eq!(String::from_utf8(head.stdout).unwrap().trim(), pin);
-
-        let status = Command::new("git")
-            .arg("-C")
-            .arg(source)
-            .args(["status", "--short"])
-            .output()
-            .expect("source worktree query should run");
-        assert!(status.status.success(), "source worktree query failed");
-        assert!(
-            status.stdout.is_empty(),
-            "the pinned Python source worktree must be clean"
-        );
     }
 }

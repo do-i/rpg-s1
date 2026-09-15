@@ -2405,8 +2405,8 @@ fn add_actions(target: &mut FlagLocations, a: &DialogueActions, path: &str, base
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::scenario_package_dir;
     use std::{
-        process::{Command, Output},
         sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
@@ -2685,9 +2685,7 @@ movement: {player_speed: 5}
     struct PythonParityCase {
         name: &'static str,
         mutate: fn(&InventedScenario),
-        python: ValidationOutcome,
         rust: ValidationOutcome,
-        python_evidence: &'static str,
         rust_code: Option<&'static str>,
         rust_field_path: Option<&'static str>,
     }
@@ -2783,99 +2781,77 @@ entries:
             PythonParityCase {
                 name: "accepted_compact_scenario",
                 mutate: no_mutation,
-                python: ValidationOutcome::Pass,
                 rust: ValidationOutcome::Pass,
-                python_evidence: "RESULT: PASS",
                 rust_code: None,
                 rust_field_path: None,
             },
             PythonParityCase {
                 name: "missing_manifest_intro_path",
                 mutate: remove_intro_dialogue,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "start.intro_dialogue not found",
                 rust_code: Some("path.missing"),
                 rust_field_path: Some("start.intro_dialogue"),
             },
             PythonParityCase {
                 name: "map_shop_unknown_item",
                 mutate: add_shop_with_unknown_item,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "shop item id not found in items registry: 'absent_blade'",
                 rust_code: Some("reference.missing"),
                 rust_field_path: Some("shop.items[0].id"),
             },
             PythonParityCase {
                 name: "encounter_unknown_background",
                 mutate: add_encounter_with_unknown_background,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "background 'absent_backdrop' has no ground_rect entry",
                 rust_code: Some("reference.missing"),
                 rust_field_path: Some("background"),
             },
             PythonParityCase {
                 name: "dialogue_join_unknown_character",
                 mutate: add_dialogue_with_unknown_character,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "on_complete.join_party character not found: 'absent_companion'",
                 rust_code: Some("reference.missing"),
                 rust_field_path: Some("entries[0].on_complete.join_party"),
             },
             PythonParityCase {
                 name: "recipe_unknown_output_item",
                 mutate: add_recipe_with_unknown_output,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "output.item not found in items registry: 'absent_tonic'",
                 rust_code: Some("reference.missing"),
                 rust_field_path: Some("[0].output.item"),
             },
             PythonParityCase {
                 name: "quest_consumes_undefined_flag",
                 mutate: remove_defined_quest_completion_flag,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "'quest_done' — consumed in: quests.yaml:invented_quest",
                 rust_code: Some("flag.undefined"),
                 rust_field_path: Some("[0].completed_flag"),
             },
             PythonParityCase {
                 name: "party_portrait_asset_missing",
                 mutate: remove_party_portrait,
-                python: ValidationOutcome::Fail,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "portrait file not found for 'maker': assets/maker_portrait.webp",
                 rust_code: Some("path.missing"),
                 rust_field_path: Some("party[0].portrait"),
             },
             PythonParityCase {
                 name: "manifest_cursor_missing_is_rust_strict",
                 mutate: remove_manifest_cursor,
-                python: ValidationOutcome::Pass,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "RESULT: PASS",
                 rust_code: Some("path.missing"),
                 rust_field_path: Some("title.cursor_icon"),
             },
             PythonParityCase {
                 name: "bgm_asset_missing_is_rust_strict",
                 mutate: remove_bgm_asset,
-                python: ValidationOutcome::Pass,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "RESULT: PASS",
                 rust_code: Some("path.missing"),
                 rust_field_path: Some("categories[0].entries[0]"),
             },
             PythonParityCase {
                 name: "encounter_enemy_missing_is_rust_strict",
                 mutate: add_encounter_with_unknown_enemy,
-                python: ValidationOutcome::Pass,
                 rust: ValidationOutcome::Fail,
-                python_evidence: "RESULT: PASS",
                 rust_code: Some("reference.missing"),
                 rust_field_path: Some("entries[0].formation[0]"),
             },
@@ -2904,56 +2880,6 @@ entries:
                 report.diagnostics
             );
         }
-    }
-
-    fn command_output(command: &mut Command, description: &str) -> Output {
-        command
-            .output()
-            .unwrap_or_else(|error| panic!("{description} should run: {error}"))
-    }
-
-    fn assert_pinned_python_source(source: &Path) {
-        const PIN: &str = "08970359d6cb03586948625d29b0d3351dbbf785";
-        let head = command_output(
-            Command::new("git")
-                .arg("-C")
-                .arg(source)
-                .args(["rev-parse", "HEAD"]),
-            "source HEAD query",
-        );
-        assert!(head.status.success(), "source HEAD query failed");
-        assert_eq!(String::from_utf8(head.stdout).unwrap().trim(), PIN);
-
-        let status = command_output(
-            Command::new("git")
-                .arg("-C")
-                .arg(source)
-                .args(["status", "--short"]),
-            "source worktree query",
-        );
-        assert!(status.status.success(), "source worktree query failed");
-        assert!(
-            status.stdout.is_empty(),
-            "the pinned Python source worktree must be clean"
-        );
-    }
-
-    fn run_pinned_python_validator(source: &Path, scenario: &Path) -> Output {
-        let python = source.join(".venv/bin/python");
-        let validator = source.join("tools/validate.py");
-        assert!(
-            python.is_file(),
-            "pinned source virtualenv Python is missing"
-        );
-        assert!(validator.is_file(), "pinned Python validator is missing");
-        command_output(
-            Command::new(python)
-                .arg(validator)
-                .arg("--root")
-                .arg(scenario)
-                .current_dir(source),
-            "pinned Python validator",
-        )
     }
 
     #[test]
@@ -3014,39 +2940,11 @@ entries:
         }
     }
 
-    #[test]
-    #[ignore = "requires RPG_S1_PINNED_SOURCE_DIR at the clean pinned Python source checkout"]
-    fn compares_invented_parity_cases_with_the_pinned_python_validator() {
-        let requested_source = std::env::var_os("RPG_S1_PINNED_SOURCE_DIR")
-            .map(PathBuf::from)
-            .expect("set RPG_S1_PINNED_SOURCE_DIR");
-        let source = requested_source
-            .canonicalize()
-            .expect("the pinned Python source checkout should resolve");
-        assert_pinned_python_source(&source);
-
-        for case in python_parity_cases() {
-            let fixture = InventedScenario::new();
-            (case.mutate)(&fixture);
-            let python = run_pinned_python_validator(&source, &fixture.0);
-            let output = String::from_utf8(python.stdout)
-                .expect("the Python validator should write UTF-8 output");
-            assert_eq!(
-                ValidationOutcome::from_success(python.status.success()),
-                case.python,
-                "Python outcome changed for {}:\n{output}",
-                case.name
-            );
-            assert!(
-                output.contains(case.python_evidence),
-                "Python evidence changed for {}:\n{output}",
-                case.name
-            );
-            validate_rust_parity_case(&case, &fixture);
-        }
-
-        assert_pinned_python_source(&source);
-    }
+    // `compares_invented_parity_cases_with_the_pinned_python_validator` lived here until the
+    // Python checkout was retired. It ran the source's own validator over each invented parity
+    // case and compared verdicts. The cases themselves are unaffected and still run above in
+    // `validate_rust_parity_case`; only the second opinion is gone, which is the point of no
+    // longer depending on the Python engine.
 
     #[test]
     fn production_validator_aggregates_wrong_namespace_flag_and_path_errors() {
@@ -3562,11 +3460,12 @@ npcs:
     }
 
     #[test]
-    #[ignore = "requires RPG_S1_PINNED_SCENARIO_DIR pointing at the pinned source scenario"]
-    fn audits_complete_pinned_scenario_with_typed_production_validator() {
-        let root =
-            std::env::var("RPG_S1_PINNED_SCENARIO_DIR").expect("set RPG_S1_PINNED_SCENARIO_DIR");
-        let report = validate_scenario_directory(&ScenarioRoot::default(), root);
+    fn audits_the_complete_shipped_scenario_with_the_production_validator() {
+        let report = validate_scenario_directory(&ScenarioRoot::default(), scenario_package_dir());
+        // The authored id, not the package directory name: the package directory and the id its
+        // manifest declares are allowed to differ, and here they do -- the id is inherited from
+        // the source. Pinned so that changing it becomes a deliberate act rather than a silent
+        // one.
         assert_eq!(report.scenario_id.as_deref(), Some("my_rpg_story"));
         assert_eq!(
             report.scenario_name.as_deref(),
@@ -3576,18 +3475,18 @@ npcs:
         assert_eq!(report.counts.party_members, 5);
         assert_eq!(report.counts.classes, 5);
         assert_eq!(report.counts.abilities, 42);
-        assert_eq!(report.counts.items, 172);
-        assert_eq!(report.counts.field_use_items, 13);
-        assert_eq!(report.counts.maps, 43);
-        assert_eq!(report.counts.dialogue_documents, 91);
-        assert_eq!(report.counts.enemies, 106);
-        assert_eq!(report.counts.boss_move_sets, 9);
-        assert_eq!(report.counts.encounters, 16);
+        assert_eq!(report.counts.items, 211);
+        assert_eq!(report.counts.field_use_items, 14);
+        assert_eq!(report.counts.maps, 52);
+        assert_eq!(report.counts.dialogue_documents, 128);
+        assert_eq!(report.counts.enemies, 108);
+        assert_eq!(report.counts.boss_move_sets, 11);
+        assert_eq!(report.counts.encounters, 19);
         assert_eq!(report.counts.battle_backgrounds, 13);
-        assert_eq!(report.counts.recipes, 11);
-        assert_eq!(report.counts.quests, 16);
-        assert_eq!(report.counts.bgm_keys, 12);
-        assert_eq!(report.counts.sfx_keys, 23);
+        assert_eq!(report.counts.recipes, 15);
+        assert_eq!(report.counts.quests, 17);
+        assert_eq!(report.counts.bgm_keys, 13);
+        assert_eq!(report.counts.sfx_keys, 64);
         assert!(
             report.checked_references > 700,
             "only {} references checked",
@@ -3598,45 +3497,29 @@ npcs:
             .warnings()
             .map(ToString::to_string)
             .collect::<Vec<_>>();
+        // Four, where the pinned scenario produced thirty-eight. The port repaired thirty-four of
+        // them -- missing drop items, the stranded `zone_05_mountain_foothills` metadata, the
+        // undefined `transport_warp_unlocked`, the `title.cursor_icon` and `zone.open_plains`
+        // references -- and the detailed accounting of each pinned defect that used to live here
+        // went with the checkout it described.
+        //
+        // What survives is inherited and deliberate: the Sorcerer's four ultimate-ability unlock
+        // flags are consumed by `data/classes/sorcerer.yaml` and produced by nothing. Repairing
+        // that is a content decision, not a port defect, so it is pinned here and mirrored by
+        // the package's own `validation-baseline.txt`, which CI gates against.
+        assert_eq!(errors.len(), 4, "shipped diagnostics changed:\n{errors:#?}");
         assert_eq!(
-            errors.len(),
-            38,
-            "pinned disagreements changed:\n{errors:#?}"
+            warnings.len(),
+            0,
+            "shipped warnings changed:\n{warnings:#?}"
         );
-        // The 38th is `zone_05_mountain_foothills.yaml`: no same-stem TMX, only the numbered
-        // segments `_01.tmx`, `_02.tmx`, `_03.tmx`. This was long treated as a multi-segment
-        // "convention" and suppressed. It is not one -- neither engine resolves metadata from a
-        // parent stem -- so the pinned source strands that file's BGM, `warp_order`, and two
-        // chests. The port repaired it by renaming to `_01.yaml` (roadmap B2.1); the pinned
-        // source still carries the defect, which is why this count is 38 and not 37.
-        assert_eq!(
-            report
-                .errors()
-                .filter(|finding| finding.code == "source.unreadable_map_metadata")
-                .count(),
-            1
-        );
-        assert_eq!(warnings.len(), 0, "pinned warnings changed:\n{warnings:#?}");
         assert_eq!(
             report
                 .errors()
                 .filter(|finding| finding.code == "flag.undefined")
                 .count(),
-            5
-        );
-        assert_eq!(
-            report
-                .errors()
-                .filter(|finding| finding.code == "reference.missing")
-                .count(),
-            31
-        );
-        assert_eq!(
-            report
-                .errors()
-                .filter(|finding| finding.code == "path.missing")
-                .count(),
-            1
+            4,
+            "every remaining error should be an undefined flag"
         );
         let undefined_flags = report
             .errors()
@@ -3650,41 +3533,7 @@ npcs:
                 "story_ultimate_fire",
                 "story_ultimate_water",
                 "story_ultimate_wind",
-                "transport_warp_unlocked",
             ])
-        );
-        let missing_drop_items = report
-            .errors()
-            .filter(|finding| finding.location.field_path.contains(".drops.loot["))
-            .filter_map(|finding| finding.message.split('`').nth(1))
-            .collect::<BTreeSet<_>>();
-        assert_eq!(
-            missing_drop_items,
-            BTreeSet::from([
-                "fire_dragon_horn",
-                "goblin_ear",
-                "goblin_fang",
-                "goblin_shield",
-                "rusty_blade",
-                "stone_dragon_horn",
-                "void_core",
-            ])
-        );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("title.cursor_icon"))
-        );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("zone.open_plains"))
-        );
-        assert!(errors.iter().any(|error| error.contains("goblin_fang")));
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("dungeon_ruinwatch"))
         );
     }
 }

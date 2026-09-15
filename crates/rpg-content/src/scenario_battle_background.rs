@@ -166,6 +166,7 @@ impl std::error::Error for GroundRectBoundsError {}
 mod tests {
     use super::{BattleBackgroundCatalog, GroundRect};
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
     use std::fs;
 
     #[test]
@@ -241,11 +242,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_battle_background_catalog_when_requested() {
-        let path = std::env::var_os("RPG_S1_PINNED_BATTLE_BACKGROUNDS_FILE")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_BATTLE_BACKGROUNDS_FILE must name data/battle_backgrounds.yaml");
+    fn audits_the_complete_shipped_battle_background_catalog() {
+        let path = scenario_package_dir().join("data/battle_backgrounds.yaml");
         let document = fs::read_to_string(&path)
             .unwrap_or_else(|error| panic!("{} should be readable: {error}", path.display()));
         let catalog: BattleBackgroundCatalog = scenario_yaml::from_str(&document)

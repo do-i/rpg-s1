@@ -488,6 +488,7 @@ fn default_sprite_scale() -> NonZeroU32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::scenario_package_dir;
 
     #[test]
     fn loads_every_invented_enemy_rule_shape_from_a_multi_document_fixture() {
@@ -627,11 +628,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_enemy_corpus_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_ENEMIES_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_ENEMIES_DIR must name the pinned data/enemies directory");
+    fn audits_the_complete_shipped_enemy_corpus() {
+        let root = scenario_package_dir().join("data/enemies");
 
         let mut rank_files = std::fs::read_dir(&root)
             .expect("pinned enemies directory should be readable")
@@ -685,9 +683,9 @@ mod tests {
         }
 
         assert_eq!(rank_files.len(), 8);
-        assert_eq!(enemies.len(), 106);
-        assert_eq!(move_set_files.len(), 9);
-        assert_eq!(enemies.iter().filter(|enemy| enemy.boss).count(), 10);
+        assert_eq!(enemies.len(), 108);
+        assert_eq!(move_set_files.len(), 11);
+        assert_eq!(enemies.iter().filter(|enemy| enemy.boss).count(), 12);
         assert_eq!(
             enemies
                 .iter()
@@ -700,14 +698,14 @@ mod tests {
                 .iter()
                 .filter(|enemy| matches!(enemy.behavior, EnemyBehavior::Referenced { .. }))
                 .count(),
-            9
+            11
         );
         assert_eq!(
             enemies
                 .iter()
                 .flat_map(|enemy| enemy.drops.mc.iter())
                 .count(),
-            191
+            195
         );
         assert_eq!(
             enemies
@@ -715,7 +713,7 @@ mod tests {
                 .flat_map(|enemy| enemy.drops.loot.iter())
                 .flat_map(|pool| pool.pool.iter())
                 .count(),
-            223
+            253
         );
     }
 }

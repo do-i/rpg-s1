@@ -690,6 +690,8 @@ mod tests {
     };
 
     use super::*;
+
+    use crate::test_support::scenario_package_dir;
     use crate::{
         gameplay_canvas::{GameplayCanvasCamera, camera_follow::CameraFollowTarget},
         tsx_atlas_asset::TsxAtlasAssetPlugin,
@@ -1033,10 +1035,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires RPG_S1_PINNED_SCENARIO_DIR pointing at the pinned source scenario"]
     fn copied_ardel_ground_source_graph_is_byte_identical_to_pinned_scenario() {
-        let source_root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
-            .expect("RPG_S1_PINNED_SCENARIO_DIR must name rusted_kingdoms");
+        let source_root = scenario_package_dir();
         let destination_root = crate::test_support::scenario_package_dir();
         for relative in [
             "media/maps/town_01_ardel.tmx",

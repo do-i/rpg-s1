@@ -78,6 +78,7 @@ pub enum QuestKind {
 mod tests {
     use super::{QuestCatalogFile, QuestKind};
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
 
     const FIXTURE: &str = include_str!("../../../tests/fixtures/quest-catalog-shapes.yaml");
 
@@ -188,24 +189,21 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_quest_catalog_when_requested() {
-        let path = std::env::var_os("RPG_S1_PINNED_QUESTS_FILE")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_QUESTS_FILE must name the pinned data/quests.yaml file");
+    fn audits_the_complete_shipped_quest_catalog() {
+        let path = scenario_package_dir().join("data/quests.yaml");
         let document = std::fs::read_to_string(&path)
             .unwrap_or_else(|error| panic!("{} should be readable: {error}", path.display()));
         let catalog: QuestCatalogFile = scenario_yaml::from_str(&document)
             .unwrap_or_else(|error| panic!("{} should load: {error}", path.display()));
 
-        assert_eq!(catalog.entries().len(), 16);
+        assert_eq!(catalog.entries().len(), 17);
         assert_eq!(
             catalog
                 .entries()
                 .iter()
                 .filter(|quest| quest.kind == QuestKind::Main)
                 .count(),
-            4
+            5
         );
         assert_eq!(
             catalog
@@ -215,15 +213,19 @@ mod tests {
                 .count(),
             12
         );
+        // Every main quest precedes every sub-quest. Expressed as a partition rather than a
+        // hardcoded split index, which silently encoded "there are exactly four main quests" and
+        // broke the moment a fifth was authored.
+        let main_quests = catalog
+            .entries()
+            .iter()
+            .take_while(|quest| quest.kind == QuestKind::Main)
+            .count();
         assert!(
-            catalog.entries()[..4]
+            catalog.entries()[main_quests..]
                 .iter()
-                .all(|quest| quest.kind == QuestKind::Main)
-        );
-        assert!(
-            catalog.entries()[4..]
-                .iter()
-                .all(|quest| quest.kind == QuestKind::Sub)
+                .all(|quest| quest.kind == QuestKind::Sub),
+            "main quests must all precede the sub-quests"
         );
         assert!(catalog.entries().iter().all(|quest| {
             [

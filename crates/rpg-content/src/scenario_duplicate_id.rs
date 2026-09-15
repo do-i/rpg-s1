@@ -229,6 +229,7 @@ pub fn validate_unique_ids(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::scenario_package_dir;
     use crate::{
         scenario_audio::{BgmIndex, SfxIndex},
         scenario_battle_background::BattleBackgroundCatalog,
@@ -356,11 +357,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_every_modeled_pinned_catalog_namespace_for_duplicate_ids() {
-        let root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
-            .map(PathBuf::from)
-            .expect("RPG_S1_PINNED_SCENARIO_DIR must name the pinned rusted_kingdoms directory");
+    fn audits_every_modeled_shipped_catalog_namespace_for_duplicate_ids() {
+        let root = scenario_package_dir();
         let data = root.join("data");
         let mut ids = Vec::new();
         let mut counts = BTreeMap::<CatalogNamespace, usize>::new();
@@ -570,26 +568,26 @@ mod tests {
                 (CatalogNamespace::Party, 5),
                 (CatalogNamespace::Classes, 5),
                 (CatalogNamespace::Abilities, 42),
-                (CatalogNamespace::Items, 172),
-                (CatalogNamespace::FieldUseItems, 13),
-                (CatalogNamespace::Maps, 43),
-                (CatalogNamespace::Npcs, 77),
-                (CatalogNamespace::ItemBoxes, 17),
-                (CatalogNamespace::Dialogue, 91),
-                (CatalogNamespace::Enemies, 106),
-                (CatalogNamespace::BossMoveSets, 9),
-                (CatalogNamespace::Encounters, 16),
+                (CatalogNamespace::Items, 211),
+                (CatalogNamespace::FieldUseItems, 14),
+                (CatalogNamespace::Maps, 52),
+                (CatalogNamespace::Npcs, 111),
+                (CatalogNamespace::ItemBoxes, 39),
+                (CatalogNamespace::Dialogue, 128),
+                (CatalogNamespace::Enemies, 108),
+                (CatalogNamespace::BossMoveSets, 11),
+                (CatalogNamespace::Encounters, 19),
                 (CatalogNamespace::BattleBackgrounds, 13),
-                (CatalogNamespace::Recipes, 11),
-                (CatalogNamespace::Quests, 16),
-                (CatalogNamespace::Bgm, 12),
-                (CatalogNamespace::Sfx, 23),
+                (CatalogNamespace::Recipes, 15),
+                (CatalogNamespace::Quests, 17),
+                (CatalogNamespace::Bgm, 13),
+                (CatalogNamespace::Sfx, 64),
             ])
         );
         assert_eq!(
             validate_unique_ids(ids),
             Ok(()),
-            "pinned catalog identities must be unique within their documented namespaces"
+            "shipped catalog identities must be unique within their documented namespaces"
         );
     }
 

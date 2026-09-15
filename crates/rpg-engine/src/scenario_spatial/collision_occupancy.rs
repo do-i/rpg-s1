@@ -172,6 +172,8 @@ mod tests {
     use std::{fs, path::Path};
 
     use super::*;
+
+    use crate::test_support::scenario_package_dir;
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
 
     fn invented_document(layers: &str) -> String {
@@ -261,10 +263,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
     fn pinned_ardel_known_blocked_and_open_cells_match_source() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned media/maps directory");
+        let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()

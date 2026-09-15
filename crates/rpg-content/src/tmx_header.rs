@@ -1922,6 +1922,8 @@ mod tests {
     use std::{collections::BTreeSet, fs, path::Path};
 
     use super::*;
+
+    use crate::test_support::scenario_package_dir;
     use crate::tsx_metadata::parse_tsx_tileset_metadata;
 
     const VALID: &str = include_str!("../../../tests/fixtures/tmx-header/finite-orthogonal.tmx");
@@ -2823,10 +2825,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_tmx_header_when_source_is_available() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+    fn audits_every_shipped_tmx_header() {
+        let maps = scenario_package_dir().join("media/maps");
         let mut files = fs::read_dir(Path::new(&maps))
             .expect("TMX map directory should be readable")
             .map(|entry| entry.expect("directory entry should be readable").path())
@@ -2840,14 +2840,12 @@ mod tests {
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
         }
 
-        assert_eq!(files.len(), 47);
+        assert_eq!(files.len(), 54);
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_tmx_external_tileset_reference_when_source_is_available() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+    fn audits_every_shipped_tmx_external_tileset_reference() {
+        let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()
@@ -2898,18 +2896,21 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 47);
-        assert_eq!(parsed_documents, 46);
-        assert_eq!(inline_tilesets, 1);
-        assert_eq!(reference_count, 263);
-        assert_eq!(distinct_sources.len(), 17);
+        assert_eq!(files.len(), 54);
+        assert_eq!(parsed_documents, 54);
+        // Zero, where the pinned corpus had one. Both that inline tileset and the seventeenth
+        // distinct source below belonged to the source's `sample_01.tmx` — a sample rather than a
+        // game map, which the port never migrated. Every shipped map references its tilesets
+        // externally, so the parser's inline branch now has no production exercise; keep the
+        // count asserted so that reappearing is a decision rather than a surprise.
+        assert_eq!(inline_tilesets, 0);
+        assert_eq!(reference_count, 322);
+        assert_eq!(distinct_sources.len(), 16);
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_csv_tile_layer_when_source_is_available() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+    fn audits_every_shipped_csv_tile_layer() {
+        let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()
@@ -2954,17 +2955,15 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 47);
-        assert_eq!(layer_count, 170);
-        assert_eq!(gid_count, 161_066);
-        assert_eq!(flip_combination_counts, [160_864, 10, 2, 0, 0, 189, 1, 0]);
+        assert_eq!(files.len(), 54);
+        assert_eq!(layer_count, 193);
+        assert_eq!(gid_count, 167_390);
+        assert_eq!(flip_combination_counts, [167_188, 10, 2, 0, 0, 189, 1, 0]);
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_rectangle_object_group_when_source_is_available() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+    fn audits_every_shipped_rectangle_object_group() {
+        let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()
@@ -3024,15 +3023,15 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 47);
-        assert_eq!(portal_groups, 45);
-        assert_eq!(boss_groups, 10);
-        assert_eq!(objects, 109);
+        assert_eq!(files.len(), 54);
+        assert_eq!(portal_groups, 53);
+        assert_eq!(boss_groups, 11);
+        assert_eq!(objects, 126);
         assert_eq!(zero_sized_objects, 10);
-        assert_eq!(runtime_portals, 92);
-        assert_eq!(properties, 276);
-        assert_eq!(property_strings, 92);
-        assert_eq!(property_integers, 184);
+        assert_eq!(runtime_portals, 108);
+        assert_eq!(properties, 324);
+        assert_eq!(property_strings, 108);
+        assert_eq!(property_integers, 216);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);
     }

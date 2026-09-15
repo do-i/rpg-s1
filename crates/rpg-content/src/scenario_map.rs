@@ -348,6 +348,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support::scenario_package_dir;
     use std::fs;
     use std::num::NonZeroU32;
     use std::path::Path;
@@ -502,10 +503,8 @@ enemy_spawn: { init: 3, max: 6, interval: 25.0 }
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_map_metadata_file_when_source_is_available() {
-        let maps = std::env::var_os("RPG_S1_PINNED_MAPS_DIR")
-            .expect("RPG_S1_PINNED_MAPS_DIR must name the pinned data/maps directory");
+    fn audits_every_shipped_map_metadata_file() {
+        let maps = scenario_package_dir().join("data/maps");
         let mut files = fs::read_dir(Path::new(&maps))
             .expect("map metadata directory should be readable")
             .map(|entry| entry.expect("directory entry should be readable").path())
@@ -524,7 +523,7 @@ enemy_spawn: { init: 3, max: 6, interval: 25.0 }
             missing_ids += usize::from(map.id.is_none());
         }
 
-        assert_eq!(files.len(), 43);
-        assert_eq!(missing_ids, 16);
+        assert_eq!(files.len(), 52);
+        assert_eq!(missing_ids, 25);
     }
 }

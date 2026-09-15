@@ -346,6 +346,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support::scenario_package_dir;
     use std::fs;
     use std::path::Path;
 
@@ -635,10 +636,8 @@ entries:
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_every_pinned_dialogue_file_when_source_is_available() {
-        let dialogue_dir = std::env::var_os("RPG_S1_PINNED_DIALOGUE_DIR")
-            .expect("RPG_S1_PINNED_DIALOGUE_DIR must name the pinned data/dialogue directory");
+    fn audits_every_shipped_dialogue_file() {
+        let dialogue_dir = scenario_package_dir().join("data/dialogue");
         let mut files = fs::read_dir(Path::new(&dialogue_dir))
             .expect("dialogue directory should be readable")
             .map(|entry| entry.expect("directory entry should be readable").path())
@@ -670,8 +669,8 @@ entries:
             }
         }
 
-        assert_eq!(files.len(), 91);
-        assert_eq!((cutscenes, entry_documents, line_pools), (1, 89, 1));
+        assert_eq!(files.len(), 128);
+        assert_eq!((cutscenes, entry_documents, line_pools), (1, 126, 1));
         assert_eq!(idless, 2);
     }
 }

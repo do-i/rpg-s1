@@ -147,6 +147,7 @@ fn default_true() -> bool {
 mod tests {
     use super::{EncounterBoss, EncounterFormation, EncounterZone};
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
     use std::fs;
 
     #[test]
@@ -294,11 +295,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_encounter_corpus_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_ENCOUNTS_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_ENCOUNTS_DIR must name the pinned data/encount directory");
+    fn audits_the_complete_shipped_encounter_corpus() {
+        let root = scenario_package_dir().join("data/encount");
 
         let mut files = fs::read_dir(&root)
             .expect("pinned encount directory should be readable")
@@ -324,16 +322,33 @@ mod tests {
             assert_eq!(zone.effective_id(stem), stem);
             assert!(!zone.name.is_empty());
             assert!(!zone.background.is_empty());
-            assert!(zone.total_weight() > 0);
+            // A zone that lists formations must be able to roll one; zero total weight would
+            // make every entry unreachable. A zone with no formations at all is a different
+            // thing entirely and legitimate: the port authors deliberately silent zones (the
+            // Ardel epilogue, the Marshal's camp, the Hearth core) that exist only to give a
+            // scripted battle its backdrop, and they declare that silence with `density: 0.0`.
+            // The pinned corpus had none of those, which is why this used to be unconditional.
+            if zone.entries.is_empty() {
+                assert_eq!(
+                    zone.density.get(),
+                    0.0,
+                    "{stem} has no formations, so it must declare itself silent"
+                );
+            } else {
+                assert!(
+                    zone.total_weight() > 0,
+                    "{stem} lists formations that can never be selected"
+                );
+            }
             zones.push(zone);
         }
 
-        assert_eq!(files.len(), 16);
+        assert_eq!(files.len(), 19);
         assert_eq!(
             zones.iter().map(|zone| zone.entries.len()).sum::<usize>(),
             147
         );
-        assert_eq!(zones.iter().filter(|zone| zone.boss.is_some()).count(), 10);
+        assert_eq!(zones.iter().filter(|zone| zone.boss.is_some()).count(), 11);
         assert_eq!(
             zones
                 .iter()
