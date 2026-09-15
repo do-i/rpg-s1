@@ -124,6 +124,7 @@ fn one() -> NonZeroU32 {
 mod tests {
     use super::{MagicCoreSize, RecipeCatalogFile};
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
 
     #[test]
     fn loads_regular_and_unique_output_recipe_shapes() {
@@ -226,11 +227,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_recipe_catalog_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_RECIPES_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_RECIPES_DIR must name the pinned data/recipe directory");
+    fn audits_the_complete_shipped_recipe_catalog() {
+        let root = scenario_package_dir().join("data/recipe");
         let mut files = std::fs::read_dir(&root)
             .expect("pinned recipe directory should be readable")
             .map(|entry| {
@@ -280,9 +278,9 @@ mod tests {
             files[0].file_name().and_then(|name| name.to_str()),
             Some("all_recipe.yaml")
         );
-        assert_eq!(recipe_count, 11);
+        assert_eq!(recipe_count, 15);
         assert_eq!(unique_count, 1);
-        assert_eq!(item_ingredients, 20);
-        assert_eq!(magic_core_ingredients, 8);
+        assert_eq!(item_ingredients, 28);
+        assert_eq!(magic_core_ingredients, 12);
     }
 }

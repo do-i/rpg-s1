@@ -686,6 +686,8 @@ mod tests {
     use std::{collections::BTreeSet, fs, path::Path};
 
     use super::*;
+
+    use crate::test_support::scenario_package_dir;
     use crate::tmx_header::scan_tmx_external_tilesets_for_test;
 
     const VALID: &str = include_str!("../../../tests/fixtures/tsx-metadata/invented-atlas.tsx");
@@ -927,10 +929,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires RPG_S1_PINNED_SCENARIO_DIR pointing at the pinned source scenario"]
-    fn audits_aric_animation_frames_from_pinned_scenario() {
-        let scenario_root = std::env::var_os("RPG_S1_PINNED_SCENARIO_DIR")
-            .expect("RPG_S1_PINNED_SCENARIO_DIR must name the pinned rusted_kingdoms directory");
+    fn audits_aric_animation_frames_from_the_shipped_scenario() {
+        let scenario_root = scenario_package_dir();
         let logical =
             ScenarioRelativePath::try_from("media/sprites/party/01_aric_walk.tsx").unwrap();
         let xml = fs::read_to_string(Path::new(&scenario_root).join(logical.as_str()))
@@ -962,10 +962,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately pinned Python scenario checkout"]
-    fn audits_external_tsx_targets_discovered_from_pinned_tmx_references() {
-        let maps = std::env::var_os("RPG_S1_PINNED_TMX_DIR")
-            .expect("RPG_S1_PINNED_TMX_DIR must name the pinned assets/maps directory");
+    fn audits_external_tsx_targets_discovered_from_shipped_tmx_references() {
+        let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
         let scenario_root = maps
             .parent()
@@ -1009,7 +1007,11 @@ mod tests {
                     .is_file()
             );
         }
-        assert_eq!(maps.len(), 47);
-        assert_eq!(targets.len(), 17);
+        assert_eq!(maps.len(), 54);
+        // Sixteen distinct tilesets across more maps than the pinned corpus had, which referenced
+        // seventeen. The missing one is `beeler/grass_water_clif.tsx`, used only by the source's
+        // `sample_01.tmx` — a sample, not a game map, so the port never migrated it. M14.06
+        // dispositioned the tileset itself as repository-only via `release-assets-exclude.txt`.
+        assert_eq!(targets.len(), 16);
     }
 }

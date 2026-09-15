@@ -655,6 +655,7 @@ where
 mod tests {
     use super::*;
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
 
     const METADATA_FIXTURES: [(&str, &str, usize); 12] = [
         (
@@ -1023,11 +1024,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_pinned_item_corpus_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_ITEMS_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_ITEMS_DIR must name the pinned data/items directory");
+    fn audits_the_shipped_item_corpus() {
+        let root = scenario_package_dir().join("data/items");
         let mut files = std::fs::read_dir(root)
             .expect("pinned items directory should be readable")
             .map(|entry| {
@@ -1043,19 +1041,23 @@ mod tests {
         files.sort();
 
         let expected_file_counts = [
-            ("accessories.yaml", 3),
-            ("body.yaml", 4),
+            ("accessories.yaml", 10),
+            ("body.yaml", 9),
             ("consumables_battle_throw.yaml", 4),
             ("consumables_field.yaml", 4),
-            ("consumables_recovery.yaml", 6),
+            ("consumables_recovery.yaml", 7),
             ("consumables_status_cure.yaml", 4),
-            ("field_use.yaml", 13),
-            ("helmets.yaml", 4),
+            ("field_use.yaml", 14),
+            ("helmets.yaml", 8),
             ("key_items.yaml", 2),
             ("magic_cores.yaml", 5),
             ("materials.yaml", 120),
-            ("shields.yaml", 4),
-            ("weapons.yaml", 12),
+            // Two files the port added that the pinned corpus had no counterpart for: repairs for
+            // dangling enemy-drop ids the source shipped pointing at nothing.
+            ("migration_endgame_drops.yaml", 3),
+            ("migration_zone1_drops.yaml", 4),
+            ("shields.yaml", 8),
+            ("weapons.yaml", 23),
         ];
         let mut observed_file_counts = Vec::new();
         let mut metadata_count = 0;
@@ -1117,12 +1119,12 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 13);
+        assert_eq!(files.len(), 15);
         assert_eq!(observed_file_counts, expected_file_counts);
-        assert_eq!(metadata_count, 172);
-        assert_eq!(field_use_count, 13);
-        assert_eq!(item_types, [18, 120, 2, 5, 12, 4, 4, 4, 3]);
-        assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 1, 4]);
-        assert_eq!(field_effects, [2, 2, 3, 4, 2]);
+        assert_eq!(metadata_count, 211);
+        assert_eq!(field_use_count, 14);
+        assert_eq!(item_types, [19, 127, 2, 5, 23, 8, 8, 9, 10]);
+        assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4]);
+        assert_eq!(field_effects, [2, 2, 3, 4, 3]);
     }
 }

@@ -235,6 +235,7 @@ impl<'de> Deserialize<'de> for StrictString {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support::scenario_package_dir;
     use std::fs;
 
     use super::{BGM_INDEX_PATH, BgmIndex, SFX_INDEX_PATH, SfxIndex};
@@ -375,36 +376,36 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_complete_pinned_audio_indexes_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_AUDIO_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_AUDIO_DIR must name the pinned data/audio directory");
+    fn audits_the_complete_shipped_audio_indexes() {
+        let root = scenario_package_dir().join("data/audio");
         let bgm_document = fs::read_to_string(root.join("bgm_index.yaml"))
-            .expect("pinned BGM index should be readable");
+            .expect("shipped BGM index should be readable");
         let sfx_document = fs::read_to_string(root.join("sfx_index.yaml"))
-            .expect("pinned SFX index should be readable");
+            .expect("shipped SFX index should be readable");
         let bgm: BgmIndex =
-            scenario_yaml::from_str(&bgm_document).expect("pinned BGM index should load");
+            scenario_yaml::from_str(&bgm_document).expect("shipped BGM index should load");
         let sfx: SfxIndex =
-            scenario_yaml::from_str(&sfx_document).expect("pinned SFX index should load");
+            scenario_yaml::from_str(&sfx_document).expect("shipped SFX index should load");
         let scenario_root = ScenarioRoot::default();
 
-        assert_eq!(bgm.categories.len(), 5);
+        // Four, not the pinned corpus's five. The source carried an `overworld:` group whose
+        // four tracks no map, scene or catalog ever named; the port dissolved it and reassigned
+        // those tracks to reachable zone keys rather than shipping unreachable audio.
+        assert_eq!(bgm.categories.len(), 4);
         assert_eq!(
             bgm.categories
                 .iter()
                 .map(|category| category.entries.len())
                 .sum::<usize>(),
-            12
+            13
         );
-        assert_eq!(sfx.categories.len(), 2);
+        assert_eq!(sfx.categories.len(), 3);
         assert_eq!(
             sfx.categories
                 .iter()
                 .map(|category| category.entries.len())
                 .sum::<usize>(),
-            23
+            64
         );
         assert_eq!(
             bgm.path_for_key("title.default").unwrap().as_str(),

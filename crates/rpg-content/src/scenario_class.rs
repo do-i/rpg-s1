@@ -912,6 +912,7 @@ where
 mod tests {
     use super::*;
     use crate::scenario_yaml;
+    use crate::test_support::scenario_package_dir;
 
     #[test]
     fn loads_complete_class_and_every_authored_ability_field_shape() {
@@ -1244,11 +1245,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires the separately licensed pinned Python source checkout"]
-    fn audits_the_pinned_class_corpus_when_requested() {
-        let root = std::env::var_os("RPG_S1_PINNED_CLASSES_DIR")
-            .map(std::path::PathBuf::from)
-            .expect("RPG_S1_PINNED_CLASSES_DIR must name the pinned data/classes directory");
+    fn audits_the_shipped_class_corpus() {
+        let root = scenario_package_dir().join("data/classes");
         let mut files = std::fs::read_dir(root)
             .expect("pinned classes directory should be readable")
             .map(|entry| {
