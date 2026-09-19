@@ -1984,7 +1984,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/data/dialogue/elder_intro.yaml` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/data/dialogue/elder_intro.yaml` |
 | Source SHA-256 | `1f6e9f269495dd31fd422f8a753154a257bc87b9ff368fd47c436bb2fbc4dffb` |
-| Destination SHA-256 | `1f6e9f269495dd31fd422f8a753154a257bc87b9ff368fd47c436bb2fbc4dffb` |
+| Destination SHA-256 | `2ded827b1a12cf88d019c83e6c47374b09aef36189bc2e693e77900549468895` |
 | Asset kind | scenario YAML |
 | Title/name | `elder_intro.yaml` |
 | Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
@@ -1992,7 +1992,7 @@ status. The required fields are intentionally repeated in each entry.
 | License identifier/name | unknown |
 | License text/notice location | unknown |
 | Required attribution | unknown |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
+| Modification status/details | **Modified by this port after copying.** W12.5-6-DIALOG revived a dead trailing entry (the source's own duplicated "safety fallback" line) into a reachable epilogue line gated on the final boss; no other prose changed. The destination hash above is the current committed file and is authoritative for what would ship; the source hash is retained so the derivation stays traceable. Being a derivative does not clear the original's rights, which remain unknown. |
 | Redistribution permission | unknown |
 | Commercial-use permission | unknown |
 | Derivative-work permission | unknown |
@@ -2387,7 +2387,6 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0135 | `rusted_kingdoms/data/dialogue/armor_shop_millhaven.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_millhaven.yaml` | `1b6f81f727271ca10851d4efe07ce0801fe16da1e64453dd2de94a073c6ef8a7` | scenario YAML / armor_shop_millhaven.yaml |
 | ALI-0136 | `rusted_kingdoms/data/dialogue/armor_shop_ruinwatch.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/armor_shop_ruinwatch.yaml` | `ade853704ba482abf24eb970b7666c3fdcb6a94a9544cba500d312efd438b20a` | scenario YAML / armor_shop_ruinwatch.yaml |
 | ALI-0137 | `rusted_kingdoms/data/dialogue/ashenveil_acolyte.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_acolyte.yaml` | `a2b215c1afa235383d44dcbd54b25a50586edfa69d2c111ab3a7e40c5158b614` | scenario YAML / ashenveil_acolyte.yaml |
-| ALI-0138 | `rusted_kingdoms/data/dialogue/ashenveil_ashgatherer.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_ashgatherer.yaml` | `8c4887c70859c61858baff9d81fedd8d4884e792cfcc80a40b7a22a2854af388` | scenario YAML / ashenveil_ashgatherer.yaml |
 | ALI-0139 | `rusted_kingdoms/data/dialogue/ashenveil_keeper.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_keeper.yaml` | `54846871280a4dc7044e93d060fec261e7695703b75b58952abe79bdcf0753ef` | scenario YAML / ashenveil_keeper.yaml |
 | ALI-0140 | `rusted_kingdoms/data/dialogue/ashenveil_mourner.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_mourner.yaml` | `862098fde20821b5cd964716a7ae87a202857865ed72258c7463f306352f0dcf` | scenario YAML / ashenveil_mourner.yaml |
 | ALI-0141 | `rusted_kingdoms/data/dialogue/ashenveil_widow.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_widow.yaml` | `6bc16dfc51dac21803bcb2c8202e6188dc9f144606b2f6212d00b9523c2ee858` | scenario YAML / ashenveil_widow.yaml |
@@ -3165,9 +3164,10 @@ destination hash, and the modification fact their previous section denied.
 | ALI-0108 | `rusted_kingdoms/data/enemies/enemies_rank_5_C.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_5_C.yaml` | `7cdea20500d1de233aa176baf2641056e670947272dcd41460905a42320c9008` | scenario YAML / enemies_rank_5_C.yaml |
 | ALI-0109 | `rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_6_D.yaml` | `996813151f95dc2bf760a547e87cc25649a7000a17937be999081f55f00356f1` | scenario YAML / enemies_rank_6_D.yaml |
 | ALI-0110 | `rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `db08fd9880ca69551f75a88f5548535d4d8fd1544b9b8e5818c350e84ad3e2d6` | scenario YAML / enemies_rank_7_E.yaml |
+| ALI-0138 | `rusted_kingdoms/data/dialogue/ashenveil_ashgatherer.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_ashgatherer.yaml` | `17e3693ec9929cc2af0b4c4fa972a8b373c68a9267bb7f995f58983b102ab03b` | scenario YAML / ashenveil_ashgatherer.yaml (moved here 2026-09-18: W12.5-6-DIALOG revived its `sq_locket_met` flavor entry, so it is no longer byte-identical to the pinned source) |
 | ALI-0872 | `rusted_kingdoms/data/dialogue/ardel_shrine_keeper.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_shrine_keeper.yaml` | `aad9817d223d0004d8c1f727bfd9c40a07ea3a4e35c6653169bf079e4477dbbf` | scenario YAML / ardel_shrine_keeper.yaml |
 | ALI-0873 | `rusted_kingdoms/data/dialogue/ashenveil_oracle_hint.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/ashenveil_oracle_hint.yaml` | `a299fb90962cf3db45aa9b9490272c029ba4eb2cf9be88eb344377e5dda2bc5b` | scenario YAML / ashenveil_oracle_hint.yaml |
-| ALI-0874 | `rusted_kingdoms/data/dialogue/frostholm_courtier.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_courtier.yaml` | `c37742bd4c14d49e4dfb58307dbca4f3393e76a417ed250538474fd335b14dca` | scenario YAML / frostholm_courtier.yaml |
+| ALI-0874 | `rusted_kingdoms/data/dialogue/frostholm_courtier.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_courtier.yaml` | `567cc074e76bbdf4f029a51457dbe9a52e9c1058794683fccf6b981419d9f967` | scenario YAML / frostholm_courtier.yaml (W12.5-6-DIALOG revived its `sq_alms_met` flavor entry and hoisted the Act IV row; hash updated 2026-09-18 for the second edit) |
 | ALI-0875 | `rusted_kingdoms/data/dialogue/frostholm_vault_warden.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_vault_warden.yaml` | `04cfd0faf8db9f04aafcf65ac57ef600f5a298dc05f8c0a88e1d84efa9dc705b` | scenario YAML / frostholm_vault_warden.yaml |
 | ALI-0876 | `rusted_kingdoms/data/dialogue/mc_shop_intro.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/mc_shop_intro.yaml` | `46f2e2df21f96f46dbcbe70613b09a8bf663d96d884f1e4b2ebf18e2460feb09` | scenario YAML / mc_shop_intro.yaml |
 | ALI-0877 | `rusted_kingdoms/data/dialogue/port_master_intro.yaml` | `assets/scenarios/rusted_kingdoms/data/dialogue/port_master_intro.yaml` | `f5d175435918b5130f8c9595bb45aa9720d919b90826329d7505e8b20c984e87` | scenario YAML / port_master_intro.yaml |
