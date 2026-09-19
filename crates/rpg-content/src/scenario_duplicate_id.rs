@@ -568,7 +568,7 @@ mod tests {
                 (CatalogNamespace::Party, 5),
                 (CatalogNamespace::Classes, 5),
                 (CatalogNamespace::Abilities, 42),
-                (CatalogNamespace::Items, 211),
+                (CatalogNamespace::Items, 210),
                 (CatalogNamespace::FieldUseItems, 14),
                 (CatalogNamespace::Maps, 52),
                 (CatalogNamespace::Npcs, 111),
