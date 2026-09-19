@@ -1051,7 +1051,7 @@ mod tests {
             ("helmets.yaml", 8),
             ("key_items.yaml", 2),
             ("magic_cores.yaml", 5),
-            ("materials.yaml", 120),
+            ("materials.yaml", 119),
             // Two files the port added that the pinned corpus had no counterpart for: repairs for
             // dangling enemy-drop ids the source shipped pointing at nothing.
             ("migration_endgame_drops.yaml", 3),
@@ -1121,9 +1121,9 @@ mod tests {
 
         assert_eq!(files.len(), 15);
         assert_eq!(observed_file_counts, expected_file_counts);
-        assert_eq!(metadata_count, 211);
+        assert_eq!(metadata_count, 210);
         assert_eq!(field_use_count, 14);
-        assert_eq!(item_types, [19, 127, 2, 5, 23, 8, 8, 9, 10]);
+        assert_eq!(item_types, [19, 126, 2, 5, 23, 8, 8, 9, 10]);
         assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4]);
         assert_eq!(field_effects, [2, 2, 3, 4, 3]);
     }

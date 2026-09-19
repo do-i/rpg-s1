@@ -3475,7 +3475,7 @@ npcs:
         assert_eq!(report.counts.party_members, 5);
         assert_eq!(report.counts.classes, 5);
         assert_eq!(report.counts.abilities, 42);
-        assert_eq!(report.counts.items, 211);
+        assert_eq!(report.counts.items, 210);
         assert_eq!(report.counts.field_use_items, 14);
         assert_eq!(report.counts.maps, 52);
         assert_eq!(report.counts.dialogue_documents, 128);
