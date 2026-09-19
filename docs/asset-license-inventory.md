@@ -3230,22 +3230,24 @@ Payload files with no counterpart in the pinned source tree at `08970359d6cb0358
 These were authored in this repository. Each row is a distinct ledger entry.
 Shared review fields for every row:
 
-- creator/rightsholder: this project;
+- creator/rightsholder: Joji Doi, the repository owner;
 - source/evidence: no pinned-source counterpart exists; searched by the
   destination-to-source path rule on 2026-09-12;
-- license, notice, and required attribution: **unknown — the project has not
-  yet stated the terms under which it publishes its own content**;
+- license: **MIT**, the same terms as `LICENSE` at the repository root, which
+  the owner extended to cover original content on 2026-09-19;
+- notice and required attribution: the root `LICENSE` file, shipped with the
+  payload;
 - modification: not-applicable; authored here rather than copied;
-- redistribution, commercial use, and derivatives: unknown, pending that grant;
-- review: `needs-evidence`, automated backfill audit, 2026-09-12;
-- related work: M14.05; and
-- blocker: **Release blocker, but the one blocker the project can clear by
-  itself.** These files need an explicit redistribution grant from the owner,
-  not third-party evidence. A single owner decision covers every row here.
+- redistribution, commercial use, and derivatives: **yes**, under MIT;
+- review: `approved`, Joji Doi, 2026-09-19; and
+- related work: M14.05.
 
-Authorship in this repository is recorded as a fact about provenance. It is not
-a license: an owner grant is still required before these may ship, which is why
-every row is `needs-evidence` rather than `approved`.
+These were the one release blocker the project could clear by itself, and the
+owner cleared it: asked on 2026-09-19 whether original content should be
+covered by the existing MIT, a new content licence, or CC0, the owner chose MIT
+and granted redistribution. That grant covers every row in this section and
+nothing else — it says nothing about the migrated third-party files in the two
+sections above, which still need their own evidence.
 
 | ID | Source path in the pinned source tree | Destination path | SHA-256 | Kind/name |
 | --- | --- | --- | --- | --- |
