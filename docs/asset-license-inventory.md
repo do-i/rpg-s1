@@ -309,7 +309,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/assets/maps/town_01_ardel.tmx` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` |
 | Source SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
-| Destination SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
+| Destination SHA-256 | `dce403d3a7e2e8975a7164f8724faa3c8bdbd641d171b7f3d0b1e06cc20d0d8b` |
 | Asset kind | TMX |
 | Title/name | Ardel town map (`town_01_ardel`) |
 | Creator/rightsholder | Ninja is the source commit author; copyright ownership and any additional contributors are not expressly documented. |
@@ -500,81 +500,6 @@ status. The required fields are intentionally repeated in each entry.
 | Reviewer/date | Codex evidence audit, 2026-08-10 |
 | Related port task/wave | M4.12 |
 | Notes/blocker | **Release blocker.** Resolve the companion image's provenance and identify the metadata's applicable terms before public redistribution. |
-
-### Asset entry: `ALI-0016` — Astral Pixels `finestre` atlas image
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0016` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/finestre.png` |
-| Source SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
-| Destination SHA-256 | `d09a5200065c60a9d749612d7bf9c92586e026206bb63831781e4ca814734867` |
-| Asset kind | tileset image |
-| Title/name | `finestre` window atlas from RPG Interior Tileset 32x32 |
-| Creator/rightsholder | AstralPixels is identified by the pinned local credit and candidate official asset page. |
-| Source/evidence | Exact pinned source file; source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2` (`Add house map in ardel`); pinned `astralpixels/credit.txt`; [official RPG Interior Tileset 32x32 asset page](https://astralpixels.itch.io/rpg-interior-tileset-32x32-furniture-house-pack), accessed 2026-08-10 |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | Official asset page linked above permits personal and commercial project use and modification, prohibits redistributing/reselling/repackaging the assets, and does not require credit. |
-| Required attribution | None stated by the candidate asset page; preserve the pinned voluntary credit while provenance is resolved. |
-| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. The 160-by-160 file appears to be a project-specific extracted window atlas, but the derivation recipe is not documented. |
-| Redistribution permission | unknown; project embedding appears contemplated by the candidate terms, but the source does not prove exact-file acquisition or how the extracted atlas was produced. |
-| Commercial-use permission | unknown pending exact-file provenance; the candidate terms permit commercial project use. |
-| Derivative-work permission | unknown pending exact-file provenance; the candidate terms permit modification. |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** Obtain the original `interior1.zip` acquisition record and preserve a reproducible mapping from that package to this extracted exact hash. Confirm that embedding the extracted subset in a distributable game complies with the no-repackaging term before release. |
-
-### Asset entry: `ALI-0017` — Astral Pixels `finestre` Tiled metadata
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0017` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/finestre.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/finestre.tsx` |
-| Source SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
-| Destination SHA-256 | `091787c2ce0e1361835b4698555cc011189011285c27accaea0c4f4732095f77` |
-| Asset kind | TSX |
-| Title/name | Astral Pixels `finestre` Tiled metadata |
-| Creator/rightsholder | Ninja is the source import author; AstralPixels is the identified creator of the referenced artwork. |
-| Source/evidence | Exact pinned source file and source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; companion image `ALI-0016`; pinned `astralpixels/credit.txt`; inspected 2026-08-10 |
-| License identifier/name | unknown for the project-authored metadata; companion artwork has candidate official asset-page terms. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016` |
-| Required attribution | Preserve the companion voluntary credit while provenance is unresolved. |
-| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, five columns, and 25 tiles. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** Resolve the companion exact-file provenance and metadata terms before public redistribution. |
-
-### Asset entry: `ALI-0018` — Astral Pixels source credit
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0018` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/credit.txt` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` |
-| Source SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
-| Destination SHA-256 | `575258fbc7761b51ebec5f9041c50e31b5d06e5390a200e3d21ecad73eefe0a1` |
-| Asset kind | attribution/source notice |
-| Title/name | Astral Pixels source credit |
-| Creator/rightsholder | not-applicable; this factual notice identifies the associated artwork's candidate official source. |
-| Source/evidence | Exact pinned source notice and source import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; official page linked by the notice; inspected 2026-08-10 |
-| License identifier/name | not-applicable; retained as source evidence for the associated artwork. |
-| License text/notice location | Official Astral Pixels asset page named in the file. |
-| Required attribution | Preserve unmodified while the associated asset remains in the tree. |
-| Modification status/details | Unmodified: source and destination are byte-for-byte identical. |
-| Redistribution permission | yes; this factual source URL is preserved to support rights review. |
-| Commercial-use permission | yes; this factual notice is not independently exploited artwork. |
-| Derivative-work permission | not-applicable; preserve the factual notice unmodified. |
-| Review status | `approved` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | This notice does not itself prove exact-file provenance or remove the `ALI-0016` and `ALI-0017` blockers. |
 
 ### Asset entry: `ALI-0019` — Rusted Kingdoms scenario manifest
 
@@ -984,7 +909,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/assets/maps/town_01_ardel_house_01.tmx` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` |
 | Source SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
-| Destination SHA-256 | `b1c7821f81c40e067dd5c59b394d12beaf7eb072d80076b2af033c2771ee28fd` |
+| Destination SHA-256 | `4b30ee43d37c7aed04bcb783a9ad6890b2daccf552f17f419a95a44e7396e56d` |
 | Asset kind | Tiled map |
 | Title/name | `town_01_ardel_house_01.tmx` |
 | Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
@@ -1425,356 +1350,6 @@ status. The required fields are intentionally repeated in each entry.
 | Reviewer/date | Codex evidence audit, 2026-08-10 |
 | Related port task/wave | M5.08-M5.20 |
 | Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
-
-### Asset entry: `ALI-0053` — `altro.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0053` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/altro.png` |
-| Source SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
-| Destination SHA-256 | `3ea4e8cb3bcf46b18f174d4b790747e916006c566da5fc4dd146ea2a89fc887f` |
-| Asset kind | image |
-| Title/name | `altro.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0054` — `altro.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0054` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/altro.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/altro.tsx` |
-| Source SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
-| Destination SHA-256 | `55872b7a10c85d183e6ff1332e1791d68d148ed0867c14951adb6f69e035b23b` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `altro.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0055` — `cucina.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0055` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/cucina.png` |
-| Source SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
-| Destination SHA-256 | `46700310f1cd1c7f0c5ccf10cb1e5af89ae675f103480811427d710d82ded7f6` |
-| Asset kind | image |
-| Title/name | `cucina.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0056` — `cucina.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0056` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/cucina.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/cucina.tsx` |
-| Source SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
-| Destination SHA-256 | `1247bbf165a038b2ad45236674038d2496b1f6b6d5cb0917f56c323584de98ae` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `cucina.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0057` — `mensole.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0057` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mensole.png` |
-| Source SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
-| Destination SHA-256 | `253d47b1489f59dfc7d309c50927944a99aa6233d1049249f7902a1f41c3757b` |
-| Asset kind | image |
-| Title/name | `mensole.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0058` — `mensole.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0058` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mensole.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mensole.tsx` |
-| Source SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
-| Destination SHA-256 | `5cf8fe6900c738366a3dd818d789b18bac3cfaa1884b73a5f966866d2420abae` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `mensole.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0059` — `mobili.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0059` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mobili.png` |
-| Source SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
-| Destination SHA-256 | `467e550f0c66e24505dff542684547e14e41b771164167c5124c81acf297f59d` |
-| Asset kind | image |
-| Title/name | `mobili.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0060` — `mobili.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0060` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/mobili.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/mobili.tsx` |
-| Source SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
-| Destination SHA-256 | `2da6294c0b742cf87366205a76fe65cfeb0754d9abea938932614d963ebe1a5d` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `mobili.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0061` — `muro_tileset.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0061` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/muro_tileset.png` |
-| Source SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
-| Destination SHA-256 | `772acd218e50f724959ef15d850971d6ba417a9a29c45a244ed2fd5d43465dea` |
-| Asset kind | image |
-| Title/name | `muro_tileset.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0062` — `muro_tileset_wall.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0062` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/muro_tileset_wall.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/muro_tileset_wall.tsx` |
-| Source SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
-| Destination SHA-256 | `904cfb5af6321f9721f292d359d369b5f871257d7c07c11a0e9a3ad4a0f97839` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `muro_tileset_wall.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0063` — `scale.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0063` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/scale.png` |
-| Source SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
-| Destination SHA-256 | `de88f8ed9297a3592ad8f5197e4fefdb21a2e3150a4e699fd0f9b371b612f151` |
-| Asset kind | image |
-| Title/name | `scale.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0064` — `scale.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0064` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/scale.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/scale.tsx` |
-| Source SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
-| Destination SHA-256 | `6af8fb4d85efb9cbf620bf9e5e22237c13198f51302cc1453887f965b8d91539` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `scale.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0065` — `terreno.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0065` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/terreno.png` |
-| Source SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
-| Destination SHA-256 | `880e9099e0e3d2d433c6079db99747f32b7ac555120e953f325fb0814f0dde6e` |
-| Asset kind | image |
-| Title/name | `terreno.png` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
-
-### Asset entry: `ALI-0066` — `terreno.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0066` |
-| Source path | `rusted_kingdoms/assets/tilesets/astralpixels/terreno.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/terreno.tsx` |
-| Source SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
-| Destination SHA-256 | `9e93464720694cd682e9bbf3d2c9aad4c6521b01b73673e613e8e92b5008d0e2` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `terreno.tsx` |
-| Creator/rightsholder | AstralPixels is identified as the artwork creator by the pinned credit; the source import author created the TSX metadata. |
-| Source/evidence | Exact pinned source file; import commit `582e7487602ea629e8a62eb3fb4ad57a992854c2`; pinned AstralPixels credit and official page recorded by `ALI-0016` through `ALI-0018`; inspected 2026-08-10. |
-| License identifier/name | Candidate official asset-page terms; exact-file acquisition provenance is incomplete. |
-| License text/notice location | `assets/scenarios/rusted_kingdoms/media/tilesets/astralpixels/credit.txt` and the official page recorded by `ALI-0016`. |
-| Required attribution | Preserve the pinned voluntary AstralPixels credit while provenance is unresolved. |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.05-M5.06 |
-| Notes/blocker | **Release blocker.** Obtain the original package acquisition record, map it reproducibly to this exact extracted hash, and confirm game embedding complies with the no-repackaging term. |
 
 ### Asset entry: `ALI-0067` — `stone_tile_stares_16x16.png`
 
@@ -2567,18 +2142,18 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0316 | `rusted_kingdoms/assets/images/reiya_profile.png` | `assets/scenarios/rusted_kingdoms/media/images/reiya_profile.png` | `4823944bd43db768fe3169c9315b63749b61d4826ebbcec648d31804dbac6fe2` | image / reiya_profile.png |
 | ALI-0317 | `rusted_kingdoms/assets/images/title_bg/title_lost_flame.webp` | `assets/scenarios/rusted_kingdoms/media/images/title_bg/title_lost_flame.webp` | `c36fc2defc4ddee6ba18e53a61c40b840713219f196775618d46ac344723a9bb` | image / title_lost_flame.webp |
 | ALI-0318 | `rusted_kingdoms/assets/maps/rusted_kingdoms.tiled-project` | `assets/scenarios/rusted_kingdoms/media/maps/rusted_kingdoms.tiled-project` | `7ff120b8a32974ec9a29c77a2972e85e5a6e8e9bd624b55287e634c8831d219f` | tiled project / rusted_kingdoms.tiled-project |
-| ALI-0319 | `rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `e0c3c7b4419937b53fd3d0075e1182334a4dfe06e61e1e2bf2d89b29449ba13f` | map XML / town_01_ardel_inn_01.tmx |
-| ALI-0320 | `rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `eb0562a4dfc4e41f5464a796bf0e083a9798cd0e25faab1a2200fe6586bb4ee3` | map XML / town_01_ardel_shop_01.tmx |
-| ALI-0321 | `rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shrine.tmx` | `de6cbaa6b6b1673711d34b39096d42308d6a97b36061e27dc1755f5cd8aaa268` | map XML / town_01_ardel_shrine.tmx |
-| ALI-0322 | `rusted_kingdoms/assets/maps/town_02_millhaven.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `4fb19608257767c305b6172bb801113183580725e85495351a3a5e142d3dcdeb` | map XML / town_02_millhaven.tmx |
-| ALI-0323 | `rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `e2c889bbd2c83f99066ef581802b2798e7bf656b5decf32c828ef0dee6670e95` | map XML / town_02_millhaven_inn.tmx |
-| ALI-0324 | `rusted_kingdoms/assets/maps/town_02_millhaven_mill.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `27a76d06488ad7691e263ee8dafdd714b053e81f0e844bf464bf081832903387` | map XML / town_02_millhaven_mill.tmx |
-| ALI-0325 | `rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `ecb65bbf97bbf105a5c19ee87c73bf85d408ced03fa03e965597810ee48765c6` | map XML / town_02_millhaven_shop.tmx |
-| ALI-0326 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_inn.tmx` | `a35155a33c5fe704683e73d60bc46707a520df8525e9dfffb3b279f877e87389` | map XML / town_03_ruinwatch_inn.tmx |
-| ALI-0327 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_shop.tmx` | `6ae626b2630f8ea0746b4bc8ebf4f954fceb05a499008ee17e5c49272775053e` | map XML / town_03_ruinwatch_shop.tmx |
-| ALI-0328 | `rusted_kingdoms/assets/maps/town_04_frostholm_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_shop.tmx` | `1bd6b1e56bd71418048f8ede2444d110bc8278753c0fffda9b9ed14f40285169` | map XML / town_04_frostholm_shop.tmx |
-| ALI-0329 | `rusted_kingdoms/assets/maps/town_05_ashenveil_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_inn.tmx` | `0ea3c869439f7025612318e7dd442f6c4a9b5810e1f7015709df82aae274ff07` | map XML / town_05_ashenveil_inn.tmx |
-| ALI-0330 | `rusted_kingdoms/assets/maps/town_05_ashenveil_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_shop.tmx` | `c339a21450af40256ef4d442d61cd1797fce134b795dd41ba325cfaa433e63a8` | map XML / town_05_ashenveil_shop.tmx |
+| ALI-0319 | `rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `097ed0bdee5970ce21c0f2254f3cf6c9d93ab43d4d1d144d06ac228882dbd3ac` | map XML / town_01_ardel_inn_01.tmx |
+| ALI-0320 | `rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `e4ea25c3fb8b20ce4e38c637b0a91a6c0b8f0d7615a1692a125e4e63dbdee612` | map XML / town_01_ardel_shop_01.tmx |
+| ALI-0321 | `rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shrine.tmx` | `e85a256e93c6c45786577cc6e59289ad7540108efae20fde27c8c799b6dacd11` | map XML / town_01_ardel_shrine.tmx |
+| ALI-0322 | `rusted_kingdoms/assets/maps/town_02_millhaven.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `2d4693df93b5a4c5b6fd8af136821fedb5d4f72d5d7a4db514e43dea66b45a87` | map XML / town_02_millhaven.tmx |
+| ALI-0323 | `rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `e87ae6f8ae9ac5be08acb3c6dbe42f0971a97481b14678288231f6c24974d632` | map XML / town_02_millhaven_inn.tmx |
+| ALI-0324 | `rusted_kingdoms/assets/maps/town_02_millhaven_mill.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `e879abd22bd294f65573bf16fb857e4c49696fdb80122e25ba3a999cf368209e` | map XML / town_02_millhaven_mill.tmx |
+| ALI-0325 | `rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `e3c5af6b583ad9641e07c52a6575fe0923a516cb4c4d58b1186727b81955d886` | map XML / town_02_millhaven_shop.tmx |
+| ALI-0326 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_inn.tmx` | `589ef2c248a629a5638525486b824e0c13e782b807d6c435c2a23009b596751a` | map XML / town_03_ruinwatch_inn.tmx |
+| ALI-0327 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_shop.tmx` | `0f6a60d162be16ee69d1547dd0b1b39eb28a003bf668824c433b4bf9c501bf91` | map XML / town_03_ruinwatch_shop.tmx |
+| ALI-0328 | `rusted_kingdoms/assets/maps/town_04_frostholm_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_shop.tmx` | `6e98caa9f28b1144c4792d2a6219f6019de6c8b5fa23237eadee9fc3f3a19f1c` | map XML / town_04_frostholm_shop.tmx |
+| ALI-0329 | `rusted_kingdoms/assets/maps/town_05_ashenveil_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_inn.tmx` | `34ea96c3e5aae0fb9dc0eac0a943dc464f27f104a30c48a73d0341b0a66fb25e` | map XML / town_05_ashenveil_inn.tmx |
+| ALI-0330 | `rusted_kingdoms/assets/maps/town_05_ashenveil_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_shop.tmx` | `38bc7fd4cd309530782732cb6e3d1d1cc33db01f3e20456370b777e7b4b9bfda` | map XML / town_05_ashenveil_shop.tmx |
 | ALI-0331 | `rusted_kingdoms/assets/maps/zone_02_open_plains.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains.tmx` | `1b0f4b7391f8b15ab82bd289e12dea81ff1926625e6e39d8e62ac5868f11e884` | map XML / zone_02_open_plains.tmx |
 | ALI-0332 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_01.tmx` | `6463f0a289c70384799326808d24ccdb3a3a71e991cd187586bb88e1c6172e21` | map XML / zone_02_open_plains_cave_01.tmx |
 | ALI-0333 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_02.tmx` | `6c7530446fe4b51f7ba4b92657b72e7a25daac532702355c8385508d9ec1825b` | map XML / zone_02_open_plains_cave_02.tmx |
@@ -3091,13 +2666,13 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0840 | `rusted_kingdoms/assets/tilesets/schwarnhild/tiles-all-32x32.png` | `assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/tiles-all-32x32.png` | `39a38cb4281083563c77538cd6e57785bdba3fe00cad6376bee332b7bd9ccd88` | image / tiles-all-32x32.png |
 | ALI-0841 | `rusted_kingdoms/assets/tilesets/schwarnhild/tiles-all-32x32.tsx` | `assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/tiles-all-32x32.tsx` | `8eb8412852d05090e31e4d01de2a0bd5a800fb1044f6e505ae4d77d2260e8b7c` | tileset XML / tiles-all-32x32.tsx |
 | ALI-0842 | `rusted_kingdoms/assets/tilesets/stamps/17.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/17.stamp` | `37f916f3217cf2cad6eb979f0f6cee4bef21f69da82144c24209047e92fdd51c` | tiled stamp / 17.stamp |
-| ALI-0843 | `rusted_kingdoms/assets/tilesets/stamps/ardel_house.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/ardel_house.stamp` | `3134e01789c568e9e1cff5807ba228da7c53a1f11eb0aaa27e575cc9c6070db1` | tiled stamp / ardel_house.stamp |
+| ALI-0843 | `rusted_kingdoms/assets/tilesets/stamps/ardel_house.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/ardel_house.stamp` | `7a4ef856f50772482f4368181671049e0ed6b83e3e47c6ba18531e8d08b9a4dd` | tiled stamp / ardel_house.stamp |
 | ALI-0844 | `rusted_kingdoms/assets/tilesets/stamps/bridge_long.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_long.stamp` | `1596c30f43824312bfe2053ee40c71e717726fc8664aaadae5cc0022fb04dcf8` | tiled stamp / bridge_long.stamp |
 | ALI-0845 | `rusted_kingdoms/assets/tilesets/stamps/bridge_short.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_short.stamp` | `b39df7df4af5fda2716e52b4e96b75f6efde504b5089496fffdb8d570fd0ab07` | tiled stamp / bridge_short.stamp |
 | ALI-0846 | `rusted_kingdoms/assets/tilesets/stamps/building_blacksmith_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_blacksmith_01.stamp` | `2653c86c0143d6963f6524719565fc5125522a678cf37feb3379a1467a05e43a` | tiled stamp / building_blacksmith_01.stamp |
 | ALI-0847 | `rusted_kingdoms/assets/tilesets/stamps/building_house_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_01.stamp` | `0e01ee8ea76a7a42e1ca03eaef0c713cf9fbf65260da2cfef8305940d6d9039b` | tiled stamp / building_house_01.stamp |
-| ALI-0848 | `rusted_kingdoms/assets/tilesets/stamps/building_house_02.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_02.stamp` | `9300e13bb7433f61f67d3467b2ff5d5b959914adb083ca853365b2cca7931929` | tiled stamp / building_house_02.stamp |
-| ALI-0849 | `rusted_kingdoms/assets/tilesets/stamps/building_house_03.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_03.stamp` | `6d35bf8265242afab8ab536c1655bc7d3bafe58a1b67d8ea35a5a5f26a071321` | tiled stamp / building_house_03.stamp |
+| ALI-0848 | `rusted_kingdoms/assets/tilesets/stamps/building_house_02.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_02.stamp` | `915db1fbdd6cb7e59e70787974134493478a9559948d79960cd23ed53ea77850` | tiled stamp / building_house_02.stamp |
+| ALI-0849 | `rusted_kingdoms/assets/tilesets/stamps/building_house_03.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_03.stamp` | `53b4d1ca3022f1aa884652419a8c37e7c8ef589172521f5e5679336156ece202` | tiled stamp / building_house_03.stamp |
 | ALI-0850 | `rusted_kingdoms/assets/tilesets/stamps/building_house_04.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_04.stamp` | `ac9136b67f1632581e9fb4fc33478cf80c3eaea7e0fdcca760215ef22a25a4e5` | tiled stamp / building_house_04.stamp |
 | ALI-0851 | `rusted_kingdoms/assets/tilesets/stamps/building_house_05.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_05.stamp` | `156675ed6ee2c444f6e5beaa9482ea48a213fe559dec2ed16978fad656877242` | tiled stamp / building_house_05.stamp |
 | ALI-0852 | `rusted_kingdoms/assets/tilesets/stamps/building_inn_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_inn_01.stamp` | `b2ca64a1e0e3455f6941be71db30f7214fd1f7486f09bf996076d43831dc64ee` | tiled stamp / building_inn_01.stamp |
@@ -3206,14 +2781,14 @@ destination hash, and the modification fact their previous section denied.
 | ALI-0910 | `rusted_kingdoms/data/recipe/all_recipe.yaml` | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
 | ALI-0911 | `rusted_kingdoms/assets/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `f2e777876ea1ebd7d6442e4e4311a8328be390bb36153d664df4088f846b1afc` | audio / Chronicles_of_the_Lost_Flame_Title.mp3 |
 | ALI-0912 | `rusted_kingdoms/assets/fonts/Quintessential-Regular-OFL.txt` | `assets/scenarios/rusted_kingdoms/media/fonts/Quintessential-Regular-OFL.txt` | `3b022dc192aa6a748fe7302f479a66377f19f3851be46b3233600c0226dc99f5` | text / Quintessential-Regular-OFL.txt |
-| ALI-0913 | `rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch.tmx` | `519be2eefd183969456c9bba007eb168edcc633af07de5b1c9b73ae3a973085a` | map XML / town_03_ruinwatch.tmx |
-| ALI-0914 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_monastery_vaults.tmx` | `ebd55e9404198bb758a946d512ae80cf44f9003f68324fe35625372c5e02b72e` | map XML / town_03_ruinwatch_monastery_vaults.tmx |
-| ALI-0915 | `rusted_kingdoms/assets/maps/town_04_frostholm.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm.tmx` | `5e72565ccb2d467aa09abfff317ffed42aa3f9ef0a989cbf4a77e9bb7c85da13` | map XML / town_04_frostholm.tmx |
-| ALI-0916 | `rusted_kingdoms/assets/maps/town_04_frostholm_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_inn.tmx` | `aa2f7bc5f208f17843915a0facb1b3f5c502e305c63f569166810a3f8d3af95c` | map XML / town_04_frostholm_inn.tmx |
-| ALI-0917 | `rusted_kingdoms/assets/maps/town_04_frostholm_palace.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_palace.tmx` | `e36a47db51f488a3806ed8bc4ab57c94d92e9ed0a7bc0234c6af807f3395725f` | map XML / town_04_frostholm_palace.tmx |
-| ALI-0918 | `rusted_kingdoms/assets/maps/town_04_frostholm_vault.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_vault.tmx` | `e37b1c0c7e487b49949bb2b7143f9ea8a11dbdca9902224fe16d94bf7ca1c1cc` | map XML / town_04_frostholm_vault.tmx |
-| ALI-0919 | `rusted_kingdoms/assets/maps/town_05_ashenveil.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil.tmx` | `dc26a27ab5779bdb0107a0c21359ea578bdae456a478585985840e51b274e620` | map XML / town_05_ashenveil.tmx |
-| ALI-0920 | `rusted_kingdoms/assets/maps/town_05_ashenveil_oracle_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_oracle_sanctum.tmx` | `8e452ae2cea319e03ee49820ca0e8aa1ceebad70843155a7564004d58fa0a780` | map XML / town_05_ashenveil_oracle_sanctum.tmx |
+| ALI-0913 | `rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch.tmx` | `ce18a071b8ed0b3c432d493b157cac0868942431a911106ed452e1a88c74a692` | map XML / town_03_ruinwatch.tmx |
+| ALI-0914 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_monastery_vaults.tmx` | `80ef091935726ceb81fc71c9841c59e1f0d8b893b6c5517e4e5e9ec2f2b188de` | map XML / town_03_ruinwatch_monastery_vaults.tmx |
+| ALI-0915 | `rusted_kingdoms/assets/maps/town_04_frostholm.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm.tmx` | `7bf7baaa5e4c92cc39d79a40b21cf4537c3b3091c17b67c9f042cbc19c8a9df6` | map XML / town_04_frostholm.tmx |
+| ALI-0916 | `rusted_kingdoms/assets/maps/town_04_frostholm_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_inn.tmx` | `b604f2a54d1698e12395484300f277a7640c4bc4e281e1e0d9b73db0339e3894` | map XML / town_04_frostholm_inn.tmx |
+| ALI-0917 | `rusted_kingdoms/assets/maps/town_04_frostholm_palace.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_palace.tmx` | `afbe0b6bcb252b741afc4c1b9a1266fc2e00b0e9330b59c59afa000ca35f291b` | map XML / town_04_frostholm_palace.tmx |
+| ALI-0918 | `rusted_kingdoms/assets/maps/town_04_frostholm_vault.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_vault.tmx` | `f921644ac7bc7cf4212cd79f16e025df9e6bcb9d0c63d5ebadc41b8b805fbfe6` | map XML / town_04_frostholm_vault.tmx |
+| ALI-0919 | `rusted_kingdoms/assets/maps/town_05_ashenveil.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil.tmx` | `5ce4ef561c464ae874326c11b1dca2d1f0b336d8582b75f2b745be1dabdec596` | map XML / town_05_ashenveil.tmx |
+| ALI-0920 | `rusted_kingdoms/assets/maps/town_05_ashenveil_oracle_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_oracle_sanctum.tmx` | `508c33b61dcc6c8425d11761fa0d564d30938959ca6bcdf209ca00072fc7782e` | map XML / town_05_ashenveil_oracle_sanctum.tmx |
 | ALI-0921 | `rusted_kingdoms/assets/maps/zone_03_marshland.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_03_marshland.tmx` | `0d48311def608fecc6399d4922a36387fe544af95fc37db48afc962f3c8af700` | map XML / zone_03_marshland.tmx |
 | ALI-0922 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `0487c11c2e7d0f4a5121f6a7dd622b52dae6a67bbfbe38c39fd6e3e45ce49ad3` | map XML / zone_04_ancient_ruins_03_sanctum.tmx |
 | ALI-0923 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_01.tmx` | `1fcc33caf3be875f11406665a67118883be1cda269858d82382198dba89f0133` | map XML / zone_05_mountain_foothills_01.tmx |
@@ -3251,7 +2826,7 @@ sections above, which still need their own evidence.
 
 | ID | Source path in the pinned source tree | Destination path | SHA-256 | Kind/name |
 | --- | --- | --- | --- | --- |
-| ALI-0930 | N/A - project-authored in this repository | `assets/README.md` | `f34ea09502871ba7db7430533e1315e6ac51948791a51f18a15462d717a3949b` | markdown / README.md |
+| ALI-0930 | N/A - project-authored in this repository | `assets/README.md` | `5234085892ba1d7cce499794b39b212a9d9e9db9181acc345a6409bf2073892c` | markdown / README.md |
 | ALI-0931 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ashenveil.yaml` | `c833426ed56b7b684e41fcdd7040af436ce3bd6cab58ace677ec6b13492f78af` | scenario YAML / apothecary_ashenveil.yaml |
 | ALI-0932 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_frostholm.yaml` | `1f1505a3f62e6f5d98c0330e23c2c07fd531bf2b626f98819f37a9f7183e6c92` | scenario YAML / apothecary_frostholm.yaml |
 | ALI-0933 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ruinwatch.yaml` | `e66a7c3fd4e4283dbfe7f019f4b220c57d9c252759fac6d4603859e2989d3637` | scenario YAML / apothecary_ruinwatch.yaml |
@@ -3315,20 +2890,20 @@ sections above, which still need their own evidence.
 | ALI-0991 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_05.yaml` | `b2d0ec0eba12dd7395d60e5c748b76b3b37f2af845b6390da000ac54e325b656` | scenario YAML / zone_10_hearth_descent_05.yaml |
 | ALI-0992 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_06.yaml` | `3b2916f3179baacd3299ecb5e37c37c15bdea3a87f7727204c179bd6e44eb6b0` | scenario YAML / zone_10_hearth_descent_06.yaml |
 | ALI-0993 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `a648a742737a7c7745596e4dff0bca0ea137423fe67f308ad9a8c4e157f1e488` | scenario YAML / transport.yaml |
-| ALI-0994 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `15954e6c77fb6126f2e9aed88fd2d03413563e2ec0092043439e0e4926a36ecc` | map XML / town_01_ardel_epilogue.tmx |
-| ALI-0995 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `c9ec5fae141df76c4cb86f78aecd901bfbbbaa6949964f838616a04ca9101656` | map XML / town_03_harborgate.tmx |
-| ALI-0996 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `acb108d97731f01df50f8b7f89c72b5878e7105ae5c1e2fe23c644b70aa123e5` | map XML / town_03_harborgate_harbormaster.tmx |
-| ALI-0997 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `028b45befc49cbfe97a8565b3af49c3d4af4dc33a9081494354a77680de33936` | map XML / town_03_harborgate_inn.tmx |
-| ALI-0998 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `be4028c40c4a773330a25fbfa036f676d7930aa08fa7c39c43961c832b2e2bdb` | map XML / town_03_harborgate_quarantine.tmx |
-| ALI-0999 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `2ce65ce563e4219998300a5c9ceb3916fe51a1c14bc7d3b8612b023a57c55b63` | map XML / town_03_harborgate_shop.tmx |
+| ALI-0994 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `859e113ba0cb026a7f5b1fcd2a54b004a0ce2562686ba1f9b5daf728ed59aeaa` | map XML / town_01_ardel_epilogue.tmx |
+| ALI-0995 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `d034b9902465c3057bb7c2f640f9ebed7e2302591173c63b469fb1ff1b511814` | map XML / town_03_harborgate.tmx |
+| ALI-0996 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `eea446e87958b907790702a7917db0698a1a19f5a45c74c3ad43991b5e0cb5b6` | map XML / town_03_harborgate_harbormaster.tmx |
+| ALI-0997 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `c887313bec07816abbd468ef61804c14e27e2d3c69ab63d057f3c797e8c5bb76` | map XML / town_03_harborgate_inn.tmx |
+| ALI-0998 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `1e877f5839bc67266a2e134b58c6b2ea89fffad986f6d4daeede2ef1a5c1d4ce` | map XML / town_03_harborgate_quarantine.tmx |
+| ALI-0999 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `1b89c97fd57c1e19e41944c4b4b40ce1eaba9be893fa0b424f0eceffbd4cdfbd` | map XML / town_03_harborgate_shop.tmx |
 | ALI-1000 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_09_marshal_camp.tmx` | `7e5a008cfba23aee967eff5daf14cab0fea5c02464c25b0494e3e0cba6aca13e` | map XML / zone_09_marshal_camp.tmx |
-| ALI-1001 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_core.tmx` | `ca80683f4792c7037376206f15c1011f3654dcb71f0c67e747df08fbcc7fe078` | map XML / zone_10_hearth_core.tmx |
-| ALI-1002 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_01.tmx` | `0b5f5c4813c20c821eee54363cb3d07c41401485de945ff5d77a4ea4ea1bd4c3` | map XML / zone_10_hearth_descent_01.tmx |
-| ALI-1003 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_02.tmx` | `f6aa4df69a3f6b0155612cd7a96f1f2f4d819a8add7afbf6555e052be3df7b31` | map XML / zone_10_hearth_descent_02.tmx |
-| ALI-1004 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_03.tmx` | `94de36957a155d5b5abcca56224d5f4a4c766ed415e450cc8b0968f172f31a7a` | map XML / zone_10_hearth_descent_03.tmx |
-| ALI-1005 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_04.tmx` | `c0e095c79fcb566f005176258e44552e8afdb3bb593707621d08ba21d0a5be74` | map XML / zone_10_hearth_descent_04.tmx |
-| ALI-1006 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_05.tmx` | `5020d82f301d3859aa3c443ce9eb5b707f46a1586f613723db948c5dbef764fe` | map XML / zone_10_hearth_descent_05.tmx |
-| ALI-1007 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_06.tmx` | `4c7bace51dd54bbd0b71be9cb395c5804d6ca8c4adf7e87f492916ed8460440c` | map XML / zone_10_hearth_descent_06.tmx |
+| ALI-1001 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_core.tmx` | `6c4bf09e314685e00fae3a33f17d4ec1dd0ea38c3e0e8af62d2388f20b2d4082` | map XML / zone_10_hearth_core.tmx |
+| ALI-1002 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_01.tmx` | `19b3acea4e153c7b00191954623b0be56b7b0ff4f683d583dd6804b3ca29a06b` | map XML / zone_10_hearth_descent_01.tmx |
+| ALI-1003 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_02.tmx` | `d5370a9e3f5397701d1868b11b7d0af5bf9d0ac5e03ba15f33ea9c932ea1f382` | map XML / zone_10_hearth_descent_02.tmx |
+| ALI-1004 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_03.tmx` | `6006a287f7b38e51a165b563f41ba5f41322654ca1ab2ea6680a08b30cc32ce5` | map XML / zone_10_hearth_descent_03.tmx |
+| ALI-1005 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_04.tmx` | `a17241a48f4596733abe801f5d407150e297679938b820881a59a53bc65081a0` | map XML / zone_10_hearth_descent_04.tmx |
+| ALI-1006 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_05.tmx` | `bb68dbf5e3c7353bdd9c05070097977c44f069cd1662432e862075019b9365d5` | map XML / zone_10_hearth_descent_05.tmx |
+| ALI-1007 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_06.tmx` | `ae65733a95582f1fff34f2ddafad026710e3af15bd83be63a6432b80de4c1b02` | map XML / zone_10_hearth_descent_06.tmx |
 | ALI-1008 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/cinder_marshal.tsx` | `141ea8a46a581f71613da39112a05ca079b37b3ab8ac9d25b16becc648055e63` | tileset XML / cinder_marshal.tsx |
 | ALI-1009 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/cinder_marshal_battle.tsx` | `8f716b1bf1bcda2104e2da46b91c922177e0031649bd11b825002b5886961cbb` | tileset XML / cinder_marshal_battle.tsx |
 | ALI-1010 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/hearth_effigy_ashen_crown.tsx` | `a25c42fd72d5af1cd37068aa2506bc91381838b276a1780fe025403014e75d1b` | tileset XML / hearth_effigy_ashen_crown.tsx |
@@ -3338,4 +2913,6 @@ sections above, which still need their own evidence.
 | ALI-1014 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/titch_the_ticker_battle.png` | `1e07180a794c3a0819e34496c6df7768ac54eb065201089f55f99f96ad9146c8` | image / titch_the_ticker_battle.png |
 | ALI-1015 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/titch_the_ticker_battle.tsx` | `1d0df997dd2ae1d23a20f759150ab3a34990529ccee7bc8383854c9526d5b250` | tileset XML / titch_the_ticker_battle.tsx |
 | ALI-1016 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/validation-baseline.txt` | `2d1149e82d37c4447b3984b8ccb0da3f62c6d947d4e621987711f270b74409a8` | text / validation-baseline.txt |
+| ALI-1017 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.png` | `d941c5cbfdc3149b2121f4f36cabcb104c181f55a53db58aae4679be78dee3e0` | image / interior.png |
+| ALI-1018 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.tsx` | `560900c5e5b7f867cafca09e27ed26ddf4d5b5af297ec47e6598d7cae2b55d51` | tileset XML / interior.tsx |
 

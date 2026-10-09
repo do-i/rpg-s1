@@ -3,10 +3,9 @@
  <tileset firstgid="1" source="../tilesets/grass_cave_walls_24x14.tsx"/>
  <tileset firstgid="337" source="../tilesets/stone_tile_stares_16x16.tsx"/>
  <tileset firstgid="593" source="../tilesets/icon_table_stage_14x9.tsx"/>
- <tileset firstgid="719" source="../tilesets/astralpixels/muro_tileset_wall.tsx"/>
  <tileset firstgid="863" source="../tilesets/window_8x6.tsx"/>
- <tileset firstgid="911" source="../tilesets/astralpixels/finestre.tsx"/>
  <tileset firstgid="936" source="../tilesets/ground/terrain-v7.tsx"/>
+ <tileset firstgid="2984" source="../tilesets/interior/interior.tsx"/>
  <objectgroup id="8" name="portals">
   <object id="12" name="mill" x="624" y="192" width="64" height="5">
    <properties>

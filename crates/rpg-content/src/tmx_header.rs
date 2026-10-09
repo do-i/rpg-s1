@@ -2904,8 +2904,10 @@ mod tests {
         // externally, so the parser's inline branch now has no production exercise; keep the
         // count asserted so that reappearing is a decision rather than a surprise.
         assert_eq!(inline_tilesets, 0);
-        assert_eq!(reference_count, 322);
-        assert_eq!(distinct_sources.len(), 16);
+        // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
+        // single project-authored `interior.tsx`; each map that listed several now lists one.
+        assert_eq!(reference_count, 206);
+        assert_eq!(distinct_sources.len(), 9);
     }
 
     #[test]

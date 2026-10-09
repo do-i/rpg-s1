@@ -3,11 +3,10 @@
  <tileset firstgid="1" source="../tilesets/grass_cave_walls_24x14.tsx"/>
  <tileset firstgid="337" source="../tilesets/stone_tile_stares_16x16.tsx"/>
  <tileset firstgid="593" source="../tilesets/icon_table_stage_14x9.tsx"/>
- <tileset firstgid="719" source="../tilesets/astralpixels/muro_tileset_wall.tsx"/>
  <tileset firstgid="863" source="../tilesets/window_8x6.tsx"/>
- <tileset firstgid="911" source="../tilesets/astralpixels/finestre.tsx"/>
  <tileset firstgid="936" source="../tilesets/ground/terrain-v7.tsx"/>
  <tileset firstgid="2984" source="../tilesets/walls_02.tsx"/>
+ <tileset firstgid="3044" source="../tilesets/interior/interior.tsx"/>
  <objectgroup id="8" name="portals">
   <object id="11" name="to_x2" x="118" y="0.25" width="22.125" height="2"/>
   <object id="12" name="monastery_vaults" x="624" y="192" width="64" height="5">
