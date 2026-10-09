@@ -704,10 +704,7 @@ mod tests {
     const ICONS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/icon_table_stage_14x9.tsx");
     const STONE_TSX_ASSET_PATH: &str =
         scenario_asset!("media/tilesets/stone_tile_stares_16x16.tsx");
-    const WALL_TSX_ASSET_PATH: &str =
-        scenario_asset!("media/tilesets/astralpixels/muro_tileset_wall.tsx");
-    const WINDOWS_TSX_ASSET_PATH: &str =
-        scenario_asset!("media/tilesets/astralpixels/finestre.tsx");
+    const INTERIOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/interior/interior.tsx");
 
     fn ground_app() -> App {
         let mut app = App::new();
@@ -798,7 +795,9 @@ mod tests {
             ),
             (25, 13)
         );
-        assert_eq!(map.atlas_handles().len(), 7);
+        // One atlas: the project-authored `interior.tsx` replaced the seven visible Astral Pixels
+        // sheets this map drew from (2026-10-09).
+        assert_eq!(map.atlas_handles().len(), 1);
         let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
         let bundles = map.visible_bundles(atlases).unwrap();
         let transformed = bundles
@@ -807,7 +806,7 @@ mod tests {
                 bundle.tile.layer_id() == 3 && bundle.tile.column() == 18 && bundle.tile.row() == 3
             })
             .expect("source H+D transformed floor tile should render");
-        assert_eq!(transformed.tile.global_id(), 221);
+        assert_eq!(transformed.tile.global_id(), 23);
         assert_eq!(
             transformed.transform.rotation,
             Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
@@ -847,8 +846,7 @@ mod tests {
                     GRASS_TSX_ASSET_PATH.to_owned(),
                     STONE_TSX_ASSET_PATH.to_owned(),
                     ICONS_TSX_ASSET_PATH.to_owned(),
-                    WALL_TSX_ASSET_PATH.to_owned(),
-                    WINDOWS_TSX_ASSET_PATH.to_owned(),
+                    INTERIOR_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
                 ]
                 .into_iter()
@@ -1045,23 +1043,8 @@ mod tests {
             "media/tilesets/grass_cave_walls_24x14.png",
             "media/tilesets/icon_table_stage_14x9.tsx",
             "media/tilesets/icon_table_stage_14x9.png",
-            "media/tilesets/astralpixels/finestre.tsx",
-            "media/tilesets/astralpixels/finestre.png",
-            "media/tilesets/astralpixels/muro_tileset_wall.tsx",
-            "media/tilesets/astralpixels/muro_tileset.png",
-            "media/tilesets/astralpixels/cucina.tsx",
-            "media/tilesets/astralpixels/cucina.png",
-            "media/tilesets/astralpixels/mensole.tsx",
-            "media/tilesets/astralpixels/mensole.png",
-            "media/tilesets/astralpixels/terreno.tsx",
-            "media/tilesets/astralpixels/terreno.png",
-            "media/tilesets/astralpixels/mobili.tsx",
-            "media/tilesets/astralpixels/mobili.png",
-            "media/tilesets/astralpixels/altro.tsx",
-            "media/tilesets/astralpixels/altro.png",
-            "media/tilesets/astralpixels/scale.tsx",
-            "media/tilesets/astralpixels/scale.png",
-            "media/tilesets/astralpixels/credit.txt",
+            "media/tilesets/interior/interior.tsx",
+            "media/tilesets/interior/interior.png",
             "media/tilesets/ground/terrain-v7.tsx",
             "media/tilesets/ground/terrain-v7.png",
             "media/tilesets/ground/CREDITS-terrain.txt",

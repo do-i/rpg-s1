@@ -1008,10 +1008,11 @@ mod tests {
             );
         }
         assert_eq!(maps.len(), 54);
-        // Sixteen distinct tilesets across more maps than the pinned corpus had, which referenced
-        // seventeen. The missing one is `beeler/grass_water_clif.tsx`, used only by the source's
-        // `sample_01.tmx` — a sample, not a game map, so the port never migrated it. M14.06
-        // dispositioned the tileset itself as repository-only via `release-assets-exclude.txt`.
-        assert_eq!(targets.len(), 16);
+        // Nine distinct tilesets. The pinned corpus referenced seventeen: `beeler/grass_water_clif.tsx`
+        // was used only by the source's `sample_01.tmx` — a sample, not a game map, so the port never
+        // migrated it (M14.06 keeps the tileset repository-only via `release-assets-exclude.txt`) —
+        // and on 2026-10-09 the eight Astral Pixels tilesets were replaced by one project-authored
+        // `interior/interior.tsx`, because that pack forbids redistribution.
+        assert_eq!(targets.len(), 9);
     }
 }

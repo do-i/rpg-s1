@@ -63,16 +63,16 @@ Scenario assets preserve their source-relative layout beneath
   are reconstructed or the sprites are replaced.
 - `scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` is the canonical
   30-by-20 Ardel map. Its visible ground, terrain, and decoration layers use
-  the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, Astral Pixels
-  `finestre`, and `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas
+  the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, project-authored
+  `interior`, and `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas
   references are intentionally not runtime rendering dependencies.
 - `scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` and its
-  same-stem map metadata provide the Gate 5 reversible interior. Its eight
-  visible Astral Pixels TSX/PNG pairs preserve the source-relative layout and
-  the existing `astralpixels/credit.txt` source notice. As with `finestre`, the
-  notice identifies a plausible asset page but does not prove the exact files'
-  acquisition or redistribution terms, so these parity copies remain blocked
-  from public release.
+  same-stem map metadata provide the Gate 5 reversible interior. It draws from
+  `tilesets/interior/interior.tsx`, a single 12-by-6 sheet of original tiles
+  authored in this repository (MIT, like the rest of the project's own
+  content). It replaced the eight Astral Pixels sheets on 2026-10-09, because
+  that pack forbids redistribution; every map that used them now points here
+  with the same layout.
 - `scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`
   preserves the complete LPC terrain attribution. The terrain atlas is
   distributed under CC BY-SA 3.0 with that notice. The byte-identical TMX
@@ -80,10 +80,8 @@ Scenario assets preserve their source-relative layout beneath
   redistribution grant is confirmed; see the license inventory.
 - The source repository does not retain sufficient provenance or rights
   evidence for the copied `grass_cave_walls_24x14` and
-  `icon_table_stage_14x9` images. The Astral Pixels notice identifies a
-  plausible public asset page but does not prove the exact file's acquisition.
-  These working-copy migrations are therefore blocked from public release as
-  recorded in the license inventory.
+  `icon_table_stage_14x9` images. These working-copy migrations are therefore
+  blocked from public release as recorded in the license inventory.
 - The M8 encounter package adds the Starting Forest encounter-zone document,
   all eight enemy-rank catalogs, the battle-background catalog, six enemy
   TSX/PNG pairs, the zone-one battle background, normal and boss battle BGM,
