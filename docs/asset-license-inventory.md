@@ -2764,7 +2764,7 @@ sections above, which still need their own evidence.
 | ALI-1024 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop.tsx` | `cb7b1dcfb5b624275e75211bdedf6a3cfde887a013c54742b8c6ac206daa8fc6` | tileset XML / shop.tsx |
 | ALI-1025 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.png` | `07ae517bbda6d3b514b3e84731796db41231217d4d9d49b153c95aa2a2845af1` | image / cave.png |
 | ALI-1026 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.tsx` | `967889b5de084ebe4aa7d938d1e1ec33550467a17178ba53c8d96283cf59e86f` | tileset XML / cave.tsx |
-| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.png` | `db27837f3adf91edb688465762ec83831a7a94e196ca620fd3ca2ff82f8fbef2` | image / town.png |
+| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.png` | `854e9e78b232af65ceb423cd21dc2b0801a915a36d18614a62b01493932cd99c` | image / town.png |
 | ALI-1028 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.tsx` | `944089646653ed2f94b430a1cfb8b37aacc9ac35d52b91682b48540a79f204a9` | tileset XML / town.tsx |
 | ALI-1029 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.png` | `cdfe29023e66ae73caac88736f80ef20d09146d1064161ee1349500a8c5f8211` | image / outdoor.png |
 | ALI-1030 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.tsx` | `e1baf25670f49712513e3d7cd81b2cf18fc52c20862d5c94f69eb4df8c0c0a07` | tileset XML / outdoor.tsx |
