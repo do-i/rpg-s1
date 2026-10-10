@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?><map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="41" height="31" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="19">
- <tileset firstgid="936" source="../tilesets/ground/terrain-v7.tsx"/>
- <tileset firstgid="2984" source="../tilesets/interior/interior.tsx"/>
- <tileset firstgid="3056" source="../tilesets/outdoor/outdoor.tsx"/>
- <tileset firstgid="3294" source="../tilesets/town/town.tsx"/>
- <tileset firstgid="3534" source="../tilesets/shop/shop.tsx"/>
- <tileset firstgid="3574" source="../tilesets/exterior_windows/exterior_windows.tsx"/>
+ <tileset firstgid="936" source="../tilesets/terrain-v7.tsx"/>
+ <tileset firstgid="2984" source="../tilesets/interior.tsx"/>
+ <tileset firstgid="3056" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="3294" source="../tilesets/town.tsx"/>
+ <tileset firstgid="3534" source="../tilesets/shop.tsx"/>
+ <tileset firstgid="3574" source="../tilesets/exterior_windows.tsx"/>
  <objectgroup id="8" name="portals">
   <object id="11" name="zone_07_sunken_cave" x="130" y="20"><properties><property name="target_map" value="zone_07_sunken_cave"/><property name="target_position_x" type="int" value="27"/><property name="target_position_y" type="int" value="1"/></properties></object>
   <object id="12" name="oracle_sanctum" x="624" y="192" width="64" height="5"><properties><property name="target_map" value="town_05_ashenveil_oracle_sanctum"/><property name="target_position_x" type="int" value="5"/><property name="target_position_y" type="int" value="9"/></properties></object>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="12">
- <tileset firstgid="463" source="../tilesets/ground/terrain-v7.tsx"/>
- <tileset firstgid="2511" source="../tilesets/outdoor/outdoor.tsx"/>
- <tileset firstgid="2749" source="../tilesets/shop/shop.tsx"/>
- <tileset firstgid="2789" source="../tilesets/town/town.tsx"/>
+ <tileset firstgid="463" source="../tilesets/terrain-v7.tsx"/>
+ <tileset firstgid="2511" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="2749" source="../tilesets/shop.tsx"/>
+ <tileset firstgid="2789" source="../tilesets/town.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="1" name="zone_02_open_plains_cave_02" x="817" y="82">
    <properties>

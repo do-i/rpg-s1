@@ -387,6 +387,16 @@ fn drive_active_encounter_assets(
             fail_encounter(&mut state, failure.clone());
             return;
         }
+        if !inventory.has_encounter_zone(&map_id) {
+            // Matches the pinned engine's `EncounterManager.set_zone`: a map with no
+            // `data/encount/<id>.yaml` has encounters disabled ("towns, inns — encounters
+            // disabled") even when spawn tiles are painted (e.g. `zone_02_open_plains_cave_02`).
+            // Deciding from the inventory avoids requesting a file the asset server would log as
+            // missing on every town and inn arrival.
+            state.status = WorldEncounterStatus::NoEncounters;
+            commands.remove_resource::<EnemyCatalog>();
+            return;
+        }
         let Some(zone_path) = inventory.encounter_path(&map_id) else {
             fail_encounter(
                 &mut state,
@@ -422,10 +432,7 @@ fn drive_active_encounter_assets(
     let zone_handle = state.zone.clone().expect("requested above");
     if let LoadState::Failed(error) = asset_server.load_state(zone_handle.id()) {
         if optional_scenario_asset_is_missing(&error) {
-            // Matches the pinned engine's `EncounterManager.set_zone`: a missing
-            // `data/encount/<id>.yaml` disables encounters for this map ("towns, inns —
-            // encounters disabled") even when spawn tiles are painted (e.g.
-            // `zone_02_open_plains_cave_02`), rather than failing to load.
+            // The zone vanished after inventory discovery; treat it like an absent zone.
             state.status = WorldEncounterStatus::NoEncounters;
             commands.remove_resource::<EnemyCatalog>();
             return;
@@ -2378,7 +2385,7 @@ mod tests {
                 .is_spawned_for("zone_02_open_plains_cave_01")
         );
 
-        // Cave_02: no `data/maps/...yaml` either, but its TMX paints 9 `spawn_tile` gids with no
+        // Cave_02: its TMX paints 9 `spawn_tile` gids with no
         // matching `data/encount/...yaml`. The pinned engine's `EncounterManager.set_zone`
         // disables encounters whenever the zone file is absent ("towns, inns — encounters
         // disabled"), regardless of authored spawn tiles, so this must resolve the same way as a

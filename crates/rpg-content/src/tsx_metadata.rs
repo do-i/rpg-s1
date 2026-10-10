@@ -695,7 +695,7 @@ mod tests {
         include_str!("../../../tests/fixtures/tsx-metadata/invented-animation.tsx");
 
     fn owner() -> ScenarioRelativePath {
-        ScenarioRelativePath::try_from("media/tilesets/ground/invented.tsx").unwrap()
+        ScenarioRelativePath::try_from("media/tilesets/fixtures/invented.tsx").unwrap()
     }
 
     #[test]

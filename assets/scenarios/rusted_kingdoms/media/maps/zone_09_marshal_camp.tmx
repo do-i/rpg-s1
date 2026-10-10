@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="34" height="22" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="3">
- <tileset firstgid="1" source="../tilesets/ground/terrain-v7.tsx" />
- <tileset firstgid="2049" source="../tilesets/town/town.tsx"/>
+ <tileset firstgid="1" source="../tilesets/terrain-v7.tsx" />
+ <tileset firstgid="2049" source="../tilesets/town.tsx"/>
  <objectgroup id="2" name="portals">
   <object id="1" name="entry_zone_09_volcanic_region" x="-4" y="320" width="12" height="96">
    <properties>

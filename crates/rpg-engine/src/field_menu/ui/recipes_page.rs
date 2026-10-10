@@ -229,7 +229,13 @@ pub(in crate::field_menu) fn spawn_recipe_list_column(
             });
             spawn_status_text(
                 panel,
-                register_footer(selected, first, recipes.len()),
+                register_footer(
+                    "RECIPE",
+                    selected,
+                    first,
+                    recipes.len(),
+                    RECIPE_VISIBLE_ROWS,
+                ),
                 font,
                 11.0,
                 status_faint(),
@@ -385,7 +391,24 @@ pub(in crate::field_menu) fn spawn_recipe_detail_column(
                     status_gold()
                 },
             );
-            spawn_recipe_state_pill(panel, font, availability);
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    column_gap: px(12),
+                    ..default()
+                })
+                .with_children(|meta| {
+                    spawn_recipe_state_pill(meta, font, availability);
+                    spawn_status_text(
+                        meta,
+                        recipe_state_hint(availability),
+                        font,
+                        12.0,
+                        status_muted(),
+                    );
+                });
             spawn_section_rule(panel);
             if sealed {
                 // A sealed formula is listed so the count is honest, but its ingredients stay
@@ -422,28 +445,63 @@ pub(in crate::field_menu) fn spawn_recipe_detail_column(
             }
             for (id, required) in requirements {
                 let owned = game.repository().item_count(&id);
-                spawn_status_text(
+                spawn_recipe_ingredient_row(
                     panel,
-                    format!(
-                        "{}   x{required}   (carried {owned})",
-                        loot_item_name(catalog, &id)
-                    ),
                     font,
-                    15.0,
-                    if owned >= required {
-                        status_ink()
-                    } else {
-                        status_ember()
-                    },
+                    &loot_item_name(catalog, &id),
+                    required,
+                    owned,
                 );
             }
             panel.spawn(Node {
                 flex_grow: 1.0,
                 ..default()
             });
+            spawn_section_rule(panel);
             spawn_recipe_footnote(panel, font);
         },
     );
+}
+
+/// One ingredient: its name, then how many the formula needs against how many are carried.
+fn spawn_recipe_ingredient_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    name: &str,
+    required: u32,
+    owned: u32,
+) {
+    let accent = if owned >= required {
+        status_ink()
+    } else {
+        status_ember()
+    };
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: px(12),
+                padding: UiRect::axes(px(10), px(6)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 148)),
+            BorderColor::all(Color::srgba_u8(126, 98, 55, 90)),
+        ))
+        .with_children(|row| {
+            row.spawn(Node {
+                flex_grow: 1.0,
+                ..default()
+            })
+            .with_children(|copy| {
+                spawn_status_text(copy, name, font, 15.0, accent);
+            });
+            spawn_status_text(row, format!("NEED {required}"), font, 12.0, status_muted());
+            spawn_status_text(row, format!("HAVE {owned}"), font, 12.0, accent);
+        });
 }
 
 /// The line that keeps the book honest about being a reference rather than a workshop.
@@ -494,6 +552,17 @@ pub(in crate::field_menu) const fn recipe_state_label(
         RecipeAvailability::UniqueOwned => "CARRIED",
         RecipeAvailability::OutputCap => "FULL",
         RecipeAvailability::Locked => "SEALED",
+    }
+}
+
+fn recipe_state_hint(availability: RecipeAvailability) -> &'static str {
+    match availability {
+        RecipeAvailability::Ready => "Ingredients and coin are on hand.",
+        RecipeAvailability::MissingInputs => "Some ingredients are missing.",
+        RecipeAvailability::Unaffordable => "Not enough coin to brew.",
+        RecipeAvailability::UniqueOwned => "One is already carried.",
+        RecipeAvailability::OutputCap => "No room to carry another.",
+        RecipeAvailability::Locked => "Not yet unsealed.",
     }
 }
 

@@ -698,12 +698,12 @@ mod tests {
     };
 
     const ASSET_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-    const TERRAIN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.tsx");
-    const TERRAIN_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.png");
-    const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor/outdoor.tsx");
-    const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop/shop.tsx");
-    const TOWN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/town/town.tsx");
-    const INTERIOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/interior/interior.tsx");
+    const TERRAIN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/terrain-v7.tsx");
+    const TERRAIN_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/terrain-v7.png");
+    const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor.tsx");
+    const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop.tsx");
+    const TOWN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/town.tsx");
+    const INTERIOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/interior.tsx");
 
     fn ground_app() -> App {
         let mut app = App::new();
@@ -1038,15 +1038,15 @@ mod tests {
         for relative in [
             "media/maps/town_01_ardel.tmx",
             "media/maps/town_01_ardel_house_01.tmx",
-            "media/tilesets/outdoor/outdoor.tsx",
-            "media/tilesets/outdoor/outdoor.png",
-            "media/tilesets/shop/shop.tsx",
-            "media/tilesets/shop/shop.png",
-            "media/tilesets/interior/interior.tsx",
-            "media/tilesets/interior/interior.png",
-            "media/tilesets/ground/terrain-v7.tsx",
-            "media/tilesets/ground/terrain-v7.png",
-            "media/tilesets/ground/CREDITS-terrain.txt",
+            "media/tilesets/outdoor.tsx",
+            "media/tilesets/outdoor.png",
+            "media/tilesets/shop.tsx",
+            "media/tilesets/shop.png",
+            "media/tilesets/interior.tsx",
+            "media/tilesets/interior.png",
+            "media/tilesets/terrain-v7.tsx",
+            "media/tilesets/terrain-v7.png",
+            "media/tilesets/CREDITS-terrain.txt",
             "data/maps/town_01_ardel_house_01.yaml",
         ] {
             assert_eq!(

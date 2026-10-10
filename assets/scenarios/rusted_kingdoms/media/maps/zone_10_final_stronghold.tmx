@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="38" height="28" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="5">
- <tileset firstgid="1" source="../tilesets/ground/terrain-v7.tsx"/>
- <tileset firstgid="3382" source="../tilesets/outdoor/outdoor.tsx"/>
- <tileset firstgid="3620" source="../tilesets/town/town.tsx"/>
- <tileset firstgid="3860" source="../tilesets/decor/decor.tsx"/>
+ <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
+ <tileset firstgid="3382" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="3620" source="../tilesets/town.tsx"/>
+ <tileset firstgid="3860" source="../tilesets/decor.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="1" name="entry_zone_09_marshal_camp" x="-4" y="384" width="12" height="160">
    <properties>

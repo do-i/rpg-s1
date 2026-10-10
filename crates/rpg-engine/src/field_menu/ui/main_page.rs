@@ -319,9 +319,6 @@ pub(in crate::field_menu) fn spawn_main_command_row(
             spawn_status_text(copy, command.label, font, 19.0, status_ink());
             spawn_status_text(copy, command.description, font, 12.0, status_muted());
         });
-        if selected {
-            spawn_status_text(row, "ENTER", font, 12.0, status_gold());
-        }
     });
 }
 
