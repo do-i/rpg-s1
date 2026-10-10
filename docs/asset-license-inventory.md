@@ -332,7 +332,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0009` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.png` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/terrain-v7.png` |
 | Source SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
 | Destination SHA-256 | `d098d23fbe6bb51b53f5d719d05a8e620d393f9d831bb14d2ed201b650163b7b` |
 | Asset kind | tileset image |
@@ -340,8 +340,8 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | bluecarrot16; Lanea Zimmerman (Sharm); Daniel Eddeland (Daneeklu); Richard Kettering (Jetrel); Zachariah Husiar (Zabin); Hyptosis; Casper Nilsson; Buko Studios; Nushio; ZaPaper; billknye; William Thompson; caeles; Redshrike; Bertram; Rayane Félix (RayaneFLX), as recorded by the pinned terrain credit |
 | Source/evidence | Exact pinned source file and source LFS declaration; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); pinned `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt`, which identifies every component collection, creator, license choice, and OpenGameArt source URL; source README Credits and Attribution section; inspected 2026-08-10 |
 | License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`). The preserved source notice offers CC BY-SA 3.0 for every ShareAlike component and CC BY 3.0 for the two attribution-only components; CC BY-SA 3.0 is the selected distribution license for the combined atlas. |
-| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); complete local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
-| Required attribution | Preserve the complete creator, component-title, license, and source-link record in `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`; identify the combined terrain atlas as LPC artwork distributed under CC BY-SA 3.0; keep the notice reasonably discoverable in a shipped game. |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); complete local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt` |
+| Required attribution | Preserve the complete creator, component-title, license, and source-link record in `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt`; identify the combined terrain atlas as LPC artwork distributed under CC BY-SA 3.0; keep the notice reasonably discoverable in a shipped game. |
 | Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
 | Redistribution permission | yes, conditional on attribution, the CC BY-SA 3.0 notice, and ShareAlike terms |
 | Commercial-use permission | yes, conditional on CC BY-SA 3.0 compliance |
@@ -357,7 +357,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0010` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.tsx` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/terrain-v7.tsx` |
 | Source SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
 | Destination SHA-256 | `285a0342a68b7e61c5e2aeb8fa92775d2dc851cd671705fb39ed6bbf915e8ed6` |
 | Asset kind | TSX |
@@ -365,7 +365,7 @@ status. The required fields are intentionally repeated in each entry.
 | Creator/rightsholder | Ninja is the source import author; the credited LPC terrain contributors are the rightsholders of the referenced atlas. |
 | Source/evidence | Exact pinned source file; source import commit `cb425944cff27b5b25b632aa264be9c726d0c147` (`Add terrain packs`); companion pinned terrain image and `CREDITS-terrain.txt`; inspected 2026-08-10 |
 | License identifier/name | Creative Commons Attribution-ShareAlike 3.0 Unported (`CC-BY-SA-3.0`) for distribution as companion metadata to the reviewed terrain atlas |
-| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
+| License text/notice location | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); local attribution at `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt` |
 | Required attribution | Preserve the companion terrain credit and CC BY-SA 3.0 notice with this metadata and its referenced image. |
 | Modification status/details | Unmodified: source and destination are byte-for-byte identical. The TSX retains its sibling `terrain-v7.png` reference, 32-pixel tiles, 32 columns, 2,048 tiles, and Wang metadata. |
 | Redistribution permission | yes, conditional on the companion attribution and CC BY-SA 3.0 terms |
@@ -382,7 +382,7 @@ status. The required fields are intentionally repeated in each entry.
 | --- | --- |
 | Stable entry ID | `ALI-0011` |
 | Source path | `rusted_kingdoms/assets/tilesets/ground/CREDITS-terrain.txt` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt` |
+| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt` |
 | Source SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
 | Destination SHA-256 | `79c07c5b15b57a08bcf7c7fde6f56341c8055c587eb470468010ec04b2b38c7c` |
 | Asset kind | license text |
@@ -2510,7 +2510,7 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0834 | `rusted_kingdoms/assets/sprites/party/04_jep_walk.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/party/04_jep_walk.tsx` | `bc6ba5170a7191e858c3052eab7ea43a6bcbdabd2cb902971202a18f610e97c9` | tileset XML / 04_jep_walk.tsx |
 | ALI-0835 | `rusted_kingdoms/assets/sprites/party/05_kael_walk.png` | `assets/scenarios/rusted_kingdoms/media/sprites/party/05_kael_walk.png` | `45f8eea41154f1c4d0ccd99279f1339591e55bf88685e9557d40071cb8ce5f06` | image / 05_kael_walk.png |
 | ALI-0836 | `rusted_kingdoms/assets/sprites/party/05_kael_walk.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/party/05_kael_walk.tsx` | `ffe2f7c526c72198bc883e440d79957008d15740a40be3062779024b12c3dc8f` | tileset XML / 05_kael_walk.tsx |
-| ALI-0837 | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.md` | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.md` | `fd2c0d5a9c254af8bd6ba8214a1d5d027919e7e517778fc0eaaf69f635e280fe` | markdown / terrain-v7.md |
+| ALI-0837 | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.md` | `assets/scenarios/rusted_kingdoms/media/tilesets/terrain-v7.md` | `fd2c0d5a9c254af8bd6ba8214a1d5d027919e7e517778fc0eaaf69f635e280fe` | markdown / terrain-v7.md |
 | ALI-0842 | `rusted_kingdoms/assets/tilesets/stamps/17.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/17.stamp` | `4c7194ac17249063e40fe9e653f371e63ef8c8e7d197d01f4570ac84561e7097` | tiled stamp / 17.stamp |
 | ALI-0843 | `rusted_kingdoms/assets/tilesets/stamps/ardel_house.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/ardel_house.stamp` | `025f90df41a1fcb5a3cb505eed13afccd694cbd1947ef958bbe8ae7cecfc5f10` | tiled stamp / ardel_house.stamp |
 | ALI-0844 | `rusted_kingdoms/assets/tilesets/stamps/bridge_long.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_long.stamp` | `2e621eca510e1a2185cbbbd565a0461973391ed23c02aea7c408242b7f721444` | tiled stamp / bridge_long.stamp |
@@ -2754,20 +2754,20 @@ sections above, which still need their own evidence.
 | ALI-1014 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/titch_the_ticker_battle.png` | `1e07180a794c3a0819e34496c6df7768ac54eb065201089f55f99f96ad9146c8` | image / titch_the_ticker_battle.png |
 | ALI-1015 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/titch_the_ticker_battle.tsx` | `1d0df997dd2ae1d23a20f759150ab3a34990529ccee7bc8383854c9526d5b250` | tileset XML / titch_the_ticker_battle.tsx |
 | ALI-1016 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/validation-baseline.txt` | `2d1149e82d37c4447b3984b8ccb0da3f62c6d947d4e621987711f270b74409a8` | text / validation-baseline.txt |
-| ALI-1017 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.png` | `d941c5cbfdc3149b2121f4f36cabcb104c181f55a53db58aae4679be78dee3e0` | image / interior.png |
-| ALI-1018 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.tsx` | `560900c5e5b7f867cafca09e27ed26ddf4d5b5af297ec47e6598d7cae2b55d51` | tileset XML / interior.tsx |
-| ALI-1019 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows/exterior_windows.png` | `40117c8772e52258e69b4bacbf3ca808260d145d7d0eef24496cf68db0cf7d83` | image / exterior_windows.png |
-| ALI-1020 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows/exterior_windows.tsx` | `c57d84bb2c5d18444b2ef3a45858a8075bff488f98e87d7f05b80eb44fe175ef` | tileset XML / exterior_windows.tsx |
-| ALI-1021 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls/exterior_walls.png` | `dd6b61e8805e5dbc7980f1bb7657f4b2bc7d03395e3b1757aaad058ba1b05817` | image / exterior_walls.png |
-| ALI-1022 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls/exterior_walls.tsx` | `e9e6bfbf6a2c52bd55512c8e0c08317770dcc4880559fe3c63f00c8059931c43` | tileset XML / exterior_walls.tsx |
-| ALI-1023 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop/shop.png` | `6eda62c5013fb82be1b02307cc4ec107d1e5b9d1b850d4aa7a9158834bd2c06a` | image / shop.png |
-| ALI-1024 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop/shop.tsx` | `cb7b1dcfb5b624275e75211bdedf6a3cfde887a013c54742b8c6ac206daa8fc6` | tileset XML / shop.tsx |
-| ALI-1025 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave/cave.png` | `07ae517bbda6d3b514b3e84731796db41231217d4d9d49b153c95aa2a2845af1` | image / cave.png |
-| ALI-1026 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave/cave.tsx` | `967889b5de084ebe4aa7d938d1e1ec33550467a17178ba53c8d96283cf59e86f` | tileset XML / cave.tsx |
-| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town/town.png` | `db27837f3adf91edb688465762ec83831a7a94e196ca620fd3ca2ff82f8fbef2` | image / town.png |
-| ALI-1028 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town/town.tsx` | `944089646653ed2f94b430a1cfb8b37aacc9ac35d52b91682b48540a79f204a9` | tileset XML / town.tsx |
-| ALI-1029 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor/outdoor.png` | `cdfe29023e66ae73caac88736f80ef20d09146d1064161ee1349500a8c5f8211` | image / outdoor.png |
-| ALI-1030 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor/outdoor.tsx` | `e1baf25670f49712513e3d7cd81b2cf18fc52c20862d5c94f69eb4df8c0c0a07` | tileset XML / outdoor.tsx |
-| ALI-1031 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor/decor.png` | `ddd9b2eeb53afc3254aa5fa2452100727978ec5146ce6917d0440cfc346a4754` | image / decor.png |
-| ALI-1032 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor/decor.tsx` | `6ed3361bdba188922372d9c99467f9f1b7705e0527a34193ffdd2561b22eebda` | tileset XML / decor.tsx |
+| ALI-1017 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior.png` | `d941c5cbfdc3149b2121f4f36cabcb104c181f55a53db58aae4679be78dee3e0` | image / interior.png |
+| ALI-1018 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior.tsx` | `560900c5e5b7f867cafca09e27ed26ddf4d5b5af297ec47e6598d7cae2b55d51` | tileset XML / interior.tsx |
+| ALI-1019 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows.png` | `40117c8772e52258e69b4bacbf3ca808260d145d7d0eef24496cf68db0cf7d83` | image / exterior_windows.png |
+| ALI-1020 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows.tsx` | `c57d84bb2c5d18444b2ef3a45858a8075bff488f98e87d7f05b80eb44fe175ef` | tileset XML / exterior_windows.tsx |
+| ALI-1021 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls.png` | `dd6b61e8805e5dbc7980f1bb7657f4b2bc7d03395e3b1757aaad058ba1b05817` | image / exterior_walls.png |
+| ALI-1022 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls.tsx` | `e9e6bfbf6a2c52bd55512c8e0c08317770dcc4880559fe3c63f00c8059931c43` | tileset XML / exterior_walls.tsx |
+| ALI-1023 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop.png` | `6eda62c5013fb82be1b02307cc4ec107d1e5b9d1b850d4aa7a9158834bd2c06a` | image / shop.png |
+| ALI-1024 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop.tsx` | `cb7b1dcfb5b624275e75211bdedf6a3cfde887a013c54742b8c6ac206daa8fc6` | tileset XML / shop.tsx |
+| ALI-1025 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.png` | `07ae517bbda6d3b514b3e84731796db41231217d4d9d49b153c95aa2a2845af1` | image / cave.png |
+| ALI-1026 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.tsx` | `967889b5de084ebe4aa7d938d1e1ec33550467a17178ba53c8d96283cf59e86f` | tileset XML / cave.tsx |
+| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.png` | `db27837f3adf91edb688465762ec83831a7a94e196ca620fd3ca2ff82f8fbef2` | image / town.png |
+| ALI-1028 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.tsx` | `944089646653ed2f94b430a1cfb8b37aacc9ac35d52b91682b48540a79f204a9` | tileset XML / town.tsx |
+| ALI-1029 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.png` | `cdfe29023e66ae73caac88736f80ef20d09146d1064161ee1349500a8c5f8211` | image / outdoor.png |
+| ALI-1030 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.tsx` | `e1baf25670f49712513e3d7cd81b2cf18fc52c20862d5c94f69eb4df8c0c0a07` | tileset XML / outdoor.tsx |
+| ALI-1031 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor.png` | `ddd9b2eeb53afc3254aa5fa2452100727978ec5146ce6917d0440cfc346a4754` | image / decor.png |
+| ALI-1032 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor.tsx` | `6ed3361bdba188922372d9c99467f9f1b7705e0527a34193ffdd2561b22eebda` | tileset XML / decor.tsx |
 

@@ -68,12 +68,12 @@ Scenario assets preserve their source-relative layout beneath
   intentionally not runtime rendering dependencies.
 - `scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` and its
   same-stem map metadata provide the Gate 5 reversible interior. It draws from
-  `tilesets/interior/interior.tsx`, a single 12-by-6 sheet of original tiles
+  `tilesets/interior.tsx`, a single 12-by-6 sheet of original tiles
   authored in this repository (MIT, like the rest of the project's own
   content). It replaced the eight Astral Pixels sheets on 2026-10-09, because
   that pack forbids redistribution; every map that used them now points here
   with the same layout.
-- `scenarios/rusted_kingdoms/media/tilesets/ground/CREDITS-terrain.txt`
+- `scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt`
   preserves the complete LPC terrain attribution. The terrain atlas is
   distributed under CC BY-SA 3.0 with that notice. The byte-identical TMX
   copy remains blocked from public release until the project-authored map's

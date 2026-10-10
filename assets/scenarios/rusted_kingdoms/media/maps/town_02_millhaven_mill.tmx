@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="25" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="6">
- <tileset firstgid="1" source="../tilesets/interior/interior.tsx"/>
+ <tileset firstgid="1" source="../tilesets/interior.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="3" name="town_02_millhaven" x="323.92" y="413.841" width="23.2727" height="2.34091">
    <properties>

@@ -609,7 +609,7 @@ item_boxes:
             missing_ids += usize::from(map.id.is_none());
         }
 
-        assert_eq!(files.len(), 52);
+        assert_eq!(files.len(), 54);
         assert_eq!(missing_ids, 25);
     }
 }

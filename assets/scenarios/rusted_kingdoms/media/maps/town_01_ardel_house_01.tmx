@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="25" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="6">
- <tileset firstgid="1" source="../tilesets/interior/interior.tsx"/>
+ <tileset firstgid="1" source="../tilesets/interior.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="1" name="up" x="748" y="305"/>
   <object id="2" name="down" x="45" y="306"/>

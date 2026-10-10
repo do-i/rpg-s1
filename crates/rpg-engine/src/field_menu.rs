@@ -2909,12 +2909,12 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(labels.iter().any(|label| label == "Purging Salve"));
         // The fixture carries none of the salve's inputs, so both read as carried zero.
-        assert!(
-            labels
-                .iter()
-                .any(|label| label == "Venom Sac   x2   (carried 0)"),
-            "ingredient rows must show the required and carried counts: {labels:?}"
-        );
+        for expected in ["Venom Sac", "NEED 2", "HAVE 0"] {
+            assert!(
+                labels.iter().any(|label| label == expected),
+                "ingredient rows must show the required and carried counts: {labels:?}"
+            );
+        }
     }
 
     /// The acceptance condition for roadmap B4.4: the book is a reference, not a second workshop.

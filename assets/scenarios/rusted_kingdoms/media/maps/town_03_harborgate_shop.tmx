@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="16" height="11" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="2">
- <tileset firstgid="1460" source="../tilesets/interior/interior.tsx"/>
- <tileset firstgid="1532" source="../tilesets/shop/shop.tsx"/>
- <tileset firstgid="1572" source="../tilesets/outdoor/outdoor.tsx"/>
- <tileset firstgid="1810" source="../tilesets/town/town.tsx"/>
- <tileset firstgid="2050" source="../tilesets/decor/decor.tsx"/>
+ <tileset firstgid="1460" source="../tilesets/interior.tsx"/>
+ <tileset firstgid="1532" source="../tilesets/shop.tsx"/>
+ <tileset firstgid="1572" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="1810" source="../tilesets/town.tsx"/>
+ <tileset firstgid="2050" source="../tilesets/decor.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_03_harborgate" x="224.458" y="350.019" width="31" height="1.64773">
    <properties>

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="41" height="31" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="19">
- <tileset firstgid="936" source="../tilesets/ground/terrain-v7.tsx"/>
- <tileset firstgid="2984" source="../tilesets/interior/interior.tsx"/>
- <tileset firstgid="3056" source="../tilesets/outdoor/outdoor.tsx"/>
- <tileset firstgid="3294" source="../tilesets/town/town.tsx"/>
- <tileset firstgid="3534" source="../tilesets/shop/shop.tsx"/>
- <tileset firstgid="3574" source="../tilesets/exterior_windows/exterior_windows.tsx"/>
+ <tileset firstgid="936" source="../tilesets/terrain-v7.tsx"/>
+ <tileset firstgid="2984" source="../tilesets/interior.tsx"/>
+ <tileset firstgid="3056" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="3294" source="../tilesets/town.tsx"/>
+ <tileset firstgid="3534" source="../tilesets/shop.tsx"/>
+ <tileset firstgid="3574" source="../tilesets/exterior_windows.tsx"/>
  <objectgroup id="8" name="portals">
   <object id="12" name="quarantine" x="624" y="192" width="64" height="5">
    <properties>

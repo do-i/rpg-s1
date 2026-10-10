@@ -224,7 +224,7 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
             });
             spawn_status_text(
                 panel,
-                register_footer(selected, first, quests.len()),
+                register_footer("QUEST", selected, first, quests.len(), QUEST_VISIBLE_ROWS),
                 font,
                 11.0,
                 status_faint(),
@@ -542,15 +542,21 @@ pub(in crate::field_menu) fn quest_window_start(selected: usize, len: usize) -> 
 }
 
 /// Reports the cursor position, and the visible span too once the register scrolls.
-pub(in crate::field_menu) fn register_footer(selected: usize, first: usize, len: usize) -> String {
-    let position = format!("QUEST {:02} OF {len:02}", selected + 1);
-    if len <= QUEST_VISIBLE_ROWS {
+pub(in crate::field_menu) fn register_footer(
+    noun: &str,
+    selected: usize,
+    first: usize,
+    len: usize,
+    visible: usize,
+) -> String {
+    let position = format!("{noun} {:02} OF {len:02}", selected + 1);
+    if len <= visible {
         position
     } else {
         format!(
             "{position}   ·   SHOWING {:02}-{:02}",
             first + 1,
-            (first + QUEST_VISIBLE_ROWS).min(len)
+            (first + visible).min(len)
         )
     }
 }
@@ -599,9 +605,12 @@ mod tests {
 
     #[test]
     fn the_footer_adds_the_visible_span_only_once_the_register_scrolls() {
-        assert_eq!(register_footer(2, 0, 5), "QUEST 03 OF 05");
         assert_eq!(
-            register_footer(9, 3, 16),
+            register_footer("QUEST", 2, 0, 5, QUEST_VISIBLE_ROWS),
+            "QUEST 03 OF 05"
+        );
+        assert_eq!(
+            register_footer("QUEST", 9, 3, 16, QUEST_VISIBLE_ROWS),
             "QUEST 10 OF 16   ·   SHOWING 04-10"
         );
     }

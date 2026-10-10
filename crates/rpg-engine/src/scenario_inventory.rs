@@ -26,6 +26,10 @@ pub(crate) struct ScenarioInventory {
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
     pub(crate) encounter_directory: Option<ScenarioRelativePath>,
+    /// Map ids that ship a `data/encount/<id>.yaml` zone. Towns, inns and some caves have none;
+    /// knowing that up front lets the world skip requesting a file the asset server would only
+    /// report as missing.
+    pub(crate) encounter_zones: std::collections::BTreeSet<String>,
     pub(crate) tmx_directory: Option<ScenarioRelativePath>,
     pub(crate) battle_backgrounds: Option<ScenarioRelativePath>,
     pub(crate) party: Option<ScenarioRelativePath>,
@@ -85,6 +89,10 @@ impl ScenarioInventory {
             self.encounter_directory.as_ref()?,
             &format!("{map_id}.yaml"),
         )
+    }
+
+    pub(crate) fn has_encounter_zone(&self, map_id: &str) -> bool {
+        self.encounter_zones.contains(map_id)
     }
 
     pub(crate) fn tmx_path(&self, map_id: &str) -> Option<ScenarioRelativePath> {
@@ -154,6 +162,16 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
     }
     inventory.classes = yaml_files(&package, manifest.refs.classes.as_relative_path())?;
     inventory.recipes = yaml_files(&package, manifest.refs.recipe.as_relative_path())?;
+
+    inventory.encounter_zones = yaml_files(&package, manifest.refs.encount.as_relative_path())?
+        .iter()
+        .filter_map(|path| {
+            Path::new(path.as_str())
+                .file_stem()?
+                .to_str()
+                .map(str::to_owned)
+        })
+        .collect();
 
     let metadata = yaml_files(&package, manifest.refs.maps.as_relative_path())?;
     let tmx = extension_files(&package, manifest.refs.tmx.as_relative_path(), "tmx")?;
