@@ -700,10 +700,9 @@ mod tests {
     const ASSET_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
     const TERRAIN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.tsx");
     const TERRAIN_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/ground/terrain-v7.png");
-    const GRASS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/grass_cave_walls_24x14.tsx");
-    const ICONS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/icon_table_stage_14x9.tsx");
-    const STONE_TSX_ASSET_PATH: &str =
-        scenario_asset!("media/tilesets/stone_tile_stares_16x16.tsx");
+    const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor/outdoor.tsx");
+    const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop/shop.tsx");
+    const TOWN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/town/town.tsx");
     const INTERIOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/interior/interior.tsx");
 
     fn ground_app() -> App {
@@ -843,9 +842,9 @@ mod tests {
             assert_eq!(
                 atlas_paths,
                 [
-                    GRASS_TSX_ASSET_PATH.to_owned(),
-                    STONE_TSX_ASSET_PATH.to_owned(),
-                    ICONS_TSX_ASSET_PATH.to_owned(),
+                    OUTDOOR_TSX_ASSET_PATH.to_owned(),
+                    TOWN_TSX_ASSET_PATH.to_owned(),
+                    SHOP_TSX_ASSET_PATH.to_owned(),
                     INTERIOR_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
                 ]
@@ -1039,10 +1038,10 @@ mod tests {
         for relative in [
             "media/maps/town_01_ardel.tmx",
             "media/maps/town_01_ardel_house_01.tmx",
-            "media/tilesets/grass_cave_walls_24x14.tsx",
-            "media/tilesets/grass_cave_walls_24x14.png",
-            "media/tilesets/icon_table_stage_14x9.tsx",
-            "media/tilesets/icon_table_stage_14x9.png",
+            "media/tilesets/outdoor/outdoor.tsx",
+            "media/tilesets/outdoor/outdoor.png",
+            "media/tilesets/shop/shop.tsx",
+            "media/tilesets/shop/shop.png",
             "media/tilesets/interior/interior.tsx",
             "media/tilesets/interior/interior.png",
             "media/tilesets/ground/terrain-v7.tsx",

@@ -309,7 +309,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/assets/maps/town_01_ardel.tmx` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` |
 | Source SHA-256 | `a90184da5454cec1edc7bcca3088b94edeb3958f94196f7b04e8abe6d44605b5` |
-| Destination SHA-256 | `dce403d3a7e2e8975a7164f8724faa3c8bdbd641d171b7f3d0b1e06cc20d0d8b` |
+| Destination SHA-256 | `a782316f7bd2d41b84eaa22d769c7031557322b61a8c90288e4553945f38bee3` |
 | Asset kind | TMX |
 | Title/name | Ardel town map (`town_01_ardel`) |
 | Creator/rightsholder | Ninja is the source commit author; copyright ownership and any additional contributors are not expressly documented. |
@@ -401,106 +401,6 @@ status. The required fields are intentionally repeated in each entry.
 | Related port task/wave | M4.11 |
 | Notes/blocker | The not-applicable fields are intentional because this file is a factual attribution notice. It must remain alongside the associated terrain atlas. |
 
-### Asset entry: `ALI-0012` — `grass_cave_walls_24x14` atlas image
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0012` |
-| Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/grass_cave_walls_24x14.png` |
-| Source SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
-| Destination SHA-256 | `60a58b6c8d9b1f99370b987a10ce0b4a76b97bd766d538b66af86c2fbd117520` |
-| Asset kind | tileset image |
-| Title/name | `grass_cave_walls_24x14` atlas |
-| Creator/rightsholder | unknown |
-| Source/evidence | Exact pinned source file and source import commit `9a85c1a6b142bdd38cd23df9f368e51febd83a55` (`Use real tilesets`); no creator, upstream package, license file, or public exact-filename result was found; inspected 2026-08-10 |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** The task authorizes this exact working-copy migration so Ardel can be rendered locally, but possession and source commit history do not establish public redistribution rights. Obtain the original package, creator identity, exact-file provenance, and applicable license or replace the atlas before release. |
-
-### Asset entry: `ALI-0013` — `grass_cave_walls_24x14` Tiled metadata
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0013` |
-| Source path | `rusted_kingdoms/assets/tilesets/grass_cave_walls_24x14.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/grass_cave_walls_24x14.tsx` |
-| Source SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
-| Destination SHA-256 | `b70c47ed5c00aaf644392422524935e9e6a81bd5eec7bc238dfe4564910bb85d` |
-| Asset kind | TSX |
-| Title/name | `grass_cave_walls_24x14` Tiled metadata |
-| Creator/rightsholder | Ninja is the source import author; ownership of the referenced atlas and metadata is not documented. |
-| Source/evidence | Exact pinned source file and source import commit `9a85c1a6b142bdd38cd23df9f368e51febd83a55`; companion image `ALI-0012`; inspected 2026-08-10 |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, 24 columns, and 336 tiles. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** Resolve the companion image's provenance and identify the metadata's applicable terms before public redistribution. |
-
-### Asset entry: `ALI-0014` — `icon_table_stage_14x9` atlas image
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0014` |
-| Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/icon_table_stage_14x9.png` |
-| Source SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
-| Destination SHA-256 | `c3327a0edcb2cf85bb42b269cc239a5661212e8fb711991c362ec4ea963d8c15` |
-| Asset kind | tileset image |
-| Title/name | `icon_table_stage_14x9` atlas |
-| Creator/rightsholder | unknown |
-| Source/evidence | Exact pinned source file and source import commit `167f349f16cd5af934fa4339d4d51ead4b27c202` (`add more tiles and collision tests`); no creator, upstream package, license file, or public exact-filename result was found; inspected 2026-08-10 |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified during this port: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** The task authorizes this exact working-copy migration so Ardel can be rendered locally, but source history does not establish rights. Obtain original-package provenance and a redistribution grant or replace the atlas before release. |
-
-### Asset entry: `ALI-0015` — `icon_table_stage_14x9` Tiled metadata
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0015` |
-| Source path | `rusted_kingdoms/assets/tilesets/icon_table_stage_14x9.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/icon_table_stage_14x9.tsx` |
-| Source SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
-| Destination SHA-256 | `128b99b09af9dd41b9345e32eb113f740f2b9e0d72a3ec9cab7e15580cf218b7` |
-| Asset kind | TSX |
-| Title/name | `icon_table_stage_14x9` Tiled metadata |
-| Creator/rightsholder | Ninja is the source import author; ownership of the referenced atlas and metadata is not documented. |
-| Source/evidence | Exact pinned source file and source import commit `167f349f16cd5af934fa4339d4d51ead4b27c202`; companion image `ALI-0014`; inspected 2026-08-10 |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified: the metadata retains its sibling PNG reference, 32-pixel tiles, 14 columns, and 126 tiles. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M4.12 |
-| Notes/blocker | **Release blocker.** Resolve the companion image's provenance and identify the metadata's applicable terms before public redistribution. |
-
 ### Asset entry: `ALI-0019` — Rusted Kingdoms scenario manifest
 
 | Field | Value |
@@ -509,7 +409,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/manifest.yaml` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/manifest.yaml` |
 | Source SHA-256 | `93bd1d549152437237c37e398f9e9bc9cc7dcb6cb934cb013857a0a5c7340ec9` |
-| Destination SHA-256 | `0c35147fa6457d1063ba573de641a3544518a737d0bf8b96577f66f2b625d242` |
+| Destination SHA-256 | `553e7cbd9a2a5f2c5389e2a5a4baa6fb53db6d587c51b5ddc1183743fd185ce0` |
 | Asset kind | scenario YAML |
 | Title/name | Rusted Kingdoms scenario manifest |
 | Creator/rightsholder | unknown; Ninja authored commits in the file history, but commit authorship does not establish sole ownership or a redistribution grant. |
@@ -934,7 +834,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/assets/maps/zone_01_starting_forest.tmx` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/media/maps/zone_01_starting_forest.tmx` |
 | Source SHA-256 | `c842ea10c830fa17b638f0dbd09faaba911848d4bd4d3d6142a2541f9d746322` |
-| Destination SHA-256 | `eff9b31c2da8e8a1703dc90a3acbe604d392643d1d58d120f193e78c3b340f12` |
+| Destination SHA-256 | `75b3938ce28f98e473ac702ae3dac2aa1d1059d38cc38740c8770e32d72d56ef` |
 | Asset kind | Tiled map |
 | Title/name | `zone_01_starting_forest.tmx` |
 | Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
@@ -1349,56 +1249,6 @@ status. The required fields are intentionally repeated in each entry.
 | Review status | `needs-evidence` |
 | Reviewer/date | Codex evidence audit, 2026-08-10 |
 | Related port task/wave | M5.08-M5.20 |
-| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
-
-### Asset entry: `ALI-0067` — `stone_tile_stares_16x16.png`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0067` |
-| Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.png` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/stone_tile_stares_16x16.png` |
-| Source SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
-| Destination SHA-256 | `8a83562ad82134ebf566fe7b8ef1f41b3bbc16d29da3a536acb46a20c6125333` |
-| Asset kind | image |
-| Title/name | `stone_tile_stares_16x16.png` |
-| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
-| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.21-M5.22 |
-| Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
-
-### Asset entry: `ALI-0068` — `stone_tile_stares_16x16.tsx`
-
-| Field | Value |
-| --- | --- |
-| Stable entry ID | `ALI-0068` |
-| Source path | `rusted_kingdoms/assets/tilesets/stone_tile_stares_16x16.tsx` in `../agentic-rpg` at `0897035` |
-| Destination path | `assets/scenarios/rusted_kingdoms/media/tilesets/stone_tile_stares_16x16.tsx` |
-| Source SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
-| Destination SHA-256 | `3fcf618edc5c55180fa42ed6f9c648682bfb35f7736b915ca5efe896f627bc21` |
-| Asset kind | Tiled TSX metadata |
-| Title/name | `stone_tile_stares_16x16.tsx` |
-| Creator/rightsholder | unknown; source commit authorship does not establish complete ownership or a redistribution grant. |
-| Source/evidence | Exact pinned source file and history through revision `08970359d6cb03586948625d29b0d3351dbbf785`; source README license boundary; inspected 2026-08-10. |
-| License identifier/name | unknown |
-| License text/notice location | unknown |
-| Required attribution | unknown |
-| Modification status/details | Unmodified local parity inclusion: source and destination are byte-for-byte identical. |
-| Redistribution permission | unknown |
-| Commercial-use permission | unknown |
-| Derivative-work permission | unknown |
-| Review status | `needs-evidence` |
-| Reviewer/date | Codex evidence audit, 2026-08-10 |
-| Related port task/wave | M5.21-M5.22 |
 | Notes/blocker | **Release blocker.** Establish exact creator/rightsholder identity, provenance, license, attribution, and redistribution permission for this hash before public release; otherwise replace it. |
 
 ### Asset entry: `ALI-0069` — `sfx_index.yaml`
@@ -2142,28 +1992,28 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0316 | `rusted_kingdoms/assets/images/reiya_profile.png` | `assets/scenarios/rusted_kingdoms/media/images/reiya_profile.png` | `4823944bd43db768fe3169c9315b63749b61d4826ebbcec648d31804dbac6fe2` | image / reiya_profile.png |
 | ALI-0317 | `rusted_kingdoms/assets/images/title_bg/title_lost_flame.webp` | `assets/scenarios/rusted_kingdoms/media/images/title_bg/title_lost_flame.webp` | `c36fc2defc4ddee6ba18e53a61c40b840713219f196775618d46ac344723a9bb` | image / title_lost_flame.webp |
 | ALI-0318 | `rusted_kingdoms/assets/maps/rusted_kingdoms.tiled-project` | `assets/scenarios/rusted_kingdoms/media/maps/rusted_kingdoms.tiled-project` | `7ff120b8a32974ec9a29c77a2972e85e5a6e8e9bd624b55287e634c8831d219f` | tiled project / rusted_kingdoms.tiled-project |
-| ALI-0319 | `rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `097ed0bdee5970ce21c0f2254f3cf6c9d93ab43d4d1d144d06ac228882dbd3ac` | map XML / town_01_ardel_inn_01.tmx |
-| ALI-0320 | `rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `e4ea25c3fb8b20ce4e38c637b0a91a6c0b8f0d7615a1692a125e4e63dbdee612` | map XML / town_01_ardel_shop_01.tmx |
-| ALI-0321 | `rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shrine.tmx` | `e85a256e93c6c45786577cc6e59289ad7540108efae20fde27c8c799b6dacd11` | map XML / town_01_ardel_shrine.tmx |
-| ALI-0322 | `rusted_kingdoms/assets/maps/town_02_millhaven.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `2d4693df93b5a4c5b6fd8af136821fedb5d4f72d5d7a4db514e43dea66b45a87` | map XML / town_02_millhaven.tmx |
-| ALI-0323 | `rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `e87ae6f8ae9ac5be08acb3c6dbe42f0971a97481b14678288231f6c24974d632` | map XML / town_02_millhaven_inn.tmx |
+| ALI-0319 | `rusted_kingdoms/assets/maps/town_01_ardel_inn_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `7cff92abe752f416da054e64bfa945bf5f4f4320a62b54f80e73099edf4a3a59` | map XML / town_01_ardel_inn_01.tmx |
+| ALI-0320 | `rusted_kingdoms/assets/maps/town_01_ardel_shop_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `24bf69c08dda959c33e441cc9443a2a9f1e789b661905ffab400a99b83b7279b` | map XML / town_01_ardel_shop_01.tmx |
+| ALI-0321 | `rusted_kingdoms/assets/maps/town_01_ardel_shrine.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shrine.tmx` | `3d8e444e800e2911393062667dcf0c72365610e531d352842c42043080185386` | map XML / town_01_ardel_shrine.tmx |
+| ALI-0322 | `rusted_kingdoms/assets/maps/town_02_millhaven.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `cfce4f29c2af4694656610b668d139119260fdcdb93f0092b5974d0b256fccae` | map XML / town_02_millhaven.tmx |
+| ALI-0323 | `rusted_kingdoms/assets/maps/town_02_millhaven_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `8c89fd03436da3e9e8e61c20675509803095271222d4b47e10b3f7ba3cbd3559` | map XML / town_02_millhaven_inn.tmx |
 | ALI-0324 | `rusted_kingdoms/assets/maps/town_02_millhaven_mill.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `e879abd22bd294f65573bf16fb857e4c49696fdb80122e25ba3a999cf368209e` | map XML / town_02_millhaven_mill.tmx |
-| ALI-0325 | `rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `e3c5af6b583ad9641e07c52a6575fe0923a516cb4c4d58b1186727b81955d886` | map XML / town_02_millhaven_shop.tmx |
-| ALI-0326 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_inn.tmx` | `589ef2c248a629a5638525486b824e0c13e782b807d6c435c2a23009b596751a` | map XML / town_03_ruinwatch_inn.tmx |
-| ALI-0327 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_shop.tmx` | `0f6a60d162be16ee69d1547dd0b1b39eb28a003bf668824c433b4bf9c501bf91` | map XML / town_03_ruinwatch_shop.tmx |
-| ALI-0328 | `rusted_kingdoms/assets/maps/town_04_frostholm_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_shop.tmx` | `6e98caa9f28b1144c4792d2a6219f6019de6c8b5fa23237eadee9fc3f3a19f1c` | map XML / town_04_frostholm_shop.tmx |
-| ALI-0329 | `rusted_kingdoms/assets/maps/town_05_ashenveil_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_inn.tmx` | `34ea96c3e5aae0fb9dc0eac0a943dc464f27f104a30c48a73d0341b0a66fb25e` | map XML / town_05_ashenveil_inn.tmx |
-| ALI-0330 | `rusted_kingdoms/assets/maps/town_05_ashenveil_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_shop.tmx` | `38bc7fd4cd309530782732cb6e3d1d1cc33db01f3e20456370b777e7b4b9bfda` | map XML / town_05_ashenveil_shop.tmx |
-| ALI-0331 | `rusted_kingdoms/assets/maps/zone_02_open_plains.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains.tmx` | `1b0f4b7391f8b15ab82bd289e12dea81ff1926625e6e39d8e62ac5868f11e884` | map XML / zone_02_open_plains.tmx |
-| ALI-0332 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_01.tmx` | `6463f0a289c70384799326808d24ccdb3a3a71e991cd187586bb88e1c6172e21` | map XML / zone_02_open_plains_cave_01.tmx |
-| ALI-0333 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_02.tmx` | `6c7530446fe4b51f7ba4b92657b72e7a25daac532702355c8385508d9ec1825b` | map XML / zone_02_open_plains_cave_02.tmx |
-| ALI-0334 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_01_gate.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_01_gate.tmx` | `61f721b201e9b23c84e1e33da56a70c10c9788d5b0a274a5acd8cbab703fbb43` | map XML / zone_04_ancient_ruins_01_gate.tmx |
-| ALI-0335 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_02_courtyard.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_02_courtyard.tmx` | `56f8398e4e0858f80c6601378d2840ddfd63e7ad1cf7324c891f539c0cbf06aa` | map XML / zone_04_ancient_ruins_02_courtyard.tmx |
-| ALI-0336 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_02.tmx` | `2a06eff71226b82844a72bfec9e893670415912708241fabed8b5989ad278bd1` | map XML / zone_05_mountain_foothills_02.tmx |
-| ALI-0337 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_01.tmx` | `9662cf773403c3d7c76d8e9c8aa1dd687f8894f1be432b618aa84e8cc95d0bdc` | map XML / zone_06_mountain_pass_01.tmx |
-| ALI-0338 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_02.tmx` | `38b38f293daa1f5ddfb7f1c45e41e59bdc8b9c84ed9d67fa9711eb0aafd366c7` | map XML / zone_06_mountain_pass_02.tmx |
-| ALI-0339 | `rusted_kingdoms/assets/maps/zone_07_sunken_cave.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_07_sunken_cave.tmx` | `da4103d15ebc4127bfbe2732c73ff6154272c8737b5cdadea3d43a5381cc4abf` | map XML / zone_07_sunken_cave.tmx |
-| ALI-0340 | `rusted_kingdoms/assets/maps/zone_08_corrupted_forest.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_08_corrupted_forest.tmx` | `9463045822c1b1ad304683e06df8285f567c4556b5d1253f962a276893bfba6f` | map XML / zone_08_corrupted_forest.tmx |
+| ALI-0325 | `rusted_kingdoms/assets/maps/town_02_millhaven_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `33a7e61085a0cedbc20fad14f995b1f2232784fc2723e2ff249c2ccda3148aaf` | map XML / town_02_millhaven_shop.tmx |
+| ALI-0326 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_inn.tmx` | `8ff5f70149a014dafe5fd6fc9c3bd99833c43baeb50a53ff5155009f0f7265c2` | map XML / town_03_ruinwatch_inn.tmx |
+| ALI-0327 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_shop.tmx` | `5bd363d3b77ae2ffa4545df2cbfd039439483a2fc029512df70704c78e1543e8` | map XML / town_03_ruinwatch_shop.tmx |
+| ALI-0328 | `rusted_kingdoms/assets/maps/town_04_frostholm_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_shop.tmx` | `a5e20979d2831dc4762709d262e5a757204c22bc49553f16b7ddcaccbe8a8903` | map XML / town_04_frostholm_shop.tmx |
+| ALI-0329 | `rusted_kingdoms/assets/maps/town_05_ashenveil_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_inn.tmx` | `c97a24319edaa2cb04f8d08acbbae13bcf93708a0d799035c421bc1f39e4c3bb` | map XML / town_05_ashenveil_inn.tmx |
+| ALI-0330 | `rusted_kingdoms/assets/maps/town_05_ashenveil_shop.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_shop.tmx` | `fdcf355fcee121ae4ca1d2ff17e138ef062af54d1c26b8b7c973ded239df7f98` | map XML / town_05_ashenveil_shop.tmx |
+| ALI-0331 | `rusted_kingdoms/assets/maps/zone_02_open_plains.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains.tmx` | `c6d96dde0108b2305d01293a3e23bd9fa7bc0a4597ae399da1df2e298051458f` | map XML / zone_02_open_plains.tmx |
+| ALI-0332 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_01.tmx` | `cb3722a485606dcff9b2e72c7e4ada32ab4d779b6e25beb488ba17cf10d08fb7` | map XML / zone_02_open_plains_cave_01.tmx |
+| ALI-0333 | `rusted_kingdoms/assets/maps/zone_02_open_plains_cave_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_02_open_plains_cave_02.tmx` | `51ba8af22b40f65ea54014641bcbddd06016a8def9cd8e7a4dfb38d165516798` | map XML / zone_02_open_plains_cave_02.tmx |
+| ALI-0334 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_01_gate.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_01_gate.tmx` | `072996298eaddb7251552b4cc964f252815544c8c046e8cac2292b72e2f319d4` | map XML / zone_04_ancient_ruins_01_gate.tmx |
+| ALI-0335 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_02_courtyard.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_02_courtyard.tmx` | `45d3a9daefa68de4684158f371e0aa39d0d2d049a9985894efb2307309b03a22` | map XML / zone_04_ancient_ruins_02_courtyard.tmx |
+| ALI-0336 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_02.tmx` | `717a48b763b6bdc67af6bb54fd447eddd7509ea982f3faf13718c00db5c705a9` | map XML / zone_05_mountain_foothills_02.tmx |
+| ALI-0337 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_01.tmx` | `b8829e5df983c6b5a0b8221e845f5d75936bd4c6d32bea4dfc47870899395e48` | map XML / zone_06_mountain_pass_01.tmx |
+| ALI-0338 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_02.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_02.tmx` | `1041a9e45cf62f351a6717797a28227fcc9e788a85bb0602e784c94af2250862` | map XML / zone_06_mountain_pass_02.tmx |
+| ALI-0339 | `rusted_kingdoms/assets/maps/zone_07_sunken_cave.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_07_sunken_cave.tmx` | `ee724596d68ea91d4e8354ed1b61ed71f9d5409a410ce862af7b1fa925d5c025` | map XML / zone_07_sunken_cave.tmx |
+| ALI-0340 | `rusted_kingdoms/assets/maps/zone_08_corrupted_forest.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_08_corrupted_forest.tmx` | `f7b65949fc751572e80031aba69387367c5e0624d9a47eee3e0e1411bb1c2e41` | map XML / zone_08_corrupted_forest.tmx |
 | ALI-0341 | `rusted_kingdoms/assets/sprites/enemies/alien_invader_base.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/alien_invader_base.png` | `d7518622d5f8ddd30b26d48e3eda9ca7a2bf60d28f0edf4552314b6fe0a1826b` | image / alien_invader_base.png |
 | ALI-0342 | `rusted_kingdoms/assets/sprites/enemies/alien_invader_base.tsx` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/alien_invader_base.tsx` | `f7c23b2227f8918e40f6d4a012972085daaa68bc264af7007c8641365727bc8b` | tileset XML / alien_invader_base.tsx |
 | ALI-0343 | `rusted_kingdoms/assets/sprites/enemies/alien_invader_base_battle.png` | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/alien_invader_base_battle.png` | `51f2e59a6aff4418f5b6cccd6640d7a80afb2863f5ff37efe55d24fe8708fc6c` | image / alien_invader_base_battle.png |
@@ -2663,38 +2513,32 @@ no row here may be shipped while its status is `needs-evidence`.
 | ALI-0837 | `rusted_kingdoms/assets/tilesets/ground/terrain-v7.md` | `assets/scenarios/rusted_kingdoms/media/tilesets/ground/terrain-v7.md` | `fd2c0d5a9c254af8bd6ba8214a1d5d027919e7e517778fc0eaaf69f635e280fe` | markdown / terrain-v7.md |
 | ALI-0838 | `rusted_kingdoms/assets/tilesets/sample_01.png` | `assets/scenarios/rusted_kingdoms/media/tilesets/sample_01.png` | `1d72dcc86be5249ff778b6f8dee11630963e980429d908f55887d64049524d80` | image / sample_01.png |
 | ALI-0839 | `rusted_kingdoms/assets/tilesets/sample_01.tsx` | `assets/scenarios/rusted_kingdoms/media/tilesets/sample_01.tsx` | `a8a2ca383dccd1e6c796651decdf928a670d9c2ce504e5227bc779c8b16e8093` | tileset XML / sample_01.tsx |
-| ALI-0840 | `rusted_kingdoms/assets/tilesets/schwarnhild/tiles-all-32x32.png` | `assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/tiles-all-32x32.png` | `39a38cb4281083563c77538cd6e57785bdba3fe00cad6376bee332b7bd9ccd88` | image / tiles-all-32x32.png |
-| ALI-0841 | `rusted_kingdoms/assets/tilesets/schwarnhild/tiles-all-32x32.tsx` | `assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/tiles-all-32x32.tsx` | `8eb8412852d05090e31e4d01de2a0bd5a800fb1044f6e505ae4d77d2260e8b7c` | tileset XML / tiles-all-32x32.tsx |
-| ALI-0842 | `rusted_kingdoms/assets/tilesets/stamps/17.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/17.stamp` | `37f916f3217cf2cad6eb979f0f6cee4bef21f69da82144c24209047e92fdd51c` | tiled stamp / 17.stamp |
-| ALI-0843 | `rusted_kingdoms/assets/tilesets/stamps/ardel_house.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/ardel_house.stamp` | `7a4ef856f50772482f4368181671049e0ed6b83e3e47c6ba18531e8d08b9a4dd` | tiled stamp / ardel_house.stamp |
-| ALI-0844 | `rusted_kingdoms/assets/tilesets/stamps/bridge_long.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_long.stamp` | `1596c30f43824312bfe2053ee40c71e717726fc8664aaadae5cc0022fb04dcf8` | tiled stamp / bridge_long.stamp |
-| ALI-0845 | `rusted_kingdoms/assets/tilesets/stamps/bridge_short.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_short.stamp` | `b39df7df4af5fda2716e52b4e96b75f6efde504b5089496fffdb8d570fd0ab07` | tiled stamp / bridge_short.stamp |
-| ALI-0846 | `rusted_kingdoms/assets/tilesets/stamps/building_blacksmith_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_blacksmith_01.stamp` | `2653c86c0143d6963f6524719565fc5125522a678cf37feb3379a1467a05e43a` | tiled stamp / building_blacksmith_01.stamp |
-| ALI-0847 | `rusted_kingdoms/assets/tilesets/stamps/building_house_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_01.stamp` | `0e01ee8ea76a7a42e1ca03eaef0c713cf9fbf65260da2cfef8305940d6d9039b` | tiled stamp / building_house_01.stamp |
-| ALI-0848 | `rusted_kingdoms/assets/tilesets/stamps/building_house_02.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_02.stamp` | `915db1fbdd6cb7e59e70787974134493478a9559948d79960cd23ed53ea77850` | tiled stamp / building_house_02.stamp |
-| ALI-0849 | `rusted_kingdoms/assets/tilesets/stamps/building_house_03.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_03.stamp` | `53b4d1ca3022f1aa884652419a8c37e7c8ef589172521f5e5679336156ece202` | tiled stamp / building_house_03.stamp |
-| ALI-0850 | `rusted_kingdoms/assets/tilesets/stamps/building_house_04.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_04.stamp` | `ac9136b67f1632581e9fb4fc33478cf80c3eaea7e0fdcca760215ef22a25a4e5` | tiled stamp / building_house_04.stamp |
-| ALI-0851 | `rusted_kingdoms/assets/tilesets/stamps/building_house_05.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_05.stamp` | `156675ed6ee2c444f6e5beaa9482ea48a213fe559dec2ed16978fad656877242` | tiled stamp / building_house_05.stamp |
-| ALI-0852 | `rusted_kingdoms/assets/tilesets/stamps/building_inn_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_inn_01.stamp` | `b2ca64a1e0e3455f6941be71db30f7214fd1f7486f09bf996076d43831dc64ee` | tiled stamp / building_inn_01.stamp |
-| ALI-0853 | `rusted_kingdoms/assets/tilesets/stamps/cave_entrance.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/cave_entrance.stamp` | `e7fbff0384661afd8571240ab76179c199ca3ded48d941d8105dcdd4912f430c` | tiled stamp / cave_entrance.stamp |
-| ALI-0854 | `rusted_kingdoms/assets/tilesets/stamps/door_wood_1.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/door_wood_1.stamp` | `007f86fe1aca0447624f37fa43c32c8202aa7730590fdc30984022237fdf6a0d` | tiled stamp / door_wood_1.stamp |
-| ALI-0855 | `rusted_kingdoms/assets/tilesets/stamps/door_wood_2.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/door_wood_2.stamp` | `dc3317018adbcb8855a7b63a4bed3be6dfd1bf4406711fc750cc41741822ba0a` | tiled stamp / door_wood_2.stamp |
-| ALI-0856 | `rusted_kingdoms/assets/tilesets/stamps/forest.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/forest.stamp` | `10f2a4932a18d9ef0f0332769717d29254120d287348052038189d8c66677bef` | tiled stamp / forest.stamp |
-| ALI-0857 | `rusted_kingdoms/assets/tilesets/stamps/log_horizontal.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/log_horizontal.stamp` | `29a468a673521c48af3ccef00392219bef207d427f55d21a02650ac0086cc7b6` | tiled stamp / log_horizontal.stamp |
-| ALI-0858 | `rusted_kingdoms/assets/tilesets/stamps/log_vertical.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/log_vertical.stamp` | `2d4fb1e370d6452be888f6cfece21325f3563ff6bda2fb0f4af38adcc47d3d70` | tiled stamp / log_vertical.stamp |
+| ALI-0842 | `rusted_kingdoms/assets/tilesets/stamps/17.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/17.stamp` | `4c7194ac17249063e40fe9e653f371e63ef8c8e7d197d01f4570ac84561e7097` | tiled stamp / 17.stamp |
+| ALI-0843 | `rusted_kingdoms/assets/tilesets/stamps/ardel_house.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/ardel_house.stamp` | `025f90df41a1fcb5a3cb505eed13afccd694cbd1947ef958bbe8ae7cecfc5f10` | tiled stamp / ardel_house.stamp |
+| ALI-0844 | `rusted_kingdoms/assets/tilesets/stamps/bridge_long.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_long.stamp` | `2e621eca510e1a2185cbbbd565a0461973391ed23c02aea7c408242b7f721444` | tiled stamp / bridge_long.stamp |
+| ALI-0845 | `rusted_kingdoms/assets/tilesets/stamps/bridge_short.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/bridge_short.stamp` | `3728df3dec6aeb533f1f62d3c7dd1218c478f0beea58af6ac1e7780d3927628e` | tiled stamp / bridge_short.stamp |
+| ALI-0846 | `rusted_kingdoms/assets/tilesets/stamps/building_blacksmith_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_blacksmith_01.stamp` | `10437c85c7c8feea0635608441393af71e9b9dbffbdfce34734c7ec33e840615` | tiled stamp / building_blacksmith_01.stamp |
+| ALI-0847 | `rusted_kingdoms/assets/tilesets/stamps/building_house_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_01.stamp` | `3b9f8e1945285481a8f3afcca62cd64d53a2c3782933049a614afe3e0431e659` | tiled stamp / building_house_01.stamp |
+| ALI-0848 | `rusted_kingdoms/assets/tilesets/stamps/building_house_02.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_02.stamp` | `98a5529068cbde8719c678098aacabe163a02190bc9d9f771d0fbaefed695c51` | tiled stamp / building_house_02.stamp |
+| ALI-0849 | `rusted_kingdoms/assets/tilesets/stamps/building_house_03.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_03.stamp` | `6daa0abd072485f766c85a6205e9bd17ad78728876d4e8c0186bb9eda9b66ba8` | tiled stamp / building_house_03.stamp |
+| ALI-0850 | `rusted_kingdoms/assets/tilesets/stamps/building_house_04.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_04.stamp` | `6d9c2e40cd2313ca7b1ec4805c4f5d79ecfd64113b79b0e766917f90c416ee0c` | tiled stamp / building_house_04.stamp |
+| ALI-0851 | `rusted_kingdoms/assets/tilesets/stamps/building_house_05.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_house_05.stamp` | `510dab6f3884996be514e2ae3c423d791d2462e5f38650837cd9b2bedbac395b` | tiled stamp / building_house_05.stamp |
+| ALI-0852 | `rusted_kingdoms/assets/tilesets/stamps/building_inn_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/building_inn_01.stamp` | `45bfe26c49a24752a451168ad6a8766e4596edae270f51467063ab211936c5bb` | tiled stamp / building_inn_01.stamp |
+| ALI-0853 | `rusted_kingdoms/assets/tilesets/stamps/cave_entrance.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/cave_entrance.stamp` | `759e12fcef4744b89462cb255c87151023b297874a71621167dfefab73087363` | tiled stamp / cave_entrance.stamp |
+| ALI-0854 | `rusted_kingdoms/assets/tilesets/stamps/door_wood_1.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/door_wood_1.stamp` | `169ace9e63e7f0fe73877cb9107410297f6bc7b11031556183ec93dbcc934682` | tiled stamp / door_wood_1.stamp |
+| ALI-0855 | `rusted_kingdoms/assets/tilesets/stamps/door_wood_2.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/door_wood_2.stamp` | `99ca4e7aeba9f7165cc055f5d891031fe41d0ac2f578f52b97fc0f6ee95838db` | tiled stamp / door_wood_2.stamp |
+| ALI-0856 | `rusted_kingdoms/assets/tilesets/stamps/forest.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/forest.stamp` | `913240ca53f582fe7a397bb4563bfe4d6f2299e73ee9af52951839f4d5ee7dca` | tiled stamp / forest.stamp |
+| ALI-0857 | `rusted_kingdoms/assets/tilesets/stamps/log_horizontal.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/log_horizontal.stamp` | `5b75f55204e94e737fc1ce5825658319e2ccf56855f10806465bdefaf6fe9056` | tiled stamp / log_horizontal.stamp |
+| ALI-0858 | `rusted_kingdoms/assets/tilesets/stamps/log_vertical.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/log_vertical.stamp` | `b02dc38d718b1fc9f091b40d33027cff0970be04149b74bfa6ce440974c3ff4c` | tiled stamp / log_vertical.stamp |
 | ALI-0859 | `rusted_kingdoms/assets/tilesets/stamps/object_broken_stone_column_01.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/object_broken_stone_column_01.stamp` | `120d7f19fe73d466914b5a4c6f41960cc0c5f3a952271d9586cc16e408b8dc71` | tiled stamp / object_broken_stone_column_01.stamp |
 | ALI-0860 | `rusted_kingdoms/assets/tilesets/stamps/object_stone_column_02.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/object_stone_column_02.stamp` | `85892bf82956f5e4e791498d2cea7a496475ad515799452cd4179ad91c0e0d6d` | tiled stamp / object_stone_column_02.stamp |
-| ALI-0861 | `rusted_kingdoms/assets/tilesets/stamps/scare_crow.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/scare_crow.stamp` | `47aabf39812502bfcd1604381b15f6e3ea3a329ab1b91592756c8dda583ebfaa` | tiled stamp / scare_crow.stamp |
-| ALI-0862 | `rusted_kingdoms/assets/tilesets/stamps/tree.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree.stamp` | `157103e7f32b34c08903f6e2419de658d313510394478e2c278c7e0fac6ac930` | tiled stamp / tree.stamp |
-| ALI-0863 | `rusted_kingdoms/assets/tilesets/stamps/tree_dark.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_dark.stamp` | `484281890c175ae8d283cc69e593a72c5cfa102f0421ae8d70f774a351cc9050` | tiled stamp / tree_dark.stamp |
-| ALI-0864 | `rusted_kingdoms/assets/tilesets/stamps/tree_dead.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_dead.stamp` | `928cd6268a3ca443bbbbc18873b412309f972771d6260affedb61f6a72da136d` | tiled stamp / tree_dead.stamp |
-| ALI-0865 | `rusted_kingdoms/assets/tilesets/stamps/tree_double.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_double.stamp` | `ff46ba175d28f57e7b1fa540f0fd05e55dc529aee9454f4aa3bd90b30500d02d` | tiled stamp / tree_double.stamp |
-| ALI-0866 | `rusted_kingdoms/assets/tilesets/stamps/tree_orange.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_orange.stamp` | `bbdd4c55005c90f17f9514c2251c993698eaa3049ec4aa10b73bb661bf307cfe` | tiled stamp / tree_orange.stamp |
-| ALI-0867 | `rusted_kingdoms/assets/tilesets/stamps/tree_triple.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_triple.stamp` | `326482e6ba151066d6db176da6f291d7cdd816f5f9050c117f984f8a7048cc2d` | tiled stamp / tree_triple.stamp |
-| ALI-0868 | `rusted_kingdoms/assets/tilesets/walls_02.png` | `assets/scenarios/rusted_kingdoms/media/tilesets/walls_02.png` | `3dbcddb3de6a647d4d1a04cd9bab46f41b3ed2e36c2a53ad46f444ad274503a2` | image / walls_02.png |
-| ALI-0869 | `rusted_kingdoms/assets/tilesets/walls_02.tsx` | `assets/scenarios/rusted_kingdoms/media/tilesets/walls_02.tsx` | `b68b5121e161b22cf8f2262014ee84faacebee56fb23aca6e3799103dbe9e34f` | tileset XML / walls_02.tsx |
-| ALI-0870 | `rusted_kingdoms/assets/tilesets/window_8x6.png` | `assets/scenarios/rusted_kingdoms/media/tilesets/window_8x6.png` | `ca5435323827a31f927978b4f31b4ffc918f42db356f27749006b32cba10a0ee` | image / window_8x6.png |
-| ALI-0871 | `rusted_kingdoms/assets/tilesets/window_8x6.tsx` | `assets/scenarios/rusted_kingdoms/media/tilesets/window_8x6.tsx` | `2f54addf4aeabfac61f110d33cd01bb9a60dae4dd687fefc6d27b767b36f645e` | tileset XML / window_8x6.tsx |
+| ALI-0861 | `rusted_kingdoms/assets/tilesets/stamps/scare_crow.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/scare_crow.stamp` | `1adc7f30c5e9d9408a9c2eee7156da92c7a2f37bdd268d445eaa5643bf6984ac` | tiled stamp / scare_crow.stamp |
+| ALI-0862 | `rusted_kingdoms/assets/tilesets/stamps/tree.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree.stamp` | `5ed52eb21ef934f67babc0d6ab20e6fc346af31e76f63e2c3314a3ee93e21001` | tiled stamp / tree.stamp |
+| ALI-0863 | `rusted_kingdoms/assets/tilesets/stamps/tree_dark.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_dark.stamp` | `4c496a3f3d68cb5d005278c21ac8722162006c6d708b4cff0ad37d6821ac298c` | tiled stamp / tree_dark.stamp |
+| ALI-0864 | `rusted_kingdoms/assets/tilesets/stamps/tree_dead.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_dead.stamp` | `cc4b1a85047218b0fad315e3e9d371061288c82abbb666a44b7b8e67535c05c4` | tiled stamp / tree_dead.stamp |
+| ALI-0865 | `rusted_kingdoms/assets/tilesets/stamps/tree_double.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_double.stamp` | `f970e5612fc9edff1696bc3bc7c398b2d9f97bd550bc7bbf288d6be7b967fe9a` | tiled stamp / tree_double.stamp |
+| ALI-0866 | `rusted_kingdoms/assets/tilesets/stamps/tree_orange.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_orange.stamp` | `a601f1d2a1f7cf6fe34cc544b2d74d764ea2cef46494bdcc8fc2dba67069fb14` | tiled stamp / tree_orange.stamp |
+| ALI-0867 | `rusted_kingdoms/assets/tilesets/stamps/tree_triple.stamp` | `assets/scenarios/rusted_kingdoms/media/tilesets/stamps/tree_triple.stamp` | `94f1eed49d95007bd58414b518e5e2d197e5182fb8f40eae26070030ce0301d5` | tiled stamp / tree_triple.stamp |
 
 ## M14.05 backfill: port-modified migrated payload files
 
@@ -2781,22 +2625,21 @@ destination hash, and the modification fact their previous section denied.
 | ALI-0910 | `rusted_kingdoms/data/recipe/all_recipe.yaml` | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
 | ALI-0911 | `rusted_kingdoms/assets/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `f2e777876ea1ebd7d6442e4e4311a8328be390bb36153d664df4088f846b1afc` | audio / Chronicles_of_the_Lost_Flame_Title.mp3 |
 | ALI-0912 | `rusted_kingdoms/assets/fonts/Quintessential-Regular-OFL.txt` | `assets/scenarios/rusted_kingdoms/media/fonts/Quintessential-Regular-OFL.txt` | `3b022dc192aa6a748fe7302f479a66377f19f3851be46b3233600c0226dc99f5` | text / Quintessential-Regular-OFL.txt |
-| ALI-0913 | `rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch.tmx` | `ce18a071b8ed0b3c432d493b157cac0868942431a911106ed452e1a88c74a692` | map XML / town_03_ruinwatch.tmx |
-| ALI-0914 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_monastery_vaults.tmx` | `80ef091935726ceb81fc71c9841c59e1f0d8b893b6c5517e4e5e9ec2f2b188de` | map XML / town_03_ruinwatch_monastery_vaults.tmx |
-| ALI-0915 | `rusted_kingdoms/assets/maps/town_04_frostholm.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm.tmx` | `7bf7baaa5e4c92cc39d79a40b21cf4537c3b3091c17b67c9f042cbc19c8a9df6` | map XML / town_04_frostholm.tmx |
-| ALI-0916 | `rusted_kingdoms/assets/maps/town_04_frostholm_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_inn.tmx` | `b604f2a54d1698e12395484300f277a7640c4bc4e281e1e0d9b73db0339e3894` | map XML / town_04_frostholm_inn.tmx |
+| ALI-0913 | `rusted_kingdoms/assets/maps/town_03_ruinwatch.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch.tmx` | `1e8440386d618dadc42e6e3492c157940f2799751f335b1924b7b66dc04924aa` | map XML / town_03_ruinwatch.tmx |
+| ALI-0914 | `rusted_kingdoms/assets/maps/town_03_ruinwatch_monastery_vaults.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_monastery_vaults.tmx` | `7b9553bedd2be6b2ae7012db27f96030a10bad0785695741ce1c9ce9749ad747` | map XML / town_03_ruinwatch_monastery_vaults.tmx |
+| ALI-0915 | `rusted_kingdoms/assets/maps/town_04_frostholm.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm.tmx` | `4999a102d4be199f0abed1936c650571fe323e1d238297126ac9b7e401c76503` | map XML / town_04_frostholm.tmx |
+| ALI-0916 | `rusted_kingdoms/assets/maps/town_04_frostholm_inn.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_inn.tmx` | `3a0753f2c74321e1acebb0e55a34a8e1d1b376f03320648268edac570ebecb63` | map XML / town_04_frostholm_inn.tmx |
 | ALI-0917 | `rusted_kingdoms/assets/maps/town_04_frostholm_palace.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_palace.tmx` | `afbe0b6bcb252b741afc4c1b9a1266fc2e00b0e9330b59c59afa000ca35f291b` | map XML / town_04_frostholm_palace.tmx |
-| ALI-0918 | `rusted_kingdoms/assets/maps/town_04_frostholm_vault.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_vault.tmx` | `f921644ac7bc7cf4212cd79f16e025df9e6bcb9d0c63d5ebadc41b8b805fbfe6` | map XML / town_04_frostholm_vault.tmx |
-| ALI-0919 | `rusted_kingdoms/assets/maps/town_05_ashenveil.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil.tmx` | `5ce4ef561c464ae874326c11b1dca2d1f0b336d8582b75f2b745be1dabdec596` | map XML / town_05_ashenveil.tmx |
-| ALI-0920 | `rusted_kingdoms/assets/maps/town_05_ashenveil_oracle_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_oracle_sanctum.tmx` | `508c33b61dcc6c8425d11761fa0d564d30938959ca6bcdf209ca00072fc7782e` | map XML / town_05_ashenveil_oracle_sanctum.tmx |
-| ALI-0921 | `rusted_kingdoms/assets/maps/zone_03_marshland.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_03_marshland.tmx` | `0d48311def608fecc6399d4922a36387fe544af95fc37db48afc962f3c8af700` | map XML / zone_03_marshland.tmx |
-| ALI-0922 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `0487c11c2e7d0f4a5121f6a7dd622b52dae6a67bbfbe38c39fd6e3e45ce49ad3` | map XML / zone_04_ancient_ruins_03_sanctum.tmx |
-| ALI-0923 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_01.tmx` | `1fcc33caf3be875f11406665a67118883be1cda269858d82382198dba89f0133` | map XML / zone_05_mountain_foothills_01.tmx |
-| ALI-0924 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_03.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_03.tmx` | `76404a6bb3f141ee5f7992f91eafdad37832a35d7c7685f0deccb235678de6c5` | map XML / zone_05_mountain_foothills_03.tmx |
-| ALI-0925 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_03.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_03.tmx` | `3e6acef6caf1604b8b451ec2f0a4681dcd84bbf2fc501a51ad84eb7c27f9b123` | map XML / zone_06_mountain_pass_03.tmx |
-| ALI-0926 | `rusted_kingdoms/assets/maps/zone_09_volcanic_region.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_09_volcanic_region.tmx` | `1ace33b3d452b18a5d53dee2f0238fd59d40e99f45e8c6ed32f73a7531c5cf4f` | map XML / zone_09_volcanic_region.tmx |
-| ALI-0927 | `rusted_kingdoms/assets/maps/zone_10_final_stronghold.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_final_stronghold.tmx` | `db506bbaecfd489c47688a876d48d1e1a2b33d836c34d3ea8f73cb88ae0d1385` | map XML / zone_10_final_stronghold.tmx |
-| ALI-0928 | `rusted_kingdoms/assets/tilesets/schwarnhild/license.txt` | `assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/license.txt` | `ff08257768903641b6fa741b46ca344978c75aad4dd7a0c4547795537e3b1aff` | text / license.txt |
+| ALI-0918 | `rusted_kingdoms/assets/maps/town_04_frostholm_vault.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_04_frostholm_vault.tmx` | `cfe9a327ab4f1fef1b392f4bd0f3077fc18cf2161e2f9657f3624602bb236810` | map XML / town_04_frostholm_vault.tmx |
+| ALI-0919 | `rusted_kingdoms/assets/maps/town_05_ashenveil.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil.tmx` | `962445e8e22ccfee6eaa54a0a661944e76af8e814fe0ec2622d2259a87527a91` | map XML / town_05_ashenveil.tmx |
+| ALI-0920 | `rusted_kingdoms/assets/maps/town_05_ashenveil_oracle_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/town_05_ashenveil_oracle_sanctum.tmx` | `54dd855cf60ee1c595880f4b3e7687de8aab76153ac6caed4af7e5cac6143595` | map XML / town_05_ashenveil_oracle_sanctum.tmx |
+| ALI-0921 | `rusted_kingdoms/assets/maps/zone_03_marshland.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_03_marshland.tmx` | `fadf06373389233309d9297903e71f01d4084f8764e7dd0233a3df9d45efb8f1` | map XML / zone_03_marshland.tmx |
+| ALI-0922 | `rusted_kingdoms/assets/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_04_ancient_ruins_03_sanctum.tmx` | `1ae32f90e1a4699efd9ca09046ce571b2a29fa3df7e86832863812051f42e4e6` | map XML / zone_04_ancient_ruins_03_sanctum.tmx |
+| ALI-0923 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_01.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_01.tmx` | `bc263f4970fd94da021dd6e213f68b452579bb65ac8fea821df271bd6bf953f0` | map XML / zone_05_mountain_foothills_01.tmx |
+| ALI-0924 | `rusted_kingdoms/assets/maps/zone_05_mountain_foothills_03.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_05_mountain_foothills_03.tmx` | `0d5400d7efb2611014883451d3082fbc1245f9ad0d1a9a27b5c532e062591b68` | map XML / zone_05_mountain_foothills_03.tmx |
+| ALI-0925 | `rusted_kingdoms/assets/maps/zone_06_mountain_pass_03.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_06_mountain_pass_03.tmx` | `b2da0e553e12cef45c90ffb960c2975306e795d0c34741b44c93712df172c74f` | map XML / zone_06_mountain_pass_03.tmx |
+| ALI-0926 | `rusted_kingdoms/assets/maps/zone_09_volcanic_region.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_09_volcanic_region.tmx` | `4facf5a910d3c6bfdb72ff4c7d46ba67c4d1d2eb1287fd980a039839f7b7ddc3` | map XML / zone_09_volcanic_region.tmx |
+| ALI-0927 | `rusted_kingdoms/assets/maps/zone_10_final_stronghold.tmx` | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_final_stronghold.tmx` | `d782cd9f20bb75c767bf7799a671df9658bb882f1d47ad6b7edabea1c1e0492c` | map XML / zone_10_final_stronghold.tmx |
 | ALI-0929 | `engine/settings/settings.yaml` | `assets/settings.yaml` | `d6de41269817a10c1d34ef922ae96a9cbfa81b7251cdc4c8f3421261ef482612` | scenario YAML / settings.yaml |
 
 ## M14.05 backfill: project-authored payload files
@@ -2826,7 +2669,7 @@ sections above, which still need their own evidence.
 
 | ID | Source path in the pinned source tree | Destination path | SHA-256 | Kind/name |
 | --- | --- | --- | --- | --- |
-| ALI-0930 | N/A - project-authored in this repository | `assets/README.md` | `5234085892ba1d7cce499794b39b212a9d9e9db9181acc345a6409bf2073892c` | markdown / README.md |
+| ALI-0930 | N/A - project-authored in this repository | `assets/README.md` | `daa3d5c4cf241714cd750a5ef42787322aa1f567db8140f535739846a4d0761c` | markdown / README.md |
 | ALI-0931 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ashenveil.yaml` | `c833426ed56b7b684e41fcdd7040af436ce3bd6cab58ace677ec6b13492f78af` | scenario YAML / apothecary_ashenveil.yaml |
 | ALI-0932 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_frostholm.yaml` | `1f1505a3f62e6f5d98c0330e23c2c07fd531bf2b626f98819f37a9f7183e6c92` | scenario YAML / apothecary_frostholm.yaml |
 | ALI-0933 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/dialogue/apothecary_ruinwatch.yaml` | `e66a7c3fd4e4283dbfe7f019f4b220c57d9c252759fac6d4603859e2989d3637` | scenario YAML / apothecary_ruinwatch.yaml |
@@ -2890,20 +2733,20 @@ sections above, which still need their own evidence.
 | ALI-0991 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_05.yaml` | `b2d0ec0eba12dd7395d60e5c748b76b3b37f2af845b6390da000ac54e325b656` | scenario YAML / zone_10_hearth_descent_05.yaml |
 | ALI-0992 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_06.yaml` | `3b2916f3179baacd3299ecb5e37c37c15bdea3a87f7727204c179bd6e44eb6b0` | scenario YAML / zone_10_hearth_descent_06.yaml |
 | ALI-0993 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `a648a742737a7c7745596e4dff0bca0ea137423fe67f308ad9a8c4e157f1e488` | scenario YAML / transport.yaml |
-| ALI-0994 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `859e113ba0cb026a7f5b1fcd2a54b004a0ce2562686ba1f9b5daf728ed59aeaa` | map XML / town_01_ardel_epilogue.tmx |
-| ALI-0995 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `d034b9902465c3057bb7c2f640f9ebed7e2302591173c63b469fb1ff1b511814` | map XML / town_03_harborgate.tmx |
+| ALI-0994 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `aaee8dc1469a19c631c68d378a90bf05d08971dbed18b8771a66540570d20d27` | map XML / town_01_ardel_epilogue.tmx |
+| ALI-0995 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `ecaed5adef81603581159d6f4646ee43796abe5defd69b589c5e117b9f94f398` | map XML / town_03_harborgate.tmx |
 | ALI-0996 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `eea446e87958b907790702a7917db0698a1a19f5a45c74c3ad43991b5e0cb5b6` | map XML / town_03_harborgate_harbormaster.tmx |
-| ALI-0997 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `c887313bec07816abbd468ef61804c14e27e2d3c69ab63d057f3c797e8c5bb76` | map XML / town_03_harborgate_inn.tmx |
-| ALI-0998 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `1e877f5839bc67266a2e134b58c6b2ea89fffad986f6d4daeede2ef1a5c1d4ce` | map XML / town_03_harborgate_quarantine.tmx |
-| ALI-0999 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `1b89c97fd57c1e19e41944c4b4b40ce1eaba9be893fa0b424f0eceffbd4cdfbd` | map XML / town_03_harborgate_shop.tmx |
-| ALI-1000 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_09_marshal_camp.tmx` | `7e5a008cfba23aee967eff5daf14cab0fea5c02464c25b0494e3e0cba6aca13e` | map XML / zone_09_marshal_camp.tmx |
-| ALI-1001 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_core.tmx` | `6c4bf09e314685e00fae3a33f17d4ec1dd0ea38c3e0e8af62d2388f20b2d4082` | map XML / zone_10_hearth_core.tmx |
-| ALI-1002 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_01.tmx` | `19b3acea4e153c7b00191954623b0be56b7b0ff4f683d583dd6804b3ca29a06b` | map XML / zone_10_hearth_descent_01.tmx |
-| ALI-1003 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_02.tmx` | `d5370a9e3f5397701d1868b11b7d0af5bf9d0ac5e03ba15f33ea9c932ea1f382` | map XML / zone_10_hearth_descent_02.tmx |
-| ALI-1004 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_03.tmx` | `6006a287f7b38e51a165b563f41ba5f41322654ca1ab2ea6680a08b30cc32ce5` | map XML / zone_10_hearth_descent_03.tmx |
-| ALI-1005 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_04.tmx` | `a17241a48f4596733abe801f5d407150e297679938b820881a59a53bc65081a0` | map XML / zone_10_hearth_descent_04.tmx |
-| ALI-1006 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_05.tmx` | `bb68dbf5e3c7353bdd9c05070097977c44f069cd1662432e862075019b9365d5` | map XML / zone_10_hearth_descent_05.tmx |
-| ALI-1007 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_06.tmx` | `ae65733a95582f1fff34f2ddafad026710e3af15bd83be63a6432b80de4c1b02` | map XML / zone_10_hearth_descent_06.tmx |
+| ALI-0997 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `83c7ba89fd98658f5b0fe6c98ea933073c52907c0428934976d694e9a915a48f` | map XML / town_03_harborgate_inn.tmx |
+| ALI-0998 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `4cdb3cdd5ea88e617c0c3c8f8e3b3fd1f1b78f416ca4008404e31a84fddbc74c` | map XML / town_03_harborgate_quarantine.tmx |
+| ALI-0999 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `171b7ab632dde862f11228c7fb327811cacff452afdd9de6677eb4b95cb8bb66` | map XML / town_03_harborgate_shop.tmx |
+| ALI-1000 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_09_marshal_camp.tmx` | `23fdde2553fd93da0897774ca462f9641cc8bae738680be36b90cb36df89bb46` | map XML / zone_09_marshal_camp.tmx |
+| ALI-1001 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_core.tmx` | `22428c6f1e3c3917bb11f636c35e6cb49fe77fee71e12c39f01ea5c31b3ffd27` | map XML / zone_10_hearth_core.tmx |
+| ALI-1002 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_01.tmx` | `1b5665c94af5c685ecc0c4c8b4466a35863cd1ec651ac52180c4bcd2304883e7` | map XML / zone_10_hearth_descent_01.tmx |
+| ALI-1003 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_02.tmx` | `0a31374781efac9fe69987bb3e71b8729aaceafbbf4f44f3a974142c7debe5c8` | map XML / zone_10_hearth_descent_02.tmx |
+| ALI-1004 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_03.tmx` | `e0ed7a216879460e4141d4b6d90ef10aaa23ed97e897ebeeada74d843b000941` | map XML / zone_10_hearth_descent_03.tmx |
+| ALI-1005 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_04.tmx` | `dd26e1fe0cbb360a5f85561d5e72d9fa495e8ee6c80903c455c9ad60576cfad7` | map XML / zone_10_hearth_descent_04.tmx |
+| ALI-1006 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_05.tmx` | `48bf3c916e21b9310e0ecf94b3c6f3232f2258d14212fe4af51135c498613682` | map XML / zone_10_hearth_descent_05.tmx |
+| ALI-1007 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_06.tmx` | `f32d29133f9d47deed665c162f9458f6df02252a5abf4ab7b66de53c967a9fca` | map XML / zone_10_hearth_descent_06.tmx |
 | ALI-1008 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/cinder_marshal.tsx` | `141ea8a46a581f71613da39112a05ca079b37b3ab8ac9d25b16becc648055e63` | tileset XML / cinder_marshal.tsx |
 | ALI-1009 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/cinder_marshal_battle.tsx` | `8f716b1bf1bcda2104e2da46b91c922177e0031649bd11b825002b5886961cbb` | tileset XML / cinder_marshal_battle.tsx |
 | ALI-1010 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/hearth_effigy_ashen_crown.tsx` | `a25c42fd72d5af1cd37068aa2506bc91381838b276a1780fe025403014e75d1b` | tileset XML / hearth_effigy_ashen_crown.tsx |
@@ -2915,4 +2758,16 @@ sections above, which still need their own evidence.
 | ALI-1016 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/validation-baseline.txt` | `2d1149e82d37c4447b3984b8ccb0da3f62c6d947d4e621987711f270b74409a8` | text / validation-baseline.txt |
 | ALI-1017 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.png` | `d941c5cbfdc3149b2121f4f36cabcb104c181f55a53db58aae4679be78dee3e0` | image / interior.png |
 | ALI-1018 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/interior/interior.tsx` | `560900c5e5b7f867cafca09e27ed26ddf4d5b5af297ec47e6598d7cae2b55d51` | tileset XML / interior.tsx |
+| ALI-1019 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows/exterior_windows.png` | `40117c8772e52258e69b4bacbf3ca808260d145d7d0eef24496cf68db0cf7d83` | image / exterior_windows.png |
+| ALI-1020 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_windows/exterior_windows.tsx` | `c57d84bb2c5d18444b2ef3a45858a8075bff488f98e87d7f05b80eb44fe175ef` | tileset XML / exterior_windows.tsx |
+| ALI-1021 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls/exterior_walls.png` | `dd6b61e8805e5dbc7980f1bb7657f4b2bc7d03395e3b1757aaad058ba1b05817` | image / exterior_walls.png |
+| ALI-1022 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/exterior_walls/exterior_walls.tsx` | `e9e6bfbf6a2c52bd55512c8e0c08317770dcc4880559fe3c63f00c8059931c43` | tileset XML / exterior_walls.tsx |
+| ALI-1023 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop/shop.png` | `6eda62c5013fb82be1b02307cc4ec107d1e5b9d1b850d4aa7a9158834bd2c06a` | image / shop.png |
+| ALI-1024 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop/shop.tsx` | `cb7b1dcfb5b624275e75211bdedf6a3cfde887a013c54742b8c6ac206daa8fc6` | tileset XML / shop.tsx |
+| ALI-1025 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave/cave.png` | `07ae517bbda6d3b514b3e84731796db41231217d4d9d49b153c95aa2a2845af1` | image / cave.png |
+| ALI-1026 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave/cave.tsx` | `967889b5de084ebe4aa7d938d1e1ec33550467a17178ba53c8d96283cf59e86f` | tileset XML / cave.tsx |
+| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town/town.png` | `db27837f3adf91edb688465762ec83831a7a94e196ca620fd3ca2ff82f8fbef2` | image / town.png |
+| ALI-1028 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town/town.tsx` | `944089646653ed2f94b430a1cfb8b37aacc9ac35d52b91682b48540a79f204a9` | tileset XML / town.tsx |
+| ALI-1029 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor/outdoor.png` | `cdfe29023e66ae73caac88736f80ef20d09146d1064161ee1349500a8c5f8211` | image / outdoor.png |
+| ALI-1030 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor/outdoor.tsx` | `e1baf25670f49712513e3d7cd81b2cf18fc52c20862d5c94f69eb4df8c0c0a07` | tileset XML / outdoor.tsx |
 

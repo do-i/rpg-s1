@@ -43,8 +43,8 @@ item_box:
 # these local tile ids from the named tileset becomes a readable sign that
 # plays the per-map dialogue file `data/dialogue/sign_<map_id>.yaml`.
 signs:
-  tileset: stone_tile_stares_16x16
-  tile_ids: [18, 19, 20, 21]
+  tileset: town
+  tile_ids: [17, 18, 19, 20]
 
 protagonist:
   id: aric
