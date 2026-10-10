@@ -85,6 +85,11 @@ Scenario assets preserve their source-relative layout beneath
   pack, `walls_02`, and `window_8x6`, which either had no provenance or forbid
   redistribution. Each sheet keeps the old grid minus unused rows and
   columns, holding only the tiles the maps use.
+- `tilesets/decor` is an original sheet authored in this repository (MIT). On
+  2026-10-10 it replaced `sample_01`, which had no provenance: the inn and shop
+  furniture, the vault mirror, and the ruins colonnade, columns, gate walls,
+  crystal rocks, and magic circles. Like the sheets above, it keeps the old
+  grid minus unused rows and columns and holds only the 70 tiles the maps use.
 - The M8 encounter package adds the Starting Forest encounter-zone document,
   all eight enemy-rank catalogs, the battle-background catalog, six enemy
   TSX/PNG pairs, the zone-one battle background, normal and boss battle BGM,
