@@ -425,8 +425,8 @@ mod tests {
         )
         .unwrap();
         let signs = ManifestSigns {
-            tileset: "stone_tile_stares_16x16".into(),
-            tile_ids: vec![18, 19, 20, 21],
+            tileset: "town".into(),
+            tile_ids: vec![17, 18, 19, 20],
         };
         assert_eq!(
             sign_tiles(&map, &signs),
@@ -447,8 +447,8 @@ mod tests {
         )
         .unwrap();
         let signs = ManifestSigns {
-            tileset: "stone_tile_stares_16x16".into(),
-            tile_ids: vec![18, 19, 20, 21],
+            tileset: "town".into(),
+            tile_ids: vec![17, 18, 19, 20],
         };
         assert_eq!(
             sign_tiles(&map, &signs),

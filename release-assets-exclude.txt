@@ -50,6 +50,3 @@ assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/56_Attack_03.mp
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/61_Hit_03.mp3
 assets/scenarios/rusted_kingdoms/media/tilesets/beeler/grass_water_clif.png
 assets/scenarios/rusted_kingdoms/media/tilesets/beeler/grass_water_clif.tsx
-assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/bridges.png
-assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/bridges.tsx
-assets/scenarios/rusted_kingdoms/media/tilesets/schwarnhild/stones_col_01.png

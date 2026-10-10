@@ -63,9 +63,9 @@ Scenario assets preserve their source-relative layout beneath
   are reconstructed or the sprites are replaced.
 - `scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` is the canonical
   30-by-20 Ardel map. Its visible ground, terrain, and decoration layers use
-  the copied `grass_cave_walls_24x14`, `icon_table_stage_14x9`, project-authored
-  `interior`, and `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas
-  references are intentionally not runtime rendering dependencies.
+  the project-authored `outdoor`, `shop`, `town`, and `interior` sheets and the
+  `ground/terrain-v7` TSX/PNG pairs. Collision-only atlas references are
+  intentionally not runtime rendering dependencies.
 - `scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` and its
   same-stem map metadata provide the Gate 5 reversible interior. It draws from
   `tilesets/interior/interior.tsx`, a single 12-by-6 sheet of original tiles
@@ -78,10 +78,13 @@ Scenario assets preserve their source-relative layout beneath
   distributed under CC BY-SA 3.0 with that notice. The byte-identical TMX
   copy remains blocked from public release until the project-authored map's
   redistribution grant is confirmed; see the license inventory.
-- The source repository does not retain sufficient provenance or rights
-  evidence for the copied `grass_cave_walls_24x14` and
-  `icon_table_stage_14x9` images. These working-copy migrations are therefore
-  blocked from public release as recorded in the license inventory.
+- `tilesets/outdoor`, `town`, `shop`, `cave`, `exterior_walls`, and
+  `exterior_windows` are original sheets authored in this repository (MIT).
+  On 2026-10-10 they replaced `grass_cave_walls_24x14`,
+  `stone_tile_stares_16x16`, `icon_table_stage_14x9`, the Schwarnhild cave
+  pack, `walls_02`, and `window_8x6`, which either had no provenance or forbid
+  redistribution. Each sheet keeps the old grid minus unused rows and
+  columns, holding only the tiles the maps use.
 - The M8 encounter package adds the Starting Forest encounter-zone document,
   all eight enemy-rank catalogs, the battle-background catalog, six enemy
   TSX/PNG pairs, the zone-one battle background, normal and boss battle BGM,
