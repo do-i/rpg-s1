@@ -48,5 +48,3 @@ assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/45_Landing_01.m
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/52_Dive_02.mp3
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/56_Attack_03.mp3
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/61_Hit_03.mp3
-assets/scenarios/rusted_kingdoms/media/tilesets/beeler/grass_water_clif.png
-assets/scenarios/rusted_kingdoms/media/tilesets/beeler/grass_water_clif.tsx
