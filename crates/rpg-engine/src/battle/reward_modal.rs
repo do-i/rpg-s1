@@ -315,6 +315,7 @@ fn spawn_member_card(
                     Justify::Right,
                 );
             });
+            spawn_progress_line(card, row, font);
             if leveled {
                 card.spawn(Node {
                     width: percent(100),
@@ -406,6 +407,67 @@ fn divider_color() -> Color {
 }
 
 /// Shows the capped amount alongside the earned amount when they disagree.
+/// `EXP 450/1000` beside a thin bar filled to the same fraction, or `MAX LEVEL` at the cap.
+fn spawn_progress_line(
+    parent: &mut ChildSpawnerCommands<'_>,
+    row: &RewardMemberRow,
+    font: &Handle<Font>,
+) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            align_items: AlignItems::Center,
+            column_gap: px(10),
+            ..default()
+        })
+        .with_children(|line| {
+            spawn_battle_text(
+                line,
+                progress_label(row),
+                font,
+                14.0,
+                battle_dim(),
+                Justify::Left,
+            );
+            line.spawn((
+                Node {
+                    flex_grow: 1.0,
+                    height: px(5),
+                    border_radius: BorderRadius::all(px(3)),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(255, 255, 255, 28)),
+            ))
+            .with_children(|track| {
+                track.spawn((
+                    Node {
+                        width: percent(progress_fraction(row) * 100.0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(battle_teal()),
+                ));
+            });
+        });
+}
+
+fn progress_label(row: &RewardMemberRow) -> String {
+    if row.experience_next == 0 {
+        "MAX LEVEL".to_owned()
+    } else {
+        format!("EXP {}/{}", row.experience_now, row.experience_next)
+    }
+}
+
+fn progress_fraction(row: &RewardMemberRow) -> f32 {
+    if row.experience_next == 0 {
+        1.0
+    } else {
+        (row.experience_now as f32 / row.experience_next as f32).clamp(0.0, 1.0)
+    }
+}
+
 fn experience_label(row: &RewardMemberRow) -> String {
     if row.experience_applied == row.experience_gained {
         format!("+{} EXP", row.experience_applied)
@@ -475,6 +537,8 @@ mod tests {
             member_name: "Aric".to_owned(),
             experience_gained: 40,
             experience_applied: 40,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: vec![level_up(1, 2)],
             learned_abilities: Vec::new(),
         }]);
@@ -548,6 +612,8 @@ mod tests {
             member_name: "Aric".to_owned(),
             experience_gained: 20,
             experience_applied: 20,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: Vec::new(),
             learned_abilities: Vec::new(),
         }]);
@@ -592,6 +658,8 @@ mod tests {
             member_name: "Aric".to_owned(),
             experience_gained: 40,
             experience_applied: 40,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: vec![level_up(1, 2)],
             learned_abilities: vec!["Power Strike".to_owned()],
         }]);
@@ -619,6 +687,8 @@ mod tests {
             member_name: "Aric".to_owned(),
             experience_gained: 500,
             experience_applied: 500,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: vec![level_up(1, 2), level_up(2, 3)],
             learned_abilities: Vec::new(),
         }]);
@@ -635,6 +705,8 @@ mod tests {
             member_name: "Elise".to_owned(),
             experience_gained: 40,
             experience_applied: 40,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: Vec::new(),
             learned_abilities: Vec::new(),
         }]);
@@ -665,6 +737,8 @@ mod tests {
                 member_name: "Aric".to_owned(),
                 experience_gained: 60,
                 experience_applied: 60,
+                experience_now: 450,
+                experience_next: 1000,
                 level_ups: vec![level_up(1, 2)],
                 learned_abilities: vec!["Power Strike".to_owned()],
             },
@@ -673,6 +747,8 @@ mod tests {
                 member_name: "Elise".to_owned(),
                 experience_gained: 60,
                 experience_applied: 60,
+                experience_now: 450,
+                experience_next: 1000,
                 level_ups: Vec::new(),
                 learned_abilities: Vec::new(),
             },
@@ -712,6 +788,8 @@ mod tests {
                     member_name: name.to_owned(),
                     experience_gained: 24,
                     experience_applied: 24,
+                    experience_now: 450,
+                    experience_next: 1000,
                     level_ups: vec![level_up(1, 2)],
                     learned_abilities: vec!["Second Wind".to_owned()],
                 })
@@ -746,6 +824,8 @@ mod tests {
             member_name: "Jep".to_owned(),
             experience_gained: 90,
             experience_applied: 30,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: Vec::new(),
             learned_abilities: Vec::new(),
         }]);
@@ -756,6 +836,13 @@ mod tests {
             ..row.clone()
         };
         assert_eq!(experience_label(&uncapped), "+30 EXP");
+        assert_eq!(progress_label(row), "EXP 450/1000");
+        assert!((progress_fraction(row) - 0.45).abs() < f32::EPSILON);
+        let capped = RewardMemberRow {
+            experience_next: 0,
+            ..row.clone()
+        };
+        assert_eq!(progress_label(&capped), "MAX LEVEL");
     }
 
     #[test]
@@ -765,6 +852,8 @@ mod tests {
             member_name: "Aric".to_owned(),
             experience_gained: 40,
             experience_applied: 40,
+            experience_now: 450,
+            experience_next: 1000,
             level_ups: vec![level_up(1, 2)],
             learned_abilities: vec!["Power Strike".to_owned()],
         }]);

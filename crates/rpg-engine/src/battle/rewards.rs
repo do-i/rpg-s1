@@ -11,7 +11,7 @@ use crate::{
     scenario_enemy::{EnemyLootEntry, MagicCoreSize},
 };
 
-use super::model::BattleState;
+use super::model::{BattleState, CombatantKey};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct BattleRewards {
@@ -28,6 +28,10 @@ pub(super) struct MemberReward {
     pub(super) member_name: String,
     pub(super) experience_gained: u32,
     pub(super) experience_applied: u32,
+    /// Progress toward the next level once this battle's EXP is in, and that level's threshold.
+    /// `experience_next` is 0 at the level cap.
+    pub(super) experience_now: u32,
+    pub(super) experience_next: u32,
     pub(super) level_ups: Vec<RuntimeLevelUp>,
     pub(super) learned_abilities: Vec<String>,
 }
@@ -46,6 +50,8 @@ pub(super) struct RewardMemberRow {
     pub(super) name: String,
     pub(super) experience_applied: u32,
     pub(super) experience_gained: u32,
+    pub(super) experience_now: u32,
+    pub(super) experience_next: u32,
     pub(super) level_from: u32,
     pub(super) level_to: u32,
     pub(super) stats: Vec<RewardStatDelta>,
@@ -66,7 +72,38 @@ pub(super) struct LootReward {
     pub(super) magic_core: bool,
 }
 
-pub(super) fn calculate_rewards(state: &BattleState, rng: &mut GameplayRng) -> BattleRewards {
+/// Extra EXP weight per level a member trails the party's highest living level, in quarters.
+const CATCH_UP_QUARTERS_PER_LEVEL: u64 = 1;
+/// Weight ceiling in quarters: a trailing member draws at most three times an even share.
+const MAX_WEIGHT_QUARTERS: u64 = 12;
+
+/// A living member's share weight in quarters: 4 at the party's top level, one more per level
+/// behind it, capped at 12.
+///
+/// So a level 6 member beside two level 10s weighs 8 to their 4 and takes half the pot instead of
+/// a third. Equal levels weigh the same, which keeps an even party's split exactly as it was.
+/// `levels` maps member id to level; a member missing from it counts as top level.
+fn experience_weights(living: &[(CombatantKey, &str)], levels: &BTreeMap<String, u32>) -> Vec<u64> {
+    let level = |id: &str| levels.get(id).copied();
+    let top = living
+        .iter()
+        .filter_map(|(_, id)| level(id))
+        .max()
+        .unwrap_or(1);
+    living
+        .iter()
+        .map(|(_, id)| {
+            let behind = u64::from(top.saturating_sub(level(id).unwrap_or(top)));
+            (4 + behind * CATCH_UP_QUARTERS_PER_LEVEL).min(MAX_WEIGHT_QUARTERS)
+        })
+        .collect()
+}
+
+pub(super) fn calculate_rewards(
+    state: &BattleState,
+    levels: &BTreeMap<String, u32>,
+    rng: &mut GameplayRng,
+) -> BattleRewards {
     let total_experience = state
         .combatants
         .iter()
@@ -86,15 +123,29 @@ pub(super) fn calculate_rewards(state: &BattleState, rng: &mut GameplayRng) -> B
         .iter()
         .filter(|actor| actor.key.side == BattleSide::Party)
         .collect::<Vec<_>>();
-    let living = party
+    let living_members = party
         .iter()
         .filter(|actor| actor.is_alive())
-        .map(|actor| actor.key)
+        .map(|actor| (actor.key, actor.id.as_str()))
         .collect::<Vec<_>>();
-    let share = total_experience / u32::try_from(living.len()).unwrap_or(1).max(1);
+    let living = living_members
+        .iter()
+        .map(|(key, _)| *key)
+        .collect::<Vec<_>>();
+    let weights = experience_weights(&living_members, levels);
+    let weight_total = weights.iter().sum::<u64>().max(1);
+    let shares = living
+        .iter()
+        .zip(&weights)
+        .map(|(key, weight)| {
+            let share = u64::from(total_experience) * weight / weight_total;
+            (*key, u32::try_from(share).unwrap_or(u32::MAX))
+        })
+        .collect::<Vec<_>>();
     let mut bonus_pool = living.clone();
     let mut bonuses = Vec::new();
-    let remainder = total_experience.saturating_sub(share.saturating_mul(living.len() as u32));
+    let remainder =
+        total_experience.saturating_sub(shares.iter().fold(0_u32, |sum, (_, share)| sum + share));
     for _ in 0..remainder {
         if bonus_pool.is_empty() {
             break;
@@ -106,7 +157,11 @@ pub(super) fn calculate_rewards(state: &BattleState, rng: &mut GameplayRng) -> B
         .into_iter()
         .map(|actor| {
             let experience_gained = if actor.is_alive() {
-                share + u32::from(bonuses.contains(&actor.key))
+                shares
+                    .iter()
+                    .find(|(key, _)| *key == actor.key)
+                    .map_or(0, |(_, share)| *share)
+                    + u32::from(bonuses.contains(&actor.key))
             } else {
                 0
             };
@@ -115,6 +170,8 @@ pub(super) fn calculate_rewards(state: &BattleState, rng: &mut GameplayRng) -> B
                 member_name: actor.name.clone(),
                 experience_gained,
                 experience_applied: 0,
+                experience_now: 0,
+                experience_next: 0,
                 level_ups: Vec::new(),
                 learned_abilities: Vec::new(),
             }
@@ -141,7 +198,12 @@ pub(super) fn apply_rewards(
         return Err(RewardError::AlreadyApplied);
     }
     let mut staged = game.clone();
-    let mut rewards = calculate_rewards(state, staged.rng_mut());
+    let levels = staged
+        .party()
+        .members()
+        .map(|member| (member.id().to_owned(), member.level()))
+        .collect::<BTreeMap<_, _>>();
+    let mut rewards = calculate_rewards(state, &levels, staged.rng_mut());
     let flags = staged.flags().clone();
     for result in &mut rewards.members {
         let battle_actor = state
@@ -165,6 +227,8 @@ pub(super) fn apply_rewards(
         );
         result.experience_applied = progression.added;
         result.level_ups = progression.level_ups;
+        result.experience_now = member.experience();
+        result.experience_next = member.experience_next();
         let new_level = member.level();
         result.learned_abilities = catalog
             .unlocked_abilities(member.class_id(), new_level, &flags)
@@ -276,6 +340,8 @@ impl BattleRewards {
                     name: member.member_name.clone(),
                     experience_applied: member.experience_applied,
                     experience_gained: member.experience_gained,
+                    experience_now: member.experience_now,
+                    experience_next: member.experience_next,
                     level_from,
                     level_to,
                     stats,

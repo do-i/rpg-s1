@@ -186,6 +186,10 @@ const MAIN_COMMANDS: [MainCommand; 10] = [
 const STATUS_PARTY_WIDTH: f32 = 316.0;
 const STATUS_DETAIL_WIDTH: f32 = 404.0;
 const STATUS_COLUMN_GAP: f32 = 18.0;
+/// Party card height bounds. Five cards at the minimum fill the column; fewer members grow up to
+/// the maximum so their portraits read larger.
+const STATUS_CARD_MIN_HEIGHT: f32 = 92.0;
+const STATUS_CARD_MAX_HEIGHT: f32 = 128.0;
 const STATUS_CATEGORIES: [&str; 2] = ["Spells", "Position"];
 /// Index of `Position` within [`STATUS_CATEGORIES`].
 const STATUS_POSITION_CATEGORY: usize = 1;
@@ -1291,18 +1295,20 @@ enum BattleRow {
     Member(usize),
     EnemyTurns,
     TurnPause,
+    AfterVictory,
 }
 
-/// Members first, then the two settings rows.
+/// Members first, then the three settings rows.
 fn battle_row_count(game: &GameState) -> usize {
-    game.party().len() + 2
+    game.party().len() + 3
 }
 
 fn battle_row(game: &GameState, selected: usize) -> BattleRow {
     match selected.checked_sub(game.party().len()) {
         None => BattleRow::Member(selected),
         Some(0) => BattleRow::EnemyTurns,
-        Some(_) => BattleRow::TurnPause,
+        Some(1) => BattleRow::TurnPause,
+        Some(_) => BattleRow::AfterVictory,
     }
 }
 
@@ -1335,6 +1341,21 @@ fn battle_row_choices(
                 ),
             ],
             usize::from(options.auto_enemy_turns),
+        ),
+        BattleRow::AfterVictory => (
+            vec![
+                (
+                    "Show rewards".to_owned(),
+                    "Plays the victory fanfare, then shows EXP, level-ups, and loot before \
+                     returning to the world.",
+                ),
+                (
+                    "Return to world".to_owned(),
+                    "Skips the fanfare and the reward screen and goes straight back to the map. \
+                     EXP, gold, and loot are still awarded.",
+                ),
+            ],
+            usize::from(options.skip_victory_screen),
         ),
         BattleRow::TurnPause => (
             TurnPause::ALL
@@ -1409,14 +1430,14 @@ fn apply_battle_choice(
             member.set_tactics(member.tactics().with_choice(choice));
             false
         }
-        BattleRow::EnemyTurns | BattleRow::TurnPause => {
+        BattleRow::EnemyTurns | BattleRow::TurnPause | BattleRow::AfterVictory => {
             let Some(options) = options else {
                 return false;
             };
-            if row == BattleRow::EnemyTurns {
-                options.auto_enemy_turns = choice == 1;
-            } else {
-                options.turn_pause = TurnPause::ALL[choice.min(TurnPause::ALL.len() - 1)];
+            match row {
+                BattleRow::EnemyTurns => options.auto_enemy_turns = choice == 1,
+                BattleRow::AfterVictory => options.skip_victory_screen = choice == 1,
+                _ => options.turn_pause = TurnPause::ALL[choice.min(TurnPause::ALL.len() - 1)],
             }
             true
         }
@@ -3110,8 +3131,8 @@ mod tests {
 
         let world = app.world_mut();
         assert_eq!(world.query::<&FieldMenuBattlePage>().iter(world).count(), 1);
-        // Two members, then the Enemy turns and Turn pause settings.
-        assert_eq!(world.query::<&BattleTacticsRow>().iter(world).count(), 4);
+        // Two members, then the Enemy turns, Turn pause, and After victory settings.
+        assert_eq!(world.query::<&BattleTacticsRow>().iter(world).count(), 5);
         assert_eq!(
             world
                 .query::<&SelectedBattleTacticsRow>()
@@ -3128,6 +3149,7 @@ mod tests {
         assert!(labels.iter().any(|label| label == "Enemy turns"));
         assert!(labels.iter().any(|label| label == "Turn pause"));
         assert!(labels.iter().any(|label| label == "1S"));
+        assert!(labels.iter().any(|label| label == "SHOW REWARDS"));
         assert!(labels.iter().any(|label| label == "MANUAL"));
         assert!(labels.iter().any(|label| label == "AUTO - SMART"));
         // The picker lists every choice, with the highlighted one's explanation beneath.
@@ -3158,6 +3180,7 @@ mod tests {
         let party = game.party().len();
         assert_eq!(battle_row(&game, party), BattleRow::EnemyTurns);
         assert_eq!(battle_row(&game, party + 1), BattleRow::TurnPause);
+        assert_eq!(battle_row(&game, party + 2), BattleRow::AfterVictory);
         let mut options = PlayerOptions::default();
         assert!(apply_battle_choice(
             &mut game,
@@ -3173,6 +3196,17 @@ mod tests {
             0
         ));
         assert_eq!(options.turn_pause, TurnPause::Instant);
+        assert!(apply_battle_choice(
+            &mut game,
+            Some(&mut options),
+            BattleRow::AfterVictory,
+            1
+        ));
+        assert!(options.skip_victory_screen);
+        assert_eq!(
+            battle_row_choices(&game, &options, BattleRow::AfterVictory).1,
+            1
+        );
         assert_eq!(
             battle_row_choices(&game, &options, BattleRow::TurnPause).1,
             0

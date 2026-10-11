@@ -137,6 +137,19 @@ pub(in crate::field_menu) fn spawn_battle_page(
                             true,
                             selected == party + 1,
                         );
+                        spawn_battle_setting_row(
+                            panel,
+                            font,
+                            "After victory",
+                            "WHEN THE LAST ENEMY FALLS",
+                            if options.skip_victory_screen {
+                                "TO WORLD"
+                            } else {
+                                "SHOW REWARDS"
+                            },
+                            !options.skip_victory_screen,
+                            selected == party + 2,
+                        );
                     },
                 );
                 let row = battle_row(game, selected);
@@ -147,6 +160,7 @@ pub(in crate::field_menu) fn spawn_battle_page(
                     }
                     BattleRow::EnemyTurns => "Enemy turns".to_owned(),
                     BattleRow::TurnPause => "Turn pause".to_owned(),
+                    BattleRow::AfterVictory => "After victory".to_owned(),
                 };
                 spawn_battle_orders(
                     columns,

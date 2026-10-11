@@ -221,6 +221,10 @@ enum BattlePanelKind {
 #[derive(Component)]
 struct BattlePanelTitle(BattlePanelKind);
 
+/// The note the command panel shows in place of its cards once the battle is won.
+#[derive(Component)]
+struct BattleCommandIdle;
+
 #[derive(Component)]
 struct BattleCommandRow(usize);
 
@@ -243,6 +247,16 @@ struct BattleStatusBadgeLabel {
 
 #[derive(Component)]
 struct BattleMessageText;
+
+/// The scrolling column the battle log's entries are appended to.
+#[derive(Component)]
+struct BattleLogList;
+
+/// What the log has already recorded, so each new result is appended once.
+#[derive(Default)]
+struct BattleLogHistory {
+    last: String,
+}
 
 #[derive(Component)]
 struct BattleTargetText;
@@ -958,6 +972,29 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
             ..default()
         })
         .with_children(|list| {
+            // Overlays the cards rather than joining the column, so showing it never reflows.
+            list.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    width: percent(100),
+                    height: percent(100),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                Visibility::Hidden,
+                BattleCommandIdle,
+            ))
+            .with_children(|note| {
+                spawn_battle_text(
+                    note,
+                    "Battle won",
+                    font,
+                    20.0,
+                    battle_dim(),
+                    Justify::Center,
+                );
+            });
             for (index, command) in COMMANDS.iter().enumerate() {
                 list.spawn((
                     Node {
@@ -989,17 +1026,34 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
         });
 }
 
+/// The log keeps every result of the battle in a scrolling list, newest at the bottom, with the
+/// current prompt beneath it. Prompts ("choose an action") are not history and are never kept.
 fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
     parent
         .spawn(Node {
             width: percent(100),
             flex_grow: 1.0,
+            min_height: px(0),
             flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::SpaceBetween,
+            row_gap: px(6),
             ..default()
         })
         .with_children(|log| {
-            spawn_battle_text(log, "", font, 18.0, battle_teal(), Justify::Left)
+            log.spawn((
+                Node {
+                    width: percent(100),
+                    flex_grow: 1.0,
+                    flex_basis: px(0),
+                    min_height: px(0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(4),
+                    overflow: Overflow::scroll_y(),
+                    ..default()
+                },
+                ScrollPosition::default(),
+                BattleLogList,
+            ));
+            spawn_battle_text(log, "", font, 17.0, battle_ink(), Justify::Left)
                 .insert(BattleMessageText);
             spawn_battle_text(log, "", font, 15.0, battle_violet(), Justify::Left)
                 .insert(BattleTargetText);
@@ -1368,12 +1422,16 @@ fn handle_battle_input(
     let catalog: &FieldMenuCatalog = &context.catalog;
     let now = context.time.elapsed();
     let auto_continue = state.auto_continue_at.is_some_and(|at| now >= at);
-    let (auto_enemy_turns, pause) = context
-        .options
-        .as_deref()
-        .map_or((false, TurnPause::default().duration()), |options| {
-            (options.auto_enemy_turns, options.turn_pause.duration())
-        });
+    let (auto_enemy_turns, pause, skip_victory_screen) = context.options.as_deref().map_or(
+        (false, TurnPause::default().duration(), false),
+        |options| {
+            (
+                options.auto_enemy_turns,
+                options.turn_pause.duration(),
+                options.skip_victory_screen,
+            )
+        },
+    );
     match state.phase {
         BattlePhase::Start | BattlePhase::Advance => {
             if state.phase == BattlePhase::Start {
@@ -1543,7 +1601,7 @@ fn handle_battle_input(
             state.auto_continue_at = None;
             state.assess_result();
         }
-        BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) => {
+        BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) || skip_victory_screen => {
             let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
                 state.message = "Battle balance is still loading.".to_owned();
                 return;
@@ -1558,8 +1616,13 @@ fn handle_battle_input(
             ) {
                 Ok(rewards) => {
                     debug_assert_eq!(state.rewards.as_ref(), Some(&rewards));
-                    state.phase = BattlePhase::Rewards;
-                    state.message = "Victory! Press Enter to continue.".to_owned();
+                    if skip_victory_screen {
+                        // The spoils are already banked; go straight back to the map.
+                        restore_world(&mut commands, &mut game, entry);
+                        transitions.write(AppStateTransitionRequest::new(AppState::World));
+                    } else {
+                        state.phase = BattlePhase::Rewards;
+                    }
                 }
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
             }
@@ -1962,7 +2025,13 @@ fn sync_party_meters(
 fn sync_battle_commands(
     state: Option<Res<BattleState>>,
     mut titles: Query<(&BattlePanelTitle, &mut Text), Without<BattleCommandLabel>>,
-    mut rows: Query<(&BattleCommandRow, &mut BackgroundColor, &mut BorderColor)>,
+    mut rows: Query<(
+        &BattleCommandRow,
+        &mut BackgroundColor,
+        &mut BorderColor,
+        &mut Visibility,
+    )>,
+    mut idle: Query<&mut Visibility, (With<BattleCommandIdle>, Without<BattleCommandRow>)>,
     mut labels: Query<(&BattleCommandLabel, &mut Text, &mut TextColor), Without<BattlePanelTitle>>,
 ) {
     let Some(state) = state else { return };
@@ -1978,7 +2047,7 @@ fn sync_battle_commands(
                 )
             } else if state.phase == BattlePhase::Item {
                 "Battle Items".to_owned()
-            } else if state.phase == BattlePhase::Rewards {
+            } else if matches!(state.phase, BattlePhase::Victory | BattlePhase::Rewards) {
                 // The reward modal owns the haul; the panel only marks the win.
                 "Victory".to_owned()
             } else {
@@ -1995,7 +2064,21 @@ fn sync_battle_commands(
     let ability_choices = state.battle_ability_indices();
     let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
     let item_page = state.item_index / COMMANDS.len() * COMMANDS.len();
-    for (marker, mut background, mut border) in &mut rows {
+    // Once the battle is won there is nothing to command. The panel keeps its place, so no section
+    // moves, but its cards give way to a short note.
+    let finished = matches!(state.phase, BattlePhase::Victory | BattlePhase::Rewards);
+    let shown = |visible: bool| {
+        if visible {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        }
+    };
+    for mut visibility in &mut idle {
+        *visibility = shown(finished);
+    }
+    for (marker, mut background, mut border, mut visibility) in &mut rows {
+        *visibility = shown(!finished);
         let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
             || (state.phase == BattlePhase::Ability
                 && ability_page + marker.0 == state.ability_index)
@@ -2062,19 +2145,42 @@ fn sync_battle_commands(
 }
 
 fn sync_battle_message(
+    mut commands: Commands,
     state: Option<Res<BattleState>>,
-    mut messages: Query<(&mut Text, &mut TextColor), With<BattleMessageText>>,
+    assets: Option<Res<BattleAssetState>>,
+    mut history: Local<BattleLogHistory>,
+    mut lists: Query<(Entity, &mut ScrollPosition), With<BattleLogList>>,
+    mut messages: Query<&mut Text, With<BattleMessageText>>,
     mut targets: Query<&mut Text, (With<BattleTargetText>, Without<BattleMessageText>)>,
 ) {
     let Some(state) = state else { return };
+    if state.is_added() {
+        *history = BattleLogHistory::default();
+    }
     if !state.is_changed() {
         return;
     }
-    if let Ok((mut text, mut color)) = messages.single_mut() {
-        text.0.clone_from(&state.message);
-        color.0 = match state.active_key().map(|key| key.side) {
+    let prompting = is_prompt_phase(state.phase);
+    if !prompting && !state.message.is_empty() && state.message != history.last {
+        let color = match state.active_key().map(|key| key.side) {
             Some(BattleSide::Enemy) => battle_ember(),
             _ => battle_teal(),
+        };
+        if let (Ok((list, mut scroll)), Some(assets)) = (lists.single_mut(), assets.as_deref()) {
+            let line = state.message.clone();
+            commands.entity(list).with_children(|list| {
+                spawn_battle_text(list, line, &assets.font, 16.0, color, Justify::Left);
+            });
+            // Layout clamps this to the real bottom, so the newest entry is always in view.
+            scroll.0.y = f32::MAX;
+        }
+    }
+    history.last.clone_from(&state.message);
+    if let Ok(mut text) = messages.single_mut() {
+        text.0 = if prompting {
+            state.message.clone()
+        } else {
+            String::new()
         };
     }
     if let Ok(mut text) = targets.single_mut() {
@@ -2085,6 +2191,14 @@ fn sync_battle_message(
             .map(|actor| format!("Target  {}", actor.name))
             .unwrap_or_default();
     }
+}
+
+/// Phases where the message is an instruction to the player rather than something that happened.
+const fn is_prompt_phase(phase: BattlePhase) -> bool {
+    matches!(
+        phase,
+        BattlePhase::Command | BattlePhase::Ability | BattlePhase::Item | BattlePhase::Target
+    )
 }
 
 fn sync_enemy_cards(

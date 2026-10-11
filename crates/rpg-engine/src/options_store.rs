@@ -90,6 +90,9 @@ pub(crate) struct PlayerOptions {
     pub(crate) auto_enemy_turns: bool,
     /// How long an automatic battle turn stays on screen before moving on.
     pub(crate) turn_pause: TurnPause,
+    /// Whether a won battle returns straight to the world, skipping the victory sting and the
+    /// reward modal. Rewards are applied either way.
+    pub(crate) skip_victory_screen: bool,
 }
 
 impl PlayerOptions {
@@ -131,6 +134,8 @@ struct OptionsDocument {
     auto_enemy_turns: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     turn_pause: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skip_victory_screen: Option<bool>,
     keyboard: DeviceBindings,
     gamepad: DeviceBindings,
 }
@@ -161,6 +166,7 @@ impl OptionsDocument {
                 .map(|speed| text_speed_name(speed).to_owned()),
             // Defaults stay out of the file, so it only records what the player changed.
             auto_enemy_turns: options.auto_enemy_turns.then_some(true),
+            skip_victory_screen: options.skip_victory_screen.then_some(true),
             turn_pause: (options.turn_pause != TurnPause::default())
                 .then(|| options.turn_pause.label().to_owned()),
             ..Self::default()
@@ -222,6 +228,7 @@ impl OptionsDocument {
         }
 
         options.auto_enemy_turns = self.auto_enemy_turns.unwrap_or(false);
+        options.skip_victory_screen = self.skip_victory_screen.unwrap_or(false);
         if let Some(label) = &self.turn_pause {
             match TurnPause::from_label(label) {
                 Some(pause) => options.turn_pause = pause,
@@ -618,6 +625,7 @@ mod tests {
             text_speed: Some(TextSpeed::Slow),
             auto_enemy_turns: true,
             turn_pause: TurnPause::Half,
+            skip_victory_screen: true,
             ..PlayerOptions::default()
         };
         options

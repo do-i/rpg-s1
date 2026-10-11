@@ -175,13 +175,18 @@ pub(in crate::field_menu) fn spawn_party_column(
             for (index, member) in game.party().members().enumerate() {
                 let selected = index == state.member_index;
                 let mut card = panel.spawn((
+                    // Cards share the column's height, so a full party of five still fits
+                    // while a smaller one gets larger cards and portraits.
                     Node {
                         width: percent(100),
-                        min_height: px(84),
+                        flex_grow: 1.0,
+                        flex_basis: px(0),
+                        min_height: px(STATUS_CARD_MIN_HEIGHT),
+                        max_height: px(STATUS_CARD_MAX_HEIGHT),
                         flex_direction: FlexDirection::Row,
-                        align_items: AlignItems::Center,
+                        align_items: AlignItems::Stretch,
                         column_gap: px(12),
-                        padding: UiRect::all(px(10)),
+                        padding: UiRect::all(px(8)),
                         border: UiRect::all(px(if selected { 2 } else { 1 })),
                         border_radius: BorderRadius::all(px(5)),
                         ..default()
@@ -208,14 +213,13 @@ pub(in crate::field_menu) fn spawn_party_column(
                         font,
                         member.name(),
                         portraits.profile(member.id()),
-                        56.0,
-                        56.0,
                         selected,
                         "Party portrait",
                     );
                     card.spawn(Node {
                         flex_grow: 1.0,
                         flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
                         row_gap: px(2),
                         ..default()
                     })
@@ -247,11 +251,59 @@ pub(in crate::field_menu) fn spawn_party_column(
                             13.0,
                             status_muted(),
                         );
+                        spawn_member_experience(summary, font, member);
                     });
                 });
             }
         },
     );
+}
+
+/// `EXP 420/1000` beside a thin bar filled to the same fraction, or `MAX LEVEL` at the cap.
+fn spawn_member_experience(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    member: &crate::runtime_member::RuntimeMember,
+) {
+    let next = member.experience_next();
+    let (label, fraction) = if next == 0 {
+        ("MAX LEVEL".to_owned(), 1.0)
+    } else {
+        (
+            format!("EXP {}/{next}", member.experience()),
+            (member.experience() as f32 / next as f32).clamp(0.0, 1.0),
+        )
+    };
+    parent
+        .spawn(Node {
+            width: percent(100),
+            align_items: AlignItems::Center,
+            column_gap: px(8),
+            ..default()
+        })
+        .with_children(|line| {
+            spawn_status_text(line, label, font, 13.0, status_teal());
+            line.spawn((
+                Node {
+                    flex_grow: 1.0,
+                    height: px(4),
+                    border_radius: BorderRadius::all(px(2)),
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(255, 255, 255, 28)),
+            ))
+            .with_children(|track| {
+                track.spawn((
+                    Node {
+                        width: percent(fraction * 100.0),
+                        height: percent(100),
+                        ..default()
+                    },
+                    BackgroundColor(status_teal()),
+                ));
+            });
+        });
 }
 
 pub(in crate::field_menu) fn spawn_member_column(
@@ -729,25 +781,20 @@ pub(in crate::field_menu) fn spawn_position_column(
     );
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the shared portrait frame keeps profile and status art styling identical"
-)]
 pub(in crate::field_menu) fn spawn_portrait_frame(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     member_name: &str,
     portrait: Option<Handle<Image>>,
-    width: f32,
-    height: f32,
     selected: bool,
     label: &'static str,
 ) {
+    // A square as tall as the card it sits in, so the portrait grows with the card.
     parent
         .spawn((
             Node {
-                width: px(width),
-                height: px(height),
+                height: percent(100),
+                aspect_ratio: Some(1.0),
                 flex_shrink: 0.0,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
@@ -769,7 +816,7 @@ pub(in crate::field_menu) fn spawn_portrait_frame(
                 frame,
                 member_emblem(member_name),
                 font,
-                if height > 100.0 { 34.0 } else { 18.0 },
+                22.0,
                 if selected {
                     status_gold()
                 } else {
