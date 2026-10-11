@@ -99,16 +99,31 @@ pub(in crate::field_menu) fn spawn_field_menu_overlay(
                 row_gap: px(14),
                 ..default()
             },
-            ImageNode::new(backdrop)
-                .with_mode(NodeImageMode::Stretch)
-                .with_color(Color::srgba(0.18, 0.18, 0.24, 0.36)),
-            BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.97)),
+            BackgroundColor(Color::srgb(0.02, 0.02, 0.08)),
             GlobalZIndex(4_000),
             Pickable::IGNORE,
             Name::new("Field menu"),
             FieldMenuRoot,
         ))
         .with_children(|panel| {
+            // The static ruins plate the menu has always sat on, opaque and dimmed so the panels
+            // read against it. It is its own absolute layer, spawned first so every page draws
+            // over it, and never lets the world show through.
+            panel.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(0),
+                    top: px(0),
+                    width: percent(100),
+                    height: percent(100),
+                    ..default()
+                },
+                ImageNode::new(backdrop)
+                    .with_mode(NodeImageMode::Stretch)
+                    .with_color(Color::srgb(0.42, 0.42, 0.46)),
+                Pickable::IGNORE,
+                Name::new("Field menu backdrop"),
+            ));
             panel.spawn((
                 Text::new(""),
                 TextFont {

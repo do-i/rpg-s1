@@ -770,7 +770,7 @@ mod tests {
                 .iter()
                 .map(|&index| map.document().tile_layers()[index].name())
                 .collect::<Vec<_>>(),
-            ["ground", "collision", "decoration"]
+            ["ground", "terrain", "collision", "decoration"]
         );
         let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
         assert!(
@@ -832,7 +832,7 @@ mod tests {
                 map.ground_layer()
                     .gids()
                     .iter()
-                    .all(|gid| gid.global_id() == 1322)
+                    .all(|gid| gid.global_id() == 387)
             );
             let atlas_paths = map
                 .atlas_handles()
@@ -861,7 +861,7 @@ mod tests {
         let mut query = world.query::<(&StaticMapTile, &Sprite, &Transform)>();
         assert_eq!(query.iter(world).count(), 600);
         for (tile, sprite, transform) in query.iter(world) {
-            assert_eq!(tile.global_id(), 1322);
+            assert_eq!(tile.global_id(), 387);
             assert_eq!(tile.local_id(), 386);
             assert_eq!(tile.layer_index(), 0);
             assert_eq!(tile.layer_id(), 1);
