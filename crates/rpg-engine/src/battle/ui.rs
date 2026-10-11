@@ -4,9 +4,11 @@ use bevy::{asset::LoadState, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
+    battle_tactics::{AutoCommand, TurnPause},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    options_store::PlayerOptions,
     runtime_party::RuntimeParty,
     scenario_balance::BalanceData,
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
@@ -28,6 +30,7 @@ use super::{
         BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
         TargetGroup, TargetSelector,
     },
+    party_ai::{AutoAction, plan_auto_action},
     rewards::apply_rewards,
     rules::{flee_chance, phase_after_flee_confirmation, roll_flee, wrap_index},
 };
@@ -1336,6 +1339,8 @@ struct BattleInputContext<'w> {
     game: Option<ResMut<'w, GameState>>,
     entry: Option<Res<'w, BattleEntry>>,
     reward_prelude: Option<Res<'w, super::reward_modal::BattleRewardPrelude>>,
+    time: Res<'w, Time>,
+    options: Option<Res<'w, PlayerOptions>>,
 }
 
 fn handle_battle_input(
@@ -1361,9 +1366,47 @@ fn handle_battle_input(
     };
     let balances: &Assets<BalanceData> = &context.balances;
     let catalog: &FieldMenuCatalog = &context.catalog;
+    let now = context.time.elapsed();
+    let auto_continue = state.auto_continue_at.is_some_and(|at| now >= at);
+    let (auto_enemy_turns, pause) = context
+        .options
+        .as_deref()
+        .map_or((false, TurnPause::default().duration()), |options| {
+            (options.auto_enemy_turns, options.turn_pause.duration())
+        });
     match state.phase {
-        BattlePhase::Start => state.begin_active_turn(game.rng_mut()),
-        BattlePhase::Advance => state.advance(game.rng_mut()),
+        BattlePhase::Start | BattlePhase::Advance => {
+            if state.phase == BattlePhase::Start {
+                state.begin_active_turn(game.rng_mut());
+            } else {
+                state.advance(game.rng_mut());
+            }
+            // An enemy acts the moment its turn begins; with auto enemy turns on, its result
+            // moves on by itself like an auto party member's.
+            let enemy_acted = state.phase == BattlePhase::Resolve
+                && state
+                    .active()
+                    .is_some_and(|active| active.key.side == BattleSide::Enemy);
+            if enemy_acted && auto_enemy_turns {
+                state.auto_continue_at = Some(now + pause);
+            }
+        }
+        BattlePhase::Command
+            if !state.auto_suspended && active_auto_command(&state, &game).is_some() =>
+        {
+            let command = active_auto_command(&state, &game).expect("guarded above");
+            run_auto_turn(
+                &mut state,
+                command,
+                &mut game,
+                catalog,
+                balances,
+                &mut menu_sfx,
+            );
+            if matches!(state.phase, BattlePhase::Resolve | BattlePhase::Flee) {
+                state.auto_continue_at = Some(now + pause);
+            }
+        }
         BattlePhase::Command => {
             if actions.just_pressed(AppAction::Back) {
                 attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
@@ -1496,7 +1539,10 @@ fn handle_battle_input(
                 }
             }
         }
-        BattlePhase::Resolve if actions.just_pressed(AppAction::Confirm) => state.assess_result(),
+        BattlePhase::Resolve if actions.just_pressed(AppAction::Confirm) || auto_continue => {
+            state.auto_continue_at = None;
+            state.assess_result();
+        }
         BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) => {
             let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
                 state.message = "Battle balance is still loading.".to_owned();
@@ -1513,7 +1559,7 @@ fn handle_battle_input(
                 Ok(rewards) => {
                     debug_assert_eq!(state.rewards.as_ref(), Some(&rewards));
                     state.phase = BattlePhase::Rewards;
-                    state.message = rewards.detail_message();
+                    state.message = "Victory! Press Enter to continue.".to_owned();
                 }
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
             }
@@ -1527,7 +1573,8 @@ fn handle_battle_input(
         BattlePhase::Defeat => {
             transitions.write(AppStateTransitionRequest::new(AppState::GameOver));
         }
-        BattlePhase::Flee if actions.just_pressed(AppAction::Confirm) => {
+        BattlePhase::Flee if actions.just_pressed(AppAction::Confirm) || auto_continue => {
+            state.auto_continue_at = None;
             let outcome = state.flee_outcome.unwrap_or(FleeOutcome::Failed);
             if phase_after_flee_confirmation(outcome).is_none() {
                 restore_world(&mut commands, &mut game, entry);
@@ -1705,6 +1752,83 @@ fn resolve_selected_ability(
     }
 }
 
+/// The default command of the member whose turn it is, if the player set them to Auto.
+fn active_auto_command(state: &BattleState, game: &GameState) -> Option<AutoCommand> {
+    let active = state.active()?;
+    if active.key.side != BattleSide::Party {
+        return None;
+    }
+    game.party().member(&active.id)?.tactics().auto_command()
+}
+
+/// Plays one auto member's turn through the same resolvers a manual command uses.
+///
+/// A plan the resolvers refuse falls back to a plain attack, and if even that cannot land the
+/// turn is handed to the player rather than retried every frame.
+fn run_auto_turn(
+    state: &mut BattleState,
+    command: AutoCommand,
+    game: &mut GameState,
+    catalog: &FieldMenuCatalog,
+    balances: &Assets<BalanceData>,
+    menu_sfx: &mut MenuSfx,
+) {
+    let Some(actor) = state.active_key() else {
+        return;
+    };
+    let name = state
+        .active()
+        .map(|active| active.name.clone())
+        .unwrap_or_default();
+    let items = state
+        .item_choices
+        .iter()
+        .filter_map(|choice| catalog.item(&choice.id).and_then(battle_item))
+        .collect::<Vec<_>>();
+    let plan = plan_auto_action(state, actor, command, &items, game.rng_mut());
+    state.transcript.push(format!("AUTO {name} {plan:?}"));
+    match plan {
+        Some(AutoAction::Attack(target)) => {
+            state.resolve_physical(actor, target, game.rng_mut());
+        }
+        Some(AutoAction::Ability { index, targets }) => {
+            resolve_selected_ability(state, actor, index, &targets, game.rng_mut());
+        }
+        Some(AutoAction::Item { id, target }) => {
+            resolve_selected_item(state, actor, &id, target, catalog, game.repository_mut());
+        }
+        Some(AutoAction::Flee) => {
+            attempt_flee(state, balances, game, menu_sfx);
+            return;
+        }
+        None => {}
+    }
+    let unresolved = |state: &BattleState| {
+        matches!(
+            state.phase,
+            BattlePhase::Command | BattlePhase::Ability | BattlePhase::Item
+        )
+    };
+    if unresolved(state)
+        && let Some(target) = state
+            .combatants
+            .iter()
+            .filter(|enemy| enemy.key.side == BattleSide::Enemy && enemy.is_alive())
+            .min_by_key(|enemy| enemy.health)
+            .map(|enemy| enemy.key)
+    {
+        state.phase = BattlePhase::Command;
+        state.resolve_physical(actor, target, game.rng_mut());
+    }
+    if unresolved(state) {
+        state.phase = BattlePhase::Command;
+        state.auto_suspended = true;
+        state.message = format!("{name} awaits your orders.");
+    } else if state.phase != BattlePhase::Victory {
+        state.message = format!("[Auto] {}", state.message);
+    }
+}
+
 fn attempt_flee(
     state: &mut BattleState,
     balances: &Assets<BalanceData>,
@@ -1855,7 +1979,8 @@ fn sync_battle_commands(
             } else if state.phase == BattlePhase::Item {
                 "Battle Items".to_owned()
             } else if state.phase == BattlePhase::Rewards {
-                "Victory Rewards".to_owned()
+                // The reward modal owns the haul; the panel only marks the win.
+                "Victory".to_owned()
             } else {
                 state
                     .active_key()
@@ -1870,10 +1995,6 @@ fn sync_battle_commands(
     let ability_choices = state.battle_ability_indices();
     let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
     let item_page = state.item_index / COMMANDS.len() * COMMANDS.len();
-    let reward_lines = state
-        .rewards
-        .as_ref()
-        .map_or_else(Vec::new, super::rewards::BattleRewards::summary_lines);
     for (marker, mut background, mut border) in &mut rows {
         let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
             || (state.phase == BattlePhase::Ability
@@ -1922,12 +2043,7 @@ fn sync_battle_commands(
             continue;
         }
         if state.phase == BattlePhase::Rewards {
-            text.0 = reward_lines.get(marker.0).cloned().unwrap_or_default();
-            color.0 = if marker.0 == 0 {
-                battle_gold()
-            } else {
-                battle_ink()
-            };
+            text.0.clear();
             continue;
         }
         let command = COMMANDS[marker.0];

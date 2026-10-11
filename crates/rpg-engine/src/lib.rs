@@ -7,6 +7,7 @@ mod action_input;
 pub mod app_state;
 mod autosave;
 mod battle;
+pub mod battle_tactics;
 mod cli;
 mod credits;
 mod debug_launch;

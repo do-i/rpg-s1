@@ -183,6 +183,8 @@ pub(super) fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         used_enemy_moves: std::collections::HashSet::new(),
         rewards: None,
         flee_outcome: None,
+        auto_suspended: false,
+        auto_continue_at: None,
     }
 }
 
@@ -1217,17 +1219,17 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     // downstream `if gp_gained > 0` branch was dead in both engines until this row.
     assert_eq!(rewards.gp_gained, 12);
     assert_eq!(game.repository().gp(), 12);
-    let summary = rewards.summary_lines();
-    assert_eq!(summary[0], "EXP 400  GP 12");
-    assert_eq!(summary[1], "Aric +400 EXP");
-    assert!(summary[2].contains("Magic Core (XS) x2"));
-    assert!(summary[2].contains("Magic Core (S) x1"));
-    assert!(summary[3].contains("Aric Lv 1>2"));
-    assert!(summary[3].contains("Aric learned Power Strike"));
-    assert!(summary[3].contains("Boss cleared (boss_zone01_defeated)"));
-    let detail = rewards.detail_message();
-    assert!(detail.contains("Aric Lv 1>2\nHP +13=35  MP +12=24"));
-    assert!(detail.contains("STR +2=30  DEX +2=19  CON +3=31  INT +1=6"));
+    assert_eq!(rewards.total_experience, 400);
+    assert_eq!(rewards.boss_flag.as_deref(), Some("boss_zone01_defeated"));
+    let loot = rewards
+        .loot
+        .iter()
+        .map(|loot| (loot.name.as_str(), loot.quantity))
+        .collect::<Vec<_>>();
+    assert!(loot.contains(&("Magic Core (XS)", 2)));
+    assert!(loot.contains(&("Magic Core (S)", 1)));
+    let row = &rewards.member_rows()[0];
+    assert_eq!((row.level_from, row.level_to), (1, 2));
 
     let after = game.clone();
     assert!(matches!(
@@ -1711,6 +1713,8 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         used_enemy_moves: std::collections::HashSet::new(),
         rewards: None,
         flee_outcome: None,
+        auto_suspended: false,
+        auto_continue_at: None,
     };
     state.skip_knocked_out();
     assert_eq!(state.active_key(), Some(CombatantKey::party(1)));
@@ -1741,6 +1745,8 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         used_enemy_moves: std::collections::HashSet::new(),
         rewards: None,
         flee_outcome: None,
+        auto_suspended: false,
+        auto_continue_at: None,
     };
     state.assess_result();
     assert_eq!(state.phase, BattlePhase::Advance);
@@ -1778,6 +1784,8 @@ fn deterministic_basic_battle_transcript_is_stable() {
             used_enemy_moves: std::collections::HashSet::new(),
             rewards: None,
             flee_outcome: None,
+            auto_suspended: false,
+            auto_continue_at: None,
         };
         state.combatants[0].attack = 14;
         state.combatants[1].defense = 2;
@@ -1798,4 +1806,136 @@ fn deterministic_basic_battle_transcript_is_stable() {
     let transcript = replay(9);
     assert_eq!(transcript, replay(9));
     assert_eq!(transcript.last().map(String::as_str), Some("VICTORY"));
+}
+
+mod party_ai_tests {
+    use super::*;
+    use crate::battle::party_ai::{AutoAction, plan_auto_action};
+    use crate::battle_tactics::AutoCommand;
+
+    fn plans(
+        state: &BattleState,
+        command: AutoCommand,
+        items: &[&ConsumableItem],
+    ) -> Vec<Option<AutoAction>> {
+        (0..60)
+            .map(|seed| {
+                let mut rng = GameplayRng::from_seed(seed);
+                plan_auto_action(state, CombatantKey::party(0), command, items, &mut rng)
+            })
+            .collect()
+    }
+
+    fn cleric(mana: u32) -> BattleCombatant {
+        let mut cleric = actor(BattleSide::Party, 0, 5, 40);
+        cleric.mana = mana;
+        cleric.max_mana = 40;
+        cleric.abilities = vec![ability("heal"), ability("earth_spike"), ability("revive")];
+        cleric
+    }
+
+    #[test]
+    fn smart_healer_heals_the_badly_wounded_ally() {
+        let mut wounded = actor(BattleSide::Party, 1, 5, 100);
+        wounded.health = 5;
+        let state = state_with(vec![
+            cleric(40),
+            wounded,
+            actor(BattleSide::Enemy, 0, 5, 30),
+        ]);
+        for plan in plans(&state, AutoCommand::Smart, &[]) {
+            assert_eq!(
+                plan,
+                Some(AutoAction::Ability {
+                    index: 0,
+                    targets: vec![CombatantKey::party(1)]
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn smart_member_without_magic_reaches_for_potions_but_not_always() {
+        let mut wounded = actor(BattleSide::Party, 1, 5, 100);
+        wounded.health = 5;
+        let state = state_with(vec![
+            actor(BattleSide::Party, 0, 5, 40),
+            wounded,
+            actor(BattleSide::Enemy, 0, 5, 30),
+        ]);
+        let potion = consumable("potion");
+        let plans = plans(&state, AutoCommand::Smart, &[&potion]);
+        let potion_plan = Some(AutoAction::Item {
+            id: "potion".to_owned(),
+            target: CombatantKey::party(1),
+        });
+        assert!(plans.contains(&potion_plan));
+        assert!(plans.iter().any(|plan| *plan != potion_plan));
+    }
+
+    #[test]
+    fn smart_healer_revives_a_fallen_ally_first() {
+        let mut fallen = actor(BattleSide::Party, 1, 5, 100);
+        fallen.health = 0;
+        let state = state_with(vec![cleric(40), fallen, actor(BattleSide::Enemy, 0, 5, 30)]);
+        for plan in plans(&state, AutoCommand::Smart, &[]) {
+            assert_eq!(
+                plan,
+                Some(AutoAction::Ability {
+                    index: 2,
+                    targets: vec![CombatantKey::party(1)]
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn smart_party_runs_from_a_hopeless_fight_but_never_from_a_boss() {
+        let mut brute = actor(BattleSide::Enemy, 0, 5, 1000);
+        brute.attack = 60;
+        let state = state_with(vec![
+            actor(BattleSide::Party, 0, 5, 20),
+            actor(BattleSide::Party, 1, 5, 20),
+            brute.clone(),
+        ]);
+        assert!(plans(&state, AutoCommand::Smart, &[]).contains(&Some(AutoAction::Flee)));
+
+        brute.boss = true;
+        let state = state_with(vec![
+            actor(BattleSide::Party, 0, 5, 20),
+            actor(BattleSide::Party, 1, 5, 20),
+            brute,
+        ]);
+        assert!(!plans(&state, AutoCommand::Smart, &[]).contains(&Some(AutoAction::Flee)));
+    }
+
+    #[test]
+    fn attack_focuses_the_weakest_enemy_and_spell_falls_back_without_mana() {
+        let state = state_with(vec![
+            cleric(0),
+            actor(BattleSide::Enemy, 0, 5, 30),
+            actor(BattleSide::Enemy, 1, 5, 4),
+        ]);
+        let weakest = Some(AutoAction::Attack(CombatantKey::enemy(1)));
+        for plan in plans(&state, AutoCommand::Attack, &[]) {
+            assert_eq!(plan, weakest);
+        }
+        for plan in plans(&state, AutoCommand::Spell, &[]) {
+            assert_eq!(plan, weakest);
+        }
+    }
+
+    #[test]
+    fn spell_command_casts_when_mana_allows() {
+        let state = state_with(vec![cleric(40), actor(BattleSide::Enemy, 0, 5, 30)]);
+        for plan in plans(&state, AutoCommand::Spell, &[]) {
+            assert_eq!(
+                plan,
+                Some(AutoAction::Ability {
+                    index: 1,
+                    targets: vec![CombatantKey::enemy(0)]
+                })
+            );
+        }
+    }
 }

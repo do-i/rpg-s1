@@ -62,9 +62,12 @@ const PANEL_MAX_HEIGHT: f32 = 700.0;
 /// stock cursor never resizes either column or the containing modal.
 const BUY_DETAIL_HEIGHT: f32 = 500.0;
 
+/// Two lines of 15px description text; the floor the description never shrinks below.
+const BUY_DESCRIPTION_MIN_HEIGHT: f32 = 40.0;
+
 /// Keeps compatible and incompatible party rows the same height. Compatible rows add a stat
 /// delta line; incompatible rows leave that line empty, but the cursor must not reflow the panel.
-const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 64.0;
+const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 46.0;
 
 /// Keeper face sizes: the inn draws a larger portrait than the counter services.
 const KEEPER_FACE: f32 = 64.0;
@@ -180,6 +183,9 @@ fn keeper_face(
     sprites: &ServiceSprites,
     atlases: &Assets<TsxAtlasAsset>,
 ) -> Option<DialoguePortrait> {
+    if let Some(portrait) = state.keeper_portrait.as_ref() {
+        return Some(portrait.clone());
+    }
     let keeper = match state.request? {
         ServiceRequest::Shop(DialogueShopKind::Item | DialogueShopKind::MagicCore) => {
             ServiceKeeper::ItemShop
@@ -483,8 +489,19 @@ fn spawn_preview_row(
             }),
         ))
         .with_children(|row| {
-            spawn_status_text(row, member.name(), font, 16.0, status_ink());
-            spawn_status_text(row, subtitle, font, 12.0, status_muted());
+            // Name and current gear share a line so five members leave room for the description.
+            row.spawn(Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                column_gap: px(8),
+                ..default()
+            })
+            .with_children(|line| {
+                spawn_status_text(line, member.name(), font, 16.0, status_ink());
+                spawn_status_text(line, subtitle, font, 12.0, status_muted());
+            });
             row.spawn(Node {
                 width: percent(100),
                 flex_direction: FlexDirection::Row,
@@ -502,7 +519,8 @@ fn equipment_preview_row_node(focused: bool) -> Node {
         min_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
         max_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
         flex_direction: FlexDirection::Column,
-        padding: UiRect::axes(px(10), px(5)),
+        justify_content: JustifyContent::Center,
+        padding: UiRect::axes(px(10), px(3)),
         border: UiRect::all(px(if focused { 2 } else { 1 })),
         border_radius: BorderRadius::all(px(4)),
         ..default()
@@ -1231,12 +1249,13 @@ fn buy_detail_panel_node() -> Node {
 ///
 /// The preview rows are the fixed contract here (see `EQUIPMENT_PREVIEW_ROW_HEIGHT`) — every party
 /// member must stay visible and the cursor must not reflow the panel — so when a description runs
-/// long it is the description that gets trimmed, not the fifth member.
+/// long it is the description that gets trimmed, not the fifth member. It keeps two lines, though:
+/// at zero it vanished outright whenever a full party filled the preview.
 fn buy_description_node() -> Node {
     Node {
         width: percent(100),
         flex_shrink: 1.0,
-        min_height: px(0),
+        min_height: px(BUY_DESCRIPTION_MIN_HEIGHT),
         overflow: Overflow::clip(),
         ..default()
     }
@@ -1371,16 +1390,22 @@ mod tests {
         assert_eq!(node.height, px(BUY_DETAIL_HEIGHT));
         assert_eq!(node.min_height, px(BUY_DETAIL_HEIGHT));
         assert_eq!(node.max_height, px(BUY_DETAIL_HEIGHT));
-        // Five 64px rows plus the panel's own chrome leaves no slack, so the reserved footprint
-        // has to clip and the description has to be the part that yields.
+        // Five preview rows plus the panel's own chrome leave little slack, so the reserved
+        // footprint has to clip and the description has to be the part that yields.
         assert_eq!(node.overflow, Overflow::clip());
         let description = buy_description_node();
         assert_eq!(description.flex_shrink, 1.0);
-        assert_eq!(description.min_height, px(0));
+        assert_eq!(description.min_height, px(BUY_DESCRIPTION_MIN_HEIGHT));
         const {
+            // Padding, the panel title, item name, rule, label, and the 8px gaps between them.
+            const CHROME: f32 = 170.0;
             assert!(
-                5.0 * EQUIPMENT_PREVIEW_ROW_HEIGHT < BUY_DETAIL_HEIGHT,
-                "the preview rows alone must fit the reserved footprint"
+                5.0 * EQUIPMENT_PREVIEW_ROW_HEIGHT
+                    + 4.0 * 8.0
+                    + BUY_DESCRIPTION_MIN_HEIGHT
+                    + CHROME
+                    <= BUY_DETAIL_HEIGHT,
+                "a full party's preview must still leave the description its two lines"
             );
         }
         for focused in [false, true] {
@@ -1411,5 +1436,24 @@ mod tests {
             assert!(!service_subtitle(&state).is_empty(), "{page:?}");
             assert!(!service_hint(&state).is_empty(), "{page:?}");
         }
+    }
+
+    #[test]
+    fn the_header_shows_the_clerk_the_player_spoke_to() {
+        let clerk = DialoguePortrait {
+            image: Handle::default(),
+            rect: Rect::new(0.0, 10.0, 64.0, 42.0),
+        };
+        let mut state = ServiceUiState::default();
+        state.open(
+            ServiceRequest::Shop(DialogueShopKind::Weapon),
+            Some(clerk.clone()),
+        );
+        let face = keeper_face(
+            &state,
+            &ServiceSprites::default(),
+            &Assets::<TsxAtlasAsset>::default(),
+        );
+        assert_eq!(face, Some(clerk));
     }
 }

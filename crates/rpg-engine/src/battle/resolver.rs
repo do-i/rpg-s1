@@ -54,6 +54,8 @@ impl BattleState {
             used_enemy_moves: std::collections::HashSet::new(),
             rewards: None,
             flee_outcome: None,
+            auto_suspended: false,
+            auto_continue_at: None,
         }
     }
 
@@ -110,6 +112,8 @@ impl BattleState {
             self.phase = BattlePhase::Resolve;
             return;
         }
+        self.auto_suspended = false;
+        self.auto_continue_at = None;
         if active.key.side == BattleSide::Party {
             self.phase = BattlePhase::Command;
             self.command_index = 0;

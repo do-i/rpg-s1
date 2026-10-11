@@ -9,6 +9,7 @@ pub(in crate::field_menu) fn screen_title(state: &FieldMenuState) -> &'static st
         FieldMenuScreen::Spells => "Spells",
         FieldMenuScreen::Quests => "Quest Board",
         FieldMenuScreen::Recipes => "Recipe Book",
+        FieldMenuScreen::Battle => "Battle Tactics",
         FieldMenuScreen::Save => "Save Game",
     }
 }
@@ -36,6 +37,7 @@ pub(in crate::field_menu) fn render_body(
         FieldMenuScreen::Spells => render_spells(state, game, catalog),
         FieldMenuScreen::Quests => render_quests(state, game, catalog),
         FieldMenuScreen::Recipes => render_recipes(state, game, catalog),
+        FieldMenuScreen::Battle => render_battle(state, game),
         FieldMenuScreen::Save => render_save(state, saves),
     };
     if !state.message.is_empty() {
@@ -43,6 +45,25 @@ pub(in crate::field_menu) fn render_body(
         text.push_str(&state.message);
     }
     text
+}
+
+/// The battle tactics page's text mirror.
+pub(in crate::field_menu) fn render_battle(state: &FieldMenuState, game: &GameState) -> String {
+    game.party()
+        .members()
+        .enumerate()
+        .map(|(index, member)| {
+            let tactics = member.tactics();
+            format!(
+                "{} {}  {}  {}",
+                if index == state.selected { ">" } else { " " },
+                member.name(),
+                tactics.mode_label(),
+                tactics.command.label()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// The recipe book's text mirror. Sealed formulae stay unreadable here too.
@@ -590,6 +611,10 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         }
         (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
         (FieldMenuScreen::Recipes, _) => "UP/DOWN recipe  ESC back  M close",
+        (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => {
+            "UP/DOWN choose  ENTER set  ESC cancel"
+        }
+        (FieldMenuScreen::Battle, _) => "UP/DOWN select  ENTER change  ESC back",
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
             "UP/DOWN slot  ENTER save  ESC back  M close"
         }

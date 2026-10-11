@@ -129,6 +129,19 @@ impl RuntimeParty {
         Ok(())
     }
 
+    /// Reorders members to follow the authored roster, so every menu and battle lists them the
+    /// same way however the party was recruited or saved. Ids the roster does not name keep
+    /// their relative order after the authored ones.
+    pub fn arrange_in_authored_order<'a>(&mut self, authored: impl IntoIterator<Item = &'a str>) {
+        let authored = authored.into_iter().collect::<Vec<_>>();
+        self.members.sort_by_key(|member| {
+            authored
+                .iter()
+                .position(|id| *id == member.id())
+                .unwrap_or(authored.len())
+        });
+    }
+
     /// Dismisses every companion while preserving the sole protagonist and their complete state.
     pub(crate) fn retain_protagonist(&mut self) -> usize {
         let previous_len = self.members.len();
@@ -284,6 +297,22 @@ mod tests {
             ["ember", "mira"]
         );
         assert_eq!(party.protagonist().map(RuntimeMember::id), Some("ember"));
+    }
+
+    #[test]
+    fn arranging_follows_the_authored_roster_whatever_the_join_order() {
+        let source = catalog();
+        let mut party = RuntimeParty::default();
+        party.try_add(runtime(&source.party[1])).unwrap();
+        party.try_add(runtime(&source.party[0])).unwrap();
+
+        party
+            .arrange_in_authored_order(source.party.iter().map(|member| member.data().id.as_str()));
+
+        assert_eq!(
+            party.members().map(RuntimeMember::id).collect::<Vec<_>>(),
+            ["ember", "mira"]
+        );
     }
 
     #[test]

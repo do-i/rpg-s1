@@ -13,6 +13,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::{
+    battle_tactics::BattleTactics,
     runtime_member::{EquipmentSlot, RuntimeMember, RuntimeMemberParts},
     runtime_repository::{RuntimeRepository, RuntimeRepositoryItemParts},
     save_data::{
@@ -668,6 +669,7 @@ impl PythonMember {
                 intelligence: self.intelligence,
             },
             row,
+            tactics: BattleTactics::default(),
             equipment,
             status_effects: Vec::new(),
         };
@@ -691,6 +693,7 @@ impl PythonMember {
                     save.stats.intelligence,
                 ],
                 row: save.row,
+                tactics: save.tactics,
                 equipment: [
                     save.equipment.weapon.clone(),
                     save.equipment.shield.clone(),

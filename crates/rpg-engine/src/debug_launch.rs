@@ -289,6 +289,8 @@ fn apply_debug_overrides(
                 .try_add(member)
                 .map_err(|error| error.to_string())?;
         }
+        game.party_mut()
+            .arrange_in_authored_order(party.party.iter().map(|member| member.data().id.as_str()));
     }
     for (flag, value) in &config.flag_overrides {
         if *value {

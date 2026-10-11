@@ -7,6 +7,7 @@ mod enemy_ai;
 mod fx;
 mod item;
 mod model;
+mod party_ai;
 mod resolver;
 mod reward_modal;
 mod rewards;
