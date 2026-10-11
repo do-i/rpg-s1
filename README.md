@@ -273,28 +273,11 @@ acceptance evidence and blockers are maintained locally under the ignored
 
 ## Licensing and credits
 
-The Rust source code is available under the [MIT License](LICENSE). Scenario
-data and bundled art, audio, fonts, and tilesets retain their own terms; the
-code license does not grant rights to those assets.
-
-Required notices and known provenance are preserved beside the applicable
-assets, including:
-
-- `assets/scenarios/rusted_kingdoms/credits/01_aric_credits.txt` for the
-  Liberated Pixel Cup components used by Aric;
-- `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-terrain.txt`
-  for the LPC terrain atlas;
-- the bundled SIL Open Font License notices for Philosopher and Quintessential;
-  and
-- the other creator/source notices under the scenario asset tree.
-
-The auditable path-by-path record is
-[`docs/asset-license-inventory.md`](docs/asset-license-inventory.md), with a
-shorter overview in [`assets/README.md`](assets/README.md). Most copied parity
-assets still lack complete ownership, acquisition, license, or redistribution
-evidence. Do not publish or redistribute the current asset bundle until every
-shipped entry is approved, replaced, or excluded; local parity use is not
-public redistribution permission.
+Code is [MIT](LICENSE). Assets keep their own terms. The single source of truth
+for every asset's provenance, license, and release status is
+[`docs/asset-license-inventory.md`](docs/asset-license-inventory.md); required
+notices (OFL, CC BY-SA attributions) ship beside the files they cover. Many
+assets are still blocked, so do not redistribute the asset bundle yet.
 
 ### Development assistance
 
