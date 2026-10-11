@@ -21,7 +21,7 @@ use crate::{
     scenario_inventory::ScenarioInventory,
     scenario_manifest::Manifest,
     scenario_manifest_asset::ActiveManifestLoad,
-    scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
+    scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus, NewGameInputs},
     scenario_party::PartyCatalog,
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx},
@@ -154,15 +154,18 @@ struct SaveInputs<'w> {
 
 impl<'w> SaveInputs<'w> {
     fn current(&self) -> Option<(&Manifest, &BalanceData)> {
-        self.active
-            .inputs(
-                &self.manifest_load,
-                &self.manifests,
-                &self.parties,
-                &self.balances,
-                &self.intros,
-            )
+        self.inputs()
             .map(|inputs| (inputs.manifest, inputs.balance))
+    }
+
+    fn inputs(&self) -> Option<NewGameInputs<'_>> {
+        self.active.inputs(
+            &self.manifest_load,
+            &self.manifests,
+            &self.parties,
+            &self.balances,
+            &self.intros,
+        )
     }
 }
 
@@ -261,13 +264,22 @@ fn handle_title_load_input(
             menu_sfx.blocked();
         }
         SaveSlotState::Valid => {
-            let Some((manifest, balance)) = inputs.current() else {
+            let Some(current) = inputs.inputs() else {
                 load_menu.message = "Scenario data is still loading.".to_owned();
                 menu_sfx.blocked();
                 return;
             };
-            match store.load(slot.index, &manifest.id, &manifest.version, balance) {
+            let manifest = current.manifest;
+            match store.load(slot.index, &manifest.id, &manifest.version, current.balance) {
                 Ok((_, mut game)) => {
+                    // Saves keep recruit order, which differs between playthroughs.
+                    game.party_mut().arrange_in_authored_order(
+                        current
+                            .party
+                            .party
+                            .iter()
+                            .map(|member| member.data().id.as_str()),
+                    );
                     game.playtime_mut().start_session(time.elapsed());
                     commands.queue(move |world: &mut World| {
                         world.insert_resource(game);

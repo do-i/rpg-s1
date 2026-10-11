@@ -1,5 +1,6 @@
 use super::*;
 
+mod battle_page;
 mod equipment_page;
 mod fallback;
 mod items_page;
@@ -12,6 +13,7 @@ mod shell;
 mod spells_page;
 mod status_page;
 
+pub(super) use battle_page::*;
 pub(super) use equipment_page::*;
 pub(super) use fallback::*;
 pub(super) use items_page::*;

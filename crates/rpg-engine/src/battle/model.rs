@@ -460,6 +460,12 @@ pub(super) struct BattleState {
     pub(super) used_enemy_moves: HashSet<(CombatantKey, String)>,
     pub(super) rewards: Option<super::rewards::BattleRewards>,
     pub(super) flee_outcome: Option<FleeOutcome>,
+    /// Set when an auto member's plan could not be carried out, handing that one turn to the
+    /// player instead of retrying every frame.
+    pub(super) auto_suspended: bool,
+    /// When an auto member's resolved action continues on its own, measured on the app clock.
+    /// Confirm still skips the pause.
+    pub(super) auto_continue_at: Option<std::time::Duration>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -31,6 +31,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    battle_tactics::TurnPause,
     engine_config::TextSpeed,
     input_bindings::{AppAction, BindingTarget, InputBindings, MovementAction},
     input_names::{gamepad_button_from_name, gamepad_button_name, key_from_name, key_name},
@@ -84,6 +85,11 @@ pub(crate) struct PlayerOptions {
     pub(crate) bindings: InputBindings,
     /// The player's typewriter-speed override, or `None` to follow `assets/settings.yaml`.
     pub(crate) text_speed: Option<TextSpeed>,
+    /// Whether enemy turns continue on their own after [`Self::turn_pause`] instead of waiting
+    /// for Confirm. Set on the field menu's Battle page.
+    pub(crate) auto_enemy_turns: bool,
+    /// How long an automatic battle turn stays on screen before moving on.
+    pub(crate) turn_pause: TurnPause,
 }
 
 impl PlayerOptions {
@@ -121,6 +127,10 @@ struct OptionsDocument {
     version: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     text_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    auto_enemy_turns: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    turn_pause: Option<String>,
     keyboard: DeviceBindings,
     gamepad: DeviceBindings,
 }
@@ -149,6 +159,10 @@ impl OptionsDocument {
             text_speed: options
                 .text_speed
                 .map(|speed| text_speed_name(speed).to_owned()),
+            // Defaults stay out of the file, so it only records what the player changed.
+            auto_enemy_turns: options.auto_enemy_turns.then_some(true),
+            turn_pause: (options.turn_pause != TurnPause::default())
+                .then(|| options.turn_pause.label().to_owned()),
             ..Self::default()
         };
         for target in BindingTarget::all() {
@@ -203,6 +217,16 @@ impl OptionsDocument {
                 Some(speed) => options.text_speed = Some(speed),
                 None => warnings.push(format!(
                     "text_speed \"{name}\" is not one of slow, fast, very_fast; ignoring it"
+                )),
+            }
+        }
+
+        options.auto_enemy_turns = self.auto_enemy_turns.unwrap_or(false);
+        if let Some(label) = &self.turn_pause {
+            match TurnPause::from_label(label) {
+                Some(pause) => options.turn_pause = pause,
+                None => warnings.push(format!(
+                    "turn_pause \"{label}\" is not one of 0s, 0.5s, 1s; ignoring it"
                 )),
             }
         }
@@ -592,6 +616,8 @@ mod tests {
         let store = temporary_store("round-trip");
         let mut options = PlayerOptions {
             text_speed: Some(TextSpeed::Slow),
+            auto_enemy_turns: true,
+            turn_pause: TurnPause::Half,
             ..PlayerOptions::default()
         };
         options

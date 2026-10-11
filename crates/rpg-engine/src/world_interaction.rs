@@ -703,7 +703,7 @@ fn drive_dialogue_session(
                 continue;
             }
             if let Some(request) = ServiceRequest::from_dialogue(&completion) {
-                service.open(request);
+                service.open(request, state.portrait.clone());
             }
             if let Some(battle) = completion.start_battle.as_ref() {
                 state.pending_battle = Some(ScriptedBattleRequest {
@@ -925,6 +925,8 @@ fn apply_dialogue_actions(
     game.party_mut()
         .try_add(runtime)
         .map_err(|error| DialogueActionError::PartyMember(error.to_string()))?;
+    game.party_mut()
+        .arrange_in_authored_order(party.party.iter().map(|member| member.data().id.as_str()));
     Ok(())
 }
 

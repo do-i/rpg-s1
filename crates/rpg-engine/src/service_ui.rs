@@ -8,6 +8,7 @@ use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    dialogue_portrait::DialoguePortrait,
     engine_settings::EngineSettings,
     field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name},
     game_state::GameState,
@@ -143,6 +144,9 @@ struct Toast {
 #[derive(Debug, Default, Resource)]
 pub(crate) struct ServiceUiState {
     request: Option<ServiceRequest>,
+    /// The face of the NPC whose dialogue opened this service, so the header shows the clerk
+    /// the player actually spoke to. `None` falls back to the manifest's per-service face.
+    keeper_portrait: Option<DialoguePortrait>,
     page: Option<ServicePage>,
     selected: usize,
     quantity: u32,
@@ -172,9 +176,15 @@ impl ServiceUiState {
         self.request.is_some()
     }
 
-    pub(crate) fn open(&mut self, request: ServiceRequest) {
+    /// Opens the service, with the speaking NPC's face in the header when one is given.
+    pub(crate) fn open(
+        &mut self,
+        request: ServiceRequest,
+        keeper_portrait: Option<DialoguePortrait>,
+    ) {
         *self = Self {
             request: Some(request),
+            keeper_portrait,
             page: Some(match request {
                 ServiceRequest::Shop(DialogueShopKind::MagicCore) => ServicePage::MagicCore,
                 ServiceRequest::Shop(_) => ServicePage::ShopMenu,
@@ -1089,7 +1099,7 @@ mod tests {
         let mut game = game([]);
         let _ = game.repository_mut().add_item("mc_xs", 2).unwrap();
         let mut state = ServiceUiState::default();
-        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore));
+        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore), None);
         state.pending = Some(PendingTransaction::Exchange);
         state.pending_id = Some("mc_xs".to_owned());
         state.quantity = 1;
@@ -1121,7 +1131,7 @@ mod tests {
         let mut game = game([]);
         let _ = game.repository_mut().add_item("mc_xs", 1).unwrap();
         let mut state = ServiceUiState::default();
-        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore));
+        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore), None);
         state.pending = Some(PendingTransaction::Exchange);
         state.pending_id = Some("mc_xs".to_owned());
         state.quantity = 1;

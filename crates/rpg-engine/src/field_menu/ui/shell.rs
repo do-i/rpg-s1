@@ -188,6 +188,7 @@ pub(in crate::field_menu) fn uses_custom_field_menu_page(
                         | FieldMenuScreen::Spells
                         | FieldMenuScreen::Quests
                         | FieldMenuScreen::Recipes
+                        | FieldMenuScreen::Battle
                         | FieldMenuScreen::Save
                 )))
 }

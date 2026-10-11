@@ -16,7 +16,9 @@ use super::{
 };
 use crate::sfx_cue::{PlaySfx, cue};
 
-const MODAL_WIDTH: f32 = 860.0;
+const MODAL_WIDTH: f32 = 660.0;
+/// Wide enough for a name, the level-up badge, and the EXP label on one line.
+const MEMBER_COLUMN_WIDTH: f32 = 370.0;
 const MODAL_Z: i32 = 300;
 /// Matches the authored victory and level-up samples.
 const VICTORY_PRELUDE_SECONDS: f32 = 8.0 / 3.0;
@@ -163,25 +165,54 @@ fn spawn_reward_modal(commands: &mut Commands, rewards: &BattleRewards, font: &H
                         ..default()
                     });
                     spawn_divider(panel);
-                    // The member list is the only part allowed to shrink, so a
-                    // five-member sweep can never clip the loot or the prompt.
+                    // Members on the left, loot on the right. The body is the only part allowed
+                    // to shrink, so a five-member sweep can never clip the prompt.
                     panel
                         .spawn(Node {
                             width: percent(100),
-                            flex_direction: FlexDirection::Column,
+                            flex_direction: FlexDirection::Row,
                             flex_shrink: 1.0,
                             min_height: px(0),
-                            row_gap: px(6),
+                            column_gap: px(16),
                             overflow: Overflow::clip(),
                             ..default()
                         })
-                        .with_children(|list| {
-                            for row in &rows {
-                                spawn_member_card(list, row, font);
-                            }
+                        .with_children(|body| {
+                            body.spawn(Node {
+                                width: px(MEMBER_COLUMN_WIDTH),
+                                flex_direction: FlexDirection::Column,
+                                flex_shrink: 0.0,
+                                min_height: px(0),
+                                row_gap: px(6),
+                                overflow: Overflow::clip(),
+                                ..default()
+                            })
+                            .with_children(|list| {
+                                for row in &rows {
+                                    spawn_member_card(list, row, font);
+                                }
+                            });
+                            body.spawn((
+                                Node {
+                                    width: px(1),
+                                    align_self: AlignSelf::Stretch,
+                                    flex_shrink: 0.0,
+                                    ..default()
+                                },
+                                BackgroundColor(divider_color()),
+                            ));
+                            body.spawn(Node {
+                                flex_grow: 1.0,
+                                flex_basis: px(0),
+                                flex_direction: FlexDirection::Column,
+                                min_width: px(0),
+                                min_height: px(0),
+                                row_gap: px(4),
+                                overflow: Overflow::clip(),
+                                ..default()
+                            })
+                            .with_children(|loot| spawn_loot_section(loot, rewards, font));
                         });
-                    spawn_divider(panel);
-                    spawn_loot_section(panel, rewards, font);
                     if let Some(flag) = rewards.boss_flag.as_ref() {
                         spawn_battle_text(
                             panel,
@@ -335,10 +366,9 @@ fn spawn_loot_section(
     parent
         .spawn(Node {
             width: percent(100),
-            flex_wrap: FlexWrap::Wrap,
+            flex_direction: FlexDirection::Column,
             flex_shrink: 0.0,
-            column_gap: px(16),
-            row_gap: px(2),
+            row_gap: px(3),
             ..default()
         })
         .with_children(|list| {
@@ -367,8 +397,12 @@ fn spawn_divider(parent: &mut ChildSpawnerCommands<'_>) {
             flex_shrink: 0.0,
             ..default()
         },
-        BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
+        BackgroundColor(divider_color()),
     ));
+}
+
+fn divider_color() -> Color {
+    Color::srgba_u8(126, 98, 55, 150)
 }
 
 /// Shows the capped amount alongside the earned amount when they disagree.

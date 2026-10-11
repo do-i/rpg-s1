@@ -9,6 +9,7 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    battle_tactics::{TACTIC_CHOICES, TurnPause, choice_description, choice_label},
     engine_settings::EngineSettings,
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
@@ -23,6 +24,7 @@ use crate::{
         status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
         status_violet, window_start,
     },
+    options_store::{OptionsStore, PlayerOptions},
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
     runtime_quest::{QuestStatus, quest_status},
@@ -66,9 +68,10 @@ mod ui;
 
 use ui::{
     cleanup_field_menu, large_status_portrait_path, load_status_image, profile_portrait_path,
-    sync_custom_field_menu_content_visibility, sync_equipment_page, sync_field_menu_generic_text,
-    sync_field_menu_overlay_lifecycle, sync_items_page, sync_main_menu_page, sync_quests_page,
-    sync_recipes_page, sync_save_page, sync_spells_page, sync_status_page,
+    sync_battle_page, sync_custom_field_menu_content_visibility, sync_equipment_page,
+    sync_field_menu_generic_text, sync_field_menu_overlay_lifecycle, sync_items_page,
+    sync_main_menu_page, sync_quests_page, sync_recipes_page, sync_save_page, sync_spells_page,
+    sync_status_page,
 };
 
 const INVENTORY_PAGE_ROWS: usize = 10;
@@ -117,7 +120,7 @@ struct MainCommand {
     screen: Option<FieldMenuScreen>,
 }
 
-const MAIN_COMMANDS: [MainCommand; 9] = [
+const MAIN_COMMANDS: [MainCommand; 10] = [
     MainCommand {
         label: "Status",
         badge: "ST",
@@ -172,6 +175,12 @@ const MAIN_COMMANDS: [MainCommand; 9] = [
         description: "study known recipes and ingredients",
         screen: Some(FieldMenuScreen::Recipes),
     },
+    MainCommand {
+        label: "Battle",
+        badge: "BT",
+        description: "set each member to manual or auto",
+        screen: Some(FieldMenuScreen::Battle),
+    },
 ];
 
 const STATUS_PARTY_WIDTH: f32 = 316.0;
@@ -192,6 +201,7 @@ const QUEST_LIST_WIDTH: f32 = 512.0;
 const QUEST_COLUMN_GAP: f32 = 18.0;
 const RECIPE_LIST_WIDTH: f32 = 512.0;
 const RECIPE_COLUMN_GAP: f32 = 18.0;
+const BATTLE_LIST_WIDTH: f32 = 512.0;
 
 pub(crate) struct FieldMenuPlugin;
 
@@ -220,6 +230,7 @@ impl Plugin for FieldMenuPlugin {
                     sync_spells_page,
                     sync_quests_page,
                     sync_recipes_page,
+                    sync_battle_page,
                     sync_save_page,
                 )
                     .chain()
@@ -241,6 +252,8 @@ enum FieldMenuScreen {
     /// Read-only recipe book. Crafting stays with the apothecary service (roadmap B4.4).
     Recipes,
     Save,
+    /// Per-member Manual/Auto tactics and the auto default command.
+    Battle,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -269,6 +282,8 @@ enum FieldMenuMode {
     ItemManage,
     /// Y/N guard before an item is spent on the whole party. Gated on `item.use_aoe_confirm`.
     ItemAoeConfirm,
+    /// Battle page list of Manual / Auto commands for the focused member.
+    BattleTacticPicker,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -289,6 +304,8 @@ pub(crate) struct FieldMenuState {
     member_index: usize,
     status_page: StatusPage,
     tab_index: usize,
+    /// Highlighted entry in the Battle page's tactic picker, an index into `TACTIC_CHOICES`.
+    battle_choice: usize,
     quantity: u32,
     pending_id: Option<String>,
     /// Draft text for the new-custom-tag prompt.
@@ -408,6 +425,10 @@ impl FieldMenuState {
                 self.selected = CHARACTER_COMMAND_INDEX;
                 self.message.clear();
             }
+            FieldMenuMode::BattleTacticPicker => {
+                self.mode = FieldMenuMode::Browse;
+                self.message.clear();
+            }
         }
     }
 }
@@ -489,6 +510,15 @@ struct FieldMenuQuestsPage;
 
 #[derive(Component)]
 struct FieldMenuRecipesPage;
+
+#[derive(Component)]
+struct FieldMenuBattlePage;
+
+#[derive(Component)]
+struct BattleTacticsRow;
+
+#[derive(Component)]
+struct SelectedBattleTacticsRow;
 
 #[derive(Component)]
 struct RecipeBookRow;
@@ -600,7 +630,7 @@ fn handle_field_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
-    settings: Res<EngineSettings>,
+    mut menu_settings: MenuSettings,
     interaction: Res<WorldInteractionState>,
     service: Option<Res<ServiceUiState>>,
     mut transition: ResMut<WorldTransition>,
@@ -865,7 +895,7 @@ fn handle_field_menu_input(
                     // the effect's target before offering one, and routing a Tent through the
                     // picker is what made it unusable -- every member was an invalid target.
                     0 if targets_whole_party(&catalog, &id) => {
-                        if settings.use_aoe_confirm {
+                        if menu_settings.engine.use_aoe_confirm {
                             state.mode = FieldMenuMode::ItemAoeConfirm;
                             state.selected = 0;
                         } else {
@@ -1058,6 +1088,15 @@ fn handle_field_menu_input(
                         }
                     }
                 } else if let Some(id) = candidates.get(state.selected - 1) {
+                    let refusal = game
+                        .party()
+                        .member(&member_id)
+                        .and_then(|member| equip_refusal(member, id, &catalog));
+                    if let Some(refusal) = refusal {
+                        menu_sfx.blocked();
+                        state.message = refusal;
+                        return;
+                    }
                     match equip_item(&mut game, &catalog, &member_id, id) {
                         Ok(_) => {
                             menu_sfx.play(cue::EQUIP);
@@ -1219,7 +1258,168 @@ fn handle_field_menu_input(
                 state.selected = wrapped_or_zero(state.selected, catalog.recipes().len(), delta);
             }
         }
+        (FieldMenuScreen::Battle, FieldMenuMode::Browse) => {
+            if let Some(delta) = vertical {
+                state.selected = wrapped_or_zero(state.selected, battle_row_count(&game), delta);
+            }
+            if actions.just_pressed(AppAction::Confirm) {
+                let row = battle_row(&game, state.selected);
+                state.battle_choice = battle_row_choices(&game, menu_settings.options(), row).1;
+                state.mode = FieldMenuMode::BattleTacticPicker;
+            }
+        }
+        (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => {
+            let row = battle_row(&game, state.selected);
+            if let Some(delta) = vertical {
+                let count = battle_row_choices(&game, menu_settings.options(), row)
+                    .0
+                    .len();
+                state.battle_choice = wrapped(state.battle_choice, count, delta);
+            }
+            if actions.just_pressed(AppAction::Confirm) {
+                menu_settings.apply_battle_choice(&mut game, row, state.battle_choice);
+                state.mode = FieldMenuMode::Browse;
+            }
+        }
         _ => {}
+    }
+}
+
+/// One line of the Battle page: a party member's orders or one of the battle-wide settings.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BattleRow {
+    Member(usize),
+    EnemyTurns,
+    TurnPause,
+}
+
+/// Members first, then the two settings rows.
+fn battle_row_count(game: &GameState) -> usize {
+    game.party().len() + 2
+}
+
+fn battle_row(game: &GameState, selected: usize) -> BattleRow {
+    match selected.checked_sub(game.party().len()) {
+        None => BattleRow::Member(selected),
+        Some(0) => BattleRow::EnemyTurns,
+        Some(_) => BattleRow::TurnPause,
+    }
+}
+
+/// A row's picker entries as (label, explanation), and the index of the one currently in force.
+fn battle_row_choices(
+    game: &GameState,
+    options: &PlayerOptions,
+    row: BattleRow,
+) -> (Vec<(String, &'static str)>, usize) {
+    match row {
+        BattleRow::Member(index) => {
+            let current =
+                member_at(game, index).map_or(0, |member| member.tactics().choice_index());
+            let choices = TACTIC_CHOICES
+                .into_iter()
+                .map(|choice| (choice_label(choice), choice_description(choice)))
+                .collect();
+            (choices, current)
+        }
+        BattleRow::EnemyTurns => (
+            vec![
+                (
+                    "Manual".to_owned(),
+                    "Each enemy action waits for Enter before the battle moves on.",
+                ),
+                (
+                    "Auto".to_owned(),
+                    "Enemy actions move on by themselves after the turn pause. Enter still skips \
+                     the wait.",
+                ),
+            ],
+            usize::from(options.auto_enemy_turns),
+        ),
+        BattleRow::TurnPause => (
+            TurnPause::ALL
+                .into_iter()
+                .map(|pause| {
+                    (
+                        pause.label().to_owned(),
+                        "How long an automatic turn stays on screen before the battle moves on. \
+                         Applies to auto party members and, when set, to enemy turns. Enter \
+                         always skips the wait.",
+                    )
+                })
+                .collect(),
+            TurnPause::ALL
+                .iter()
+                .position(|pause| *pause == options.turn_pause)
+                .unwrap_or_default(),
+        ),
+    }
+}
+
+/// The settings the field menu reads, plus the player options it can change and save.
+#[derive(bevy::ecs::system::SystemParam)]
+struct MenuSettings<'w> {
+    engine: Res<'w, EngineSettings>,
+    options: Option<ResMut<'w, PlayerOptions>>,
+    options_store: Option<Res<'w, OptionsStore>>,
+}
+
+impl MenuSettings<'_> {
+    fn options(&self) -> &PlayerOptions {
+        static DEFAULT: std::sync::OnceLock<PlayerOptions> = std::sync::OnceLock::new();
+        self.options
+            .as_deref()
+            .unwrap_or_else(|| DEFAULT.get_or_init(PlayerOptions::default))
+    }
+
+    /// Applies the picker's highlighted entry to `row`, saving the options file when a
+    /// battle-wide setting changed.
+    fn apply_battle_choice(&mut self, game: &mut GameState, row: BattleRow, choice: usize) {
+        if apply_battle_choice(game, self.options.as_deref_mut(), row, choice)
+            && let (Some(store), Some(options)) =
+                (self.options_store.as_deref(), self.options.as_deref())
+            && let Err(error) = store.store(options)
+        {
+            error!(
+                "could not save options to {}: {error}",
+                store.path().display()
+            );
+        }
+    }
+}
+
+/// Applies picker entry `choice` to `row`. Returns whether a battle-wide option changed.
+fn apply_battle_choice(
+    game: &mut GameState,
+    options: Option<&mut PlayerOptions>,
+    row: BattleRow,
+    choice: usize,
+) -> bool {
+    match row {
+        BattleRow::Member(index) => {
+            let Some(member_id) = member_at(game, index).map(|member| member.id().to_owned())
+            else {
+                return false;
+            };
+            let choice = TACTIC_CHOICES[choice.min(TACTIC_CHOICES.len() - 1)];
+            let member = game
+                .party_mut()
+                .member_mut(&member_id)
+                .expect("found above");
+            member.set_tactics(member.tactics().with_choice(choice));
+            false
+        }
+        BattleRow::EnemyTurns | BattleRow::TurnPause => {
+            let Some(options) = options else {
+                return false;
+            };
+            if row == BattleRow::EnemyTurns {
+                options.auto_enemy_turns = choice == 1;
+            } else {
+                options.turn_pause = TurnPause::ALL[choice.min(TurnPause::ALL.len() - 1)];
+            }
+            true
+        }
     }
 }
 
@@ -1313,6 +1513,23 @@ fn slot_index(slot: EquipmentSlot) -> usize {
         .iter()
         .position(|candidate| *candidate == slot)
         .expect("known slot")
+}
+
+/// Why `member` cannot equip `item_id`, phrased for the player, or `None` when they can.
+fn equip_refusal(
+    member: &crate::runtime_member::RuntimeMember,
+    item_id: &str,
+    catalog: &FieldMenuCatalog,
+) -> Option<String> {
+    let item = catalog.item(item_id)?;
+    can_equip(member, item, catalog).err().map(|_| {
+        format!(
+            "{} ({}) can't equip {}.",
+            member.name(),
+            ui::class_name(member.class_id(), catalog),
+            item_name(item)
+        )
+    })
 }
 
 fn equipment_candidates(
@@ -1601,6 +1818,7 @@ fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
 #[cfg(test)]
 mod tests {
     use super::{ui::*, *};
+    use crate::battle_tactics::AutoCommand;
     use crate::save_data::tests::{fixture_balance, fixture_game};
 
     /// A new game starts with the protagonist alone; the switch overlay needs someone to switch to.
@@ -1681,6 +1899,24 @@ mod tests {
     ) {
         commands.spawn(Node::default()).with_children(|parent| {
             spawn_recipes_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+        });
+    }
+
+    fn spawn_fixture_battle_page(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+        catalog: Res<FieldMenuCatalog>,
+    ) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_battle_page(
+                parent,
+                &Handle::<Font>::default(),
+                &state,
+                &game,
+                &catalog,
+                &PlayerOptions::default(),
+            );
         });
     }
 
@@ -2715,7 +2951,7 @@ mod tests {
     #[test]
     fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
         // Column 0 holds Status, Spells, Items, Quit; column 1 holds Save, Equipment, Quests,
-        // Character; column 2 holds Recipes alone.
+        // Character; column 2 holds Recipes and Battle.
         assert_eq!(stepped_main_command(0, Some(1), None), 1);
         assert_eq!(stepped_main_command(3, Some(1), None), 0);
         assert_eq!(stepped_main_command(0, Some(-1), None), 3);
@@ -2725,21 +2961,23 @@ mod tests {
         assert_eq!(stepped_main_command(5, None, Some(-1)), 1);
         // Rightward out of the last column wraps back to the first.
         assert_eq!(stepped_main_command(8, None, Some(1)), 0);
-        // A lone command in column 2 catches every row that crosses into it.
-        assert_eq!(stepped_main_command(5, None, Some(1)), 8);
-        // Vertical movement inside a one-command column stays put rather than dividing by zero.
-        assert_eq!(stepped_main_command(8, Some(1), None), 8);
-        assert_eq!(stepped_main_command(8, Some(-1), None), 8);
+        // The short column 2 keeps the row while it can and clamps below its last command.
+        assert_eq!(stepped_main_command(5, None, Some(1)), 9);
+        assert_eq!(stepped_main_command(7, None, Some(1)), 9);
+        // Vertical movement wraps inside the two-command column.
+        assert_eq!(stepped_main_command(8, Some(1), None), 9);
+        assert_eq!(stepped_main_command(9, Some(1), None), 8);
+        assert_eq!(stepped_main_command(8, Some(-1), None), 9);
     }
 
     #[test]
     fn crossing_into_the_short_column_clamps_to_its_last_command() {
-        // Adding Recipes opened a third column holding one command, so the clamp is now load
-        // bearing: every row crossing into it has to land on that single entry.
+        // Recipes opened a third column and Battle joined it, so the clamp is load bearing: every
+        // row below the second has to land on the column's last entry.
         assert_eq!(main_command_columns(), 3);
         assert_eq!(main_command_column_len(0), 4);
         assert_eq!(main_command_column_len(1), 4);
-        assert_eq!(main_command_column_len(2), 1);
+        assert_eq!(main_command_column_len(2), 2);
 
         assert_eq!(stepped_main_command(3, None, Some(1)), 7);
         for row in 0..MAIN_COMMAND_ROWS {
@@ -2749,12 +2987,12 @@ mod tests {
                 row.min(main_command_column_len(1) - 1)
             );
         }
-        // Crossing from the full middle column into the short one collapses onto Recipes.
+        // Crossing from the full middle column into the short one keeps the row or clamps.
         for row in 0..MAIN_COMMAND_ROWS {
             assert_eq!(
                 stepped_main_command(MAIN_COMMAND_ROWS + row, None, Some(1)),
-                MAIN_COMMANDS.len() - 1,
-                "row {row} must clamp onto the lone command in the last column"
+                2 * MAIN_COMMAND_ROWS + row.min(1),
+                "row {row} must land in the short last column"
             );
         }
     }
@@ -2789,7 +3027,8 @@ mod tests {
                 "Equipment",
                 "Quests",
                 "Character",
-                "Recipes"
+                "Recipes",
+                "Battle"
             ]
         );
         assert_eq!(MAIN_COMMANDS[QUIT_COMMAND_INDEX].label, "Quit");
@@ -2831,6 +3070,129 @@ mod tests {
     /// Every recipe is listed so the tally is honest, but an unmet unlock flag keeps the formula
     /// itself unreadable. A new game bootstraps `story_quest_started`, so the Act 1 recipes are
     /// already legible while the later acts stay sealed.
+    #[test]
+    fn a_class_that_cannot_wear_an_item_gets_a_plain_refusal() {
+        let game = fixture_game_with_recruit();
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let elise = game.party().member("elise").unwrap();
+        assert_eq!(
+            equip_refusal(elise, "leather_vest", &catalog).as_deref(),
+            Some("Elise (Cleric) can't equip Leather Vest.")
+        );
+        assert_eq!(equip_refusal(elise, "cloth_robe", &catalog), None);
+        let aric = game.party().member("aric").unwrap();
+        assert_eq!(equip_refusal(aric, "leather_vest", &catalog), None);
+    }
+
+    #[test]
+    fn the_battle_page_lists_each_member_with_mode_and_command() {
+        let mut game = fixture_game_with_recruit();
+        game.party_mut().member_mut("elise").unwrap().set_tactics(
+            crate::battle_tactics::BattleTactics {
+                auto: true,
+                command: crate::battle_tactics::AutoCommand::Smart,
+            },
+        );
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Battle,
+                selected: 1,
+                mode: FieldMenuMode::BattleTacticPicker,
+                battle_choice: 2,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_battle_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(world.query::<&FieldMenuBattlePage>().iter(world).count(), 1);
+        // Two members, then the Enemy turns and Turn pause settings.
+        assert_eq!(world.query::<&BattleTacticsRow>().iter(world).count(), 4);
+        assert_eq!(
+            world
+                .query::<&SelectedBattleTacticsRow>()
+                .iter(world)
+                .count(),
+            1
+        );
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "BATTLE TACTICS"));
+        assert!(labels.iter().any(|label| label == "Enemy turns"));
+        assert!(labels.iter().any(|label| label == "Turn pause"));
+        assert!(labels.iter().any(|label| label == "1S"));
+        assert!(labels.iter().any(|label| label == "MANUAL"));
+        assert!(labels.iter().any(|label| label == "AUTO - SMART"));
+        // The picker lists every choice, with the highlighted one's explanation beneath.
+        for choice in TACTIC_CHOICES {
+            assert!(labels.contains(&crate::battle_tactics::choice_label(choice)));
+        }
+        assert!(
+            labels
+                .iter()
+                .any(|label| label == AutoCommand::Spell.description())
+        );
+    }
+
+    #[test]
+    fn battle_page_picker_applies_member_tactics_and_battle_wide_options() {
+        let mut game = fixture_game();
+        let id = game.party().members().next().unwrap().id().to_owned();
+        let member = BattleRow::Member(0);
+        assert!(!apply_battle_choice(&mut game, None, member, 3));
+        let tactics = game.party().member(&id).unwrap().tactics();
+        assert_eq!(tactics.auto_command(), Some(AutoCommand::Smart));
+        apply_battle_choice(&mut game, None, member, 0);
+        assert_eq!(
+            game.party().member(&id).unwrap().tactics().auto_command(),
+            None
+        );
+
+        let party = game.party().len();
+        assert_eq!(battle_row(&game, party), BattleRow::EnemyTurns);
+        assert_eq!(battle_row(&game, party + 1), BattleRow::TurnPause);
+        let mut options = PlayerOptions::default();
+        assert!(apply_battle_choice(
+            &mut game,
+            Some(&mut options),
+            BattleRow::EnemyTurns,
+            1
+        ));
+        assert!(options.auto_enemy_turns);
+        assert!(apply_battle_choice(
+            &mut game,
+            Some(&mut options),
+            BattleRow::TurnPause,
+            0
+        ));
+        assert_eq!(options.turn_pause, TurnPause::Instant);
+        assert_eq!(
+            battle_row_choices(&game, &options, BattleRow::TurnPause).1,
+            0
+        );
+        assert_eq!(
+            battle_row_choices(&game, &options, BattleRow::EnemyTurns).1,
+            1
+        );
+
+        let mut state = FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Battle,
+            mode: FieldMenuMode::BattleTacticPicker,
+            ..default()
+        };
+        state.back();
+        assert_eq!(state.mode, FieldMenuMode::Browse);
+        assert_eq!(state.screen, FieldMenuScreen::Battle);
+    }
+
     #[test]
     fn the_recipe_book_lists_the_catalog_and_withholds_sealed_formulae() {
         let catalog = crate::field_menu_domain::tests::catalog();
@@ -3108,7 +3470,7 @@ mod tests {
             }
             app.world_mut()
                 .resource_mut::<ServiceUiState>()
-                .open(ServiceRequest::Inn);
+                .open(ServiceRequest::Inn, None);
             app.update();
 
             app.world_mut()

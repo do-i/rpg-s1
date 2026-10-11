@@ -372,6 +372,7 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
             .checked_sub(1)
             .and_then(|candidate| candidates.get(candidate).map(String::as_str));
         let item = candidate_id.and_then(|id| catalog.item(id));
+        let refusal = candidate_id.and_then(|id| equip_refusal(member, id, catalog));
         let selected = index == state.selected;
         parent
             .spawn((
@@ -403,21 +404,23 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
                     item.map_or("(Unequip)", item_name),
                     font,
                     16.0,
-                    if item.is_some() {
+                    if item.is_some() && refusal.is_none() {
                         status_ink()
                     } else {
                         status_muted()
                     },
                 );
-                spawn_status_text(
-                    row,
-                    candidate_id.map_or("return current item to pouch".to_owned(), |id| {
-                        equipment_preview_summary(member, catalog, slot, Some(id))
-                    }),
-                    font,
-                    12.0,
-                    status_muted(),
-                );
+                // An item this member cannot wear stays listed, so the player can see they own
+                // it, but says so instead of previewing stats it would never grant.
+                let (summary, color) = match (&refusal, candidate_id) {
+                    (Some(_), _) => ("CAN'T EQUIP - CLASS RESTRICTED".to_owned(), status_ember()),
+                    (None, Some(id)) => (
+                        equipment_preview_summary(member, catalog, slot, Some(id)),
+                        status_muted(),
+                    ),
+                    (None, None) => ("return current item to pouch".to_owned(), status_muted()),
+                };
+                spawn_status_text(row, summary, font, 12.0, color);
             });
     }
     spawn_section_rule(parent);

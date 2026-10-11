@@ -14,6 +14,7 @@
 use std::{collections::BTreeSet, error::Error, fmt};
 
 use crate::{
+    battle_tactics::BattleTactics,
     scenario_balance::ProgressionBalance,
     scenario_class::ClassDefinition,
     scenario_party::{PartyEquipment, PartyMember, PartyRow, PartyStats},
@@ -35,6 +36,7 @@ pub struct RuntimeMember {
     max_mana: u32,
     stats: RuntimeMemberStats,
     row: PartyRow,
+    tactics: BattleTactics,
     equipment: RuntimeEquipment,
     status_effects: BTreeSet<crate::scenario_item::ItemStatus>,
 }
@@ -110,6 +112,7 @@ impl RuntimeMember {
             max_mana: data.mp_max,
             stats: RuntimeMemberStats::from(&data.stats),
             row: data.row,
+            tactics: BattleTactics::default(),
             equipment: RuntimeEquipment::from(&data.equipped),
             status_effects: BTreeSet::new(),
         })
@@ -179,6 +182,7 @@ impl RuntimeMember {
                 intelligence: parts.stats[3],
             },
             row: parts.row,
+            tactics: parts.tactics,
             equipment: RuntimeEquipment {
                 weapon: parts.equipment[0].clone(),
                 shield: parts.equipment[1].clone(),
@@ -245,6 +249,15 @@ impl RuntimeMember {
 
     pub fn row(&self) -> PartyRow {
         self.row
+    }
+
+    /// How this member acts in battle: on the player's orders or automatically.
+    pub fn tactics(&self) -> BattleTactics {
+        self.tactics
+    }
+
+    pub(crate) fn set_tactics(&mut self, tactics: BattleTactics) {
+        self.tactics = tactics;
     }
 
     /// Moves this member to a battle row and returns the previous row.
@@ -506,6 +519,7 @@ pub(crate) struct RuntimeMemberParts {
     pub max_mana: u32,
     pub stats: [u32; 4],
     pub row: PartyRow,
+    pub tactics: BattleTactics,
     pub equipment: [Option<String>; 5],
     pub status_effects: Vec<crate::scenario_item::ItemStatus>,
 }

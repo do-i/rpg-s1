@@ -5,6 +5,7 @@ use std::{error::Error, fmt};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    battle_tactics::BattleTactics,
     game_state::{GameState, GameStateParts},
     gameplay_rng::GameplayRng,
     playtime::Playtime,
@@ -81,6 +82,10 @@ pub(crate) struct SaveMember {
     pub max_mana: u32,
     pub stats: SaveStats,
     pub row: PartyRow,
+    /// Absent in saves written before battle tactics existed; those members load as manual.
+    /// Left out while still the default so all-manual saves keep their earlier shape.
+    #[serde(default, skip_serializing_if = "is_default_tactics")]
+    pub tactics: BattleTactics,
     pub equipment: SaveEquipment,
     pub status_effects: Vec<ItemStatus>,
 }
@@ -375,6 +380,10 @@ impl SavePayload {
     }
 }
 
+fn is_default_tactics(tactics: &BattleTactics) -> bool {
+    *tactics == BattleTactics::default()
+}
+
 impl From<&RuntimeMember> for SaveMember {
     fn from(member: &RuntimeMember) -> Self {
         Self {
@@ -396,6 +405,7 @@ impl From<&RuntimeMember> for SaveMember {
                 intelligence: member.stats().intelligence(),
             },
             row: member.row(),
+            tactics: member.tactics(),
             equipment: SaveEquipment {
                 weapon: member
                     .equipment()
@@ -444,6 +454,7 @@ impl SaveMember {
                 self.stats.intelligence,
             ],
             row: self.row,
+            tactics: self.tactics,
             equipment: [
                 self.equipment.weapon,
                 self.equipment.shield,
@@ -627,6 +638,35 @@ pub(crate) mod tests {
                 .iter()
                 .any(|key| key.box_id() == "box_01")
         );
+    }
+
+    #[test]
+    fn battle_tactics_survive_a_save_and_load() {
+        let tactics = BattleTactics {
+            auto: true,
+            command: crate::battle_tactics::AutoCommand::Spell,
+        };
+        let mut game = fixture_game();
+        game.party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .set_tactics(tactics);
+
+        let encoded = NativeSaveEnvelope::from_game_state(
+            &game,
+            "my_rpg_story",
+            "1.0.0",
+            1_700_000_000,
+            "Starting Forest",
+        )
+        .unwrap()
+        .encode()
+        .unwrap();
+        let (_, restored) =
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+
+        assert_eq!(restored.party().member("aric").unwrap().tactics(), tactics);
     }
 
     #[test]
