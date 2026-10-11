@@ -677,9 +677,17 @@ fn drive_active_encounter_assets(
             })
             .unwrap_or_else(|| Sprite::from_color(Color::srgb(0.8, 0.2, 0.2), Vec2::splat(64.0)));
         let top_left = enemy_top_left(pending.position);
+        // An inactive enemy (the one just beaten, restored after its battle) must spawn hidden.
+        // `update_world_enemies` hides it too, but only from its next run, which let the defeated
+        // sprite flash on the map for a frame or two after returning from battle.
+        let scale = if pending.active {
+            Vec3::ONE
+        } else {
+            Vec3::ZERO
+        };
         commands.spawn((
             sprite,
-            Transform::from_translation(enemy_world_translation(top_left)),
+            Transform::from_translation(enemy_world_translation(top_left)).with_scale(scale),
             WorldEnemy {
                 encounter_id: pending.encounter_id.clone(),
                 formation: pending.formation.clone(),
@@ -2033,6 +2041,101 @@ mod tests {
         assert!(!enemy_collision_rect(a).overlaps(snapshot[1].1));
         let rect = enemy_collision_rect(a);
         assert!(!collision.is_rect_blocked(rect.x, rect.y, rect.width, rect.height));
+    }
+
+    #[test]
+    fn the_enemy_just_defeated_is_restored_hidden_from_its_first_frame() {
+        let mut app = headless_title_app_with_asset_base(
+            AppState::NameEntry,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+            ScenarioRoot::default(),
+        );
+        app.add_plugins(ImagePlugin::default_nearest())
+            .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+            .add_plugins(TsxAtlasAssetPlugin)
+            .add_plugins(TmxGroundAssetPlugin)
+            .add_plugins(EncounterAssetPlugin)
+            .add_plugins(FieldMenuDomainPlugin)
+            .add_plugins(WorldAudioPlugin)
+            .init_asset::<SfxIndex>()
+            .init_asset_loader::<SfxIndexAssetLoader>()
+            .add_plugins(WorldEncounterPlugin)
+            .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+                100,
+            )));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().resource::<ActiveNewGameInputs>().status()
+                == ActiveNewGameInputsStatus::Ready
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        app.world_mut()
+            .resource_mut::<Messages<NameEntryConfirmed>>()
+            .write(NameEntryConfirmed::for_test("Aric"));
+        for _ in 0..5_000 {
+            app.update();
+            if app.world().get_resource::<GameState>().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+                Position::new(9, 8),
+                CardinalDirection::Down,
+            );
+        let returning = |id: &str, position: Position, active: bool| WorldEnemyReturnState {
+            encounter_id: id.to_owned(),
+            formation: vec!["goblin".to_owned()],
+            origin: position,
+            position,
+            facing: CardinalDirection::Down,
+            boss: false,
+            chase_range: 0,
+            active,
+        };
+        app.insert_resource(WorldEncounterRestore {
+            map_id: "zone_01_starting_forest".to_owned(),
+            enemies: vec![
+                returning("defeated", Position::new(14, 10), false),
+                returning("waiting", Position::new(4, 12), true),
+            ],
+        });
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::World);
+
+        let mut checked = false;
+        for _ in 0..5_000 {
+            app.update();
+            let world = app.world_mut();
+            let spawned = world
+                .query::<(&WorldEnemy, &Transform)>()
+                .iter(world)
+                .map(|(enemy, transform)| (enemy.encounter_id.clone(), transform.scale))
+                .collect::<Vec<_>>();
+            if !spawned.is_empty() {
+                // The very first frame the enemies exist is the one that used to flash.
+                assert!(
+                    spawned.contains(&("defeated".to_owned(), Vec3::ZERO)),
+                    "{spawned:?}"
+                );
+                assert!(
+                    spawned.contains(&("waiting".to_owned(), Vec3::ONE)),
+                    "{spawned:?}"
+                );
+                checked = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert!(checked, "the restored enemies never spawned");
     }
 
     #[test]

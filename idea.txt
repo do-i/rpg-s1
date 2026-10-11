@@ -1,3 +1,0 @@
-1. Improve victory modal by adding more info Name, current exp, next level exp,  gained exp. eg -- Aric 450/1000 EXP +10 EXP
-2. EXP divide formula: when party wins to battle, currently exp is equality divided. change this to relative to level. lower level gets more exp. intention is lower level member could catch up other members level quickly. come up a good math formula to incoorporate level as weight.
-

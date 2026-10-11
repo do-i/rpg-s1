@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use super::{
     ability::{AbilityError, ElementalAffinity, elemental_damage, resolve_ability},
     action::{BattleAction, BattleEvent},
@@ -1111,7 +1113,7 @@ fn rewards_split_all_exp_only_across_living_members_with_seeded_remainder() {
     enemy_b.health = 0;
     let state = state_with(vec![first, second, ko, enemy_a, enemy_b]);
 
-    let rewards = calculate_rewards(&state, &mut GameplayRng::from_seed(17));
+    let rewards = calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(17));
     assert_eq!(rewards.total_experience, 7);
     assert_eq!(
         rewards
@@ -1132,7 +1134,7 @@ fn rewards_split_all_exp_only_across_living_members_with_seeded_remainder() {
     );
     assert_eq!(
         rewards,
-        calculate_rewards(&state, &mut GameplayRng::from_seed(17))
+        calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(17))
     );
 }
 
@@ -1143,7 +1145,7 @@ fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
         reward_enemy("goblin", 0),
         reward_enemy("grik_the_grin", 1),
     ]);
-    let rewards = calculate_rewards(&state, &mut GameplayRng::from_seed(31));
+    let rewards = calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(31));
     let quantity = |id: &str| {
         rewards
             .loot
@@ -1164,7 +1166,7 @@ fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
     );
     assert_eq!(
         rewards,
-        calculate_rewards(&state, &mut GameplayRng::from_seed(31))
+        calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(31))
     );
 }
 
@@ -1377,7 +1379,11 @@ fn full_battle_parity_transcript() -> Vec<String> {
         .unwrap(),
     );
     let reward_state = state_with(vec![first, second, ko, enemy]);
-    let rewards = calculate_rewards(&reward_state, &mut GameplayRng::from_seed(17));
+    let rewards = calculate_rewards(
+        &reward_state,
+        &BTreeMap::new(),
+        &mut GameplayRng::from_seed(17),
+    );
     let mut awards = rewards
         .members
         .iter()
@@ -1937,5 +1943,69 @@ mod party_ai_tests {
                 })
             );
         }
+    }
+}
+
+mod experience_split_tests {
+    use super::*;
+
+    fn split(levels: &[(u32, bool)], total: u32) -> Vec<u32> {
+        let mut combatants = levels
+            .iter()
+            .enumerate()
+            .map(|(index, (_, alive))| {
+                let mut member = actor(BattleSide::Party, index, 5, 20);
+                if !alive {
+                    member.health = 0;
+                }
+                member
+            })
+            .collect::<Vec<_>>();
+        let mut enemy = actor(BattleSide::Enemy, 0, 5, 0);
+        enemy.experience_yield = total;
+        combatants.push(enemy);
+        let state = state_with(combatants);
+        let level_map = levels
+            .iter()
+            .enumerate()
+            .map(|(index, (level, _))| (format!("{:?}-{index}", BattleSide::Party), *level))
+            .collect::<BTreeMap<_, _>>();
+        calculate_rewards(&state, &level_map, &mut GameplayRng::from_seed(3))
+            .members
+            .iter()
+            .map(|member| member.experience_gained)
+            .collect()
+    }
+
+    #[test]
+    fn an_even_party_splits_evenly() {
+        assert_eq!(split(&[(7, true), (7, true)], 100), [50, 50]);
+    }
+
+    #[test]
+    fn a_trailing_member_takes_a_bigger_share() {
+        assert_eq!(
+            split(&[(10, true), (10, true), (6, true)], 1000),
+            [250, 250, 500]
+        );
+    }
+
+    #[test]
+    fn the_catch_up_weight_is_capped_at_three_shares() {
+        assert_eq!(split(&[(20, true), (1, true)], 1000), [250, 750]);
+    }
+
+    #[test]
+    fn the_fallen_earn_nothing_and_do_not_set_the_top_level() {
+        assert_eq!(
+            split(&[(30, false), (10, true), (6, true)], 1000),
+            [0, 333, 667]
+        );
+    }
+
+    #[test]
+    fn every_point_is_handed_out() {
+        let shares = split(&[(9, true), (4, true), (2, true)], 1001);
+        assert_eq!(shares.iter().sum::<u32>(), 1001);
     }
 }
