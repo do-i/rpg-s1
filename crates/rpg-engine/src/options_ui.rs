@@ -13,6 +13,7 @@
 //! keypress can never do both.
 
 use bevy::{
+    ecs::hierarchy::ChildSpawnerCommands,
     input::{ButtonInput, gamepad::Gamepad, keyboard::KeyCode},
     prelude::*,
     ui::{ComputedNode, UiGlobalTransform, percent, px},
@@ -23,14 +24,24 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_canvas::{fixed_gameplay_camera, pointer::CanvasPointer},
     input_names::{ALL_BINDABLE_GAMEPAD_BUTTONS, ALL_BINDABLE_KEYS},
+    menu_chrome::{
+        spawn_header_bars, spawn_section_rule, spawn_status_text, status_border_active,
+        status_faint, status_gold, status_ink, status_muted, status_teal,
+    },
     options_domain::{Device, OptionsEffect, OptionsScreen},
     options_store::{OptionsStore, PlayerOptions, load_player_options},
-    ui_theme::UiTheme,
+    scenario_inventory::ScenarioInventory,
+    scenario_root::ScenarioRoot,
 };
 
-const ROW_HEIGHT: f32 = 30.0;
+const PANEL_WIDTH: f32 = 820.0;
+const ROW_HEIGHT: f32 = 26.0;
+const ROW_PADDING: f32 = 10.0;
+const COLUMN_GAP: f32 = 10.0;
 const LABEL_WIDTH: f32 = 200.0;
-const CELL_WIDTH: f32 = 250.0;
+const CELL_WIDTH: f32 = 270.0;
+const ROW_FONT_SIZE: f32 = 15.0;
+const HINT_FONT_SIZE: f32 = 13.0;
 
 /// Which state leaving the options screen should return to.
 ///
@@ -97,7 +108,6 @@ impl Plugin for OptionsScreenPlugin {
             .init_resource::<OptionsEntryLatch>()
             .init_resource::<OptionsDirty>()
             .init_resource::<OptionsStore>()
-            .init_resource::<UiTheme>()
             .add_systems(Startup, load_options_at_startup)
             .add_systems(OnEnter(AppState::Options), setup_options_screen)
             .add_systems(OnExit(AppState::Options), cleanup_options_screen)
@@ -120,7 +130,9 @@ fn load_options_at_startup(store: Res<OptionsStore>, mut options: ResMut<PlayerO
 
 fn setup_options_screen(
     mut commands: Commands,
-    theme: Res<UiTheme>,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     screen: Res<OptionsScreen>,
     options: Res<PlayerOptions>,
     mut latch: ResMut<OptionsEntryLatch>,
@@ -128,134 +140,186 @@ fn setup_options_screen(
     latch.0 = true;
     commands.spawn((fixed_gameplay_camera(), OptionsScreenEntity));
 
+    // The same face the load picker and field menu draw with; Bevy's built-in monospace is only
+    // the fallback for a scenario that ships no font.
+    let font = inventory
+        .font
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)))
+        .unwrap_or_default();
+
     commands
         .spawn((
             Node {
                 width: percent(100),
                 height: percent(100),
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
-                row_gap: px(6),
+                align_items: AlignItems::Center,
+                padding: UiRect::all(px(28)),
                 ..default()
             },
+            BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.96)),
             OptionsScreenEntity,
         ))
         .with_children(|root| {
             root.spawn((
-                Text::new("Options"),
-                text_font(theme.menu_font_size + 6.0),
-                TextColor(theme.menu_selected_color),
-            ));
-
-            root.spawn((
                 Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: px(10),
-                    padding: UiRect::axes(px(20), px(4)),
-                    ..default()
-                },
-                BackgroundColor(theme.panel_color),
-            ))
-            .with_children(|header| {
-                header.spawn((
-                    Node {
-                        width: px(LABEL_WIDTH),
-                        ..default()
-                    },
-                    children![(
-                        Text::new("Action"),
-                        text_font(theme.status_font_size),
-                        TextColor(theme.status_color),
-                    )],
-                ));
-                for device in [Device::Keyboard, Device::Gamepad] {
-                    header.spawn((
-                        Node {
-                            width: px(CELL_WIDTH),
-                            ..default()
-                        },
-                        children![(
-                            Text::new(device.label()),
-                            text_font(theme.status_font_size),
-                            TextColor(theme.status_color),
-                        )],
-                    ));
-                }
-            });
-
-            root.spawn((
-                Node {
+                    width: px(PANEL_WIDTH),
+                    max_height: percent(100),
                     flex_direction: FlexDirection::Column,
-                    padding: UiRect::axes(px(20), px(10)),
-                    border_radius: BorderRadius::all(px(12)),
+                    row_gap: px(4),
+                    padding: UiRect::all(px(16)),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(8)),
                     ..default()
                 },
-                BackgroundColor(theme.panel_color),
+                BackgroundColor(Color::srgba_u8(22, 22, 28, 240)),
+                BorderColor::all(status_border_active()),
             ))
             .with_children(|panel| {
-                for (index, row) in screen.rows().iter().copied().enumerate() {
-                    panel
-                        .spawn((
-                            Node {
-                                height: px(ROW_HEIGHT),
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: px(10),
-                                ..default()
-                            },
-                            OptionsRowNode(index),
-                        ))
-                        .with_children(|line| {
-                            line.spawn((
-                                Node {
-                                    width: px(LABEL_WIDTH),
-                                    ..default()
-                                },
-                                children![(
-                                    Text::new(row.label()),
-                                    text_font(theme.menu_font_size),
-                                    TextColor(theme.menu_normal_color),
-                                    OptionsLabelText(index),
-                                )],
-                            ));
-                            for device in [Device::Keyboard, Device::Gamepad] {
-                                line.spawn((
-                                    Node {
-                                        width: px(CELL_WIDTH),
-                                        ..default()
-                                    },
-                                    OptionsCellNode { row: index, device },
-                                    children![(
-                                        Text::new(screen.binding_text(row, device, &options)),
-                                        text_font(theme.menu_font_size),
-                                        TextColor(theme.menu_normal_color),
-                                        OptionsCellText { row: index, device },
-                                    )],
-                                ));
-                            }
-                        });
-                }
-            });
+                spawn_options_header(panel, &font);
+                spawn_section_rule(panel);
+                spawn_column_headings(panel, &font);
 
-            root.spawn((
-                Text::new(""),
-                text_font(theme.status_font_size),
-                TextColor(theme.status_color),
-                OptionsStatusText,
-            ));
-            root.spawn((
-                Text::new(""),
-                text_font(theme.status_font_size),
-                TextColor(theme.menu_disabled_color),
-                OptionsHintText,
-            ));
+                let mut previous_was_binding = true;
+                for (index, row) in screen.rows().iter().copied().enumerate() {
+                    if previous_was_binding && !row.is_binding() {
+                        spawn_section_rule(panel);
+                    }
+                    previous_was_binding = row.is_binding();
+                    spawn_options_row(panel, &font, index, row.label(), |device| {
+                        screen.binding_text(row, device, &options)
+                    });
+                }
+
+                spawn_section_rule(panel);
+                panel.spawn((
+                    Text::new(""),
+                    text_font(&font, HINT_FONT_SIZE),
+                    TextColor(status_muted()),
+                    OptionsHintText,
+                ));
+                panel.spawn((
+                    Text::new(""),
+                    text_font(&font, HINT_FONT_SIZE),
+                    TextColor(status_teal()),
+                    OptionsStatusText,
+                ));
+            });
         });
 }
 
-fn text_font(size: f32) -> TextFont {
+fn spawn_options_header(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn(Node {
+            width: percent(100),
+            min_height: px(56),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|header| {
+            spawn_header_bars(header, 44.0, 14.0);
+            header
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(title, "OPTIONS", font, 30.0, status_gold());
+                    spawn_status_text(
+                        title,
+                        "CONTROLS AND PREFERENCES",
+                        font,
+                        13.0,
+                        status_muted(),
+                    );
+                });
+        });
+}
+
+fn spawn_column_headings(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+    parent
+        .spawn(Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: px(COLUMN_GAP),
+            padding: UiRect::horizontal(px(ROW_PADDING)),
+            ..default()
+        })
+        .with_children(|header| {
+            let headings = [
+                ("Action", LABEL_WIDTH),
+                (Device::Keyboard.label(), CELL_WIDTH),
+                (Device::Gamepad.label(), CELL_WIDTH),
+            ];
+            for (heading, width) in headings {
+                header
+                    .spawn(Node {
+                        width: px(width),
+                        ..default()
+                    })
+                    .with_children(|cell| {
+                        spawn_status_text(cell, heading.to_uppercase(), font, 12.0, status_faint());
+                    });
+            }
+        });
+}
+
+fn spawn_options_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    index: usize,
+    label: &str,
+    binding_text: impl Fn(Device) -> String,
+) {
+    parent
+        .spawn((
+            Node {
+                min_height: px(ROW_HEIGHT),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: px(COLUMN_GAP),
+                padding: UiRect::horizontal(px(ROW_PADDING)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(Color::NONE),
+            BorderColor::all(Color::NONE),
+            OptionsRowNode(index),
+        ))
+        .with_children(|line| {
+            line.spawn(Node {
+                width: px(LABEL_WIDTH),
+                ..default()
+            })
+            .with_child((
+                Text::new(label),
+                text_font(font, ROW_FONT_SIZE),
+                TextColor(status_ink()),
+                OptionsLabelText(index),
+            ));
+            for device in [Device::Keyboard, Device::Gamepad] {
+                line.spawn((
+                    Node {
+                        width: px(CELL_WIDTH),
+                        ..default()
+                    },
+                    OptionsCellNode { row: index, device },
+                ))
+                .with_child((
+                    Text::new(binding_text(device)),
+                    text_font(font, ROW_FONT_SIZE),
+                    TextColor(status_muted()),
+                    OptionsCellText { row: index, device },
+                ));
+            }
+        });
+}
+
+fn text_font(font: &Handle<Font>, size: f32) -> TextFont {
     TextFont {
-        font: Handle::<Font>::default().into(),
+        font: font.clone().into(),
         font_size: FontSize::Px(size),
         ..default()
     }
@@ -380,17 +444,31 @@ type OptionsTextQuery<'world, 'state> = Query<
 /// quadratically with the number of text roles; matching on the optional markers instead keeps the
 /// disjointness obvious without stating it.
 fn refresh_options_text(
-    theme: Res<UiTheme>,
     screen: Res<OptionsScreen>,
     options: Res<PlayerOptions>,
+    mut rows: Query<(&OptionsRowNode, &mut BackgroundColor, &mut BorderColor)>,
     mut texts: OptionsTextQuery,
 ) {
+    // The load picker's selected-slot plate, so the cursor reads the same on every menu.
+    for (row, mut background, mut border) in &mut rows {
+        let selected = row.0 == screen.selected();
+        background.0 = if selected {
+            Color::srgba_u8(72, 49, 25, 224)
+        } else {
+            Color::NONE
+        };
+        *border = BorderColor::all(if selected {
+            status_border_active()
+        } else {
+            Color::NONE
+        });
+    }
     for (mut text, mut color, label, cell, is_status, is_hint) in &mut texts {
         if let Some(label) = label {
             color.0 = if label.0 == screen.selected() {
-                theme.menu_selected_color
+                status_gold()
             } else {
-                theme.menu_normal_color
+                status_ink()
             };
         } else if let Some(cell) = cell {
             let row = screen.rows()[cell.row];
@@ -398,9 +476,9 @@ fn refresh_options_text(
             let selected_cell = cell.row == screen.selected()
                 && (!row.is_binding() || cell.device == screen.device());
             color.0 = if selected_cell {
-                theme.menu_selected_color
+                status_gold()
             } else {
-                theme.menu_normal_color
+                status_muted()
             };
         } else if is_status {
             text.0 = screen.status().to_owned();
