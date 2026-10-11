@@ -103,6 +103,10 @@ pub struct ManifestFont {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestUi {
     pub menu_backdrop: ScenarioRelativePath,
+    /// One horizontal sheet of square field-menu command icons, a cell per command in deck order.
+    /// Optional: without it the command deck draws letter badges.
+    #[serde(default)]
+    pub menu_icons: Option<ScenarioRelativePath>,
 }
 
 /// The source manifest fields selecting sprites for field services and item boxes.
@@ -376,6 +380,7 @@ mod tests {
                     menu_backdrop: "media/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
                         .try_into()
                         .unwrap(),
+                    menu_icons: None,
                 },
             }
         );

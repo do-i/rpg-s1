@@ -10,9 +10,9 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
     menu_chrome::{
-        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_text,
-        status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
-        status_teal, status_violet,
+        ScrollFades, location_display_name, spawn_header_bars, spawn_section_rule,
+        spawn_status_text, spawn_windowed_card, status_border_active, status_ember, status_faint,
+        status_gold, status_ink, status_muted, status_teal, status_violet,
     },
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
@@ -373,19 +373,25 @@ fn spawn_load_panel(
             if catalog.ready {
                 let page_start = load_page_start(menu.selected);
                 let latest = latest_valid_slot(&catalog.slots);
-                for slot in catalog
+                let len = catalog.slots.len();
+                let shown = len.saturating_sub(page_start).min(LOAD_VISIBLE_ROWS);
+                for (offset, slot) in catalog
                     .slots
                     .iter()
                     .skip(page_start)
                     .take(LOAD_VISIBLE_ROWS)
+                    .enumerate()
                 {
-                    spawn_load_slot_row(
-                        panel,
-                        font,
-                        slot,
-                        slot.index == menu.selected,
-                        Some(slot.index) == latest,
-                    );
+                    let fades = ScrollFades::for_row(offset, shown, page_start, len);
+                    spawn_windowed_card(panel, fades, |panel| {
+                        spawn_load_slot_row(
+                            panel,
+                            font,
+                            slot,
+                            slot.index == menu.selected,
+                            Some(slot.index) == latest,
+                        );
+                    });
                 }
             } else {
                 panel

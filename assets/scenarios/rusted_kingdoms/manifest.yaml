@@ -16,6 +16,9 @@ font:
 ui:
   # Backdrop behind field menus (item/spell/equip/status/shops/inn).
   menu_backdrop: media/images/battle_bg/zone4-sanctum-bg-1280x468.webp
+  # Field-menu command icons: one 64px cell per command in deck order. Built by
+  # tools/menu_icons/build.sh from the SVGs beside it.
+  menu_icons: media/images/ui/menu_icons.png
 
 apothecary:
   sprite: media/sprites/npc/female_wiz_01.tsx

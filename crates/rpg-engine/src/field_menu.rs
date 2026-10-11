@@ -9,6 +9,7 @@ use bevy::{
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
+    battle_log::LastBattleLog,
     battle_tactics::{TACTIC_CHOICES, TurnPause, choice_description, choice_label},
     engine_settings::EngineSettings,
     field_menu_domain::{
@@ -19,8 +20,9 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        location_display_name, spawn_header_bars, spawn_meter, spawn_section_rule,
-        spawn_status_panel, spawn_status_text, status_border, status_border_active, status_ember,
+        ScrollFades, location_display_name, spawn_focus_panel, spawn_header_bars, spawn_meter,
+        spawn_panel_rule, spawn_scroll_fades, spawn_section_rule, spawn_status_panel,
+        spawn_status_text, spawn_windowed_card, status_border, status_border_active, status_ember,
         status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
         status_violet, window_start,
     },
@@ -74,13 +76,18 @@ use ui::{
     sync_status_page,
 };
 
-const INVENTORY_PAGE_ROWS: usize = 10;
-const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
-const SPELLBOOK_VISIBLE_ROWS: usize = 7;
+const INVENTORY_PAGE_ROWS: usize = 11;
+const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 5;
+const SPELLBOOK_VISIBLE_ROWS: usize = 8;
 /// Rows per column on the main command deck; the deck grows a column as commands are added.
 const MAIN_COMMAND_ROWS: usize = 4;
-const QUEST_VISIBLE_ROWS: usize = 7;
-const RECIPE_VISIBLE_ROWS: usize = 7;
+/// Windowed lists show as many cards as their column fits (see the row-budget test), so a
+/// scrolled list fills its panel and the fade on its edge card is what says more are hidden.
+const QUEST_VISIBLE_ROWS: usize = 8;
+/// Quest and recipe cards grow from this to fill their list, up to the cap.
+const REGISTER_CARD_MIN_HEIGHT: f32 = 54.0;
+const REGISTER_CARD_MAX_HEIGHT: f32 = 76.0;
+const RECIPE_VISIBLE_ROWS: usize = 8;
 const SAVE_VISIBLE_ROWS: usize = 6;
 /// Destination rows the teleport picker shows before it scrolls.
 ///
@@ -115,7 +122,10 @@ const CHARACTER_COMMAND_INDEX: usize = 7;
 #[derive(Clone, Copy)]
 struct MainCommand {
     label: &'static str,
+    /// Letter badge drawn when the scenario ships no icon sheet.
     badge: &'static str,
+    /// Cell in the scenario's `ui.menu_icons` sheet.
+    icon: usize,
     description: &'static str,
     screen: Option<FieldMenuScreen>,
 }
@@ -124,60 +134,70 @@ const MAIN_COMMANDS: [MainCommand; 10] = [
     MainCommand {
         label: "Status",
         badge: "ST",
+        icon: 0,
         description: "review health, rows, and growth",
         screen: Some(FieldMenuScreen::Status),
     },
     MainCommand {
         label: "Spells",
         badge: "SP",
+        icon: 1,
         description: "cast field magic and utilities",
         screen: Some(FieldMenuScreen::Spells),
     },
     MainCommand {
         label: "Items",
         badge: "IT",
+        icon: 2,
         description: "use, sort, and inspect supplies",
         screen: Some(FieldMenuScreen::Items),
     },
     MainCommand {
         label: "Quit",
         badge: "QT",
+        icon: 3,
         description: "exit the game to desktop",
         screen: None,
     },
     MainCommand {
         label: "Save",
         badge: "SV",
+        icon: 4,
         description: "record the current journey",
         screen: Some(FieldMenuScreen::Save),
     },
     MainCommand {
         label: "Equipment",
         badge: "EQ",
+        icon: 5,
         description: "tune gear and compare stats",
         screen: Some(FieldMenuScreen::Equipment),
     },
     MainCommand {
         label: "Quests",
         badge: "QU",
+        icon: 6,
         description: "review active and completed quests",
         screen: Some(FieldMenuScreen::Quests),
     },
     MainCommand {
         label: "Character",
         badge: "CH",
+        icon: 7,
         description: "control a different party member",
         screen: None,
     },
     MainCommand {
         label: "Recipes",
         badge: "RC",
+        icon: 8,
         description: "study known recipes and ingredients",
         screen: Some(FieldMenuScreen::Recipes),
     },
     MainCommand {
         label: "Battle",
         badge: "BT",
+        icon: 9,
         description: "set each member to manual or auto",
         screen: Some(FieldMenuScreen::Battle),
     },
@@ -265,6 +285,13 @@ enum FieldMenuMode {
     #[default]
     Browse,
     ItemActions,
+    /// Items page with the item list focused; `Browse` there is the pouch-tab column.
+    ItemList,
+    /// Spells page with the spellbook focused; `Browse` there is the caster column.
+    SpellList,
+    /// Equipment page with the slot column focused. `Browse` there is the party column, and
+    /// `EquipmentPicker` the inventory column, so Left/Right walk the page's three columns.
+    EquipmentSlots,
     DiscardQuantity,
     ItemTarget,
     EquipmentPicker,
@@ -288,6 +315,8 @@ enum FieldMenuMode {
     ItemAoeConfirm,
     /// Battle page list of Manual / Auto commands for the focused member.
     BattleTacticPicker,
+    /// Battle page reading the last battle's log; Up/Down scroll it.
+    BattleLog,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -310,6 +339,11 @@ pub(crate) struct FieldMenuState {
     tab_index: usize,
     /// Highlighted entry in the Battle page's tactic picker, an index into `TACTIC_CHOICES`.
     battle_choice: usize,
+    /// First line shown while reading the last battle's log.
+    log_scroll: usize,
+    /// The item or spell the list cursor was on when a modal took over [`Self::selected`], so
+    /// leaving the modal puts the cursor back where it was.
+    list_cursor: usize,
     quantity: u32,
     pending_id: Option<String>,
     /// Draft text for the new-custom-tag prompt.
@@ -348,6 +382,35 @@ impl FieldMenuState {
         *self = Self::default();
     }
 
+    /// Whether [`Self::selected`] is a list cursor rather than a modal's own choice.
+    ///
+    /// The pouch and spellbook read their cursor from it in these modes; once a modal opens,
+    /// they show the entry the modal was opened for instead.
+    const fn selected_is_list_cursor(&self) -> bool {
+        matches!(
+            self.mode,
+            FieldMenuMode::Browse | FieldMenuMode::ItemList | FieldMenuMode::SpellList
+        )
+    }
+
+    /// Hands [`Self::selected`] to a modal opened from a list, remembering the list's place.
+    fn leave_list(&mut self, mode: FieldMenuMode) {
+        self.list_cursor = self.selected;
+        self.mode = mode;
+        self.selected = 0;
+    }
+
+    /// Returns from a list's modal to the list itself, on the entry it was opened from.
+    fn return_to_list(&mut self) {
+        self.mode = if self.screen == FieldMenuScreen::Spells {
+            FieldMenuMode::SpellList
+        } else {
+            FieldMenuMode::ItemList
+        };
+        self.selected = self.list_cursor;
+        self.pending_id = None;
+    }
+
     fn back(&mut self) {
         if self.screen == FieldMenuScreen::Status {
             match self.status_page {
@@ -376,10 +439,23 @@ impl FieldMenuState {
                     self.message.clear();
                 }
             }
-            FieldMenuMode::ItemActions | FieldMenuMode::EquipmentPicker => {
+            FieldMenuMode::ItemActions | FieldMenuMode::ItemManage => {
+                self.return_to_list();
+                self.message.clear();
+            }
+            // The list columns step back one column left, to the pouch or the caster.
+            FieldMenuMode::ItemList | FieldMenuMode::SpellList => {
                 self.mode = FieldMenuMode::Browse;
-                self.selected = 0;
-                self.pending_id = None;
+                self.message.clear();
+            }
+            // Each step back moves one column left, keeping the cursor on the slot just left.
+            FieldMenuMode::EquipmentPicker => {
+                self.selected = state_slot_index(self);
+                self.mode = FieldMenuMode::EquipmentSlots;
+                self.message.clear();
+            }
+            FieldMenuMode::EquipmentSlots => {
+                self.mode = FieldMenuMode::Browse;
                 self.message.clear();
             }
             FieldMenuMode::ItemTags => {
@@ -392,23 +468,18 @@ impl FieldMenuState {
                 self.text_input.clear();
                 self.message.clear();
             }
-            FieldMenuMode::ItemManage => {
-                self.mode = FieldMenuMode::Browse;
-                self.selected = 0;
-                self.message.clear();
-            }
             FieldMenuMode::DiscardQuantity
             | FieldMenuMode::ItemTarget
             | FieldMenuMode::SpellTarget
             | FieldMenuMode::TeleportPicker => {
-                self.mode = match self.screen {
-                    FieldMenuScreen::Items => FieldMenuMode::ItemActions,
-                    FieldMenuScreen::Spells => FieldMenuMode::Browse,
-                    _ => FieldMenuMode::Browse,
-                };
-                self.selected = 0;
                 self.quantity = 1;
                 self.message.clear();
+                if self.screen == FieldMenuScreen::Spells {
+                    self.return_to_list();
+                } else {
+                    self.mode = FieldMenuMode::ItemActions;
+                    self.selected = 0;
+                }
             }
             FieldMenuMode::SaveConfirm => {
                 self.mode = FieldMenuMode::Browse;
@@ -429,7 +500,7 @@ impl FieldMenuState {
                 self.selected = CHARACTER_COMMAND_INDEX;
                 self.message.clear();
             }
-            FieldMenuMode::BattleTacticPicker => {
+            FieldMenuMode::BattleTacticPicker | FieldMenuMode::BattleLog => {
                 self.mode = FieldMenuMode::Browse;
                 self.message.clear();
             }
@@ -457,6 +528,10 @@ struct FieldMenuMainPage;
 
 #[derive(Component)]
 struct MainCommandRow;
+
+/// The drawn icon inside a command's badge frame, when the scenario ships an icon sheet.
+#[derive(Component)]
+struct MainCommandIcon;
 
 #[derive(Component)]
 struct SelectedMainCommandRow;
@@ -817,16 +892,23 @@ fn handle_field_menu_input(
             }
         }
         (FieldMenuScreen::Status, FieldMenuMode::Browse) => match state.status_page {
+            // Party column: Up/Down picks the member, Right or Enter opens their details.
             StatusPage::Roster => {
-                if let Some(delta) = horizontal.or(vertical) {
+                if let Some(delta) = vertical {
                     cycle_member(&mut state, game.party().len(), delta);
                 }
-                if actions.just_pressed(AppAction::Confirm) && !game.party().is_empty() {
+                if (horizontal == Some(1) || actions.just_pressed(AppAction::Confirm))
+                    && !game.party().is_empty()
+                {
                     state.status_page = StatusPage::Details;
                     state.selected = 0;
                 }
             }
             StatusPage::Details => {
+                if horizontal == Some(-1) {
+                    state.back();
+                    return;
+                }
                 if let Some(delta) = vertical {
                     state.selected = wrapped(state.selected, STATUS_CATEGORIES.len(), delta);
                 }
@@ -849,6 +931,10 @@ fn handle_field_menu_input(
                 }
             }
             StatusPage::Position => {
+                if horizontal == Some(-1) {
+                    state.back();
+                    return;
+                }
                 if let Some(delta) = vertical {
                     state.selected = wrapped(state.selected, STATUS_ROWS.len(), delta);
                 }
@@ -857,12 +943,37 @@ fn handle_field_menu_input(
                 }
             }
         },
+        // Pouch column: Up/Down picks the tab, Right or Enter moves into its items.
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
-            if let Some(delta) = horizontal {
+            if let Some(delta) = vertical {
                 state.tab_index = wrapped(state.tab_index, InventoryTab::ALL.len(), delta);
                 state.selected = 0;
             }
+            if keys.just_pressed(KeyCode::KeyH) {
+                if manage_ids(&game, &catalog).is_empty() {
+                    state.message = "The pouch is empty.".to_owned();
+                } else {
+                    state.leave_list(FieldMenuMode::ItemManage);
+                }
+            } else if horizontal == Some(1) || actions.just_pressed(AppAction::Confirm) {
+                if inventory_ids(&game, &catalog, InventoryTab::ALL[state.tab_index]).is_empty() {
+                    menu_sfx.blocked();
+                    state.message = "This tab is empty.".to_owned();
+                } else {
+                    state.mode = FieldMenuMode::ItemList;
+                }
+            }
+        }
+        // Item column: Up/Down picks the item, Enter opens its actions, Left returns to the
+        // pouch.
+        (FieldMenuScreen::Items, FieldMenuMode::ItemList) => {
             let ids = inventory_ids(&game, &catalog, InventoryTab::ALL[state.tab_index]);
+            // Spending or hiding the last of a stack can leave the cursor past the end.
+            state.selected = state.selected.min(ids.len().saturating_sub(1));
+            if horizontal == Some(-1) {
+                state.back();
+                return;
+            }
             if let Some(delta) = vertical {
                 state.selected = wrapped_or_zero(state.selected, ids.len(), delta);
             }
@@ -872,14 +983,12 @@ fn handle_field_menu_input(
                 if manage_ids(&game, &catalog).is_empty() {
                     state.message = "The pouch is empty.".to_owned();
                 } else {
-                    state.mode = FieldMenuMode::ItemManage;
-                    state.selected = 0;
+                    state.leave_list(FieldMenuMode::ItemManage);
                 }
             } else if actions.just_pressed(AppAction::Confirm) {
                 if let Some(id) = ids.get(state.selected) {
                     state.pending_id = Some((*id).to_owned());
-                    state.mode = FieldMenuMode::ItemActions;
-                    state.selected = 0;
+                    state.leave_list(FieldMenuMode::ItemActions);
                 } else {
                     state.message = "This tab is empty.".to_owned();
                 }
@@ -924,9 +1033,7 @@ fn handle_field_menu_input(
                     }
                     2 => {
                         game.repository_mut().set_hidden(id, true);
-                        state.mode = FieldMenuMode::Browse;
-                        state.selected = 0;
-                        state.pending_id = None;
+                        state.return_to_list();
                         state.message = "Hidden for this session.".to_owned();
                     }
                     ITEM_ACTION_TAGS => {
@@ -1021,9 +1128,7 @@ fn handle_field_menu_input(
             if actions.just_pressed(AppAction::Confirm) {
                 match discard_item(&mut game, &catalog, &id, state.quantity) {
                     Ok(()) => {
-                        state.mode = FieldMenuMode::Browse;
-                        state.selected = 0;
-                        state.pending_id = None;
+                        state.return_to_list();
                         state.message = "Items discarded.".to_owned();
                     }
                     Err(error) => state.message = error.to_string(),
@@ -1044,29 +1149,41 @@ fn handle_field_menu_input(
                     .expect("item targeting requires item");
                 match use_field_item(&mut game, &catalog, &item_id, &target_id) {
                     Ok(changed) => {
-                        state.mode = FieldMenuMode::Browse;
-                        state.selected = 0;
-                        state.pending_id = None;
+                        state.return_to_list();
                         state.message = format!("Applied {changed} points/effects.");
                     }
                     Err(error) => state.message = error.to_string(),
                 }
             }
         }
+        // Party column: Up/Down picks the member, Right or Enter moves into their slots.
         (FieldMenuScreen::Equipment, FieldMenuMode::Browse) => {
-            if let Some(delta) = horizontal {
+            if let Some(delta) = vertical {
                 cycle_member(&mut state, game.party().len(), delta);
             }
+            if horizontal == Some(1) || actions.just_pressed(AppAction::Confirm) {
+                state.mode = FieldMenuMode::EquipmentSlots;
+            }
+        }
+        // Slot column: Up/Down picks the slot, Right or Enter opens its inventory, Left returns
+        // to the party.
+        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentSlots) => {
             if let Some(delta) = vertical {
                 state.selected = wrapped(state.selected, EquipmentSlot::ALL.len(), delta);
             }
-            if actions.just_pressed(AppAction::Confirm) {
+            if horizontal == Some(-1) {
+                state.back();
+            } else if horizontal == Some(1) || actions.just_pressed(AppAction::Confirm) {
                 state.quantity = state.selected as u32 + 1;
                 state.mode = FieldMenuMode::EquipmentPicker;
                 state.selected = 0;
             }
         }
         (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentPicker) => {
+            if horizontal == Some(-1) {
+                state.back();
+                return;
+            }
             let Some(member_id) = member_id_at(&game, state.member_index).map(str::to_owned) else {
                 return;
             };
@@ -1104,7 +1221,7 @@ fn handle_field_menu_input(
                     match equip_item(&mut game, &catalog, &member_id, id) {
                         Ok(_) => {
                             menu_sfx.play(cue::EQUIP);
-                            state.mode = FieldMenuMode::Browse;
+                            state.mode = FieldMenuMode::EquipmentSlots;
                             state.selected = slot_index(slot);
                             state.message = "Equipment changed.".to_owned();
                         }
@@ -1116,9 +1233,20 @@ fn handle_field_menu_input(
                 }
             }
         }
+        // Caster column: Up/Down picks the member, Right or Enter moves into their spellbook.
         (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
-            if let Some(delta) = horizontal {
+            if let Some(delta) = vertical {
                 cycle_member(&mut state, game.party().len(), delta);
+            }
+            if horizontal == Some(1) || actions.just_pressed(AppAction::Confirm) {
+                state.mode = FieldMenuMode::SpellList;
+            }
+        }
+        // Spellbook: Up/Down picks the spell, Enter casts it, Left returns to the casters.
+        (FieldMenuScreen::Spells, FieldMenuMode::SpellList) => {
+            if horizontal == Some(-1) {
+                state.back();
+                return;
             }
             let abilities = member_at(&game, state.member_index).map_or_else(Vec::new, |member| {
                 learned_field_abilities(member, &game, &catalog)
@@ -1141,8 +1269,7 @@ fn handle_field_menu_input(
                 match &ability.kind {
                     AbilityKind::Heal(_) => {
                         state.pending_id = Some(ability.id.clone());
-                        state.mode = FieldMenuMode::SpellTarget;
-                        state.selected = 0;
+                        state.leave_list(FieldMenuMode::SpellTarget);
                     }
                     AbilityKind::Utility(UtilityAbility::Warp { .. }) => {
                         if catalog.eligible_warp_destinations(game.map()).is_empty() {
@@ -1193,9 +1320,7 @@ fn handle_field_menu_input(
                 };
                 match cast_heal(&mut game, &ability, &caster_id, &target_id) {
                     Ok(amount) => {
-                        state.mode = FieldMenuMode::Browse;
-                        state.selected = 0;
-                        state.pending_id = None;
+                        state.return_to_list();
                         state.message = format!("Restored {amount} HP.");
                     }
                     Err(error) => state.message = error.to_string(),
@@ -1268,8 +1393,28 @@ fn handle_field_menu_input(
             }
             if actions.just_pressed(AppAction::Confirm) {
                 let row = battle_row(&game, state.selected);
+                if row == BattleRow::LastBattle {
+                    if menu_settings.battle_log().is_empty() {
+                        menu_sfx.blocked();
+                    } else {
+                        state.log_scroll = 0;
+                        state.mode = FieldMenuMode::BattleLog;
+                    }
+                    return;
+                }
                 state.battle_choice = battle_row_choices(&game, menu_settings.options(), row).1;
                 state.mode = FieldMenuMode::BattleTacticPicker;
+            }
+        }
+        (FieldMenuScreen::Battle, FieldMenuMode::BattleLog) => {
+            if let Some(delta) = vertical {
+                let last = battle_log_last_scroll(menu_settings.battle_log().lines().len());
+                state.log_scroll = state.log_scroll.saturating_add_signed(delta).min(last);
+            }
+            if let Some(delta) = actions.menu_navigation_horizontal() {
+                let last = battle_log_last_scroll(menu_settings.battle_log().lines().len());
+                let page = delta * BATTLE_LOG_VISIBLE_LINES as isize;
+                state.log_scroll = state.log_scroll.saturating_add_signed(page).min(last);
             }
         }
         (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => {
@@ -1296,11 +1441,21 @@ enum BattleRow {
     EnemyTurns,
     TurnPause,
     AfterVictory,
+    /// Read-only: opens the previous battle's log.
+    LastBattle,
 }
 
-/// Members first, then the three settings rows.
+/// Members first, then the three settings rows and the last battle's log.
 fn battle_row_count(game: &GameState) -> usize {
-    game.party().len() + 3
+    game.party().len() + 4
+}
+
+/// How many log lines the Battle page's log panel shows at once.
+const BATTLE_LOG_VISIBLE_LINES: usize = 24;
+
+/// The furthest the log can scroll: far enough that its last line sits at the panel's bottom.
+const fn battle_log_last_scroll(len: usize) -> usize {
+    len.saturating_sub(BATTLE_LOG_VISIBLE_LINES)
 }
 
 fn battle_row(game: &GameState, selected: usize) -> BattleRow {
@@ -1308,7 +1463,8 @@ fn battle_row(game: &GameState, selected: usize) -> BattleRow {
         None => BattleRow::Member(selected),
         Some(0) => BattleRow::EnemyTurns,
         Some(1) => BattleRow::TurnPause,
-        Some(_) => BattleRow::AfterVictory,
+        Some(2) => BattleRow::AfterVictory,
+        Some(_) => BattleRow::LastBattle,
     }
 }
 
@@ -1357,6 +1513,8 @@ fn battle_row_choices(
             ],
             usize::from(options.skip_victory_screen),
         ),
+        // Nothing to pick: Enter opens the log instead of a picker.
+        BattleRow::LastBattle => (Vec::new(), 0),
         BattleRow::TurnPause => (
             TurnPause::ALL
                 .into_iter()
@@ -1383,6 +1541,7 @@ struct MenuSettings<'w> {
     engine: Res<'w, EngineSettings>,
     options: Option<ResMut<'w, PlayerOptions>>,
     options_store: Option<Res<'w, OptionsStore>>,
+    battle_log: Option<Res<'w, LastBattleLog>>,
 }
 
 impl MenuSettings<'_> {
@@ -1391,6 +1550,12 @@ impl MenuSettings<'_> {
         self.options
             .as_deref()
             .unwrap_or_else(|| DEFAULT.get_or_init(PlayerOptions::default))
+    }
+
+    fn battle_log(&self) -> &LastBattleLog {
+        self.battle_log
+            .as_deref()
+            .unwrap_or_else(|| LastBattleLog::empty())
     }
 
     /// Applies the picker's highlighted entry to `row`, saving the options file when a
@@ -1430,6 +1595,7 @@ fn apply_battle_choice(
             member.set_tactics(member.tactics().with_choice(choice));
             false
         }
+        BattleRow::LastBattle => false,
         BattleRow::EnemyTurns | BattleRow::TurnPause | BattleRow::AfterVictory => {
             let Some(options) = options else {
                 return false;
@@ -1462,9 +1628,7 @@ fn apply_party_item(
 ) {
     match use_field_item_on_party(game, catalog, item_id) {
         Ok(changed) => {
-            state.mode = FieldMenuMode::Browse;
-            state.selected = 0;
-            state.pending_id = None;
+            state.return_to_list();
             state.message = format!("Applied {changed} points/effects to the party.");
         }
         Err(error) => {
@@ -1875,6 +2039,7 @@ mod tests {
             spawn_main_menu_page(
                 parent,
                 &Handle::<Font>::default(),
+                None,
                 &state,
                 &game,
                 &PartyWalkThumbnails::default(),
@@ -1928,6 +2093,7 @@ mod tests {
         state: Res<FieldMenuState>,
         game: Res<GameState>,
         catalog: Res<FieldMenuCatalog>,
+        battle_log: Option<Res<LastBattleLog>>,
     ) {
         commands.spawn(Node::default()).with_children(|parent| {
             spawn_battle_page(
@@ -1937,6 +2103,7 @@ mod tests {
                 &game,
                 &catalog,
                 &PlayerOptions::default(),
+                battle_log.as_deref().unwrap_or(LastBattleLog::empty()),
             );
         });
     }
@@ -2083,6 +2250,30 @@ mod tests {
         );
         assert!(spellbook <= PAGE_COLUMN_HEIGHT, "spellbook: {spellbook}px");
         assert!(quests <= PAGE_COLUMN_HEIGHT, "quest register: {quests}px");
+        // Recipe book: the quest register's geometry.
+        let recipes = RECIPE_VISIBLE_ROWS * 54
+            + (RECIPE_VISIBLE_ROWS - 1) * 7
+            + 13
+            + panel_chrome(16, 1, 17, 7);
+        assert!(recipes <= PAGE_COLUMN_HEIGHT, "recipe book: {recipes}px");
+        // Battle party list: a full party's 54px rows, the 5px rule, four 46px settings rows,
+        // all over 7px gaps.
+        let battle_rows = crate::runtime_party::RuntimeParty::MAX_MEMBERS + 1 + 4;
+        let battle = crate::runtime_party::RuntimeParty::MAX_MEMBERS * 54
+            + 5
+            + 4 * 46
+            + (battle_rows - 1) * 7
+            + panel_chrome(16, 1, 17, 7);
+        assert!(
+            battle <= PAGE_COLUMN_HEIGHT,
+            "battle party list: {battle}px"
+        );
+        // Battle log: the range line, then one 14px line (~17px) per visible entry, 4px apart.
+        let log = 15
+            + BATTLE_LOG_VISIBLE_LINES * 17
+            + BATTLE_LOG_VISIBLE_LINES * 4
+            + panel_chrome(16, 1, 17, 4);
+        assert!(log <= PAGE_COLUMN_HEIGHT, "battle log: {log}px");
 
         // Centred modals are drawn over the whole content box rather than inside a column.
         let save = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 206;
@@ -2431,6 +2622,76 @@ mod tests {
     }
 
     #[test]
+    fn moving_focus_between_equipment_columns_never_changes_a_frame_border() {
+        for mode in [
+            FieldMenuMode::Browse,
+            FieldMenuMode::EquipmentSlots,
+            FieldMenuMode::EquipmentPicker,
+        ] {
+            let mut app = App::new();
+            app.insert_resource(fixture_game())
+                .insert_resource(FieldMenuCatalog::default())
+                .insert_resource(FieldMenuState {
+                    open: true,
+                    screen: FieldMenuScreen::Equipment,
+                    mode,
+                    quantity: 1,
+                    ..default()
+                })
+                .add_systems(Update, spawn_fixture_equipment_page);
+            app.update();
+
+            let world = app.world_mut();
+            let frames = world
+                .query::<(&Node, &Outline)>()
+                .iter(world)
+                .map(|(node, outline)| (node.border.top, outline.color))
+                .collect::<Vec<_>>();
+            assert_eq!(frames.len(), 3, "{mode:?}: party, slots, inventory");
+            // Focus is the outline alone: every frame keeps the same 1px border, so nothing
+            // inside reflows, and exactly one frame carries the bright rim.
+            assert!(
+                frames.iter().all(|(border, _)| *border == px(1)),
+                "{mode:?}"
+            );
+            assert_eq!(
+                frames
+                    .iter()
+                    .filter(|(_, color)| *color != Color::NONE)
+                    .count(),
+                1,
+                "{mode:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_slot_cursor_appears_once_the_slot_column_has_focus() {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Equipment,
+                mode: FieldMenuMode::EquipmentSlots,
+                selected: 2,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_equipment_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        assert_eq!(
+            world
+                .query::<&SelectedEquipmentSlotRow>()
+                .iter(world)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
     fn equipment_page_reuses_party_cards_and_builds_slots_and_inventory_columns() {
         let game = fixture_game();
         let party_len = game.party().len();
@@ -2455,12 +2716,13 @@ mod tests {
             world.query::<&EquipmentSlotRow>().iter(world).count(),
             EquipmentSlot::ALL.len()
         );
+        // The party column has focus, so no slot shows a cursor yet.
         assert_eq!(
             world
                 .query::<&SelectedEquipmentSlotRow>()
                 .iter(world)
                 .count(),
-            usize::from(party_len > 0)
+            0
         );
         let labels = world
             .query::<&Text>()
@@ -3086,6 +3348,72 @@ mod tests {
         assert!(labels.contains(&"PARTY COMMAND DECK"));
         assert!(labels.contains(&"cast field magic and utilities"));
         assert!(labels.contains(&"exit the game to desktop"));
+        // No icon sheet: every command keeps its letter badge.
+        assert!(labels.contains(&"ST"));
+        assert!(labels.contains(&"BT"));
+        assert_eq!(world.query::<&MainCommandIcon>().iter(world).count(), 0);
+    }
+
+    fn spawn_fixture_main_page_with_icons(
+        mut commands: Commands,
+        state: Res<FieldMenuState>,
+        game: Res<GameState>,
+    ) {
+        commands.spawn(Node::default()).with_children(|parent| {
+            spawn_main_menu_page(
+                parent,
+                &Handle::<Font>::default(),
+                Some(&MainCommandIcons::test_stub()),
+                &state,
+                &game,
+                &PartyWalkThumbnails::default(),
+                false,
+            );
+        });
+    }
+
+    #[test]
+    fn an_icon_sheet_replaces_every_letter_badge_with_its_own_tinted_cell() {
+        // Each command owns a distinct cell, in deck order, so the sheet is authored once.
+        assert_eq!(
+            MAIN_COMMANDS.map(|command| command.icon),
+            std::array::from_fn(|index| index)
+        );
+
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(FieldMenuState {
+                open: true,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_main_page_with_icons);
+
+        app.update();
+
+        let world = app.world_mut();
+        let mut cells = world
+            .query_filtered::<&ImageNode, With<MainCommandIcon>>()
+            .iter(world)
+            .map(|image| {
+                (
+                    image.texture_atlas.as_ref().map(|atlas| atlas.index),
+                    image.color,
+                )
+            })
+            .collect::<Vec<_>>();
+        cells.sort_by_key(|(index, _)| *index);
+        assert_eq!(cells.len(), MAIN_COMMANDS.len());
+        for (index, (cell, color)) in cells.into_iter().enumerate() {
+            assert_eq!(cell, Some(index));
+            assert_eq!(color, main_command_accent(index));
+        }
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(!labels.contains(&"ST"));
+        assert!(!labels.contains(&"BT"));
     }
 
     /// Every recipe is listed so the tally is honest, but an unmet unlock flag keeps the formula
@@ -3131,8 +3459,8 @@ mod tests {
 
         let world = app.world_mut();
         assert_eq!(world.query::<&FieldMenuBattlePage>().iter(world).count(), 1);
-        // Two members, then the Enemy turns, Turn pause, and After victory settings.
-        assert_eq!(world.query::<&BattleTacticsRow>().iter(world).count(), 5);
+        // Two members, then Enemy turns, Turn pause, After victory, and Last battle.
+        assert_eq!(world.query::<&BattleTacticsRow>().iter(world).count(), 6);
         assert_eq!(
             world
                 .query::<&SelectedBattleTacticsRow>()
@@ -3150,6 +3478,7 @@ mod tests {
         assert!(labels.iter().any(|label| label == "Turn pause"));
         assert!(labels.iter().any(|label| label == "1S"));
         assert!(labels.iter().any(|label| label == "SHOW REWARDS"));
+        assert!(labels.iter().any(|label| label == "NO BATTLE FOUGHT YET"));
         assert!(labels.iter().any(|label| label == "MANUAL"));
         assert!(labels.iter().any(|label| label == "AUTO - SMART"));
         // The picker lists every choice, with the highlighted one's explanation beneath.
@@ -3181,6 +3510,14 @@ mod tests {
         assert_eq!(battle_row(&game, party), BattleRow::EnemyTurns);
         assert_eq!(battle_row(&game, party + 1), BattleRow::TurnPause);
         assert_eq!(battle_row(&game, party + 2), BattleRow::AfterVictory);
+        assert_eq!(battle_row(&game, party + 3), BattleRow::LastBattle);
+        assert_eq!(battle_row_count(&game), party + 4);
+        assert!(!apply_battle_choice(
+            &mut game,
+            None,
+            BattleRow::LastBattle,
+            0
+        ));
         let mut options = PlayerOptions::default();
         assert!(apply_battle_choice(
             &mut game,
@@ -3220,6 +3557,142 @@ mod tests {
             open: true,
             screen: FieldMenuScreen::Battle,
             mode: FieldMenuMode::BattleTacticPicker,
+            ..default()
+        };
+        state.back();
+        assert_eq!(state.mode, FieldMenuMode::Browse);
+        assert_eq!(state.screen, FieldMenuScreen::Battle);
+    }
+
+    fn quest_board_fades(selected: usize) -> (usize, Vec<crate::menu_chrome::ScrollFade>) {
+        fn spawn_board(
+            mut commands: Commands,
+            state: Res<FieldMenuState>,
+            game: Res<GameState>,
+            catalog: Res<FieldMenuCatalog>,
+        ) {
+            commands.spawn(Node::default()).with_children(|parent| {
+                spawn_quests_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+            });
+        }
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(crate::field_menu_domain::tests::catalog_with_quests())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Quests,
+                selected,
+                ..default()
+            })
+            .add_systems(Update, spawn_board);
+        app.update();
+        let world = app.world_mut();
+        let rows = world.query::<&QuestBoardRow>().iter(world).count();
+        let mut fades = world
+            .query::<&crate::menu_chrome::ScrollFade>()
+            .iter(world)
+            .copied()
+            .collect::<Vec<_>>();
+        fades.sort_by_key(|fade| *fade as u8);
+        (rows, fades)
+    }
+
+    #[test]
+    fn a_scrolled_quest_board_fills_its_window_and_fades_the_edges_with_hidden_cards() {
+        use crate::menu_chrome::ScrollFade::{Bottom, Top};
+        let len = crate::field_menu_domain::tests::catalog_with_quests()
+            .quests()
+            .len();
+        assert!(len > QUEST_VISIBLE_ROWS, "the shipped register must scroll");
+
+        // Top of the list: a full window, shaded only toward the cards below.
+        assert_eq!(quest_board_fades(0), (QUEST_VISIBLE_ROWS, vec![Bottom]));
+        // Mid-list: cards hidden on both sides.
+        assert_eq!(
+            quest_board_fades(QUEST_VISIBLE_ROWS),
+            (QUEST_VISIBLE_ROWS, vec![Top, Bottom])
+        );
+        // End of the list: only the cards above are hidden.
+        assert_eq!(quest_board_fades(len - 1), (QUEST_VISIBLE_ROWS, vec![Top]));
+    }
+
+    fn fixture_battle_log(lines: usize) -> LastBattleLog {
+        let mut log = LastBattleLog::default();
+        for index in 0..lines {
+            log.push(&format!("Line {}", index + 1), index % 2 == 1);
+        }
+        log
+    }
+
+    #[test]
+    fn the_last_battle_row_previews_the_end_of_the_log() {
+        let game = fixture_game_with_recruit();
+        let last_row = battle_row_count(&game) - 1;
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(fixture_battle_log(25))
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Battle,
+                selected: last_row,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_battle_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "LAST BATTLE"));
+        assert!(labels.iter().any(|label| label == "25 LOG LINES"));
+        assert!(labels.iter().any(|label| label == "LINES 2-25 OF 25"));
+        assert!(labels.iter().any(|label| label == "Line 25"));
+        assert!(!labels.iter().any(|label| label == "Line 1"));
+        // The log replaces the orders panel rather than sitting beside it.
+        assert!(!labels.iter().any(|label| label == "ORDERS"));
+    }
+
+    #[test]
+    fn reading_the_log_starts_at_its_top_and_scrolls_no_further_than_its_end() {
+        let game = fixture_game_with_recruit();
+        let last_row = battle_row_count(&game) - 1;
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(fixture_battle_log(25))
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Battle,
+                selected: last_row,
+                mode: FieldMenuMode::BattleLog,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_battle_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(labels.iter().any(|label| label == "LINES 1-24 OF 25"));
+        assert!(labels.iter().any(|label| label == "Line 1"));
+        assert!(!labels.iter().any(|label| label == "Line 25"));
+
+        assert_eq!(battle_log_last_scroll(25), 1);
+        assert_eq!(battle_log_last_scroll(BATTLE_LOG_VISIBLE_LINES), 0);
+        assert_eq!(battle_log_last_scroll(0), 0);
+        let mut state = FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Battle,
+            mode: FieldMenuMode::BattleLog,
             ..default()
         };
         state.back();
@@ -3435,6 +3908,257 @@ mod tests {
         );
     }
 
+    /// The field menu's input system alone, over `game`, starting from `state`.
+    fn menu_input_app(game: GameState, state: FieldMenuState) -> App {
+        use crate::action_input::ActionInputPlugin;
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<ButtonInput<KeyCode>>()
+            .add_plugins(ActionInputPlugin)
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(WorldInteractionState::default())
+            .init_resource::<EngineSettings>()
+            .insert_resource(WorldTransition::idle_for_test())
+            .insert_resource(game)
+            .insert_resource(SaveStore::new(
+                std::env::temp_dir().join("rpg-s1-menu-nav-test-unused"),
+            ))
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(Time::<Real>::default())
+            .init_resource::<ServiceUiState>()
+            .insert_resource(state)
+            .add_message::<AppExit>()
+            .add_message::<PlaySfx>()
+            .add_message::<KeyboardInput>()
+            .add_systems(Update, handle_field_menu_input);
+        app.update();
+        app
+    }
+
+    /// Presses `key` for one frame and reports where the menu landed.
+    fn tap(app: &mut App, key: KeyCode) -> (FieldMenuScreen, FieldMenuMode, usize, usize) {
+        {
+            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+            keys.release_all();
+            keys.clear();
+            keys.press(key);
+        }
+        app.update();
+        let state = app.world().resource::<FieldMenuState>();
+        (state.screen, state.mode, state.member_index, state.selected)
+    }
+
+    #[test]
+    fn equipment_arrows_walk_party_then_slots_then_inventory_and_back() {
+        use FieldMenuMode::{Browse, EquipmentPicker, EquipmentSlots};
+        use FieldMenuScreen::{Equipment, Main};
+        let mut app = menu_input_app(
+            fixture_game_with_recruit(),
+            FieldMenuState {
+                open: true,
+                screen: Equipment,
+                ..default()
+            },
+        );
+        let slot = |app: &App| state_slot_index(app.world().resource::<FieldMenuState>());
+
+        // The party column takes Up/Down; Right steps into the slots.
+        assert_eq!(tap(&mut app, KeyCode::ArrowDown), (Equipment, Browse, 1, 0));
+        assert_eq!(
+            tap(&mut app, KeyCode::ArrowRight),
+            (Equipment, EquipmentSlots, 1, 0)
+        );
+        assert_eq!(
+            tap(&mut app, KeyCode::ArrowDown),
+            (Equipment, EquipmentSlots, 1, 1)
+        );
+        // Right opens that slot's inventory; Left comes back to the same slot, then the party.
+        assert_eq!(tap(&mut app, KeyCode::ArrowRight).1, EquipmentPicker);
+        assert_eq!(slot(&app), 1);
+        assert_eq!(
+            tap(&mut app, KeyCode::ArrowLeft),
+            (Equipment, EquipmentSlots, 1, 1)
+        );
+        assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Equipment, Browse, 1, 1));
+        // Enter also moves right, and Esc retraces the same columns before leaving the page.
+        assert_eq!(
+            tap(&mut app, KeyCode::Enter),
+            (Equipment, EquipmentSlots, 1, 1)
+        );
+        assert_eq!(tap(&mut app, KeyCode::Escape), (Equipment, Browse, 1, 1));
+        assert_eq!(tap(&mut app, KeyCode::Escape).0, Main);
+    }
+
+    #[test]
+    fn spells_arrows_walk_casters_then_the_spellbook_and_back() {
+        use FieldMenuMode::{Browse, SpellList};
+        use FieldMenuScreen::{Main, Spells};
+        let mut app = menu_input_app(
+            fixture_game_with_recruit(),
+            FieldMenuState {
+                open: true,
+                screen: Spells,
+                ..default()
+            },
+        );
+
+        // Up/Down changes caster; Left/Right no longer do.
+        assert_eq!(tap(&mut app, KeyCode::ArrowDown), (Spells, Browse, 1, 0));
+        assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Spells, Browse, 1, 0));
+        assert_eq!(
+            tap(&mut app, KeyCode::ArrowRight),
+            (Spells, SpellList, 1, 0)
+        );
+        assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Spells, Browse, 1, 0));
+        assert_eq!(tap(&mut app, KeyCode::Enter), (Spells, SpellList, 1, 0));
+        assert_eq!(tap(&mut app, KeyCode::Escape), (Spells, Browse, 1, 0));
+        assert_eq!(tap(&mut app, KeyCode::Escape).0, Main);
+    }
+
+    /// Every `Text` under `entity`, depth first.
+    fn texts_under(world: &World, entity: Entity) -> Vec<String> {
+        let mut texts = world
+            .get::<Text>(entity)
+            .map(|text| vec![text.0.clone()])
+            .unwrap_or_default();
+        if let Some(children) = world.get::<Children>(entity) {
+            for child in children.iter() {
+                texts.extend(texts_under(world, child));
+            }
+        }
+        texts
+    }
+
+    #[test]
+    fn the_item_list_cursor_highlights_the_item_it_is_on_without_opening_a_modal() {
+        let mut game = fixture_game();
+        for id in ["potion", "hi_potion"] {
+            let _outcome = game.repository_mut().add_item(id, 2).unwrap();
+            game.repository_mut().set_hidden(id, false);
+        }
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let ids = inventory_ids(&game, &catalog, InventoryTab::ALL[0]);
+        let second = item_name(catalog.item(ids[1]).unwrap()).to_owned();
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(catalog)
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Items,
+                mode: FieldMenuMode::ItemList,
+                selected: 1,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_items_page);
+        app.update();
+
+        let world = app.world_mut();
+        let selected = world
+            .query_filtered::<Entity, With<SelectedItemListRow>>()
+            .iter(world)
+            .collect::<Vec<_>>();
+        assert_eq!(selected.len(), 1);
+        assert!(texts_under(world, selected[0]).contains(&second));
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        // No actions modal: browsing the list must not open one for the item under the cursor.
+        assert!(!labels.iter().any(|label| label == "remove from pouch"));
+    }
+
+    #[test]
+    fn the_spellbook_cursor_follows_the_list_until_a_modal_takes_it() {
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let class = catalog.class("cleric").expect("the cleric ships");
+        let abilities = class.abilities.iter().take(2).collect::<Vec<_>>();
+        assert_eq!(abilities.len(), 2);
+        let mut state = FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Spells,
+            mode: FieldMenuMode::SpellList,
+            selected: 1,
+            ..default()
+        };
+        assert_eq!(selected_spell_index(&state, &abilities), 1);
+        // Browsing casters still reads the list cursor.
+        state.mode = FieldMenuMode::Browse;
+        assert_eq!(selected_spell_index(&state, &abilities), 1);
+        // A target modal owns `selected`; the spellbook shows the spell being cast instead.
+        state.mode = FieldMenuMode::SpellTarget;
+        state.selected = 0;
+        state.pending_id = Some(abilities[1].id.clone());
+        assert_eq!(selected_spell_index(&state, &abilities), 1);
+    }
+
+    #[test]
+    fn status_arrows_step_between_the_roster_and_a_members_details() {
+        let mut app = menu_input_app(
+            fixture_game_with_recruit(),
+            FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Status,
+                ..default()
+            },
+        );
+        let page = |app: &App| app.world().resource::<FieldMenuState>().status_page;
+
+        assert_eq!(tap(&mut app, KeyCode::ArrowDown).2, 1);
+        assert_eq!(page(&app), StatusPage::Roster);
+        tap(&mut app, KeyCode::ArrowRight);
+        assert_eq!(page(&app), StatusPage::Details);
+        tap(&mut app, KeyCode::ArrowLeft);
+        assert_eq!(page(&app), StatusPage::Roster);
+        assert_eq!(
+            app.world().resource::<FieldMenuState>().screen,
+            FieldMenuScreen::Status
+        );
+    }
+
+    #[test]
+    fn items_arrows_walk_pouch_then_items_and_actions_return_to_the_same_item() {
+        use FieldMenuMode::{Browse, ItemActions, ItemList};
+        use FieldMenuScreen::{Items, Main};
+        let mut game = fixture_game();
+        for id in ["potion", "hi_potion"] {
+            let _outcome = game.repository_mut().add_item(id, 2).unwrap();
+            // The fixture save hides its potions; this pouch needs them listed.
+            game.repository_mut().set_hidden(id, false);
+        }
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let stocked = inventory_ids(&game, &catalog, InventoryTab::ALL[0]).len();
+        assert!(
+            stocked >= 2,
+            "the fixture pouch needs two items to move between"
+        );
+        let mut app = menu_input_app(
+            game,
+            FieldMenuState {
+                open: true,
+                screen: Items,
+                ..default()
+            },
+        );
+        let tab = |app: &App| app.world().resource::<FieldMenuState>().tab_index;
+
+        // The pouch column takes Up/Down, which changes the tab.
+        assert_eq!(tap(&mut app, KeyCode::ArrowDown).1, Browse);
+        assert_eq!(tab(&app), 1);
+        assert_eq!(tap(&mut app, KeyCode::ArrowUp).1, Browse);
+        assert_eq!(tab(&app), 0);
+        // Right enters the list; Up/Down then moves between items, not tabs.
+        assert_eq!(tap(&mut app, KeyCode::ArrowRight), (Items, ItemList, 0, 0));
+        assert_eq!(tap(&mut app, KeyCode::ArrowDown), (Items, ItemList, 0, 1));
+        assert_eq!(tab(&app), 0);
+        // Leaving the actions modal puts the cursor back on the item it was opened from.
+        assert_eq!(tap(&mut app, KeyCode::Enter).1, ItemActions);
+        assert_eq!(tap(&mut app, KeyCode::Escape), (Items, ItemList, 0, 1));
+        assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Items, Browse, 0, 1));
+        assert_eq!(tap(&mut app, KeyCode::Escape).0, Main);
+    }
+
     #[test]
     fn quit_confirmation_is_a_focused_desktop_exit_modal() {
         let mut app = App::new();
@@ -3587,7 +4311,7 @@ mod tests {
                 .insert_resource(FieldMenuState {
                     open: true,
                     screen: FieldMenuScreen::Spells,
-                    mode: FieldMenuMode::Browse,
+                    mode: FieldMenuMode::SpellList,
                     selected: teleport,
                     ..default()
                 })

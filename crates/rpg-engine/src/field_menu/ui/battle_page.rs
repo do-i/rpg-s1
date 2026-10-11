@@ -1,4 +1,5 @@
 use super::*;
+use crate::battle_log::LastBattleLog;
 use crate::battle_tactics::choice_label;
 
 #[expect(
@@ -14,6 +15,7 @@ pub(in crate::field_menu) fn sync_battle_page(
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
     options: Option<Res<PlayerOptions>>,
+    battle_log: Option<Res<LastBattleLog>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuBattlePage>>,
 ) {
@@ -34,11 +36,13 @@ pub(in crate::field_menu) fn sync_battle_page(
         return;
     };
     let options_changed = options.as_ref().is_some_and(|options| options.is_changed());
+    let log_changed = battle_log.as_ref().is_some_and(|log| log.is_changed());
     if !(pages.is_empty()
         || state.is_changed()
         || catalog.is_changed()
         || game.is_changed()
-        || options_changed)
+        || options_changed
+        || log_changed)
     {
         return;
     }
@@ -51,7 +55,8 @@ pub(in crate::field_menu) fn sync_battle_page(
     commands.entity(menu_root).with_children(|parent| {
         let default = PlayerOptions::default();
         let options = options.as_deref().unwrap_or(&default);
-        spawn_battle_page(parent, &font, &state, &game, &catalog, options);
+        let battle_log = battle_log.as_deref().unwrap_or(LastBattleLog::empty());
+        spawn_battle_page(parent, &font, &state, &game, &catalog, options, battle_log);
     });
 }
 
@@ -62,6 +67,7 @@ pub(in crate::field_menu) fn spawn_battle_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     options: &PlayerOptions,
+    battle_log: &LastBattleLog,
 ) {
     let selected = state.selected.min(battle_row_count(game) - 1);
     let picking = state.mode == FieldMenuMode::BattleTacticPicker;
@@ -150,9 +156,33 @@ pub(in crate::field_menu) fn spawn_battle_page(
                             !options.skip_victory_screen,
                             selected == party + 2,
                         );
+                        let lines = battle_log.lines().len();
+                        spawn_battle_setting_row(
+                            panel,
+                            font,
+                            "Last battle",
+                            &if lines == 0 {
+                                "NO BATTLE FOUGHT YET".to_owned()
+                            } else {
+                                format!("{lines} LOG LINES")
+                            },
+                            if lines == 0 { "EMPTY" } else { "READ LOG" },
+                            lines > 0,
+                            selected == party + 3,
+                        );
                     },
                 );
                 let row = battle_row(game, selected);
+                if row == BattleRow::LastBattle {
+                    // Browsing previews the end of the fight; reading starts from its top.
+                    let first = if state.mode == FieldMenuMode::BattleLog {
+                        state.log_scroll
+                    } else {
+                        battle_log_last_scroll(battle_log.lines().len())
+                    };
+                    spawn_battle_log_panel(columns, font, battle_log, first);
+                    return;
+                }
                 let (choices, current) = battle_row_choices(game, options, row);
                 let title = match row {
                     BattleRow::Member(index) => {
@@ -161,6 +191,7 @@ pub(in crate::field_menu) fn spawn_battle_page(
                     BattleRow::EnemyTurns => "Enemy turns".to_owned(),
                     BattleRow::TurnPause => "Turn pause".to_owned(),
                     BattleRow::AfterVictory => "After victory".to_owned(),
+                    BattleRow::LastBattle => unreachable!("handled above"),
                 };
                 spawn_battle_orders(
                     columns,
@@ -171,10 +202,15 @@ pub(in crate::field_menu) fn spawn_battle_page(
                     picking.then_some(state.battle_choice.min(choices.len() - 1)),
                 );
             });
+            let on_log = battle_row(game, selected) == BattleRow::LastBattle;
             spawn_status_text(
                 page,
                 if picking {
                     "UP/DOWN   CHOOSE      ENTER   SET      ESC   CANCEL"
+                } else if state.mode == FieldMenuMode::BattleLog {
+                    "UP/DOWN   SCROLL      LEFT/RIGHT   PAGE      ESC   BACK"
+                } else if on_log {
+                    "UP/DOWN   SELECT      ENTER   READ      ESC   BACK"
                 } else {
                     "UP/DOWN   SELECT      ENTER   CHANGE      ESC   BACK"
                 },
@@ -342,11 +378,14 @@ fn spawn_battle_setting_row(
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(46),
+            // Fixed, not a minimum: the two text lines plus the selected 2px border would
+            // otherwise overflow 46px and the row would grow under the cursor.
+            height: px(46),
+            flex_shrink: 0.0,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             column_gap: px(10),
-            padding: UiRect::axes(px(10), px(5)),
+            padding: UiRect::axes(px(10), px(3)),
             border: UiRect::all(px(if selected { 2 } else { 1 })),
             border_radius: BorderRadius::all(px(4)),
             ..default()
@@ -465,6 +504,64 @@ fn spawn_battle_orders(
                     });
             }
             spawn_status_text(panel, choices[highlighted].1, font, 14.0, status_muted());
+        },
+    );
+}
+
+/// The previous battle's log, [`BATTLE_LOG_VISIBLE_LINES`] lines from `first`, coloured by side
+/// the way the battle screen coloured them.
+fn spawn_battle_log_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    battle_log: &LastBattleLog,
+    first: usize,
+) {
+    spawn_status_panel(
+        parent,
+        Node {
+            flex_grow: 1.0,
+            flex_basis: px(0),
+            min_width: px(0),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(4),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        "LAST BATTLE",
+        font,
+        |panel| {
+            let lines = battle_log.lines();
+            if lines.is_empty() {
+                spawn_status_text(
+                    panel,
+                    "No battle has been fought since the game started.",
+                    font,
+                    14.0,
+                    status_muted(),
+                );
+                return;
+            }
+            let first = first.min(battle_log_last_scroll(lines.len()));
+            let end = (first + BATTLE_LOG_VISIBLE_LINES).min(lines.len());
+            spawn_status_text(
+                panel,
+                format!("LINES {}-{end} OF {}", first + 1, lines.len()),
+                font,
+                12.0,
+                status_faint(),
+            );
+            for line in &lines[first..end] {
+                let color = if line.enemy {
+                    status_ember()
+                } else {
+                    status_teal()
+                };
+                spawn_status_text(panel, &line.text, font, 14.0, color);
+            }
         },
     );
 }

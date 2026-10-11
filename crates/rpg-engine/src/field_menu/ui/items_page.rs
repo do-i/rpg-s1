@@ -82,14 +82,28 @@ pub(in crate::field_menu) fn spawn_items_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_pouch_column(columns, font, state, game, catalog);
-                spawn_item_list_column(columns, font, game, catalog, &ids, list_index);
+                // Browse is the pouch column; every other mode belongs to the item list or a
+                // modal opened from it.
+                let pouch_focused = state.mode == FieldMenuMode::Browse;
+                spawn_pouch_column(columns, font, state, game, catalog, pouch_focused);
+                spawn_item_list_column(
+                    columns,
+                    font,
+                    game,
+                    catalog,
+                    &ids,
+                    list_index,
+                    !pouch_focused,
+                );
                 spawn_item_detail_column(columns, font, state, game, catalog, &ids, list_index);
             });
 
             let hint = match state.mode {
                 FieldMenuMode::Browse => {
-                    "LEFT/RIGHT   POUCH      UP/DOWN   BROWSE      ENTER   ACTIONS      H   SHOW/HIDE"
+                    "UP/DOWN   POUCH      RIGHT / ENTER   ITEMS      H   SHOW/HIDE      ESC   BACK"
+                }
+                FieldMenuMode::ItemList => {
+                    "UP/DOWN   BROWSE      ENTER   ACTIONS      H   SHOW/HIDE      LEFT / ESC   POUCH"
                 }
                 FieldMenuMode::ItemNewTag => {
                     "TYPE   a-z 0-9 _      ENTER   ADD      ESC   BACK"
@@ -146,8 +160,9 @@ pub(in crate::field_menu) fn spawn_pouch_column(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    focused: bool,
 ) {
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             width: px(ITEMS_POUCH_WIDTH),
@@ -161,6 +176,7 @@ pub(in crate::field_menu) fn spawn_pouch_column(
         },
         "POUCH",
         font,
+        focused,
         |panel| {
             for (index, tab) in InventoryTab::ALL.into_iter().enumerate() {
                 let selected = index == state.tab_index;
@@ -234,8 +250,9 @@ pub(in crate::field_menu) fn spawn_item_list_column(
     catalog: &FieldMenuCatalog,
     ids: &[&str],
     list_index: usize,
+    focused: bool,
 ) {
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             height: percent(100),
@@ -251,12 +268,13 @@ pub(in crate::field_menu) fn spawn_item_list_column(
         },
         "ITEMS",
         font,
+        focused,
         |panel| {
             if ids.is_empty() {
                 spawn_status_text(panel, "Pouch is empty.", font, 18.0, status_muted());
                 spawn_status_text(
                     panel,
-                    "Use LEFT/RIGHT to inspect another pouch.",
+                    "Choose another pouch with UP/DOWN.",
                     font,
                     14.0,
                     status_faint(),
@@ -264,62 +282,72 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 return;
             }
             let page = inventory_page_range(ids.len(), list_index);
-            for (index, id) in ids.iter().enumerate().skip(page.start).take(page.len()) {
-                let item = catalog.item(id).expect("filtered inventory item exists");
-                let selected = index == list_index;
-                let mut row = panel.spawn((
-                    Node {
-                        width: percent(100),
-                        min_height: px(40),
-                        flex_direction: FlexDirection::Row,
-                        align_items: AlignItems::Center,
-                        padding: UiRect::horizontal(px(9)),
-                        border: UiRect::all(px(if selected { 2 } else { 1 })),
-                        border_radius: BorderRadius::all(px(4)),
-                        ..default()
-                    },
-                    BackgroundColor(if selected {
-                        Color::srgba_u8(72, 49, 25, 218)
-                    } else {
-                        Color::srgba_u8(10, 10, 14, 148)
-                    }),
-                    BorderColor::all(if selected {
-                        status_border_active()
-                    } else {
-                        Color::srgba_u8(126, 98, 55, 80)
-                    }),
-                    ItemListRow,
-                ));
-                if selected {
-                    row.insert(SelectedItemListRow);
-                }
-                row.with_children(|row| {
-                    row.spawn((
+            for (offset, (index, id)) in ids
+                .iter()
+                .enumerate()
+                .skip(page.start)
+                .take(page.len())
+                .enumerate()
+            {
+                let fades = ScrollFades::for_row(offset, page.len(), page.start, ids.len());
+                spawn_windowed_card(panel, fades, |panel| {
+                    let item = catalog.item(id).expect("filtered inventory item exists");
+                    // The cursor shows only once the list, not the pouch, has focus.
+                    let selected = focused && index == list_index;
+                    let mut row = panel.spawn((
                         Node {
-                            width: px(5),
-                            height: px(24),
-                            margin: UiRect::right(px(9)),
+                            width: percent(100),
+                            min_height: px(40),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            padding: UiRect::horizontal(px(9)),
+                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                            border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
-                        BackgroundColor(item_accent(item)),
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(72, 49, 25, 218)
+                        } else {
+                            Color::srgba_u8(10, 10, 14, 148)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            Color::srgba_u8(126, 98, 55, 80)
+                        }),
+                        ItemListRow,
                     ));
-                    row.spawn(Node {
-                        flex_grow: 1.0,
-                        ..default()
-                    })
-                    .with_children(|name| {
-                        spawn_status_text(name, item_name(item), font, 16.0, status_ink());
-                    });
-                    if game.repository().is_new_item(id) {
-                        spawn_status_text(row, "NEW", font, 11.0, status_ember());
+                    if selected {
+                        row.insert(SelectedItemListRow);
                     }
-                    spawn_status_text(
-                        row,
-                        format!("  x{}", game.repository().item_count(id)),
-                        font,
-                        14.0,
-                        status_muted(),
-                    );
+                    row.with_children(|row| {
+                        row.spawn((
+                            Node {
+                                width: px(5),
+                                height: px(24),
+                                margin: UiRect::right(px(9)),
+                                ..default()
+                            },
+                            BackgroundColor(item_accent(item)),
+                        ));
+                        row.spawn(Node {
+                            flex_grow: 1.0,
+                            ..default()
+                        })
+                        .with_children(|name| {
+                            spawn_status_text(name, item_name(item), font, 16.0, status_ink());
+                        });
+                        if game.repository().is_new_item(id) {
+                            spawn_status_text(row, "NEW", font, 11.0, status_ember());
+                        }
+                        spawn_status_text(
+                            row,
+                            format!("  x{}", game.repository().item_count(id)),
+                            font,
+                            14.0,
+                            status_muted(),
+                        );
+                    });
                 });
             }
             let page_number = list_index / INVENTORY_PAGE_ROWS + 1;
@@ -527,7 +555,8 @@ pub(in crate::field_menu) fn spawn_item_modal(
     game: &GameState,
     catalog: &FieldMenuCatalog,
 ) {
-    if state.mode == FieldMenuMode::Browse {
+    // Only the item's own modals draw here; the pouch and the list are the page itself.
+    if state.selected_is_list_cursor() {
         return;
     }
     let title = match state.mode {
@@ -690,32 +719,38 @@ fn spawn_tag_editor(
     spawn_status_text(parent, "EDIT TAGS", font, 13.0, status_muted());
     let rows = tag_editor_rows(game, id);
     let first = window_start(state.selected, rows.len(), TAG_EDITOR_VISIBLE_ROWS);
-    for (index, row) in rows
+    let len = rows.len();
+    let shown = len.saturating_sub(first).min(TAG_EDITOR_VISIBLE_ROWS);
+    for (offset, (index, row)) in rows
         .into_iter()
         .enumerate()
         .skip(first)
         .take(TAG_EDITOR_VISIBLE_ROWS)
+        .enumerate()
     {
-        let selected = index == state.selected;
-        match row {
-            TagEditorRow::New => {
-                spawn_item_modal_row(parent, font, "New tag…", "type a custom tag", selected);
+        let fades = ScrollFades::for_row(offset, shown, first, len);
+        spawn_windowed_card(parent, fades, |parent| {
+            let selected = index == state.selected;
+            match row {
+                TagEditorRow::New => {
+                    spawn_item_modal_row(parent, font, "New tag…", "type a custom tag", selected);
+                }
+                TagEditorRow::Tag(tag) => {
+                    let held = game
+                        .repository()
+                        .item_tags(id)
+                        .any(|current| current == tag);
+                    let custom = !EDITABLE_SYSTEM_TAGS.contains(&tag.as_str());
+                    let subtitle = match (held, custom) {
+                        (true, true) => "ON    custom",
+                        (true, false) => "ON",
+                        (false, true) => "custom",
+                        (false, false) => "OFF",
+                    };
+                    spawn_item_modal_row(parent, font, &tag, subtitle, selected);
+                }
             }
-            TagEditorRow::Tag(tag) => {
-                let held = game
-                    .repository()
-                    .item_tags(id)
-                    .any(|current| current == tag);
-                let custom = !EDITABLE_SYSTEM_TAGS.contains(&tag.as_str());
-                let subtitle = match (held, custom) {
-                    (true, true) => "ON    custom",
-                    (true, false) => "ON",
-                    (false, true) => "custom",
-                    (false, false) => "OFF",
-                };
-                spawn_item_modal_row(parent, font, &tag, subtitle, selected);
-            }
-        }
+        });
     }
 }
 
@@ -780,21 +815,29 @@ fn spawn_manage_rows(
     let ids = manage_ids(game, catalog);
     spawn_status_text(parent, "SHOW / HIDE", font, 13.0, status_muted());
     let first = window_start(state.selected, ids.len(), ITEM_MANAGE_VISIBLE_ROWS);
-    for (index, id) in ids
+    let shown = ids
+        .len()
+        .saturating_sub(first)
+        .min(ITEM_MANAGE_VISIBLE_ROWS);
+    for (offset, (index, id)) in ids
         .iter()
         .enumerate()
         .skip(first)
         .take(ITEM_MANAGE_VISIBLE_ROWS)
+        .enumerate()
     {
-        let name = catalog.item(id).map_or(*id, item_name);
-        let hidden = game.repository().is_hidden(id);
-        spawn_item_modal_row(
-            parent,
-            font,
-            name,
-            if hidden { "HIDDEN" } else { "shown" },
-            index == state.selected,
-        );
+        let fades = ScrollFades::for_row(offset, shown, first, ids.len());
+        spawn_windowed_card(parent, fades, |parent| {
+            let name = catalog.item(id).map_or(*id, item_name);
+            let hidden = game.repository().is_hidden(id);
+            spawn_item_modal_row(
+                parent,
+                font,
+                name,
+                if hidden { "HIDDEN" } else { "shown" },
+                index == state.selected,
+            );
+        });
     }
     spawn_status_text(
         parent,

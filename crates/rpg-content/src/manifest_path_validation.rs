@@ -179,6 +179,10 @@ pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReferenc
     if let Some(transport) = &manifest.refs.transport {
         references.insert(15, file_reference("refs.transport", transport));
     }
+    // After the transport insert, whose index counts from the unshifted list.
+    if let Some(menu_icons) = &manifest.ui.menu_icons {
+        references.insert(4, file_reference("ui.menu_icons", menu_icons));
+    }
     references
 }
 
@@ -256,6 +260,19 @@ mod tests {
                 })
                 .collect(),
         )
+    }
+
+    #[test]
+    fn the_optional_menu_icon_sheet_is_validated_beside_the_backdrop() {
+        let mut manifest = manifest();
+        let without = manifest_path_references(&manifest).len();
+        manifest.ui.menu_icons = Some("media/images/ui/menu_icons.png".try_into().unwrap());
+        let references = manifest_path_references(&manifest);
+
+        assert_eq!(references.len(), without + 1);
+        assert_eq!(references[3].field_path, "ui.menu_backdrop");
+        assert_eq!(references[4].field_path, "ui.menu_icons");
+        assert_eq!(references[4].expected_kind, ScenarioEntryKind::File);
     }
 
     #[test]

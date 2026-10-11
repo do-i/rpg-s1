@@ -4,6 +4,7 @@ use bevy::{asset::LoadState, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
+    battle_log::LastBattleLog,
     battle_tactics::{AutoCommand, TurnPause},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
@@ -116,6 +117,7 @@ impl Plugin for BattlePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PlaySfx>()
             .add_message::<BattleBgmFadeOut>()
+            .init_resource::<LastBattleLog>()
             .add_systems(OnEnter(AppState::Battle), enter_battle)
             .add_systems(
                 Update,
@@ -2144,11 +2146,16 @@ fn sync_battle_commands(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the log feeds the on-screen list, the prompt, the target line, and the kept record"
+)]
 fn sync_battle_message(
     mut commands: Commands,
     state: Option<Res<BattleState>>,
     assets: Option<Res<BattleAssetState>>,
     mut history: Local<BattleLogHistory>,
+    mut record: Option<ResMut<LastBattleLog>>,
     mut lists: Query<(Entity, &mut ScrollPosition), With<BattleLogList>>,
     mut messages: Query<&mut Text, With<BattleMessageText>>,
     mut targets: Query<&mut Text, (With<BattleTargetText>, Without<BattleMessageText>)>,
@@ -2156,16 +2163,20 @@ fn sync_battle_message(
     let Some(state) = state else { return };
     if state.is_added() {
         *history = BattleLogHistory::default();
+        if let Some(record) = record.as_deref_mut() {
+            record.clear();
+        }
     }
     if !state.is_changed() {
         return;
     }
     let prompting = is_prompt_phase(state.phase);
     if !prompting && !state.message.is_empty() && state.message != history.last {
-        let color = match state.active_key().map(|key| key.side) {
-            Some(BattleSide::Enemy) => battle_ember(),
-            _ => battle_teal(),
-        };
+        let enemy = state.active_key().map(|key| key.side) == Some(BattleSide::Enemy);
+        let color = if enemy { battle_ember() } else { battle_teal() };
+        if let Some(record) = record.as_deref_mut() {
+            record.push(&state.message, enemy);
+        }
         if let (Ok((list, mut scroll)), Some(assets)) = (lists.single_mut(), assets.as_deref()) {
             let line = state.message.clone();
             commands.entity(list).with_children(|list| {
@@ -2764,6 +2775,50 @@ mod tests {
                 .iter(app.world())
                 .all(|(_, node)| node.display == Display::None)
         );
+    }
+
+    #[test]
+    fn the_battle_log_is_kept_for_the_field_menu_and_cleared_by_the_next_battle() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<LastBattleLog>()
+            .add_systems(Update, sync_battle_message);
+        let party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
+        let mut state = crate::battle::tests::state_with(vec![party]);
+        state.phase = BattlePhase::Resolve;
+        state.message = "Elise attacks.".to_owned();
+        app.world_mut().insert_resource(state);
+        app.update();
+        // An unchanged message is the same result still on screen, not a second one.
+        app.world_mut().resource_mut::<BattleState>().set_changed();
+        app.update();
+        app.world_mut().resource_mut::<BattleState>().message =
+            "Got away safely! Press Enter.".to_owned();
+        app.update();
+        // A prompt is an instruction, not something that happened.
+        {
+            let mut state = app.world_mut().resource_mut::<BattleState>();
+            state.phase = BattlePhase::Command;
+            state.message = "Choose a command.".to_owned();
+        }
+        app.update();
+
+        let lines: Vec<_> = app
+            .world()
+            .resource::<LastBattleLog>()
+            .lines()
+            .iter()
+            .map(|line| line.text.as_str())
+            .collect();
+        assert_eq!(lines, ["Elise attacks.", "Got away safely!"]);
+
+        app.world_mut().remove_resource::<BattleState>();
+        app.update();
+        let party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
+        app.world_mut()
+            .insert_resource(crate::battle::tests::state_with(vec![party]));
+        app.update();
+        assert!(app.world().resource::<LastBattleLog>().is_empty());
     }
 
     #[test]

@@ -277,7 +277,7 @@ pub(in crate::field_menu) fn render_items(
         .skip(page.start)
         .take(page.len())
         .map(|(index, id)| {
-            let cursor = if state.mode == FieldMenuMode::Browse && index == state.selected {
+            let cursor = if state.mode == FieldMenuMode::ItemList && index == state.selected {
                 ">"
             } else {
                 " "
@@ -382,7 +382,7 @@ pub(in crate::field_menu) fn render_equipment(
         .into_iter()
         .enumerate()
         .map(|(index, slot)| {
-            let cursor = if state.mode == FieldMenuMode::Browse && index == state.selected {
+            let cursor = if state.mode == FieldMenuMode::EquipmentSlots && index == state.selected {
                 ">"
             } else {
                 " "
@@ -466,7 +466,7 @@ pub(in crate::field_menu) fn render_spells(
         .map(|(index, ability)| {
             format!(
                 "{} {:<24} MP {:>3}  {}",
-                if state.mode == FieldMenuMode::Browse && index == state.selected {
+                if state.mode == FieldMenuMode::SpellList && index == state.selected {
                     ">"
                 } else {
                     " "
@@ -591,7 +591,10 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         }
         (FieldMenuScreen::Status, _) => "UP/DOWN action  ENTER open  ESC portrait  M close",
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
-            "LEFT/RIGHT tab  UP/DOWN item  ENTER actions  H show/hide  ESC back"
+            "UP/DOWN pouch  RIGHT/ENTER items  H show/hide  ESC back"
+        }
+        (FieldMenuScreen::Items, FieldMenuMode::ItemList) => {
+            "UP/DOWN item  ENTER actions  H show/hide  LEFT/ESC pouch"
         }
         (FieldMenuScreen::Items, FieldMenuMode::ItemTags) => "UP/DOWN tag  ENTER toggle  ESC back",
         (FieldMenuScreen::Items, FieldMenuMode::ItemNewTag) => {
@@ -604,15 +607,24 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "UP/DOWN quantity  LEFT one  RIGHT whole stack  ENTER discard  ESC cancel"
         }
         (FieldMenuScreen::Equipment, FieldMenuMode::Browse) => {
-            "LEFT/RIGHT member  UP/DOWN slot  ENTER choose  ESC back"
+            "UP/DOWN member  RIGHT/ENTER slots  ESC back"
+        }
+        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentSlots) => {
+            "UP/DOWN slot  RIGHT/ENTER inventory  LEFT/ESC party"
         }
         (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
-            "LEFT/RIGHT member  UP/DOWN spell  ENTER cast  ESC back"
+            "UP/DOWN caster  RIGHT/ENTER spellbook  ESC back"
+        }
+        (FieldMenuScreen::Spells, FieldMenuMode::SpellList) => {
+            "UP/DOWN spell  ENTER cast  LEFT/ESC caster"
         }
         (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
         (FieldMenuScreen::Recipes, _) => "UP/DOWN recipe  ESC back  M close",
         (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => {
             "UP/DOWN choose  ENTER set  ESC cancel"
+        }
+        (FieldMenuScreen::Battle, FieldMenuMode::BattleLog) => {
+            "UP/DOWN scroll  LEFT/RIGHT page  ESC back"
         }
         (FieldMenuScreen::Battle, _) => "UP/DOWN select  ENTER change  ESC back",
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
