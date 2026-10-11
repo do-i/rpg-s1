@@ -80,8 +80,17 @@ pub(in crate::field_menu) fn spawn_spells_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_party_column(columns, font, state, game, catalog, portraits);
-                spawn_spellbook_column(columns, font, state, game, catalog);
+                let party_focused = state.mode == FieldMenuMode::Browse;
+                spawn_party_column(
+                    columns,
+                    font,
+                    state,
+                    game,
+                    catalog,
+                    portraits,
+                    party_focused,
+                );
+                spawn_spellbook_column(columns, font, state, game, catalog, !party_focused);
             });
             spawn_status_text(
                 page,
@@ -90,8 +99,10 @@ pub(in crate::field_menu) fn spawn_spells_page(
                     FieldMenuMode::SpellTarget | FieldMenuMode::TeleportPicker
                 ) {
                     "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
+                } else if state.mode == FieldMenuMode::SpellList {
+                    "UP/DOWN   SELECT SPELL      ENTER   CAST      LEFT / ESC   CASTER"
                 } else {
-                    "LEFT/RIGHT   CHANGE CASTER      UP/DOWN   SELECT SPELL      ENTER   CAST      ESC   BACK"
+                    "UP/DOWN   CHANGE CASTER      RIGHT / ENTER   SPELLBOOK      ESC   BACK"
                 },
                 font,
                 15.0,
@@ -163,13 +174,14 @@ pub(in crate::field_menu) fn spawn_spellbook_column(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    focused: bool,
 ) {
     let Some(member) = member_at(game, state.member_index) else {
         return;
     };
     let abilities = learned_field_abilities(member, game, catalog);
     let selected = selected_spell_index(state, &abilities);
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             height: percent(100),
@@ -185,6 +197,7 @@ pub(in crate::field_menu) fn spawn_spellbook_column(
         },
         "SPELLBOOK",
         font,
+        focused,
         |panel| {
             panel
                 .spawn(Node {
@@ -195,7 +208,7 @@ pub(in crate::field_menu) fn spawn_spellbook_column(
                     ..default()
                 })
                 .with_children(|body| {
-                    spawn_spell_list(body, font, member, &abilities, selected);
+                    spawn_spell_list(body, font, member, &abilities, selected, focused);
                     spawn_spell_detail(body, font, member, abilities.get(selected).copied());
                 });
         },
@@ -208,6 +221,7 @@ pub(in crate::field_menu) fn spawn_spell_list(
     member: &crate::runtime_member::RuntimeMember,
     abilities: &[&Ability],
     selected_index: usize,
+    focused: bool,
 ) {
     parent
         .spawn(Node {
@@ -239,81 +253,92 @@ pub(in crate::field_menu) fn spawn_spell_list(
             let first = selected_index
                 .saturating_sub(visible_rows - 1)
                 .min(abilities.len().saturating_sub(visible_rows));
-            for (index, ability) in abilities.iter().enumerate().skip(first).take(visible_rows) {
-                let selected = index == selected_index;
-                let affordable = member.mana() >= ability.mp_cost;
-                let mut row = list.spawn((
-                    Node {
-                        width: percent(100),
-                        min_height: px(58),
-                        flex_direction: FlexDirection::Row,
-                        align_items: AlignItems::Center,
-                        padding: UiRect::axes(px(10), px(6)),
-                        border: UiRect::all(px(if selected { 2 } else { 1 })),
-                        border_radius: BorderRadius::all(px(4)),
-                        ..default()
-                    },
-                    BackgroundColor(if selected {
-                        Color::srgba_u8(72, 49, 25, 218)
-                    } else {
-                        Color::srgba_u8(10, 10, 14, 148)
-                    }),
-                    BorderColor::all(if selected {
-                        status_border_active()
-                    } else {
-                        Color::srgba_u8(126, 98, 55, 90)
-                    }),
-                    SpellbookRow,
-                ));
-                if selected {
-                    row.insert(SelectedSpellbookRow);
-                }
-                row.with_children(|row| {
-                    row.spawn((
+            let shown = abilities.len().saturating_sub(first).min(visible_rows);
+            for (offset, (index, ability)) in abilities
+                .iter()
+                .enumerate()
+                .skip(first)
+                .take(visible_rows)
+                .enumerate()
+            {
+                let fades = ScrollFades::for_row(offset, shown, first, abilities.len());
+                spawn_windowed_card(list, fades, |list| {
+                    // The cursor shows only once the spellbook, not the casters, has focus.
+                    let selected = focused && index == selected_index;
+                    let affordable = member.mana() >= ability.mp_cost;
+                    let mut row = list.spawn((
                         Node {
-                            width: px(6),
-                            height: px(34),
-                            margin: UiRect::right(px(10)),
+                            width: percent(100),
+                            min_height: px(58),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            padding: UiRect::axes(px(10), px(6)),
+                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                            border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
-                        BackgroundColor(spell_accent(ability)),
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(72, 49, 25, 218)
+                        } else {
+                            Color::srgba_u8(10, 10, 14, 148)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            Color::srgba_u8(126, 98, 55, 90)
+                        }),
+                        SpellbookRow,
                     ));
-                    row.spawn(Node {
-                        flex_grow: 1.0,
-                        flex_direction: FlexDirection::Column,
-                        ..default()
-                    })
-                    .with_children(|copy| {
+                    if selected {
+                        row.insert(SelectedSpellbookRow);
+                    }
+                    row.with_children(|row| {
+                        row.spawn((
+                            Node {
+                                width: px(6),
+                                height: px(34),
+                                margin: UiRect::right(px(10)),
+                                ..default()
+                            },
+                            BackgroundColor(spell_accent(ability)),
+                        ));
+                        row.spawn(Node {
+                            flex_grow: 1.0,
+                            flex_direction: FlexDirection::Column,
+                            ..default()
+                        })
+                        .with_children(|copy| {
+                            spawn_status_text(
+                                copy,
+                                &ability.name,
+                                font,
+                                17.0,
+                                if affordable {
+                                    status_ink()
+                                } else {
+                                    status_muted()
+                                },
+                            );
+                            spawn_status_text(
+                                copy,
+                                spell_kind_label(ability),
+                                font,
+                                12.0,
+                                spell_accent(ability),
+                            );
+                        });
                         spawn_status_text(
-                            copy,
-                            &ability.name,
+                            row,
+                            format!("MP  {}", ability.mp_cost),
                             font,
-                            17.0,
+                            14.0,
                             if affordable {
-                                status_ink()
+                                status_teal()
                             } else {
-                                status_muted()
+                                status_ember()
                             },
                         );
-                        spawn_status_text(
-                            copy,
-                            spell_kind_label(ability),
-                            font,
-                            12.0,
-                            spell_accent(ability),
-                        );
                     });
-                    spawn_status_text(
-                        row,
-                        format!("MP  {}", ability.mp_cost),
-                        font,
-                        14.0,
-                        if affordable {
-                            status_teal()
-                        } else {
-                            status_ember()
-                        },
-                    );
                 });
             }
         });
@@ -542,7 +567,7 @@ pub(in crate::field_menu) fn selected_spell_index(
     if abilities.is_empty() {
         return 0;
     }
-    if state.mode == FieldMenuMode::Browse {
+    if state.selected_is_list_cursor() {
         return state.selected.min(abilities.len() - 1);
     }
     state

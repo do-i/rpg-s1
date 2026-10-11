@@ -22,6 +22,8 @@ pub(crate) struct ScenarioInventory {
     pub(crate) transport: Option<ScenarioRelativePath>,
     pub(crate) font: Option<ScenarioRelativePath>,
     pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
+    /// The command deck's icon sheet; `None` keeps the letter badges.
+    pub(crate) menu_icons: Option<ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
@@ -129,6 +131,7 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         transport: manifest.refs.transport.clone(),
         font: Some(manifest.font.path.clone()),
         menu_backdrop: Some(manifest.ui.menu_backdrop.clone()),
+        menu_icons: manifest.ui.menu_icons.clone(),
         service_art: ServiceArt {
             apothecary_keeper: Some(manifest.apothecary.sprite.clone()),
             inn_keeper: Some(manifest.inn.sprite.clone()),

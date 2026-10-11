@@ -9,6 +9,7 @@ use crate::{
     field_menu::FieldMenuState,
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    menu_chrome::{ScrollFades, spawn_windowed_card},
     runtime_map::RuntimeMapId,
     scenario_class::{AbilityKind, UtilityAbility},
     scenario_inventory::ScenarioInventory,
@@ -873,16 +874,20 @@ fn spawn_destination_panel(
                     ));
                 });
         } else {
+            let shown = rows.len().saturating_sub(first).min(DESTINATION_ROWS);
             for (offset, destination) in rows.iter().skip(first).take(DESTINATION_ROWS).enumerate()
             {
-                spawn_destination_row(
-                    panel,
-                    font,
-                    state.mode,
-                    destination,
-                    first + offset == state.selected,
-                    domain,
-                );
+                let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+                spawn_windowed_card(panel, fades, |panel| {
+                    spawn_destination_row(
+                        panel,
+                        font,
+                        state.mode,
+                        destination,
+                        first + offset == state.selected,
+                        domain,
+                    );
+                });
             }
         }
 

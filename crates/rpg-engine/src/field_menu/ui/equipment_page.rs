@@ -80,16 +80,28 @@ pub(in crate::field_menu) fn spawn_equipment_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_party_column(columns, font, state, game, catalog, portraits);
+                spawn_party_column(
+                    columns,
+                    font,
+                    state,
+                    game,
+                    catalog,
+                    portraits,
+                    state.mode == FieldMenuMode::Browse,
+                );
                 spawn_equipment_slots_column(columns, font, state, game, catalog);
                 spawn_equipment_inventory_column(columns, font, state, game, catalog);
             });
             spawn_status_text(
                 page,
-                if state.mode == FieldMenuMode::EquipmentPicker {
-                    "UP/DOWN   PREVIEW ITEM      ENTER   EQUIP      ESC   SLOTS      M   CLOSE"
-                } else {
-                    "LEFT/RIGHT   CHANGE MEMBER      UP/DOWN   SELECT SLOT      ENTER   INVENTORY      ESC   BACK"
+                match state.mode {
+                    FieldMenuMode::EquipmentPicker => {
+                        "UP/DOWN   PREVIEW ITEM      ENTER   EQUIP      LEFT / ESC   SLOTS"
+                    }
+                    FieldMenuMode::EquipmentSlots => {
+                        "UP/DOWN   SELECT SLOT      RIGHT / ENTER   INVENTORY      LEFT / ESC   PARTY"
+                    }
+                    _ => "UP/DOWN   SELECT MEMBER      RIGHT / ENTER   SLOTS      ESC   BACK",
                 },
                 font,
                 15.0,
@@ -149,8 +161,11 @@ pub(in crate::field_menu) fn spawn_equipment_slots_column(
     let Some(member) = member_at(game, state.member_index) else {
         return;
     };
-    let selected_slot = state_slot_index(state);
-    spawn_status_panel(
+    // The slot cursor is drawn only once the slots are what the arrows move; while the party
+    // column has focus it would read as a second cursor.
+    let selected_slot = (state.mode != FieldMenuMode::Browse).then(|| state_slot_index(state));
+    let focused = state.mode == FieldMenuMode::EquipmentSlots;
+    spawn_focus_panel(
         parent,
         Node {
             width: px(EQUIPMENT_SLOT_WIDTH),
@@ -164,9 +179,10 @@ pub(in crate::field_menu) fn spawn_equipment_slots_column(
         },
         "SLOTS",
         font,
+        focused,
         |panel| {
             for (index, slot) in EquipmentSlot::ALL.into_iter().enumerate() {
-                let selected = index == selected_slot;
+                let selected = Some(index) == selected_slot;
                 let equipped = member.equipment().get(slot).and_then(|id| catalog.item(id));
                 let mut row = panel.spawn((
                     Node {
@@ -274,7 +290,7 @@ pub(in crate::field_menu) fn spawn_equipment_inventory_column(
         return;
     };
     let slot = EquipmentSlot::ALL[state_slot_index(state)];
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             height: percent(100),
@@ -283,17 +299,14 @@ pub(in crate::field_menu) fn spawn_equipment_inventory_column(
             flex_direction: FlexDirection::Column,
             row_gap: px(8),
             padding: UiRect::all(px(16)),
-            border: UiRect::all(px(if state.mode == FieldMenuMode::EquipmentPicker {
-                2
-            } else {
-                1
-            })),
+            border: UiRect::all(px(1)),
             border_radius: BorderRadius::all(px(6)),
             overflow: Overflow::clip(),
             ..default()
         },
         "INVENTORY",
         font,
+        state.mode == FieldMenuMode::EquipmentPicker,
         |panel| {
             spawn_status_text(
                 panel,
@@ -367,61 +380,67 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
         .selected
         .saturating_sub(visible_rows - 1)
         .min(total.saturating_sub(visible_rows));
+    let shown = total.saturating_sub(first).min(visible_rows);
     for index in first..(first + visible_rows).min(total) {
-        let candidate_id = index
-            .checked_sub(1)
-            .and_then(|candidate| candidates.get(candidate).map(String::as_str));
-        let item = candidate_id.and_then(|id| catalog.item(id));
-        let refusal = candidate_id.and_then(|id| equip_refusal(member, id, catalog));
-        let selected = index == state.selected;
-        parent
-            .spawn((
-                Node {
-                    width: percent(100),
-                    min_height: px(52),
-                    flex_direction: FlexDirection::Column,
-                    justify_content: JustifyContent::Center,
-                    padding: UiRect::axes(px(11), px(5)),
-                    border: UiRect::all(px(if selected { 2 } else { 1 })),
-                    border_radius: BorderRadius::all(px(4)),
-                    ..default()
-                },
-                BackgroundColor(if selected {
-                    Color::srgba_u8(72, 49, 25, 218)
-                } else {
-                    Color::srgba_u8(10, 10, 14, 148)
-                }),
-                BorderColor::all(if selected {
-                    status_border_active()
-                } else {
-                    Color::srgba_u8(126, 98, 55, 90)
-                }),
-                EquipmentPickerRow,
-            ))
-            .with_children(|row| {
-                spawn_status_text(
-                    row,
-                    item.map_or("(Unequip)", item_name),
-                    font,
-                    16.0,
-                    if item.is_some() && refusal.is_none() {
-                        status_ink()
-                    } else {
-                        status_muted()
+        let fades = ScrollFades::for_row(index - first, shown, first, total);
+        spawn_windowed_card(parent, fades, |parent| {
+            let candidate_id = index
+                .checked_sub(1)
+                .and_then(|candidate| candidates.get(candidate).map(String::as_str));
+            let item = candidate_id.and_then(|id| catalog.item(id));
+            let refusal = candidate_id.and_then(|id| equip_refusal(member, id, catalog));
+            let selected = index == state.selected;
+            parent
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        min_height: px(52),
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::Center,
+                        padding: UiRect::axes(px(11), px(5)),
+                        border: UiRect::all(px(if selected { 2 } else { 1 })),
+                        border_radius: BorderRadius::all(px(4)),
+                        ..default()
                     },
-                );
-                // An item this member cannot wear stays listed, so the player can see they own
-                // it, but says so instead of previewing stats it would never grant.
-                let (summary, color) = match (&refusal, candidate_id) {
-                    (Some(_), _) => ("CAN'T EQUIP - CLASS RESTRICTED".to_owned(), status_ember()),
-                    (None, Some(id)) => (
-                        equipment_preview_summary(member, catalog, slot, Some(id)),
-                        status_muted(),
-                    ),
-                    (None, None) => ("return current item to pouch".to_owned(), status_muted()),
-                };
-                spawn_status_text(row, summary, font, 12.0, color);
-            });
+                    BackgroundColor(if selected {
+                        Color::srgba_u8(72, 49, 25, 218)
+                    } else {
+                        Color::srgba_u8(10, 10, 14, 148)
+                    }),
+                    BorderColor::all(if selected {
+                        status_border_active()
+                    } else {
+                        Color::srgba_u8(126, 98, 55, 90)
+                    }),
+                    EquipmentPickerRow,
+                ))
+                .with_children(|row| {
+                    spawn_status_text(
+                        row,
+                        item.map_or("(Unequip)", item_name),
+                        font,
+                        16.0,
+                        if item.is_some() && refusal.is_none() {
+                            status_ink()
+                        } else {
+                            status_muted()
+                        },
+                    );
+                    // An item this member cannot wear stays listed, so the player can see they own
+                    // it, but says so instead of previewing stats it would never grant.
+                    let (summary, color) = match (&refusal, candidate_id) {
+                        (Some(_), _) => {
+                            ("CAN'T EQUIP - CLASS RESTRICTED".to_owned(), status_ember())
+                        }
+                        (None, Some(id)) => (
+                            equipment_preview_summary(member, catalog, slot, Some(id)),
+                            status_muted(),
+                        ),
+                        (None, None) => ("return current item to pouch".to_owned(), status_muted()),
+                    };
+                    spawn_status_text(row, summary, font, 12.0, color);
+                });
+        });
     }
     spawn_section_rule(parent);
     spawn_equipment_preview(parent, font, state, catalog, member, slot, &candidates);

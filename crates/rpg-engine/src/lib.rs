@@ -7,6 +7,7 @@ mod action_input;
 pub mod app_state;
 mod autosave;
 mod battle;
+mod battle_log;
 pub mod battle_tactics;
 mod cli;
 mod credits;

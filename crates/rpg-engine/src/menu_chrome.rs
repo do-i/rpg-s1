@@ -21,17 +21,62 @@ pub(crate) fn spawn_status_panel(
         ))
         .with_children(|panel| {
             spawn_status_text(panel, title, font, 14.0, status_gold());
-            panel.spawn((
-                Node {
-                    width: percent(100),
-                    height: px(1),
-                    margin: UiRect::bottom(px(2)),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
-            ));
+            spawn_panel_rule(panel);
             content(panel);
         });
+}
+
+/// A [`spawn_status_panel`] that marks keyboard focus with a brighter, thicker rim.
+///
+/// The rim is an [`Outline`], drawn outside the node, so focus never changes the panel's border
+/// width and nothing inside it reflows when focus moves between columns. Unfocused panels keep a
+/// transparent outline rather than none, so toggling focus does not add or remove components.
+pub(crate) fn spawn_focus_panel(
+    parent: &mut ChildSpawnerCommands<'_>,
+    node: Node,
+    title: &str,
+    font: &Handle<Font>,
+    focused: bool,
+    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
+) {
+    parent
+        .spawn((
+            node,
+            BackgroundColor(Color::srgba_u8(22, 22, 28, 228)),
+            BorderColor::all(if focused {
+                status_border_active()
+            } else {
+                status_border()
+            }),
+            Outline {
+                width: px(2),
+                offset: px(0),
+                color: if focused {
+                    status_border_active()
+                } else {
+                    Color::NONE
+                },
+            },
+        ))
+        .with_children(|panel| {
+            spawn_status_text(panel, title, font, 14.0, status_gold());
+            spawn_panel_rule(panel);
+            content(panel);
+        });
+}
+
+/// The rule under a status panel's title; also closes a list off above its footer.
+pub(crate) fn spawn_panel_rule(parent: &mut ChildSpawnerCommands<'_>) {
+    parent.spawn((
+        Node {
+            width: percent(100),
+            height: px(1),
+            flex_shrink: 0.0,
+            margin: UiRect::bottom(px(2)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
+    ));
 }
 
 pub(crate) fn spawn_section_rule(parent: &mut ChildSpawnerCommands<'_>) {
@@ -207,6 +252,122 @@ pub(crate) fn window_start(selected: usize, len: usize, rows: usize) -> usize {
     selected.saturating_sub(rows - 1).min(len - rows)
 }
 
+/// Which edges of a windowed list's visible card have hidden cards beyond them.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct ScrollFades {
+    pub(crate) top: bool,
+    pub(crate) bottom: bool,
+}
+
+impl ScrollFades {
+    /// The fades for the card at `offset` within a window of `shown` cards starting at `first`
+    /// in a list of `len`: the first card fades upward when the window has scrolled, and the
+    /// last fades downward when more cards wait below.
+    pub(crate) const fn for_row(offset: usize, shown: usize, first: usize, len: usize) -> Self {
+        Self {
+            top: offset == 0 && first > 0,
+            bottom: offset + 1 == shown && first + shown < len,
+        }
+    }
+
+    const fn any(self) -> bool {
+        self.top || self.bottom
+    }
+}
+
+/// The half-card shade marking a list edge with more cards past it.
+#[derive(Clone, Copy, Component, Debug, Eq, PartialEq)]
+pub(crate) enum ScrollFade {
+    Top,
+    Bottom,
+}
+
+/// The scroll fade's colour; its alpha ramps from clear at the card's middle to these stops.
+const SCROLL_FADE_SHADE: Color = Color::srgb(0.02, 0.02, 0.03);
+/// Shade alpha a quarter of the card from its edge, and at the edge itself.
+const SCROLL_FADE_MID_ALPHA: f32 = 0.8;
+const SCROLL_FADE_EDGE_ALPHA: f32 = 0.96;
+
+/// Spawns one card of a windowed list, shading the half of it that faces hidden cards.
+///
+/// A card with nothing hidden beyond it is spawned exactly as `spawn_card` builds it. An edge
+/// card is wrapped in a full-width box so the shade can be laid over it absolutely without
+/// knowing the card's height or touching its own children.
+pub(crate) fn spawn_windowed_card(
+    parent: &mut ChildSpawnerCommands<'_>,
+    fades: ScrollFades,
+    spawn_card: impl FnOnce(&mut ChildSpawnerCommands<'_>),
+) {
+    if !fades.any() {
+        spawn_card(parent);
+        return;
+    }
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_direction: FlexDirection::Column,
+            flex_shrink: 0.0,
+            ..default()
+        })
+        .with_children(|wrapper| {
+            spawn_card(wrapper);
+            spawn_scroll_fades(wrapper, fades);
+        });
+}
+
+/// Lays the shades for `fades` over the node being built, which must not clip them away.
+///
+/// Cards that size themselves by flex (and so cannot sit in [`spawn_windowed_card`]'s wrapper)
+/// call this as their last child instead.
+pub(crate) fn spawn_scroll_fades(parent: &mut ChildSpawnerCommands<'_>, fades: ScrollFades) {
+    for (fade, shown) in [
+        (ScrollFade::Top, fades.top),
+        (ScrollFade::Bottom, fades.bottom),
+    ] {
+        if shown {
+            spawn_scroll_fade(parent, fade);
+        }
+    }
+}
+
+fn spawn_scroll_fade(parent: &mut ChildSpawnerCommands<'_>, fade: ScrollFade) {
+    // The shade deepens quickly toward the edge the hidden cards lie past.
+    let stops = vec![
+        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(0.0), 0.0),
+        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(SCROLL_FADE_MID_ALPHA), 50.0),
+        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(SCROLL_FADE_EDGE_ALPHA), 100.0),
+    ];
+    let (gradient, top, bottom, radius) = match fade {
+        ScrollFade::Top => (
+            LinearGradient::to_top(stops),
+            px(0),
+            auto(),
+            BorderRadius::top(px(4)),
+        ),
+        ScrollFade::Bottom => (
+            LinearGradient::to_bottom(stops),
+            auto(),
+            px(0),
+            BorderRadius::bottom(px(4)),
+        ),
+    };
+    parent.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0),
+            right: px(0),
+            top,
+            bottom,
+            height: percent(50),
+            border_radius: radius,
+            ..default()
+        },
+        BackgroundGradient(vec![gradient.into()]),
+        fade,
+        Name::new("Scroll fade"),
+    ));
+}
+
 /// Category prefixes the scenario uses to group map ids, dropped from displayed place names.
 const MAP_ID_CATEGORIES: [&str; 4] = ["town", "port", "zone", "dungeon"];
 
@@ -245,7 +406,42 @@ fn title_case_word(word: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{location_display_name, meter_percent, window_start};
+    use super::{ScrollFades, location_display_name, meter_percent, window_start};
+
+    #[test]
+    fn only_edge_cards_facing_hidden_cards_fade() {
+        // Everything fits: nothing fades.
+        assert_eq!(ScrollFades::for_row(0, 5, 0, 5), ScrollFades::default());
+        assert_eq!(ScrollFades::for_row(4, 5, 0, 5), ScrollFades::default());
+        // At the top of a longer list only the last card fades, downward.
+        assert_eq!(
+            ScrollFades::for_row(6, 7, 0, 20),
+            ScrollFades {
+                top: false,
+                bottom: true
+            }
+        );
+        assert_eq!(ScrollFades::for_row(0, 7, 0, 20), ScrollFades::default());
+        // Scrolled to the end only the first card fades, upward.
+        assert_eq!(
+            ScrollFades::for_row(0, 7, 13, 20),
+            ScrollFades {
+                top: true,
+                bottom: false
+            }
+        );
+        assert_eq!(ScrollFades::for_row(6, 7, 13, 20), ScrollFades::default());
+        // A one-card window in the middle fades both ways.
+        assert_eq!(
+            ScrollFades::for_row(0, 1, 3, 9),
+            ScrollFades {
+                top: true,
+                bottom: true
+            }
+        );
+        // Middle cards never fade.
+        assert_eq!(ScrollFades::for_row(3, 7, 5, 20), ScrollFades::default());
+    }
 
     #[test]
     fn meter_fill_clamps_to_the_track_and_survives_a_zero_maximum() {

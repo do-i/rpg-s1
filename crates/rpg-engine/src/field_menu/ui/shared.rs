@@ -7,7 +7,7 @@ pub(in crate::field_menu) fn selected_inventory_index(
     if ids.is_empty() {
         return 0;
     }
-    if state.mode == FieldMenuMode::Browse {
+    if state.selected_is_list_cursor() {
         return state.selected.min(ids.len() - 1);
     }
     state
@@ -22,7 +22,7 @@ pub(in crate::field_menu) fn selected_inventory_id<'a>(
     ids: &'a [&'a str],
     list_index: usize,
 ) -> Option<&'a str> {
-    if state.mode == FieldMenuMode::Browse {
+    if state.selected_is_list_cursor() {
         ids.get(list_index).copied()
     } else {
         state.pending_id.as_deref()

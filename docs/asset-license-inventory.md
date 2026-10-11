@@ -409,7 +409,7 @@ status. The required fields are intentionally repeated in each entry.
 | Source path | `rusted_kingdoms/manifest.yaml` in `../agentic-rpg` at `0897035` |
 | Destination path | `assets/scenarios/rusted_kingdoms/manifest.yaml` |
 | Source SHA-256 | `93bd1d549152437237c37e398f9e9bc9cc7dcb6cb934cb013857a0a5c7340ec9` |
-| Destination SHA-256 | `553e7cbd9a2a5f2c5389e2a5a4baa6fb53db6d587c51b5ddc1183743fd185ce0` |
+| Destination SHA-256 | `0747573c49f6e45f912510fbbba6566618a1da24c8dab5cd961fefa9e1ee9821` |
 | Asset kind | scenario YAML |
 | Title/name | Rusted Kingdoms scenario manifest |
 | Creator/rightsholder | unknown; Ninja authored commits in the file history, but commit authorship does not establish sole ownership or a redistribution grant. |
@@ -2764,10 +2764,10 @@ sections above, which still need their own evidence.
 | ALI-1024 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/shop.tsx` | `cb7b1dcfb5b624275e75211bdedf6a3cfde887a013c54742b8c6ac206daa8fc6` | tileset XML / shop.tsx |
 | ALI-1025 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.png` | `07ae517bbda6d3b514b3e84731796db41231217d4d9d49b153c95aa2a2845af1` | image / cave.png |
 | ALI-1026 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/cave.tsx` | `967889b5de084ebe4aa7d938d1e1ec33550467a17178ba53c8d96283cf59e86f` | tileset XML / cave.tsx |
-| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.png` | `854e9e78b232af65ceb423cd21dc2b0801a915a36d18614a62b01493932cd99c` | image / town.png |
+| ALI-1027 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.png` | `41b06806a1c3e80b9a83c1ff3d163a20beb1f2a252c1c1bc22246ce0f67413ca` | image / town.png; roof, wall, and door additions generated with built-in image_gen, 2026-10-11; moss roof tiles 48, 63, 78, and 79 refined |
 | ALI-1028 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/town.tsx` | `944089646653ed2f94b430a1cfb8b37aacc9ac35d52b91682b48540a79f204a9` | tileset XML / town.tsx |
 | ALI-1029 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.png` | `7f6caf5d33d1d2d8bb05c6259755b09cae1166b1a8a0dd99806bd35605f27ca1` | image / outdoor.png |
 | ALI-1030 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.tsx` | `e1baf25670f49712513e3d7cd81b2cf18fc52c20862d5c94f69eb4df8c0c0a07` | tileset XML / outdoor.tsx |
 | ALI-1031 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor.png` | `ddd9b2eeb53afc3254aa5fa2452100727978ec5146ce6917d0440cfc346a4754` | image / decor.png |
 | ALI-1032 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/tilesets/decor.tsx` | `6ed3361bdba188922372d9c99467f9f1b7705e0527a34193ffdd2561b22eebda` | tileset XML / decor.tsx |
-
+| ALI-1033 | N/A - project-authored in this repository | `assets/scenarios/rusted_kingdoms/media/images/ui/menu_icons.png` | `30ebea34c304d072ec74a3d7ab4f7ca4a923472aad2a9ec8958d24ad16a11ffe` | image / menu_icons.png |

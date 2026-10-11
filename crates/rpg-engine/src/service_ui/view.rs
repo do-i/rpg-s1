@@ -21,9 +21,10 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        spawn_header_bars, spawn_meter, spawn_section_rule, spawn_status_panel, spawn_status_text,
-        status_border, status_border_active, status_ember, status_faint, status_gold, status_ink,
-        status_muted, status_ready, status_teal, window_start,
+        ScrollFades, spawn_header_bars, spawn_meter, spawn_section_rule, spawn_status_panel,
+        spawn_status_text, spawn_windowed_card, status_border, status_border_active, status_ember,
+        status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
+        window_start,
     },
     runtime_member::RuntimeMember,
     scenario_dialogue::DialogueShopKind,
@@ -358,32 +359,37 @@ fn spawn_buy_page(
                 return;
             }
             let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-            for (index, row) in rows
+            let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
+            for (offset, (index, row)) in rows
                 .iter()
                 .enumerate()
                 .skip(first)
                 .take(SERVICE_VISIBLE_ROWS)
+                .enumerate()
             {
-                let price = row.buy_price().get();
-                let affordable = game.repository().gp() >= price;
-                let item = catalog.item(row.id());
-                spawn_list_row(
-                    panel,
-                    font,
-                    ListRow {
-                        selected: index == state.selected,
-                        accent: item.map_or_else(status_teal, item_accent),
-                        label: item.map_or(row.id(), |item| item_name(item)),
-                        note: format!("owned {}", game.repository().item_count(row.id())),
-                        value: format!("{price} GP"),
-                        value_color: if affordable {
-                            status_gold()
-                        } else {
-                            status_ember()
+                let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+                spawn_windowed_card(panel, fades, |panel| {
+                    let price = row.buy_price().get();
+                    let affordable = game.repository().gp() >= price;
+                    let item = catalog.item(row.id());
+                    spawn_list_row(
+                        panel,
+                        font,
+                        ListRow {
+                            selected: index == state.selected,
+                            accent: item.map_or_else(status_teal, item_accent),
+                            label: item.map_or(row.id(), |item| item_name(item)),
+                            note: format!("owned {}", game.repository().item_count(row.id())),
+                            value: format!("{price} GP"),
+                            value_color: if affordable {
+                                status_gold()
+                            } else {
+                                status_ember()
+                            },
+                            dim: !affordable,
                         },
-                        dim: !affordable,
-                    },
-                );
+                    );
+                });
             }
             spawn_window_footer(panel, font, state.selected, rows.len());
         });
@@ -569,31 +575,36 @@ fn spawn_sell_page(
             return;
         }
         let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        for (index, item) in rows
+        let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
+        for (offset, (index, item)) in rows
             .iter()
             .enumerate()
             .skip(first)
             .take(SERVICE_VISIBLE_ROWS)
+            .enumerate()
         {
-            let sellable = can_sell(game.repository(), item);
-            spawn_list_row(
-                panel,
-                font,
-                ListRow {
-                    selected: index == state.selected,
-                    accent: item_accent(item),
-                    label: item_name(item),
-                    note: format!("x{}", game.repository().item_count(item.id())),
-                    value: sell_price(item)
-                        .map_or_else(|| "—".to_owned(), |price| format!("{price} GP")),
-                    value_color: if sellable {
-                        status_gold()
-                    } else {
-                        status_faint()
+            let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+            spawn_windowed_card(panel, fades, |panel| {
+                let sellable = can_sell(game.repository(), item);
+                spawn_list_row(
+                    panel,
+                    font,
+                    ListRow {
+                        selected: index == state.selected,
+                        accent: item_accent(item),
+                        label: item_name(item),
+                        note: format!("x{}", game.repository().item_count(item.id())),
+                        value: sell_price(item)
+                            .map_or_else(|| "—".to_owned(), |price| format!("{price} GP")),
+                        value_color: if sellable {
+                            status_gold()
+                        } else {
+                            status_faint()
+                        },
+                        dim: !sellable,
                     },
-                    dim: !sellable,
-                },
-            );
+                );
+            });
         }
         spawn_window_footer(panel, font, state.selected, rows.len());
     });
@@ -621,40 +632,45 @@ fn spawn_core_page(
             return;
         }
         let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        for (index, item) in rows
+        let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
+        for (offset, (index, item)) in rows
             .iter()
             .enumerate()
             .skip(first)
             .take(SERVICE_VISIBLE_ROWS)
+            .enumerate()
         {
-            let ItemDefinition::MagicCore(core) = item else {
-                continue;
-            };
-            let Some(rate) = core.exchange_rate.map(NonZeroU32::get) else {
-                continue;
-            };
-            spawn_list_row(
-                panel,
-                font,
-                ListRow {
-                    selected: index == state.selected,
-                    accent: item_accent(item),
-                    label: item_name(item),
-                    // The owned count is what the player is choosing against, so it stays on
-                    // every row; the confirmation warning is appended, never substituted.
-                    note: {
-                        let owned = game.repository().item_count(item.id());
-                        if rate >= super::HIGH_VALUE_CORE_RATE {
-                            format!("x{owned}   ·   confirms before exchange")
-                        } else {
-                            format!("x{owned}")
-                        }
+            let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+            spawn_windowed_card(panel, fades, |panel| {
+                let ItemDefinition::MagicCore(core) = item else {
+                    return;
+                };
+                let Some(rate) = core.exchange_rate.map(NonZeroU32::get) else {
+                    return;
+                };
+                spawn_list_row(
+                    panel,
+                    font,
+                    ListRow {
+                        selected: index == state.selected,
+                        accent: item_accent(item),
+                        label: item_name(item),
+                        // The owned count is what the player is choosing against, so it stays on
+                        // every row; the confirmation warning is appended, never substituted.
+                        note: {
+                            let owned = game.repository().item_count(item.id());
+                            if rate >= super::HIGH_VALUE_CORE_RATE {
+                                format!("x{owned}   ·   confirms before exchange")
+                            } else {
+                                format!("x{owned}")
+                            }
+                        },
+                        value: format!("{rate} GP"),
+                        value_color: status_gold(),
+                        dim: false,
                     },
-                    value: format!("{rate} GP"),
-                    value_color: status_gold(),
-                    dim: false,
-                },
-            );
+                );
+            });
         }
         spawn_window_footer(panel, font, state.selected, rows.len());
     });
@@ -753,22 +769,30 @@ fn spawn_apothecary_page(
                 return;
             }
             let first = window_start(state.selected, recipes.len(), SERVICE_VISIBLE_ROWS);
-            for (index, recipe) in recipes
+            let shown = recipes
+                .len()
+                .saturating_sub(first)
+                .min(SERVICE_VISIBLE_ROWS);
+            for (offset, (index, recipe)) in recipes
                 .iter()
                 .enumerate()
                 .skip(first)
                 .take(SERVICE_VISIBLE_ROWS)
+                .enumerate()
             {
-                let availability = recipe_availability(recipe, game.flags(), game.repository());
-                spawn_recipe_row(
-                    panel,
-                    font,
-                    sprites,
-                    recipe,
-                    catalog,
-                    availability,
-                    index == state.selected,
-                );
+                let fades = ScrollFades::for_row(offset, shown, first, recipes.len());
+                spawn_windowed_card(panel, fades, |panel| {
+                    let availability = recipe_availability(recipe, game.flags(), game.repository());
+                    spawn_recipe_row(
+                        panel,
+                        font,
+                        sprites,
+                        recipe,
+                        catalog,
+                        availability,
+                        index == state.selected,
+                    );
+                });
             }
             spawn_window_footer(panel, font, state.selected, recipes.len());
         });

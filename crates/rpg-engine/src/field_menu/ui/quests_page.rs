@@ -210,18 +210,30 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
                 return;
             }
             let first = quest_window_start(selected, quests.len());
-            for (index, quest) in quests
-                .iter()
-                .enumerate()
-                .skip(first)
-                .take(QUEST_VISIBLE_ROWS)
-            {
-                spawn_quest_row(panel, font, quest, game, index == selected);
-            }
-            panel.spawn(Node {
-                flex_grow: 1.0,
-                ..default()
-            });
+            let shown = quests.len().saturating_sub(first).min(QUEST_VISIBLE_ROWS);
+            // The cards share the column's height, so a full window fills it edge to edge.
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_grow: 1.0,
+                    min_height: px(0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(7),
+                    ..default()
+                })
+                .with_children(|cards| {
+                    for (offset, (index, quest)) in quests
+                        .iter()
+                        .enumerate()
+                        .skip(first)
+                        .take(QUEST_VISIBLE_ROWS)
+                        .enumerate()
+                    {
+                        let fades = ScrollFades::for_row(offset, shown, first, quests.len());
+                        spawn_quest_row(cards, font, quest, game, index == selected, fades);
+                    }
+                });
+            spawn_panel_rule(panel);
             spawn_status_text(
                 panel,
                 register_footer("QUEST", selected, first, quests.len(), QUEST_VISIBLE_ROWS),
@@ -239,12 +251,18 @@ pub(in crate::field_menu) fn spawn_quest_row(
     quest: &QuestDefinition,
     game: &GameState,
     selected: bool,
+    fades: ScrollFades,
 ) {
     let status = quest_status(quest, game.flags());
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(54),
+            // Equal shares of the list's height, between the old fixed size and a cap that
+            // stops a short list from ballooning its few cards.
+            flex_grow: 1.0,
+            flex_basis: px(0),
+            min_height: px(REGISTER_CARD_MIN_HEIGHT),
+            max_height: px(REGISTER_CARD_MAX_HEIGHT),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             padding: UiRect::axes(px(10), px(6)),
@@ -307,6 +325,7 @@ pub(in crate::field_menu) fn spawn_quest_row(
             );
         });
         spawn_quest_status_pill(row, font, status);
+        spawn_scroll_fades(row, fades);
     });
 }
 
@@ -611,7 +630,7 @@ mod tests {
         );
         assert_eq!(
             register_footer("QUEST", 9, 3, 16, QUEST_VISIBLE_ROWS),
-            "QUEST 10 OF 16   ·   SHOWING 04-10"
+            "QUEST 10 OF 16   ·   SHOWING 04-11"
         );
     }
 

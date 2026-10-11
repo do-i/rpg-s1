@@ -14,6 +14,8 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     walk_sheets: Res<PartyWalkSheets>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     transport: Option<Res<TransportDomain>>,
+    mut layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut icons: Local<Option<MainCommandIcons>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuMainPage>>,
 ) {
@@ -47,11 +49,22 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
+    if icons.is_none()
+        && let Some(path) = inventory.menu_icons.as_ref()
+    {
+        *icons = Some(MainCommandIcons::load(
+            &asset_server,
+            &root,
+            path,
+            &mut layouts,
+        ));
+    }
     let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game);
     commands.entity(menu_root).with_children(|parent| {
         spawn_main_menu_page(
             parent,
             &font,
+            icons.as_ref(),
             &state,
             &game,
             &thumbnails,
@@ -102,9 +115,64 @@ impl PartyWalkThumbnails {
     }
 }
 
+/// Edge of one square cell in the scenario's command icon sheet.
+const MAIN_COMMAND_ICON_CELL: u32 = 64;
+/// Drawn size inside the 42px badge frame.
+const MAIN_COMMAND_ICON_SIZE: f32 = 32.0;
+
+/// The command deck's icon sheet, sliced into one cell per command.
+pub(in crate::field_menu) struct MainCommandIcons {
+    image: Handle<Image>,
+    layout: Handle<TextureAtlasLayout>,
+}
+
+impl MainCommandIcons {
+    fn load(
+        asset_server: &AssetServer,
+        root: &ScenarioRoot,
+        path: &ScenarioRelativePath,
+        layouts: &mut Assets<TextureAtlasLayout>,
+    ) -> Self {
+        let columns = MAIN_COMMANDS.len() as u32;
+        Self {
+            image: asset_server.load(root.resolve(path)),
+            layout: layouts.add(TextureAtlasLayout::from_grid(
+                UVec2::splat(MAIN_COMMAND_ICON_CELL),
+                columns,
+                1,
+                None,
+                None,
+            )),
+        }
+    }
+
+    /// The icon for `command`, tinted the command's accent; the sheet itself is drawn white.
+    fn node(&self, command: &MainCommand, accent: Color) -> ImageNode {
+        ImageNode::from_atlas_image(
+            self.image.clone(),
+            TextureAtlas {
+                layout: self.layout.clone(),
+                index: command.icon,
+            },
+        )
+        .with_color(accent)
+    }
+}
+
+#[cfg(test)]
+impl MainCommandIcons {
+    pub(in crate::field_menu) fn test_stub() -> Self {
+        Self {
+            image: Handle::default(),
+            layout: Handle::default(),
+        }
+    }
+}
+
 pub(in crate::field_menu) fn spawn_main_menu_page(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    icons: Option<&MainCommandIcons>,
     state: &FieldMenuState,
     game: &GameState,
     thumbnails: &PartyWalkThumbnails,
@@ -132,7 +200,7 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
                 ..default()
             })
             .with_children(|body| {
-                spawn_main_commands_panel(body, font, state);
+                spawn_main_commands_panel(body, font, icons, state);
             });
             spawn_status_text(
                 page,
@@ -192,6 +260,7 @@ pub(in crate::field_menu) fn spawn_main_menu_header(
 pub(in crate::field_menu) fn spawn_main_commands_panel(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    icons: Option<&MainCommandIcons>,
     state: &FieldMenuState,
 ) {
     spawn_status_panel(
@@ -218,7 +287,7 @@ pub(in crate::field_menu) fn spawn_main_commands_panel(
                 })
                 .with_children(|columns| {
                     for column in 0..main_command_columns() {
-                        spawn_main_command_column(columns, font, state, column);
+                        spawn_main_command_column(columns, font, icons, state, column);
                     }
                 });
         },
@@ -228,6 +297,7 @@ pub(in crate::field_menu) fn spawn_main_commands_panel(
 pub(in crate::field_menu) fn spawn_main_command_column(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    icons: Option<&MainCommandIcons>,
     state: &FieldMenuState,
     column: usize,
 ) {
@@ -249,6 +319,7 @@ pub(in crate::field_menu) fn spawn_main_command_column(
                 spawn_main_command_row(
                     list,
                     font,
+                    icons,
                     command,
                     index,
                     index == state.main_command_cursor(),
@@ -260,6 +331,7 @@ pub(in crate::field_menu) fn spawn_main_command_column(
 pub(in crate::field_menu) fn spawn_main_command_row(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    icons: Option<&MainCommandIcons>,
     command: &MainCommand,
     index: usize,
     selected: bool,
@@ -307,8 +379,19 @@ pub(in crate::field_menu) fn spawn_main_command_row(
             BackgroundColor(Color::srgba_u8(25, 24, 31, 235)),
             BorderColor::all(accent),
         ))
-        .with_children(|badge| {
-            spawn_status_text(badge, command.badge, font, 14.0, accent);
+        .with_children(|badge| match icons {
+            Some(icons) => {
+                badge.spawn((
+                    Node {
+                        width: px(MAIN_COMMAND_ICON_SIZE),
+                        height: px(MAIN_COMMAND_ICON_SIZE),
+                        ..default()
+                    },
+                    icons.node(command, accent),
+                    MainCommandIcon,
+                ));
+            }
+            None => spawn_status_text(badge, command.badge, font, 14.0, accent),
         });
         row.spawn(Node {
             flex_direction: FlexDirection::Column,

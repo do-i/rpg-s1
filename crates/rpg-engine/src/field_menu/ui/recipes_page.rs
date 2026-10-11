@@ -215,18 +215,38 @@ pub(in crate::field_menu) fn spawn_recipe_list_column(
                 return;
             }
             let first = recipe_window_start(selected, recipes.len());
-            for (index, recipe) in recipes
-                .iter()
-                .enumerate()
-                .skip(first)
-                .take(RECIPE_VISIBLE_ROWS)
-            {
-                spawn_recipe_book_row(panel, font, recipe, game, catalog, index == selected);
-            }
-            panel.spawn(Node {
-                flex_grow: 1.0,
-                ..default()
-            });
+            let shown = recipes.len().saturating_sub(first).min(RECIPE_VISIBLE_ROWS);
+            // The cards share the column's height, so a full window fills it edge to edge.
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    flex_grow: 1.0,
+                    min_height: px(0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(7),
+                    ..default()
+                })
+                .with_children(|cards| {
+                    for (offset, (index, recipe)) in recipes
+                        .iter()
+                        .enumerate()
+                        .skip(first)
+                        .take(RECIPE_VISIBLE_ROWS)
+                        .enumerate()
+                    {
+                        let fades = ScrollFades::for_row(offset, shown, first, recipes.len());
+                        spawn_recipe_book_row(
+                            cards,
+                            font,
+                            recipe,
+                            game,
+                            catalog,
+                            index == selected,
+                            fades,
+                        );
+                    }
+                });
+            spawn_panel_rule(panel);
             spawn_status_text(
                 panel,
                 register_footer(
@@ -251,13 +271,19 @@ pub(in crate::field_menu) fn spawn_recipe_book_row(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     selected: bool,
+    fades: ScrollFades,
 ) {
     let availability = recipe_availability(recipe, game.flags(), game.repository());
     let sealed = availability == RecipeAvailability::Locked;
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(54),
+            // Equal shares of the list's height, between the old fixed size and a cap that
+            // stops a short list from ballooning its few cards.
+            flex_grow: 1.0,
+            flex_basis: px(0),
+            min_height: px(REGISTER_CARD_MIN_HEIGHT),
+            max_height: px(REGISTER_CARD_MAX_HEIGHT),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             padding: UiRect::axes(px(10), px(6)),
@@ -312,6 +338,7 @@ pub(in crate::field_menu) fn spawn_recipe_book_row(
             );
         });
         spawn_recipe_state_pill(row, font, availability);
+        spawn_scroll_fades(row, fades);
     });
 }
 

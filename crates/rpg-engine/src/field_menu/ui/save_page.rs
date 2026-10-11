@@ -105,19 +105,25 @@ pub(in crate::field_menu) fn spawn_save_page(
                     }
                     spawn_section_rule(modal);
                     let page_start = save_page_start(state.selected);
-                    for slot in saves
+                    let len = saves.slots().len();
+                    let shown = len.saturating_sub(page_start).min(SAVE_VISIBLE_ROWS);
+                    for (offset, slot) in saves
                         .slots()
                         .iter()
                         .skip(page_start)
                         .take(SAVE_VISIBLE_ROWS)
+                        .enumerate()
                     {
-                        spawn_field_save_slot_row(
-                            modal,
-                            font,
-                            slot,
-                            slot.index == state.selected,
-                            false,
-                        );
+                        let fades = ScrollFades::for_row(offset, shown, page_start, len);
+                        spawn_windowed_card(modal, fades, |modal| {
+                            spawn_field_save_slot_row(
+                                modal,
+                                font,
+                                slot,
+                                slot.index == state.selected,
+                                false,
+                            );
+                        });
                     }
                 }
                 modal.spawn(Node {

@@ -82,7 +82,15 @@ pub(in crate::field_menu) fn spawn_status_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_party_column(columns, font, state, game, catalog, portraits);
+                spawn_party_column(
+                    columns,
+                    font,
+                    state,
+                    game,
+                    catalog,
+                    portraits,
+                    state.status_page == StatusPage::Roster,
+                );
                 spawn_member_column(columns, font, state, game, catalog, portraits);
                 if state.status_page == StatusPage::Position {
                     spawn_position_column(columns, font, state, game);
@@ -95,12 +103,14 @@ pub(in crate::field_menu) fn spawn_status_page(
                 page,
                 match state.status_page {
                     StatusPage::Roster => {
-                        "UP/DOWN   SELECT MEMBER      ENTER   STATS      ESC   BACK"
+                        "UP/DOWN   SELECT MEMBER      RIGHT / ENTER   STATS      ESC   BACK"
                     }
                     StatusPage::Details => {
-                        "UP/DOWN   SELECT ACTION      ENTER   OPEN      ESC   PORTRAIT"
+                        "UP/DOWN   SELECT ACTION      ENTER   OPEN      LEFT / ESC   PARTY"
                     }
-                    StatusPage::Position => "UP/DOWN   SELECT ROW      ENTER   SET      ESC   BACK",
+                    StatusPage::Position => {
+                        "UP/DOWN   SELECT ROW      ENTER   SET      LEFT / ESC   BACK"
+                    }
                 },
                 font,
                 15.0,
@@ -156,8 +166,9 @@ pub(in crate::field_menu) fn spawn_party_column(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    focused: bool,
 ) {
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             width: px(STATUS_PARTY_WIDTH),
@@ -171,6 +182,7 @@ pub(in crate::field_menu) fn spawn_party_column(
         },
         "PARTY",
         font,
+        focused,
         |panel| {
             for (index, member) in game.party().members().enumerate() {
                 let selected = index == state.member_index;
@@ -395,7 +407,7 @@ pub(in crate::field_menu) fn spawn_member_details_column(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             width: px(STATUS_DETAIL_WIDTH),
@@ -410,6 +422,7 @@ pub(in crate::field_menu) fn spawn_member_details_column(
         },
         member.name(),
         font,
+        state.status_page == StatusPage::Details,
         |panel| {
             panel
                 .spawn(Node {
@@ -702,7 +715,7 @@ pub(in crate::field_menu) fn spawn_position_column(
         return;
     };
     let current = member.row();
-    spawn_status_panel(
+    spawn_focus_panel(
         parent,
         Node {
             height: percent(100),
@@ -717,6 +730,7 @@ pub(in crate::field_menu) fn spawn_position_column(
         },
         "BATTLE POSITION",
         font,
+        true,
         |panel| {
             spawn_status_text(
                 panel,

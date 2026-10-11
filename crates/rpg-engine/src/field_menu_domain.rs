@@ -1449,6 +1449,16 @@ pub(crate) mod tests {
         }
     }
 
+    /// [`catalog`] with the shipped quest register, for pages that list quests.
+    pub(crate) fn catalog_with_quests() -> FieldMenuCatalog {
+        let file: QuestCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/quests.yaml")))
+                .expect("the shipped quest register parses");
+        let mut catalog = catalog();
+        catalog.quests = file.entries().to_vec();
+        catalog
+    }
+
     pub(crate) fn catalog() -> FieldMenuCatalog {
         let item_documents = [
             include_str!(scenario_file!("data/items/accessories.yaml")),
