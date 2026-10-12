@@ -28,8 +28,8 @@ use crate::{
         spawn_header_bars, spawn_section_rule, spawn_status_text, status_border_active,
         status_faint, status_gold, status_ink, status_muted, status_teal,
     },
-    options_domain::{Device, OptionsEffect, OptionsScreen},
-    options_store::{OptionsStore, PlayerOptions, load_player_options},
+    options_domain::{Device, OptionsEffect, OptionsRow, OptionsScreen},
+    options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions, load_player_options},
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
 };
@@ -71,6 +71,44 @@ struct OptionsEntryLatch(bool);
 #[derive(Resource, Default)]
 struct OptionsDirty(bool);
 
+#[derive(Resource, Default)]
+struct OptionsRecovery {
+    confirming: bool,
+    message: String,
+}
+
+impl OptionsRecovery {
+    fn status(&self, load: &OptionsLoadStatus) -> String {
+        if self.confirming {
+            "Replace preserved options? Confirm backs up the original to \
+             options.yaml.rejected-###.bak, then saves shipped defaults. \
+             Back cancels and keeps your session changes. Click Reset To Defaults again to confirm."
+                .to_owned()
+        } else if !self.message.is_empty() {
+            self.message.clone()
+        } else {
+            load.rejection_message().unwrap_or_default()
+        }
+    }
+}
+
+fn confirm_option(
+    screen: &mut OptionsScreen,
+    options: &mut PlayerOptions,
+    load: &OptionsLoadStatus,
+    recovery: &mut OptionsRecovery,
+) -> OptionsEffect {
+    if matches!(load, OptionsLoadStatus::Rejected(_))
+        && screen.rows()[screen.selected()] == OptionsRow::ResetDefaults
+    {
+        recovery.confirming = true;
+        recovery.message.clear();
+        OptionsEffect::None
+    } else {
+        screen.confirm(options)
+    }
+}
+
 #[derive(Component)]
 struct OptionsScreenEntity;
 
@@ -107,13 +145,15 @@ impl Plugin for OptionsScreenPlugin {
             .init_resource::<OptionsReturn>()
             .init_resource::<OptionsEntryLatch>()
             .init_resource::<OptionsDirty>()
+            .init_resource::<OptionsLoadStatus>()
+            .init_resource::<OptionsRecovery>()
             .init_resource::<OptionsStore>()
             .add_systems(Startup, load_options_at_startup)
             .add_systems(OnEnter(AppState::Options), setup_options_screen)
             .add_systems(OnExit(AppState::Options), cleanup_options_screen)
             .add_systems(
                 Update,
-                (handle_options_input, refresh_options_text, persist_options)
+                (handle_options_input, persist_options, refresh_options_text)
                     .chain()
                     .run_if(in_state(AppState::Options)),
             );
@@ -124,10 +164,20 @@ impl Plugin for OptionsScreenPlugin {
 ///
 /// Bindings decide what the title screen's very first keypress does, so they cannot arrive as an
 /// asset a few frames in.
-fn load_options_at_startup(store: Res<OptionsStore>, mut options: ResMut<PlayerOptions>) {
-    *options = load_player_options(&store);
+fn load_options_at_startup(
+    store: Res<OptionsStore>,
+    mut options: ResMut<PlayerOptions>,
+    mut load: ResMut<OptionsLoadStatus>,
+) {
+    let (loaded, status) = load_player_options(&store);
+    *options = loaded;
+    *load = status;
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "screen entry initializes recovery and input latch alongside layout resources"
+)]
 fn setup_options_screen(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -136,8 +186,10 @@ fn setup_options_screen(
     screen: Res<OptionsScreen>,
     options: Res<PlayerOptions>,
     mut latch: ResMut<OptionsEntryLatch>,
+    mut recovery: ResMut<OptionsRecovery>,
 ) {
     latch.0 = true;
+    recovery.confirming = false;
     commands.spawn((fixed_gameplay_camera(), OptionsScreenEntity));
 
     // The same face the load picker and field menu draw with; Bevy's built-in monospace is only
@@ -350,11 +402,48 @@ fn handle_options_input(
     mut options: ResMut<PlayerOptions>,
     mut latch: ResMut<OptionsEntryLatch>,
     mut dirty: ResMut<OptionsDirty>,
+    store: Option<Res<OptionsStore>>,
+    mut load: ResMut<OptionsLoadStatus>,
+    mut recovery: ResMut<OptionsRecovery>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
     return_to: Res<OptionsReturn>,
 ) {
     if latch.0 {
         latch.0 = false;
+        return;
+    }
+
+    if recovery.confirming {
+        let clicked_reset = pointer.just_clicked()
+            && rows.iter().any(|(row, node, transform)| {
+                screen.rows()[row.0] == OptionsRow::ResetDefaults
+                    && pointer.is_over(node, transform)
+            });
+        if actions.just_pressed(AppAction::Back) || keys.just_pressed(KeyCode::Escape) {
+            recovery.confirming = false;
+        } else if actions.just_pressed(AppAction::Confirm) || clicked_reset {
+            recovery.confirming = false;
+            if let Some(store) = store {
+                let defaults = PlayerOptions::default();
+                match store.replace_rejected(&defaults) {
+                    Ok(backup) => {
+                        *options = defaults;
+                        *load = OptionsLoadStatus::Loaded;
+                        dirty.0 = false;
+                        recovery.message = format!(
+                            "Original options backed up to {}. Shipped defaults saved.",
+                            backup.display()
+                        );
+                    }
+                    Err(error) => {
+                        recovery.message = format!(
+                            "Could not replace options: {error}. Session choices remain active; \
+                             the original or its verified backup is preserved. Choose Reset To Defaults to try again."
+                        );
+                    }
+                }
+            }
+        }
         return;
     }
 
@@ -394,15 +483,15 @@ fn handle_options_input(
             if let Some(cell) = clicked_cell {
                 screen.select(cell.row);
                 screen.set_device(cell.device);
-                effect = screen.confirm(&mut options);
+                effect = confirm_option(&mut screen, &mut options, &load, &mut recovery);
             } else if rows
                 .iter()
                 .any(|(_, node, transform)| pointer.is_over(node, transform))
             {
-                effect = screen.confirm(&mut options);
+                effect = confirm_option(&mut screen, &mut options, &load, &mut recovery);
             }
         } else if actions.just_pressed(AppAction::Confirm) {
-            effect = screen.confirm(&mut options);
+            effect = confirm_option(&mut screen, &mut options, &load, &mut recovery);
         } else if actions.just_pressed(AppAction::Back) {
             effect = screen.back();
         } else if keys.just_pressed(KeyCode::Delete) || keys.just_pressed(KeyCode::Backspace) {
@@ -446,6 +535,8 @@ type OptionsTextQuery<'world, 'state> = Query<
 fn refresh_options_text(
     screen: Res<OptionsScreen>,
     options: Res<PlayerOptions>,
+    load: Res<OptionsLoadStatus>,
+    recovery: Res<OptionsRecovery>,
     mut rows: Query<(&OptionsRowNode, &mut BackgroundColor, &mut BorderColor)>,
     mut texts: OptionsTextQuery,
 ) {
@@ -481,7 +572,12 @@ fn refresh_options_text(
                 status_muted()
             };
         } else if is_status {
-            text.0 = screen.status().to_owned();
+            let persistence = recovery.status(&load);
+            text.0 = if persistence.is_empty() {
+                screen.status().to_owned()
+            } else {
+                format!("{}\n{persistence}", screen.status())
+            };
         } else if is_hint {
             text.0 = screen.hint().to_owned();
         }
@@ -497,12 +593,20 @@ fn persist_options(
     store: Res<OptionsStore>,
     options: Res<PlayerOptions>,
     mut dirty: ResMut<OptionsDirty>,
+    mut load: ResMut<OptionsLoadStatus>,
+    mut recovery: ResMut<OptionsRecovery>,
 ) {
     if !dirty.0 {
         return;
     }
     dirty.0 = false;
-    if let Err(error) = store.store(&options) {
+    if let Err(error) = store.persist(&options, &load) {
+        if !matches!(*load, OptionsLoadStatus::Rejected(_))
+            && let (_, rejected @ OptionsLoadStatus::Rejected(_)) = load_player_options(&store)
+        {
+            *load = rejected;
+            recovery.message.clear();
+        }
         error!(
             "could not save options to {}: {error}",
             store.path().display()
@@ -552,6 +656,8 @@ mod tests {
             .init_resource::<PlayerOptions>()
             .init_resource::<OptionsEntryLatch>()
             .init_resource::<OptionsDirty>()
+            .init_resource::<OptionsLoadStatus>()
+            .init_resource::<OptionsRecovery>()
             .init_resource::<OptionsReturn>()
             .add_message::<AppStateTransitionRequest>()
             .add_systems(Update, handle_options_input);
@@ -566,6 +672,176 @@ mod tests {
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
             .clear();
+    }
+
+    #[test]
+    fn rejected_future_options_survive_a_real_rebind_and_persistence() {
+        let root = std::env::temp_dir().join(format!("rpg-s1-rf04-rebind-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let store = OptionsStore::new(root.clone());
+        let original = b"# newer player settings\nversion: 99\n";
+        std::fs::write(store.path(), original).unwrap();
+        let mut app = options_app();
+        app.insert_resource(store.clone())
+            .add_systems(Startup, load_options_at_startup)
+            .add_systems(Update, persist_options.after(handle_options_input));
+        app.update();
+        {
+            let mut screen = app.world_mut().resource_mut::<OptionsScreen>();
+            screen.navigate(6);
+            screen.confirm(&mut PlayerOptions::default());
+        }
+        press(&mut app, KeyCode::KeyG);
+        assert!(
+            app.world()
+                .resource::<PlayerOptions>()
+                .bindings
+                .keys(BindingTarget::Menu(AppAction::Travel))
+                .contains(&KeyCode::KeyG)
+        );
+        assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn rejected_reset_app(label: &str) -> (App, OptionsStore, Vec<u8>) {
+        let root = std::env::temp_dir().join(format!("rpg-s1-rf04-{label}-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let store = OptionsStore::new(root);
+        let original = b"# newer schema\nversion: 99\nnew_option: true\n".to_vec();
+        std::fs::write(store.path(), &original).unwrap();
+        let mut app = options_app();
+        app.insert_resource(store.clone())
+            .add_systems(Startup, load_options_at_startup)
+            .add_systems(
+                Update,
+                (persist_options, refresh_options_text)
+                    .chain()
+                    .after(handle_options_input),
+            );
+        app.world_mut()
+            .spawn((Text::new(""), TextColor::default(), OptionsStatusText));
+        app.update();
+        let reset = app
+            .world()
+            .resource::<OptionsScreen>()
+            .rows()
+            .iter()
+            .position(|row| *row == OptionsRow::ResetDefaults)
+            .unwrap();
+        app.world_mut()
+            .resource_mut::<OptionsScreen>()
+            .select(reset);
+        (app, store, original)
+    }
+
+    fn action(app: &mut App, value: crate::input_record::NormalizedAction) {
+        app.world_mut()
+            .resource_mut::<ActionState>()
+            .replace_with_normalized(&[value]);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ActionState>()
+            .replace_with_normalized(&[]);
+        app.update();
+    }
+
+    fn visible_status(app: &mut App) -> String {
+        app.world_mut()
+            .query_filtered::<&Text, With<OptionsStatusText>>()
+            .single(app.world())
+            .unwrap()
+            .0
+            .clone()
+    }
+
+    #[test]
+    fn rejected_reset_requires_confirmation_and_preserves_an_exact_backup() {
+        let (mut app, store, original) = rejected_reset_app("reset-confirm");
+        assert!(visible_status(&mut app).contains("Options file preserved"));
+        app.world_mut().resource_mut::<PlayerOptions>().text_speed =
+            Some(crate::engine_config::TextSpeed::Slow);
+        action(&mut app, crate::input_record::NormalizedAction::Confirm);
+        let recovery = app.world().resource::<OptionsRecovery>();
+        assert!(recovery.confirming);
+        assert!(
+            recovery
+                .status(app.world().resource::<OptionsLoadStatus>())
+                .contains("backs up the original")
+        );
+        assert!(visible_status(&mut app).contains("Back cancels"));
+        assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        assert_eq!(
+            std::fs::read_dir(store.path().parent().unwrap())
+                .unwrap()
+                .count(),
+            1
+        );
+        action(&mut app, crate::input_record::NormalizedAction::Back);
+        assert!(!app.world().resource::<OptionsRecovery>().confirming);
+        assert_eq!(
+            app.world().resource::<PlayerOptions>().text_speed,
+            Some(crate::engine_config::TextSpeed::Slow)
+        );
+        action(&mut app, crate::input_record::NormalizedAction::Confirm);
+        action(&mut app, crate::input_record::NormalizedAction::Confirm);
+        assert_eq!(
+            *app.world().resource::<OptionsLoadStatus>(),
+            OptionsLoadStatus::Loaded
+        );
+        assert_eq!(
+            *app.world().resource::<PlayerOptions>(),
+            PlayerOptions::default()
+        );
+        assert_eq!(
+            std::fs::read(store.path().with_file_name("options.yaml.rejected-001.bak")).unwrap(),
+            original
+        );
+        assert!(
+            app.world()
+                .resource::<OptionsRecovery>()
+                .message
+                .contains("Shipped defaults saved")
+        );
+        // Persistence becomes available after explicit recovery.
+        app.world_mut()
+            .resource_mut::<PlayerOptions>()
+            .auto_enemy_turns = true;
+        app.world_mut().resource_mut::<OptionsDirty>().0 = true;
+        app.update();
+        assert!(store.load().unwrap().0.auto_enemy_turns);
+        std::fs::remove_dir_all(store.path().parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn failed_explicit_recovery_keeps_session_choices_and_shows_the_reason() {
+        let (mut app, store, original) = rejected_reset_app("reset-failure");
+        for suffix in 1..=999 {
+            std::fs::write(
+                store
+                    .path()
+                    .with_file_name(format!("options.yaml.rejected-{suffix:03}.bak")),
+                b"occupied",
+            )
+            .unwrap();
+        }
+        app.world_mut()
+            .resource_mut::<PlayerOptions>()
+            .auto_enemy_turns = true;
+        action(&mut app, crate::input_record::NormalizedAction::Confirm);
+        action(&mut app, crate::input_record::NormalizedAction::Confirm);
+        assert!(app.world().resource::<PlayerOptions>().auto_enemy_turns);
+        assert!(matches!(
+            *app.world().resource::<OptionsLoadStatus>(),
+            OptionsLoadStatus::Rejected(_)
+        ));
+        assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        assert!(
+            app.world()
+                .resource::<OptionsRecovery>()
+                .message
+                .contains("999 backup names")
+        );
+        std::fs::remove_dir_all(store.path().parent().unwrap()).unwrap();
     }
 
     #[test]

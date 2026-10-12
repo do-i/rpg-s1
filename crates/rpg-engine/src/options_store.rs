@@ -106,6 +106,30 @@ impl PlayerOptions {
     }
 }
 
+/// Startup compatibility remains visible even while gameplay uses fallback defaults.
+#[derive(Clone, Debug, Default, PartialEq, Resource)]
+pub(crate) enum OptionsLoadStatus {
+    #[default]
+    Missing,
+    Loaded,
+    Warnings(Vec<String>),
+    Rejected(OptionsStoreError),
+}
+
+impl OptionsLoadStatus {
+    pub(crate) fn rejection_message(&self) -> Option<String> {
+        if let Self::Rejected(error) = self {
+            Some(format!(
+                "Options file preserved: {error}. Changes apply only for this session. \
+                 To save options, open Options and choose Reset To Defaults; \
+                 confirm to back up the original before replacing it."
+            ))
+        } else {
+            None
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // On-disk shape
 // ---------------------------------------------------------------------------
@@ -359,24 +383,118 @@ impl OptionsStore {
         self.root.join(OPTIONS_FILE_NAME)
     }
 
-    /// Reads the options file, or returns the shipped defaults when none exists yet.
-    pub(crate) fn load(&self) -> Result<(PlayerOptions, Vec<String>), OptionsStoreError> {
-        let path = self.path();
-        let text = match fs::read_to_string(&path) {
+    /// Reads the file without losing the distinction between absence and rejection.
+    fn load_with_status(&self) -> (PlayerOptions, OptionsLoadStatus) {
+        let text = match fs::read_to_string(self.path()) {
             Ok(text) => text,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Ok((PlayerOptions::default(), Vec::new()));
+                return (PlayerOptions::default(), OptionsLoadStatus::Missing);
             }
             Err(error) => {
-                return Err(OptionsStoreError::Io {
-                    operation: "read options",
-                    error: error.to_string(),
-                });
+                return (
+                    PlayerOptions::default(),
+                    OptionsLoadStatus::Rejected(OptionsStoreError::Io {
+                        operation: "read options",
+                        error: error.to_string(),
+                    }),
+                );
             }
         };
-        let document: OptionsDocument = serde_yaml_ng::from_str(&text)
-            .map_err(|error| OptionsStoreError::Parse(error.to_string()))?;
-        document.into_options()
+        let result = serde_yaml_ng::from_str::<OptionsDocument>(&text)
+            .map_err(|error| OptionsStoreError::Parse(error.to_string()))
+            .and_then(OptionsDocument::into_options);
+        match result {
+            Ok((options, warnings)) => (
+                options,
+                if warnings.is_empty() {
+                    OptionsLoadStatus::Loaded
+                } else {
+                    OptionsLoadStatus::Warnings(warnings)
+                },
+            ),
+            Err(error) => (PlayerOptions::default(), OptionsLoadStatus::Rejected(error)),
+        }
+    }
+
+    pub(crate) fn load(&self) -> Result<(PlayerOptions, Vec<String>), OptionsStoreError> {
+        match self.load_with_status() {
+            (_, OptionsLoadStatus::Rejected(error)) => Err(error),
+            (options, OptionsLoadStatus::Warnings(warnings)) => Ok((options, warnings)),
+            (options, _) => Ok((options, Vec::new())),
+        }
+    }
+
+    /// Session edits cannot authorize replacement of an unreadable original.
+    pub(crate) fn persist(
+        &self,
+        options: &PlayerOptions,
+        status: &OptionsLoadStatus,
+    ) -> Result<PathBuf, OptionsStoreError> {
+        if let OptionsLoadStatus::Rejected(error) = status {
+            return Err(error.clone());
+        }
+        self.store(options)
+    }
+
+    /// Explicit recovery keeps a verified, durable copy before replacing the original.
+    /// A failed backup leaves both the options file and the caller's in-memory choices alone.
+    pub(crate) fn replace_rejected(
+        &self,
+        options: &PlayerOptions,
+    ) -> Result<PathBuf, OptionsStoreError> {
+        let original = fs::read(self.path()).map_err(|error| OptionsStoreError::Io {
+            operation: "read original options for backup",
+            error: error.to_string(),
+        })?;
+        let mut backup = None;
+        for suffix in 1..=999 {
+            let path = self
+                .root
+                .join(format!("{OPTIONS_FILE_NAME}.rejected-{suffix:03}.bak"));
+            let file = match OpenOptions::new().create_new(true).write(true).open(&path) {
+                Ok(file) => file,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => {
+                    return Err(OptionsStoreError::Io {
+                        operation: "create original options backup",
+                        error: error.to_string(),
+                    });
+                }
+            };
+            let mut cleanup = TemporaryFile::new(path.clone());
+            let mut file = file;
+            file.write_all(&original)
+                .and_then(|()| file.sync_all())
+                .map_err(|error| OptionsStoreError::Io {
+                    operation: "write and sync original options backup",
+                    error: error.to_string(),
+                })?;
+            drop(file);
+            let reread = fs::read(&path).map_err(|error| OptionsStoreError::Io {
+                operation: "verify original options backup",
+                error: error.to_string(),
+            })?;
+            if reread != original {
+                return Err(OptionsStoreError::Encode(
+                    "original options backup differs".to_owned(),
+                ));
+            }
+            File::open(&self.root)
+                .and_then(|directory| directory.sync_all())
+                .map_err(|error| OptionsStoreError::Io {
+                    operation: "sync original options backup directory",
+                    error: error.to_string(),
+                })?;
+            cleanup.disarm();
+            backup = Some(path);
+            break;
+        }
+        let backup = backup.ok_or_else(|| OptionsStoreError::Io {
+            operation: "create original options backup",
+            error: "all 999 backup names are occupied".to_owned(),
+        })?;
+        self.store_unchecked(options)?;
+        Ok(backup)
     }
 
     /// Writes the options file atomically, so a crash mid-write cannot truncate it.
@@ -385,6 +503,12 @@ impl OptionsStore {
     /// Options are smaller and less precious than a save, but they are written from a settings
     /// screen the player may quit out of immediately, which is exactly when a partial file lands.
     pub(crate) fn store(&self, options: &PlayerOptions) -> Result<PathBuf, OptionsStoreError> {
+        // Recheck the file too: another build may have replaced it after startup.
+        self.load()?;
+        self.store_unchecked(options)
+    }
+
+    fn store_unchecked(&self, options: &PlayerOptions) -> Result<PathBuf, OptionsStoreError> {
         fs::create_dir_all(&self.root).map_err(|error| OptionsStoreError::Io {
             operation: "create config directory",
             error: error.to_string(),
@@ -489,22 +613,23 @@ impl Drop for TemporaryFile {
 ///
 /// A bad options file must never stop the game from launching: the player would have no way in to
 /// fix it. Warnings name the exact row so a hand-edit can be corrected.
-pub(crate) fn load_player_options(store: &OptionsStore) -> PlayerOptions {
-    match store.load() {
-        Ok((options, warnings)) => {
+pub(crate) fn load_player_options(store: &OptionsStore) -> (PlayerOptions, OptionsLoadStatus) {
+    let (options, status) = store.load_with_status();
+    match &status {
+        OptionsLoadStatus::Warnings(warnings) => {
             for warning in warnings {
                 warn!("options: {warning}");
             }
-            options
         }
-        Err(error) => {
+        OptionsLoadStatus::Rejected(error) => {
             error!(
                 "options ignored, using defaults: {error} ({})",
                 store.path().display()
             );
-            PlayerOptions::default()
         }
+        _ => {}
     }
+    (options, status)
 }
 
 #[cfg(test)]
@@ -752,8 +877,78 @@ mod tests {
 
         assert!(matches!(store.load(), Err(OptionsStoreError::Parse(_))));
         // The launch path must still come up on defaults rather than refusing to start.
-        assert_eq!(load_player_options(&store), PlayerOptions::default());
+        assert_eq!(load_player_options(&store).0, PlayerOptions::default());
         let _ = fs::remove_dir_all(store.root);
+    }
+
+    #[test]
+    fn startup_status_distinguishes_missing_warning_and_rejected_files() {
+        let store = temporary_store("load-status");
+        assert_eq!(load_player_options(&store).1, OptionsLoadStatus::Missing);
+        fs::create_dir_all(&store.root).unwrap();
+        fs::write(store.path(), "version: 1\ntext_speed: invalid\n").unwrap();
+        assert!(
+            matches!(load_player_options(&store).1, OptionsLoadStatus::Warnings(ref rows) if rows.len() == 1)
+        );
+        fs::write(store.path(), "version: 99\nnew_option: true\n").unwrap();
+        assert!(matches!(
+            load_player_options(&store).1,
+            OptionsLoadStatus::Rejected(_)
+        ));
+        fs::write(store.path(), "not valid: [\n").unwrap();
+        assert!(matches!(
+            load_player_options(&store).1,
+            OptionsLoadStatus::Rejected(OptionsStoreError::Parse(_))
+        ));
+        fs::remove_dir_all(store.root).unwrap();
+    }
+
+    #[test]
+    fn a_file_rejected_after_startup_is_also_protected() {
+        let store = temporary_store("late-rejection");
+        let (_, status) = load_player_options(&store);
+        store.persist(&PlayerOptions::default(), &status).unwrap();
+        let original = b"version: 99\n";
+        fs::write(store.path(), original).unwrap();
+        assert!(store.persist(&PlayerOptions::default(), &status).is_err());
+        assert_eq!(fs::read(store.path()).unwrap(), original);
+        fs::remove_dir_all(store.root).unwrap();
+    }
+
+    #[test]
+    fn explicit_replacement_preserves_original_bytes_and_existing_backups() {
+        let store = temporary_store("recovery");
+        fs::create_dir_all(&store.root).unwrap();
+        let original = b"# exact original\nversion: 99\nnew_option: keep\n";
+        fs::write(store.path(), original).unwrap();
+        let first = store.root.join("options.yaml.rejected-001.bak");
+        fs::write(&first, b"previous original").unwrap();
+        let backup = store.replace_rejected(&PlayerOptions::default()).unwrap();
+        assert_eq!(backup.file_name().unwrap(), "options.yaml.rejected-002.bak");
+        assert_eq!(fs::read(backup).unwrap(), original);
+        assert_eq!(fs::read(first).unwrap(), b"previous original");
+        assert_eq!(store.load().unwrap().0, PlayerOptions::default());
+        fs::remove_dir_all(store.root).unwrap();
+    }
+
+    #[test]
+    fn failed_backup_leaves_the_rejected_original_intact() {
+        let store = temporary_store("backup-failure");
+        fs::create_dir_all(&store.root).unwrap();
+        let original = b"version: 99\n";
+        fs::write(store.path(), original).unwrap();
+        for suffix in 1..=999 {
+            fs::write(
+                store
+                    .root
+                    .join(format!("options.yaml.rejected-{suffix:03}.bak")),
+                b"occupied",
+            )
+            .unwrap();
+        }
+        assert!(store.replace_rejected(&PlayerOptions::default()).is_err());
+        assert_eq!(fs::read(store.path()).unwrap(), original);
+        fs::remove_dir_all(store.root).unwrap();
     }
 
     #[test]
