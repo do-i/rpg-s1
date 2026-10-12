@@ -1,6 +1,6 @@
 //! Active-map collision data shared by every moving World entity.
 
-use bevy::{asset::LoadState, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
     app_state::AppState, game_state::GameState, scenario_inventory::ScenarioInventory,
@@ -15,13 +15,15 @@ impl Plugin for WorldCollisionPlugin {
         app.init_resource::<WorldCollision>()
             .add_systems(
                 Update,
-                load_world_collision.run_if(in_state(AppState::World)),
+                load_world_collision
+                    .in_set(crate::world_publication::WorldPublicationSet::Load)
+                    .run_if(in_state(AppState::World)),
             )
             .add_systems(OnExit(AppState::World), clear_world_collision);
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Clone, Resource, Default)]
 pub(crate) struct WorldCollision {
     pub(super) map_id: Option<String>,
     pub(super) handle: Option<Handle<TmxGroundAsset>>,
@@ -30,6 +32,24 @@ pub(crate) struct WorldCollision {
 }
 
 impl WorldCollision {
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if self.map_id.as_deref() != Some(map_id) {
+            return PublicationStatus::Pending;
+        }
+        if self.failed {
+            return PublicationStatus::Failed("map collision failed to load".into());
+        }
+        if self.occupancy.is_some() {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
     pub(crate) fn occupancy_for(&self, map_id: &str) -> Option<&CollisionOccupancy> {
         self.occupancy
             .as_ref()
@@ -108,7 +128,7 @@ fn load_world_collision(
     let Some(asset_server) = asset_server else {
         return;
     };
-    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
+    if crate::world_publication::asset_failed(asset_server, handle.id()) {
         collision.failed = true;
         return;
     }

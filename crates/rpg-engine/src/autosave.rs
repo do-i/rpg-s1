@@ -35,7 +35,9 @@ impl Plugin for AutosavePlugin {
             .add_systems(OnEnter(AppState::Title), reset_autosave_tracker)
             .add_systems(
                 Update,
-                autosave_on_map_arrival.run_if(in_state(AppState::World)),
+                autosave_on_map_arrival
+                    .after(crate::world_publication::WorldPublicationSet::Barrier)
+                    .run_if(in_state(AppState::World)),
             );
     }
 }

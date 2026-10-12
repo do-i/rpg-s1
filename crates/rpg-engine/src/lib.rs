@@ -77,6 +77,7 @@ mod world_interaction;
 mod world_object;
 mod world_pause;
 mod world_player;
+mod world_publication;
 mod world_transition;
 
 pub use rpg_content::{

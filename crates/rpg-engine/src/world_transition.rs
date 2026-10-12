@@ -2,7 +2,12 @@
 
 use std::{collections::BTreeSet, fmt};
 
-use bevy::{asset::LoadState, prelude::*};
+use bevy::prelude::*;
+
+mod recovery;
+use recovery::{
+    TransitionRecovery, drive_transition_loading, handle_recovery_input, update_recovery_ui,
+};
 
 use crate::{
     app_state::AppState,
@@ -10,15 +15,11 @@ use crate::{
     runtime_map::RuntimeMapId,
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
-    scenario_spatial::collision_occupancy::CollisionOccupancy,
     scenario_spatial::{CardinalDirection, Position},
     sfx_cue::{PlaySfx, cue},
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tmx_header::{TmxMapDocument, TmxPropertyValue},
-    tsx_atlas_asset::TsxAtlasAsset,
-    world_actor::WorldActorState,
-    world_object::WorldObjectState,
-    world_player::{CharacterCollisionRect, WorldPlayer, WorldPlayerMotion, WorldPlayerSpawnState},
+    world_player::{CharacterCollisionRect, WorldPlayer, WorldPlayerMotion},
 };
 
 const FADE_ALPHA_PER_SECOND: f32 = 300.0 / 255.0;
@@ -30,6 +31,20 @@ impl Plugin for WorldTransitionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WorldTransition>()
             .init_resource::<TransitionDestinationLoad>()
+            .init_resource::<TransitionRecovery>()
+            .configure_sets(
+                Update,
+                crate::world_publication::WorldPublicationSet::Load
+                    .run_if(recovery::loaders_enabled),
+            )
+            .configure_sets(
+                Update,
+                (
+                    crate::world_publication::WorldPublicationSet::Load,
+                    crate::world_publication::WorldPublicationSet::Barrier,
+                )
+                    .chain(),
+            )
             .add_systems(
                 OnEnter(AppState::World),
                 (reset_transition, spawn_fade_overlay).chain(),
@@ -37,18 +52,26 @@ impl Plugin for WorldTransitionPlugin {
             .add_systems(
                 Update,
                 (
+                    handle_recovery_input,
                     detect_portal_entry,
                     prepare_destination_load,
                     advance_transition_fade,
                     drive_transition_loading,
                     update_fade_overlay,
+                    update_recovery_ui,
                 )
                     .chain()
+                    .in_set(crate::world_publication::WorldPublicationSet::Barrier)
                     .run_if(in_state(AppState::World)),
             )
             .add_systems(
                 OnExit(AppState::World),
-                (reset_transition, cleanup_fade_overlay),
+                (
+                    recovery::cleanup_recovery,
+                    reset_transition,
+                    cleanup_fade_overlay,
+                )
+                    .chain(),
             );
     }
 }
@@ -222,13 +245,14 @@ impl PortalEntryDetector {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum TransitionPhase {
-    /// Initial World entry and every successful load starts black and unlocks after fading in.
+    /// A successfully published World fades from black before input unlocks.
     #[default]
     FadingIn,
     Idle,
     FadingOut,
     Loading,
     Publishing,
+    Failed,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -238,7 +262,7 @@ pub(crate) struct PendingTransition {
     pub(crate) facing: CardinalDirection,
 }
 
-/// One transition transaction. Location is committed only after destination publication succeeds.
+/// A locked map transaction; recovery retains the complete source until publication succeeds.
 #[derive(Debug, Resource)]
 pub(crate) struct WorldTransition {
     phase: TransitionPhase,
@@ -247,17 +271,19 @@ pub(crate) struct WorldTransition {
     detector: PortalEntryDetector,
     suppress_entry_until_exit: bool,
     failure: Option<String>,
+    wait_seconds: f32,
 }
 
 impl Default for WorldTransition {
     fn default() -> Self {
         Self {
-            phase: TransitionPhase::FadingIn,
+            phase: TransitionPhase::Publishing,
             alpha: 1.0,
             pending: None,
             detector: PortalEntryDetector::default(),
             suppress_entry_until_exit: false,
             failure: None,
+            wait_seconds: 0.0,
         }
     }
 }
@@ -277,6 +303,7 @@ impl WorldTransition {
             detector: PortalEntryDetector::default(),
             suppress_entry_until_exit: false,
             failure: None,
+            wait_seconds: 0.0,
         }
     }
 
@@ -297,13 +324,6 @@ impl WorldTransition {
         self.pending.as_ref()
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "transition diagnostics are exposed before the World error UI"
-        )
-    )]
     pub(crate) fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
     }
@@ -328,6 +348,7 @@ impl WorldTransition {
             facing,
         });
         self.failure = None;
+        self.wait_seconds = 0.0;
         self.phase = TransitionPhase::FadingOut;
         true
     }
@@ -362,13 +383,12 @@ impl WorldTransition {
     fn destination_committed(&mut self) {
         debug_assert_eq!(self.phase, TransitionPhase::Loading);
         self.phase = TransitionPhase::Publishing;
+        self.wait_seconds = 0.0;
     }
 
     pub(crate) fn destination_failed(&mut self, reason: impl Into<String>) {
-        debug_assert_eq!(self.phase, TransitionPhase::Loading);
-        self.pending = None;
         self.failure = Some(reason.into());
-        self.phase = TransitionPhase::FadingIn;
+        self.phase = TransitionPhase::Failed;
         self.alpha = 1.0;
     }
 
@@ -470,6 +490,19 @@ fn detect_portal_entry(
     }
 }
 
+pub(crate) fn transition_settled(transition: Option<Res<WorldTransition>>) -> bool {
+    transition.is_none_or(|transition| !transition.input_locked())
+}
+
+pub(crate) fn map_audio_ready(transition: Option<Res<WorldTransition>>) -> bool {
+    transition.is_none_or(|transition| {
+        !matches!(
+            transition.phase,
+            TransitionPhase::Publishing | TransitionPhase::Failed
+        )
+    })
+}
+
 fn prepare_destination_load(
     asset_server: Res<AssetServer>,
     scenario_root: Res<ScenarioRoot>,
@@ -497,85 +530,15 @@ fn advance_transition_fade(time: Res<Time>, mut transition: ResMut<WorldTransiti
     transition.advance_fade(time.delta_secs());
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the transition publish barrier observes every map-scoped World subsystem"
-)]
-fn drive_transition_loading(
-    asset_server: Res<AssetServer>,
-    maps: Res<Assets<TmxGroundAsset>>,
-    atlases: Res<Assets<TsxAtlasAsset>>,
-    destination: Res<TransitionDestinationLoad>,
-    render: Res<StaticMapRenderState>,
-    player: Res<WorldPlayerSpawnState>,
-    actors: Res<WorldActorState>,
-    objects: Res<WorldObjectState>,
-    game: Option<ResMut<GameState>>,
-    mut transition: ResMut<WorldTransition>,
-) {
-    if transition.phase == TransitionPhase::Publishing {
-        let Some(map_id) = transition
-            .pending()
-            .map(|pending| pending.target_map.as_str())
-        else {
-            return;
-        };
-        if render.is_spawned_for(map_id)
-            && player.is_spawned_for(map_id)
-            && actors.is_spawned_for(map_id)
-            && objects.is_spawned_for(map_id)
-        {
-            transition.destination_published();
-        }
-        return;
-    }
-    if transition.phase != TransitionPhase::Loading {
-        return;
-    }
-
-    let Some(handle) = destination.handle.as_ref() else {
-        transition.destination_failed("destination map path is invalid");
-        return;
-    };
-    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
-        transition.destination_failed("destination map failed to load");
-        return;
-    }
-    if !asset_server.is_loaded_with_dependencies(handle.id()) {
-        return;
-    }
-    let Some(map) = maps.get(handle) else {
-        return;
-    };
-    if let Err(error) = map.visible_bundles(&atlases) {
-        transition.destination_failed(format!("destination map cannot render: {error}"));
-        return;
-    }
-    if let Err(error) = CollisionOccupancy::from_tmx_document(map.document()) {
-        transition.destination_failed(format!("destination collision is invalid: {error}"));
-        return;
-    }
-    if let Err(error) = runtime_portals(map.document()) {
-        transition.destination_failed(format!("destination portals are invalid: {error}"));
-        return;
-    }
-
-    let Some(mut game) = game else {
-        transition.destination_failed("game session disappeared during transition");
-        return;
-    };
-    let Some(pending) = transition.pending().cloned() else {
-        return;
-    };
-    game.map_mut()
-        .move_to(pending.target_map, pending.target_position, pending.facing);
-    transition.destination_committed();
-}
-
 fn reset_transition(
+    game: Option<Res<GameState>>,
+    encounter_restore: Option<Res<crate::world_encounter::WorldEncounterRestore>>,
+    mut recovery: ResMut<TransitionRecovery>,
     mut transition: ResMut<WorldTransition>,
     mut destination: ResMut<TransitionDestinationLoad>,
 ) {
+    recovery.initial_game = game.as_deref().cloned();
+    recovery.initial_encounters = encounter_restore.as_deref().cloned();
     *transition = WorldTransition::default();
     *destination = TransitionDestinationLoad::default();
 }
@@ -1341,6 +1304,7 @@ mod tests {
     fn fade_locks_input_and_request_cannot_duplicate() {
         let portal = &ardel_portals()[1];
         let mut transition = WorldTransition::default();
+        transition.destination_published();
         assert!(transition.input_locked());
         transition.advance_fade(1.0);
         assert_eq!(transition.phase(), TransitionPhase::Idle);
