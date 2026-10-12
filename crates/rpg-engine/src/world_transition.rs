@@ -548,6 +548,118 @@ mod tests {
     use super::*;
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
 
+    #[test]
+    fn python_editor_rectangles_points_and_authored_edges_round_trip_runtime_extraction() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+        let python =
+            std::env::var_os("RPG_S1_EDITOR_TEST_PYTHON").unwrap_or_else(|| "python3".into());
+        let output = std::process::Command::new(python)
+            .current_dir(root)
+            .args([
+                "-c",
+                r#"
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from tools.map_editor.edit.tmx_writer import create_portal, save_portal_target
+
+with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
+    path = Path(directory) / "source.tmx"
+    xml = Path("tools/map_editor/tests/fixtures/source.tmx").read_text()
+    xml = xml.replace('tilewidth="32" tileheight="32"', 'tilewidth="16" tileheight="24"')
+    xml = xml.replace('x="32" y="32" width="32" height="32"',
+                      'x="-3.5" y="30.25" width="9.75" height="32.125"')
+    path.write_text(xml)
+    create_portal(path, (16, 24, 24, 24), "target", (2, 1))
+    print(path.read_text(), end="\0")
+    point = create_portal(path, (48, 48, 0, 0), "target", (3, 3))
+    print(path.read_text(), end="\0")
+    save_portal_target(path, point, "source", (1, 2), None)
+    print(path.read_text(), end="\0")
+    save_portal_target(path, point, "target", (0, 0), (64, 96, 0, 0))
+    print(path.read_text(), end="\0")
+"#,
+            ])
+            .output()
+            .expect(
+                "python3 (or RPG_S1_EDITOR_TEST_PYTHON) must run the stdlib-only editor writer",
+            );
+        assert!(
+            output.status.success(),
+            "Python writer failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let xml = String::from_utf8(output.stdout).unwrap();
+        let owner = ScenarioRelativePath::try_from("media/maps/source.tmx").unwrap();
+        let documents = xml
+            .split_terminator('\0')
+            .map(|xml| parse_tmx_map_document(xml, &owner).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(documents.len(), 4);
+        for (index, document) in documents.iter().enumerate() {
+            assert_eq!(document.header().tile_width(), 16);
+            assert_eq!(document.header().tile_height(), 24);
+            let portals = runtime_portals(document).unwrap();
+            assert_eq!(portals.len(), if index == 0 { 2 } else { 3 });
+            assert_eq!(
+                portals[0].bounds(),
+                PortalBounds {
+                    x: -3.5,
+                    y: 30.25,
+                    width: 9.75,
+                    height: 32.125
+                }
+            );
+            assert_eq!(portals[1].object_id(), 2);
+            assert_eq!(
+                portals[1].bounds(),
+                PortalBounds {
+                    x: 16.0,
+                    y: 24.0,
+                    width: 24.0,
+                    height: 24.0
+                }
+            );
+            assert_eq!(portals[1].target_position(), Position::new(2, 1));
+            if index == 0 {
+                continue;
+            }
+            let point = &portals[2];
+            assert_eq!(point.object_id(), 3);
+            let (x, y, target, tile) = match index {
+                1 => (48.0, 48.0, "target", Position::new(3, 3)),
+                2 => (48.0, 48.0, "source", Position::new(1, 2)),
+                _ => (64.0, 96.0, "target", Position::new(0, 0)),
+            };
+            assert_eq!(
+                point.bounds(),
+                PortalBounds {
+                    x,
+                    y,
+                    width: 0.0,
+                    height: 0.0
+                }
+            );
+            assert_eq!(point.target_map().as_str(), target);
+            assert_eq!(point.target_position(), tile);
+            assert!(point.bounds().is_triggered_by(rect(
+                x as f32 - 10.0,
+                y as f32 - 10.0,
+                10.0,
+                10.0
+            )));
+            assert!(!point.bounds().is_triggered_by(rect(
+                x as f32 - 11.0,
+                y as f32 - 11.0,
+                10.0,
+                10.0
+            )));
+        }
+    }
+
     fn portals_for(map_id: &str, document: &str) -> Vec<RuntimePortal> {
         let owner = ScenarioRelativePath::try_from(format!("media/maps/{map_id}.tmx")).unwrap();
         let document = parse_tmx_map_document(document, &owner).unwrap();

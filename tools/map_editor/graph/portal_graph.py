@@ -73,7 +73,7 @@ class GraphEdge:
     source_tile: tuple[int, int]    # portal's top-left tile on the source map
     target_tile: tuple[int, int]    # destination tile on the target map
     portal_obj_id: int              # Tiled object id of the portal on the source map
-    source_rect_px: tuple[int, int, int, int]  # portal geometry (x, y, w, h) in map pixels
+    source_rect_px: tuple[float, float, float, float]  # exact authored map-pixel geometry
 
 
 @dataclass
@@ -121,7 +121,7 @@ def build_portal_graph(
                 GraphEdge(
                     source=map_id,
                     target=record["target_map"],
-                    source_tile=(record["source_x"] // tw, record["source_y"] // th),
+                    source_tile=(int(record["source_x"] // tw), int(record["source_y"] // th)),
                     target_tile=(record["target_x"], record["target_y"]),
                     portal_obj_id=record["obj_id"],
                     source_rect_px=(
@@ -238,10 +238,10 @@ def _read_tmx_info(tmx_path: Path) -> dict:
             portals.append(
                 {
                     "target_map": str(target),
-                    "source_x": int(obj.x),
-                    "source_y": int(obj.y),
-                    "source_w": max(1, int(round(obj.width))),
-                    "source_h": max(1, int(round(obj.height))),
+                    "source_x": obj.x,
+                    "source_y": obj.y,
+                    "source_w": obj.width,
+                    "source_h": obj.height,
                     "target_x": int(tx),
                     "target_y": int(ty),
                     "obj_id": int(getattr(obj, "id", 0)),

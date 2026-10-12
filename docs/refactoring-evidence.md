@@ -284,3 +284,78 @@ inconsistent hidden LLVM symbols in engine incremental outputs. A subsequent
 serial rebuild; content/dependency caches remained available. Headless tests
 cover feedback and pointer routing; full-game visual acceptance at different window scales, real disk-full behavior,
 and real power loss remain manual. No performance claim is made.
+
+## RF-06 — Reject invalid portal geometry and destinations
+
+Completed 2026-10-12. Re-ran the invalid geometry/destination regression against
+the pre-change service from commit `6c8e05e` on disposable maps: all 26 negative
+extent, disconnected source, coordinate-overflow, and out-of-bounds destination
+cases were accepted (`rf06-red.log`). The inherited RF-05 baseline was 1,057
+workspace tests and workspace Clippy passing; RF-03's nine publication tests also
+passed. No shipped assets were edited during reproduction or implementation.
+
+Create and retarget now share validation before invoking the writer. Request
+coordinates must be integers in the i32 domain; booleans, strings, fractions,
+nonfinite numbers, malformed tuple sizes, negative extents, and overflowing
+rectangle endpoints are rejected with field-specific errors. Fresh TMX headers
+provide the finite map dimensions and each map's authored tile sizes, including
+different rectangular tile grids. Source rectangles must touch the map's pixel
+bounds. Zero-size points and zero-width/height lines remain valid.
+
+The production audit found 44 of 108 runtime portals with fractional rectangles
+crossing a source map boundary. Those are valid edge triggers under the existing
+inclusive contact rule in `world_transition.rs`; rejecting all negative origins
+or requiring complete containment would break authored content. All 108 existing
+portals pass the new validation. The graph now retains exact fractional geometry
+and zero extents instead of truncating origins and replacing points with 1x1
+rectangles. A plain retarget keeps those authored values. The runtime validator
+has not been tightened.
+
+Destination validation follows the existing `scenario_map_sweep.rs::check_portals`
+arrival policy: a tile must be inside the target grid and open according to
+`CollisionOccupancy`. The target must have one matching uncompressed CSV collision
+layer. Hidden collision layers still apply; supported Tiled flip flags are masked
+when deciding whether a GID is empty, and unsupported rotation flags/malformed
+collision data are rejected. This check does not try to predict dynamic actor
+occupancy. The authored corpus has no out-of-bounds or blocked destination tiles.
+
+Dedicated lookup and input errors distinguish unknown map/portal IDs (404) from
+invalid edits (422). Strict request schemas prevent lossy integer conversion.
+Transport validation errors also return readable field text without echoing
+NaN/Infinity into an invalid JSON error response. Writer/serialization failures
+are no longer incorrectly translated into unknown-ID errors.
+
+Added reusable complete-file/graph snapshots and a bounded ASGI request helper to
+the disposable scenario fixture. The behavioral suite checks rejection without
+canonical/backup/temp file or graph changes for both mutation paths, plain
+retargets, exact authored edge geometry, rectangles/points/lines, differing map
+dimensions and tile sizes, runtime collision GID semantics, and real API status
+codes. A Rust runtime regression invokes only the stdlib Python writer, parses
+its publications, and extracts rectangles and created/plain-retargeted/moved
+point portals through `runtime_portals`; it also verifies inclusive exact-touch
+triggering and preservation of fractional edge geometry on a 16x24 tile grid.
+
+Validation:
+
+- `PYGAME_HIDE_SUPPORT_PROMPT=1 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+  tools/.venv/bin/python -m unittest discover -s tools/map_editor/tests -t . -v`:
+  passed, 25 tests (16 new and nine RF-03 publication regressions).
+- `cargo test -p rpg-engine --lib world_transition -j 1`: passed, 34 tests,
+  including the new actual editor-to-runtime extraction regression.
+- `cargo test -p rpg-content -j 1`: passed, 196 parser/content tests and the
+  existing Python-to-Rust create/retarget/delete integration.
+- `cargo clippy -p rpg-engine -p rpg-content --all-targets -j 1 -- -D warnings`:
+  passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- `npm ci` followed by `npm run build` in `tools/map_editor_web`: passed.
+- `bash scripts/map-editor.sh check`: passed, 54 maps and 108 portals.
+- The create-tiled-map CSV validator and offscreen `tmxrasterizer` accepted
+  `tools/map_editor/tests/fixtures/source.tmx`; its preview is a temporary file.
+
+Raw logs are under ignored `temp/refactoring/rf06-*.log`. Cargo reused the shared
+cache with sandbox permission and one worker. The sandbox prevented FastAPI's
+AnyIO worker-thread wakeups; a minimal threadpool probe reproduced the same
+timeout, and the API suite passed immediately with normal local socket/thread
+access. The ASGI helper has a five-second request timeout. Interactive browser
+acceptance remains manual. Mutation concurrency/conflicts and thumbnail cache
+invalidation remain RF-07/RF-09.
