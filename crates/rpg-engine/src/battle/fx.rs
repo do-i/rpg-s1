@@ -278,13 +278,13 @@ pub(super) fn route_battle_fx(
     for event in &state.feedback_events[router.next_event..] {
         // Audio is routed off the same cursor but independently of the visual cue: an event that
         // draws nothing may still need to be heard.
-        let attacker_type = event_attacker(event)
-            .and_then(|key| state.actor(key))
-            .and_then(|actor| actor.enemy_type);
+        let attacker = event_attacker(event).and_then(|key| state.actor(key));
+        let attacker_type = attacker.and_then(|actor| actor.enemy_type);
+        let sword = attacker.is_some_and(|actor| actor.wields_sword);
         sfx.write_batch(
-            sfx_cues_for_event(event, attacker_type)
+            sfx_cues_for_event(event, attacker_type, sword)
                 .into_iter()
-                .map(PlaySfx::new),
+                .map(battle_sfx),
         );
         // The attacker's animation is keyed off the same event that reports the hit, which is
         // where the source starts it (`battle_enemy_logic.py:53,69`).
@@ -719,6 +719,20 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
 /// Mirrors the pinned engine, which plays two sounds when the party is struck — the physical
 /// impact and the party's own hurt cue (`battle_enemy_logic.py:55,57,82,84`) — and the swing alone
 /// when the party is the one connecting.
+/// The slash sample peaks near -9 dB while the enemy's hurt grunt it sounds alongside peaks near
+/// -2 dB, so at the normal mix the grunt buries the blade entirely. This lifts the slash level with
+/// it (+8 dB) without clipping.
+const SLASH_GAIN_PERCENT: u16 = 250;
+
+/// One battle cue at its mix level.
+fn battle_sfx(key: &'static str) -> PlaySfx {
+    if key == cue::ATK_SLASH {
+        PlaySfx::boosted(key, SLASH_GAIN_PERCENT)
+    } else {
+        PlaySfx::new(key)
+    }
+}
+
 /// Who swung, for the events where that is meaningful to the sound.
 const fn event_attacker(event: &BattleEvent) -> Option<CombatantKey> {
     match *event {
@@ -731,11 +745,17 @@ const fn event_attacker(event: &BattleEvent) -> Option<CombatantKey> {
 /// The cues a landed hit makes, from the struck side's point of view.
 ///
 /// `attacker_type` flavours the impact when an enemy is the one swinging; `None` — a party attack,
-/// or a status tick with no attacker at all — keeps the generic sample.
-fn impact_cues(side: BattleSide, attacker_type: Option<EnemyType>) -> Vec<&'static str> {
+/// or a status tick with no attacker at all — keeps the generic sample. `sword` is whether a party
+/// attacker holds a sword: only a blade slashes, every other weapon lands the generic impact.
+fn impact_cues(
+    side: BattleSide,
+    attacker_type: Option<EnemyType>,
+    sword: bool,
+) -> Vec<&'static str> {
     match side {
         BattleSide::Party => vec![enemy_attack_cue(attacker_type), cue::PARTY_HIT],
-        BattleSide::Enemy => vec![cue::ATK_SLASH, cue::ENEMY_HIT],
+        BattleSide::Enemy if sword => vec![cue::ATK_SLASH, cue::ENEMY_HIT],
+        BattleSide::Enemy => vec![cue::ATK_IMPACT, cue::ENEMY_HIT],
     }
 }
 
@@ -824,7 +844,11 @@ fn push_knockout(knocked_out: bool, target: CombatantKey, cues: &mut Vec<&'stati
     }
 }
 
-fn sfx_cues_for_event(event: &BattleEvent, attacker_type: Option<EnemyType>) -> Vec<&'static str> {
+fn sfx_cues_for_event(
+    event: &BattleEvent,
+    attacker_type: Option<EnemyType>,
+    sword: bool,
+) -> Vec<&'static str> {
     let mut cues: Vec<&'static str> = Vec::new();
     match *event {
         // The pinned engine plays no cue on a whiff and lets the floating MISS label carry it
@@ -837,7 +861,7 @@ fn sfx_cues_for_event(event: &BattleEvent, attacker_type: Option<EnemyType>) -> 
             ..
         } => {
             let target = action.target();
-            cues.extend(impact_cues(target.side, attacker_type));
+            cues.extend(impact_cues(target.side, attacker_type, sword));
             push_knockout(knocked_out, target, &mut cues);
         }
         BattleEvent::MagicDamage {
@@ -864,7 +888,7 @@ fn sfx_cues_for_event(event: &BattleEvent, attacker_type: Option<EnemyType>) -> 
             knocked_out,
             ..
         } => {
-            cues.extend(impact_cues(target.side, attacker_type));
+            cues.extend(impact_cues(target.side, attacker_type, sword));
             push_knockout(knocked_out, target, &mut cues);
         }
         // A blocked ability is the defensive beat the `defend` cue exists for.
@@ -884,7 +908,7 @@ fn sfx_cues_for_event(event: &BattleEvent, attacker_type: Option<EnemyType>) -> 
             ..
         } => {
             // A tick has no attacker, so it keeps the generic impact.
-            cues.extend(impact_cues(target.side, None));
+            cues.extend(impact_cues(target.side, None, false));
             push_knockout(knocked_out, target, &mut cues);
         }
     }
@@ -1021,7 +1045,8 @@ mod tests {
                 &BattleEvent::Miss {
                     action: party_hits_enemy
                 },
-                None
+                None,
+                true
             ),
             vec![cue::MISS]
         );
@@ -1034,7 +1059,8 @@ mod tests {
                     critical: false,
                     knocked_out: false,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::ATK_SLASH, cue::ENEMY_HIT]
         );
@@ -1046,7 +1072,8 @@ mod tests {
                     critical: false,
                     knocked_out: false,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::ATK_IMPACT, cue::PARTY_HIT]
         );
@@ -1060,7 +1087,8 @@ mod tests {
                     critical: true,
                     knocked_out: true,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::ATK_SLASH, cue::ENEMY_HIT, cue::ENEMY_DEATH]
         );
@@ -1072,7 +1100,8 @@ mod tests {
                     critical: false,
                     knocked_out: true,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::ATK_IMPACT, cue::PARTY_HIT]
         );
@@ -1094,7 +1123,8 @@ mod tests {
                         amount: 20,
                         knocked_out: false,
                     },
-                    None
+                    None,
+                    true
                 ),
                 expected,
                 "element {element:?}"
@@ -1110,7 +1140,8 @@ mod tests {
                     amount: 12,
                     knocked_out: true,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::USE_ITEM, cue::SPELL_FIRE, cue::ENEMY_DEATH]
         );
@@ -1121,7 +1152,8 @@ mod tests {
                     source: CombatantKey::enemy(0),
                     target: CombatantKey::party(0),
                 },
-                None
+                None,
+                true
             ),
             vec![cue::DEFEND]
         );
@@ -1134,7 +1166,8 @@ mod tests {
                     amount: 30,
                     revived: false,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::HEAL]
         );
@@ -1146,7 +1179,8 @@ mod tests {
                     amount: 30,
                     revived: true,
                 },
-                None
+                None,
+                true
             ),
             vec![cue::REVIVE]
         );
@@ -1198,7 +1232,8 @@ mod tests {
                             potency,
                         },
                     },
-                    None
+                    None,
+                    true
                 ),
                 vec![expected],
                 "{effect:?} with {potency:?}"
@@ -1229,7 +1264,7 @@ mod tests {
             (None, cue::ATK_IMPACT),
         ] {
             assert_eq!(
-                sfx_cues_for_event(&event, enemy_type),
+                sfx_cues_for_event(&event, enemy_type, true),
                 vec![expected, cue::PARTY_HIT],
                 "{enemy_type:?}"
             );
@@ -1248,10 +1283,44 @@ mod tests {
                     critical: false,
                     knocked_out: false,
                 },
-                Some(EnemyType::Beast)
+                Some(EnemyType::Beast),
+                true
             ),
             vec![cue::ATK_SLASH, cue::ENEMY_HIT]
         );
+    }
+
+    /// Only a party member holding a sword slashes; a staff, bow, axe or bare hand lands the
+    /// generic impact instead.
+    #[test]
+    fn a_party_attack_slashes_only_with_a_sword() {
+        let event = BattleEvent::Damage {
+            action: BattleAction::Physical {
+                attacker: CombatantKey::party(0),
+                target: CombatantKey::enemy(0),
+            },
+            amount: 9,
+            critical: false,
+            knocked_out: false,
+        };
+        assert_eq!(
+            sfx_cues_for_event(&event, None, true),
+            vec![cue::ATK_SLASH, cue::ENEMY_HIT]
+        );
+        assert_eq!(
+            sfx_cues_for_event(&event, None, false),
+            vec![cue::ATK_IMPACT, cue::ENEMY_HIT]
+        );
+    }
+
+    /// The slash is mixed up so the enemy's hurt grunt does not bury it; other cues stay at 100%.
+    #[test]
+    fn the_slash_is_mixed_above_the_hurt_grunt() {
+        assert_eq!(
+            battle_sfx(cue::ATK_SLASH),
+            PlaySfx::boosted(cue::ATK_SLASH, SLASH_GAIN_PERCENT)
+        );
+        assert_eq!(battle_sfx(cue::ENEMY_HIT), PlaySfx::new(cue::ENEMY_HIT));
     }
 
     /// A poison tick has no attacker behind it, so it must not pick up a flavoured impact.

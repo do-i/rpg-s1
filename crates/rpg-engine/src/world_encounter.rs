@@ -1751,6 +1751,7 @@ mod tests {
             abilities: Vec::new(),
             status_effects: Vec::new(),
             accessory: None,
+            wields_sword: false,
             row,
             boss: side == BattleSide::Enemy,
             enemy_type: None,

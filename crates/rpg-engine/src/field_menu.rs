@@ -88,7 +88,7 @@ const QUEST_VISIBLE_ROWS: usize = 8;
 const REGISTER_CARD_MIN_HEIGHT: f32 = 54.0;
 const REGISTER_CARD_MAX_HEIGHT: f32 = 76.0;
 const RECIPE_VISIBLE_ROWS: usize = 8;
-const SAVE_VISIBLE_ROWS: usize = 6;
+const SAVE_VISIBLE_ROWS: usize = 8;
 /// Destination rows the teleport picker shows before it scrolls.
 ///
 /// The modal is capped at 520px tall, and each row is 48px over a 9px gap, so six rows plus
@@ -1995,8 +1995,9 @@ fn main_command_screen(index: usize) -> Option<FieldMenuScreen> {
     MAIN_COMMANDS.get(index).and_then(|command| command.screen)
 }
 
-fn inventory_page_range(len: usize, selected: usize) -> std::ops::Range<usize> {
-    let start = ((selected / INVENTORY_PAGE_ROWS) * INVENTORY_PAGE_ROWS).min(len);
+/// The visible slice of the inventory list, scrolled only far enough to keep `selected` on screen.
+fn inventory_window(len: usize, selected: usize) -> std::ops::Range<usize> {
+    let start = crate::menu_chrome::window_start(selected, len, INVENTORY_PAGE_ROWS);
     start..(start + INVENTORY_PAGE_ROWS).min(len)
 }
 
@@ -2168,7 +2169,7 @@ mod tests {
             saved_at_unix_seconds: Some(1_700_000_000),
         };
         commands.spawn(Node::default()).with_children(|parent| {
-            spawn_field_save_slot_row(parent, &Handle::<Font>::default(), &slot, true, false);
+            spawn_field_save_slot_row(parent, &Handle::<Font>::default(), &slot, true);
         });
     }
 
@@ -2185,19 +2186,15 @@ mod tests {
     }
 
     #[test]
-    fn inventory_pages_cover_empty_short_and_scrolling_lists() {
-        assert_eq!(inventory_page_range(0, 0), 0..0);
-        assert_eq!(inventory_page_range(5, 4), 0..5);
-        assert_eq!(
-            inventory_page_range(25, INVENTORY_PAGE_ROWS - 1),
-            0..INVENTORY_PAGE_ROWS
-        );
-        assert_eq!(
-            inventory_page_range(25, INVENTORY_PAGE_ROWS),
-            INVENTORY_PAGE_ROWS..INVENTORY_PAGE_ROWS * 2
-        );
-        let final_page_start = (24 / INVENTORY_PAGE_ROWS) * INVENTORY_PAGE_ROWS;
-        assert_eq!(inventory_page_range(25, 24), final_page_start..25);
+    fn inventory_window_scrolls_one_row_at_a_time() {
+        let rows = INVENTORY_PAGE_ROWS;
+        assert_eq!(inventory_window(0, 0), 0..0);
+        assert_eq!(inventory_window(5, 4), 0..5);
+        assert_eq!(inventory_window(25, rows - 1), 0..rows);
+        // Stepping past the last visible row scrolls by one, not by a whole page.
+        assert_eq!(inventory_window(25, rows), 1..rows + 1);
+        // The end of the list fills the window rather than showing a short final page.
+        assert_eq!(inventory_window(25, 24), 25 - rows..25);
     }
 
     /// The field-menu content box: the 766px logical canvas less the menu root's 30px padding
@@ -2276,7 +2273,7 @@ mod tests {
         assert!(log <= PAGE_COLUMN_HEIGHT, "battle log: {log}px");
 
         // Centred modals are drawn over the whole content box rather than inside a column.
-        let save = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 206;
+        let save = SAVE_VISIBLE_ROWS * 54 + (SAVE_VISIBLE_ROWS - 1) * 6 + 146;
         // Item management and the tag editor share the 48px modal row and its 9px gap.
         let manage = ITEM_MANAGE_VISIBLE_ROWS * 48
             + (ITEM_MANAGE_VISIBLE_ROWS - 1) * 9
@@ -2887,7 +2884,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(labels.contains(&"SAVE GAME"));
         assert!(labels.contains(&"Discovering native save slots..."));
-        assert!(labels.contains(&"PAGE 01 / 17"));
+        assert!(labels.contains(&"SLOT 01 / 100"));
     }
 
     #[test]
@@ -2945,11 +2942,12 @@ mod tests {
     }
 
     #[test]
-    fn save_pages_keep_every_player_slot_reachable() {
-        assert_eq!(save_page_start(1), 1);
-        assert_eq!(save_page_start(6), 1);
-        assert_eq!(save_page_start(7), 7);
-        assert_eq!(save_page_start(100), 97);
+    fn save_window_scrolls_one_slot_at_a_time() {
+        assert_eq!(save_window_start(1), 1);
+        assert_eq!(save_window_start(SAVE_VISIBLE_ROWS), 1);
+        assert_eq!(save_window_start(SAVE_VISIBLE_ROWS + 1), 2);
+        // The last slot sits at the bottom of a full window.
+        assert_eq!(save_window_start(100), 100 - SAVE_VISIBLE_ROWS + 1);
     }
 
     #[test]

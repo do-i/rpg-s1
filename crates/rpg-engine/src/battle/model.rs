@@ -108,6 +108,7 @@ pub(super) struct BattleCombatant {
     pub(super) abilities: Vec<crate::scenario_class::Ability>,
     pub(super) status_effects: Vec<ActiveStatus>,
     pub(super) accessory: Option<String>,
+    pub(super) wields_sword: bool,
     pub(super) row: PartyRow,
     pub(super) boss: bool,
     pub(super) enemy_type: Option<crate::scenario_enemy::EnemyType>,
@@ -145,6 +146,7 @@ impl BattleCombatant {
                 .map(ActiveStatus::persistent)
                 .collect(),
             accessory: participant.accessory.clone(),
+            wields_sword: participant.wields_sword,
             row: participant.row,
             boss: participant.boss,
             enemy_type: participant.enemy_type,

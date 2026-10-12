@@ -281,7 +281,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 );
                 return;
             }
-            let page = inventory_page_range(ids.len(), list_index);
+            let page = inventory_window(ids.len(), list_index);
             for (offset, (index, id)) in ids
                 .iter()
                 .enumerate()
@@ -350,11 +350,9 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                     });
                 });
             }
-            let page_number = list_index / INVENTORY_PAGE_ROWS + 1;
-            let page_count = ids.len().div_ceil(INVENTORY_PAGE_ROWS);
             spawn_status_text(
                 panel,
-                format!("PAGE {page_number:02} / {page_count:02}"),
+                format!("ITEM {:02} / {:02}", list_index + 1, ids.len()),
                 font,
                 12.0,
                 status_faint(),
