@@ -372,11 +372,28 @@ pub(crate) fn resolve_config_directory(
 #[derive(Clone, Debug, Resource)]
 pub(crate) struct OptionsStore {
     root: PathBuf,
+    #[cfg(test)]
+    pub(crate) fail_operation: Option<&'static str>,
 }
 
 impl OptionsStore {
     pub(crate) fn new(root: PathBuf) -> Self {
-        Self { root }
+        Self {
+            root,
+            #[cfg(test)]
+            fail_operation: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn inject_failure(&self, operation: &'static str) -> Result<(), OptionsStoreError> {
+        if self.fail_operation == Some(operation) {
+            return Err(OptionsStoreError::Io {
+                operation,
+                error: "injected I/O failure".to_owned(),
+            });
+        }
+        Ok(())
     }
 
     pub(crate) fn path(&self) -> PathBuf {
@@ -535,11 +552,15 @@ impl OptionsStore {
                 operation: "create temporary options",
                 error: error.to_string(),
             })?;
+        #[cfg(test)]
+        self.inject_failure("write temporary options")?;
         file.write_all(&bytes)
             .map_err(|error| OptionsStoreError::Io {
                 operation: "write temporary options",
                 error: error.to_string(),
             })?;
+        #[cfg(test)]
+        self.inject_failure("sync temporary options")?;
         file.sync_all().map_err(|error| OptionsStoreError::Io {
             operation: "sync temporary options",
             error: error.to_string(),
@@ -567,6 +588,8 @@ impl OptionsStore {
             error: error.to_string(),
         })?;
         cleanup.disarm();
+        #[cfg(test)]
+        self.inject_failure("sync config directory")?;
         File::open(&self.root)
             .and_then(|directory| directory.sync_all())
             .map_err(|error| OptionsStoreError::Io {

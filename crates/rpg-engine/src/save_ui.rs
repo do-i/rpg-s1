@@ -83,6 +83,16 @@ impl SaveSlotCatalog {
     }
 
     #[cfg(test)]
+    pub(crate) fn refresh_requested_for_test(&self) -> bool {
+        self.refresh_requested
+    }
+
+    #[cfg(test)]
+    pub(crate) fn clear_refresh_for_test(&mut self) {
+        self.refresh_requested = false;
+    }
+
+    #[cfg(test)]
     pub(crate) fn ready_for_test(
         scenario_id: impl Into<String>,
         scenario_version: impl Into<String>,

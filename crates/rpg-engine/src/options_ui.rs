@@ -30,6 +30,7 @@ use crate::{
     },
     options_domain::{Device, OptionsEffect, OptionsRow, OptionsScreen},
     options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions, load_player_options},
+    persistence_status::{PersistenceStatus, persist_player_options},
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
 };
@@ -145,6 +146,7 @@ impl Plugin for OptionsScreenPlugin {
             .init_resource::<OptionsReturn>()
             .init_resource::<OptionsEntryLatch>()
             .init_resource::<OptionsDirty>()
+            .init_resource::<PersistenceStatus>()
             .init_resource::<OptionsLoadStatus>()
             .init_resource::<OptionsRecovery>()
             .init_resource::<OptionsStore>()
@@ -405,6 +407,7 @@ fn handle_options_input(
     store: Option<Res<OptionsStore>>,
     mut load: ResMut<OptionsLoadStatus>,
     mut recovery: ResMut<OptionsRecovery>,
+    mut persistence: ResMut<PersistenceStatus>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
     return_to: Res<OptionsReturn>,
 ) {
@@ -430,6 +433,10 @@ fn handle_options_input(
                         *options = defaults;
                         *load = OptionsLoadStatus::Loaded;
                         dirty.0 = false;
+                        persistence.options.report(
+                            "Options defaults are active and saved to disk.".to_owned(),
+                            false,
+                        );
                         recovery.message = format!(
                             "Original options backed up to {}. Shipped defaults saved.",
                             backup.display()
@@ -595,23 +602,14 @@ fn persist_options(
     mut dirty: ResMut<OptionsDirty>,
     mut load: ResMut<OptionsLoadStatus>,
     mut recovery: ResMut<OptionsRecovery>,
+    mut persistence: ResMut<PersistenceStatus>,
 ) {
     if !dirty.0 {
         return;
     }
     dirty.0 = false;
-    if let Err(error) = store.persist(&options, &load) {
-        if !matches!(*load, OptionsLoadStatus::Rejected(_))
-            && let (_, rejected @ OptionsLoadStatus::Rejected(_)) = load_player_options(&store)
-        {
-            *load = rejected;
-            recovery.message.clear();
-        }
-        error!(
-            "could not save options to {}: {error}",
-            store.path().display()
-        );
-    }
+    recovery.message.clear();
+    persist_player_options(&store, &options, &mut load, &mut persistence.options);
 }
 
 #[cfg(test)]
@@ -656,6 +654,7 @@ mod tests {
             .init_resource::<PlayerOptions>()
             .init_resource::<OptionsEntryLatch>()
             .init_resource::<OptionsDirty>()
+            .init_resource::<PersistenceStatus>()
             .init_resource::<OptionsLoadStatus>()
             .init_resource::<OptionsRecovery>()
             .init_resource::<OptionsReturn>()
@@ -700,6 +699,59 @@ mod tests {
                 .contains(&KeyCode::KeyG)
         );
         assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn real_options_rebind_reports_write_failure_and_retry_saves_active_binding() {
+        let root = std::env::temp_dir().join(format!("rpg-s1-rf05-rebind-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let mut store = OptionsStore::new(root.clone());
+        store.store(&PlayerOptions::default()).unwrap();
+        let original = std::fs::read(store.path()).unwrap();
+        store.fail_operation = Some("sync temporary options");
+        let mut app = options_app();
+        app.insert_resource(store.clone())
+            .add_plugins(crate::persistence_status::PersistenceStatusPlugin)
+            .add_systems(Startup, load_options_at_startup)
+            .add_systems(Update, persist_options.after(handle_options_input));
+        app.update();
+        {
+            let mut screen = app.world_mut().resource_mut::<OptionsScreen>();
+            screen.navigate(6);
+            screen.confirm(&mut PlayerOptions::default());
+        }
+        press(&mut app, KeyCode::KeyG);
+        assert!(
+            app.world()
+                .resource::<PlayerOptions>()
+                .bindings
+                .keys(BindingTarget::Menu(AppAction::Travel))
+                .contains(&KeyCode::KeyG)
+        );
+        assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        assert!(
+            app.world()
+                .resource::<PersistenceStatus>()
+                .options
+                .message
+                .contains("active for this session")
+        );
+        app.world_mut()
+            .resource_mut::<OptionsStore>()
+            .fail_operation = None;
+        app.update();
+        assert_eq!(std::fs::read(store.path()).unwrap(), original);
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .options
+            .retry_requested = true;
+        app.update();
+        assert!(!app.world().resource::<PersistenceStatus>().options.failed);
+        assert_eq!(
+            store.load().unwrap().0,
+            *app.world().resource::<PlayerOptions>()
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -757,6 +809,10 @@ mod tests {
     #[test]
     fn rejected_reset_requires_confirmation_and_preserves_an_exact_backup() {
         let (mut app, store, original) = rejected_reset_app("reset-confirm");
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .options
+            .report("Stale options write failure".to_owned(), true);
         assert!(visible_status(&mut app).contains("Options file preserved"));
         app.world_mut().resource_mut::<PlayerOptions>().text_speed =
             Some(crate::engine_config::TextSpeed::Slow);
@@ -801,6 +857,13 @@ mod tests {
                 .resource::<OptionsRecovery>()
                 .message
                 .contains("Shipped defaults saved")
+        );
+        let notice = &app.world().resource::<PersistenceStatus>().options;
+        assert!(!notice.failed);
+        assert!(
+            notice
+                .message
+                .contains("defaults are active and saved to disk")
         );
         // Persistence becomes available after explicit recovery.
         app.world_mut()
