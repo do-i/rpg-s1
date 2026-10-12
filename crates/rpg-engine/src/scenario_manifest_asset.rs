@@ -77,10 +77,6 @@ impl ActiveManifestLoad {
         self.failure.as_ref()
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "tests verify hot-reload handle identity")
-    )]
     pub(crate) fn handle(&self) -> &Handle<Manifest> {
         &self.handle
     }

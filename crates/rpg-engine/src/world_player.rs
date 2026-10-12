@@ -7,7 +7,7 @@
 use std::{error::Error, fmt, time::Duration};
 
 use bevy::{
-    asset::{AssetServer, Assets, Handle, LoadState},
+    asset::{AssetServer, Assets, Handle},
     ecs::schedule::ApplyDeferred,
     prelude::*,
 };
@@ -53,6 +53,7 @@ impl Plugin for WorldPlayerPlugin {
                     spawn_world_player,
                 )
                     .chain()
+                    .in_set(crate::world_publication::WorldPublicationSet::Load)
                     .run_if(in_state(AppState::World)),
             )
             .add_systems(
@@ -234,7 +235,7 @@ pub(crate) enum WorldPlayerSpawnStatus {
 }
 
 /// Strong handle and publication state for the current World entry.
-#[derive(Debug, Resource)]
+#[derive(Clone, Debug, Resource)]
 pub(crate) struct WorldPlayerSpawnState {
     atlas: Option<Handle<TsxAtlasAsset>>,
     map_id: Option<String>,
@@ -273,6 +274,26 @@ impl WorldPlayerSpawnState {
 
     pub(crate) const fn failure(&self) -> Option<&WorldPlayerSpawnFailure> {
         self.failure.as_ref()
+    }
+
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+        controlled_member: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if let Some(failure) = self.failure() {
+            return PublicationStatus::Failed(failure.to_string());
+        }
+        if self.is_spawned_for(map_id) && self.member_id.as_deref() == Some(controlled_member) {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
+    pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
+        self.atlas.iter().map(|h| h.id().untyped()).collect()
     }
 
     pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
@@ -443,7 +464,7 @@ fn spawn_world_player(
     let Some(handle) = state.atlas.as_ref() else {
         return;
     };
-    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
+    if crate::world_publication::asset_failed(&asset_server, handle.id()) {
         fail_spawn(&mut state, WorldPlayerSpawnFailure::AtlasLoad);
         return;
     }

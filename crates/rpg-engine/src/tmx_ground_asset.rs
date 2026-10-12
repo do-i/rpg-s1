@@ -13,7 +13,7 @@ use std::{collections::BTreeMap, error::Error, fmt, path::PathBuf, str};
 use bevy::{
     asset::{
         Asset, AssetApp, AssetLoader, AssetPath, AssetServer, Assets, Handle, LoadContext,
-        LoadState, io::Reader,
+        io::Reader,
     },
     ecs::schedule::ApplyDeferred,
     ecs::{bundle::Bundle, component::Component},
@@ -65,6 +65,7 @@ impl Plugin for TmxGroundAssetPlugin {
                 Update,
                 (sync_static_map_request, ApplyDeferred, spawn_static_map)
                     .chain()
+                    .in_set(crate::world_publication::WorldPublicationSet::Load)
                     .run_if(in_state(AppState::World)),
             )
             .add_systems(
@@ -85,14 +86,39 @@ pub(crate) enum StaticMapRenderStatus {
 }
 
 /// Strong handle and publication state for the active World's static map.
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct StaticMapRenderState {
     map_id: Option<String>,
     handle: Option<Handle<TmxGroundAsset>>,
     status: StaticMapRenderStatus,
+    failure: Option<String>,
 }
 
 impl StaticMapRenderState {
+    fn fail(&mut self, reason: impl Into<String>) {
+        self.status = StaticMapRenderStatus::Failed;
+        self.failure = Some(reason.into());
+    }
+
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if let Some(reason) = &self.failure {
+            return PublicationStatus::Failed(reason.clone());
+        }
+        if self.is_spawned_for(map_id) {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
+    pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
+        self.handle.iter().map(|h| h.id().untyped()).collect()
+    }
+
     pub(crate) fn map<'a>(&self, maps: &'a Assets<TmxGroundAsset>) -> Option<&'a TmxGroundAsset> {
         maps.get(self.handle.as_ref()?)
     }
@@ -285,7 +311,7 @@ pub(crate) struct StaticMapTileBundle {
 
 /// Marks the one fixed-canvas camera owned by the active static World map.
 #[derive(Component)]
-struct WorldMapCamera;
+pub(crate) struct WorldMapCamera;
 
 /// Places a dynamic entity in the shared bottom-of-sprite Y-sort band.
 pub(crate) fn world_entity_y_z(world_y: f32, sprite_half_height: f32) -> f32 {
@@ -335,11 +361,11 @@ fn begin_static_map_load(
         .and_then(|game| game.map().current())
         .map(|map_id| map_id.as_str())
     else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("current map is missing");
         return;
     };
     let Some(logical) = inventory.tmx_path(map_id) else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("map path is invalid");
         return;
     };
     state.map_id = Some(map_id.to_owned());
@@ -377,11 +403,11 @@ fn sync_static_map_request(
     }
     *state = StaticMapRenderState::default();
     let Some(map_id) = current else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("current map is missing");
         return;
     };
     let Some(logical) = inventory.tmx_path(map_id) else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("map path is invalid");
         return;
     };
     state.map_id = Some(map_id.to_owned());
@@ -406,15 +432,15 @@ fn spawn_static_map(
         return;
     }
     if !existing_tiles.is_empty() || !existing_cameras.is_empty() {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("map entities are incomplete");
         return;
     }
     let Some(handle) = state.handle.as_ref() else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("map handle is missing");
         return;
     };
-    if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
-        state.status = StaticMapRenderStatus::Failed;
+    if crate::world_publication::asset_failed(&asset_server, handle.id()) {
+        state.fail("map or image dependency failed to load");
         return;
     }
     if !asset_server.is_loaded_with_dependencies(handle.id()) {
@@ -424,7 +450,7 @@ fn spawn_static_map(
         return;
     };
     let Ok(bundles) = map.visible_bundles(&atlases) else {
-        state.status = StaticMapRenderStatus::Failed;
+        state.fail("map tiles cannot render");
         return;
     };
     let bounds = map.pixel_bounds();
@@ -948,6 +974,7 @@ mod tests {
             map_id: Some("town_01_ardel".to_owned()),
             handle: Some(map_handle),
             status: StaticMapRenderStatus::Loading,
+            failure: None,
         };
         app.world_mut().run_system_once(spawn_static_map).unwrap();
 

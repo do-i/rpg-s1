@@ -47,7 +47,12 @@ impl Plugin for WorldAudioPlugin {
             .add_systems(OnEnter(AppState::World), begin_world_audio)
             .add_systems(
                 Update,
-                (drive_world_audio, fade_in_world_audio)
+                (
+                    drive_world_audio
+                        .run_if(crate::world_transition::map_audio_ready)
+                        .after(crate::world_publication::WorldPublicationSet::Barrier),
+                    fade_in_world_audio,
+                )
                     .chain()
                     .run_if(in_state(AppState::World)),
             )

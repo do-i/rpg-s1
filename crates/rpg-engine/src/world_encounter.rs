@@ -70,16 +70,19 @@ impl Plugin for WorldEncounterPlugin {
             .add_systems(
                 Update,
                 (
-                    request_active_encounter_assets,
+                    request_active_encounter_assets
+                        .in_set(crate::world_publication::WorldPublicationSet::Load),
                     ApplyDeferred,
-                    drive_active_encounter_assets,
+                    drive_active_encounter_assets
+                        .in_set(crate::world_publication::WorldPublicationSet::Load),
                     ApplyDeferred,
                     // The ambient World holds still while any overlay owns the
                     // screen; asset loading and the battle hand-off below do not.
                     (update_world_enemies, detect_enemy_contact)
                         .chain()
-                        .run_if(crate::world_pause::world_simulation_running),
-                    start_scripted_battle,
+                        .run_if(crate::world_pause::world_simulation_running)
+                        .after(crate::world_publication::WorldPublicationSet::Barrier),
+                    start_scripted_battle.run_if(crate::world_transition::transition_settled),
                     advance_battle_transition,
                     update_battle_flash_overlay,
                 )
@@ -103,7 +106,7 @@ pub(crate) enum WorldEncounterStatus {
     Failed,
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct WorldEncounterState {
     map_id: Option<String>,
     metadata: Option<Handle<MapMetadata>>,
@@ -121,6 +124,39 @@ pub(crate) struct WorldEncounterState {
 }
 
 impl WorldEncounterState {
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if let Some(reason) = &self.failure {
+            return PublicationStatus::Failed(reason.clone());
+        }
+        if self.map_id.as_deref() == Some(map_id)
+            && matches!(
+                self.status,
+                WorldEncounterStatus::Spawned | WorldEncounterStatus::NoEncounters
+            )
+        {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
+    pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
+        self.metadata
+            .iter()
+            .map(|h| h.id().untyped())
+            .chain(self.zone.iter().map(|h| h.id().untyped()))
+            .chain(self.enemy_files.iter().map(|h| h.id().untyped()))
+            .chain(self.boss_move_sets.iter().map(|(_, h)| h.id().untyped()))
+            .chain(self.backgrounds.iter().map(|h| h.id().untyped()))
+            .chain(self.sfx_index.iter().map(|h| h.id().untyped()))
+            .chain(self.sprite_handles.values().map(|h| h.id().untyped()))
+            .collect()
+    }
+
     #[cfg_attr(
         not(test),
         expect(dead_code, reason = "runtime diagnostics are test-facing")
@@ -446,7 +482,7 @@ fn drive_active_encounter_assets(
     if state
         .enemy_files
         .iter()
-        .any(|handle| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+        .any(|handle| crate::world_publication::asset_failed(asset_server, handle.id()))
     {
         fail_encounter(&mut state, "enemy catalog failed to load".to_owned());
         return;
@@ -454,7 +490,7 @@ fn drive_active_encounter_assets(
     if state
         .boss_move_sets
         .iter()
-        .any(|(_, handle)| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+        .any(|(_, handle)| crate::world_publication::asset_failed(asset_server, handle.id()))
     {
         fail_encounter(
             &mut state,
@@ -648,7 +684,7 @@ fn drive_active_encounter_assets(
     if state
         .sprite_handles
         .values()
-        .any(|handle| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+        .any(|handle| crate::world_publication::asset_failed(asset_server, handle.id()))
     {
         fail_encounter(&mut state, "world-enemy sprite failed to load".to_owned());
         return;

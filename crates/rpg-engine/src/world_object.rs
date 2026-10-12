@@ -37,6 +37,7 @@ impl Plugin for WorldObjectPlugin {
                     drive_world_object_load,
                 )
                     .chain()
+                    .in_set(crate::world_publication::WorldPublicationSet::Load)
                     .run_if(in_state(AppState::World)),
             )
             .add_systems(
@@ -56,7 +57,7 @@ enum WorldObjectStatus {
     Failed,
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct WorldObjectState {
     map_id: Option<String>,
     flags: Vec<String>,
@@ -64,9 +65,42 @@ pub(crate) struct WorldObjectState {
     manifest: Option<Handle<Manifest>>,
     box_atlas: Option<Handle<TsxAtlasAsset>>,
     status: WorldObjectStatus,
+    failure: Option<String>,
 }
 
 impl WorldObjectState {
+    fn fail(&mut self, reason: impl Into<String>) {
+        self.status = WorldObjectStatus::Failed;
+        self.failure = Some(reason.into());
+    }
+
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if self.map_id.as_deref() != Some(map_id) {
+            return PublicationStatus::Pending;
+        }
+        if let Some(reason) = &self.failure {
+            return PublicationStatus::Failed(reason.clone());
+        }
+        if self.is_spawned_for(map_id) {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
+    pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
+        self.metadata
+            .iter()
+            .map(|h| h.id().untyped())
+            .chain(self.manifest.iter().map(|h| h.id().untyped()))
+            .chain(self.box_atlas.iter().map(|h| h.id().untyped()))
+            .collect()
+    }
+
     pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
         self.map_id.as_deref() == Some(map_id) && self.status == WorldObjectStatus::Spawned
     }
@@ -194,8 +228,9 @@ fn sync_world_object_request(
     let Some(map_id) = current else {
         return;
     };
+    state.map_id = Some(map_id.to_owned());
     let Some(metadata_path) = inventory.map_metadata_path(map_id) else {
-        state.status = WorldObjectStatus::Failed;
+        state.fail("object metadata path is invalid");
         return;
     };
     state.map_id = Some(map_id.to_owned());
@@ -231,14 +266,14 @@ fn drive_world_object_load(
     let (Some(metadata_handle), Some(manifest_handle)) =
         (state.metadata.as_ref(), state.manifest.as_ref())
     else {
-        state.status = WorldObjectStatus::Failed;
+        state.fail("object metadata or manifest handle is missing");
         return;
     };
     if matches!(
         asset_server.load_state(manifest_handle.id()),
         LoadState::Failed(_)
     ) {
-        state.status = WorldObjectStatus::Failed;
+        state.fail("object manifest failed to load");
         return;
     }
     // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
@@ -251,7 +286,7 @@ fn drive_world_object_load(
             Some(&empty_metadata)
         }
         LoadState::Failed(_) => {
-            state.status = WorldObjectStatus::Failed;
+            state.fail("object metadata failed to load");
             return;
         }
         _ => metadata_assets.get(metadata_handle),
@@ -268,7 +303,7 @@ fn drive_world_object_load(
         return;
     };
     if metadata.effective_id(map_id) != map_id {
-        state.status = WorldObjectStatus::Failed;
+        state.fail("object metadata id does not match the destination");
         return;
     }
     if state.box_atlas.is_none() {
@@ -276,11 +311,8 @@ fn drive_world_object_load(
         return;
     }
     let box_atlas_handle = state.box_atlas.as_ref().expect("set above");
-    if matches!(
-        asset_server.load_state(box_atlas_handle.id()),
-        LoadState::Failed(_)
-    ) {
-        state.status = WorldObjectStatus::Failed;
+    if crate::world_publication::asset_failed(&asset_server, box_atlas_handle.id()) {
+        state.fail("item-box sprite or image dependency failed to load");
         return;
     }
     if !asset_server.is_loaded_with_dependencies(box_atlas_handle.id()) {

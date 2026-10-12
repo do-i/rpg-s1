@@ -45,9 +45,16 @@ impl Plugin for WorldActorPlugin {
                     drive_world_actor_load,
                 )
                     .chain()
+                    .in_set(crate::world_publication::WorldPublicationSet::Load)
                     .run_if(in_state(AppState::World)),
             )
-            .add_systems(Update, update_world_npcs.run_if(in_state(AppState::World)))
+            .add_systems(
+                Update,
+                update_world_npcs
+                    .run_if(in_state(AppState::World))
+                    .run_if(crate::world_transition::transition_settled)
+                    .after(crate::world_publication::WorldPublicationSet::Barrier),
+            )
             .add_systems(OnExit(AppState::World), cleanup_world_actors);
     }
 }
@@ -62,16 +69,48 @@ enum WorldActorStatus {
     Failed,
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct WorldActorState {
     map_id: Option<String>,
     flags: Vec<String>,
     metadata: Option<Handle<MapMetadata>>,
     sprites: Vec<(String, Handle<TsxAtlasAsset>)>,
     status: WorldActorStatus,
+    failure: Option<String>,
 }
 
 impl WorldActorState {
+    fn fail(&mut self, reason: impl Into<String>) {
+        self.status = WorldActorStatus::Failed;
+        self.failure = Some(reason.into());
+    }
+
+    pub(crate) fn publication_status(
+        &self,
+        map_id: &str,
+    ) -> crate::world_publication::PublicationStatus {
+        use crate::world_publication::PublicationStatus;
+        if self.map_id.as_deref() != Some(map_id) {
+            return PublicationStatus::Pending;
+        }
+        if let Some(reason) = &self.failure {
+            return PublicationStatus::Failed(reason.clone());
+        }
+        if self.is_spawned_for(map_id) {
+            PublicationStatus::Ready
+        } else {
+            PublicationStatus::Pending
+        }
+    }
+
+    pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
+        self.metadata
+            .iter()
+            .map(|h| h.id().untyped())
+            .chain(self.sprites.iter().map(|(_, h)| h.id().untyped()))
+            .collect()
+    }
+
     pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
         self.map_id.as_deref() == Some(map_id) && self.status == WorldActorStatus::Spawned
     }
@@ -193,8 +232,9 @@ fn sync_world_actor_request(
     let Some(map_id) = current else {
         return;
     };
+    state.map_id = Some(map_id.to_owned());
     let Some(logical) = inventory.map_metadata_path(map_id) else {
-        state.status = WorldActorStatus::Failed;
+        state.fail("NPC metadata path is invalid");
         return;
     };
     state.map_id = Some(map_id.to_owned());
@@ -224,7 +264,7 @@ fn drive_world_actor_load(
         return;
     }
     let Some(metadata_handle) = state.metadata.as_ref() else {
-        state.status = WorldActorStatus::Failed;
+        state.fail("NPC metadata handle is missing");
         return;
     };
     // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
@@ -237,7 +277,7 @@ fn drive_world_actor_load(
             &empty_metadata
         }
         LoadState::Failed(_) => {
-            state.status = WorldActorStatus::Failed;
+            state.fail("NPC metadata failed to load");
             return;
         }
         _ => {
@@ -254,11 +294,8 @@ fn drive_world_actor_load(
         return;
     };
     if metadata.effective_id(map_id) != map_id {
-        state.status = WorldActorStatus::Failed;
+        state.fail("NPC metadata id does not match the destination");
         return;
-    }
-    if metadata.dismiss_companions {
-        game.dismiss_companions();
     }
     let present = present_npcs(metadata, game.flags());
 
@@ -280,9 +317,9 @@ fn drive_world_actor_load(
     if state
         .sprites
         .iter()
-        .any(|(_, handle)| matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)))
+        .any(|(_, handle)| crate::world_publication::asset_failed(&asset_server, handle.id()))
     {
-        state.status = WorldActorStatus::Failed;
+        state.fail("NPC sprite or image dependency failed to load");
         return;
     }
     if state
@@ -297,6 +334,9 @@ fn drive_world_actor_load(
         return;
     }
 
+    if metadata.dismiss_companions {
+        game.dismiss_companions();
+    }
     for npc in present {
         let sprite = state
             .sprites
