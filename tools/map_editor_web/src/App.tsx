@@ -29,7 +29,7 @@ import { MapNode, MARKER_HANDLE_PREFIX } from "./MapNode";
 import type { ArrivalMarker, MapFlowNode, PortalMarker } from "./MapNode";
 import { ManhattanEdge } from "./ManhattanEdge";
 import type { ManhattanFlowEdge } from "./ManhattanEdge";
-import { applyOp, OpStack } from "./ops";
+import { applyOp, OpStack, recoverMutation } from "./ops";
 import { PortalDialog, RetargetDialog } from "./PortalDialog";
 import { SidePanel } from "./SidePanel";
 import type { Selection } from "./SidePanel";
@@ -168,6 +168,8 @@ export default function App() {
   const [historyVersion, setHistoryVersion] = useState(0);
   const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT);
   const opStack = useRef(new OpStack());
+  const mutationBusy = useRef(false);
+  const [busy, setBusy] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
   const resizingPanel = useRef(false);
   // Positions survive refetches so the layout doesn't jump after each edit;
@@ -182,11 +184,21 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      setGraph(await fetchGraph());
+      const fresh = await fetchGraph();
+      if (fresh.revisionsChanged) {
+        opStack.current.clear();
+        setConnectDraft(null);
+        setRetargetEdge(null);
+        setSelection(null);
+        setHistoryVersion((v) => v + 1);
+        showToast("Maps changed outside this edit. Graph refreshed; undo/redo history cleared.");
+      }
+      setGraph(fresh);
+      setError(null);
     } catch (e) {
       setError(String(e));
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     refresh();
@@ -318,13 +330,24 @@ export default function App() {
 
   const runMutation = useCallback(
     async (action: () => Promise<string>) => {
+      if (mutationBusy.current) return;
+      mutationBusy.current = true;
+      setBusy(true);
       try {
         const message = await action();
         setHistoryVersion((v) => v + 1);
         await refresh();
         showToast(message);
       } catch (e) {
-        showToast(`Error: ${e instanceof Error ? e.message : String(e)}`);
+        showToast(await recoverMutation(e, opStack.current, refresh, () => {
+          setConnectDraft(null);
+          setRetargetEdge(null);
+          setSelection(null);
+        }));
+        setHistoryVersion((v) => v + 1);
+      } finally {
+        mutationBusy.current = false;
+        setBusy(false);
       }
     },
     [refresh, showToast],
@@ -332,6 +355,7 @@ export default function App() {
 
   const onConnect = useCallback(
     (conn: Connection) => {
+      if (mutationBusy.current) return;
       if (!conn.source || !conn.target || conn.source === conn.target) return;
       // Dragging from a portal marker prefills that portal's door tile.
       let sourceTile: [number, number] | null = null;
@@ -518,14 +542,14 @@ export default function App() {
         </span>
         <button
           onClick={undo}
-          disabled={!opStack.current.canUndo}
+          disabled={busy || !opStack.current.canUndo}
           title="Ctrl+Z"
         >
           ⌫ undo
         </button>
         <button
           onClick={redo}
-          disabled={!opStack.current.canRedo}
+          disabled={busy || !opStack.current.canRedo}
           title="Ctrl+Shift+Z"
         >
           redo ⌦

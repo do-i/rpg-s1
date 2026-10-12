@@ -359,3 +359,82 @@ timeout, and the API suite passed immediately with normal local socket/thread
 access. The ASGI helper has a five-second request timeout. Interactive browser
 acceptance remains manual. Mutation concurrency/conflicts and thumbnail cache
 invalidation remain RF-07/RF-09.
+
+## RF-07 — Prevent conflicting editor mutations
+
+Completed 2026-10-12. The inherited workspace/Clippy baseline remains recorded
+above; this task changed Python/TypeScript only. The pre-change focused editor
+suite passed all 25 tests. Disposable threaded probes reproduced three failures:
+two creates acknowledged object ID 2 but only one new portal survived; a retarget
+published after an acknowledged delete resurrected object ID 1; and an external
+Tiled-style XML edit between read and publication was overwritten. The bounded
+probes and output are in ignored `temp/refactoring/rf07-reproduce.py` and
+`rf07-red.log`; no shipped maps were edited.
+
+An `RLock` now encloses service validation, mutation, publication, graph refresh
+and JSON snapshots. Concurrent direct service creates retain distinct IDs, and
+retarget/delete operations run in a consistent order. Graph readers wait until
+publication and graph refresh finish. Successful edits also refresh a destination
+whose on-disk graph changed before validation. The writer parses one byte snapshot,
+records its SHA-256, and checks source plus validated destination revisions before
+backup/publication and again immediately before replacement. Service revisions
+are captured before validation, so a change during validation cannot be accepted
+as the edit's original revision. The first backup, temporary cleanup and published
+but unsynced error behavior remain covered by the RF-03 tests.
+
+Graph nodes and successful mutation replies expose source revisions; browser
+mutations send `If-Match`. A stale snapshot or observed external revision change
+returns HTTP 409. Graph GET rereads metadata/portals and publishes its snapshot
+only after checking its revisions. The browser explains conflicts, discards stale
+dialogs, clears undo/redo history and refreshes once without replaying the obsolete
+request. It also clears history if an external change is discovered by a graph
+refresh after an acknowledged edit. A browser mutation guard prevents overlapping
+local history actions. Reciprocal portals remain separate saves; partial create,
+undo or redo reports already acknowledged changes, refreshes, and clears partial
+history rather than silently retrying or claiming a complete failure.
+
+Deletion undo now restores from a server-held receipt of the original edge. This
+preserves RF-06's accepted fractional authored geometry without relaxing ordinary
+StrictInt create/resize or destination requests. Restore revalidates source contact
+and arrival collision, allocates a fresh object ID, and consumes the receipt after
+publication, including a published-but-unsynced restoration. Receipts are bounded
+to the most recent 128 deletions; expired, used or restarted-session receipts return
+409 and invalidate obsolete history. Frontend redo tracks the new restored IDs.
+
+The supported policy is one process and one service instance per scenario; the
+launcher explicitly selects one Uvicorn worker. Multiple browser tabs can share
+that instance. The lock is not cross-process, and a hash comparison followed by
+replacement is not filesystem compare-and-swap: a noncooperating Tiled save could
+still occur after the final comparison. Coordinate Tiled saves with browser
+mutations and refresh after the Tiled save. These limitations and conflict/history
+behavior are documented in `tools/map_editor_web/README.md`. Render-cache changes
+remain RF-09. No interactive browser or simultaneous real Tiled-save acceptance is
+claimed by the headless probes.
+
+Validation:
+
+- `PYGAME_HIDE_SUPPORT_PROMPT=1 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+  tools/.venv/bin/python -m unittest discover -s tools/map_editor/tests -t . -v`:
+  passed, 41 tests (25 existing and 16 conflict/restoration regressions).
+- `npm ci`, `npm test`, and `npm run build` in `tools/map_editor_web`: passed.
+  The ten frontend behavior cases exercise actual compiled API/history modules
+  with response fixtures, including undo/redo conflicts, revision advancement,
+  changed graph detection, fresh IDs, fractional deletion restoration, partial
+  create/undo/redo outcomes, ordinary input errors, and expired receipts. They
+  do not claim DOM or visual acceptance. No new test dependency was added.
+- `cargo test -p rpg-content --test editor_tmx_publication -j 1`: passed, one
+  Python-to-Rust create/retarget/delete parser integration.
+- `cargo test -p rpg-engine --lib
+  python_editor_rectangles_points_and_authored_edges_round_trip_runtime_extraction
+  -j 1`: passed, one editor-to-runtime geometry extraction regression.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- `bash scripts/map-editor.sh check`: passed, 54 maps and 108 portals.
+- The create-tiled-map CSV validator and offscreen `tmxrasterizer` accepted the
+  unchanged disposable-map source fixture; its preview is temporary.
+
+Raw logs are ignored under `temp/refactoring/rf07-*.log`. Cargo reused the shared
+cache with permission and one worker; no cache cleanup was needed. Backend ASGI
+and frontend Node worker tests ran with normal local thread/process access: the
+sandbox's Node test runner reported only a file-level pass, while the normal run
+listed and passed all ten behavioral cases. API requests and injected publication
+waits remain bounded to five seconds. RF-11 will add CI gates for these checks.

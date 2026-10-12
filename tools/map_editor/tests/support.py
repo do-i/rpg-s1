@@ -60,7 +60,7 @@ def map_xml(width=4, height=4, tile_width=32, tile_height=32, rect=(32, 32, 32, 
     return ET.tostring(root, encoding="unicode")
 
 
-def api_request(app, method, path, body=None):
+def api_request(app, method, path, body=None, *, headers=None, include_headers=False):
     """Drive the real ASGI request/response stack without an extra HTTP client dependency."""
     async def request():
         messages = []
@@ -81,12 +81,16 @@ def api_request(app, method, path, body=None):
             "type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}, "http_version": "1.1",
             "method": method, "scheme": "http", "path": path,
             "raw_path": path.encode(), "query_string": b"",
-            "headers": [(b"content-type", b"application/json")],
+            "headers": [(b"content-type", b"application/json"), *(headers or [])],
             "server": ("test", 80), "client": ("test", 1234), "root_path": "",
         }, receive, send), timeout=5)
         status = next(message["status"] for message in messages if message["type"] == "http.response.start")
         response = b"".join(message.get("body", b"") for message in messages
                             if message["type"] == "http.response.body")
-        return status, json.loads(response) if response else None
+        result = (status, json.loads(response) if response else None)
+        if include_headers:
+            start = next(message for message in messages if message["type"] == "http.response.start")
+            return (*result, dict(start["headers"]))
+        return result
 
     return asyncio.run(request())

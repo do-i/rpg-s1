@@ -7,6 +7,8 @@
 
 import {
   createPortal,
+  ApiError,
+  restorePortal,
   deletePortal,
   retargetPortal,
 } from "./api";
@@ -40,46 +42,63 @@ export type PortalOp =
       kind: "delete";
       // Everything needed to re-create the portal on undo.
       edge: PortalEdgeInfo;
+      restoreToken?: string;
       label: string;
     };
+
+export class PartialMutationError extends Error {
+  constructor(message: string, public readonly original: unknown) {
+    super(message);
+  }
+}
 
 export async function applyOp(op: PortalOp): Promise<void> {
   switch (op.kind) {
     case "create": {
-      const ids: CreatedRef[] = [];
-      for (const req of op.requests) {
-        const edge = await createPortal(req);
-        ids.push({ sourceMap: edge.source, objId: edge.portal_obj_id });
+      op.createdIds = [];
+      try {
+        for (const req of op.requests) {
+          const edge = await createPortal(req);
+          op.createdIds.push({ sourceMap: edge.source, objId: edge.portal_obj_id });
+        }
+      } catch (error) {
+        if (op.createdIds.length > 0) {
+          throw new PartialMutationError(`${op.createdIds.length} portal(s) saved; the remaining create failed.`, error);
+        }
+        throw error;
       }
-      op.createdIds = ids;
       return;
     }
     case "retarget":
       await retargetPortal(op.sourceMap, op.objId, op.after);
       return;
     case "delete":
-      await deletePortal(op.edge.source, op.edge.portal_obj_id);
+      op.restoreToken = await deletePortal(op.edge.source, op.edge.portal_obj_id);
       return;
   }
 }
 
 export async function revertOp(op: PortalOp): Promise<void> {
   switch (op.kind) {
-    case "create":
-      for (const ref of [...op.createdIds].reverse()) {
-        await deletePortal(ref.sourceMap, ref.objId);
+    case "create": {
+      let removed = 0;
+      try {
+        for (const ref of [...op.createdIds].reverse()) {
+          await deletePortal(ref.sourceMap, ref.objId);
+          removed += 1;
+        }
+      } catch (error) {
+        if (removed > 0) throw new PartialMutationError(`${removed} portal(s) deleted; undo stopped before the remaining portal(s).`, error);
+        throw error;
       }
       return;
+    }
     case "retarget":
       await retargetPortal(op.sourceMap, op.objId, op.before);
       return;
     case "delete": {
-      const edge = await createPortal({
-        source_map: op.edge.source,
-        source_rect_px: op.edge.source_rect_px,
-        target_map: op.edge.target,
-        target_tile: op.edge.target_tile,
-      });
+      if (!op.restoreToken) throw new Error("This deletion has no restoration receipt.");
+      const edge = await restorePortal(op.edge.source, op.restoreToken);
       // Redo must delete the portal under its new object id.
       op.edge = edge;
       return;
@@ -107,6 +126,11 @@ export class OpStack {
     this.applied += 1;
   }
 
+  clear(): void {
+    this.ops = [];
+    this.applied = 0;
+  }
+
   async undo(): Promise<string | null> {
     if (!this.canUndo) return null;
     const op = this.ops[this.applied - 1];
@@ -122,4 +146,25 @@ export class OpStack {
     this.applied += 1;
     return op.label;
   }
+}
+
+/** Conflicts invalidate inverse edits too; refresh once and never retry the action. */
+export async function recoverMutation(
+  error: unknown,
+  history: OpStack,
+  refresh: () => Promise<void>,
+  discardDrafts: () => void,
+): Promise<string> {
+  const original = error instanceof PartialMutationError ? error.original : error;
+  const conflict = original instanceof ApiError && original.status === 409;
+  if (conflict || error instanceof PartialMutationError) {
+    history.clear();
+    discardDrafts();
+    await refresh();
+    const detail = original instanceof Error ? original.message : String(original);
+    const partial = error instanceof PartialMutationError ? `${error.message} ` : "";
+    return `${conflict ? "Conflict" : "Partial edit"}: ${partial}${detail} Graph refreshed; undo/redo history cleared. Review before editing again. Any earlier successful edits remain saved.`;
+  }
+  await refresh();
+  return `Error: ${error instanceof Error ? error.message : String(error)}`;
 }
