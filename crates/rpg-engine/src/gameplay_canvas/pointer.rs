@@ -50,6 +50,11 @@ impl CanvasPointer {
         self.clicked && self.position.is_some()
     }
 
+    pub(crate) fn consume(&mut self) {
+        self.position = None;
+        self.clicked = false;
+    }
+
     /// Builds a pointer sitting at a known viewport position.
     ///
     /// Layout normally supplies these coordinates, and no headless test has a laid-out window, so
@@ -116,7 +121,7 @@ impl Plugin for CanvasPointerPlugin {
     }
 }
 
-fn update_canvas_pointer(
+pub(crate) fn update_canvas_pointer(
     windows: Query<&Window, With<PrimaryWindow>>,
     buttons: Option<Res<ButtonInput<MouseButton>>>,
     mut pointer: ResMut<CanvasPointer>,

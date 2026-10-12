@@ -16,9 +16,10 @@ use crate::{
     app_state::AppState,
     debug_launch::DebugSession,
     game_state::GameState,
+    persistence_status::PersistenceStatus,
     runtime_map::RuntimeMapId,
     save_data::NativeSaveEnvelope,
-    save_store::{SaveStore, unix_timestamp_now},
+    save_store::{SaveStore, SaveStoreError, unix_timestamp_now},
     save_ui::SaveSlotCatalog,
     world_transition::WorldTransition,
 };
@@ -30,6 +31,7 @@ pub(crate) struct AutosavePlugin;
 impl Plugin for AutosavePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AutosaveTracker>()
+            .init_resource::<PersistenceStatus>()
             // A title visit is a session boundary: the next World entry belongs to a different
             // playthrough, so it must checkpoint even when it starts on the same map.
             .add_systems(OnEnter(AppState::Title), reset_autosave_tracker)
@@ -47,34 +49,41 @@ impl Plugin for AutosavePlugin {
 struct AutosaveTracker {
     last_map: Option<RuntimeMapId>,
     failure: Option<String>,
+    scenario: Option<(String, String)>,
 }
 
 impl AutosaveTracker {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "autosave diagnostics are exposed before the World error UI"
-        )
-    )]
+    #[cfg(test)]
     fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
     }
 }
 
-fn reset_autosave_tracker(mut tracker: ResMut<AutosaveTracker>) {
+fn reset_autosave_tracker(
+    mut tracker: ResMut<AutosaveTracker>,
+    mut status: ResMut<PersistenceStatus>,
+) {
     *tracker = AutosaveTracker::default();
+    status.autosave = default();
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "arrival checkpoint checks transition, session, catalog, and persistence feedback"
+)]
 fn autosave_on_map_arrival(
     transition: Res<WorldTransition>,
     mut tracker: ResMut<AutosaveTracker>,
+    mut status: ResMut<PersistenceStatus>,
     store: Res<SaveStore>,
     mut saves: ResMut<SaveSlotCatalog>,
     game: Option<ResMut<GameState>>,
     time: Res<Time<Real>>,
     debug_session: Option<Res<DebugSession>>,
 ) {
+    // Consume once, including while locked: a click must never become a deferred write in
+    // another map or session. The player can click again after the arrival settles.
+    let retry = std::mem::take(&mut status.autosave.retry_requested) && tracker.failure.is_some();
     if debug_session.is_some() {
         return;
     }
@@ -87,7 +96,7 @@ fn autosave_on_map_arrival(
     let Some(current) = game.map().current().cloned() else {
         return;
     };
-    if tracker.last_map.as_ref() == Some(&current) {
+    if !retry && tracker.last_map.as_ref() == Some(&current) {
         return;
     }
     // Scenario data is still streaming in; retry on a later frame rather than recording the
@@ -95,6 +104,14 @@ fn autosave_on_map_arrival(
     let Some(context) = saves.context() else {
         return;
     };
+    if retry
+        && (tracker.last_map.as_ref() != Some(&current)
+            || tracker.scenario.as_ref().is_none_or(|(id, version)| {
+                id != context.scenario_id || version != context.scenario_version
+            }))
+    {
+        return;
+    }
     let scenario_id = context.scenario_id.to_owned();
     let scenario_version = context.scenario_version.to_owned();
     let balance = context.balance.clone();
@@ -102,9 +119,10 @@ fn autosave_on_map_arrival(
     // Past this point the arrival counts as attempted. Recording it even when the write fails
     // keeps a persistent failure (a full disk, a read-only directory) from retrying every frame.
     tracker.last_map = Some(current.clone());
+    tracker.scenario = Some((scenario_id.clone(), scenario_version.clone()));
     game.playtime_mut().commit_session(time.elapsed());
     let result = unix_timestamp_now()
-        .map_err(|error| error.to_string())
+        .map_err(|error| (error.to_string(), false))
         .and_then(|timestamp| {
             NativeSaveEnvelope::from_game_state(
                 &game,
@@ -113,19 +131,44 @@ fn autosave_on_map_arrival(
                 timestamp,
                 current.as_str().to_owned(),
             )
-            .map_err(|error| error.to_string())
+            .map_err(|error| (error.to_string(), false))
         })
         .and_then(|envelope| {
             store
                 .write(AUTOSAVE_SLOT, &envelope, true, &balance)
-                .map_err(|error| error.to_string())
+                .map_err(|error| {
+                    let published = matches!(
+                        &error,
+                        SaveStoreError::Io {
+                            operation: "sync save directory",
+                            ..
+                        }
+                    );
+                    (error.to_string(), published)
+                })
         });
     match result {
         Ok(_) => {
             tracker.failure = None;
             saves.request_refresh();
+            status
+                .autosave
+                .report("Autosave saved to disk.".to_owned(), false);
         }
-        Err(error) => tracker.failure = Some(error),
+        Err((error, published)) => {
+            let message = if published {
+                saves.request_refresh();
+                format!(
+                    "Autosave file published, but disk durability could not be confirmed: {error}. Retry after fixing the storage problem."
+                )
+            } else {
+                format!(
+                    "Autosave could not be saved to disk: {error}. Progress remains active in this session; the previous save is preserved. Retry after fixing the storage problem."
+                )
+            };
+            status.autosave.report(message, true);
+            tracker.failure = Some(error);
+        }
     }
 }
 
@@ -178,6 +221,7 @@ mod tests {
             .insert_resource(fixture_game())
             .insert_resource(Time::<Real>::default())
             .init_resource::<AutosaveTracker>()
+            .init_resource::<PersistenceStatus>()
             .add_systems(Update, autosave_on_map_arrival);
         app
     }
@@ -322,5 +366,197 @@ mod tests {
         #[expect(clippy::permissions_set_readonly_false, reason = "test cleanup")]
         permissions.set_readonly(false);
         fs::set_permissions(&root, permissions).unwrap();
+    }
+    #[test]
+    fn injected_write_and_sync_failures_preserve_checkpoint_and_deliberate_retry_refreshes() {
+        for operation in ["write temporary save", "sync temporary save"] {
+            let dir = TempSaveDir::new(operation);
+            let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+            app.update();
+            let previous = fs::read(dir.autosave_path()).unwrap();
+            app.world_mut()
+                .resource_mut::<SaveSlotCatalog>()
+                .clear_refresh_for_test();
+            move_to_map(&mut app, "town_01_ardel");
+            app.world_mut().resource_mut::<SaveStore>().fail_operation = Some(operation);
+            app.update();
+            assert_eq!(fs::read(dir.autosave_path()).unwrap(), previous);
+            let notice = &app.world().resource::<PersistenceStatus>().autosave;
+            assert!(notice.failed);
+            assert!(notice.message.contains(operation));
+            assert!(notice.message.contains("Progress remains active"));
+            assert!(
+                !app.world()
+                    .resource::<SaveSlotCatalog>()
+                    .refresh_requested_for_test()
+            );
+            assert_eq!(
+                fs::read_dir(&dir.0).unwrap().count(),
+                1,
+                "failed temporary file cleaned up"
+            );
+            // Repair does not itself retry, even across multiple frames.
+            app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
+            app.update();
+            app.update();
+            assert_eq!(fs::read(dir.autosave_path()).unwrap(), previous);
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .map_mut()
+                .move_to(
+                    RuntimeMapId::try_new("town_01_ardel").unwrap(),
+                    Position::new(9, 8),
+                    CardinalDirection::Up,
+                );
+            app.world_mut()
+                .resource_mut::<PersistenceStatus>()
+                .autosave
+                .retry_requested = true;
+            app.update();
+            let notice = &app.world().resource::<PersistenceStatus>().autosave;
+            assert!(!notice.failed);
+            assert_eq!(notice.message, "Autosave saved to disk.");
+            assert!(
+                app.world()
+                    .resource::<AutosaveTracker>()
+                    .failure()
+                    .is_none()
+            );
+            assert!(
+                app.world()
+                    .resource::<SaveSlotCatalog>()
+                    .refresh_requested_for_test()
+            );
+            assert!(
+                fs::read_to_string(dir.autosave_path())
+                    .unwrap()
+                    .contains("town_01_ardel")
+            );
+            let (_, saved_game) = app
+                .world()
+                .resource::<SaveStore>()
+                .load(0, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+            assert_eq!(saved_game.map().position(), Position::new(9, 8));
+        }
+    }
+
+    #[test]
+    fn directory_sync_failure_reports_published_checkpoint_and_refreshes_catalog() {
+        let dir = TempSaveDir::new("directory-sync");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        app.update();
+        app.world_mut()
+            .resource_mut::<SaveSlotCatalog>()
+            .clear_refresh_for_test();
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("sync save directory");
+        move_to_map(&mut app, "town_01_ardel");
+        app.update();
+        assert!(
+            app.world()
+                .resource::<PersistenceStatus>()
+                .autosave
+                .message
+                .contains("file published")
+        );
+        assert!(app.world().resource::<PersistenceStatus>().autosave.failed);
+        assert!(
+            app.world()
+                .resource::<SaveSlotCatalog>()
+                .refresh_requested_for_test()
+        );
+        assert!(
+            app.world()
+                .resource::<SaveStore>()
+                .load(0, "my_rpg_story", "1.0.0", &fixture_balance())
+                .is_ok()
+        );
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .autosave
+            .retry_requested = true;
+        app.update();
+        assert!(!app.world().resource::<PersistenceStatus>().autosave.failed);
+    }
+
+    #[test]
+    fn retry_during_failed_publication_is_consumed_without_deferred_write() {
+        let dir = TempSaveDir::new("failed-publication");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("write temporary save");
+        app.update();
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
+        app.world_mut()
+            .resource_mut::<WorldTransition>()
+            .destination_failed("missing TMX");
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .autosave
+            .retry_requested = true;
+        app.update();
+        assert!(!dir.autosave_path().exists());
+        assert!(
+            !app.world()
+                .resource::<PersistenceStatus>()
+                .autosave
+                .retry_requested
+        );
+        *app.world_mut().resource_mut::<WorldTransition>() = WorldTransition::idle_for_test();
+        app.update();
+        assert!(
+            !dir.autosave_path().exists(),
+            "no deferred retry on recovery"
+        );
+    }
+
+    #[test]
+    fn stale_map_or_scenario_retry_cannot_publish_and_title_clears_failure() {
+        let dir = TempSaveDir::new("stale-retry");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("write temporary save");
+        app.update();
+        app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
+        move_to_map(&mut app, "town_01_ardel");
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .autosave
+            .retry_requested = true;
+        app.update();
+        assert!(!dir.autosave_path().exists());
+        move_to_map(&mut app, "zone_01_starting_forest");
+        app.insert_resource(SaveSlotCatalog::ready_for_test(
+            "other",
+            "2.0.0",
+            fixture_balance(),
+        ));
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .autosave
+            .retry_requested = true;
+        app.update();
+        assert!(!dir.autosave_path().exists());
+        app.world_mut()
+            .run_system_cached(reset_autosave_tracker)
+            .unwrap();
+        assert!(
+            app.world()
+                .resource::<PersistenceStatus>()
+                .autosave
+                .message
+                .is_empty()
+        );
+        assert!(
+            app.world()
+                .resource::<AutosaveTracker>()
+                .failure()
+                .is_none()
+        );
+        assert!(
+            !app.world()
+                .resource::<PersistenceStatus>()
+                .autosave
+                .retry_requested
+        );
     }
 }

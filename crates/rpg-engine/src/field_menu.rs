@@ -26,7 +26,8 @@ use crate::{
         status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
         status_violet, window_start,
     },
-    options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions, load_player_options},
+    options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions},
+    persistence_status::{PersistenceStatus, SaveNotice, persist_player_options},
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
     runtime_quest::{QuestStatus, quest_status},
@@ -1543,6 +1544,7 @@ struct MenuSettings<'w> {
     options: Option<ResMut<'w, PlayerOptions>>,
     options_store: Option<Res<'w, OptionsStore>>,
     options_load: Option<ResMut<'w, OptionsLoadStatus>>,
+    persistence: Option<ResMut<'w, PersistenceStatus>>,
     battle_log: Option<Res<'w, LastBattleLog>>,
 }
 
@@ -1575,25 +1577,19 @@ impl MenuSettings<'_> {
         if let (Some(store), Some(options)) =
             (self.options_store.as_deref(), self.options.as_deref())
         {
-            let status = self.options_load.as_deref().cloned().unwrap_or_default();
-            if let Err(error) = store.persist(options, &status) {
-                error!(
-                    "could not save options to {}: {error}",
-                    store.path().display()
-                );
-                let (_, current) = load_player_options(store);
-                let rejected = if matches!(status, OptionsLoadStatus::Rejected(_)) {
-                    status
-                } else {
-                    current
-                };
-                if let Some(message) = rejected.rejection_message() {
-                    state.message = message;
-                    if let Some(load) = self.options_load.as_deref_mut() {
-                        *load = rejected;
-                    }
-                }
-            }
+            let mut fallback_load = self.options_load.as_deref().cloned().unwrap_or_default();
+            let load = self
+                .options_load
+                .as_deref_mut()
+                .unwrap_or(&mut fallback_load);
+            let mut fallback_notice = SaveNotice::default();
+            let notice = self
+                .persistence
+                .as_deref_mut()
+                .map(|status| &mut status.options)
+                .unwrap_or(&mut fallback_notice);
+            persist_player_options(store, options, load, notice);
+            state.message.clone_from(&notice.message);
         }
     }
 }
@@ -3966,7 +3962,7 @@ mod tests {
         // A newer document with an unknown row is rejected as Parse by the strict schema.
         let original = b"version: 99\nfuture_option: preserve\n";
         std::fs::write(store.path(), original).unwrap();
-        let (options, status) = load_player_options(&store);
+        let (options, status) = crate::options_store::load_player_options(&store);
         let game = crate::field_menu_domain::tests::game([]);
         let members = game.party().len();
         let mut app = menu_input_app(game, FieldMenuState::default());
@@ -4004,6 +4000,53 @@ mod tests {
             1,
             "normal edits must not even create a backup"
         );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn battle_option_write_failure_reports_active_choice_in_persistent_status() {
+        let root = std::env::temp_dir().join(format!("rpg-s1-rf05-field-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let mut store = OptionsStore::new(root.clone());
+        store.store(&PlayerOptions::default()).unwrap();
+        let original = std::fs::read(store.path()).unwrap();
+        store.fail_operation = Some("write temporary options");
+        let game = crate::field_menu_domain::tests::game([]);
+        let members = game.party().len();
+        let mut app = menu_input_app(game, FieldMenuState::default());
+        app.insert_resource(store.clone())
+            .insert_resource(PlayerOptions::default())
+            .init_resource::<OptionsLoadStatus>()
+            .init_resource::<PersistenceStatus>();
+        for (offset, choice) in [(0, 1), (1, 0), (2, 1)] {
+            *app.world_mut().resource_mut::<FieldMenuState>() = FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Battle,
+                mode: FieldMenuMode::BattleTacticPicker,
+                selected: members + offset,
+                battle_choice: choice,
+                ..default()
+            };
+            tap(&mut app, KeyCode::Enter);
+            assert_eq!(std::fs::read(store.path()).unwrap(), original);
+            let notice = &app.world().resource::<PersistenceStatus>().options;
+            assert!(notice.failed);
+            assert!(notice.message.contains("active for this session"));
+            assert!(notice.message.contains("write temporary options"));
+            assert_eq!(
+                app.world().resource::<FieldMenuState>().message,
+                notice.message
+            );
+        }
+        let options = app.world().resource::<PlayerOptions>();
+        assert!(options.auto_enemy_turns);
+        assert_eq!(options.turn_pause, TurnPause::Instant);
+        assert!(options.skip_victory_screen);
+        app.world_mut()
+            .resource_mut::<FieldMenuState>()
+            .message
+            .clear();
+        assert!(app.world().resource::<PersistenceStatus>().options.failed);
         std::fs::remove_dir_all(root).unwrap();
     }
 

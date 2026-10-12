@@ -62,11 +62,28 @@ impl SaveSlot {
 #[derive(Clone, Debug, Resource)]
 pub(crate) struct SaveStore {
     root: PathBuf,
+    #[cfg(test)]
+    pub(crate) fail_operation: Option<&'static str>,
 }
 
 impl SaveStore {
     pub(crate) fn new(root: PathBuf) -> Self {
-        Self { root }
+        Self {
+            root,
+            #[cfg(test)]
+            fail_operation: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn inject_failure(&self, operation: &'static str) -> Result<(), SaveStoreError> {
+        if self.fail_operation == Some(operation) {
+            return Err(SaveStoreError::Io {
+                operation,
+                error: "injected I/O failure".to_owned(),
+            });
+        }
+        Ok(())
     }
 
     pub(crate) fn root(&self) -> &Path {
@@ -206,10 +223,14 @@ impl SaveStore {
                 operation: "create temporary save",
                 error: error.to_string(),
             })?;
+        #[cfg(test)]
+        self.inject_failure("write temporary save")?;
         file.write_all(&bytes).map_err(|error| SaveStoreError::Io {
             operation: "write temporary save",
             error: error.to_string(),
         })?;
+        #[cfg(test)]
+        self.inject_failure("sync temporary save")?;
         file.sync_all().map_err(|error| SaveStoreError::Io {
             operation: "sync temporary save",
             error: error.to_string(),
@@ -255,6 +276,8 @@ impl SaveStore {
             })?;
         }
         cleanup.disarm();
+        #[cfg(test)]
+        self.inject_failure("sync save directory")?;
         File::open(&self.root)
             .and_then(|directory| directory.sync_all())
             .map_err(|error| SaveStoreError::Io {

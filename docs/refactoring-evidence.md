@@ -221,3 +221,66 @@ and its allowed retry succeeded. Options/save formats, scenario assets, and edit
 behavior are unchanged. General save/options failure status and retry controls
 remain RF-05. Recovery UI behavior was tested headlessly; visual/full-game
 acceptance and real power loss remain manual.
+
+## RF-05 — Visible persistence failures and deliberate retry
+
+Completed 2026-10-12. Source inspection confirmed that arrival autosave failures
+only reached the tracker getter, while ordinary Options and battle-setting I/O
+failures only reached the log. The existing Options dirty flag and autosave
+attempted-map guard already prevented per-frame write storms; those protections
+remain in place. Reproduction uses disposable save/config directories and
+per-store, test-only failure injection, without touching player files.
+
+A shared status overlay persists across screen changes and shows separate autosave
+and Options feedback. Failed writes explain that active session progress/choices
+have not been durably saved. Successful writes replace stale failure feedback
+with confirmation of disk persistence. Pointer Retry and Dismiss controls operate
+on the relevant notice; dismissal hides feedback without erasing failure state.
+The overlay consumes its pointer hover/click before menu hit tests and does not
+intercept configurable gameplay bindings. A new failed write reopens a dismissed
+notice.
+
+Options screen writes, field-menu battle setting writes, and deliberate retries
+share the RF-04 guarded persistence path and retain error logging. Retry cannot
+replace a rejected options
+file, even after it is removed externally; the existing explicit backup/reset
+confirmation remains the recovery path. Successful explicit reset clears stale
+Options write feedback. Autosave retry rebuilds from live GameState only after
+the RF-02 publication barrier is settled, requires the attempted map and scenario
+identity/version, and is consumed once even if publication is locked or failed.
+Title entry clears the autosave attempt, error, and pending retry for the next
+session. Pre-publication write/sync failure preserves the previous file exactly;
+temporary files are cleaned up. A directory-sync failure after atomic replacement
+instead reports that the complete file was published but durability is uncertain.
+Autosave requests a slot-catalog refresh for both successful durable publication
+and published-but-unsynced outcomes.
+
+Validation:
+
+- `cargo test --workspace -j 1`: passed on the final source snapshot, 196 content
+  tests, 859 engine tests, one Python-to-Rust integration test, and one application
+  integration test (1,057 total). Eleven new engine regressions cover injected
+  write/temporary-sync failures, exact previous-file preservation, cleanup and
+  absence of per-frame retries, read-only directory recovery, live-state retry,
+  cleared errors and requested catalog refresh, published-but-unsynced feedback,
+  failed publication and obsolete map/scenario retries, title/session reset,
+  rejected-file retry protection, pointer Retry/Dismiss and click-through
+  prevention, real Options rebinding, and all three battle setting writes. The
+  existing explicit-reset regression also checks stale failure clearing.
+- `cargo clippy --workspace --all-targets -j 1 -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+
+Raw logs are under ignored `temp/refactoring/rf05-*.log`. The shared Cargo cache is
+reused with sandbox permission and one worker. An initial automatic approval
+review could not run because of the usage limit; user-authorized resumption
+allowed the test run to proceed. A later full-cache linker SIGBUS and Clippy
+`No space left on device` were resolved without a full cache clean: remove the
+confirmed abandoned linker temporary, then archive this task's engine incremental
+snapshots and superseded generated root/test executables to
+`/tmp/rpg-s1-rf05-cache-backup`. No compiler/linker was active during archival;
+dependency caches and unrelated artifacts were retained. The next link reported
+inconsistent hidden LLVM symbols in engine incremental outputs. A subsequent
+`cargo clean -p rpg-engine` removed only generated engine artifacts before the
+serial rebuild; content/dependency caches remained available. Headless tests
+cover feedback and pointer routing; full-game visual acceptance at different window scales, real disk-full behavior,
+and real power loss remain manual. No performance claim is made.
