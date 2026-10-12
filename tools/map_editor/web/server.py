@@ -17,14 +17,14 @@ import os
 from pathlib import Path
 
 import pygame
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StrictInt
 
-from tools.map_editor.edit.tmx_writer import TMXPublishedDurabilityError
+from tools.map_editor.edit.tmx_writer import TMXConflictError, TMXPublishedDurabilityError
 from tools.map_editor.graph.thumbnails import ThumbnailCache
 from tools.map_editor.service.editor_service import EditorLookupError, EditorService
 from tools.map_editor.service.portal_validation import PortalValidationError
@@ -43,6 +43,10 @@ class PortalCreate(BaseModel):
     source_rect_px: tuple[StrictInt, StrictInt, StrictInt, StrictInt]
     target_map: str
     target_tile: tuple[StrictInt, StrictInt]
+
+
+class PortalRestore(BaseModel):
+    token: str
 
 
 class PortalPatch(BaseModel):
@@ -89,11 +93,12 @@ def create_app(scenario_root: Path) -> FastAPI:
         allow_origins=DEV_CORS_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Map-Revision", "X-Restore-Token"],
     )
 
     @app.get("/api/graph")
     def get_graph() -> dict:
-        return service.graph_dict()
+        return _or_404(lambda: service.graph_dict(refresh=True))
 
     @app.get("/api/maps/{map_id}/thumbnail.png")
     def get_thumbnail(map_id: str) -> FileResponse:
@@ -114,31 +119,40 @@ def create_app(scenario_root: Path) -> FastAPI:
         return FileResponse(png, media_type="image/png")
 
     @app.post("/api/portals", status_code=201)
-    def post_portal(body: PortalCreate) -> dict:
+    def post_portal(body: PortalCreate, if_match: str | None = Header(default=None)) -> dict:
         return _or_404(
             lambda: service.create_portal(
                 source_map=body.source_map,
                 source_rect_px=body.source_rect_px,
                 target_map=body.target_map,
                 target_tile=body.target_tile,
+                expected_revision=if_match,
             )
         )
 
     @app.patch("/api/portals/{source_map}/{portal_obj_id}")
-    def patch_portal(source_map: str, portal_obj_id: int, body: PortalPatch) -> dict:
+    def patch_portal(source_map: str, portal_obj_id: int, body: PortalPatch, if_match: str | None = Header(default=None)) -> dict:
         return _or_404(
             lambda: service.retarget_portal(
                 source_map=source_map,
                 portal_obj_id=portal_obj_id,
                 target_map=body.target_map,
                 target_tile=body.target_tile,
+                expected_revision=if_match,
                 source_rect_px=body.source_rect_px,
             )
         )
 
     @app.delete("/api/portals/{source_map}/{portal_obj_id}", status_code=204)
-    def delete_portal(source_map: str, portal_obj_id: int) -> None:
-        _or_404(lambda: service.delete_portal(source_map, portal_obj_id))
+    def delete_portal(source_map: str, portal_obj_id: int, if_match: str | None = Header(default=None)) -> Response:
+        result = _or_404(lambda: service.delete_portal(source_map, portal_obj_id, expected_revision=if_match))
+        return Response(status_code=204, headers={
+            "X-Map-Revision": result["revision"], "X-Restore-Token": result["restore_token"],
+        })
+
+    @app.post("/api/portals/restore", status_code=201)
+    def restore_portal(body: PortalRestore, if_match: str | None = Header(default=None)) -> dict:
+        return _or_404(lambda: service.restore_portal(body.token, expected_revision=if_match))
 
     if FRONTEND_DIST.is_dir():
         app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
@@ -150,6 +164,8 @@ def _or_404(action):
     """Translate domain lookup/input errors without misclassifying writer failures."""
     try:
         return action()
+    except TMXConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except TMXPublishedDurabilityError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except PortalValidationError as exc:

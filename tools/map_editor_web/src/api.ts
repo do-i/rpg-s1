@@ -17,6 +17,7 @@ export interface ItemBoxInfo {
 
 export interface MapNodeInfo {
   map_id: string;
+  revision: string;
   display_name: string;
   tmx_file: string;
   yaml_file: string | null;
@@ -41,12 +42,34 @@ export interface PortalEdgeInfo {
   source_tile: [number, number];
   target_tile: [number, number];
   portal_obj_id: number;
+  revision?: string;
   source_rect_px: [number, number, number, number];
 }
 
 export interface GraphPayload {
   nodes: MapNodeInfo[];
   edges: PortalEdgeInfo[];
+  revisionsChanged?: boolean;
+}
+
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+const revisions = new Map<string, string>();
+
+function editHeaders(sourceMap: string): Record<string, string> {
+  const revision = revisions.get(sourceMap);
+  if (!revision) throw new Error("Refresh the graph before editing this map.");
+  return { "Content-Type": "application/json", "If-Match": revision };
+}
+
+async function editedEdge(res: Response): Promise<PortalEdgeInfo> {
+  const edge: PortalEdgeInfo = await res.json();
+  if (edge.revision) revisions.set(edge.source, edge.revision);
+  return edge;
 }
 
 async function checkOk(res: Response): Promise<Response> {
@@ -58,14 +81,22 @@ async function checkOk(res: Response): Promise<Response> {
     } catch {
       // non-JSON error body; keep the status line
     }
-    throw new Error(detail);
+    throw new ApiError(res.status, detail);
   }
   return res;
 }
 
 export async function fetchGraph(): Promise<GraphPayload> {
   const res = await checkOk(await fetch("/api/graph"));
-  return res.json();
+  const graph: GraphPayload = await res.json();
+  graph.revisionsChanged = revisions.size > 0 && (
+    graph.nodes.length !== revisions.size || graph.nodes.some(
+      (node) => revisions.get(node.map_id) !== node.revision,
+    )
+  );
+  revisions.clear();
+  for (const node of graph.nodes) revisions.set(node.map_id, node.revision);
+  return graph;
 }
 
 export function thumbnailUrl(mapId: string): string {
@@ -89,11 +120,11 @@ export async function createPortal(
   const res = await checkOk(
     await fetch("/api/portals", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: editHeaders(req.source_map),
       body: JSON.stringify(req),
     }),
   );
-  return res.json();
+  return editedEdge(res);
 }
 
 export interface RetargetPortalRequest {
@@ -112,22 +143,31 @@ export async function retargetPortal(
       `/api/portals/${encodeURIComponent(sourceMap)}/${portalObjId}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: editHeaders(sourceMap),
         body: JSON.stringify(req),
       },
     ),
   );
-  return res.json();
+  return editedEdge(res);
 }
 
 export async function deletePortal(
   sourceMap: string,
   portalObjId: number,
-): Promise<void> {
-  await checkOk(
+): Promise<string> {
+  const res = await checkOk(
     await fetch(
       `/api/portals/${encodeURIComponent(sourceMap)}/${portalObjId}`,
-      { method: "DELETE" },
+      { method: "DELETE", headers: editHeaders(sourceMap) },
     ),
   );
+  const revision = res.headers.get("X-Map-Revision");
+  if (revision) revisions.set(sourceMap, revision);
+  return res.headers.get("X-Restore-Token") ?? "";
+}
+
+export async function restorePortal(sourceMap: string, token: string): Promise<PortalEdgeInfo> {
+  return editedEdge(await checkOk(await fetch("/api/portals/restore", {
+    method: "POST", headers: editHeaders(sourceMap), body: JSON.stringify({ token }),
+  })));
 }

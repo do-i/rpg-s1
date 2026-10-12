@@ -59,7 +59,7 @@ def _run_web(scenario_root: Path, port: int, open_browser: bool) -> None:
     print(f"Map editor: {url}  (Ctrl+C to stop)")
     if open_browser:
         threading.Timer(0.8, webbrowser.open, args=(url,)).start()
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning", workers=1)
 
 
 if __name__ == "__main__":
