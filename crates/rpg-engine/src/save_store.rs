@@ -230,10 +230,30 @@ impl SaveStore {
         )
         .map_err(SaveStoreError::Native)?;
         before_replace(&temp, &destination)?;
-        fs::rename(&temp, &destination).map_err(|error| SaveStoreError::Io {
-            operation: "atomically replace save slot",
-            error: error.to_string(),
-        })?;
+        if overwrite {
+            fs::rename(&temp, &destination).map_err(|error| SaveStoreError::Io {
+                operation: "atomically replace save slot",
+                error: error.to_string(),
+            })?;
+        } else {
+            // Linking the verified inode publishes it atomically without replacing any
+            // existing directory entry, including a dangling symlink. Both paths are
+            // in the save directory, so they belong to the same filesystem on Linux.
+            fs::hard_link(&temp, &destination).map_err(|error| {
+                if error.kind() == std::io::ErrorKind::AlreadyExists {
+                    SaveStoreError::DestinationExists(slot)
+                } else {
+                    SaveStoreError::Io {
+                        operation: "atomically create save slot",
+                        error: error.to_string(),
+                    }
+                }
+            })?;
+            fs::remove_file(&temp).map_err(|error| SaveStoreError::Io {
+                operation: "remove published temporary save",
+                error: error.to_string(),
+            })?;
+        }
         cleanup.disarm();
         File::open(&self.root)
             .and_then(|directory| directory.sync_all())
@@ -480,6 +500,98 @@ mod tests {
         );
         assert_eq!(fs::read(&destination).unwrap(), old_bytes);
         assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn destination_created_before_publication_survives_without_confirmation() {
+        let root = TemporaryDirectory::new("late-conflict");
+        let store = SaveStore::new(root.0.clone());
+        let destination = store.slot_path(1).unwrap();
+        let incumbent = b"concurrently created save";
+        assert_eq!(
+            store.write_with_hook(
+                1,
+                &fixture_envelope(),
+                false,
+                &fixture_balance(),
+                |_, destination| {
+                    fs::write(destination, incumbent).unwrap();
+                    Ok(())
+                },
+            ),
+            Err(SaveStoreError::DestinationExists(1))
+        );
+        assert_eq!(fs::read(destination).unwrap(), incumbent);
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dangling_destination_symlink_survives_without_confirmation() {
+        for late in [false, true] {
+            let root = TemporaryDirectory::new("symlink-conflict");
+            let store = SaveStore::new(root.0.clone());
+            let destination = store.slot_path(1).unwrap();
+            let missing = root.0.join("missing.yaml");
+            if !late {
+                std::os::unix::fs::symlink(&missing, &destination).unwrap();
+            }
+            assert_eq!(
+                store.write_with_hook(
+                    1,
+                    &fixture_envelope(),
+                    false,
+                    &fixture_balance(),
+                    |_, destination| {
+                        if late {
+                            std::os::unix::fs::symlink(&missing, destination).unwrap();
+                        }
+                        Ok(())
+                    },
+                ),
+                Err(SaveStoreError::DestinationExists(1))
+            );
+            assert_eq!(fs::read_link(destination).unwrap(), missing);
+            assert!(!missing.exists());
+            assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+        }
+    }
+
+    #[test]
+    fn failed_no_replace_publication_cleans_temporary_file() {
+        let root = TemporaryDirectory::new("publish-failure");
+        let store = SaveStore::new(root.0.clone());
+        // Removing the verified temporary file injects a filesystem publication error.
+        assert!(matches!(
+            store.write_with_hook(
+                1,
+                &fixture_envelope(),
+                false,
+                &fixture_balance(),
+                |temp, _| {
+                    fs::remove_file(temp).unwrap();
+                    Ok(())
+                },
+            ),
+            Err(SaveStoreError::Io {
+                operation: "atomically create save slot",
+                ..
+            })
+        ));
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn interrupted_no_replace_write_cleans_temporary_file() {
+        let root = TemporaryDirectory::new("create-interrupt");
+        let store = SaveStore::new(root.0.clone());
+        assert_eq!(
+            store.write_with_hook(1, &fixture_envelope(), false, &fixture_balance(), |_, _| {
+                Err(SaveStoreError::InjectedInterruption)
+            },),
+            Err(SaveStoreError::InjectedInterruption)
+        );
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
     }
 
     #[test]

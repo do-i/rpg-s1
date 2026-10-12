@@ -239,7 +239,9 @@ fn install_python_import_with_hook(
     };
     before_native_write()?;
     let destination = store
-        .write(slot, envelope, replace, balance)
+        // An initially empty slot has no backup, even with --replace. A late
+        // arrival must survive rather than being replaced without preservation.
+        .write(slot, envelope, backup.is_some(), balance)
         .map_err(|error| PythonImportError::Install(error.to_string()))?;
     Ok(ImportInstallResult {
         destination,
@@ -1211,6 +1213,36 @@ opened_boxes: []
             )
             .unwrap();
         assert_eq!(loaded.payload, envelope.payload);
+    }
+
+    #[test]
+    fn concurrently_created_import_destination_survives_with_or_without_replace() {
+        let catalog = catalog();
+        let envelope = convert_python_save(fixture(), false, &catalog, 1_700_000_100).unwrap();
+        for replace in [false, true] {
+            let root = TemporaryDirectory::new();
+            let store = SaveStore::new(root.0.clone());
+            let destination = store.slot_path(7).unwrap();
+            let incumbent = b"concurrently created save";
+            let result = install_python_import_with_hook(
+                &store,
+                7,
+                &envelope,
+                replace,
+                &catalog.balance,
+                || {
+                    fs::write(&destination, incumbent).unwrap();
+                    Ok(())
+                },
+            );
+            assert!(matches!(
+                result,
+                Err(PythonImportError::Install(reason))
+                    if reason.contains("save slot 7 already exists")
+            ));
+            assert_eq!(fs::read(destination).unwrap(), incumbent);
+            assert_eq!(fs::read_dir(store.root()).unwrap().count(), 1);
+        }
     }
 
     #[test]
