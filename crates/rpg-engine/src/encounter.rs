@@ -292,6 +292,8 @@ pub struct BattleParticipant {
     pub abilities: Vec<crate::scenario_class::Ability>,
     pub status_effects: Vec<crate::scenario_item::ItemStatus>,
     pub accessory: Option<String>,
+    /// Whether a party member's equipped weapon is a sword, which decides its attack sound.
+    pub wields_sword: bool,
     pub row: PartyRow,
     pub boss: bool,
     pub enemy_type: Option<crate::scenario_enemy::EnemyType>,
@@ -437,6 +439,11 @@ pub(crate) fn build_battle_entry(
                     .equipment()
                     .get(EquipmentSlot::Accessory)
                     .map(str::to_owned),
+                wields_sword: member
+                    .equipment()
+                    .get(EquipmentSlot::Weapon)
+                    .and_then(|id| item_catalog.item(id))
+                    .is_some_and(is_sword),
                 row: member.row(),
                 boss: false,
                 enemy_type: None,
@@ -562,6 +569,15 @@ pub(crate) fn build_scripted_battle_entry(
     Ok(entry)
 }
 
+/// Whether an item is a bladed sword: the authored `sword` and `short_sword` weapon categories.
+fn is_sword(item: &crate::scenario_item::ItemDefinition) -> bool {
+    matches!(
+        item,
+        crate::scenario_item::ItemDefinition::Weapon(weapon)
+            if matches!(weapon.slot_category.as_str(), "sword" | "short_sword")
+    )
+}
+
 /// B3.2: an enemy's gold is its authored `gp` when present, otherwise a percentage of its EXP
 /// yield. Deriving the default keeps 108 enemies consistent without hand-authoring each one.
 fn enemy_gold_yield(enemy: &EnemyDefinition, gp_per_exp_percent: u32) -> u32 {
@@ -588,6 +604,7 @@ fn enemy_participant(enemy: &EnemyDefinition, gp_per_exp_percent: u32) -> Battle
         abilities: Vec::new(),
         status_effects: Vec::new(),
         accessory: None,
+        wields_sword: false,
         row: PartyRow::Front,
         boss: enemy.boss,
         enemy_type: Some(enemy.enemy_type),
@@ -815,6 +832,26 @@ mod tests {
             crate::scenario_enemy::EnemyBehavior::Inline { .. }
         ));
         assert!(catalog.enemy("veil_wraith").unwrap().barrier.is_some());
+    }
+
+    /// Only swords and short swords slash; every other shipped weapon keeps the generic impact.
+    #[test]
+    fn only_shipped_sword_categories_count_as_swords() {
+        let file: crate::scenario_item::ItemCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/items/weapons.yaml")))
+                .unwrap();
+        let swords = file
+            .0
+            .iter()
+            .filter(|item| is_sword(item))
+            .map(|item| item.id())
+            .collect::<Vec<_>>();
+        for id in ["short_sword", "iron_sword", "steel_sword", "flamebrand"] {
+            assert!(swords.contains(&id), "{id} should slash");
+        }
+        for id in ["oak_staff", "dagger"] {
+            assert!(!swords.contains(&id), "{id} should not slash");
+        }
     }
 
     #[test]

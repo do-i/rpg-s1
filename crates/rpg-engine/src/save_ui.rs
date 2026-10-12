@@ -371,7 +371,7 @@ fn spawn_load_panel(
             spawn_load_header(panel, font, catalog, menu);
             spawn_section_rule(panel);
             if catalog.ready {
-                let page_start = load_page_start(menu.selected);
+                let page_start = load_window_start(menu.selected);
                 let latest = latest_valid_slot(&catalog.slots);
                 let len = catalog.slots.len();
                 let shown = len.saturating_sub(page_start).min(LOAD_VISIBLE_ROWS);
@@ -438,8 +438,6 @@ fn spawn_load_header(
     catalog: &SaveSlotCatalog,
     menu: &TitleLoadMenu,
 ) {
-    let page = menu.selected / LOAD_VISIBLE_ROWS + 1;
-    let page_count = SAVE_SLOT_COUNT.div_ceil(LOAD_VISIBLE_ROWS);
     let recorded = catalog.slots.iter().filter(|slot| slot.is_valid()).count();
     parent
         .spawn(Node {
@@ -491,7 +489,10 @@ fn spawn_load_header(
                     );
                     spawn_status_text(
                         counts,
-                        format!("PAGE {page:02} / {page_count:02}"),
+                        catalog
+                            .slots
+                            .get(menu.selected)
+                            .map_or_else(String::new, |slot| slot.label().to_uppercase()),
                         font,
                         13.0,
                         status_muted(),
@@ -648,8 +649,9 @@ pub(crate) fn latest_valid_slot(slots: &[SaveSlot]) -> Option<usize> {
         .map(|slot| slot.index)
 }
 
-pub(crate) fn load_page_start(selected: usize) -> usize {
-    selected / LOAD_VISIBLE_ROWS * LOAD_VISIBLE_ROWS
+/// The first slot shown, scrolled only far enough to keep `selected` on screen.
+pub(crate) fn load_window_start(selected: usize) -> usize {
+    crate::menu_chrome::window_start(selected, SAVE_SLOT_COUNT, LOAD_VISIBLE_ROWS)
 }
 
 pub(crate) fn save_slot_state_label(slot: &SaveSlot) -> &'static str {

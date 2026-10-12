@@ -270,7 +270,7 @@ pub(in crate::field_menu) fn render_items(
         .collect::<Vec<_>>()
         .join("  ");
     let ids = inventory_ids(game, catalog, InventoryTab::ALL[state.tab_index]);
-    let page = inventory_page_range(ids.len(), state.selected);
+    let page = inventory_window(ids.len(), state.selected);
     let rows = ids
         .iter()
         .enumerate()
@@ -534,8 +534,7 @@ pub(in crate::field_menu) fn render_save(
     state: &FieldMenuState,
     saves: &SaveSlotCatalog,
 ) -> String {
-    let page_start =
-        ((state.selected.saturating_sub(FIRST_PLAYER_SLOT)) / 7) * 7 + FIRST_PLAYER_SLOT;
+    let page_start = save_window_start(state.selected);
     let rows = saves
         .slots()
         .iter()

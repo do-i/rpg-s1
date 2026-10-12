@@ -154,6 +154,7 @@ pub(super) fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> Ba
         abilities: Vec::new(),
         status_effects: Vec::new(),
         accessory: None,
+        wields_sword: false,
         row: PartyRow::Front,
         boss: false,
         enemy_type: None,
