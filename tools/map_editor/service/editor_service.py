@@ -5,16 +5,18 @@ Wraps scenario loading (`io/scenario_loader`), graph building
 with JSON-serializable inputs/outputs, so any frontend (pygame scene, web UI,
 tests) can drive portal editing without touching pygame or ElementTree.
 
-Mutations write straight to the TMX file (a sibling .bak is created on the
+Mutations atomically replace the TMX file (a sibling .bak is created on the
 first edit per file) and refresh only the affected map's edges in the
 in-memory graph.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 
 from tools.map_editor.edit.tmx_writer import (
+    TMXPublishedDurabilityError,
     create_portal,
     delete_portal,
     save_portal_target,
@@ -75,13 +77,13 @@ class EditorService:
         """Create a portal on `source_map` and return the new edge dict."""
         source = self.node(source_map)
         self.node(target_map)  # validate the target exists
-        new_id = create_portal(
-            tmx_path=source.tmx_path,
-            source_rect_px=source_rect_px,
-            new_target_map=target_map,
-            new_target_tile=target_tile,
-        )
-        self._refresh_map_edges(source_map)
+        with self._publication(source_map):
+            new_id = create_portal(
+                tmx_path=source.tmx_path,
+                source_rect_px=source_rect_px,
+                new_target_map=target_map,
+                new_target_tile=target_tile,
+            )
         return _edge_dict(self._edge(source_map, new_id))
 
     def retarget_portal(
@@ -97,23 +99,35 @@ class EditorService:
         source = self.node(source_map)
         self.node(target_map)
         self._edge(source_map, portal_obj_id)  # validate the portal exists
-        save_portal_target(
-            tmx_path=source.tmx_path,
-            portal_obj_id=portal_obj_id,
-            new_target_map=target_map,
-            new_target_tile=target_tile,
-            new_source_rect_px=source_rect_px,
-        )
-        self._refresh_map_edges(source_map)
+        with self._publication(source_map):
+            save_portal_target(
+                tmx_path=source.tmx_path,
+                portal_obj_id=portal_obj_id,
+                new_target_map=target_map,
+                new_target_tile=target_tile,
+                new_source_rect_px=source_rect_px,
+            )
         return _edge_dict(self._edge(source_map, portal_obj_id))
 
     def delete_portal(self, source_map: str, portal_obj_id: int) -> None:
         source = self.node(source_map)
         self._edge(source_map, portal_obj_id)
-        delete_portal(tmx_path=source.tmx_path, portal_obj_id=portal_obj_id)
-        self._refresh_map_edges(source_map)
+        with self._publication(source_map):
+            delete_portal(tmx_path=source.tmx_path, portal_obj_id=portal_obj_id)
 
     # ── internals ────────────────────────────────────────────────────────
+
+    @contextmanager
+    def _publication(self, map_id: str):
+        try:
+            yield
+        except TMXPublishedDurabilityError:
+            # Replacement already happened; reflect the saved map even though
+            # its durability could not be confirmed.
+            self._refresh_map_edges(map_id)
+            raise
+        else:
+            self._refresh_map_edges(map_id)
 
     def _edge(self, source_map: str, portal_obj_id: int) -> GraphEdge:
         for edge in self._graph.edges:
