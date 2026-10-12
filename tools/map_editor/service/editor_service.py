@@ -29,6 +29,11 @@ from tools.map_editor.graph.portal_graph import (
     is_world_map,
 )
 from tools.map_editor.io.scenario_loader import ScenarioMaps, load_scenario_maps
+from tools.map_editor.service.portal_validation import validate_destination, validate_source
+
+
+class EditorLookupError(ValueError):
+    """An unknown map or portal id, distinct from invalid edit input."""
 
 
 class EditorService:
@@ -59,7 +64,7 @@ class EditorService:
     def node(self, map_id: str) -> GraphNode:
         node = self._graph.nodes_by_id.get(map_id)
         if node is None:
-            raise ValueError(
+            raise EditorLookupError(
                 f"Unknown map id '{map_id}'. Known ids come from the TMX file "
                 f"stems under {self._scenario.maps_dir} (example: 'zone1')."
             )
@@ -76,7 +81,9 @@ class EditorService:
     ) -> dict:
         """Create a portal on `source_map` and return the new edge dict."""
         source = self.node(source_map)
-        self.node(target_map)  # validate the target exists
+        target = self.node(target_map)
+        validate_source(source.tmx_path, source_rect_px)
+        validate_destination(target.tmx_path, target_tile)
         with self._publication(source_map):
             new_id = create_portal(
                 tmx_path=source.tmx_path,
@@ -97,8 +104,14 @@ class EditorService:
         """Point an existing portal at a new destination (and optionally move
         or resize its source rect). Returns the updated edge dict."""
         source = self.node(source_map)
-        self.node(target_map)
-        self._edge(source_map, portal_obj_id)  # validate the portal exists
+        target = self.node(target_map)
+        edge = self._edge(source_map, portal_obj_id)
+        validate_source(
+            source.tmx_path,
+            edge.source_rect_px if source_rect_px is None else source_rect_px,
+            authored=source_rect_px is None,
+        )
+        validate_destination(target.tmx_path, target_tile)
         with self._publication(source_map):
             save_portal_target(
                 tmx_path=source.tmx_path,
@@ -133,7 +146,7 @@ class EditorService:
         for edge in self._graph.edges:
             if edge.source == source_map and edge.portal_obj_id == portal_obj_id:
                 return edge
-        raise ValueError(
+        raise EditorLookupError(
             f"No portal with object id {portal_obj_id} on map '{source_map}'. "
             f"Portal ids are the Tiled object ids in the 'portals' object "
             f"group of {source_map}.tmx."

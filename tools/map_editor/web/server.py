@@ -18,14 +18,16 @@ from pathlib import Path
 
 import pygame
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt
 
 from tools.map_editor.edit.tmx_writer import TMXPublishedDurabilityError
 from tools.map_editor.graph.thumbnails import ThumbnailCache
-from tools.map_editor.service.editor_service import EditorService
+from tools.map_editor.service.editor_service import EditorLookupError, EditorService
+from tools.map_editor.service.portal_validation import PortalValidationError
 
 FRONTEND_DIST = (
     Path(__file__).resolve().parent.parent.parent / "map_editor_web" / "dist"
@@ -38,17 +40,17 @@ DEV_CORS_ORIGINS = [
 
 class PortalCreate(BaseModel):
     source_map: str
-    source_rect_px: tuple[int, int, int, int]
+    source_rect_px: tuple[StrictInt, StrictInt, StrictInt, StrictInt]
     target_map: str
-    target_tile: tuple[int, int]
+    target_tile: tuple[StrictInt, StrictInt]
 
 
 class PortalPatch(BaseModel):
     target_map: str
-    target_tile: tuple[int, int]
+    target_tile: tuple[StrictInt, StrictInt]
     # (x, y, w, h) in map pixels to move/resize the portal; null keeps the
     # existing on-disk geometry (a plain retarget).
-    source_rect_px: tuple[int, int, int, int] | None
+    source_rect_px: tuple[StrictInt, StrictInt, StrictInt, StrictInt] | None
 
 
 def _init_headless_pygame() -> None:
@@ -67,6 +69,21 @@ def create_app(scenario_root: Path) -> FastAPI:
     thumbnails = ThumbnailCache(service.scenario_root)
 
     app = FastAPI(title="Map Editor", version="0.1.0")
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request, error: RequestValidationError):
+        # Field text is useful to the browser's error display and avoids echoing
+        # nonfinite input values, which cannot be serialized as JSON responses.
+        details = []
+        for item in error.errors():
+            location = ""
+            for part in item["loc"]:
+                if part in ("body", "path", "query"):
+                    continue
+                location += f"[{part}]" if isinstance(part, int) else ("." if location else "") + part
+            details.append(f"{location or 'request'}: {item['msg']}")
+        return JSONResponse(status_code=422, content={"detail": "; ".join(details)})
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=DEV_CORS_ORIGINS,
@@ -130,11 +147,12 @@ def create_app(scenario_root: Path) -> FastAPI:
 
 
 def _or_404(action):
-    """Domain lookups raise ValueError for unknown map/portal ids; surface
-    those as 404s instead of 500s."""
+    """Translate domain lookup/input errors without misclassifying writer failures."""
     try:
         return action()
     except TMXPublishedDurabilityError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    except ValueError as exc:
+    except PortalValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except EditorLookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

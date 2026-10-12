@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" orientation="orthogonal" renderorder="right-down"
  width="4" height="4" tilewidth="32" tileheight="32" infinite="0"
- nextlayerid="3" nextobjectid="2">
+ nextlayerid="4" nextobjectid="2">
  <layer id="1" name="ground" width="4" height="4"><data encoding="csv">
+0,0,0,0,
+0,0,0,0,
+0,0,0,0,
+0,0,0,0
+ </data></layer>
+ <layer id="3" name="collision" width="4" height="4"><data encoding="csv">
 0,0,0,0,
 0,0,0,0,
 0,0,0,0,
