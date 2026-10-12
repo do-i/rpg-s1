@@ -175,3 +175,49 @@ that bypasses cleanup, and interactive browser acceptance remain manual. A hard
 process termination can leave an unreferenced temporary file, while the canonical
 map remains complete. Geometry/destination validation, concurrent edit conflicts,
 and render cache invalidation remain separate tasks.
+
+## RF-04 — Preserve rejected options files
+
+Completed 2026-10-12. Reproduced the data loss through the real Options input and
+persistence systems: load `version: 99`, capture a new Travel key, and inspect the
+saved bytes. Before the fix, the test failed because `options.yaml` was replaced
+by version 1 settings (`rf04-red.log`). No player configuration was touched.
+
+Added an `OptionsLoadStatus` resource distinguishing missing files, clean loads,
+recoverable row warnings, and rejected files. Launch still uses playable defaults
+when loading fails. Ordinary option changes remain active in memory, while both
+Options screen and field-menu battle settings use guarded persistence. A rejected
+startup file stays protected even if session defaults are edited; persistence also
+checks the current file for rejection before an ordinary write. The Options
+screen displays why the original is preserved and explains that edits apply only
+for the current session. Battle setting changes display the same explanation.
+
+For rejected files, Reset To Defaults now opens a confirmation describing the
+concrete operation: back up the original to a free
+`options.yaml.rejected-001.bak` through `options.yaml.rejected-999.bak` name, then
+save shipped defaults. Back cancels without losing session choices. Confirmation
+copies the exact original bytes with exclusive creation, syncs and verifies the
+backup, and syncs its directory before using the existing atomic options writer.
+Existing backups are never replaced. Backup failure leaves the original intact;
+the screen retains the active session choices and explains the failure. Successful
+recovery reports the backup path and permits ordinary persistence again.
+
+Validation:
+
+- `cargo test --workspace -j 1`: passed, 196 content tests, 848 engine tests, the
+  Python-to-Rust editor integration test, and one application integration test.
+  Eight new regressions cover the actual rebinding/write reproduction, all three
+  field-menu battle settings, missing/warning/rejected load states, future schemas
+  with unknown fields, malformed documents, rejection after startup, exact backup
+  bytes and existing-backup preservation, exhausted backup names, deliberate reset
+  confirmation and cancellation, displayed Options status text, failed recovery,
+  and restored persistence after successful recovery.
+- `cargo clippy --workspace --all-targets -j 1 -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+
+Raw logs are under ignored `temp/refactoring/rf04-*.log`. Cargo reused the shared
+cache with required sandbox permission; one automatic approval review timed out
+and its allowed retry succeeded. Options/save formats, scenario assets, and editor
+behavior are unchanged. General save/options failure status and retry controls
+remain RF-05. Recovery UI behavior was tested headlessly; visual/full-game
+acceptance and real power loss remain manual.

@@ -26,7 +26,7 @@ use crate::{
         status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
         status_violet, window_start,
     },
-    options_store::{OptionsStore, PlayerOptions},
+    options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions, load_player_options},
     runtime_map::RuntimeMapId,
     runtime_member::EquipmentSlot,
     runtime_quest::{QuestStatus, quest_status},
@@ -1426,7 +1426,8 @@ fn handle_field_menu_input(
                 state.battle_choice = wrapped(state.battle_choice, count, delta);
             }
             if actions.just_pressed(AppAction::Confirm) {
-                menu_settings.apply_battle_choice(&mut game, row, state.battle_choice);
+                let choice = state.battle_choice;
+                menu_settings.apply_battle_choice(&mut game, row, choice, &mut state);
                 state.mode = FieldMenuMode::Browse;
             }
         }
@@ -1541,6 +1542,7 @@ struct MenuSettings<'w> {
     engine: Res<'w, EngineSettings>,
     options: Option<ResMut<'w, PlayerOptions>>,
     options_store: Option<Res<'w, OptionsStore>>,
+    options_load: Option<ResMut<'w, OptionsLoadStatus>>,
     battle_log: Option<Res<'w, LastBattleLog>>,
 }
 
@@ -1560,16 +1562,38 @@ impl MenuSettings<'_> {
 
     /// Applies the picker's highlighted entry to `row`, saving the options file when a
     /// battle-wide setting changed.
-    fn apply_battle_choice(&mut self, game: &mut GameState, row: BattleRow, choice: usize) {
-        if apply_battle_choice(game, self.options.as_deref_mut(), row, choice)
-            && let (Some(store), Some(options)) =
-                (self.options_store.as_deref(), self.options.as_deref())
-            && let Err(error) = store.store(options)
+    fn apply_battle_choice(
+        &mut self,
+        game: &mut GameState,
+        row: BattleRow,
+        choice: usize,
+        state: &mut FieldMenuState,
+    ) {
+        if !apply_battle_choice(game, self.options.as_deref_mut(), row, choice) {
+            return;
+        }
+        if let (Some(store), Some(options)) =
+            (self.options_store.as_deref(), self.options.as_deref())
         {
-            error!(
-                "could not save options to {}: {error}",
-                store.path().display()
-            );
+            let status = self.options_load.as_deref().cloned().unwrap_or_default();
+            if let Err(error) = store.persist(options, &status) {
+                error!(
+                    "could not save options to {}: {error}",
+                    store.path().display()
+                );
+                let (_, current) = load_player_options(store);
+                let rejected = if matches!(status, OptionsLoadStatus::Rejected(_)) {
+                    status
+                } else {
+                    current
+                };
+                if let Some(message) = rejected.rejection_message() {
+                    state.message = message;
+                    if let Some(load) = self.options_load.as_deref_mut() {
+                        *load = rejected;
+                    }
+                }
+            }
         }
     }
 }
@@ -3932,6 +3956,55 @@ mod tests {
             .add_systems(Update, handle_field_menu_input);
         app.update();
         app
+    }
+
+    #[test]
+    fn rejected_options_survive_every_field_menu_battle_setting_change() {
+        let root = std::env::temp_dir().join(format!("rpg-s1-rf04-field-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let store = OptionsStore::new(root.clone());
+        // A newer document with an unknown row is rejected as Parse by the strict schema.
+        let original = b"version: 99\nfuture_option: preserve\n";
+        std::fs::write(store.path(), original).unwrap();
+        let (options, status) = load_player_options(&store);
+        let game = crate::field_menu_domain::tests::game([]);
+        let members = game.party().len();
+        let mut app = menu_input_app(game, FieldMenuState::default());
+        app.insert_resource(store.clone())
+            .insert_resource(options)
+            .insert_resource(status);
+        for (offset, choice) in [(0, 1), (1, 0), (2, 1)] {
+            *app.world_mut().resource_mut::<FieldMenuState>() = FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Battle,
+                mode: FieldMenuMode::BattleTacticPicker,
+                selected: members + offset,
+                battle_choice: choice,
+                ..default()
+            };
+            tap(&mut app, KeyCode::Enter);
+            assert_eq!(std::fs::read(store.path()).unwrap(), original);
+            let message = &app.world().resource::<FieldMenuState>().message;
+            assert!(message.contains("Changes apply only for this session"));
+            assert!(message.contains("Reset To Defaults"));
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .release_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .clear();
+            app.update();
+        }
+        let options = app.world().resource::<PlayerOptions>();
+        assert!(options.auto_enemy_turns);
+        assert_eq!(options.turn_pause, TurnPause::Instant);
+        assert!(options.skip_victory_screen);
+        assert_eq!(
+            std::fs::read_dir(&root).unwrap().count(),
+            1,
+            "normal edits must not even create a backup"
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     /// Presses `key` for one frame and reports where the menu landed.
