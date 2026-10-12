@@ -8,7 +8,9 @@ the original can be restored manually if needed.
 
 from __future__ import annotations
 
+import os
 import shutil
+import tempfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -28,7 +30,6 @@ def save_portal_target(
 
     Returns the portal's obj_id (unchanged for existing portals).
     """
-    _ensure_backup(tmx_path)
     tree = ET.parse(tmx_path)
     root = tree.getroot()
     obj = _find_portal_object(root, portal_obj_id)
@@ -44,7 +45,7 @@ def save_portal_target(
     _set_prop(props, "target_map", new_target_map, None)
     _set_prop(props, "target_position_x", str(int(new_target_tile[0])), "int")
     _set_prop(props, "target_position_y", str(int(new_target_tile[1])), "int")
-    tree.write(tmx_path, encoding="utf-8", xml_declaration=True)
+    _publish_tmx(tree, tmx_path)
     return portal_obj_id
 
 
@@ -61,7 +62,6 @@ def create_portal(
 
     Returns the Tiled object id of the newly created portal.
     """
-    _ensure_backup(tmx_path)
     tree = ET.parse(tmx_path)
     root = tree.getroot()
 
@@ -77,7 +77,7 @@ def create_portal(
 
     # Tiled tracks the next-available object id on the root map element.
     root.set("nextobjectid", str(new_id + 1))
-    tree.write(tmx_path, encoding="utf-8", xml_declaration=True)
+    _publish_tmx(tree, tmx_path)
     return new_id
 
 
@@ -86,7 +86,6 @@ def delete_portal(tmx_path: Path, portal_obj_id: int) -> None:
 
     Raises ValueError if no portal with that id exists.
     """
-    _ensure_backup(tmx_path)
     tree = ET.parse(tmx_path)
     root = tree.getroot()
     for group in root.findall("objectgroup"):
@@ -95,7 +94,7 @@ def delete_portal(tmx_path: Path, portal_obj_id: int) -> None:
         for obj in group.findall("object"):
             if obj.get("id") == str(portal_obj_id):
                 group.remove(obj)
-                tree.write(tmx_path, encoding="utf-8", xml_declaration=True)
+                _publish_tmx(tree, tmx_path)
                 return
     raise ValueError(f"Portal object id={portal_obj_id} not found in {tmx_path}")
 
@@ -111,10 +110,82 @@ def _set_object_rect(
     obj.set("height", str(int(h)))
 
 
+class TMXPublishedDurabilityError(OSError):
+    """The new map is visible, but syncing its directory failed."""
+
+
+def _publish_tmx(tree: ET.ElementTree, tmx_path: Path) -> None:
+    """Verify and sync a sibling temporary file before replacing the map."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w+b", dir=tmx_path.parent,
+            prefix=f".{tmx_path.name}.", suffix=".tmp", delete=False,
+        ) as output:
+            temporary = Path(output.name)
+            tree.write(output, encoding="utf-8", xml_declaration=True)
+            output.flush()
+            output.seek(0)
+            verified = ET.parse(output)
+            if _xml_contents(verified.getroot()) != _xml_contents(tree.getroot()):
+                raise ValueError("Serialized TMX does not match the intended map")
+            os.fchmod(output.fileno(), tmx_path.stat().st_mode & 0o7777)
+            os.fsync(output.fileno())
+        _ensure_backup(tmx_path)
+        os.replace(temporary, tmx_path)
+        try:
+            _sync_directory(tmx_path.parent)
+        except OSError as exc:
+            raise TMXPublishedDurabilityError(
+                f"Map {tmx_path.name} was saved, but directory synchronization "
+                "failed; durability after power loss is uncertain. Reload the "
+                "graph before deciding whether to repeat the edit."
+            ) from exc
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def _xml_contents(element: ET.Element) -> tuple:
+    """Compare parsed XML independently of the serializer being verified."""
+    return (
+        element.tag, element.attrib, element.text, element.tail,
+        tuple(_xml_contents(child) for child in element),
+    )
+
+
 def _ensure_backup(tmx_path: Path) -> None:
     bak = tmx_path.with_suffix(tmx_path.suffix + ".bak")
-    if not bak.exists():
-        shutil.copy2(tmx_path, bak)
+    if bak.exists():
+        return
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=tmx_path.parent, prefix=f".{bak.name}.", suffix=".tmp", delete=False,
+        ) as output:
+            temporary = Path(output.name)
+        shutil.copy2(tmx_path, temporary)
+        with temporary.open("rb") as backup:
+            if backup.read() != tmx_path.read_bytes():
+                raise ValueError("TMX backup does not match the original map")
+            os.fsync(backup.fileno())
+        # Keep the first backup, including if its name was claimed meanwhile.
+        try:
+            os.link(temporary, bak)
+        except FileExistsError:
+            pass
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    _sync_directory(tmx_path.parent)
+
+
+def _sync_directory(directory: Path) -> None:
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _find_portal_object(root: ET.Element, obj_id: int) -> ET.Element | None:

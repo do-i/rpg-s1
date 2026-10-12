@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from tools.map_editor.edit.tmx_writer import TMXPublishedDurabilityError
 from tools.map_editor.graph.thumbnails import ThumbnailCache
 from tools.map_editor.service.editor_service import EditorService
 
@@ -133,5 +134,7 @@ def _or_404(action):
     those as 404s instead of 500s."""
     try:
         return action()
+    except TMXPublishedDurabilityError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

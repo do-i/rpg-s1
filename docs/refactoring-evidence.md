@@ -120,3 +120,58 @@ clean or scenario asset changes were needed. The recovery UI, dedicated camera,
 keyboard actions, and persistence behavior were tested headlessly; visual and
 interactive full-game acceptance remain manual. Runtime hot-change invalidation
 is still RF-08 and was not implemented here.
+
+## RF-03 — Atomic editor TMX publication
+
+Completed 2026-10-12. Re-ran interruption and invalid-serialization regressions
+against the pre-change writer from Git on disposable scenarios: all nine
+create/retarget/delete failure cases failed, including canonical bytes becoming
+`b'<?xml'` (`rf03-red.log`). No shipped map was modified.
+
+Changed `tools/map_editor/edit/tmx_writer.py` so all three edit operations use
+one publication helper. It serializes into a unique sibling temporary file,
+flushes and reparses the XML, verifies the complete parsed tree against the
+intended tree independently of the serializer, preserves the map's file mode,
+and syncs the temporary file. The first `.bak` is also staged, verified against
+the original bytes, synced, and linked without replacing an established backup.
+The backup directory entry is synced before atomic `os.replace` publishes the
+map, then the directory is synced again. Failed stages clean up temporary files.
+
+`tools/map_editor/service/editor_service.py` refreshes the graph only after
+publication. A directory-sync failure after replacement explicitly reports that
+the map was saved but its durability is uncertain; the service refreshes the
+graph to match those published bytes before propagating the error. The web
+backend exposes that message in its HTTP error detail so a user can inspect the
+saved graph before repeating an edit.
+
+Added a reusable disposable scenario fixture and behavioral suite under
+`tools/map_editor/tests`, plus
+`crates/rpg-content/tests/editor_tmx_publication.rs`. The Rust integration test
+runs the actual stdlib-only Python writer and parses each successful create,
+retarget, and delete publication with the engine's content parser. It verifies
+object IDs, source geometry, typed destination properties, and untouched ground
+data. It requires `python3`, or `RPG_S1_EDITOR_TEST_PYTHON`, without editor Python
+packages.
+
+Validation:
+
+- `PYGAME_HIDE_SUPPORT_PROMPT=1 tools/.venv/bin/python -m unittest discover
+  -s tools/map_editor/tests -t . -v`: passed, nine tests. Coverage includes all
+  three mutation paths under interrupted/invalid serialization and sync/copy/
+  link/replace failures, corrupt/interrupted backups, backup sync failure,
+  publication ordering, cleanup, unchanged original file and serialized graph
+  bytes before replacement, file permissions, first-backup preservation,
+  editor reload compatibility, and the published-but-unsynced graph/HTTP result.
+- `cargo test -p rpg-content -j 1`: passed, 196 existing content tests and the
+  new Python-to-Rust integration test.
+- `cargo clippy -p rpg-content --all-targets -j 1 -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- `npm ci` followed by `npm run build` in `tools/map_editor_web`: passed.
+- `bash scripts/map-editor.sh check`: passed, 54 maps and 108 portals.
+
+Raw logs are under ignored `temp/refactoring/rf03-*.log`. Cargo reused the shared
+cache with the required sandbox permission. Real power loss, process termination
+that bypasses cleanup, and interactive browser acceptance remain manual. A hard
+process termination can leave an unreferenced temporary file, while the canonical
+map remains complete. Geometry/destination validation, concurrent edit conflicts,
+and render cache invalidation remain separate tasks.
