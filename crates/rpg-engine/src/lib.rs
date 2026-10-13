@@ -183,6 +183,7 @@ fn run_game(arguments: cli::PlayArguments) {
             })
             .set(AssetPlugin {
                 file_path: asset_base.to_string_lossy().into_owned(),
+                watch_for_changes_override: Some(false),
                 ..default()
             })
             .set(WindowPlugin {
@@ -206,7 +207,11 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(ScenarioManifestAssetPlugin)
     .add_plugins(ScenarioAudioAssetPlugin)
     .add_plugins(sfx_cue::SfxCuePlugin)
-    .add_systems(Update, sync_window_title_from_manifest)
+    .add_systems(
+        Update,
+        sync_window_title_from_manifest
+            .run_if(world_transition::hot_reload::published_inputs_enabled),
+    )
     .add_plugins(ScenarioNewGameAssetsPlugin)
     .add_plugins(FieldMenuDomainPlugin)
     .add_plugins(TransportDomainPlugin)
@@ -247,7 +252,11 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(BattleEntryPlugin)
     .add_plugins(BattlePlugin)
     .add_plugins(GameOverPlugin)
-    .add_plugins(CreditsPlugin);
+    .add_plugins(CreditsPlugin)
+    .add_plugins(world_transition::hot_reload::ScenarioHotReloadPlugin::new(
+        asset_base,
+        std::env::var_os("RPG_S1_HOT_RELOAD").is_some(),
+    ));
     if let Some(automation) = arguments.automation {
         app.insert_resource(automation);
     }

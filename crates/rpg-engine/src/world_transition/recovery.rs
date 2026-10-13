@@ -80,6 +80,7 @@ type Boxes = Stored<(WorldItemBox, Sprite, Transform)>;
 type Enemies = Stored<(WorldEnemy, Sprite, Transform)>;
 
 struct SourceWorld {
+    reload: Option<super::hot_reload::ReloadSnapshot>,
     game: GameState,
     render: StaticMapRenderState,
     player: WorldPlayerSpawnState,
@@ -101,6 +102,7 @@ struct SourceWorld {
 impl SourceWorld {
     fn take(world: &mut World) -> Self {
         Self {
+            reload: None,
             game: world.resource::<GameState>().clone(),
             render: world.resource::<StaticMapRenderState>().clone(),
             player: world.resource::<WorldPlayerSpawnState>().clone(),
@@ -122,6 +124,9 @@ impl SourceWorld {
 
     fn restore(self, world: &mut World) {
         clear_destination(world);
+        if let Some(snapshot) = self.reload {
+            snapshot.restore(world);
+        }
         world.insert_resource(self.game);
         world.insert_resource(self.render);
         world.insert_resource(self.player);
@@ -163,6 +168,7 @@ pub(super) struct TransitionRecovery {
     pub(super) initial_game: Option<GameState>,
     pub(super) initial_encounters: Option<WorldEncounterRestore>,
     return_available: bool,
+    hot_reload: bool,
     retry_paths: Vec<AssetPath<'static>>,
     // AssetServer::reload queues asynchronous work; allow it to replace cached failure states.
     retry_grace: f32,
@@ -171,8 +177,26 @@ pub(super) struct TransitionRecovery {
 pub(super) fn loaders_enabled(
     transition: Res<WorldTransition>,
     recovery: Res<TransitionRecovery>,
+    reload: Option<Res<super::hot_reload::HotReload>>,
 ) -> bool {
-    transition.phase != TransitionPhase::Failed && recovery.retry_grace <= 0.0
+    transition.phase != TransitionPhase::Failed
+        && recovery.retry_grace <= 0.0
+        && super::hot_reload::loaders_ready(reload)
+}
+
+pub(super) fn begin_hot_reload(world: &mut World, snapshot: super::hot_reload::ReloadSnapshot) {
+    let mut source = SourceWorld::take(world);
+    source.reload = Some(snapshot);
+    clear_destination(world);
+    let mut recovery = world.resource_mut::<TransitionRecovery>();
+    recovery.source = Some(source);
+    recovery.hot_reload = true;
+    recovery.return_available = false;
+    let mut transition = world.resource_mut::<WorldTransition>();
+    transition.phase = TransitionPhase::Publishing;
+    transition.alpha = 1.0;
+    transition.wait_seconds = 0.0;
+    transition.failure = None;
 }
 
 fn clear_destination(world: &mut World) {
@@ -273,12 +297,16 @@ pub(super) fn drive_transition_loading(world: &mut World) {
             let game = world.get_resource::<GameState>().cloned();
             world.resource_mut::<TransitionRecovery>().initial_game = game;
         }
-        let status = current_publication_status(world);
+        let status = match super::hot_reload::prepare(world) {
+            PublicationStatus::Ready => current_publication_status(world),
+            other => other,
+        };
         match status {
             PublicationStatus::Ready => {
                 if let Some(source) = world.resource_mut::<TransitionRecovery>().source.take() {
                     source.discard(world);
                 }
+                super::hot_reload::finish(world, true);
                 *world.resource_mut::<TransitionRecovery>() = TransitionRecovery::default();
                 world
                     .resource_mut::<WorldTransition>()
@@ -430,6 +458,7 @@ fn fail_publication(world: &mut World, reason: String) {
     if let Some(source) = source {
         source.restore(world);
     }
+    super::hot_reload::finish(world, false);
     let mut recovery = world.resource_mut::<TransitionRecovery>();
     recovery.retry_paths = paths;
     recovery.return_available = can_return;
@@ -452,6 +481,8 @@ pub(super) fn handle_recovery_input(world: &mut World) {
         world.write_message(crate::app_state::AppStateTransitionRequest::new(
             AppState::Title,
         ));
+    } else if super::hot_reload::recovering_late_assets(world) {
+        // Title remains available while outstanding IO is prevented from changing the source.
     } else if back && world.resource::<TransitionRecovery>().return_available {
         let mut transition = world.resource_mut::<WorldTransition>();
         transition.pending = None;
@@ -460,6 +491,10 @@ pub(super) fn handle_recovery_input(world: &mut World) {
         transition.phase = TransitionPhase::FadingIn;
         *world.resource_mut::<TransitionRecovery>() = TransitionRecovery::default();
     } else if retry {
+        if world.resource::<TransitionRecovery>().hot_reload {
+            super::hot_reload::begin(world);
+            return;
+        }
         let paths = world.resource::<TransitionRecovery>().retry_paths.clone();
         for path in paths {
             world.resource::<AssetServer>().reload(path);
@@ -491,6 +526,9 @@ pub(super) fn handle_recovery_input(world: &mut World) {
 #[derive(Component)]
 struct RecoveryUi;
 
+#[derive(Component)]
+struct RecoveryText;
+
 pub(super) fn update_recovery_ui(world: &mut World) {
     let existing = world
         .query_filtered::<Entity, With<RecoveryUi>>()
@@ -503,18 +541,32 @@ pub(super) fn update_recovery_ui(world: &mut World) {
         }
         return;
     }
-    if !existing.is_empty() {
-        return;
-    }
     let back = if world.resource::<TransitionRecovery>().return_available {
         "\nEsc: return to the previous map"
     } else {
         ""
     };
+    let actions = if super::hot_reload::recovering_late_assets(world) {
+        "Asset reads are settling; retry and source return resume afterwards.\nT: return to title"
+            .to_owned()
+    } else {
+        format!("R: retry{back}\nT: return to title")
+    };
     let text = format!(
-        "Unable to enter the map\n{}\n\nR: retry{back}\nT: return to title",
+        "Unable to enter the map\n{}\n\n{actions}",
         transition.failure().unwrap_or("map publication failed")
     );
+    if !existing.is_empty() {
+        for mut label in world
+            .query_filtered::<&mut Text, With<RecoveryText>>()
+            .iter_mut(world)
+        {
+            if label.0 != text {
+                label.0.clone_from(&text);
+            }
+        }
+        return;
+    }
     // Initial map failure may leave no map camera. A dedicated UI camera makes recovery visible
     // even when the TMX or protagonist fails before any World render entity has been published.
     world.spawn((
@@ -547,6 +599,7 @@ pub(super) fn update_recovery_ui(world: &mut World) {
         .with_children(|parent| {
             parent.spawn((
                 Text::new(text),
+                RecoveryText,
                 TextFont {
                     font_size: 24.0.into(),
                     ..default()
@@ -561,7 +614,11 @@ pub(super) fn update_recovery_ui(world: &mut World) {
 }
 
 pub(super) fn cleanup_recovery(world: &mut World) {
-    if let Some(source) = world.resource_mut::<TransitionRecovery>().source.take() {
+    if let Some(mut source) = world.resource_mut::<TransitionRecovery>().source.take() {
+        if let Some(snapshot) = source.reload.take() {
+            snapshot.restore(world);
+            super::hot_reload::finish(world, false);
+        }
         source.discard(world);
     }
     *world.resource_mut::<TransitionRecovery>() = TransitionRecovery::default();

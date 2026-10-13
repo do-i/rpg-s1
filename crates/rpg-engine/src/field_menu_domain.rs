@@ -70,7 +70,7 @@ pub(crate) enum CatalogStatus {
 }
 
 /// Immutable lookup built from every current source-authored M6 class and item file.
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct FieldMenuCatalog {
     status: CatalogStatus,
     items: BTreeMap<String, ItemDefinition>,
@@ -329,8 +329,8 @@ fn compute_warp_destinations(
     Ok(towns)
 }
 
-#[derive(Debug, Default, Resource)]
-struct FieldMenuCatalogLoad {
+#[derive(Clone, Debug, Default, Resource)]
+pub(crate) struct FieldMenuCatalogLoad {
     items: Vec<(String, Handle<ItemCatalogFile>)>,
     field_use: Option<Handle<FieldUseCatalogFile>>,
     classes: Vec<(String, Handle<ClassDefinition>)>,
@@ -340,7 +340,7 @@ struct FieldMenuCatalogLoad {
     quests: Option<Handle<QuestCatalogFile>>,
 }
 
-fn begin_catalog_load(
+pub(crate) fn begin_catalog_load(
     root: Res<ScenarioRoot>,
     inventory: Res<ScenarioInventory>,
     asset_server: Res<AssetServer>,

@@ -4,6 +4,7 @@ use std::{collections::BTreeSet, fmt};
 
 use bevy::prelude::*;
 
+pub(crate) mod hot_reload;
 mod recovery;
 use recovery::{
     TransitionRecovery, drive_transition_loading, handle_recovery_input, update_recovery_ui,

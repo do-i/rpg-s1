@@ -11,7 +11,7 @@ use bevy::{
         AssetApp, AssetLoadError, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState,
         io::{AssetReaderError, Reader},
     },
-    prelude::{App, Plugin, Res, ResMut, Resource, Update},
+    prelude::{App, IntoScheduleConfigs, Plugin, Res, ResMut, Resource, Update},
     reflect::TypePath,
 };
 
@@ -36,7 +36,11 @@ impl Plugin for ScenarioManifestAssetPlugin {
             .resource::<AssetServer>()
             .load(root.manifest_asset_path());
         app.insert_resource(ActiveManifestLoad::new(root, handle))
-            .add_systems(Update, track_active_manifest_load);
+            .add_systems(
+                Update,
+                track_active_manifest_load
+                    .run_if(crate::world_transition::hot_reload::published_inputs_enabled),
+            );
     }
 }
 
@@ -49,7 +53,7 @@ pub enum ActiveManifestStatus {
 }
 
 /// Strong selected handle plus transactional publication state.
-#[derive(Debug, Resource)]
+#[derive(Clone, Debug, Resource)]
 pub struct ActiveManifestLoad {
     root: ScenarioRoot,
     handle: Handle<Manifest>,

@@ -116,7 +116,7 @@ pub(crate) enum TransportStatus {
     Failed,
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct TransportDomain {
     status: TransportStatus,
     catalog: Option<TransportCatalog>,
@@ -467,10 +467,10 @@ fn validate_catalog(catalog: &TransportCatalog) -> Result<(), TransportCatalogEr
     Ok(())
 }
 
-#[derive(Debug, Default, Resource)]
-struct TransportCatalogLoad(Option<Handle<TransportCatalog>>);
+#[derive(Clone, Debug, Default, Resource)]
+pub(crate) struct TransportCatalogLoad(Option<Handle<TransportCatalog>>);
 
-fn begin_transport_load(
+pub(crate) fn begin_transport_load(
     root: Res<ScenarioRoot>,
     inventory: Res<ScenarioInventory>,
     server: Res<AssetServer>,

@@ -580,6 +580,15 @@ impl fmt::Display for WorldYamlAssetLoaderError {
 
 impl Error for WorldYamlAssetLoaderError {}
 
+/// Re-resolve metadata after publication; an authored key restarts its audio handle,
+/// while a map without BGM preserves the preceding loop just as a portal transition does.
+pub(crate) fn reload_world_audio(world: &mut World) {
+    if let Some(mut state) = world.get_resource_mut::<WorldBgmState>() {
+        state.request = None;
+        state.failure = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::runtime_member::test_class;
