@@ -869,6 +869,10 @@ fn play_interaction_sfx(
     }
 }
 
+#[cfg(test)]
+#[path = "world_interaction/persistence_regressions.rs"]
+mod persistence_regressions;
+
 fn apply_dialogue_actions(
     actions: &DialogueActions,
     game: &mut GameState,

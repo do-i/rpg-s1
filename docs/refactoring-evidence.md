@@ -591,3 +591,81 @@ fixtures and production smoke caches are disposable. The static Ardel oracle
 mismatch recorded under RF-08 remains unchanged; these headless PNG/React checks
 do not establish interactive browser or campaign acceptance. No refactoring
 plan or sibling tracker was edited or staged.
+
+## RF-10 — Persistence and replay regression coverage
+
+The interrupted tests now compile and run against the existing native save and
+normalized-input implementations. Runtime changes are confined to test modules
+and assertions. The recorded RF-08 workspace/scenario baseline above remains the
+prior runtime baseline; the final RF-10 snapshot passes the checks below.
+
+The authored dialogue fixture uses three fresh OS processes to seed native
+saves, advance the dialogues, and reopen saved outcomes. It exercises Pike's
+disabled vouch choice, cancellation/reopen, pledge, enabled vouch reward, and
+turn-back branch. Elder Maeve's Act II advancement and Hesta's Flame-glyph
+completion apply their item rewards once; two conversations after a process
+restart leave the complete saved payload unchanged. Six synthesized campaign
+boundaries round-trip accumulated flags, maps/visited history, and RNG state;
+loading under the wrong scenario identity fails without rewriting the save.
+These synthesized states establish serialization coverage, not campaign traversal.
+
+The replay fixture records three seeded encounter choices, physical victories,
+and production EXP/GP/loot transactions. Separate processes repeat the same seed,
+run a different seed, replay while suppressing physical gameplay input, and
+exercise corrupted copies. Matching actions/seed reproduce every hash and the
+final native save; the different seed changes gameplay state even after its RNG
+cursor is excluded from the comparison. Each battle rejects a second reward
+application without mutation. Two corrupt hashes after a valid prefix stop at
+the first divergence, **action 1 at frame 3**, with an unsuccessful exit request.
+Malformed input fails decoding, and replay preserves both original and copied
+input bytes.
+
+Additional headless tests drive the production battle input handler through
+victory/reward acknowledgement, defeat, successful/failed/blocked fleeing, and
+item/ability target cancellation. They check scene routing, restored map state,
+one-time rewards/flags, and complete saved-payload equality for nonrewarding and
+canceled paths. Existing Warp tests now compare complete saved payloads for
+cancellation, a busy transition, and an unlock lost during animation; accepted
+Warp still charges its MP cost once. Late destination asset failure is outside
+those Warp assertions and remains an operator observation.
+
+[The operator checklist](persistence-replay-checklist.md) supplies isolated save
+and options directories, reset commands, generated slot meanings, natural
+campaign-boundary steps, and visible battle/transport/replay checks. The opt-in
+export produced **15 native save fixtures** in a fresh ignored directory. The
+four before-dialogue saves have start positions validated through production
+TMX collision checks. Generated fixtures remain separate from natural campaign
+saves. Child workers have 30-second timeouts, retain failure logs, and clean up
+successful intermediate files.
+
+Validation on the final source snapshot:
+
+- `cargo test --workspace -j 1`: passed, **1,077 tests** (196 content unit tests,
+  879 engine unit tests, and two integration tests; zero failed/ignored). Seven
+  new engine test entries comprise five parent regressions and two child-worker
+  entrypoints; the existing Warp tests gained saved-state assertions.
+- `cargo clippy --workspace --all-targets -j 1 -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- `cargo run -j 1 -- validate-scenario rusted_kingdoms --baseline
+  assets/scenarios/rusted_kingdoms/validation-baseline.txt`: baseline **PASS**, four
+  accepted undefined ultimate-element flags, zero new or obsolete diagnostics.
+  The ungated report continues to say FAIL for those four accepted errors.
+- `map-sweep rusted_kingdoms`: all **54 maps** clean with zero findings; headless
+  runtime loading passed all 54.
+- `dialogue-sweep rusted_kingdoms`: passed, **128 documents**, 304 roots and
+  318 terminating paths, zero cycles/errors.
+- `encounter-sweep rusted_kingdoms`: passed, **19 zones**, 158 constructions and
+  119 loaded assets, zero construction/asset failures.
+- The documented absolute-path fixture export passed its focused test and
+  produced slots 1–4, 10–15, and 21–25 without touching a normal save profile.
+- `python3 -m unittest -v scripts/test_check_asset_rights.py`: five tests passed.
+  The rights report has zero missing entries, hash mismatches, or ledger errors;
+  its **327 existing unresolved rights entries** remain release blockers.
+
+Raw logs and generated save evidence are ignored under `temp/refactoring/rf10-*`.
+Cargo reused the existing shared cache with required process/filesystem access;
+no cache cleanup, dependency change, or feature upgrade was performed. RF-10 is
+removed from the refactoring queue. The canonical manual tracker remains
+unchanged: service/dialogue appearance, natural campaign-to-credits, live
+deterministic replay, and packaged campaign acceptance still require user
+observations. Headless automation does not complete those gates.

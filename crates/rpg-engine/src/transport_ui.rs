@@ -1550,6 +1550,7 @@ mod tests {
     #[test]
     fn cancelling_warp_closes_the_atlas_without_spending_mp() {
         let game = fixture_game();
+        let before = crate::save_data::SavePayload::from_game_state(&game).unwrap();
         let initial_mp = game.party().member("aric").unwrap().mana();
         let mut state = TransportUiState::default();
         state.open_warp("aric".to_owned(), "teleport".to_owned(), 8);
@@ -1579,6 +1580,11 @@ mod tests {
                 .mana(),
             initial_mp
         );
+        assert_eq!(
+            crate::save_data::SavePayload::from_game_state(app.world().resource::<GameState>())
+                .unwrap(),
+            before
+        );
     }
 
     #[test]
@@ -1586,6 +1592,7 @@ mod tests {
         let mut game = fixture_game();
         game.flags_mut().set("aric_teleport_unlocked");
         let initial_mp = game.party().member("aric").unwrap().mana();
+        let before = crate::save_data::SavePayload::from_game_state(&game).unwrap();
         let domain = production_domain();
         let catalog = FieldMenuCatalog::atlas_warp_fixture();
         let mut state = TransportUiState::default();
@@ -1613,6 +1620,11 @@ mod tests {
             initial_mp,
             "a busy transition must not charge MP"
         );
+        assert_eq!(
+            crate::save_data::SavePayload::from_game_state(app.world().resource::<GameState>())
+                .unwrap(),
+            before
+        );
 
         *app.world_mut().resource_mut::<WorldTransition>() = WorldTransition::idle_for_test();
         app.world_mut()
@@ -1627,6 +1639,9 @@ mod tests {
                 let game = world.resource::<GameState>();
                 arm_warp(&mut state, domain, catalog, game);
             });
+        let unavailable =
+            crate::save_data::SavePayload::from_game_state(app.world().resource::<GameState>())
+                .unwrap();
         app.update();
         assert_eq!(
             app.world()
@@ -1637,6 +1652,11 @@ mod tests {
                 .mana(),
             initial_mp,
             "losing the authored unlock during animation must not charge MP"
+        );
+        assert_eq!(
+            crate::save_data::SavePayload::from_game_state(app.world().resource::<GameState>())
+                .unwrap(),
+            unavailable
         );
         assert!(!app.world().resource::<WorldTransition>().input_locked());
 
