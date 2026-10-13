@@ -28,6 +28,8 @@ macro_rules! scenario_file {
     };
 }
 
+pub(crate) mod persistence;
+
 /// Expands to the AssetServer-logical path of one file in the shipped scenario package.
 ///
 /// This is the logical counterpart to `scenario_file!`: it builds the `scenarios/<key>/...` string

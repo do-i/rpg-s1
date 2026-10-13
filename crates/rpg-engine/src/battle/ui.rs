@@ -2292,6 +2292,10 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
 }
 
 #[cfg(test)]
+#[path = "ui/outcome_regressions.rs"]
+mod outcome_regressions;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
