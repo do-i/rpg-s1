@@ -478,7 +478,7 @@ binary. Tests load two distinct packages with identical map IDs into separate re
 AssetServers and verify their actors, collision, manifest roots and asset paths.
 A live root mutation is restored before consumers run, and changing manifest
 ID/version rejects the hot transaction. No in-process scenario-switch UI is
-claimed. [Runtime hot-reload instructions](runtime-hot-reload.md) document the
+claimed. [Runtime hot-reload instructions](../docs/runtime-hot-reload.md) document the
 supported flow, disposable visual/audio procedure, snapshot memory cost and
 remaining manual checks under the existing sibling acceptance task
 `RK-DBG-006`–`RK-DBG-016`; that read-only tracker is not marked complete.
