@@ -73,11 +73,13 @@ export function TilePicker({
         onClick={(e) => onPick(tileFromEvent(e))}
       >
         <img
-          src={fullRenderUrl(map.map_id)}
+          key={fullRenderUrl(map.map_id, map.render_revision)}
+          src={fullRenderUrl(map.map_id, map.render_revision)}
           alt={map.map_id}
           width={viewW}
           height={viewH}
           draggable={false}
+          onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
         />
         {showGrid && (
           <div

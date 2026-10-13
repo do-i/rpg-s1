@@ -20,7 +20,7 @@ import pygame
 from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StrictInt
 
@@ -71,6 +71,7 @@ def create_app(scenario_root: Path) -> FastAPI:
     _init_headless_pygame()
     service = EditorService(scenario_root)
     thumbnails = ThumbnailCache(service.scenario_root)
+    service.set_render_invalidator(thumbnails.invalidate)
 
     app = FastAPI(title="Map Editor", version="0.1.0")
 
@@ -93,30 +94,35 @@ def create_app(scenario_root: Path) -> FastAPI:
         allow_origins=DEV_CORS_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Map-Revision", "X-Restore-Token"],
+        expose_headers=["X-Map-Revision", "X-Restore-Token", "X-Render-Revision"],
     )
 
     @app.get("/api/graph")
-    def get_graph() -> dict:
-        return _or_404(lambda: service.graph_dict(refresh=True))
+    def get_graph(response: Response) -> dict:
+        response.headers["Cache-Control"] = "no-store"
+        return _or_404(lambda: service.graph_dict(refresh=True, render_revision=thumbnails.revision))
 
     @app.get("/api/maps/{map_id}/thumbnail.png")
-    def get_thumbnail(map_id: str) -> FileResponse:
-        return _png_response(map_id, thumbnails.thumbnail_file)
+    def get_thumbnail(map_id: str) -> Response:
+        return _png_response(map_id, full=False)
 
     @app.get("/api/maps/{map_id}/full.png")
-    def get_full_render(map_id: str) -> FileResponse:
-        return _png_response(map_id, thumbnails.full_file)
+    def get_full_render(map_id: str) -> Response:
+        return _png_response(map_id, full=True)
 
-    def _png_response(map_id: str, render) -> FileResponse:
-        node = _or_404(lambda: service.node(map_id))
-        png = render(node.tmx_path)
-        if png is None:
+    def _png_response(map_id: str, *, full: bool) -> Response:
+        result = _or_404(lambda: service.preview(
+            map_id, lambda path: thumbnails.png_bytes(path, full=full),
+        ))
+        if result is None:
             raise HTTPException(
                 status_code=422,
-                detail=f"Map '{map_id}' failed to render ({node.tmx_path.name}).",
+                detail=f"Map '{map_id}' failed to render ({map_id}.tmx).",
             )
-        return FileResponse(png, media_type="image/png")
+        revision, png = result
+        return Response(png, media_type="image/png", headers={
+            "Cache-Control": "no-store", "X-Render-Revision": revision,
+        })
 
     @app.post("/api/portals", status_code=201)
     def post_portal(body: PortalCreate, if_match: str | None = Header(default=None)) -> dict:

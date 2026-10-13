@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
 
 from tools.map_editor.service.editor_service import EditorService
@@ -60,9 +61,10 @@ def map_xml(width=4, height=4, tile_width=32, tile_height=32, rect=(32, 32, 32, 
     return ET.tostring(root, encoding="unicode")
 
 
-def api_request(app, method, path, body=None, *, headers=None, include_headers=False):
+def api_request(app, method, path, body=None, *, headers=None, include_headers=False, raw=False):
     """Drive the real ASGI request/response stack without an extra HTTP client dependency."""
     async def request():
+        url = urlsplit(path)
         messages = []
         payload = json.dumps(body).encode() if body is not None else b""
         delivered = False
@@ -79,15 +81,15 @@ def api_request(app, method, path, body=None, *, headers=None, include_headers=F
 
         await asyncio.wait_for(app({
             "type": "http", "asgi": {"version": "3.0", "spec_version": "2.4"}, "http_version": "1.1",
-            "method": method, "scheme": "http", "path": path,
-            "raw_path": path.encode(), "query_string": b"",
+            "method": method, "scheme": "http", "path": url.path,
+            "raw_path": url.path.encode(), "query_string": url.query.encode(),
             "headers": [(b"content-type", b"application/json"), *(headers or [])],
             "server": ("test", 80), "client": ("test", 1234), "root_path": "",
         }, receive, send), timeout=5)
         status = next(message["status"] for message in messages if message["type"] == "http.response.start")
         response = b"".join(message.get("body", b"") for message in messages
                             if message["type"] == "http.response.body")
-        result = (status, json.loads(response) if response else None)
+        result = (status, response if raw else (json.loads(response) if response else None))
         if include_headers:
             start = next(message for message in messages if message["type"] == "http.response.start")
             return (*result, dict(start["headers"]))

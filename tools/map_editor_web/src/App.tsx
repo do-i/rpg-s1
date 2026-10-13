@@ -117,6 +117,7 @@ function buildFlowNodes(
       position: pos,
       data: {
         mapId: info.map_id,
+        renderRevision: info.render_revision,
         displayName: info.display_name,
         isWorld: info.is_world,
         thumbWidth: box.thumbWidth,

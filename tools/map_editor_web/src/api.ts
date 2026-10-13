@@ -18,6 +18,7 @@ export interface ItemBoxInfo {
 export interface MapNodeInfo {
   map_id: string;
   revision: string;
+  render_revision: string | null;
   display_name: string;
   tmx_file: string;
   yaml_file: string | null;
@@ -87,7 +88,7 @@ async function checkOk(res: Response): Promise<Response> {
 }
 
 export async function fetchGraph(): Promise<GraphPayload> {
-  const res = await checkOk(await fetch("/api/graph"));
+  const res = await checkOk(await fetch("/api/graph", { cache: "no-store" }));
   const graph: GraphPayload = await res.json();
   graph.revisionsChanged = revisions.size > 0 && (
     graph.nodes.length !== revisions.size || graph.nodes.some(
@@ -99,12 +100,12 @@ export async function fetchGraph(): Promise<GraphPayload> {
   return graph;
 }
 
-export function thumbnailUrl(mapId: string): string {
-  return `/api/maps/${encodeURIComponent(mapId)}/thumbnail.png`;
+export function thumbnailUrl(mapId: string, renderRevision: string | null): string {
+  return `/api/maps/${encodeURIComponent(mapId)}/thumbnail.png?revision=${encodeURIComponent(renderRevision ?? "unavailable")}`;
 }
 
-export function fullRenderUrl(mapId: string): string {
-  return `/api/maps/${encodeURIComponent(mapId)}/full.png`;
+export function fullRenderUrl(mapId: string, renderRevision: string | null): string {
+  return `/api/maps/${encodeURIComponent(mapId)}/full.png?revision=${encodeURIComponent(renderRevision ?? "unavailable")}`;
 }
 
 export interface CreatePortalRequest {
