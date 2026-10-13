@@ -685,3 +685,54 @@ rendered panel visibility, and pointer input on the expiry frame. Final checks:
 integration), strict workspace/all-targets clippy passed, and formatting/diff
 checks passed. Logs are ignored under `temp/refactoring/autosave-notice-*`.
 Live-window appearance remains an operator observation.
+
+## RF-11 — Gate editor regressions and frontend builds in CI
+
+The CI workflow now has a separate `editor-checks` job on its existing push and
+pull-request triggers. It creates the editor virtual environment from the pinned
+`tools/requirements.txt`, runs the existing backend suites with dummy SDL video
+and audio drivers, installs the frontend with `npm ci`, runs its behavioral
+suite, typechecks/builds it, and checks the production editor graph. The existing
+Rust/workspace, clippy, asset-rights and scenario-baseline job remains identical.
+Editor dependencies stay in developer CI; runtime and release packaging paths
+are unchanged.
+
+The focused suites from RF-03, RF-06, RF-07 and RF-09 already cover atomic TMX
+publication and durability failures, geometry/collision, concurrent edits and
+stale revisions, graph consistency, render invalidation, and browser conflict
+recovery/preview updates. RF-11 wires those suites directly into CI without
+adding duplicate tests. Each install, test and build is a normal failing step;
+no skip condition or `continue-on-error` bypasses the new checks. The job has a
+15-minute timeout and caches pip/npm downloads using their dependency files.
+
+Toolchain versions are explicit: Python 3.13 and Node 24. The setup inputs and
+cache paths were checked against the official
+[setup-python](https://github.com/actions/setup-python) and
+[setup-node](https://github.com/actions/setup-node) documentation. The editor
+[local verification guide](../tools/map_editor_web/README.md#ci-and-local-verification)
+documents the same commands for developers.
+
+Validation:
+
+- Backend baseline and final CI command: **57 tests passed** in each run with
+  temporary TMX/TSX/PNG fixtures and real ASGI/thread behavior.
+- Frontend baseline and final `npm ci`, `npm test`, `npm run build`: passed;
+  **12 behavioral tests**, TypeScript check and Vite build. The lockfile is
+  unchanged. npm's existing audit reports five findings (two moderate and three
+  high); this task does not upgrade dependencies.
+- `bash scripts/map-editor.sh check`: passed, **54 maps and 108 portals**.
+- Binary-only resolution/download of `tools/requirements.txt` for CPython 3.13
+  on Linux x86-64 succeeded, including native pygame and pydantic-core wheels.
+- Workflow YAML and each new shell command parsed successfully. A structural
+  comparison verified that the existing checks job, triggers, permissions and
+  concurrency configuration are unchanged; runtime/release manifests, code,
+  assets and package scripts have no RF-11 diff.
+- `git diff --check`: passed. The immediately preceding notice fix passed
+  **1,079 workspace tests**, strict workspace/all-targets clippy and formatting;
+  RF-11 changes no Rust or scenario content.
+
+Local test execution used Python 3.14.7 and Node 26.11.1. The hosted Python
+3.13/Node 24 job will run after push; a hosted Actions result is not claimed.
+Raw logs/downloads are ignored under `temp/refactoring/rf11-*`. RF-11 is removed
+from the queue; the sibling manual tracker remains unchanged. Interactive editor
+and full-campaign acceptance still require their existing operator observations.

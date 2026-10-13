@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 900 | RF-11 | P1 | Gate editor behavior and frontend builds in CI | Sol | medium | RF-03, RF-06, RF-07, RF-09 |
 | 800 | RF-12 | P2 | Split the field-menu controller by responsibility | Sol | high | RF-05, RF-10 |
 | 790 | RF-13 | P2 | Split World encounter loading and battle handoff | Sol | high | RF-02, RF-10 |
 | 780 | RF-14 | P2 | Split scenario cross-reference validation | Sol | high | — |
@@ -48,18 +47,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 570 | RF-25 | P2 | Reduce save/autosave stalls without weakening durability | Astra | xhigh | RF-01, RF-05, RF-16, RF-22 |
 | 560 | RF-26 | P2 | Optimize map load/render work demonstrated by profiles | Astra | high | RF-02, RF-08, RF-22 |
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
-
-## Bug fixes and regression gates
-
-### RF-11 — Gate editor behavior and frontend builds in CI
-
-**Evidence: Source.** [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs Rust and asset-rights checks but has no map-editor behavioral suite or frontend type/build check.
-
-- Add focused tests for editor atomic writes, geometry, conflicts, graph consistency, and render invalidation. Run against temporary maps with headless SDL and explicit developer dependencies.
-- Add a frontend check using the lockfile: `npm ci` followed by `npm run build` in `tools/map_editor_web`. Include tests for any conflict/error UX added by RF-07.
-- Keep editor/Python setup in developer CI; preserve the existing packaged-runtime independence requirement. Do not weaken workspace or production-scenario checks.
-- **Done when:** failures in the repaired editor paths or frontend build fail CI reproducibly.
-- **Model fit:** Sol/medium for scoped workflow integration.
 
 ## Code cleanup and deduplication
 
@@ -245,7 +232,7 @@ cargo run -- encounter-sweep rusted_kingdoms
 python3 -m unittest -v scripts/test_check_asset_rights.py
 ```
 
-For editor changes, run the focused test suite introduced by RF-11, then run `npm ci` and `npm run build` from `tools/map_editor_web`. Use isolated test maps, save directories, and config directories. For rendering changes, run `scripts/check-ardel-screenshot.sh` and the affected visual spot checks. Sweep reports are informational: inspect their findings rather than treating a zero exit code as proof that all maps passed.
+For editor changes, run the backend and frontend checks documented in [the editor verification guide](../tools/map_editor_web/README.md#ci-and-local-verification), including the focused suites, lockfile install, build, and production editor check. Use isolated test maps, save directories, and config directories. For rendering changes, run `scripts/check-ardel-screenshot.sh` and the affected visual spot checks. Sweep reports are informational: inspect their findings rather than treating a zero exit code as proof that all maps passed.
 
 Each completed task should report its reproduction or preserved behavior, changed paths, checks run and their results, and remaining manual limitations. Performance tasks additionally attach raw before/after measurements. Do not expand the accepted validation baseline merely to hide a regression.
 
@@ -257,5 +244,5 @@ Each completed task should report its reproduction or preserved behavior, change
 - Remaining bug entries are source findings or investigations as labeled. Workspace tests, clippy, full-game reproductions, and performance measurements were not run during this planning pass.
 - Structural estimates above are approximate line counts at the reviewed commit; tests explain a substantial part of the larger files. File size alone does not justify deleting behavior or tests.
 - Existing plans were checked live in the sibling planning directory: [master index](../../rpg-s1-plans/000-master-todo.md), [implementation](../../rpg-s1-plans/implementation.md), [manual verification](../../rpg-s1-plans/manual-verification.md), and [parity](../../rpg-s1-plans/parity.md). Those local links assume the current sibling-directory layout.
-- Completed RF-10 provides [persistence/replay fixtures and operator steps](persistence-replay-checklist.md); RF-08 supports existing scenario hot-change acceptance; RF-11 supports existing editor acceptance; RF-22 supports M14.07. This document does not duplicate or close those canonical entries.
+- Completed RF-10 provides [persistence/replay fixtures and operator steps](persistence-replay-checklist.md); RF-08 supports existing scenario hot-change acceptance; completed RF-11 gates editor regressions in CI and supports existing editor acceptance; RF-22 supports M14.07. This document does not duplicate or close those canonical entries.
 - Asset rights, package approval, visual effect judgment, actual gamepad/mouse acceptance, and a complete campaign remain under their existing owners. Do not treat refactoring completion as release acceptance.

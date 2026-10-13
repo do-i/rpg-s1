@@ -59,3 +59,44 @@ jobs:
       # no longer produces.
       - name: Validate the production scenario against its accepted diagnostics
         run: cargo run -- validate-scenario rusted_kingdoms --baseline assets/scenarios/rusted_kingdoms/validation-baseline.txt
+
+  editor-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYGAME_HIDE_SUPPORT_PROMPT: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+      - name: Install map-editor dependencies
+        run: |
+          python -m venv tools/.venv
+          tools/.venv/bin/python -m pip install -r tools/requirements.txt
+      - name: Test editor publication, portals, conflicts, and previews
+        run: tools/.venv/bin/python -m unittest discover -s tools/map_editor/tests -v
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tools/map_editor_web/package-lock.json
+      - name: Install frontend dependencies from lockfile
+        working-directory: tools/map_editor_web
+        run: npm ci
+      - name: Test frontend conflict recovery and preview updates
+        working-directory: tools/map_editor_web
+        run: npm test
+      - name: Typecheck and build frontend
+        working-directory: tools/map_editor_web
+        run: npm run build
+      - name: Check the production editor graph
+        run: bash scripts/map-editor.sh check

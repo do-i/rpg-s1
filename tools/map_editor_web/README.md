@@ -69,3 +69,24 @@ and resize request coordinates still require integer pixels.
 
 Run the frontend behavioral checks with `npm test` (Node's built-in test runner;
 no additional test dependencies), alongside `npm ci` and `npm run build`.
+
+## CI and local verification
+
+The `editor-checks` CI job uses Python 3.13 and Node 24. It installs the pinned
+developer dependencies from `tools/requirements.txt`, runs the backend regression
+suite with dummy SDL video/audio drivers, then installs the frontend from its
+lockfile, runs behavioral tests, typechecks/builds it, and loads the production
+editor graph. The backend suite covers atomic TMX writes, portal geometry and
+collision, edit conflicts, graph consistency, and preview invalidation. Test
+maps and render outputs are disposable. These editor prerequisites remain
+independent of the Rust runtime and release package.
+
+After `scripts/map-editor.sh setup`, reproduce the checks from the repository
+root:
+
+```bash
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1 \
+  tools/.venv/bin/python -m unittest discover -s tools/map_editor/tests -v
+(cd tools/map_editor_web && npm ci && npm test && npm run build)
+bash scripts/map-editor.sh check
+```
