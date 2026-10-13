@@ -12,12 +12,15 @@ use crate::{
     },
 };
 
+const SUCCESS_NOTICE_SECONDS: f32 = 3.0;
+
 #[derive(Debug, Default)]
 pub(crate) struct SaveNotice {
     pub(crate) message: String,
     pub(crate) failed: bool,
     pub(crate) retry_requested: bool,
     dismissed: bool,
+    expires_after: Option<Timer>,
 }
 
 impl SaveNotice {
@@ -25,6 +28,8 @@ impl SaveNotice {
         *self = Self {
             message,
             failed,
+            expires_after: (!failed)
+                .then(|| Timer::from_seconds(SUCCESS_NOTICE_SECONDS, TimerMode::Once)),
             ..default()
         };
     }
@@ -120,13 +125,30 @@ pub(crate) struct PersistenceStatusPlugin;
 impl Plugin for PersistenceStatusPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PersistenceStatus>()
+            .init_resource::<Time<Real>>()
             .add_systems(Startup, setup_status_ui)
             .add_systems(
                 PreUpdate,
-                handle_status_pointer.after(crate::gameplay_canvas::pointer::update_canvas_pointer),
+                (expire_success_notices, handle_status_pointer)
+                    .chain()
+                    .after(crate::gameplay_canvas::pointer::update_canvas_pointer),
             )
             .add_systems(Update, retry_options)
             .add_systems(PostUpdate, refresh_status_ui.before(UiSystems::Prepare));
+    }
+}
+
+fn expire_success_notices(time: Res<Time<Real>>, mut status: ResMut<PersistenceStatus>) {
+    let status = &mut *status;
+    for notice in [&mut status.autosave, &mut status.options] {
+        if notice.failed || !notice.visible() {
+            continue;
+        }
+        if let Some(timer) = notice.expires_after.as_mut()
+            && timer.tick(time.delta()).is_finished()
+        {
+            notice.dismissed = true;
+        }
     }
 }
 
@@ -293,6 +315,129 @@ mod tests {
             .init_resource::<PersistenceStatus>()
             .add_systems(Update, retry_options);
         app
+    }
+
+    fn notice_app(store: OptionsStore) -> App {
+        let mut app = App::new();
+        app.insert_resource(store)
+            .init_resource::<PlayerOptions>()
+            .init_resource::<OptionsLoadStatus>()
+            .init_resource::<CanvasPointer>()
+            .insert_resource(Time::<Real>::default())
+            .add_plugins(PersistenceStatusPlugin);
+        app
+    }
+
+    #[test]
+    fn successful_notices_expire_without_input_and_new_reports_restart_the_lifetime() {
+        for kind in [NoticeKind::Autosave, NoticeKind::Options] {
+            let store = temporary_store("notice-expiry");
+            let mut app = notice_app(store.clone());
+            let failure_kind = match kind {
+                NoticeKind::Autosave => NoticeKind::Options,
+                NoticeKind::Options => NoticeKind::Autosave,
+            };
+            {
+                let mut status = app.world_mut().resource_mut::<PersistenceStatus>();
+                kind.notice_mut(&mut status)
+                    .report("Saved to disk.".into(), false);
+                failure_kind
+                    .notice_mut(&mut status)
+                    .report("Save failed".into(), true);
+            }
+            app.update();
+            app.world_mut()
+                .resource_mut::<Time<Real>>()
+                .advance_by(std::time::Duration::from_secs(2));
+            app.update();
+            assert!(
+                kind.notice(app.world().resource::<PersistenceStatus>())
+                    .visible()
+            );
+
+            // An identical later success must still get a full three seconds on screen.
+            kind.notice_mut(&mut app.world_mut().resource_mut::<PersistenceStatus>())
+                .report("Saved to disk.".into(), false);
+            app.world_mut()
+                .resource_mut::<Time<Real>>()
+                .advance_by(std::time::Duration::from_secs(2));
+            app.update();
+            assert!(
+                kind.notice(app.world().resource::<PersistenceStatus>())
+                    .visible()
+            );
+            app.world_mut()
+                .resource_mut::<Time<Real>>()
+                .advance_by(std::time::Duration::from_secs(1));
+            app.update();
+            assert!(
+                !kind
+                    .notice(app.world().resource::<PersistenceStatus>())
+                    .visible()
+            );
+            let failure = failure_kind.notice(app.world().resource::<PersistenceStatus>());
+            assert!(failure.visible());
+            assert!(failure.failed);
+            assert_eq!(failure.message, "Save failed");
+            for (panel, node) in app
+                .world_mut()
+                .query::<(&NoticePanel, &Node)>()
+                .iter(app.world())
+            {
+                assert_eq!(
+                    node.display,
+                    if panel
+                        .0
+                        .notice(app.world().resource::<PersistenceStatus>())
+                        .failed
+                    {
+                        Display::Flex
+                    } else {
+                        Display::None
+                    }
+                );
+            }
+            fs::remove_dir_all(store.path().parent().unwrap()).unwrap();
+        }
+    }
+
+    #[test]
+    fn an_expired_success_notice_does_not_consume_pointer_input() {
+        let store = temporary_store("expired-pointer");
+        let mut app = notice_app(store.clone());
+        app.world_mut()
+            .resource_mut::<PersistenceStatus>()
+            .autosave
+            .report("Autosave saved to disk.".into(), false);
+        app.update();
+        let panel = app
+            .world_mut()
+            .query::<(Entity, &NoticePanel)>()
+            .iter(app.world())
+            .find(|(_, panel)| matches!(panel.0, NoticeKind::Autosave))
+            .unwrap()
+            .0;
+        app.world_mut().entity_mut(panel).insert((
+            ComputedNode {
+                size: Vec2::new(100.0, 100.0),
+                ..default()
+            },
+            UiGlobalTransform::from(Affine2::from_translation(Vec2::new(50.0, 50.0))),
+        ));
+        app.insert_resource(CanvasPointer::at_viewport_position(
+            Vec2::new(50.0, 50.0),
+            true,
+        ));
+        app.world_mut()
+            .resource_mut::<Time<Real>>()
+            .advance_by(std::time::Duration::from_secs(3));
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(panel).unwrap().display,
+            Display::None
+        );
+        assert!(app.world().resource::<CanvasPointer>().just_clicked());
+        fs::remove_dir_all(store.path().parent().unwrap()).unwrap();
     }
 
     #[test]

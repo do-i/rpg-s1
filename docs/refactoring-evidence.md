@@ -669,3 +669,19 @@ removed from the refactoring queue. The canonical manual tracker remains
 unchanged: service/dialogue appearance, natural campaign-to-credits, live
 deterministic replay, and packaged campaign acceptance still require user
 observations. Headless automation does not complete those gates.
+
+## Save-notice follow-up — Automatic success dismissal
+
+Successful autosave and Options notices previously remained visible until a mouse
+click on Dismiss. They now expire after three seconds of real time, matching
+service-message timing. New successes restart the lifetime; failures keep their
+explicit Retry/Dismiss controls and stored error state. Expiry runs before
+pointer handling so hidden notices cannot consume clicks.
+
+Two regressions reproduced the indefinite notice against `def8b25`, then passed
+with the fix. They cover both notice kinds, repeated reports, persistent failures,
+rendered panel visibility, and pointer input on the expiry frame. Final checks:
+`cargo test --workspace -j 1` passed **1,079 tests** (196 content, 881 engine, two
+integration), strict workspace/all-targets clippy passed, and formatting/diff
+checks passed. Logs are ignored under `temp/refactoring/autosave-notice-*`.
+Live-window appearance remains an operator observation.
