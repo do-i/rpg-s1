@@ -772,3 +772,57 @@ Validation:
   working directory with audio muted.
 
 RF-21 is removed from the queue.
+
+## RF-12 — Split the field-menu controller by responsibility
+
+`field_menu.rs` went from 4,502 lines (2,023 before its test module) to an
+80-line entry module holding the module list, plugin registration and ordering,
+the World-entry reset, and two party lookups. The controller now lives in
+focused modules under `field_menu/`:
+
+- `state.rs`: screens, modes, `FieldMenuState`, back navigation, and cursor
+  wrapping. `markers.rs`: UI marker components. `assets.rs`: the scenario
+  font, status portraits, and party walk sheets.
+- `input.rs`: the input system. It keeps the open/close, message-clearing, and
+  sound-cue logic, reads one `MenuInput` snapshot per frame, and dispatches by
+  screen. Quests and Recipes, which only scroll, stay inline there.
+- One handler module per screen, each owning its constants and helpers:
+  `main_deck.rs` (command deck, character switch, quit), `status.rs`,
+  `inventory.rs` (items, targeting, discard, tags, show/hide manager),
+  `equipment.rs`, `spells.rs` (heal targeting, teleport), `battle.rs`
+  (tactics, battle options and their persistence, log), and `save.rs`.
+
+Each former `(screen, mode)` match arm became an arm of its screen's handler
+with its body unchanged, apart from reading input from the snapshot. Handlers
+receive the `ResMut` wrappers rather than plain references, so `GameState`,
+`FieldMenuState`, `TransportUiState`, and the save catalog are still marked
+changed only where the old code mutated them. A disposable probe confirmed this:
+arrow navigation through every screen, including the equipment slot and picker
+columns, left `GameState`'s change tick untouched, while a confirmed row change
+moved it. The probe was removed. Constants used only by the UI (layout widths,
+card heights, visible-row budgets, `inventory_window`) moved to `ui.rs`.
+`ui.rs` now holds the UI's glob imports of the controller modules, so the new
+modules use explicit imports and the page modules are unchanged. External
+paths (`field_menu::FieldMenuState`, `FieldMenuPlugin`) are preserved.
+
+Tests moved rather than changed. 19 controller unit tests now sit in their
+owning modules: state 4, main deck 6, inventory 6, status 1, equipment 1,
+battle 1, and `ui.rs` 1. The 44 UI-rendering and whole-system input tests share
+fixtures and moved to `field_menu/tests.rs`. A misplaced doc comment
+describing the recipe-book test, which sat above the equip-refusal test since
+that test was inserted, was moved back to the recipe test.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,075 passed, 4 failed**, the same
+  as the pre-split baseline. A comparison of test function names and results
+  before and after is identical: all 71 field-menu tests still exist and pass.
+  The 4 failures are the `town_01_ardel.tmx` working-tree edit noted under
+  RF-21.
+- Scenario validation against the accepted baseline: PASS. `map-sweep` 54/54,
+  `dialogue-sweep` and `encounter-sweep`: PASS.
+
+The game was not driven interactively for a visual spot check; the menu's
+navigation, save, teleport, and quit paths are covered by the moved
+whole-system input tests. RF-12 is removed from the queue.
