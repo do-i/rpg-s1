@@ -129,7 +129,7 @@ impl StaticMapRenderState {
 }
 
 /// A parsed TMX document with the atlases used by visible tile layers requested from Bevy.
-#[derive(Asset, Debug, TypePath)]
+#[derive(Asset, Clone, Debug, TypePath)]
 pub(crate) struct TmxGroundAsset {
     document: TmxMapDocument,
     ground_layer_index: usize,

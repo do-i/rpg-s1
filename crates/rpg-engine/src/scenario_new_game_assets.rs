@@ -37,7 +37,9 @@ impl Plugin for ScenarioNewGameAssetsPlugin {
             .init_resource::<ActiveNewGameInputs>()
             .add_systems(
                 Update,
-                track_new_game_inputs.after(track_active_manifest_load),
+                track_new_game_inputs
+                    .after(track_active_manifest_load)
+                    .run_if(crate::world_transition::hot_reload::published_inputs_enabled),
             );
     }
 }
@@ -49,7 +51,7 @@ pub enum ActiveNewGameInputsStatus {
     Failed,
 }
 
-#[derive(Debug, Resource)]
+#[derive(Clone, Debug, Resource)]
 pub struct ActiveNewGameInputs {
     status: ActiveNewGameInputsStatus,
     handles: Option<NewGameHandles>,

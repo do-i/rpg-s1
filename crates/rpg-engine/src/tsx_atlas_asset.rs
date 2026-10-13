@@ -39,7 +39,7 @@ impl Plugin for TsxAtlasAssetPlugin {
 }
 
 /// A parsed TSX atlas whose image and atlas layout are both Bevy dependencies.
-#[derive(Asset, Debug, TypePath)]
+#[derive(Asset, Clone, Debug, TypePath)]
 pub(crate) struct TsxAtlasAsset {
     metadata: TsxTilesetMetadata,
     #[dependency]

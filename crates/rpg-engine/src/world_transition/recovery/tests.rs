@@ -83,7 +83,10 @@ impl Fixture {
         fs::write(path, bytes).unwrap();
     }
     fn app(&self) -> App {
-        let root = ScenarioRoot::try_for_package_key("fixture").unwrap();
+        self.app_for_package("fixture")
+    }
+    fn app_for_package(&self, package: &str) -> App {
+        let root = ScenarioRoot::try_for_package_key(package).unwrap();
         let mut game = fixture_game();
         let party: crate::scenario_party::PartyCatalog =
             crate::scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml")))
@@ -112,11 +115,13 @@ impl Fixture {
             .add_plugins(AssetPlugin {
                 file_path: self.0.to_string_lossy().into_owned(),
                 meta_check: AssetMetaCheck::Never,
+                watch_for_changes_override: Some(false),
                 ..default()
             })
             .add_plugins(ImagePlugin::default_nearest())
             .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
             .init_asset::<AudioSource>()
+            .register_asset_loader(bevy::audio::AudioLoader)
             .init_asset::<BalanceData>()
             .init_asset::<SfxIndex>()
             .init_resource::<ButtonInput<KeyCode>>()
@@ -629,4 +634,562 @@ fn companion_dismissal_waits_for_the_final_controlled_player_sprite() {
             .publication_status("destination", "aric"),
         PublicationStatus::Ready
     );
+}
+
+fn hot_app(fixture: &Fixture) -> App {
+    let mut app = fixture.app();
+    app.init_resource::<crate::gameplay_rng::GameplayRng>();
+    app.add_plugins(super::super::hot_reload::ScenarioHotReloadPlugin::new(
+        fixture.0.clone(),
+        true,
+    ));
+    wait_for(&mut app, TransitionPhase::Idle);
+    app
+}
+
+fn wait_for_revision(app: &mut App, revision: u64, phase: TransitionPhase) {
+    for _ in 0..4_000 {
+        app.update();
+        if app
+            .world()
+            .resource::<super::super::hot_reload::HotReload>()
+            .revision
+            >= revision
+            && app.world().resource::<WorldTransition>().phase == phase
+        {
+            return;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    panic!(
+        "hot revision {revision} did not reach {phase:?}: {:?}",
+        app.world().resource::<WorldTransition>()
+    );
+}
+
+fn blocked(app: &App) -> bool {
+    app.world()
+        .resource::<WorldCollision>()
+        .occupancy_for("source")
+        .unwrap()
+        .is_blocked(1, 1)
+        .unwrap()
+}
+
+fn changed_map() -> String {
+    MAP.replace("1,0,\n0,0", "1,1,\n0,0")
+        .replace("0,0,\n0,0", "0,0,\n0,1")
+}
+
+#[test]
+fn watched_same_map_tmx_tsx_and_yaml_publish_new_geometry_collision_actors_and_objects() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    assert!(!blocked(&app));
+    let original_entities = active_entities(app.world_mut());
+    fixture.write("media/maps/source.tmx", changed_map().as_bytes());
+    fixture.write(
+        "media/sprites/objects/item_box.tsx",
+        BOX_TSX
+            .replace("tilewidth=\"32\"", "tilewidth=\"16\"")
+            .as_bytes(),
+    );
+    fixture.write("data/maps/source.yaml", b"id: source\nname: Revised\nnpcs:\n  - id: replacement\n    name: Replacement\n    position: [1, 0]\nitem_boxes:\n  - id: replacement_box\n    position: [0, 0]\n");
+    wait_for_revision(&mut app, 1, TransitionPhase::Idle);
+    assert!(blocked(&app));
+    let world = app.world_mut();
+    assert_eq!(
+        world
+            .query_filtered::<Entity, With<StaticMapTile>>()
+            .iter(world)
+            .count(),
+        3 // Two ground tiles and the authored visible collision tile.
+    );
+    assert_eq!(
+        world.query::<&WorldNpc>().single(world).unwrap().name(),
+        "Replacement"
+    );
+    assert_eq!(
+        world.query::<&WorldItemBox>().single(world).unwrap().id(),
+        "replacement_box"
+    );
+    let atlas = world
+        .resource::<Assets<TsxAtlasAsset>>()
+        .iter()
+        .find(|(_, atlas)| {
+            atlas
+                .metadata()
+                .image()
+                .source()
+                .as_str()
+                .ends_with("item_box.png")
+        })
+        .unwrap()
+        .1;
+    assert_eq!(atlas.frame_rect(0).unwrap().width(), 16.0);
+    assert!(
+        original_entities
+            .iter()
+            .all(|&entity| world.get_entity(entity).is_err())
+    );
+}
+
+#[test]
+fn watched_failed_generation_restores_assets_entities_collision_rng_and_retries() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    let entities = active_entities(app.world_mut());
+    let game = app.world().resource::<GameState>().clone();
+    let before = app
+        .world()
+        .resource::<crate::gameplay_rng::GameplayRng>()
+        .clone();
+    let image_id = app
+        .world()
+        .resource::<Assets<TsxAtlasAsset>>()
+        .iter()
+        .find(|(_, atlas)| {
+            atlas
+                .metadata()
+                .image()
+                .source()
+                .as_str()
+                .ends_with("item_box.png")
+        })
+        .unwrap()
+        .1
+        .image()
+        .id();
+    let original_image = app
+        .world()
+        .resource::<Assets<Image>>()
+        .get(image_id)
+        .unwrap()
+        .data
+        .clone();
+    fixture.write("media/maps/source.tmx", changed_map().as_bytes());
+    fixture.write(
+        "media/sprites/objects/item_box.tsx",
+        BOX_TSX
+            .replace("tilewidth=\"32\"", "tilewidth=\"16\"")
+            .as_bytes(),
+    );
+    fixture.write("media/sprites/objects/item_box.png", PLAYER_PNG);
+    fixture.write(
+        "data/maps/source.yaml",
+        b"npcs: [this is not valid npc data]\n",
+    );
+    wait_for_revision(&mut app, 1, TransitionPhase::Failed);
+    assert_eq!(active_entities(app.world_mut()), entities);
+    assert_eq!(app.world().resource::<GameState>(), &game);
+    assert_eq!(
+        app.world().resource::<crate::gameplay_rng::GameplayRng>(),
+        &before
+    );
+    assert!(!blocked(&app));
+    let atlas = app
+        .world()
+        .resource::<Assets<TsxAtlasAsset>>()
+        .iter()
+        .find(|(_, atlas)| {
+            atlas
+                .metadata()
+                .image()
+                .source()
+                .as_str()
+                .ends_with("item_box.png")
+        })
+        .unwrap()
+        .1;
+    assert_eq!(atlas.frame_rect(0).unwrap().width(), 32.0);
+    assert_eq!(
+        app.world()
+            .resource::<Assets<Image>>()
+            .get(image_id)
+            .unwrap()
+            .data,
+        original_image
+    );
+    press(&mut app, KeyCode::Escape);
+    wait_for(&mut app, TransitionPhase::Idle);
+    assert!(!blocked(&app));
+    fixture.write("data/maps/source.yaml", b"id: source\nname: Repaired\n");
+    wait_for_revision(&mut app, 2, TransitionPhase::Idle);
+    // The repaired YAML triggers a transaction, but failed generation's other changed files
+    // must also be retried rather than silently keeping their restored cached values.
+    assert!(blocked(&app));
+}
+
+#[test]
+fn watched_removed_dependency_rejects_and_explicit_retry_restores_complete_generation() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    let entities = active_entities(app.world_mut());
+    fs::remove_file(
+        fixture
+            .0
+            .join("scenarios/fixture/media/sprites/objects/item_box.png"),
+    )
+    .unwrap();
+    wait_for_revision(&mut app, 1, TransitionPhase::Failed);
+    assert_eq!(active_entities(app.world_mut()), entities);
+    assert!(
+        app.world()
+            .resource::<WorldTransition>()
+            .failure()
+            .unwrap()
+            .contains("item_box.png")
+    );
+    fixture.write("media/sprites/objects/item_box.png", BOX_PNG);
+    press(&mut app, KeyCode::KeyR);
+    wait_for_revision(&mut app, 2, TransitionPhase::Idle);
+    assert!(!blocked(&app));
+}
+
+#[test]
+fn live_scenario_identity_mutation_is_rejected_before_loading_another_package() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    let source = app.world().resource::<GameState>().clone();
+    let entities = active_entities(app.world_mut());
+    app.world_mut()
+        .insert_resource(ScenarioRoot::try_for_package_key("another_package").unwrap());
+    app.world_mut()
+        .insert_resource(ScenarioInventory::default());
+    app.update();
+    assert_eq!(
+        app.world().resource::<ScenarioRoot>().package_key(),
+        "fixture"
+    );
+    assert!(
+        app.world()
+            .resource::<ScenarioInventory>()
+            .tmx_directory
+            .is_some()
+    );
+    assert_eq!(app.world().resource::<GameState>(), &source);
+    assert_eq!(active_entities(app.world_mut()), entities);
+}
+
+#[test]
+fn separately_selected_scenarios_with_same_map_ids_have_distinct_entities_and_assets() {
+    let first = Fixture::new();
+    let second = Fixture::new();
+    second.write("media/maps/source.tmx", changed_map().as_bytes());
+    second.write("data/maps/source.yaml", b"id: source\nname: Second scenario\nnpcs:\n  - id: second_witness\n    name: Second Witness\n    position: [1, 0]\n");
+    fs::rename(
+        second.0.join("scenarios/fixture"),
+        second.0.join("scenarios/second"),
+    )
+    .unwrap();
+    let mut first_app = hot_app(&first);
+    let mut second_app = second.app_for_package("second");
+    second_app.add_plugins(super::super::hot_reload::ScenarioHotReloadPlugin::new(
+        second.0.clone(),
+        true,
+    ));
+    wait_for(&mut second_app, TransitionPhase::Idle);
+    assert!(!blocked(&first_app));
+    assert!(blocked(&second_app));
+    for (app, expected, package) in [
+        (&mut first_app, "Witness", "fixture"),
+        (&mut second_app, "Second Witness", "second"),
+    ] {
+        let world = app.world_mut();
+        assert_eq!(
+            world.query::<&WorldNpc>().single(world).unwrap().name(),
+            expected
+        );
+        let active = world.resource::<ActiveManifestLoad>();
+        assert_eq!(active.root().package_key(), package);
+        let handle = world.resource::<StaticMapRenderState>().asset_ids()[0];
+        assert!(
+            world
+                .resource::<AssetServer>()
+                .get_path(handle)
+                .unwrap()
+                .to_string()
+                .starts_with(&format!("scenarios/{package}/"))
+        );
+    }
+}
+
+#[test]
+fn watcher_rebuilds_item_catalog_and_rolls_back_late_catalog_validation_failure() {
+    use crate::field_menu_domain::{CatalogStatus, FieldMenuDomainPlugin};
+    let fixture = Fixture::new();
+    let items = include_str!(scenario_file!("data/items/consumables_recovery.yaml"));
+    fixture.write("data/items/recovery.yaml", items.as_bytes());
+    fixture.write(
+        "data/items/field_use.yaml",
+        include_bytes!(scenario_file!("data/items/field_use.yaml")),
+    );
+    fixture.write(
+        "data/quests.yaml",
+        include_bytes!(scenario_file!("data/quests.yaml")),
+    );
+    let mut app = fixture.app();
+    app.add_plugins(FieldMenuDomainPlugin);
+    app.add_plugins(super::super::hot_reload::ScenarioHotReloadPlugin::new(
+        fixture.0.clone(),
+        true,
+    ));
+    wait_for(&mut app, TransitionPhase::Idle);
+    for _ in 0..2000 {
+        app.update();
+        if app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        app.world().resource::<FieldMenuCatalog>().status(),
+        CatalogStatus::Ready
+    );
+    fixture.write(
+        "data/items/recovery.yaml",
+        items
+            .replace("name: Potion", "name: Revised Potion")
+            .as_bytes(),
+    );
+    wait_for_revision(&mut app, 1, TransitionPhase::Idle);
+    let Some(crate::scenario_item::ItemDefinition::Consumable(potion)) =
+        app.world().resource::<FieldMenuCatalog>().item("potion")
+    else {
+        panic!("missing potion");
+    };
+    assert_eq!(potion.name, "Revised Potion");
+    fixture.write("media/maps/source.tmx", changed_map().as_bytes());
+    fixture.write("data/items/recovery.yaml", b"not: an item catalog\n");
+    wait_for_revision(&mut app, 2, TransitionPhase::Failed);
+    let Some(crate::scenario_item::ItemDefinition::Consumable(potion)) =
+        app.world().resource::<FieldMenuCatalog>().item("potion")
+    else {
+        panic!("missing rolled-back potion");
+    };
+    assert_eq!(potion.name, "Revised Potion");
+    assert!(!blocked(&app));
+}
+
+#[test]
+fn watcher_rejects_manifest_identity_change_and_does_not_retry_until_another_edit() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    let path = fixture.0.join("scenarios/fixture/manifest.yaml");
+    let manifest = fs::read_to_string(&path).unwrap();
+    fixture.write(
+        "manifest.yaml",
+        manifest
+            .replace("id: my_rpg_story", "id: different_story")
+            .as_bytes(),
+    );
+    wait_for_revision(&mut app, 1, TransitionPhase::Failed);
+    assert!(
+        app.world()
+            .resource::<WorldTransition>()
+            .failure()
+            .unwrap()
+            .contains("identity changed")
+    );
+    press(&mut app, KeyCode::Escape);
+    wait_for(&mut app, TransitionPhase::Idle);
+    for _ in 0..120 {
+        app.update();
+    }
+    assert_eq!(
+        app.world()
+            .resource::<super::super::hot_reload::HotReload>()
+            .revision,
+        1
+    );
+    let active = app.world().resource::<ActiveManifestLoad>();
+    assert_eq!(
+        active
+            .manifest(app.world().resource::<Assets<Manifest>>())
+            .unwrap()
+            .id,
+        "my_rpg_story"
+    );
+    fixture.write(
+        "manifest.yaml",
+        manifest
+            .replace(
+                "window_title: \"Rusted Kingdoms\"",
+                "window_title: \"Repaired title\"",
+            )
+            .as_bytes(),
+    );
+    wait_for_revision(&mut app, 2, TransitionPhase::Idle);
+}
+
+#[test]
+fn watcher_checks_new_audio_reference_before_publishing_same_map_metadata() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "data/audio/bgm_index.yaml",
+        b"world:\n  field: missing.mp3\n",
+    );
+    let mut app = hot_app(&fixture);
+    let entities = active_entities(app.world_mut());
+    // The key resolves, but its dependency is missing; this used to enter World and fail later.
+    fixture.write(
+        "data/maps/source.yaml",
+        b"id: source\nname: Sound test\nbgm: world.field\n",
+    );
+    wait_for_revision(&mut app, 1, TransitionPhase::Failed);
+    assert!(
+        app.world()
+            .resource::<WorldTransition>()
+            .failure()
+            .unwrap()
+            .contains("BGM audio dependency"),
+        "{:?}",
+        app.world().resource::<WorldTransition>().failure()
+    );
+    assert_eq!(active_entities(app.world_mut()), entities);
+}
+
+#[test]
+fn hot_timeout_guards_late_asset_writes_and_refreshes_available_recovery_actions() {
+    let fixture = Fixture::new();
+    let mut app = hot_app(&fixture);
+    let image_id = app
+        .world()
+        .resource::<Assets<TsxAtlasAsset>>()
+        .iter()
+        .find(|(_, atlas)| {
+            atlas
+                .metadata()
+                .image()
+                .source()
+                .as_str()
+                .ends_with("item_box.png")
+        })
+        .unwrap()
+        .1
+        .image()
+        .id();
+    let original = app
+        .world()
+        .resource::<Assets<Image>>()
+        .get(image_id)
+        .unwrap()
+        .clone();
+    let source = active_entities(app.world_mut());
+    let save = fs::read(fixture.autosave()).unwrap();
+    super::super::hot_reload::begin(app.world_mut());
+    super::super::hot_reload::hold_completion_for_test(app.world_mut(), image_id.untyped());
+    app.world_mut()
+        .resource_mut::<WorldTransition>()
+        .wait_seconds = LOAD_TIMEOUT_SECONDS;
+    drive_transition_loading(app.world_mut());
+    app.update();
+    assert_eq!(
+        app.world().resource::<WorldTransition>().phase,
+        TransitionPhase::Failed
+    );
+    let world = app.world_mut();
+    let text = &world
+        .query_filtered::<&Text, With<RecoveryText>>()
+        .single(world)
+        .unwrap()
+        .0;
+    assert!(text.contains("reads are settling"));
+    assert!(!text.contains("R: retry"));
+    assert!(text.contains("T: return to title"));
+    press(&mut app, KeyCode::Escape);
+    assert_eq!(
+        app.world().resource::<WorldTransition>().phase,
+        TransitionPhase::Failed
+    );
+    let mut late = original.clone();
+    late.data.as_mut().unwrap()[0] ^= 255;
+    app.world_mut()
+        .resource_mut::<Assets<Image>>()
+        .insert(image_id, late)
+        .unwrap();
+    app.update();
+    assert_eq!(
+        app.world()
+            .resource::<Assets<Image>>()
+            .get(image_id)
+            .unwrap()
+            .data,
+        original.data
+    );
+    app.update();
+    let world = app.world_mut();
+    let text = &world
+        .query_filtered::<&Text, With<RecoveryText>>()
+        .single(world)
+        .unwrap()
+        .0;
+    assert!(!text.contains("reads are settling"));
+    assert!(text.contains("R: retry"));
+    assert_eq!(fs::read(fixture.autosave()).unwrap(), save);
+    press(&mut app, KeyCode::Escape);
+    wait_for(&mut app, TransitionPhase::Idle);
+    assert_eq!(active_entities(app.world_mut()), source);
+}
+
+#[test]
+fn watched_audio_bytes_restart_the_logical_loop_after_publication() {
+    use crate::world_audio::LogicalBgmPlayer;
+    let fixture = Fixture::new();
+    let original = include_bytes!(scenario_file!("media/audio/sfx/ui_menu/001_Hover_01.mp3"));
+    let replacement = include_bytes!(scenario_file!("media/audio/sfx/ui_menu/013_Confirm_03.mp3"));
+    fixture.write("data/audio/bgm_index.yaml", b"world:\n  field: loop.mp3\n");
+    fixture.write("media/audio/loop.mp3", original);
+    fixture.write(
+        "data/maps/source.yaml",
+        b"id: source\nname: Audio fixture\nbgm: world.field\n",
+    );
+    let mut app = hot_app(&fixture);
+    let world = app.world_mut();
+    let player = world
+        .query_filtered::<Entity, With<LogicalBgmPlayer>>()
+        .single(world)
+        .unwrap();
+    fixture.write("media/audio/loop.mp3", replacement);
+    wait_for_revision(&mut app, 1, TransitionPhase::Idle);
+    let world = app.world_mut();
+    let new_player = world
+        .query_filtered::<Entity, With<LogicalBgmPlayer>>()
+        .single(world)
+        .unwrap();
+    assert_ne!(new_player, player);
+    let audio = world.get::<AudioPlayer>(new_player).unwrap();
+    assert_eq!(
+        world
+            .resource::<Assets<AudioSource>>()
+            .get(&audio.0)
+            .unwrap()
+            .bytes
+            .as_ref(),
+        replacement.as_slice()
+    );
+}
+
+#[test]
+fn disabled_watching_leaves_same_map_derived_state_unchanged() {
+    let fixture = Fixture::new();
+    let mut app = fixture.app();
+    app.add_plugins(super::super::hot_reload::ScenarioHotReloadPlugin::new(
+        fixture.0.clone(),
+        false,
+    ));
+    wait_for(&mut app, TransitionPhase::Idle);
+    let entities = active_entities(app.world_mut());
+    fixture.write("media/maps/source.tmx", changed_map().as_bytes());
+    for _ in 0..120 {
+        app.update();
+    }
+    assert_eq!(
+        app.world()
+            .resource::<super::super::hot_reload::HotReload>()
+            .revision,
+        0
+    );
+    assert!(!blocked(&app));
+    assert_eq!(active_entities(app.world_mut()), entities);
 }

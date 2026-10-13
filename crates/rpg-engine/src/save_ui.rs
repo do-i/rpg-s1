@@ -50,7 +50,12 @@ impl Plugin for SaveUiPlugin {
                     .run_if(in_state(AppState::Title)),
             )
             .add_systems(OnExit(AppState::Title), cleanup_title_load_overlay)
-            .add_systems(Update, refresh_save_slots.run_if(in_state(AppState::World)));
+            .add_systems(
+                Update,
+                refresh_save_slots
+                    .run_if(in_state(AppState::World))
+                    .run_if(crate::world_transition::hot_reload::published_inputs_enabled),
+            );
     }
 }
 

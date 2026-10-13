@@ -438,3 +438,94 @@ and frontend Node worker tests ran with normal local thread/process access: the
 sandbox's Node test runner reported only a file-level pass, while the normal run
 listed and passed all ten behavioral cases. API requests and injected publication
 waits remain bounded to five seconds. RF-11 will add CI gates for these checks.
+
+## RF-08 — Publish runtime hot changes as one World transaction
+
+Source inspection and `cargo tree -e features -i bevy_asset` confirmed that the
+workspace's Bevy 0.19 build does not enable `file_watcher`. A disposable runtime
+regression with watching disabled reproduces the original behavior: overwriting
+the current map's TMX leaves the old sprites and collision occupancy in place.
+The production `AssetPlugin` now explicitly disables autonomous watching and
+`RPG_S1_HOT_RELOAD` enables coordinated 0.5-second package revision polling. An
+unset variable installs no polling/completion systems. Linux inode/change-time
+signatures detect atomic same-size replacements preserving modification time;
+removed paths are included and symlink/backup-file entries are ignored.
+
+Reloads wait for an idle World, retain RF-02's source bundles, and run replacement
+publication through its existing lock, timeout, failure UI and source-return path.
+The retained generation now includes cloned typed assets, image data, atlas
+layouts, inventory, global catalog/load resources and RNG. This matters because
+retaining handles alone would allow a successfully reloaded PNG/TSX to change the
+supposedly rolled-back source when another file fails. AssetServer completion and
+failure events gate rebuilding the same map's render bundles, collision, player,
+NPCs, signs, item boxes, encounters and field/transport catalogs. Runtime portal
+parsing and the active BGM dependency join the publication check. Audio requests
+retain their candidate handles; requesting the same failed audio every frame would
+otherwise restart IO and hide the failure behind a timeout.
+
+Rejected generations restore the previous assets and resources, freeze global
+manifest/new-game consumers against the failed server states, and retain the whole
+rejected file set for explicit retry or a subsequent edit. They do not retry an
+unchanged failure automatically. If a timed-out asset request completes later, an
+asset-only guard restores the old values after Bevy's asset processing and before
+Update/render extraction. Rollback-generated asset messages cannot count as reload
+completion. Recovery labels update as pending work drains; title return remains
+available throughout. Successful publication refreshes map audio and save-slot
+balance/context. No existing save/session is migrated by edited bootstrap data.
+
+The supported package switch remains a fresh `play PACKAGE_KEY` launch of the same
+binary. Tests load two distinct packages with identical map IDs into separate real
+AssetServers and verify their actors, collision, manifest roots and asset paths.
+A live root mutation is restored before consumers run, and changing manifest
+ID/version rejects the hot transaction. No in-process scenario-switch UI is
+claimed. [Runtime hot-reload instructions](runtime-hot-reload.md) document the
+supported flow, disposable visual/audio procedure, snapshot memory cost and
+remaining manual checks under the existing sibling acceptance task
+`RK-DBG-006`–`RK-DBG-016`; that read-only tracker is not marked complete.
+
+The disposable tests exercise actual filesystem writes and production asset
+loaders/World publication rather than calling the invalidation decision alone:
+combined same-map TMX/TSX/YAML changes; updated geometry/collision/NPCs/item boxes;
+mixed successful PNG/TSX/TMX changes plus failed YAML and exact restoration; removed
+PNG and retry; item catalog commit/rollback; manifest identity rejection and retry
+suppression; atomic replacement metadata; actual MP3 bytes and logical-loop restart;
+new missing audio dependency; timeout followed by a late asset write and refreshed
+recovery actions; and two selected packages. Headless sprite/audio entity assertions
+do not establish live GPU appearance, audible playback or campaign acceptance.
+
+Validation on the final source snapshot:
+
+- `cargo test --workspace -j 1`: passed, **1,070 tests** (196 content unit tests,
+  872 engine unit tests and two integration tests; zero failed/ignored). This
+  includes the 12 new hot-change regressions. The preceding focused transition
+  run passed 45 tests; the final disabled-watcher regression also passed in the
+  workspace run.
+- `cargo clippy --workspace --all-targets -j 1 -- -D warnings`: passed.
+- `cargo fmt --all -- --check` and `git diff --check`: passed.
+- `cargo run -j 1 -- validate-scenario rusted_kingdoms --baseline
+  assets/scenarios/rusted_kingdoms/validation-baseline.txt`: baseline **PASS**,
+  four accepted undefined ultimate-element flags, zero new or obsolete diagnostics.
+  The ungated content report still says FAIL for those four existing errors.
+- The final `target/debug/rpg-s1` binary's `map-sweep rusted_kingdoms`: all 54 maps
+  clean, zero findings; runtime loading passed all 54 maps.
+- `dialogue-sweep rusted_kingdoms`: passed, 128 documents, 304 roots, 318 terminating
+  paths, zero cycles/errors.
+- `encounter-sweep rusted_kingdoms`: passed, 19 zones, 158 constructions and 119
+  assets, zero construction/asset failures.
+- `python3 -m unittest -v scripts/test_check_asset_rights.py`: passed, five tests.
+- `bash scripts/check-ardel-screenshot.sh temp/refactoring/rf08-ardel.png`:
+  **FAILED, inherited oracle mismatch**. The actual RGBA8 hash is
+  `e55dd69ac18af8a813f736f755939c63fe235e2db25b41fe2429d399153b0c69`;
+  the unchanged oracle expects
+  `85ce229c04604258debbad65643ebcc62177f084727178d29b968baeb35b2012`.
+  Running the HEAD script against the same unchanged inputs reproduced the actual
+  hash. `git diff ac5d827 -- assets scripts/check-ardel-screenshot.sh
+  tests/fixtures/ardel-screenshot` was empty. This static Tiled rasterizer does not
+  execute the changed Rust runtime. The resulting image was inspected; neither
+  assets nor the oracle were changed to make the gate pass. Live-window hot-change
+  appearance, movement and audible acceptance remain manual as documented above.
+
+Raw logs and PNGs are ignored under `temp/refactoring/rf08-*`. Cargo reused the
+existing shared cache with required permission and one build worker; this task
+performed no cache cleanup or dependency/feature upgrade. No canonical scenario,
+validation baseline, sibling tracker, or refactoring plan was edited or staged.
