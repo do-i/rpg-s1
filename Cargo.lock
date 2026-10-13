@@ -4380,15 +4380,7 @@ dependencies = [
 name = "rpg-s1"
 version = "2026.8.1"
 dependencies = [
- "bevy",
- "crc32fast",
- "quick-xml",
- "rpg-content",
  "rpg-engine",
- "serde",
- "serde_path_to_error",
- "serde_yaml_ng",
- "sha2",
 ]
 
 [[package]]

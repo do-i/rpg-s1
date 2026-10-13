@@ -40,7 +40,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 740 | RF-18 | P2 | Reuse typed catalog-loading operations | Sol | high | RF-08, RF-12, RF-13, RF-14 |
 | 700 | RF-19 | P2 | Resolve obsolete intro-transition staging state | Astra | high | RF-02, RF-10 |
 | 690 | RF-20 | P2 | Remove proven-unused accessors and stale suppressions | Sol | medium | RF-05, RF-08, RF-19 |
-| 680 | RF-21 | P2 | Remove unused root-package dependencies | Luna | medium | — |
 | 600 | RF-22 | P2 | Establish reproducible performance measurements | Sol | high | RF-10 |
 | 590 | RF-23 | P2 | Avoid repeated World flag allocation and respawning | Sol | high | RF-08, RF-13, RF-22 |
 | 580 | RF-24 | P2 | Reduce menu rebuild and list allocation costs | Sol | high | RF-12, RF-17, RF-22 |
@@ -139,16 +138,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 - Check module/plugin registration before removing apparently unreferenced Bevy code.
 - **Done when:** each remaining suppression has a current justification, removable code is gone, and workspace clippy passes without new broad allowances.
 - **Model fit:** Sol/medium for a bounded audit with caller and compatibility checks.
-
-### RF-21 — Remove unused root-package dependencies
-
-**Evidence: Source.** [src/main.rs](../src/main.rs) calls only `rpg_engine::run_with_game_version`. The root integration guard uses the standard library, while [Cargo.toml](../Cargo.toml) repeats Bevy, XML, hashing, serialization, and content dependencies also owned by the crates.
-
-- Verify root-package targets and feature-unification effects with Cargo metadata and an unused-dependency report when available.
-- Remove dependencies unused by the root package while keeping `rpg-engine`. Confirm the crates explicitly request all features they need; update the lockfile only where necessary.
-- Do not upgrade dependency versions during this task. Verify root integration tests still run under `--workspace`.
-- **Done when:** the executable manifest declares only its real direct dependencies and workspace check/test/clippy plus packaged launch remain valid.
-- **Model fit:** Luna/medium for a narrowly scoped manifest change with clear checks; escalate if feature unification reveals behavioral coupling.
 
 ## Execution performance
 
