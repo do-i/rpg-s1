@@ -1,14 +1,16 @@
-"""On-demand thumbnail rendering for graph nodes.
+"""Render previews keyed by TMX and referenced TSX/image contents.
 
-Each TMX is rendered to a small surface and cached to disk under the
-scenario root (so the cache is portable, and ignorable in .gitignore).
-The cache key is (tmx mtime, thumbnail size); a stale cache simply
-re-renders.
+Memory and disk share one revision for both sizes. Every lookup rechecks the
+sources, including removed files, and a render changed in flight is discarded.
 """
 
 from __future__ import annotations
 
+from hashlib import sha256
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+from threading import RLock
+from xml.etree import ElementTree as ET
 
 import pygame
 
@@ -19,87 +21,187 @@ THUMB_MAX_W = 256
 THUMB_MAX_H = 192
 CACHE_DIRNAME = ".cache/map_editor/thumbs"
 FULL_CACHE_DIRNAME = ".cache/map_editor/full"
+RENDER_VERSION = b"editor-flat-render-v2:256x192"
+
+
+def render_revision(tmx_path: Path) -> str:
+    """Hash source identities and bytes; timestamps alone miss replaced files."""
+    sources: dict[Path, bytes] = {}
+
+    def visit(path: Path, *, xml: bool):
+        path = path.resolve()
+        if path in sources:
+            return
+        data = path.read_bytes()
+        sources[path] = data
+        if xml:
+            root = ET.fromstring(data)
+            for tileset in root.iter("tileset"):
+                if source := tileset.get("source"):
+                    visit(path.parent / source, xml=True)
+            for image in root.iter("image"):
+                if source := image.get("source"):
+                    visit(path.parent / source, xml=False)
+
+    visit(tmx_path, xml=True)
+    digest = sha256(RENDER_VERSION)
+    for path, data in sorted(sources.items()):
+        digest.update(str(path).encode() + b"\0" + sha256(data).digest())
+    return digest.hexdigest()
 
 
 class ThumbnailCache:
     def __init__(self, scenario_root: Path) -> None:
+        self._lock = RLock()
         self._cache_dir = (scenario_root / CACHE_DIRNAME).resolve()
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._full_cache_dir = (scenario_root / FULL_CACHE_DIRNAME).resolve()
-        self._full_cache_dir.mkdir(parents=True, exist_ok=True)
+        for directory in (self._cache_dir, self._full_cache_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+        self._revisions: dict[Path, str] = {}
         self._thumb_memory: dict[Path, pygame.Surface] = {}
         self._full_memory: dict[Path, pygame.Surface] = {}
 
-    def get(self, tmx_path: Path) -> pygame.Surface | None:
-        """Return the small thumbnail (bounded by THUMB_MAX_W/H), cached to disk."""
-        if tmx_path in self._thumb_memory:
-            return self._thumb_memory[tmx_path]
+    def invalidate(self, tmx_path: Path) -> None:
+        """Forget both sizes, including disk entries from other instances."""
+        with self._lock:
+            path = tmx_path.resolve()
+            self._revisions.pop(path, None)
+            self._thumb_memory.pop(path, None)
+            self._full_memory.pop(path, None)
+            self._prune(path)
 
-        disk_path = self._disk_path(tmx_path)
-        if disk_path.is_file() and disk_path.stat().st_mtime >= tmx_path.stat().st_mtime:
+    def revision(self, tmx_path: Path) -> str | None:
+        """Return the current dependency revision, invalidating obsolete output."""
+        with self._lock:
+            path = tmx_path.resolve()
             try:
-                surf = pygame.image.load(str(disk_path)).convert_alpha()
-                self._thumb_memory[tmx_path] = surf
-                return surf
-            except pygame.error:
-                pass
+                revision = render_revision(path)
+            except (OSError, ET.ParseError):
+                self.invalidate(path)
+                return None
+            if self._revisions.get(path) != revision:
+                self._thumb_memory.pop(path, None)
+                self._full_memory.pop(path, None)
+                self._prune(path, keep=revision)
+                self._revisions[path] = revision
+            return revision
 
-        full = self.get_full(tmx_path)
-        if full is None:
-            return None
-        scale = min(THUMB_MAX_W / full.get_width(), THUMB_MAX_H / full.get_height(), 1.0)
-        if scale < 1.0:
-            new_size = (
-                max(1, int(full.get_width() * scale)),
-                max(1, int(full.get_height() * scale)),
-            )
-            thumb = pygame.transform.smoothscale(full, new_size)
-        else:
-            thumb = full.copy()
-        pygame.image.save(thumb, str(disk_path))
-        self._thumb_memory[tmx_path] = thumb
-        return thumb
+    def get(self, tmx_path: Path) -> pygame.Surface | None:
+        return self._surface(tmx_path, full=False)
 
     def get_full(self, tmx_path: Path) -> pygame.Surface | None:
-        """Return the map rendered at its native pixel size (cached in memory only)."""
-        if tmx_path in self._full_memory:
-            return self._full_memory[tmx_path]
-        try:
-            tile_map = TileRenderer(tmx_path)
-        except Exception:
-            return None
-        full = pygame.Surface(
-            (tile_map.width_px, tile_map.height_px), pygame.SRCALPHA
-        )
-        tile_map.render(full)
-        self._full_memory[tmx_path] = full
-        return full
+        return self._surface(tmx_path, full=True)
 
     def thumbnail_file(self, tmx_path: Path) -> Path | None:
-        """Ensure the small thumbnail PNG exists on disk and return its path.
-
-        Used by the web backend, which serves files rather than surfaces.
-        Returns None when the map cannot be rendered.
-        """
-        if self.get(tmx_path) is None:
-            return None
-        return self._disk_path(tmx_path)
+        return self._file(tmx_path, full=False)
 
     def full_file(self, tmx_path: Path) -> Path | None:
-        """Ensure a native-resolution PNG render exists on disk; return its path.
+        return self._file(tmx_path, full=True)
 
-        Full renders back the web UI's tile pickers, where portal tiles are
-        chosen by clicking on the actual map pixels. Returns None when the map
-        cannot be rendered.
+    def png_bytes(self, tmx_path: Path, *, full: bool = False) -> tuple[str, bytes] | None:
+        """Read a validated response while holding the cache lock.
+
+        The web server sends these bytes instead of streaming a mutable path
+        after releasing the editor publication lock.
         """
-        disk_path = self._full_cache_dir / f"{tmx_path.stem}.png"
-        if disk_path.is_file() and disk_path.stat().st_mtime >= tmx_path.stat().st_mtime:
-            return disk_path
-        full = self.get_full(tmx_path)
-        if full is None:
-            return None
-        pygame.image.save(full, str(disk_path))
-        return disk_path
+        with self._lock:
+            path = tmx_path.resolve()
+            disk = self._file(path, full=full)
+            if disk is None:
+                return None
+            revision = self._revisions[path]
+            try:
+                data = disk.read_bytes()
+                if render_revision(path) != revision:
+                    self.invalidate(path)
+                    return None
+            except (OSError, ET.ParseError):
+                self.invalidate(path)
+                return None
+            return revision, data
 
-    def _disk_path(self, tmx_path: Path) -> Path:
-        return self._cache_dir / f"{tmx_path.stem}.png"
+    def _surface(self, tmx_path: Path, *, full: bool) -> pygame.Surface | None:
+        with self._lock:
+            path = tmx_path.resolve()
+            revision = self.revision(path)
+            if revision is None:
+                return None
+            memory = self._full_memory if full else self._thumb_memory
+            try:
+                surface = memory.get(path)
+                if surface is None:
+                    disk = self._disk_path(path, revision, full=full)
+                    if disk.is_file():
+                        try:
+                            surface = pygame.image.load(str(disk)).convert_alpha()
+                        except (pygame.error, OSError):
+                            self.invalidate(path)
+                            self._revisions[path] = revision
+                    if surface is None:
+                        if full:
+                            tile_map = TileRenderer(path)
+                            surface = pygame.Surface(
+                                (tile_map.width_px, tile_map.height_px), pygame.SRCALPHA
+                            )
+                            tile_map.render(surface)
+                        else:
+                            native = self._surface(path, full=True)
+                            if native is None:
+                                return None
+                            scale = min(THUMB_MAX_W / native.get_width(),
+                                        THUMB_MAX_H / native.get_height(), 1.0)
+                            size = (max(1, int(native.get_width() * scale)),
+                                    max(1, int(native.get_height() * scale)))
+                            surface = pygame.transform.smoothscale(native, size) if scale < 1 else native.copy()
+                if render_revision(path) != revision:
+                    self.invalidate(path)
+                    return None
+                memory[path] = surface
+                return surface
+            except Exception:
+                # Failed construction, drawing or dependency reads must never
+                # revive a previous successful generation in either size.
+                self.invalidate(path)
+                return None
+
+    def _file(self, tmx_path: Path, *, full: bool) -> Path | None:
+        with self._lock:
+            path = tmx_path.resolve()
+            surface = self._surface(path, full=full)
+            if surface is None:
+                return None
+            revision = self._revisions[path]
+            disk = self._disk_path(path, revision, full=full)
+            temporary = None
+            try:
+                if not disk.is_file():
+                    with NamedTemporaryFile(dir=disk.parent, suffix=".png", delete=False) as handle:
+                        temporary = Path(handle.name)
+                    pygame.image.save(surface, str(temporary))
+                    if render_revision(path) != revision:
+                        self.invalidate(path)
+                        return None
+                    temporary.replace(disk)
+                return disk
+            except Exception:
+                self.invalidate(path)
+                return None
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+
+    def _key(self, path: Path) -> str:
+        return sha256(str(path).encode()).hexdigest()
+
+    def _disk_path(self, path: Path, revision: str, *, full: bool) -> Path:
+        directory = self._full_cache_dir if full else self._cache_dir
+        return directory / f"{self._key(path)}-{revision}.png"
+
+    def _prune(self, path: Path, *, keep: str | None = None) -> None:
+        for directory in (self._cache_dir, self._full_cache_dir):
+            for disk in directory.glob(f"{self._key(path)}-*.png"):
+                if keep is None or disk.name != f"{self._key(path)}-{keep}.png":
+                    disk.unlink(missing_ok=True)
+            # Old mtime-based entries have no dependency revision and cannot
+            # be promoted into the new cache, even on the first lookup.
+            (directory / f"{path.stem}.png").unlink(missing_ok=True)

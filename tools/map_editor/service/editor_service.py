@@ -19,6 +19,7 @@ from functools import wraps
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import RLock
+from typing import Callable
 
 from tools.map_editor.edit.tmx_writer import (
     TMXPublishedDurabilityError,
@@ -57,6 +58,7 @@ class EditorService:
 
     def __init__(self, scenario_root: Path) -> None:
         self._lock = RLock()
+        self._invalidate_render: Callable[[Path], None] | None = None
         self._deleted_portals: dict[str, GraphEdge] = {}
         self._scenario: ScenarioMaps = load_scenario_maps(scenario_root)
         self._revisions = {path: map_revision(path) for path in self._scenario.tmx_paths}
@@ -77,20 +79,36 @@ class EditorService:
     # ── queries ──────────────────────────────────────────────────────────
 
     @_serialized
-    def graph_dict(self, *, refresh: bool = False) -> dict:
+    def graph_dict(
+        self, *, refresh: bool = False,
+        render_revision: Callable[[Path], str | None] | None = None,
+    ) -> dict:
         """The full portal graph as a JSON-serializable dict."""
         if refresh:
             revisions = {path: map_revision(path) for path in self._scenario.tmx_paths}
+            for path, revision in revisions.items():
+                if revision != self._revisions[path] and self._invalidate_render:
+                    self._invalidate_render(path)
             fresh = build_portal_graph(
                 tmx_paths=self._scenario.tmx_paths, yaml_for=self._scenario.yaml_for,
             )
             check_revisions(revisions)
             self._graph, self._revisions = fresh, revisions
         return {
-            "nodes": [{**_node_dict(n), "revision": self._revisions[n.tmx_path]}
+            "nodes": [{**_node_dict(n), "revision": self._revisions[n.tmx_path],
+                       **({"render_revision": render_revision(n.tmx_path)} if render_revision else {})}
                       for n in self._graph.nodes],
             "edges": [_edge_dict(e) for e in self._graph.edges],
         }
+
+    @_serialized
+    def set_render_invalidator(self, invalidate: Callable[[Path], None]) -> None:
+        self._invalidate_render = invalidate
+
+    @_serialized
+    def preview(self, map_id: str, render):
+        """Read preview bytes within the same lock as publication and refresh."""
+        return render(self.node(map_id).tmx_path)
 
     @_serialized
     def node(self, map_id: str) -> GraphNode:
@@ -242,6 +260,8 @@ class EditorService:
     def _refresh_map_edges(self, map_id: str) -> None:
         """Re-read one map's TMX and replace its outgoing edges in the graph."""
         node = self.node(map_id)
+        if self._invalidate_render:
+            self._invalidate_render(node.tmx_path)
         revision = map_revision(node.tmx_path)
         fresh = build_portal_graph(
             tmx_paths=[node.tmx_path], yaml_for=self._scenario.yaml_for

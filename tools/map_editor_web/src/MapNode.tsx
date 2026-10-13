@@ -29,6 +29,7 @@ export interface ArrivalMarker {
 
 export interface MapNodeData extends Record<string, unknown> {
   mapId: string;
+  renderRevision: string | null;
   displayName: string;
   isWorld: boolean;
   thumbWidth: number;
@@ -58,7 +59,8 @@ export function MapNode({ data, selected }: NodeProps<MapFlowNode>) {
         style={{ width: data.thumbWidth, height: data.thumbHeight }}
       >
         <img
-          src={thumbnailUrl(data.mapId)}
+          key={thumbnailUrl(data.mapId, data.renderRevision)}
+          src={thumbnailUrl(data.mapId, data.renderRevision)}
           alt={data.mapId}
           draggable={false}
           width={data.thumbWidth}

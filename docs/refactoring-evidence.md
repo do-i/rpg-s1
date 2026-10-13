@@ -529,3 +529,65 @@ Raw logs and PNGs are ignored under `temp/refactoring/rf08-*`. Cargo reused the
 existing shared cache with required permission and one build worker; this task
 performed no cache cleanup or dependency/feature upgrade. No canonical scenario,
 validation baseline, sibling tracker, or refactoring plan was edited or staged.
+
+## RF-09 — Invalidate stale editor previews
+
+The inherited cache returned old red pixels after a disposable TMX changed to a
+green tile, and also republished an old in-memory full render when its disk PNG
+was removed. Both stale-pixel assertions fail against the pre-change cache in
+`rf09-red.log`; the fixture supplies only a no-op mutation callback so the old
+lookup methods execute unchanged. The initial editor baseline passed 41 tests.
+
+Thumbnail and full-resolution entries now share a SHA-256 revision over the map,
+referenced external tilesets, and referenced image contents and identities. Each
+lookup rechecks dependencies, including missing files and timestamp-preserving
+replacements. Memory and both disk directories are invalidated together; the
+legacy modification-time PNGs are discarded. Current disk filenames include map
+identity and dependency revision, allowing fresh instances to reuse validated
+PNG output without rendering and avoiding same-stem map collisions. PNG writes
+use a sibling temporary file and replacement. Source revisions are checked after
+rendering and after saving; changed candidates and failed output are discarded
+instead of promoting old memory pixels to a new disk revision.
+
+The editing service invokes invalidation on publication/refresh, including edits
+that are already visible when synchronization fails and external edits rejected
+as conflicts. Preview bytes are captured inside RF-07's publication lock and the
+cache's lock; a later invalidation cannot unlink a path being streamed to an
+already-started response. Graph payloads expose a separate composite render
+revision, preserving the TMX revision used for optimistic edit conflicts. The
+frontend passes that revision to graph thumbnails, tile pickers, and inspector
+images. Changing it replaces the image element, including one hidden by an
+earlier failure. Graph fetches and PNG responses use `no-store`; an obsolete
+query revision can therefore receive current pixels without incorrectly giving
+that URL an immutable browser cache entry. Tileset/image-only refreshes update
+previews without clearing otherwise valid portal undo history. No new polling
+behavior is introduced.
+
+Validation on the final reviewed source:
+
+- `python -m unittest discover -s tools/map_editor/tests -v` through the existing
+  editor environment: passed, **57 tests**, including 16 new lifecycle tests.
+  Real disposable TMX/TSX/PNG fixtures cover long-lived TMX/TSX/image changes,
+  preserved timestamps, removed/malformed dependencies, constructor/drawing
+  failures, PNG-save failure cleanup, changes during rendering/saving, immediate
+  mutation/conflict invalidation, cross-instance disk reuse, thumbnail dimensions, map identity,
+  legacy/corrupt disk cache, API response pixels/revisions/errors, and concurrent
+  edit/preview serialization with a captured response surviving invalidation.
+- `npm ci`, `npm test`, and `npm run build` in `tools/map_editor_web`: passed;
+  **12 frontend tests**. Two new tests render the actual React graph node, picker,
+  and inspector and verify their changed image URLs after dependency refresh and
+  missing-dependency repair. Existing ten conflict/undo/recovery tests still pass.
+- `bash scripts/map-editor.sh check`: passed, **54 maps and 108 portals**.
+- A read-only production smoke check resolved dependency revisions for all
+  **54 maps** and rendered Ardel thumbnail/full PNGs into a disposable cache.
+- `git diff --check`: passed. RF-08's workspace/clippy/scenario baseline above
+  remains the recorded runtime baseline; this task changes no Rust, TMX writer,
+  canonical assets, validation baseline, screenshot oracle, or CI configuration.
+
+Raw logs are ignored under `temp/refactoring/rf09-*`. Backend ASGI/thread tests
+and frontend Node worker tests ran with normal local process access, following
+RF-07's established sandbox diagnosis. API/concurrency test waits are bounded;
+fixtures and production smoke caches are disposable. The static Ardel oracle
+mismatch recorded under RF-08 remains unchanged; these headless PNG/React checks
+do not establish interactive browser or campaign acceptance. No refactoring
+plan or sibling tracker was edited or staged.

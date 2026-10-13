@@ -68,8 +68,10 @@ function NodeDetails({ info }: { info: MapNodeInfo | undefined }) {
       <h2>{info.display_name}</h2>
       <img
         className="panel-thumb"
-        src={thumbnailUrl(info.map_id)}
+        key={thumbnailUrl(info.map_id, info.render_revision)}
+        src={thumbnailUrl(info.map_id, info.render_revision)}
         alt={info.map_id}
+        onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
       />
       <dl>
         <dt>id</dt>
