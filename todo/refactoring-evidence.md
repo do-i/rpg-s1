@@ -736,3 +736,39 @@ Local test execution used Python 3.14.7 and Node 26.11.1. The hosted Python
 Raw logs/downloads are ignored under `temp/refactoring/rf11-*`. RF-11 is removed
 from the queue; the sibling manual tracker remains unchanged. Interactive editor
 and full-campaign acceptance still require their existing operator observations.
+
+## RF-21 — Remove unused root-package dependencies
+
+The root `rpg-s1` package now declares only `rpg-engine`. `src/main.rs` calls
+only `rpg_engine::run_with_game_version`, the root integration guard uses only
+the standard library, and the root has no build script, examples or benches.
+Its `rpg-content` mentions are file-path strings, not crate imports. Bevy,
+quick-xml, crc32fast, serde, serde_path_to_error, serde_yaml_ng, sha2 and
+rpg-content remain declared by the crates that use them.
+
+`rpg-engine` already requests the identical Bevy feature list, so feature
+unification is unchanged: a sorted `cargo tree --workspace -e normal,build`
+package/feature listing differs only by the root's duplicate `sha2 (*)`
+marker, and `cargo tree -e features -i sha2` still resolves `default,std`
+through `rpg-engine`. The lockfile change only removes the eight entries from
+the root package's own dependency list; no version changed.
+
+Validation:
+
+- `cargo fmt --all -- --check`, strict workspace/all-targets clippy and
+  `cargo check --workspace --all-targets --locked`: passed.
+- `cargo test --workspace --no-fail-fast`: **1,075 passed, 4 failed**. All four
+  failures (`audits_every_shipped_csv_tile_layer`,
+  `pinned_ardel_known_blocked_and_open_cells_match_source` and two
+  `real_ardel_*` ground tests) read `town_01_ardel.tmx`, which had an unrelated
+  uncommitted edit in the working tree. The same four fail identically with
+  the original root manifest restored, so they are not caused by RF-21.
+- Scenario validation against the accepted baseline: PASS (4 accepted, 0 new).
+  `map-sweep`: PASS, 54/54. The dev binary launches and prints its usage.
+
+- `cargo build --release --locked`: passed. A payload staged as the release
+  workflow does (binary plus `scripts/package_release_assets.py`, 1,001 assets)
+  passed validation, map, encounter and dialogue sweeps from an unrelated
+  working directory with audio muted.
+
+RF-21 is removed from the queue.
