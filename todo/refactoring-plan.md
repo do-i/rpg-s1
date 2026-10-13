@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 800 | RF-12 | P2 | Split the field-menu controller by responsibility | Sol | high | RF-05, RF-10 |
 | 790 | RF-13 | P2 | Split World encounter loading and battle handoff | Sol | high | RF-02, RF-10 |
 | 780 | RF-14 | P2 | Split scenario cross-reference validation | Sol | high | — |
 | 770 | RF-15 | P2 | Separate CLI parsing, execution, and reporting | Sol | high | RF-10 |
@@ -48,16 +47,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-12 — Split the field-menu controller by responsibility
-
-**Evidence: Source.** [field_menu.rs](../crates/rpg-engine/src/field_menu.rs) has 4,386 lines, approximately 2,003 before its main test module. UI page files already exist; the remaining controller still combines state, markers, input routing, action execution, and persistence.
-
-- Extract state/markers, input routing, and action handlers for inventory, spells/teleport, equipment, and battle options into focused modules. Reuse the existing [field_menu_domain.rs](../crates/rpg-engine/src/field_menu_domain.rs) and page modules.
-- Replace broad `use super::*` coupling with explicit imports where it reveals ownership. Keep plugin registration and ordering readable in the entry module.
-- Move tests alongside the behavior they protect; do not delete them to reduce line counts.
-- **Done when:** behavior is unchanged, action handlers have clear ownership, and menu navigation/save/teleport regressions pass.
-- **Model fit:** Sol/high for a substantial but bounded module decomposition.
 
 ### RF-13 — Split World encounter loading and battle handoff
 
