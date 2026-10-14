@@ -684,7 +684,7 @@ fn tile_from_top_left(top_left: Vec2) -> Position {
 /// with no collision centering. This matches the source's `Npc.__init__` (`engine/world/npc.py`):
 /// `_origin_px = tile_x * tile_size; _origin_py = tile_y * tile_size`, blitted directly as the
 /// sprite's top-left in `Npc.render`. This is deliberately *not* the player/enemy formula
-/// (`world_player::character_top_left`, `world_encounter::enemy_top_left`), which centers the
+/// (`world_player::character_top_left`, `world_encounter::simulation::enemy_top_left`), which centers the
 /// collision box on the tile instead — the source's player and NPC classes use two different
 /// placement conventions, and porting the player's formula onto NPCs was the original bug (NPCs
 /// rendering a tile too high/left).
