@@ -5,6 +5,7 @@ mod test_support;
 
 mod action_input;
 pub mod app_state;
+mod atomic_file;
 mod autosave;
 mod battle;
 mod battle_log;

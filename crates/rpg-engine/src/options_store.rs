@@ -22,15 +22,15 @@ use std::{
     ffi::OsString,
     fmt,
     fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    io::Write,
     path::PathBuf,
-    sync::atomic::{AtomicU64, Ordering},
 };
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    atomic_file::{Publication, PublishFailure, PublishPolicy, PublishStep, TemporaryFile},
     battle_tactics::TurnPause,
     engine_config::TextSpeed,
     input_bindings::{AppAction, BindingTarget, InputBindings, MovementAction},
@@ -45,8 +45,6 @@ const OPTIONS_FILE_NAME: &str = "options.yaml";
 /// A file from a newer build is not read: silently dropping keys it understands and we do not
 /// would look to the player like the game forgetting their settings.
 const CURRENT_VERSION: u32 = 1;
-
-static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum OptionsStoreError {
@@ -538,64 +536,41 @@ impl OptionsStore {
         )
         .into_bytes();
 
-        let temp = self.root.join(format!(
-            ".{OPTIONS_FILE_NAME}.{}.{}.tmp",
-            std::process::id(),
-            NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed)
-        ));
-        let mut cleanup = TemporaryFile::new(temp.clone());
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temp)
-            .map_err(|error| OptionsStoreError::Io {
-                operation: "create temporary options",
-                error: error.to_string(),
-            })?;
-        #[cfg(test)]
-        self.inject_failure("write temporary options")?;
-        file.write_all(&bytes)
-            .map_err(|error| OptionsStoreError::Io {
-                operation: "write temporary options",
-                error: error.to_string(),
-            })?;
-        #[cfg(test)]
-        self.inject_failure("sync temporary options")?;
-        file.sync_all().map_err(|error| OptionsStoreError::Io {
-            operation: "sync temporary options",
-            error: error.to_string(),
-        })?;
-        drop(file);
-
-        let mut verified = String::new();
-        File::open(&temp)
-            .and_then(|mut file| file.read_to_string(&mut verified))
-            .map_err(|error| OptionsStoreError::Io {
-                operation: "verify temporary options",
-                error: error.to_string(),
-            })?;
-        let reread: OptionsDocument = serde_yaml_ng::from_str(&verified)
-            .map_err(|error| OptionsStoreError::Parse(error.to_string()))?;
-        if reread != document {
-            return Err(OptionsStoreError::Encode(
-                "options did not survive a write and re-read".to_owned(),
-            ));
-        }
-
         let destination = self.path();
-        fs::rename(&temp, &destination).map_err(|error| OptionsStoreError::Io {
-            operation: "atomically replace options",
-            error: error.to_string(),
-        })?;
-        cleanup.disarm();
-        #[cfg(test)]
-        self.inject_failure("sync config directory")?;
-        File::open(&self.root)
-            .and_then(|directory| directory.sync_all())
-            .map_err(|error| OptionsStoreError::Io {
-                operation: "sync config directory",
-                error: error.to_string(),
-            })?;
+        Publication {
+            directory: &self.root,
+            destination: &destination,
+            temporary_stem: OPTIONS_FILE_NAME,
+            policy: PublishPolicy::Replace,
+        }
+        .publish(
+            &bytes,
+            |verified| {
+                let verified =
+                    std::str::from_utf8(verified).map_err(|_| OptionsStoreError::Io {
+                        operation: "verify temporary options",
+                        error: "stream did not contain valid UTF-8".to_owned(),
+                    })?;
+                let reread: OptionsDocument = serde_yaml_ng::from_str(verified)
+                    .map_err(|error| OptionsStoreError::Parse(error.to_string()))?;
+                if reread != document {
+                    return Err(OptionsStoreError::Encode(
+                        "options did not survive a write and re-read".to_owned(),
+                    ));
+                }
+                Ok(())
+            },
+            |step, _, _| match step {
+                #[cfg(test)]
+                PublishStep::WriteTemporary => self.inject_failure("write temporary options"),
+                #[cfg(test)]
+                PublishStep::SyncTemporary => self.inject_failure("sync temporary options"),
+                #[cfg(test)]
+                PublishStep::SyncDirectory => self.inject_failure("sync config directory"),
+                _ => Ok(()),
+            },
+        )
+        .map_err(|error| publish_failure(error.failure()))?;
         Ok(destination)
     }
 }
@@ -609,26 +584,26 @@ impl FromWorld for OptionsStore {
     }
 }
 
-struct TemporaryFile {
-    path: PathBuf,
-    armed: bool,
-}
-
-impl TemporaryFile {
-    fn new(path: PathBuf) -> Self {
-        Self { path, armed: true }
-    }
-
-    fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for TemporaryFile {
-    fn drop(&mut self) {
-        if self.armed {
-            let _ = fs::remove_file(&self.path);
-        }
+/// Names each publication step with the operation this store has always reported.
+fn publish_failure(failure: PublishFailure<OptionsStoreError>) -> OptionsStoreError {
+    match failure {
+        PublishFailure::Caller(error) => error,
+        PublishFailure::DestinationExists => OptionsStoreError::Io {
+            operation: "atomically replace options",
+            error: "destination exists".to_owned(),
+        },
+        PublishFailure::Io { step, error } => OptionsStoreError::Io {
+            operation: match step {
+                PublishStep::CreateTemporary => "create temporary options",
+                PublishStep::WriteTemporary => "write temporary options",
+                PublishStep::SyncTemporary => "sync temporary options",
+                PublishStep::ReadBackTemporary => "verify temporary options",
+                PublishStep::Publish => "atomically replace options",
+                PublishStep::RemovePublishedTemporary => "remove published temporary options",
+                PublishStep::SyncDirectory => "sync config directory",
+            },
+            error: error.to_string(),
+        },
     }
 }
 
@@ -657,8 +632,12 @@ pub(crate) fn load_player_options(store: &OptionsStore) -> (PlayerOptions, Optio
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
     use super::*;
     use bevy::input::{gamepad::GamepadButton, keyboard::KeyCode};
+
+    static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
     fn resolve(pairs: &[(&str, &str)]) -> Result<PathBuf, OptionsStoreError> {
         resolve_config_directory(|name| {

@@ -3,17 +3,15 @@
 use std::{
     error::Error,
     ffi::OsString,
-    fmt,
-    fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    fmt, fs,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use bevy::prelude::{FromWorld, Resource, World};
 
 use crate::{
+    atomic_file::{Publication, PublishFailure, PublishPolicy, PublishStep},
     game_state::GameState,
     save_data::{NativeSaveEnvelope, NativeSaveError, SaveMetadata},
     scenario_balance::BalanceData,
@@ -23,7 +21,6 @@ pub(crate) const SAVE_SLOT_COUNT: usize = 101;
 pub(crate) const FIRST_PLAYER_SLOT: usize = 1;
 pub(crate) const LAST_PLAYER_SLOT: usize = SAVE_SLOT_COUNT - 1;
 pub(crate) const SAVE_DIRECTORY_OVERRIDE: &str = "RPG_S1_SAVE_DIR";
-static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum SaveSlotState {
@@ -209,81 +206,43 @@ impl SaveStore {
             balance,
         )
         .map_err(SaveStoreError::Native)?;
-        let temp = self.root.join(format!(
-            ".{slot:03}.{}.{}.tmp",
-            std::process::id(),
-            NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed)
-        ));
-        let mut cleanup = TemporaryFile::new(temp.clone());
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temp)
-            .map_err(|error| SaveStoreError::Io {
-                operation: "create temporary save",
-                error: error.to_string(),
-            })?;
-        #[cfg(test)]
-        self.inject_failure("write temporary save")?;
-        file.write_all(&bytes).map_err(|error| SaveStoreError::Io {
-            operation: "write temporary save",
-            error: error.to_string(),
-        })?;
-        #[cfg(test)]
-        self.inject_failure("sync temporary save")?;
-        file.sync_all().map_err(|error| SaveStoreError::Io {
-            operation: "sync temporary save",
-            error: error.to_string(),
-        })?;
-        drop(file);
-        let mut verified = Vec::new();
-        File::open(&temp)
-            .and_then(|mut file| file.read_to_end(&mut verified))
-            .map_err(|error| SaveStoreError::Io {
-                operation: "verify temporary save",
-                error: error.to_string(),
-            })?;
-        NativeSaveEnvelope::decode(
-            &verified,
-            &envelope.scenario_id,
-            &envelope.scenario_version,
-            balance,
-        )
-        .map_err(SaveStoreError::Native)?;
-        before_replace(&temp, &destination)?;
-        if overwrite {
-            fs::rename(&temp, &destination).map_err(|error| SaveStoreError::Io {
-                operation: "atomically replace save slot",
-                error: error.to_string(),
-            })?;
-        } else {
-            // Linking the verified inode publishes it atomically without replacing any
-            // existing directory entry, including a dangling symlink. Both paths are
-            // in the save directory, so they belong to the same filesystem on Linux.
-            fs::hard_link(&temp, &destination).map_err(|error| {
-                if error.kind() == std::io::ErrorKind::AlreadyExists {
-                    SaveStoreError::DestinationExists(slot)
-                } else {
-                    SaveStoreError::Io {
-                        operation: "atomically create save slot",
-                        error: error.to_string(),
-                    }
-                }
-            })?;
-            fs::remove_file(&temp).map_err(|error| SaveStoreError::Io {
-                operation: "remove published temporary save",
-                error: error.to_string(),
-            })?;
+        let mut before_replace = Some(before_replace);
+        Publication {
+            directory: &self.root,
+            destination: &destination,
+            temporary_stem: &format!("{slot:03}"),
+            policy: if overwrite {
+                PublishPolicy::Replace
+            } else {
+                PublishPolicy::CreateNew
+            },
         }
-        cleanup.disarm();
-        #[cfg(test)]
-        self.inject_failure("sync save directory")?;
-        File::open(&self.root)
-            .and_then(|directory| directory.sync_all())
-            .map_err(|error| SaveStoreError::Io {
-                operation: "sync save directory",
-                error: error.to_string(),
-            })?;
+        .publish(
+            &bytes,
+            |verified| {
+                NativeSaveEnvelope::decode(
+                    verified,
+                    &envelope.scenario_id,
+                    &envelope.scenario_version,
+                    balance,
+                )
+                .map(drop)
+                .map_err(SaveStoreError::Native)
+            },
+            |step, temp, destination| match step {
+                PublishStep::Publish => before_replace
+                    .take()
+                    .map_or(Ok(()), |hook| hook(temp, destination)),
+                #[cfg(test)]
+                PublishStep::WriteTemporary => self.inject_failure("write temporary save"),
+                #[cfg(test)]
+                PublishStep::SyncTemporary => self.inject_failure("sync temporary save"),
+                #[cfg(test)]
+                PublishStep::SyncDirectory => self.inject_failure("sync save directory"),
+                _ => Ok(()),
+            },
+        )
+        .map_err(|error| publish_failure(error.failure(), slot, overwrite))?;
         Ok(destination)
     }
 }
@@ -344,25 +303,28 @@ fn require_slot(slot: usize) -> Result<(), SaveStoreError> {
     }
 }
 
-struct TemporaryFile {
-    path: PathBuf,
-    armed: bool,
-}
-
-impl TemporaryFile {
-    fn new(path: PathBuf) -> Self {
-        Self { path, armed: true }
-    }
-    fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for TemporaryFile {
-    fn drop(&mut self) {
-        if self.armed {
-            let _ = fs::remove_file(&self.path);
-        }
+/// Names each publication step with the operation this store has always reported.
+fn publish_failure(
+    failure: PublishFailure<SaveStoreError>,
+    slot: usize,
+    overwrite: bool,
+) -> SaveStoreError {
+    match failure {
+        PublishFailure::Caller(error) => error,
+        PublishFailure::DestinationExists => SaveStoreError::DestinationExists(slot),
+        PublishFailure::Io { step, error } => SaveStoreError::Io {
+            operation: match step {
+                PublishStep::CreateTemporary => "create temporary save",
+                PublishStep::WriteTemporary => "write temporary save",
+                PublishStep::SyncTemporary => "sync temporary save",
+                PublishStep::ReadBackTemporary => "verify temporary save",
+                PublishStep::Publish if overwrite => "atomically replace save slot",
+                PublishStep::Publish => "atomically create save slot",
+                PublishStep::RemovePublishedTemporary => "remove published temporary save",
+                PublishStep::SyncDirectory => "sync save directory",
+            },
+            error: error.to_string(),
+        },
     }
 }
 
@@ -405,8 +367,12 @@ impl Error for SaveStoreError {}
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
     use super::*;
     use crate::save_data::tests::{fixture_balance, fixture_envelope};
+
+    static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
     struct TemporaryDirectory(PathBuf);
     impl TemporaryDirectory {
