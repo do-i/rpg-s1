@@ -2960,8 +2960,8 @@ mod tests {
 
         assert_eq!(files.len(), 54);
         assert_eq!(layer_count, 196);
-        assert_eq!(gid_count, 171_682);
-        assert_eq!(flip_combination_counts, [171_480, 10, 2, 0, 0, 189, 1, 0]);
+        assert_eq!(gid_count, 173_282);
+        assert_eq!(flip_combination_counts, [173_080, 10, 2, 0, 0, 189, 1, 0]);
     }
 
     #[test]

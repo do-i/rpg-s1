@@ -841,7 +841,7 @@ mod tests {
     }
 
     #[test]
-    fn real_ardel_ground_loads_visible_atlases_and_spawns_600_exact_tile_sprites() {
+    fn real_ardel_ground_loads_visible_atlases_and_spawns_1000_exact_tile_sprites() {
         let mut app = ground_app();
         let map_handle = load_ardel(&mut app);
 
@@ -849,11 +849,11 @@ mod tests {
             let maps = app.world().resource::<Assets<TmxGroundAsset>>();
             let map = maps.get(&map_handle).unwrap();
             let header = map.document().header();
-            assert_eq!((header.width(), header.height()), (30, 20));
+            assert_eq!((header.width(), header.height()), (50, 20));
             assert_eq!((header.tile_width(), header.tile_height()), (32, 32));
             assert_eq!(map.ground_layer().id(), 1);
             assert_eq!(map.ground_layer().name(), GROUND_LAYER_NAME);
-            assert_eq!(map.ground_layer().gids().len(), 600);
+            assert_eq!(map.ground_layer().gids().len(), 1000);
             assert!(
                 map.ground_layer()
                     .gids()
@@ -880,12 +880,12 @@ mod tests {
             let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
             map.ground_bundles(atlases).unwrap()
         };
-        assert_eq!(bundles.len(), 600);
+        assert_eq!(bundles.len(), 1000);
         app.world_mut().spawn_batch(bundles);
 
         let world = app.world_mut();
         let mut query = world.query::<(&StaticMapTile, &Sprite, &Transform)>();
-        assert_eq!(query.iter(world).count(), 600);
+        assert_eq!(query.iter(world).count(), 1000);
         for (tile, sprite, transform) in query.iter(world) {
             assert_eq!(tile.global_id(), 387);
             assert_eq!(tile.local_id(), 386);
@@ -1014,7 +1014,7 @@ mod tests {
             (follow.bounds(), camera_before.translation.z)
         };
         assert_eq!(bounds.min(), Vec2::new(0.0, -640.0));
-        assert_eq!(bounds.max(), Vec2::new(960.0, 0.0));
+        assert_eq!(bounds.max(), Vec2::new(1600.0, 0.0));
         world.spawn((
             Transform::from_xyz(464.0, -176.0, 10.208),
             CameraFollowTarget,
@@ -1024,7 +1024,7 @@ mod tests {
             .query_filtered::<&Transform, (With<WorldMapCamera>, With<GameplayCanvasCamera>)>()
             .single(world)
             .expect("one fixed-canvas World map camera");
-        assert_eq!(camera_after.translation, Vec3::new(480.0, -320.0, camera_z));
+        assert_eq!(camera_after.translation, Vec3::new(640.0, -320.0, camera_z));
 
         world.run_system_once(cleanup_static_map).unwrap();
         assert_eq!(

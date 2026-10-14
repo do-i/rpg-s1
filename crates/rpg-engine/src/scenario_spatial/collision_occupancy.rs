@@ -281,7 +281,7 @@ mod tests {
         let document = parse_tmx_map_document(&xml, &logical).unwrap();
         let occupancy = CollisionOccupancy::from_tmx_document(&document).unwrap();
 
-        assert_eq!((occupancy.width(), occupancy.height()), (30, 20));
+        assert_eq!((occupancy.width(), occupancy.height()), (50, 20));
         for coordinate in [(0, 0), (28, 1), (1, 6), (7, 7)] {
             assert_eq!(
                 occupancy.is_blocked(coordinate.0, coordinate.1),
