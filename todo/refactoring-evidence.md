@@ -935,3 +935,51 @@ Validation:
 - `map-sweep` 54/54, `dialogue-sweep` and `encounter-sweep`: PASS.
 
 RF-14 is removed from the queue.
+
+## RF-15 — Separate CLI parsing, execution, and reporting
+
+`cli.rs` went from 3,200 lines (1,798 before its test module) to a 75-line
+facade: the exit codes, `run`, the production validator, and the test entry
+point, with `PlayArguments` and `production_asset_base` re-exported for their
+existing callers. The code now lives under `cli/`:
+
+- `args.rs`: usage text, validated command types, and all argument and
+  environment parsing. Nothing here touches the filesystem.
+- `execute.rs`: the command dispatcher and the record, replay, debug-launch,
+  Python-import, and validation runners.
+- `packages.rs`: package selection beneath the bounded collection and
+  asset-base resolution, still in one place.
+- `report.rs`: every output formatter (validation, baseline gate, map and
+  dialogue reports, sweeps, debug-launch log).
+
+Items moved verbatim; the only differing lines are rustfmt rewraps. The
+dispatcher keeps its short inline status lines ("Gameplay seed", "Recording…",
+import results), because play, record, and replay print slightly different sets
+and a shared helper would have changed that contract. Injected test IO, the
+injected validator, and the test collection root are unchanged.
+
+CLI equivalence: 33 representative invocations were captured before and after
+from the built binary, run from a scratch directory with
+`RPG_S1_SAVE_DIR` pointed at it. They covered help (`--help`, `-h`, unknown
+`help`), unknown commands, validation ungated and gated, missing or unreadable
+baselines, unknown and path-like package keys, extra arguments, map and
+dialogue reports, all three sweeps, invalid play and debug options, record and
+replay argument and file errors, and import argument, slot, missing-file, and
+malformed-input errors. Every stdout, stderr, and exit code was identical.
+No import wrote a save in either run.
+
+Tests moved rather than changed. Eight tests that call private helpers now sit
+with them: the baseline-argument parser test in `args.rs`, the import-path and
+package-symlink tests in `execute.rs`, and the five asset-resolution tests in
+`packages.rs`. These use the shared `TempCollection` helper, now `pub(super)`.
+The 35 command-level tests stay in `cli/tests.rs`. The test module was moved
+without un-indenting, and a literal-aware check confirmed all 29
+whitespace-significant string-literal lines are preserved exactly.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,079 passed**. Test function
+  names and results before and after are identical.
+
+RF-15 is removed from the queue.
