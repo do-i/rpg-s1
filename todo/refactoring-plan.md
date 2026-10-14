@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 770 | RF-15 | P2 | Separate CLI parsing, execution, and reporting | Sol | high | RF-10 |
 | 760 | RF-16 | P2 | Deduplicate verified atomic-file mechanics | Astra | high | RF-01, RF-04, RF-05 |
 | 750 | RF-17 | P2 | Deduplicate repeated menu rendering patterns | Sol | high | RF-12 |
 | 740 | RF-18 | P2 | Reuse typed catalog-loading operations | Sol | high | RF-08, RF-12, RF-13, RF-14 |
@@ -45,15 +44,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-15 — Separate CLI parsing, execution, and reporting
-
-**Evidence: Source.** [cli.rs](../crates/rpg-engine/src/cli.rs) has 3,200 total lines and contains command parsing, launch routing, import/sweep/validation behavior, formatting, and tests.
-
-- Keep validated command types and argument parsing separate from command runners and output formatting. Maintain the current help/usage contract and exit codes.
-- Keep packaged scenario-root resolution centralized. Preserve record/replay modes, debug launches, and injected test IO rather than duplicating argument logic.
-- **Done when:** existing CLI tests pass and representative help, validation, import, and sweep outputs/exit codes are equivalent.
-- **Model fit:** Sol/high for compatibility-conscious CLI decomposition.
 
 ### RF-16 — Deduplicate verified atomic-file mechanics
 
