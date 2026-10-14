@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 780 | RF-14 | P2 | Split scenario cross-reference validation | Sol | high | — |
 | 770 | RF-15 | P2 | Separate CLI parsing, execution, and reporting | Sol | high | RF-10 |
 | 760 | RF-16 | P2 | Deduplicate verified atomic-file mechanics | Astra | high | RF-01, RF-04, RF-05 |
 | 750 | RF-17 | P2 | Deduplicate repeated menu rendering patterns | Sol | high | RF-12 |
@@ -46,16 +45,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-14 — Split scenario cross-reference validation
-
-**Evidence: Source.** [scenario_cross_reference.rs](../crates/rpg-content/src/scenario_cross_reference.rs) has 3,539 lines, approximately 2,404 before its main test module.
-
-- Separate typed loading/context from validators for maps/transport, dialogue/flags/quests, combat/classes/enemies, items/recipes, and audio/assets.
-- Keep one diagnostic type, deterministic sort, catalog-count aggregation, and production entry point. Reuse typed schemas rather than adding generic YAML reparsing.
-- Compare complete normalized reports before/after on production and malformed fixtures. Keep the existing accepted baseline unchanged for a structural move.
-- **Done when:** report codes, locations, severities, ordering, counts, and exit behavior match the baseline.
-- **Model fit:** Sol/high for large-file extraction with strict observable-output preservation.
 
 ### RF-15 — Separate CLI parsing, execution, and reporting
 

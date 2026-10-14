@@ -878,3 +878,60 @@ Validation:
   `dialogue-sweep` and `encounter-sweep`: PASS.
 
 RF-13 is removed from the queue.
+
+## RF-14 — Split scenario cross-reference validation
+
+`scenario_cross_reference.rs` went from 3,539 lines (2,404 before its test
+module) to a 51-line facade: the module documentation, the module list, the
+re-exported public report types, and the unchanged
+`validate_scenario_directory` entry point. The code now lives under
+`scenario_cross_reference/`:
+
+- `report.rs`: the one diagnostic type, locations, catalog counts, and the
+  deterministic severity/location/code/message sort.
+- `context.rs`: the validator, its typed catalogs, the diagnostic and
+  reference-counting helpers, path probing, and the fixed-order `validate`
+  orchestrator.
+- `loading.rs`: typed catalog loading, the contained YAML walk, and count
+  aggregation. `index.rs`: the reference index.
+- Domain validators as further `impl Validator` blocks: `manifest.rs` (manifest
+  ids, duplicate ids), `maps.rs` (maps, transport, landing tiles), `dialogue.rs`
+  (dialogue actions, flags, quest flag edges), `combat.rs` (party, classes,
+  enemies, enemy AI and sprites, encounters), `items.rs` (items, recipes), and
+  `audio.rs`.
+
+Every item moved verbatim. A line-level comparison found every production line
+in the original file apart from added `pub(super)` visibility, given only to
+items another module references. No generic YAML reparsing was added, and the
+accepted validation baseline is unchanged. The public API used by the engine
+CLI is re-exported unchanged. The 20 validator tests stay together in
+`scenario_cross_reference/tests.rs`, because they all drive the whole validator
+through the shared invented-scenario fixture.
+
+Report equivalence:
+
+- Production: the complete `validate-scenario rusted_kingdoms` output is
+  byte-identical before and after, ungated (exit 1) and gated by the accepted
+  baseline (exit 0).
+- Malformed fixtures: a disposable probe, added identically to the original
+  and the split test modules, built the 11 invented parity cases plus the duel
+  enemy mutation and dumped each complete report (`{:#?}`). The 12 reports were
+  byte-identical. The probe was removed.
+
+The first probe run caught a defect in the extraction itself: un-indenting the
+test module also stripped indentation inside multi-line YAML string literals,
+which made the invented manifest invalid. The test module was regenerated
+without un-indenting, leaving rustfmt to re-indent code only. A literal-aware
+scan confirmed that all 152 whitespace-significant literal lines are preserved
+exactly. The same scan found no whitespace-significant literal lines in the
+original RF-12 (`field_menu.rs`) and RF-13 (`world_encounter.rs`) test modules,
+so their un-indented test files are unaffected.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,079 passed**. Test function
+  names and results before and after are identical.
+- `map-sweep` 54/54, `dialogue-sweep` and `encounter-sweep`: PASS.
+
+RF-14 is removed from the queue.
