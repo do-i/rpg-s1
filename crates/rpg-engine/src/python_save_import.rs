@@ -4,15 +4,14 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     error::Error,
     fmt, fs,
-    io::Write,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
 };
 
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::{
+    atomic_file::{Publication, PublishFailure, PublishPolicy, PublishStep},
     battle_tactics::BattleTactics,
     runtime_member::{EquipmentSlot, RuntimeMember, RuntimeMemberParts},
     runtime_repository::{RuntimeRepository, RuntimeRepositoryItemParts},
@@ -36,7 +35,6 @@ pub(crate) const PYTHON_SAVE_ADAPTER_COMMIT: &str = "08970359d6cb03586948625d29b
 const PYTHON_SAVE_SCENARIO_ID: &str = "my_rpg_story";
 const PYTHON_SAVE_SCENARIO_VERSION: &str = "1.0.0";
 const MAX_PYTHON_SAVE_BYTES: usize = 1_048_576;
-static NEXT_IMPORT_TEMPORARY_FILE: AtomicU64 = AtomicU64::new(0);
 const ITEM_FILES: [&str; 13] = [
     "accessories.yaml",
     "body.yaml",
@@ -276,55 +274,43 @@ fn create_verified_backup(
         }
         return Ok(backup);
     }
-    let nonce = NEXT_IMPORT_TEMPORARY_FILE.fetch_add(1, Ordering::Relaxed);
-    let temporary = backup_root.join(format!(
-        ".{slot:03}-{digest}.{}-{nonce}.tmp",
-        std::process::id()
-    ));
-    let mut cleanup = ImportTemporaryFile::new(temporary.clone());
-    let mut file = fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(&temporary)
-        .map_err(|error| PythonImportError::Install(format!("create backup failed: {error}")))?;
-    file.write_all(&old_bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|error| PythonImportError::Install(format!("write backup failed: {error}")))?;
-    if fs::read(&temporary).ok().as_deref() != Some(old_bytes.as_slice()) {
-        return Err(PythonImportError::Install(
-            "backup verification failed".to_owned(),
-        ));
+    Publication {
+        directory: &backup_root,
+        destination: &backup,
+        temporary_stem: &format!("{slot:03}-{digest}"),
+        policy: PublishPolicy::Replace,
     }
-    fs::rename(&temporary, &backup)
-        .map_err(|error| PythonImportError::Install(format!("install backup failed: {error}")))?;
-    cleanup.disarm();
-    fs::File::open(&backup_root)
-        .and_then(|directory| directory.sync_all())
-        .map_err(|error| PythonImportError::Install(format!("sync backup failed: {error}")))?;
-    Ok(backup)
-}
-
-struct ImportTemporaryFile {
-    path: PathBuf,
-    armed: bool,
-}
-
-impl ImportTemporaryFile {
-    fn new(path: PathBuf) -> Self {
-        Self { path, armed: true }
-    }
-
-    fn disarm(&mut self) {
-        self.armed = false;
-    }
-}
-
-impl Drop for ImportTemporaryFile {
-    fn drop(&mut self) {
-        if self.armed {
-            let _ = fs::remove_file(&self.path);
+    .publish(
+        &old_bytes,
+        |verified| {
+            if verified == old_bytes.as_slice() {
+                Ok(())
+            } else {
+                Err(PythonImportError::Install(
+                    "backup verification failed".to_owned(),
+                ))
+            }
+        },
+        |_, _, _| Ok(()),
+    )
+    .map_err(|error| match error.failure() {
+        PublishFailure::Caller(error) => error,
+        PublishFailure::DestinationExists => {
+            PythonImportError::Install("install backup failed: destination exists".to_owned())
         }
-    }
+        PublishFailure::Io { step, error } => PythonImportError::Install(match step {
+            PublishStep::CreateTemporary => format!("create backup failed: {error}"),
+            PublishStep::WriteTemporary | PublishStep::SyncTemporary => {
+                format!("write backup failed: {error}")
+            }
+            PublishStep::ReadBackTemporary => "backup verification failed".to_owned(),
+            PublishStep::Publish | PublishStep::RemovePublishedTemporary => {
+                format!("install backup failed: {error}")
+            }
+            PublishStep::SyncDirectory => format!("sync backup failed: {error}"),
+        }),
+    })?;
+    Ok(backup)
 }
 
 fn verify_python_checksum(source: &str, allow_unchecked: bool) -> Result<bool, PythonImportError> {
