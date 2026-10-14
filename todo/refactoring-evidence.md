@@ -983,3 +983,68 @@ Validation:
   names and results before and after are identical.
 
 RF-15 is removed from the queue.
+
+## RF-16 — Deduplicate verified atomic-file mechanics
+
+Two commits: a behaviour-preserving extraction, then a separate correction.
+
+**Extraction.** New `crates/rpg-engine/src/atomic_file.rs` owns the one
+filesystem sequence the save store, the options store, and the Python importer's
+slot backup each implemented: a uniquely named temporary file beside the
+destination with exclusive creation, write, sync, read-back, caller
+verification, publication, and directory sync, plus the shared cleanup guard.
+`PublishPolicy::Replace` renames; `PublishPolicy::CreateNew` hard-links the
+verified inode (RF-01's no-clobber guarantee, including dangling symlinks, with
+no fallback to replacement) and then unlinks the temporary name. Callers keep
+their own rules: save slot bounds, the early existence check, encode/decode
+checksum and schema verification; options round-trip verification; importer
+backup naming, the existing-backup check, and byte-equality verification. A
+single hook runs before the write, sync, publish, and directory-sync steps, and
+carries the stores' existing fault injection and the save store's
+`before_replace` race hook unchanged. Each caller maps steps back to its
+existing operation names, so every error variant and message is unchanged. All
+existing tests passed unchanged, including RF-01's late-creation, dangling
+symlink, failed-publication, and interruption tests, the options and import
+fault tests, and RF-05's retry tests. Five unit tests cover the module. The
+options store's rejected-file backup keeps its own exclusive-create name probing,
+because it publishes directly under a free final name rather than through a
+temporary file. The importer's transient temporary name changed from
+`.{slot}-{digest}.{pid}-{n}.tmp` to the shared `.{slot}-{digest}.{pid}.{n}.tmp`.
+No save or options format changed.
+
+**Correction.** The module reports `NotPublished` (the destination is exactly
+as before) separately from `NotDurable` (the destination already holds the
+verified bytes, but unlinking the temporary name or the directory sync failed).
+`SaveStoreError::NotDurable` and `OptionsStoreError::NotDurable` carry this, with
+`published()`. Their messages read exactly like the previous I/O errors, so
+existing wording is unchanged. This replaces RF-05's string matching on
+"sync save directory" and "sync config directory", which missed a failure to
+unlink the temporary name after a `CreateNew` link. Before this change, three
+callers misreported a published slot:
+
+- Autosave said the previous save was preserved after a post-link unlink
+  failure. It now reports the published-but-unconfirmed state for every
+  post-publication failure.
+- The field-menu Save showed a plain error, stayed on the overwrite prompt, and
+  did not refresh the slot list, although the slot held the new save. It now
+  returns to browsing, refreshes the list, and reports that the slot was saved
+  but durability could not be confirmed. A regression test fails against the
+  old behaviour (it stays on `SaveConfirm`) and passes with the fix.
+- `import-python-save` reported "import installation failed". It now reports
+  `007.yaml was imported, but disk durability could not be confirmed: …`
+  through a new `PythonImportError::NotDurable` (exit status unchanged).
+
+A failed post-publication step of the importer's backup still stops the import
+before the slot is written; that conservative rule stays with the importer.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,089 passed**: the 1,079 existing
+  tests, 5 `atomic_file` unit tests, and 5 regressions (save store not-durable
+  with and without overwrite, pre-publication failures never published, options
+  store, importer, and field-menu Save).
+
+Real power loss and filesystem-specific sync failures were not simulated;
+failures were injected at the same steps as RF-01 and RF-05. RF-16 is removed
+from the queue.

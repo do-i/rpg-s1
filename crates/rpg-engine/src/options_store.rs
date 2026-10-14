@@ -30,7 +30,9 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    atomic_file::{Publication, PublishFailure, PublishPolicy, PublishStep, TemporaryFile},
+    atomic_file::{
+        Publication, PublishError, PublishFailure, PublishPolicy, PublishStep, TemporaryFile,
+    },
     battle_tactics::TurnPause,
     engine_config::TextSpeed,
     input_bindings::{AppAction, BindingTarget, InputBindings, MovementAction},
@@ -56,6 +58,19 @@ pub(crate) enum OptionsStoreError {
         operation: &'static str,
         error: String,
     },
+    /// The options file already holds the new settings, but a later step failed, so they may
+    /// not survive a crash or power loss.
+    NotDurable {
+        operation: &'static str,
+        error: String,
+    },
+}
+
+impl OptionsStoreError {
+    /// Whether the options file was written despite the error.
+    pub(crate) const fn published(&self) -> bool {
+        matches!(self, Self::NotDurable { .. })
+    }
 }
 
 impl fmt::Display for OptionsStoreError {
@@ -70,7 +85,9 @@ impl fmt::Display for OptionsStoreError {
             ),
             Self::Parse(reason) => write!(formatter, "could not parse options: {reason}"),
             Self::Encode(reason) => write!(formatter, "could not encode options: {reason}"),
-            Self::Io { operation, error } => write!(formatter, "{operation} failed: {error}"),
+            Self::Io { operation, error } | Self::NotDurable { operation, error } => {
+                write!(formatter, "{operation} failed: {error}")
+            }
         }
     }
 }
@@ -570,7 +587,15 @@ impl OptionsStore {
                 _ => Ok(()),
             },
         )
-        .map_err(|error| publish_failure(error.failure()))?;
+        .map_err(|error| match error {
+            PublishError::NotPublished(failure) => publish_failure(failure),
+            PublishError::NotDurable(failure) => match publish_failure(failure) {
+                OptionsStoreError::Io { operation, error } => {
+                    OptionsStoreError::NotDurable { operation, error }
+                }
+                other => other,
+            },
+        })?;
         Ok(destination)
     }
 }
@@ -967,5 +992,21 @@ mod tests {
 
         assert!(stray.is_empty(), "left behind {stray:?}");
         let _ = fs::remove_dir_all(store.root);
+    }
+
+    #[test]
+    fn only_a_failure_after_publication_reports_the_settings_as_published() {
+        let mut store = temporary_store("not-durable");
+        store.fail_operation = Some("sync config directory");
+        let error = store.store(&PlayerOptions::default()).unwrap_err();
+        assert!(error.published(), "{error:?}");
+        store.fail_operation = None;
+        assert!(store.load().is_ok(), "the published file must be readable");
+        for operation in ["write temporary options", "sync temporary options"] {
+            store.fail_operation = Some(operation);
+            let error = store.store(&PlayerOptions::default()).unwrap_err();
+            assert!(!error.published(), "{operation}: {error:?}");
+        }
+        let _ = fs::remove_dir_all(&store.root);
     }
 }
