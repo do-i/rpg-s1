@@ -89,11 +89,11 @@ pub(super) fn save_game(
         timestamp,
         location,
     )
-    .map_err(|error| error.to_string())
+    .map_err(|error| (error.to_string(), false))
     .and_then(|envelope| {
         store
             .write(state.selected, &envelope, overwrite, &balance)
-            .map_err(|error| error.to_string())
+            .map_err(|error| (error.to_string(), error.published()))
     });
     match result {
         Ok(_) => {
@@ -101,10 +101,69 @@ pub(super) fn save_game(
             state.message = format!("{} saved.", slot_label(state.selected));
             saves.request_refresh();
         }
-        Err(error) => state.message = error,
+        // The slot holds the new save even though durability is unconfirmed, so the list must
+        // show it and the menu must not imply the old save survived.
+        Err((error, true)) => {
+            state.mode = FieldMenuMode::Browse;
+            state.message = format!(
+                "{} saved, but disk durability could not be confirmed: {error}.",
+                slot_label(state.selected)
+            );
+            saves.request_refresh();
+        }
+        Err((error, false)) => state.message = error,
     }
 }
 
 pub(super) fn slot_label(index: usize) -> String {
     format!("Slot {index:02}")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+    use crate::save_data::tests::{fixture_balance, fixture_game};
+
+    #[test]
+    fn a_save_published_without_confirmed_durability_says_so_and_refreshes_the_list() {
+        let root = std::env::temp_dir().join(format!(
+            "rpg-s1-field-save-durability-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let mut store = SaveStore::new(root.clone());
+        let mut saves = SaveSlotCatalog::ready_for_test("my_rpg_story", "1.0.0", fixture_balance());
+        let mut game = fixture_game();
+        let time = Time::<Real>::default();
+
+        // Before publication: the slot stays empty and the overwrite prompt stays up.
+        store.fail_operation = Some("write temporary save");
+        let mut state = FieldMenuState {
+            mode: FieldMenuMode::SaveConfirm,
+            selected: 3,
+            ..default()
+        };
+        saves.clear_refresh_for_test();
+        save_game(&mut game, &store, &mut saves, &time, &mut state, true);
+        assert_eq!(state.mode, FieldMenuMode::SaveConfirm);
+        assert!(!saves.refresh_requested_for_test());
+        assert!(!store.slot_path(3).unwrap().exists());
+
+        // After publication: the slot holds the save, so the list refreshes and says so.
+        store.fail_operation = Some("sync save directory");
+        save_game(&mut game, &store, &mut saves, &time, &mut state, true);
+        assert_eq!(state.mode, FieldMenuMode::Browse);
+        assert!(
+            state
+                .message
+                .starts_with("Slot 03 saved, but disk durability could not be confirmed"),
+            "{}",
+            state.message
+        );
+        assert!(saves.refresh_requested_for_test());
+        assert!(store.slot_path(3).unwrap().exists());
+        fs::remove_dir_all(&root).unwrap();
+    }
 }

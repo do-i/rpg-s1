@@ -240,7 +240,19 @@ fn install_python_import_with_hook(
         // An initially empty slot has no backup, even with --replace. A late
         // arrival must survive rather than being replaced without preservation.
         .write(slot, envelope, backup.is_some(), balance)
-        .map_err(|error| PythonImportError::Install(error.to_string()))?;
+        .map_err(|error| {
+            if error.published() {
+                PythonImportError::NotDurable(format!(
+                    "{} was imported, but disk durability could not be confirmed: {error}",
+                    destination
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("destination slot")
+                ))
+            } else {
+                PythonImportError::Install(error.to_string())
+            }
+        })?;
     Ok(ImportInstallResult {
         destination,
         backup,
@@ -895,6 +907,9 @@ pub(crate) enum PythonImportError {
     Content(String),
     Native(String),
     Install(String),
+    /// The slot holds the imported save, but a later step failed, so it may not survive a crash
+    /// or power loss.
+    NotDurable(String),
 }
 
 impl fmt::Display for PythonImportError {
@@ -905,6 +920,7 @@ impl fmt::Display for PythonImportError {
             Self::Content(reason) => write!(formatter, "Python save is incompatible: {reason}"),
             Self::Native(reason) => write!(formatter, "native conversion failed: {reason}"),
             Self::Install(reason) => write!(formatter, "import installation failed: {reason}"),
+            Self::NotDurable(reason) => write!(formatter, "{reason}"),
         }
     }
 }
@@ -1163,6 +1179,28 @@ opened_boxes: []
             assert!(convert_python_save(changed.as_bytes(), true, &catalog, 1).is_err());
         }
         assert!(convert_python_save(b"meta: [truncated", true, &catalog, 1).is_err());
+    }
+
+    #[test]
+    fn an_import_published_without_confirmed_durability_says_it_was_imported() {
+        let catalog = catalog();
+        let envelope = convert_python_save(fixture(), false, &catalog, 1_700_000_100).unwrap();
+        let root = TemporaryDirectory::new();
+        let mut store = SaveStore::new(root.0.clone());
+        store.fail_operation = Some("sync save directory");
+        let error =
+            install_python_import(&store, 7, &envelope, false, &catalog.balance).unwrap_err();
+        assert!(
+            matches!(error, PythonImportError::NotDurable(_)),
+            "{error:?}"
+        );
+        assert!(
+            error
+                .to_string()
+                .starts_with("007.yaml was imported, but disk durability could not be confirmed"),
+            "{error}"
+        );
+        assert!(store.slot_path(7).unwrap().exists());
     }
 
     #[test]

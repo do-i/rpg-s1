@@ -11,7 +11,7 @@ use std::{
 use bevy::prelude::{FromWorld, Resource, World};
 
 use crate::{
-    atomic_file::{Publication, PublishFailure, PublishPolicy, PublishStep},
+    atomic_file::{Publication, PublishError, PublishFailure, PublishPolicy, PublishStep},
     game_state::GameState,
     save_data::{NativeSaveEnvelope, NativeSaveError, SaveMetadata},
     scenario_balance::BalanceData,
@@ -242,7 +242,17 @@ impl SaveStore {
                 _ => Ok(()),
             },
         )
-        .map_err(|error| publish_failure(error.failure(), slot, overwrite))?;
+        .map_err(|error| match error {
+            PublishError::NotPublished(failure) => publish_failure(failure, slot, overwrite),
+            PublishError::NotDurable(failure) => match publish_failure(failure, slot, overwrite) {
+                SaveStoreError::Io { operation, error } => SaveStoreError::NotDurable {
+                    slot,
+                    operation,
+                    error,
+                },
+                other => other,
+            },
+        })?;
         Ok(destination)
     }
 }
@@ -339,8 +349,22 @@ pub(crate) enum SaveStoreError {
         operation: &'static str,
         error: String,
     },
+    /// The slot already holds the new save, but a later step failed, so it may not survive a
+    /// crash or power loss. The previous save is gone either way.
+    NotDurable {
+        slot: usize,
+        operation: &'static str,
+        error: String,
+    },
     #[cfg(test)]
     InjectedInterruption,
+}
+
+impl SaveStoreError {
+    /// Whether the slot was written despite the error.
+    pub(crate) const fn published(&self) -> bool {
+        matches!(self, Self::NotDurable { .. })
+    }
 }
 
 impl fmt::Display for SaveStoreError {
@@ -356,7 +380,12 @@ impl fmt::Display for SaveStoreError {
             }
             Self::Clock(reason) => write!(formatter, "system clock is unavailable: {reason}"),
             Self::Native(error) => error.fmt(formatter),
-            Self::Io { operation, error } => write!(formatter, "{operation} failed: {error}"),
+            Self::Io { operation, error }
+            | Self::NotDurable {
+                operation, error, ..
+            } => {
+                write!(formatter, "{operation} failed: {error}")
+            }
             #[cfg(test)]
             Self::InjectedInterruption => formatter.write_str("save write was interrupted"),
         }
@@ -597,5 +626,55 @@ mod tests {
             Err(SaveStoreError::DestinationExists(1))
         );
         assert_eq!(fs::read(destination).unwrap(), old_bytes);
+    }
+
+    #[test]
+    fn a_failure_after_publication_reports_the_new_save_as_not_durable() {
+        for overwrite in [false, true] {
+            let root = TemporaryDirectory::new("not-durable");
+            let mut store = SaveStore::new(root.0.clone());
+            let first = fixture_envelope();
+            if overwrite {
+                store.write(1, &first, false, &fixture_balance()).unwrap();
+            }
+            let mut replacement = first.clone();
+            replacement.saved_at_unix_seconds += 1;
+            store.fail_operation = Some("sync save directory");
+            let error = store
+                .write(1, &replacement, overwrite, &fixture_balance())
+                .unwrap_err();
+            assert!(error.published(), "{error:?}");
+            assert!(matches!(
+                error,
+                SaveStoreError::NotDurable {
+                    slot: 1,
+                    operation: "sync save directory",
+                    ..
+                }
+            ));
+            store.fail_operation = None;
+            let (loaded, _) = store
+                .load(1, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+            assert_eq!(
+                loaded.saved_at_unix_seconds,
+                replacement.saved_at_unix_seconds
+            );
+            assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
+        }
+    }
+
+    #[test]
+    fn a_failure_before_publication_is_never_reported_as_published() {
+        for operation in ["write temporary save", "sync temporary save"] {
+            let root = TemporaryDirectory::new("not-published");
+            let mut store = SaveStore::new(root.0.clone());
+            store.fail_operation = Some(operation);
+            let error = store
+                .write(1, &fixture_envelope(), false, &fixture_balance())
+                .unwrap_err();
+            assert!(!error.published(), "{operation}: {error:?}");
+            assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
+        }
     }
 }

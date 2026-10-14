@@ -7,9 +7,7 @@ use bevy::{
 
 use crate::{
     gameplay_canvas::pointer::CanvasPointer,
-    options_store::{
-        OptionsLoadStatus, OptionsStore, OptionsStoreError, PlayerOptions, load_player_options,
-    },
+    options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions, load_player_options},
 };
 
 const SUCCESS_NOTICE_SECONDS: f32 = 3.0;
@@ -70,13 +68,7 @@ pub(crate) fn persist_player_options(
             {
                 *load = rejected;
             }
-            let message = if matches!(
-                &error,
-                OptionsStoreError::Io {
-                    operation: "sync config directory",
-                    ..
-                }
-            ) {
+            let message = if error.published() {
                 format!(
                     "Options changes are active and the file was published, but disk durability could not be confirmed: {error}. Retry after fixing the storage problem."
                 )

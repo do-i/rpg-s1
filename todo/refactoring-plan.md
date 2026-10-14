@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 760 | RF-16 | P2 | Deduplicate verified atomic-file mechanics | Astra | high | RF-01, RF-04, RF-05 |
 | 750 | RF-17 | P2 | Deduplicate repeated menu rendering patterns | Sol | high | RF-12 |
 | 740 | RF-18 | P2 | Reuse typed catalog-loading operations | Sol | high | RF-08, RF-12, RF-13, RF-14 |
 | 700 | RF-19 | P2 | Resolve obsolete intro-transition staging state | Astra | high | RF-02, RF-10 |
@@ -44,16 +43,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-16 — Deduplicate verified atomic-file mechanics
-
-**Evidence: Source.** [save_store.rs](../crates/rpg-engine/src/save_store.rs) and [options_store.rs](../crates/rpg-engine/src/options_store.rs) independently implement temporary naming, exclusive creation, write/sync, reread, cleanup guards, replacement, and directory synchronization. The importer has related backup mechanics.
-
-- Extract only the proven common filesystem operations, with caller-supplied validation and explicit replace/no-replace policy. Retain save-specific checksum/schema validation and importer-specific backup rules in their owners.
-- Distinguish failure before publication from a directory-sync failure after publication so callers do not misreport the slot's actual state.
-- Carry RF-01's race/fault tests through the extraction. Avoid a general storage framework or cross-language abstraction.
-- **Done when:** there is one shared Rust publication mechanism with all durability and no-clobber guarantees intact.
-- **Model fit:** Astra/high because the abstraction must preserve data-integrity distinctions.
 
 ### RF-17 — Deduplicate repeated menu rendering patterns
 

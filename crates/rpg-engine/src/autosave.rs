@@ -19,7 +19,7 @@ use crate::{
     persistence_status::PersistenceStatus,
     runtime_map::RuntimeMapId,
     save_data::NativeSaveEnvelope,
-    save_store::{SaveStore, SaveStoreError, unix_timestamp_now},
+    save_store::{SaveStore, unix_timestamp_now},
     save_ui::SaveSlotCatalog,
     world_transition::WorldTransition,
 };
@@ -136,16 +136,7 @@ fn autosave_on_map_arrival(
         .and_then(|envelope| {
             store
                 .write(AUTOSAVE_SLOT, &envelope, true, &balance)
-                .map_err(|error| {
-                    let published = matches!(
-                        &error,
-                        SaveStoreError::Io {
-                            operation: "sync save directory",
-                            ..
-                        }
-                    );
-                    (error.to_string(), published)
-                })
+                .map_err(|error| (error.to_string(), error.published()))
         });
     match result {
         Ok(_) => {
