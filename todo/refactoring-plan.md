@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 790 | RF-13 | P2 | Split World encounter loading and battle handoff | Sol | high | RF-02, RF-10 |
 | 780 | RF-14 | P2 | Split scenario cross-reference validation | Sol | high | — |
 | 770 | RF-15 | P2 | Separate CLI parsing, execution, and reporting | Sol | high | RF-10 |
 | 760 | RF-16 | P2 | Deduplicate verified atomic-file mechanics | Astra | high | RF-01, RF-04, RF-05 |
@@ -47,15 +46,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-13 — Split World encounter loading and battle handoff
-
-**Evidence: Source.** [world_encounter.rs](../crates/rpg-engine/src/world_encounter.rs) has 3,004 lines, approximately 1,702 before its main test module, covering load orchestration, enemy spawn/movement, debug fixtures, battle entry, flashes, and restoration.
-
-- Separate loading/publication, enemy simulation, battle handoff/return, and debug fixtures. Keep a small plugin facade and shared transition types with narrow visibility.
-- Preserve ECS ordering, pause rules, encounter restore state, and RNG call order. Move existing tests without dropping scenario-specific regressions.
-- **Done when:** identical recordings reproduce the same state hashes and battle return restores the expected enemy/world state.
-- **Model fit:** Sol/high for module separation guided by existing lifecycle tests.
 
 ### RF-14 — Split scenario cross-reference validation
 

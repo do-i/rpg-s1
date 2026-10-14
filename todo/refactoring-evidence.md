@@ -826,3 +826,55 @@ Validation:
 The game was not driven interactively for a visual spot check; the menu's
 navigation, save, teleport, and quit paths are covered by the moved
 whole-system input tests. RF-12 is removed from the queue.
+
+## RF-13 — Split World encounter loading and battle handoff
+
+`world_encounter.rs` went from 3,040 lines (1,738 before its test module) to an
+89-line facade holding the two plugins with their unchanged system ordering, the
+shared tile size, and re-exports of the crate-visible types. Its code now lives
+under `world_encounter/`:
+
+- `state.rs`: encounter status and state, pending and restored enemies,
+  `WorldEnemy`, and the World enter/exit lifecycle systems.
+- `loading.rs`: encounter asset requests and transactional publication,
+  spawn tiles, and the boss spawn.
+- `simulation.rs`: respawn cadence, chase, wander, collision checks, and enemy
+  sprite geometry.
+- `handoff.rs`: contact detection, scripted battles, battle balance, and the
+  flash transition into Battle.
+- `fixtures.rs`: the session-only debug battle fixtures.
+- `presentation.rs`: the battle-entry camera and battle BGM with its fade.
+
+Function bodies moved verbatim. A line-level comparison found every moved code
+line in the original file apart from added `pub(super)` visibility and five
+rustfmt rewraps. The plugin registration, `WorldPublicationSet` membership,
+pause gating, and transition-settled conditions are unchanged, so ECS ordering
+and RNG call order are preserved. External paths are unchanged:
+`BattleTransition`, `ScriptedBattleRequest`, `BattleBgmFadeOut`,
+`WorldEncounterRestore`, `WorldEncounterState`, and `WorldEnemy` are re-exported.
+One prose reference in `world_actor.rs` was updated to the moved
+`enemy_top_left` path.
+
+Tests moved rather than changed: fixtures 1 (with its two helpers), handoff 1,
+and simulation 3. The five headless production and restore integration tests
+stay together in `world_encounter/tests.rs`.
+
+Cross-build determinism: a disposable probe booted the production first-zone
+harness (new game, Starting Forest, encounter assets published), ran 300 more
+frames, and dumped every World enemy's id, formation, and tile plus the full
+save payload, including the RNG state. The probe output from the original file
+(the split paths stashed) and from the split was byte-identical. The probe was
+removed. That harness has no World collision resource, so enemy movement did
+not run in it; seeded chase and wander behaviour is covered by the moved
+simulation tests. Battle-return restoration is covered by the
+restored-hidden-enemy test and the boss handoff tests.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,079 passed**. Test function
+  names and results before and after are identical.
+- Scenario validation against the accepted baseline: PASS. `map-sweep` 54/54,
+  `dialogue-sweep` and `encounter-sweep`: PASS.
+
+RF-13 is removed from the queue.
