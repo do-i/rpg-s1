@@ -210,7 +210,6 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
                 return;
             }
             let first = quest_window_start(selected, quests.len());
-            let shown = quests.len().saturating_sub(first).min(QUEST_VISIBLE_ROWS);
             // The cards share the column's height, so a full window fills it edge to edge.
             panel
                 .spawn(Node {
@@ -222,14 +221,8 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
                     ..default()
                 })
                 .with_children(|cards| {
-                    for (offset, (index, quest)) in quests
-                        .iter()
-                        .enumerate()
-                        .skip(first)
-                        .take(QUEST_VISIBLE_ROWS)
-                        .enumerate()
-                    {
-                        let fades = ScrollFades::for_row(offset, shown, first, quests.len());
+                    for (index, fades) in visible_rows(first, quests.len(), QUEST_VISIBLE_ROWS) {
+                        let quest = &quests[index];
                         spawn_quest_row(cards, font, quest, game, index == selected, fades);
                     }
                 });

@@ -249,19 +249,9 @@ pub(in crate::field_menu) fn spawn_spell_list(
                 );
                 return;
             }
-            let visible_rows = SPELLBOOK_VISIBLE_ROWS;
-            let first = selected_index
-                .saturating_sub(visible_rows - 1)
-                .min(abilities.len().saturating_sub(visible_rows));
-            let shown = abilities.len().saturating_sub(first).min(visible_rows);
-            for (offset, (index, ability)) in abilities
-                .iter()
-                .enumerate()
-                .skip(first)
-                .take(visible_rows)
-                .enumerate()
-            {
-                let fades = ScrollFades::for_row(offset, shown, first, abilities.len());
+            let first = window_start(selected_index, abilities.len(), SPELLBOOK_VISIBLE_ROWS);
+            for (index, fades) in visible_rows(first, abilities.len(), SPELLBOOK_VISIBLE_ROWS) {
+                let ability = &abilities[index];
                 spawn_windowed_card(list, fades, |list| {
                     // The cursor shows only once the spellbook, not the casters, has focus.
                     let selected = focused && index == selected_index;

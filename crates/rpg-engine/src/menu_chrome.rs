@@ -288,6 +288,22 @@ const SCROLL_FADE_SHADE: Color = Color::srgb(0.02, 0.02, 0.03);
 const SCROLL_FADE_MID_ALPHA: f32 = 0.8;
 const SCROLL_FADE_EDGE_ALPHA: f32 = 0.96;
 
+/// The rows a scrolled list shows: each visible row's index into the full list, with the fades its
+/// card needs to say more rows are hidden above or below.
+pub(crate) fn visible_rows(
+    first: usize,
+    len: usize,
+    rows: usize,
+) -> impl Iterator<Item = (usize, ScrollFades)> {
+    let shown = len.saturating_sub(first).min(rows);
+    (0..shown).map(move |offset| {
+        (
+            first + offset,
+            ScrollFades::for_row(offset, shown, first, len),
+        )
+    })
+}
+
 /// Spawns one card of a windowed list, shading the half of it that faces hidden cards.
 ///
 /// A card with nothing hidden beyond it is spawned exactly as `spawn_card` builds it. An edge
@@ -406,7 +422,7 @@ fn title_case_word(word: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{ScrollFades, location_display_name, meter_percent, window_start};
+    use super::{ScrollFades, location_display_name, meter_percent, visible_rows, window_start};
 
     #[test]
     fn only_edge_cards_facing_hidden_cards_fade() {
@@ -487,5 +503,34 @@ mod tests {
     fn an_id_with_nothing_left_to_show_falls_back_to_itself() {
         assert_eq!(location_display_name("zone_01"), "zone_01");
         assert_eq!(location_display_name(""), "");
+    }
+
+    #[test]
+    fn visible_rows_index_the_window_and_fade_only_edges_that_hide_rows() {
+        let fades = |row: (usize, ScrollFades)| (row.0, row.1.top, row.1.bottom);
+        // A scrolled window: hidden rows above and below fade the first and last cards.
+        assert_eq!(
+            visible_rows(2, 10, 4).map(fades).collect::<Vec<_>>(),
+            [
+                (2, true, false),
+                (3, false, false),
+                (4, false, false),
+                (5, false, true)
+            ]
+        );
+        // The end of the list fades only its top edge.
+        assert_eq!(
+            visible_rows(6, 10, 4).map(fades).collect::<Vec<_>>(),
+            [
+                (6, true, false),
+                (7, false, false),
+                (8, false, false),
+                (9, false, false)
+            ]
+        );
+        // A short list shows every row without fades, and a window past the end shows none.
+        assert!(visible_rows(0, 3, 7).all(|(_, fade)| !fade.top && !fade.bottom));
+        assert_eq!(visible_rows(0, 3, 7).count(), 3);
+        assert_eq!(visible_rows(10, 10, 4).count(), 0);
     }
 }
