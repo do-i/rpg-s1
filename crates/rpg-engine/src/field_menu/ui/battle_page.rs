@@ -301,16 +301,7 @@ fn spawn_battle_member_row(
             border_radius: BorderRadius::all(px(4)),
             ..default()
         },
-        BackgroundColor(if selected {
-            Color::srgba_u8(72, 49, 25, 218)
-        } else {
-            Color::srgba_u8(10, 10, 14, 148)
-        }),
-        BorderColor::all(if selected {
-            status_border_active()
-        } else {
-            Color::srgba_u8(126, 98, 55, 90)
-        }),
+        selectable_card_colors(selected),
         BattleTacticsRow,
     ));
     if selected {
@@ -390,16 +381,7 @@ fn spawn_battle_setting_row(
             border_radius: BorderRadius::all(px(4)),
             ..default()
         },
-        BackgroundColor(if selected {
-            Color::srgba_u8(72, 49, 25, 218)
-        } else {
-            Color::srgba_u8(10, 10, 14, 148)
-        }),
-        BorderColor::all(if selected {
-            status_border_active()
-        } else {
-            Color::srgba_u8(126, 98, 55, 90)
-        }),
+        selectable_card_colors(selected),
         BattleTacticsRow,
     ));
     if selected {
@@ -485,16 +467,7 @@ fn spawn_battle_orders(
                             border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
-                        BackgroundColor(if focused {
-                            Color::srgba_u8(72, 49, 25, 218)
-                        } else {
-                            Color::srgba_u8(10, 10, 14, 148)
-                        }),
-                        BorderColor::all(if focused {
-                            status_border_active()
-                        } else {
-                            Color::srgba_u8(126, 98, 55, 90)
-                        }),
+                        selectable_card_colors(focused),
                     ))
                     .with_children(|option| {
                         spawn_status_text(option, label, font, 16.0, status_ink());

@@ -195,16 +195,7 @@ pub(in crate::field_menu) fn spawn_equipment_slots_column(
                         border_radius: BorderRadius::all(px(4)),
                         ..default()
                     },
-                    BackgroundColor(if selected {
-                        Color::srgba_u8(72, 49, 25, 218)
-                    } else {
-                        Color::srgba_u8(10, 10, 14, 148)
-                    }),
-                    BorderColor::all(if selected {
-                        status_border_active()
-                    } else {
-                        Color::srgba_u8(126, 98, 55, 90)
-                    }),
+                    selectable_card_colors(selected),
                     EquipmentSlotRow,
                 ));
                 if selected {
@@ -396,16 +387,7 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
                         border_radius: BorderRadius::all(px(4)),
                         ..default()
                     },
-                    BackgroundColor(if selected {
-                        Color::srgba_u8(72, 49, 25, 218)
-                    } else {
-                        Color::srgba_u8(10, 10, 14, 148)
-                    }),
-                    BorderColor::all(if selected {
-                        status_border_active()
-                    } else {
-                        Color::srgba_u8(126, 98, 55, 90)
-                    }),
+                    selectable_card_colors(selected),
                     EquipmentPickerRow,
                 ))
                 .with_children(|row| {
