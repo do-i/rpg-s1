@@ -193,16 +193,7 @@ pub(in crate::field_menu) fn spawn_pouch_column(
                             border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
-                        BackgroundColor(if selected {
-                            Color::srgba_u8(72, 49, 25, 218)
-                        } else {
-                            Color::srgba_u8(10, 10, 14, 148)
-                        }),
-                        BorderColor::all(if selected {
-                            status_border_active()
-                        } else {
-                            Color::srgba_u8(126, 98, 55, 96)
-                        }),
+                        selectable_card_colors(selected),
                         ItemPouchRow,
                     ))
                     .with_children(|row| {
@@ -299,16 +290,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                             border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
-                        BackgroundColor(if selected {
-                            Color::srgba_u8(72, 49, 25, 218)
-                        } else {
-                            Color::srgba_u8(10, 10, 14, 148)
-                        }),
-                        BorderColor::all(if selected {
-                            status_border_active()
-                        } else {
-                            Color::srgba_u8(126, 98, 55, 80)
-                        }),
+                        selectable_card_colors(selected),
                         ItemListRow,
                     ));
                     if selected {

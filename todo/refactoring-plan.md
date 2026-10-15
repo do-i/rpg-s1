@@ -48,6 +48,8 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 **Evidence: Source.** [field_menu/ui](../crates/rpg-engine/src/field_menu/ui), [service_ui/view.rs](../crates/rpg-engine/src/service_ui/view.rs), and [save_ui.rs](../crates/rpg-engine/src/save_ui.rs) repeat panel, row, selection, message, and scrolling patterns. Shared menu helpers already exist.
 
+**Status (2026-10-15):** code complete (`239d0c4` and the colour commit); only the visual spot check remains. See refactoring-evidence.md.
+
 - Identify repeated structures before extracting them. Extend existing `ui/shared.rs` and `ui_theme.rs` for compatible panel/row/selection helpers; keep page-specific behavior in each page.
 - Consolidate shared save-slot presentation and compatible window-index calculations. Avoid a generic widget framework or one helper with many boolean options.
 - Preserve keyboard navigation, row budgets, scroll-to-selection, modal placement, and distinct page layouts.

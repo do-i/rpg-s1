@@ -1048,3 +1048,48 @@ Validation:
 Real power loss and filesystem-specific sync failures were not simulated;
 failures were injected at the same steps as RF-01 and RF-05. RF-16 is removed
 from the queue.
+
+## RF-17 — Deduplicate repeated menu rendering patterns (visual check outstanding)
+
+Two commits; the visual spot check is still outstanding, so RF-17 stays in the queue.
+
+**Structure (`239d0c4`).** `menu_chrome::visible_rows(first, len, rows)` yields each
+visible row's index with the `ScrollFades` its card needs. It replaces 14 hand-written
+window loops (compute `shown`, `skip`/`take`, `ScrollFades::for_row`) in the field
+menu's items list, tag editor, show/hide manager, equipment picker, spellbook, quests,
+recipes, and Save page, the four service list pages, the Ember Atlas destination list,
+and the title Load picker. The spellbook and equipment picker now use the shared
+`window_start` instead of an equivalent inline formula. Both save screens share
+`save_ui::spawn_save_slot_summary` (a byte-identical duplicate before) and
+`spawn_save_message`, whose border colour remains each screen's own. Row heights, label
+widths, the Load picker's LATEST badge, and every page layout stay page-specific. The
+three modal backdrops keep their distinct dimming.
+
+**Colours (this commit).** `menu_chrome::selectable_card_colors(selected)` replaces 14
+copies of the selected/unselected card background and border. The copies had drifted:
+selected background alpha 224 in the two save cards versus 218 elsewhere, and resting
+border alpha 80 (three), 95 (two), and 96 (one) versus 90 (eight). The helper uses the
+majority 218/90, so six cards change by at most 16/255 alpha on a faint border.
+
+Equivalence: a disposable probe rendered every affected page into a plain `World` and
+dumped the full entity tree (component names, `Node`, background, border, text, font
+size, text colour, visibility). It covered 80 cases: eight field-menu pages and modals
+at five cursor positions with a 40-item inventory, the field Save page and overwrite
+prompt at six positions over 101 varied slots, the title Load picker at six positions,
+four service pages at four positions, and the atlas list over 20 destinations.
+Scrolled windows and edge fades were exercised throughout (about 6,000 fade-node
+lines). The structural commit's trees were byte-identical to the original (about
+38,000 lines). The colour commit's trees differed only in 884 background/border lines,
+with no other change. The probe was removed.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,090 passed** (1,089 before plus a
+  `visible_rows` unit test).
+
+Outstanding: the visual spot check. On 2026-10-15 the display was locked when the game
+was driven; the key presses reached the lock screen (possibly registering one failed
+unlock attempt) and no game screenshots were taken. Recheck the Items, Quests, and Save
+pages, the title Load picker, and a shop list on an unlocked display, then remove RF-17
+from the queue.

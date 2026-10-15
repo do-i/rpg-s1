@@ -288,6 +288,21 @@ const SCROLL_FADE_SHADE: Color = Color::srgb(0.02, 0.02, 0.03);
 const SCROLL_FADE_MID_ALPHA: f32 = 0.8;
 const SCROLL_FADE_EDGE_ALPHA: f32 = 0.96;
 
+/// Background and border of one selectable list card, highlighted while `selected`.
+pub(crate) fn selectable_card_colors(selected: bool) -> (BackgroundColor, BorderColor) {
+    if selected {
+        (
+            BackgroundColor(Color::srgba_u8(72, 49, 25, 218)),
+            BorderColor::all(status_border_active()),
+        )
+    } else {
+        (
+            BackgroundColor(Color::srgba_u8(10, 10, 14, 148)),
+            BorderColor::all(Color::srgba_u8(126, 98, 55, 90)),
+        )
+    }
+}
+
 /// The rows a scrolled list shows: each visible row's index into the full list, with the fades its
 /// card needs to say more rows are hidden above or below.
 pub(crate) fn visible_rows(

@@ -10,9 +10,9 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
     menu_chrome::{
-        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_text,
-        spawn_windowed_card, status_border_active, status_ember, status_faint, status_gold,
-        status_ink, status_muted, status_teal, status_violet, visible_rows,
+        location_display_name, selectable_card_colors, spawn_header_bars, spawn_section_rule,
+        spawn_status_text, spawn_windowed_card, status_border_active, status_ember, status_faint,
+        status_gold, status_ink, status_muted, status_teal, status_violet, visible_rows,
     },
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
@@ -528,16 +528,7 @@ fn spawn_load_slot_row(
             border_radius: BorderRadius::all(px(4)),
             ..default()
         },
-        BackgroundColor(if selected {
-            Color::srgba_u8(72, 49, 25, 224)
-        } else {
-            Color::srgba_u8(10, 10, 14, 148)
-        }),
-        BorderColor::all(if selected {
-            status_border_active()
-        } else {
-            Color::srgba_u8(126, 98, 55, 95)
-        }),
+        selectable_card_colors(selected),
         TitleLoadSlotRow,
     ));
     if selected {

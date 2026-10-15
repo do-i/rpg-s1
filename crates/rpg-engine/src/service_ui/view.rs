@@ -21,10 +21,10 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        spawn_header_bars, spawn_meter, spawn_section_rule, spawn_status_panel, spawn_status_text,
-        spawn_windowed_card, status_border, status_border_active, status_ember, status_faint,
-        status_gold, status_ink, status_muted, status_ready, status_teal, visible_rows,
-        window_start,
+        selectable_card_colors, spawn_header_bars, spawn_meter, spawn_section_rule,
+        spawn_status_panel, spawn_status_text, spawn_windowed_card, status_border,
+        status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
+        status_ready, status_teal, visible_rows, window_start,
     },
     runtime_member::RuntimeMember,
     scenario_dialogue::DialogueShopKind,
@@ -813,16 +813,7 @@ fn spawn_recipe_row(
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
-            BackgroundColor(if selected {
-                Color::srgba_u8(72, 49, 25, 218)
-            } else {
-                Color::srgba_u8(10, 10, 14, 148)
-            }),
-            BorderColor::all(if selected {
-                status_border_active()
-            } else {
-                Color::srgba_u8(126, 98, 55, 80)
-            }),
+            selectable_card_colors(selected),
         ))
         .with_children(|row| {
             match sprites.recipe_icon(icon) {
@@ -1071,16 +1062,7 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
-            BackgroundColor(if row.selected {
-                Color::srgba_u8(72, 49, 25, 218)
-            } else {
-                Color::srgba_u8(10, 10, 14, 148)
-            }),
-            BorderColor::all(if row.selected {
-                status_border_active()
-            } else {
-                Color::srgba_u8(126, 98, 55, 80)
-            }),
+            selectable_card_colors(row.selected),
         ))
         .with_children(|node| {
             node.spawn((
