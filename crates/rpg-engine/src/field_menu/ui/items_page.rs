@@ -282,14 +282,8 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 return;
             }
             let page = inventory_window(ids.len(), list_index);
-            for (offset, (index, id)) in ids
-                .iter()
-                .enumerate()
-                .skip(page.start)
-                .take(page.len())
-                .enumerate()
-            {
-                let fades = ScrollFades::for_row(offset, page.len(), page.start, ids.len());
+            for (index, fades) in visible_rows(page.start, ids.len(), page.len()) {
+                let id = &ids[index];
                 spawn_windowed_card(panel, fades, |panel| {
                     let item = catalog.item(id).expect("filtered inventory item exists");
                     // The cursor shows only once the list, not the pouch, has focus.
@@ -717,16 +711,8 @@ fn spawn_tag_editor(
     spawn_status_text(parent, "EDIT TAGS", font, 13.0, status_muted());
     let rows = tag_editor_rows(game, id);
     let first = window_start(state.selected, rows.len(), TAG_EDITOR_VISIBLE_ROWS);
-    let len = rows.len();
-    let shown = len.saturating_sub(first).min(TAG_EDITOR_VISIBLE_ROWS);
-    for (offset, (index, row)) in rows
-        .into_iter()
-        .enumerate()
-        .skip(first)
-        .take(TAG_EDITOR_VISIBLE_ROWS)
-        .enumerate()
-    {
-        let fades = ScrollFades::for_row(offset, shown, first, len);
+    for (index, fades) in visible_rows(first, rows.len(), TAG_EDITOR_VISIBLE_ROWS) {
+        let row = rows[index].clone();
         spawn_windowed_card(parent, fades, |parent| {
             let selected = index == state.selected;
             match row {
@@ -813,18 +799,8 @@ fn spawn_manage_rows(
     let ids = manage_ids(game, catalog);
     spawn_status_text(parent, "SHOW / HIDE", font, 13.0, status_muted());
     let first = window_start(state.selected, ids.len(), ITEM_MANAGE_VISIBLE_ROWS);
-    let shown = ids
-        .len()
-        .saturating_sub(first)
-        .min(ITEM_MANAGE_VISIBLE_ROWS);
-    for (offset, (index, id)) in ids
-        .iter()
-        .enumerate()
-        .skip(first)
-        .take(ITEM_MANAGE_VISIBLE_ROWS)
-        .enumerate()
-    {
-        let fades = ScrollFades::for_row(offset, shown, first, ids.len());
+    for (index, fades) in visible_rows(first, ids.len(), ITEM_MANAGE_VISIBLE_ROWS) {
+        let id = &ids[index];
         spawn_windowed_card(parent, fades, |parent| {
             let name = catalog.item(id).map_or(*id, item_name);
             let hidden = game.repository().is_hidden(id);

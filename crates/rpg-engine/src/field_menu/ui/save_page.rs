@@ -104,20 +104,12 @@ pub(in crate::field_menu) fn spawn_save_page(
                 } else {
                     // The autosave is not a save target, so the list and its fades start at the
                     // first player slot: slot 1 has nothing above it.
-                    let first = save_window_start(state.selected);
-                    let len = PLAYER_SLOT_COUNT;
-                    let shown = (len + FIRST_PLAYER_SLOT)
-                        .saturating_sub(first)
-                        .min(SAVE_VISIBLE_ROWS);
-                    for (offset, slot) in saves
-                        .slots()
-                        .iter()
-                        .skip(first)
-                        .take(SAVE_VISIBLE_ROWS)
-                        .enumerate()
+                    let first = save_window_start(state.selected) - FIRST_PLAYER_SLOT;
+                    for (index, fades) in visible_rows(first, PLAYER_SLOT_COUNT, SAVE_VISIBLE_ROWS)
                     {
-                        let fades =
-                            ScrollFades::for_row(offset, shown, first - FIRST_PLAYER_SLOT, len);
+                        let Some(slot) = saves.slots().get(FIRST_PLAYER_SLOT + index) else {
+                            continue;
+                        };
                         spawn_windowed_card(modal, fades, |modal| {
                             spawn_field_save_slot_row(
                                 modal,
@@ -140,7 +132,7 @@ pub(in crate::field_menu) fn spawn_save_page(
                     status_muted(),
                 );
                 if !state.message.is_empty() {
-                    spawn_save_inline_message(modal, font, &state.message);
+                    spawn_save_message(modal, font, &state.message, status_border());
                 }
             });
             spawn_save_overwrite_modal(page, font, state, saves);
@@ -243,7 +235,7 @@ pub(in crate::field_menu) fn spawn_field_save_slot_row(
             ..default()
         })
         .with_children(|content| {
-            spawn_save_slot_content(content, font, slot);
+            spawn_save_slot_summary(content, font, slot);
         });
         spawn_status_text(
             row,
@@ -253,76 +245,6 @@ pub(in crate::field_menu) fn spawn_field_save_slot_row(
             save_slot_state_color(slot),
         );
     });
-}
-
-pub(in crate::field_menu) fn spawn_save_slot_content(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    slot: &SaveSlot,
-) {
-    match (&slot.state, &slot.metadata) {
-        (SaveSlotState::Empty, _) => {
-            spawn_status_text(parent, "—  EMPTY  —", font, 17.0, status_faint());
-        }
-        (SaveSlotState::Valid, Some(metadata)) => {
-            spawn_status_text(
-                parent,
-                format!(
-                    "{}    ({})",
-                    location_display_name(&metadata.location),
-                    metadata.protagonist_name
-                ),
-                font,
-                17.0,
-                status_ink(),
-            );
-            spawn_status_text(
-                parent,
-                format!(
-                    "LV {}      PLAYTIME {}",
-                    metadata.protagonist_level,
-                    crate::playtime::Playtime::format(metadata.playtime_seconds)
-                ),
-                font,
-                12.0,
-                status_muted(),
-            );
-        }
-        (SaveSlotState::Corrupt(reason), _) => {
-            spawn_status_text(parent, "CORRUPT SAVE", font, 16.0, status_ember());
-            spawn_status_text(parent, reason, font, 11.0, status_muted());
-        }
-        (SaveSlotState::Incompatible(reason), _) => {
-            spawn_status_text(parent, "INCOMPATIBLE SAVE", font, 16.0, status_violet());
-            spawn_status_text(parent, reason, font, 11.0, status_muted());
-        }
-        _ => {
-            spawn_status_text(parent, "INVALID METADATA", font, 16.0, status_ember());
-        }
-    }
-}
-
-pub(in crate::field_menu) fn spawn_save_inline_message(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    message: &str,
-) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                justify_content: JustifyContent::Center,
-                padding: UiRect::axes(px(10), px(6)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(10, 10, 14, 180)),
-            BorderColor::all(status_border()),
-        ))
-        .with_children(|message_box| {
-            spawn_status_text(message_box, message, font, 13.0, status_ink());
-        });
 }
 
 pub(in crate::field_menu) fn spawn_save_overwrite_modal(

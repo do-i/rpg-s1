@@ -21,9 +21,9 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        ScrollFades, spawn_header_bars, spawn_meter, spawn_section_rule, spawn_status_panel,
-        spawn_status_text, spawn_windowed_card, status_border, status_border_active, status_ember,
-        status_faint, status_gold, status_ink, status_muted, status_ready, status_teal,
+        spawn_header_bars, spawn_meter, spawn_section_rule, spawn_status_panel, spawn_status_text,
+        spawn_windowed_card, status_border, status_border_active, status_ember, status_faint,
+        status_gold, status_ink, status_muted, status_ready, status_teal, visible_rows,
         window_start,
     },
     runtime_member::RuntimeMember,
@@ -359,15 +359,8 @@ fn spawn_buy_page(
                 return;
             }
             let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-            let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
-            for (offset, (index, row)) in rows
-                .iter()
-                .enumerate()
-                .skip(first)
-                .take(SERVICE_VISIBLE_ROWS)
-                .enumerate()
-            {
-                let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+            for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
+                let row = &rows[index];
                 spawn_windowed_card(panel, fades, |panel| {
                     let price = row.buy_price().get();
                     let affordable = game.repository().gp() >= price;
@@ -575,15 +568,8 @@ fn spawn_sell_page(
             return;
         }
         let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
-        for (offset, (index, item)) in rows
-            .iter()
-            .enumerate()
-            .skip(first)
-            .take(SERVICE_VISIBLE_ROWS)
-            .enumerate()
-        {
-            let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+        for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
+            let item = &rows[index];
             spawn_windowed_card(panel, fades, |panel| {
                 let sellable = can_sell(game.repository(), item);
                 spawn_list_row(
@@ -632,15 +618,8 @@ fn spawn_core_page(
             return;
         }
         let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        let shown = rows.len().saturating_sub(first).min(SERVICE_VISIBLE_ROWS);
-        for (offset, (index, item)) in rows
-            .iter()
-            .enumerate()
-            .skip(first)
-            .take(SERVICE_VISIBLE_ROWS)
-            .enumerate()
-        {
-            let fades = ScrollFades::for_row(offset, shown, first, rows.len());
+        for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
+            let item = &rows[index];
             spawn_windowed_card(panel, fades, |panel| {
                 let ItemDefinition::MagicCore(core) = item else {
                     return;
@@ -769,18 +748,8 @@ fn spawn_apothecary_page(
                 return;
             }
             let first = window_start(state.selected, recipes.len(), SERVICE_VISIBLE_ROWS);
-            let shown = recipes
-                .len()
-                .saturating_sub(first)
-                .min(SERVICE_VISIBLE_ROWS);
-            for (offset, (index, recipe)) in recipes
-                .iter()
-                .enumerate()
-                .skip(first)
-                .take(SERVICE_VISIBLE_ROWS)
-                .enumerate()
-            {
-                let fades = ScrollFades::for_row(offset, shown, first, recipes.len());
+            for (index, fades) in visible_rows(first, recipes.len(), SERVICE_VISIBLE_ROWS) {
+                let recipe = &recipes[index];
                 spawn_windowed_card(panel, fades, |panel| {
                     let availability = recipe_availability(recipe, game.flags(), game.repository());
                     spawn_recipe_row(

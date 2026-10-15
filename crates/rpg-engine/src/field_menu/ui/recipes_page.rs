@@ -215,7 +215,6 @@ pub(in crate::field_menu) fn spawn_recipe_list_column(
                 return;
             }
             let first = recipe_window_start(selected, recipes.len());
-            let shown = recipes.len().saturating_sub(first).min(RECIPE_VISIBLE_ROWS);
             // The cards share the column's height, so a full window fills it edge to edge.
             panel
                 .spawn(Node {
@@ -227,14 +226,8 @@ pub(in crate::field_menu) fn spawn_recipe_list_column(
                     ..default()
                 })
                 .with_children(|cards| {
-                    for (offset, (index, recipe)) in recipes
-                        .iter()
-                        .enumerate()
-                        .skip(first)
-                        .take(RECIPE_VISIBLE_ROWS)
-                        .enumerate()
-                    {
-                        let fades = ScrollFades::for_row(offset, shown, first, recipes.len());
+                    for (index, fades) in visible_rows(first, recipes.len(), RECIPE_VISIBLE_ROWS) {
+                        let recipe = &recipes[index];
                         spawn_recipe_book_row(
                             cards,
                             font,

@@ -10,9 +10,9 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
     menu_chrome::{
-        ScrollFades, location_display_name, spawn_header_bars, spawn_section_rule,
-        spawn_status_text, spawn_windowed_card, status_border_active, status_ember, status_faint,
-        status_gold, status_ink, status_muted, status_teal, status_violet,
+        location_display_name, spawn_header_bars, spawn_section_rule, spawn_status_text,
+        spawn_windowed_card, status_border_active, status_ember, status_faint, status_gold,
+        status_ink, status_muted, status_teal, status_violet, visible_rows,
     },
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
@@ -388,16 +388,10 @@ fn spawn_load_panel(
             if catalog.ready {
                 let page_start = load_window_start(menu.selected);
                 let latest = latest_valid_slot(&catalog.slots);
-                let len = catalog.slots.len();
-                let shown = len.saturating_sub(page_start).min(LOAD_VISIBLE_ROWS);
-                for (offset, slot) in catalog
-                    .slots
-                    .iter()
-                    .skip(page_start)
-                    .take(LOAD_VISIBLE_ROWS)
-                    .enumerate()
+                for (index, fades) in
+                    visible_rows(page_start, catalog.slots.len(), LOAD_VISIBLE_ROWS)
                 {
-                    let fades = ScrollFades::for_row(offset, shown, page_start, len);
+                    let slot = &catalog.slots[index];
                     spawn_windowed_card(panel, fades, |panel| {
                         spawn_load_slot_row(
                             panel,
@@ -442,7 +436,7 @@ fn spawn_load_panel(
                 status_muted(),
             );
             if !menu.message.is_empty() {
-                spawn_load_message(panel, font, &menu.message);
+                spawn_save_message(panel, font, &menu.message, status_border_active());
             }
         });
 }
@@ -577,7 +571,7 @@ fn spawn_load_slot_row(
             ..default()
         })
         .with_children(|content| {
-            spawn_load_slot_content(content, font, slot);
+            spawn_save_slot_summary(content, font, slot);
         });
         spawn_status_text(
             row,
@@ -589,7 +583,9 @@ fn spawn_load_slot_row(
     });
 }
 
-fn spawn_load_slot_content(
+/// The middle of a save-slot card: where and who for a valid save, or why the slot cannot load.
+/// Shared by the title Load picker and the field menu's Save page.
+pub(crate) fn spawn_save_slot_summary(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     slot: &SaveSlot,
@@ -636,7 +632,13 @@ fn spawn_load_slot_content(
     }
 }
 
-fn spawn_load_message(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, message: &str) {
+/// A one-line notice under a save-slot list, framed in `border`.
+pub(crate) fn spawn_save_message(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    message: &str,
+    border: Color,
+) {
     parent
         .spawn((
             Node {
@@ -648,7 +650,7 @@ fn spawn_load_message(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                 ..default()
             },
             BackgroundColor(Color::srgba_u8(10, 10, 14, 180)),
-            BorderColor::all(status_border_active()),
+            BorderColor::all(border),
         ))
         .with_children(|banner| {
             spawn_status_text(banner, message, font, 13.0, status_ink());

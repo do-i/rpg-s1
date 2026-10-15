@@ -375,14 +375,8 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
 ) {
     let candidates = equipment_candidates(game, catalog, slot);
     let total = candidates.len() + 1;
-    let visible_rows = EQUIPMENT_PICKER_VISIBLE_ROWS;
-    let first = state
-        .selected
-        .saturating_sub(visible_rows - 1)
-        .min(total.saturating_sub(visible_rows));
-    let shown = total.saturating_sub(first).min(visible_rows);
-    for index in first..(first + visible_rows).min(total) {
-        let fades = ScrollFades::for_row(index - first, shown, first, total);
+    let first = window_start(state.selected, total, EQUIPMENT_PICKER_VISIBLE_ROWS);
+    for (index, fades) in visible_rows(first, total, EQUIPMENT_PICKER_VISIBLE_ROWS) {
         spawn_windowed_card(parent, fades, |parent| {
             let candidate_id = index
                 .checked_sub(1)
