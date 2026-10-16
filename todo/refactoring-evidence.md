@@ -1094,3 +1094,44 @@ Status, Quests (scrolled), field Save (scrolled to slot 11), and the Magic Core 
 service list and quantity modal all rendered correctly. Selection highlights, slot and
 row counters, scroll-to-selection, and edge fades behaved as before; a single Enter after
 the shop dialogue opened the list without auto-confirming.
+
+## RF-18 — Reuse typed catalog-loading operations
+
+Two commits.
+
+**Inventory.** Seventeen YAML asset types each had their own loader with the same body
+(read bytes, require UTF-8, parse through `scenario_yaml`, accept `yaml`/`yml`). They were
+spread across 13 hand-written impls and two macros, with seven copies of an Io/Utf8/Yaml
+error enum, in the field-menu, new-game, manifest, transport, audio, interaction, and
+encounter modules. The manifest and new-game modules also each had a `safe_cause` that
+turned a load failure into player-safe text, differing only by a "manifest" prefix and
+an HTTP branch. Three World loaders (objects, NPCs, encounters) repeated the same
+"missing `data/maps/<id>.yaml` is empty metadata, any other failure is fatal" match, each
+copy carrying the same comment. No catalog index was built twice: the item, class, and
+enemy maps each have one owner.
+
+**Loader (`57b894f`).** `scenario_yaml_asset::ScenarioYamlLoader<A>` is one generic loader
+registered per type with a subject label (`ScenarioYamlLoader::<QuestCatalogFile>::new("quest
+catalog")`). The enemy stream keeps its multi-document parser through `with_parser`. Its
+`ScenarioYamlAssetError` names that subject in every message ("quest catalog YAML is
+invalid: …"), so failures still say which document kind owns them. The manifest, dialogue,
+and SFX messages are unchanged. Field-menu and new-game messages gained a subject they
+lacked before ("read failed" became "item catalog read failed"). The World loaders' "invalid
+scenario YAML" and the shared "encounter asset" became their specific subjects.
+`safe_asset_load_cause(error, subject)` replaces both `safe_cause` copies and reproduces their
+tested strings exactly ("manifest asset was not found", "manifest asset loading failed").
+Each subsystem's readiness, failure, and publication state machine is untouched. No cache
+was introduced, so RF-08 scoping is unaffected.
+
+**Optional metadata (`347ceb1`).** `scenario_map::optional_map_metadata` returns
+`Ready`/`Loading`/`Failed`, resolving a missing file to a static `MapMetadata::empty()` (now
+`const`). The three callers keep their own failure messages.
+
+Validation:
+
+- `cargo fmt --all -- --check` and strict workspace/all-targets clippy: passed.
+- `cargo test --workspace --no-fail-fast`: **1,091 passed** (1,090 before plus a loader
+  message test). The manifest malformed-YAML test now also pins the subject prefix. That
+  test can only pass if the shared error survives Bevy's downcast.
+- Headless runtime sweeps over the shipped package: `map-sweep` 54/54 PASS,
+  `encounter-sweep` 119 assets loaded with 0 failures, `dialogue-sweep` 0 errors.
