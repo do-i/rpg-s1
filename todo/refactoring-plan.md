@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 740 | RF-18 | P2 | Reuse typed catalog-loading operations | Sol | high | RF-08, RF-12, RF-13, RF-14 |
 | 700 | RF-19 | P2 | Resolve obsolete intro-transition staging state | Astra | high | RF-02, RF-10 |
 | 690 | RF-20 | P2 | Remove proven-unused accessors and stale suppressions | Sol | medium | RF-05, RF-08, RF-19 |
 | 600 | RF-22 | P2 | Establish reproducible performance measurements | Sol | high | RF-10 |
@@ -40,18 +39,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 570 | RF-25 | P2 | Reduce save/autosave stalls without weakening durability | Astra | xhigh | RF-01, RF-05, RF-16, RF-22 |
 | 560 | RF-26 | P2 | Optimize map load/render work demonstrated by profiles | Astra | high | RF-02, RF-08, RF-22 |
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
-
-## Code cleanup and deduplication
-
-### RF-18 — Reuse typed catalog-loading operations
-
-**Evidence: Investigation.** [field_menu_domain.rs](../crates/rpg-engine/src/field_menu_domain.rs), [encounter_assets.rs](../crates/rpg-engine/src/encounter_assets.rs), [scenario_new_game_assets.rs](../crates/rpg-engine/src/scenario_new_game_assets.rs), and the World loaders contain related load/readiness/error paths.
-
-- Inventory genuinely identical typed parse/validate/path operations and repeated catalog indexes after the earlier splits.
-- Extract small shared operations and reusable immutable catalog views. Retain subsystem-specific readiness, failure, and publication state machines.
-- Ensure shared caches are scoped by scenario identity and asset revision, consistent with RF-08. Preserve detailed error ownership and hot-change behavior.
-- **Done when:** demonstrably duplicated loading/indexing code is removed without combining unrelated lifecycle state machines.
-- **Model fit:** Sol/high for typed reuse with clear boundaries.
 
 ## Dead code and unused dependencies
 
