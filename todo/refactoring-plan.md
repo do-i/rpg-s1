@@ -31,7 +31,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 
 | Rank | ID | Severity | Task | AI model | Effort | Depends on |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 750 | RF-17 | P2 | Deduplicate repeated menu rendering patterns | Sol | high | RF-12 |
 | 740 | RF-18 | P2 | Reuse typed catalog-loading operations | Sol | high | RF-08, RF-12, RF-13, RF-14 |
 | 700 | RF-19 | P2 | Resolve obsolete intro-transition staging state | Astra | high | RF-02, RF-10 |
 | 690 | RF-20 | P2 | Remove proven-unused accessors and stale suppressions | Sol | medium | RF-05, RF-08, RF-19 |
@@ -43,18 +42,6 @@ All tasks listed below are pending; completed tasks have been removed. A dash in
 | 400 | RF-27 | P3 | Trim historical and redundant code comments | Luna | medium | RF-12, RF-13, RF-14, RF-15, RF-19, RF-20 |
 
 ## Code cleanup and deduplication
-
-### RF-17 — Deduplicate repeated menu rendering patterns
-
-**Evidence: Source.** [field_menu/ui](../crates/rpg-engine/src/field_menu/ui), [service_ui/view.rs](../crates/rpg-engine/src/service_ui/view.rs), and [save_ui.rs](../crates/rpg-engine/src/save_ui.rs) repeat panel, row, selection, message, and scrolling patterns. Shared menu helpers already exist.
-
-**Status (2026-10-15):** code complete (`239d0c4` and the colour commit); only the visual spot check remains. See refactoring-evidence.md.
-
-- Identify repeated structures before extracting them. Extend existing `ui/shared.rs` and `ui_theme.rs` for compatible panel/row/selection helpers; keep page-specific behavior in each page.
-- Consolidate shared save-slot presentation and compatible window-index calculations. Avoid a generic widget framework or one helper with many boolean options.
-- Preserve keyboard navigation, row budgets, scroll-to-selection, modal placement, and distinct page layouts.
-- **Done when:** targeted duplicated implementations are replaced by clear helpers and affected layouts/navigation pass existing checks plus a visual spot check.
-- **Model fit:** Sol/high for reuse that respects different UI ownership and layouts.
 
 ### RF-18 — Reuse typed catalog-loading operations
 
