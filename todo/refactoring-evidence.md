@@ -1049,9 +1049,9 @@ Real power loss and filesystem-specific sync failures were not simulated;
 failures were injected at the same steps as RF-01 and RF-05. RF-16 is removed
 from the queue.
 
-## RF-17 — Deduplicate repeated menu rendering patterns (visual check outstanding)
+## RF-17 — Deduplicate repeated menu rendering patterns
 
-Two commits; the visual spot check is still outstanding, so RF-17 stays in the queue.
+Two commits, plus a visual spot check on 2026-10-16.
 
 **Structure (`239d0c4`).** `menu_chrome::visible_rows(first, len, rows)` yields each
 visible row's index with the `ScrollFades` its card needs. It replaces 14 hand-written
@@ -1088,8 +1088,9 @@ Validation:
 - `cargo test --workspace --no-fail-fast`: **1,090 passed** (1,089 before plus a
   `visible_rows` unit test).
 
-Outstanding: the visual spot check. On 2026-10-15 the display was locked when the game
-was driven; the key presses reached the lock screen (possibly registering one failed
-unlock attempt) and no game screenshots were taken. Recheck the Items, Quests, and Save
-pages, the title Load picker, and a shop list on an unlocked display, then remove RF-17
-from the queue.
+Visual spot check (2026-10-16, real window on an unlocked display): the title Load
+picker, field menu, Items (pouch list, item list scrolled to row 16 of 65, empty pouch),
+Status, Quests (scrolled), field Save (scrolled to slot 11), and the Magic Core Exchange
+service list and quantity modal all rendered correctly. Selection highlights, slot and
+row counters, scroll-to-selection, and edge fades behaved as before; a single Enter after
+the shop dialogue opened the list without auto-confirming.
