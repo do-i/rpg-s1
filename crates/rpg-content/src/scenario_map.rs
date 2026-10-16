@@ -12,7 +12,7 @@
 use std::num::NonZeroU32;
 
 use bevy::{
-    asset::{Asset, AssetLoadError, io::AssetReaderError},
+    asset::{Asset, AssetLoadError, AssetServer, Assets, Handle, LoadState, io::AssetReaderError},
     reflect::TypePath,
 };
 use serde::{Deserialize, Deserializer};
@@ -73,7 +73,7 @@ impl MapMetadata {
     /// load failure, and behaves as an empty map — no name override, no NPCs, no services, no
     /// item boxes, and no `enemy_spawn` override (regular callers still fall back to the
     /// encounter zone's own spawn frequency).
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             id: None,
             name: String::new(),
@@ -100,6 +100,33 @@ pub fn optional_scenario_asset_is_missing(error: &AssetLoadError) -> bool {
         error,
         AssetLoadError::AssetReaderError(AssetReaderError::NotFound(_))
     )
+}
+
+/// Progress of one per-map metadata load, where a missing file is already [`MapMetadata::empty`].
+pub enum OptionalMapMetadata<'a> {
+    Ready(&'a MapMetadata),
+    Loading,
+    /// A real reader or parse error, which stays fatal for the caller.
+    Failed,
+}
+
+/// Resolves a `Handle<MapMetadata>`, treating only a missing file as the empty metadata of a
+/// TMX-only map.
+pub fn optional_map_metadata<'a>(
+    server: &AssetServer,
+    assets: &'a Assets<MapMetadata>,
+    handle: &Handle<MapMetadata>,
+) -> OptionalMapMetadata<'a> {
+    static EMPTY: MapMetadata = MapMetadata::empty();
+    match server.load_state(handle.id()) {
+        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
+            OptionalMapMetadata::Ready(&EMPTY)
+        }
+        LoadState::Failed(_) => OptionalMapMetadata::Failed,
+        _ => assets
+            .get(handle)
+            .map_or(OptionalMapMetadata::Loading, OptionalMapMetadata::Ready),
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]

@@ -11,7 +11,9 @@ use crate::{
     runtime_opened_boxes::OpenedBoxKey,
     scenario_inventory::ScenarioInventory,
     scenario_manifest::{Manifest, ManifestSigns},
-    scenario_map::{ItemBoxLoot, ItemBoxTrap, MapMetadata, optional_scenario_asset_is_missing},
+    scenario_map::{
+        ItemBoxLoot, ItemBoxTrap, MapMetadata, OptionalMapMetadata, optional_map_metadata,
+    },
     scenario_path::ScenarioRelativePath,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
     scenario_spatial::Position,
@@ -276,20 +278,14 @@ fn drive_world_object_load(
         state.fail("object manifest failed to load");
         return;
     }
-    // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
-    // engine's `load_yaml_optional`, see `MapMetadata::empty`), not a load failure; only a real
-    // reader/parse error is fatal here. The manifest itself has no such exception.
-    let empty_metadata;
-    let metadata = match asset_server.load_state(metadata_handle.id()) {
-        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
-            empty_metadata = MapMetadata::empty();
-            Some(&empty_metadata)
-        }
-        LoadState::Failed(_) => {
+    // Only metadata may be absent (a TMX-only map); the manifest has no such exception.
+    let metadata = match optional_map_metadata(&asset_server, &metadata_assets, metadata_handle) {
+        OptionalMapMetadata::Ready(metadata) => Some(metadata),
+        OptionalMapMetadata::Loading => None,
+        OptionalMapMetadata::Failed => {
             state.fail("object metadata failed to load");
             return;
         }
-        _ => metadata_assets.get(metadata_handle),
     };
     let (Some(metadata), Some(manifest), Some(game), Some(map)) = (
         metadata,

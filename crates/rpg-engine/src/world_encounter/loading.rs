@@ -14,7 +14,9 @@ use crate::{
     scenario_encounter::EncounterZone,
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_inventory::ScenarioInventory,
-    scenario_map::{MapMetadata, optional_scenario_asset_is_missing},
+    scenario_map::{
+        MapMetadata, OptionalMapMetadata, optional_map_metadata, optional_scenario_asset_is_missing,
+    },
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position},
@@ -106,27 +108,15 @@ pub(super) fn drive_active_encounter_assets(
     let Some(metadata_handle) = state.metadata.as_ref() else {
         return;
     };
-    // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
-    // engine's `load_yaml_optional`, see `MapMetadata::empty`), not a load failure; only a real
-    // reader/parse error is fatal here.
-    let empty_metadata;
-    let metadata = match asset_server.load_state(metadata_handle.id()) {
-        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
-            empty_metadata = MapMetadata::empty();
-            &empty_metadata
-        }
-        LoadState::Failed(_) => {
+    let metadata = match optional_map_metadata(asset_server, &metadata_assets, metadata_handle) {
+        OptionalMapMetadata::Ready(metadata) => metadata,
+        OptionalMapMetadata::Loading => return,
+        OptionalMapMetadata::Failed => {
             fail_encounter(
                 &mut state,
                 format!("map metadata for `{map_id}` failed to load"),
             );
             return;
-        }
-        _ => {
-            let Some(metadata) = metadata_assets.get(metadata_handle) else {
-                return;
-            };
-            metadata
         }
     };
     if !render.is_spawned_for(&map_id) {

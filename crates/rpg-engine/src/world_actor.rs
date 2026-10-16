@@ -1,6 +1,6 @@
 //! Source-authored World NPC loading, presence, occupancy, animation, and bounded wandering.
 
-use bevy::{asset::LoadState, ecs::schedule::ApplyDeferred, prelude::*};
+use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
 
 use crate::{
     app_state::AppState,
@@ -8,7 +8,7 @@ use crate::{
     gameplay_rng::GameplayRng,
     scenario_inventory::ScenarioInventory,
     scenario_map::{
-        MapMetadata, NpcAnimationMode, NpcMetadata, optional_scenario_asset_is_missing,
+        MapMetadata, NpcAnimationMode, NpcMetadata, OptionalMapMetadata, optional_map_metadata,
     },
     scenario_root::ScenarioRoot,
     scenario_spatial::{
@@ -267,24 +267,12 @@ fn drive_world_actor_load(
         state.fail("NPC metadata handle is missing");
         return;
     };
-    // A missing `data/maps/<id>.yaml` is a valid runtime state for a TMX-only map (the pinned
-    // engine's `load_yaml_optional`, see `MapMetadata::empty`), not a load failure; only a real
-    // reader/parse error is fatal here.
-    let empty_metadata;
-    let metadata = match asset_server.load_state(metadata_handle.id()) {
-        LoadState::Failed(error) if optional_scenario_asset_is_missing(&error) => {
-            empty_metadata = MapMetadata::empty();
-            &empty_metadata
-        }
-        LoadState::Failed(_) => {
+    let metadata = match optional_map_metadata(&asset_server, &metadata_assets, metadata_handle) {
+        OptionalMapMetadata::Ready(metadata) => metadata,
+        OptionalMapMetadata::Loading => return,
+        OptionalMapMetadata::Failed => {
             state.fail("NPC metadata failed to load");
             return;
-        }
-        _ => {
-            let Some(metadata) = metadata_assets.get(metadata_handle) else {
-                return;
-            };
-            metadata
         }
     };
     let Some(mut game) = game else {
