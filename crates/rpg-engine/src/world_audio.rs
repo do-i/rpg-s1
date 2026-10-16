@@ -13,13 +13,10 @@
 use std::{error::Error, fmt};
 
 use bevy::{
-    asset::{
-        AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState, io::Reader,
-    },
+    asset::{AssetApp, AssetServer, Assets, Handle, LoadState},
     audio::{AudioSink, AudioSinkPlayback, PlaybackMode, Volume},
     ecs::system::SystemParam,
     prelude::*,
-    reflect::TypePath,
 };
 
 use crate::{
@@ -30,7 +27,7 @@ use crate::{
     scenario_map::MapMetadata,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
-    scenario_yaml::{self, ScenarioYamlError},
+    scenario_yaml_asset::ScenarioYamlLoader,
 };
 
 const WORLD_BGM_VOLUME: f32 = 0.3;
@@ -42,7 +39,7 @@ pub(crate) struct WorldAudioPlugin;
 impl Plugin for WorldAudioPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<MapMetadata>()
-            .init_asset_loader::<MapMetadataAssetLoader>()
+            .register_asset_loader(ScenarioYamlLoader::<MapMetadata>::new("map metadata"))
             .init_resource::<WorldBgmState>()
             .add_systems(OnEnter(AppState::World), begin_world_audio)
             .add_systems(
@@ -505,81 +502,6 @@ fn cleanup_world_audio(
     *state = WorldBgmState::default();
 }
 
-#[derive(Default, TypePath)]
-struct MapMetadataAssetLoader;
-
-impl AssetLoader for MapMetadataAssetLoader {
-    type Asset = MapMetadata;
-    type Settings = ();
-    type Error = WorldYamlAssetLoaderError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        load_yaml(reader).await
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
-    }
-}
-
-#[derive(Default, TypePath)]
-pub(crate) struct BgmIndexAssetLoader;
-
-impl AssetLoader for BgmIndexAssetLoader {
-    type Asset = BgmIndex;
-    type Settings = ();
-    type Error = WorldYamlAssetLoaderError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        load_yaml(reader).await
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
-    }
-}
-
-async fn load_yaml<T: serde::de::DeserializeOwned>(
-    reader: &mut dyn Reader,
-) -> Result<T, WorldYamlAssetLoaderError> {
-    let mut bytes = Vec::new();
-    reader
-        .read_to_end(&mut bytes)
-        .await
-        .map_err(WorldYamlAssetLoaderError::Io)?;
-    let document = std::str::from_utf8(&bytes).map_err(WorldYamlAssetLoaderError::Utf8)?;
-    scenario_yaml::from_str(document).map_err(WorldYamlAssetLoaderError::Yaml)
-}
-
-#[derive(Debug)]
-pub(crate) enum WorldYamlAssetLoaderError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-
-impl fmt::Display for WorldYamlAssetLoaderError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(error) => write!(formatter, "asset I/O failed ({:?})", error.kind()),
-            Self::Utf8(error) => write!(formatter, "asset is not UTF-8: {error}"),
-            Self::Yaml(error) => write!(formatter, "invalid scenario YAML: {error}"),
-        }
-    }
-}
-
-impl Error for WorldYamlAssetLoaderError {}
-
 /// Re-resolve metadata after publication; an authored key restarts its audio handle,
 /// while a map without BGM preserves the preceding loop just as a portal transition does.
 pub(crate) fn reload_world_audio(world: &mut World) {
@@ -601,6 +523,7 @@ mod tests {
     };
 
     use super::*;
+    use crate::scenario_yaml;
     use crate::{
         name_entry::NameEntryConfirmed,
         new_game::{NewGameScenario, build_new_game_state},

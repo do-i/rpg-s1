@@ -3,11 +3,8 @@
 use std::{collections::BTreeMap, error::Error, fmt};
 
 use bevy::{
-    asset::{
-        AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState, io::Reader,
-    },
+    asset::{AssetApp, AssetServer, Assets, Handle, LoadState},
     prelude::*,
-    reflect::TypePath,
 };
 
 use crate::{
@@ -28,7 +25,7 @@ use crate::{
     scenario_recipe::{RecipeCatalogFile, RecipeDefinition},
     scenario_root::ScenarioRoot,
     scenario_spatial::Position,
-    scenario_yaml::{self, ScenarioYamlError},
+    scenario_yaml_asset::ScenarioYamlLoader,
     tmx_ground_asset::TmxGroundAsset,
     world_transition::{RuntimePortal, runtime_portals},
 };
@@ -45,11 +42,17 @@ impl Plugin for FieldMenuDomainPlugin {
             .init_asset::<ClassDefinition>()
             .init_asset::<RecipeCatalogFile>()
             .init_asset::<QuestCatalogFile>()
-            .init_asset_loader::<ItemCatalogAssetLoader>()
-            .init_asset_loader::<FieldUseCatalogAssetLoader>()
-            .init_asset_loader::<ClassDefinitionAssetLoader>()
-            .init_asset_loader::<RecipeCatalogAssetLoader>()
-            .init_asset_loader::<QuestCatalogAssetLoader>()
+            .register_asset_loader(ScenarioYamlLoader::<ItemCatalogFile>::new("item catalog"))
+            .register_asset_loader(ScenarioYamlLoader::<FieldUseCatalogFile>::new(
+                "field-use catalog",
+            ))
+            .register_asset_loader(ScenarioYamlLoader::<ClassDefinition>::new(
+                "class definition",
+            ))
+            .register_asset_loader(ScenarioYamlLoader::<RecipeCatalogFile>::new(
+                "recipe catalog",
+            ))
+            .register_asset_loader(ScenarioYamlLoader::<QuestCatalogFile>::new("quest catalog"))
             .init_resource::<FieldMenuCatalog>()
             .init_resource::<FieldMenuCatalogLoad>()
             // The debug launcher constructs a complete party while the app is still in Boot,
@@ -594,57 +597,6 @@ fn track_catalog_load(
     catalog.failure = None;
     catalog.status = CatalogStatus::Ready;
 }
-
-macro_rules! yaml_loader {
-    ($loader:ident, $asset:ty) => {
-        #[derive(Default, TypePath)]
-        struct $loader;
-        impl AssetLoader for $loader {
-            type Asset = $asset;
-            type Settings = ();
-            type Error = CatalogAssetError;
-            async fn load(
-                &self,
-                reader: &mut dyn Reader,
-                _: &(),
-                _: &mut LoadContext<'_>,
-            ) -> Result<Self::Asset, Self::Error> {
-                let mut bytes = Vec::new();
-                reader
-                    .read_to_end(&mut bytes)
-                    .await
-                    .map_err(CatalogAssetError::Io)?;
-                let document = std::str::from_utf8(&bytes).map_err(CatalogAssetError::Utf8)?;
-                scenario_yaml::from_str(document).map_err(CatalogAssetError::Yaml)
-            }
-            fn extensions(&self) -> &[&str] {
-                &["yaml", "yml"]
-            }
-        }
-    };
-}
-yaml_loader!(ItemCatalogAssetLoader, ItemCatalogFile);
-yaml_loader!(FieldUseCatalogAssetLoader, FieldUseCatalogFile);
-yaml_loader!(ClassDefinitionAssetLoader, ClassDefinition);
-yaml_loader!(RecipeCatalogAssetLoader, RecipeCatalogFile);
-yaml_loader!(QuestCatalogAssetLoader, QuestCatalogFile);
-
-#[derive(Debug)]
-enum CatalogAssetError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-impl fmt::Display for CatalogAssetError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(error) => write!(f, "read failed: {error}"),
-            Self::Utf8(error) => write!(f, "asset is not UTF-8: {error}"),
-            Self::Yaml(error) => write!(f, "YAML is invalid: {error}"),
-        }
-    }
-}
-impl Error for CatalogAssetError {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InventoryTab {
@@ -1337,6 +1289,7 @@ impl Error for MenuMutationError {}
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::scenario_yaml;
     use crate::{
         game_state::GameStateParts,
         gameplay_rng::GameplayRng,

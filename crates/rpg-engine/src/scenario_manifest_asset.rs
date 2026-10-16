@@ -7,18 +7,14 @@
 use std::{error::Error, fmt};
 
 use bevy::{
-    asset::{
-        AssetApp, AssetLoadError, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState,
-        io::{AssetReaderError, Reader},
-    },
+    asset::{AssetApp, AssetLoadError, AssetServer, Assets, Handle, LoadState},
     prelude::{App, IntoScheduleConfigs, Plugin, Res, ResMut, Resource, Update},
-    reflect::TypePath,
 };
 
 use crate::{
     scenario_manifest::Manifest,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
-    scenario_yaml::{self, ScenarioYamlError},
+    scenario_yaml_asset::{ScenarioYamlLoader, safe_asset_load_cause},
 };
 
 /// Registers direct YAML loading and begins loading the selected package manifest.
@@ -28,7 +24,7 @@ impl Plugin for ScenarioManifestAssetPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScenarioRoot>()
             .init_asset::<Manifest>()
-            .init_asset_loader::<ManifestAssetLoader>();
+            .register_asset_loader(ScenarioYamlLoader::<Manifest>::new("manifest"));
 
         let root = app.world().resource::<ScenarioRoot>().clone();
         let handle = app
@@ -112,7 +108,7 @@ impl ManifestLoadFailure {
         Self {
             package_key: root.package_key().to_owned(),
             scenario_relative_path: SCENARIO_MANIFEST_PATH.to_owned(),
-            cause: safe_asset_error_cause(error),
+            cause: safe_asset_load_cause(error, "manifest asset"),
         }
     }
 
@@ -158,81 +154,6 @@ pub(crate) fn track_active_manifest_load(
         LoadState::NotLoaded | LoadState::Loading | LoadState::Loaded => {
             active.status = ActiveManifestStatus::Loading;
             active.failure = None;
-        }
-    }
-}
-
-fn safe_asset_error_cause(error: &AssetLoadError) -> String {
-    match error {
-        AssetLoadError::AssetReaderError(AssetReaderError::NotFound(_)) => {
-            "manifest asset was not found".to_owned()
-        }
-        AssetLoadError::AssetReaderError(AssetReaderError::Io(error)) => {
-            format!("manifest asset I/O failed ({:?})", error.kind())
-        }
-        AssetLoadError::AssetReaderError(AssetReaderError::HttpError(status)) => {
-            format!("manifest asset request returned HTTP status {status}")
-        }
-        AssetLoadError::AssetLoaderError(error) => error
-            .error()
-            .downcast_ref::<ManifestAssetLoaderError>()
-            .map(ToString::to_string)
-            .unwrap_or_else(|| "manifest asset loader failed".to_owned()),
-        _ => "manifest asset loading failed".to_owned(),
-    }
-}
-
-#[derive(Default, TypePath)]
-struct ManifestAssetLoader;
-
-impl AssetLoader for ManifestAssetLoader {
-    type Asset = Manifest;
-    type Settings = ();
-    type Error = ManifestAssetLoaderError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(ManifestAssetLoaderError::Io)?;
-        let document = std::str::from_utf8(&bytes).map_err(ManifestAssetLoaderError::Utf8)?;
-        scenario_yaml::from_str(document).map_err(ManifestAssetLoaderError::Yaml)
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
-    }
-}
-
-#[derive(Debug)]
-enum ManifestAssetLoaderError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-
-impl fmt::Display for ManifestAssetLoaderError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(error) => write!(formatter, "manifest read failed: {error}"),
-            Self::Utf8(error) => write!(formatter, "manifest is not UTF-8: {error}"),
-            Self::Yaml(error) => write!(formatter, "manifest YAML is invalid: {error}"),
-        }
-    }
-}
-
-impl Error for ManifestAssetLoaderError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::Io(error) => Some(error),
-            Self::Utf8(error) => Some(error),
-            Self::Yaml(error) => Some(error),
         }
     }
 }
@@ -359,6 +280,7 @@ mod tests {
         let failure = active.failure().expect("failure should retain diagnostics");
         assert_eq!(failure.package_key(), "broken_campaign");
         assert_eq!(failure.scenario_relative_path(), "manifest.yaml");
+        assert!(failure.cause().starts_with("manifest YAML is invalid: "));
         assert!(failure.cause().contains("title.cursor_icon"));
         assert!(failure.cause().contains("line 8 column 3"));
         assert!(
@@ -429,7 +351,7 @@ mod tests {
         let error = AssetLoadError::EmptyPath(AssetPath::from("private/host-shaped-detail"));
 
         assert_eq!(
-            safe_asset_error_cause(&error),
+            safe_asset_load_cause(&error, "manifest asset"),
             "manifest asset loading failed"
         );
     }
