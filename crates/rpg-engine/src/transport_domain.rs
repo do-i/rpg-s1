@@ -6,11 +6,8 @@ use std::{
 };
 
 use bevy::{
-    asset::{
-        AssetApp, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState, io::Reader,
-    },
+    asset::{AssetApp, AssetServer, Assets, Handle, LoadState},
     prelude::*,
-    reflect::TypePath,
 };
 
 use crate::{
@@ -21,8 +18,7 @@ use crate::{
     scenario_root::ScenarioRoot,
     scenario_spatial::Position,
     scenario_transport::{AtlasRegion, TransportCatalog, TravelAnchor},
-    scenario_yaml,
-    world_audio::WorldYamlAssetLoaderError,
+    scenario_yaml_asset::ScenarioYamlLoader,
 };
 
 pub(crate) struct TransportDomainPlugin;
@@ -30,7 +26,9 @@ pub(crate) struct TransportDomainPlugin;
 impl Plugin for TransportDomainPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<TransportCatalog>()
-            .init_asset_loader::<TransportCatalogAssetLoader>()
+            .register_asset_loader(ScenarioYamlLoader::<TransportCatalog>::new(
+                "transport catalog",
+            ))
             .init_resource::<TransportDomain>()
             .init_resource::<TransportCatalogLoad>()
             .add_systems(OnEnter(AppState::World), begin_transport_load)
@@ -516,32 +514,6 @@ fn track_transport_load(
             domain.failure = Some(format!("transport catalog failed to load: {error}"));
         }
         _ => {}
-    }
-}
-
-#[derive(Default, TypePath)]
-struct TransportCatalogAssetLoader;
-
-impl AssetLoader for TransportCatalogAssetLoader {
-    type Asset = TransportCatalog;
-    type Settings = ();
-    type Error = WorldYamlAssetLoaderError;
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _: &Self::Settings,
-        _: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(WorldYamlAssetLoaderError::Io)?;
-        let text = std::str::from_utf8(&bytes).map_err(WorldYamlAssetLoaderError::Utf8)?;
-        scenario_yaml::from_str(text).map_err(WorldYamlAssetLoaderError::Yaml)
-    }
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
     }
 }
 

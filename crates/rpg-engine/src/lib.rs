@@ -60,6 +60,7 @@ mod scenario_map_report;
 mod scenario_map_sweep;
 pub mod scenario_new_game_assets;
 pub mod scenario_spatial;
+mod scenario_yaml_asset;
 pub mod service_domain;
 mod service_ui;
 mod sfx_cue;
@@ -124,6 +125,7 @@ use scenario_inventory::ScenarioInventory;
 use scenario_manifest::Manifest;
 use scenario_manifest_asset::{ActiveManifestLoad, ScenarioManifestAssetPlugin};
 use scenario_new_game_assets::ScenarioNewGameAssetsPlugin;
+use scenario_yaml_asset::ScenarioYamlLoader;
 use service_ui::ServiceUiPlugin;
 use title_screen::TitleScreenPlugin;
 use tmx_ground_asset::TmxGroundAssetPlugin;
@@ -132,11 +134,9 @@ use transport_ui::TransportUiPlugin;
 use tsx_atlas_asset::TsxAtlasAssetPlugin;
 use ui_theme::UiTheme;
 use world_actor::WorldActorPlugin;
-use world_audio::BgmIndexAssetLoader;
 use world_audio::WorldAudioPlugin;
 use world_debug_overlay::WorldDebugOverlayPlugin;
 use world_encounter::{BattleEntryPlugin, WorldEncounterPlugin};
-use world_interaction::SfxIndexAssetLoader;
 use world_interaction::WorldInteractionPlugin;
 use world_object::WorldObjectPlugin;
 use world_player::WorldPlayerPlugin;
@@ -276,8 +276,8 @@ impl Plugin for ScenarioAudioAssetPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<BgmIndex>()
             .init_asset::<SfxIndex>()
-            .init_asset_loader::<BgmIndexAssetLoader>()
-            .init_asset_loader::<SfxIndexAssetLoader>();
+            .register_asset_loader(ScenarioYamlLoader::<BgmIndex>::new("BGM index"))
+            .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"));
     }
 }
 

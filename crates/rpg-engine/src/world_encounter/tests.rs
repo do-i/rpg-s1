@@ -31,12 +31,12 @@ use crate::{
     name_entry::NameEntryConfirmed,
     runtime_map::RuntimeMapId,
     scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
+    scenario_yaml_asset::ScenarioYamlLoader,
     test_support::headless_title_app_with_asset_base,
     tmx_ground_asset::TmxGroundAssetPlugin,
     tsx_atlas_asset::TsxAtlasAssetPlugin,
     world_actor::{WorldActorPlugin, WorldActorState},
     world_audio::WorldAudioPlugin,
-    world_interaction::SfxIndexAssetLoader,
     world_object::{WorldObjectPlugin, WorldObjectState},
 };
 
@@ -55,7 +55,7 @@ fn the_enemy_just_defeated_is_restored_hidden_from_its_first_frame() {
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
-        .init_asset_loader::<SfxIndexAssetLoader>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -150,7 +150,7 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
-        .init_asset_loader::<SfxIndexAssetLoader>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -359,7 +359,7 @@ fn production_open_plains_and_caves_spawn_or_gracefully_skip_encounters_without_
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
-        .init_asset_loader::<SfxIndexAssetLoader>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)
@@ -560,7 +560,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
-        .init_asset_loader::<SfxIndexAssetLoader>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -773,7 +773,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         .add_plugins(FieldMenuDomainPlugin)
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
-        .init_asset_loader::<SfxIndexAssetLoader>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)

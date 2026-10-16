@@ -3,13 +3,9 @@
 use std::{error::Error, fmt};
 
 use bevy::{
-    asset::{
-        AssetApp, AssetLoadError, AssetLoader, AssetServer, Assets, Handle, LoadContext, LoadState,
-        io::{AssetReaderError, Reader},
-    },
+    asset::{AssetApp, AssetLoadError, AssetServer, Assets, Handle, LoadState},
     ecs::schedule::IntoScheduleConfigs,
     prelude::{App, Plugin, Res, ResMut, Resource, Update},
-    reflect::TypePath,
 };
 
 use crate::{
@@ -21,7 +17,7 @@ use crate::{
     },
     scenario_party::PartyCatalog,
     scenario_root::ScenarioRoot,
-    scenario_yaml::{self, ScenarioYamlError},
+    scenario_yaml_asset::{ScenarioYamlLoader, safe_asset_load_cause},
 };
 
 pub struct ScenarioNewGameAssetsPlugin;
@@ -31,9 +27,11 @@ impl Plugin for ScenarioNewGameAssetsPlugin {
         app.init_asset::<PartyCatalog>()
             .init_asset::<BalanceData>()
             .init_asset::<CutsceneDialogue>()
-            .init_asset_loader::<PartyCatalogAssetLoader>()
-            .init_asset_loader::<BalanceDataAssetLoader>()
-            .init_asset_loader::<CutsceneDialogueAssetLoader>()
+            .register_asset_loader(ScenarioYamlLoader::<PartyCatalog>::new("party catalog"))
+            .register_asset_loader(ScenarioYamlLoader::<BalanceData>::new("balance data"))
+            .register_asset_loader(ScenarioYamlLoader::<CutsceneDialogue>::new(
+                "intro dialogue",
+            ))
             .init_resource::<ActiveNewGameInputs>()
             .add_systems(
                 Update,
@@ -131,7 +129,7 @@ impl NewGameInputsLoadFailure {
         Self {
             package_key: root.package_key().to_owned(),
             scenario_relative_path: path.to_owned(),
-            cause: safe_cause(error),
+            cause: safe_asset_load_cause(error, "asset"),
         }
     }
     fn manifest_failure(failure: &ManifestLoadFailure) -> Self {
@@ -262,76 +260,6 @@ pub(crate) fn track_new_game_inputs(
         active.failure = None;
     }
 }
-
-fn safe_cause(error: &AssetLoadError) -> String {
-    match error {
-        AssetLoadError::AssetReaderError(AssetReaderError::NotFound(_)) => {
-            "asset was not found".to_owned()
-        }
-        AssetLoadError::AssetReaderError(AssetReaderError::Io(error)) => {
-            format!("asset I/O failed ({:?})", error.kind())
-        }
-        AssetLoadError::AssetLoaderError(error) => error
-            .error()
-            .downcast_ref::<NewGameAssetLoaderError>()
-            .map(ToString::to_string)
-            .unwrap_or_else(|| "asset loader failed".to_owned()),
-        _ => "asset loading failed".to_owned(),
-    }
-}
-
-#[derive(Default, TypePath)]
-struct PartyCatalogAssetLoader;
-#[derive(Default, TypePath)]
-struct BalanceDataAssetLoader;
-#[derive(Default, TypePath)]
-struct CutsceneDialogueAssetLoader;
-macro_rules! loader {
-    ($type:ty, $loader:ident) => {
-        impl AssetLoader for $loader {
-            type Asset = $type;
-            type Settings = ();
-            type Error = NewGameAssetLoaderError;
-            async fn load(
-                &self,
-                reader: &mut dyn Reader,
-                _: &(),
-                _: &mut LoadContext<'_>,
-            ) -> Result<$type, Self::Error> {
-                let mut bytes = Vec::new();
-                reader
-                    .read_to_end(&mut bytes)
-                    .await
-                    .map_err(NewGameAssetLoaderError::Io)?;
-                let document =
-                    std::str::from_utf8(&bytes).map_err(NewGameAssetLoaderError::Utf8)?;
-                scenario_yaml::from_str(document).map_err(NewGameAssetLoaderError::Yaml)
-            }
-            fn extensions(&self) -> &[&str] {
-                &["yaml", "yml"]
-            }
-        }
-    };
-}
-loader!(PartyCatalog, PartyCatalogAssetLoader);
-loader!(BalanceData, BalanceDataAssetLoader);
-loader!(CutsceneDialogue, CutsceneDialogueAssetLoader);
-#[derive(Debug)]
-enum NewGameAssetLoaderError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-impl fmt::Display for NewGameAssetLoaderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(e) => write!(f, "read failed: {e}"),
-            Self::Utf8(e) => write!(f, "asset is not UTF-8: {e}"),
-            Self::Yaml(e) => write!(f, "YAML is invalid: {e}"),
-        }
-    }
-}
-impl Error for NewGameAssetLoaderError {}
 
 #[cfg(test)]
 mod tests {

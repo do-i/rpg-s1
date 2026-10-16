@@ -8,6 +8,7 @@ use crate::{
     save_data::SavePayload,
     save_store::SaveStore,
     scenario_quest::QuestCatalogFile,
+    scenario_yaml,
     test_support::persistence::{FixtureDirectory, fresh_game, load, save},
 };
 

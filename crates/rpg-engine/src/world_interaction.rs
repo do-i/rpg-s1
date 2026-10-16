@@ -3,10 +3,9 @@
 use std::{error::Error, fmt};
 
 use bevy::{
-    asset::{AssetApp, AssetLoader, LoadContext, LoadState, io::Reader},
+    asset::{AssetApp, LoadState},
     audio::Volume,
     prelude::*,
-    reflect::TypePath,
 };
 
 use crate::{
@@ -28,7 +27,7 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position},
-    scenario_yaml::{self, ScenarioYamlError},
+    scenario_yaml_asset::ScenarioYamlLoader,
     service_ui::{ServiceRequest, ServiceUiState},
     sfx_cue::cue,
     transport_domain::TravelMode,
@@ -50,7 +49,7 @@ pub(crate) struct WorldInteractionPlugin;
 impl Plugin for WorldInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<DialogueDocument>()
-            .init_asset_loader::<DialogueDocumentAssetLoader>()
+            .register_asset_loader(ScenarioYamlLoader::<DialogueDocument>::new("dialogue"))
             .init_resource::<WorldInteractionState>()
             .add_systems(OnEnter(AppState::World), begin_world_interactions)
             .add_systems(
@@ -1480,100 +1479,6 @@ fn cleanup_world_interactions(
     }
     *state = WorldInteractionState::default();
 }
-
-#[derive(Default, TypePath)]
-struct DialogueDocumentAssetLoader;
-
-impl AssetLoader for DialogueDocumentAssetLoader {
-    type Asset = DialogueDocument;
-    type Settings = ();
-    type Error = DialogueDocumentAssetError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(DialogueDocumentAssetError::Io)?;
-        let document = std::str::from_utf8(&bytes).map_err(DialogueDocumentAssetError::Utf8)?;
-        scenario_yaml::from_str(document).map_err(DialogueDocumentAssetError::Yaml)
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
-    }
-}
-
-#[derive(Debug)]
-enum DialogueDocumentAssetError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-
-impl fmt::Display for DialogueDocumentAssetError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(error) => write!(formatter, "dialogue read failed: {error}"),
-            Self::Utf8(error) => write!(formatter, "dialogue is not UTF-8: {error}"),
-            Self::Yaml(error) => write!(formatter, "dialogue YAML is invalid: {error}"),
-        }
-    }
-}
-
-impl Error for DialogueDocumentAssetError {}
-
-#[derive(Default, TypePath)]
-pub(crate) struct SfxIndexAssetLoader;
-
-impl AssetLoader for SfxIndexAssetLoader {
-    type Asset = SfxIndex;
-    type Settings = ();
-    type Error = SfxIndexAssetError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader
-            .read_to_end(&mut bytes)
-            .await
-            .map_err(SfxIndexAssetError::Io)?;
-        let document = std::str::from_utf8(&bytes).map_err(SfxIndexAssetError::Utf8)?;
-        scenario_yaml::from_str(document).map_err(SfxIndexAssetError::Yaml)
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
-    }
-}
-
-#[derive(Debug)]
-pub(crate) enum SfxIndexAssetError {
-    Io(std::io::Error),
-    Utf8(std::str::Utf8Error),
-    Yaml(ScenarioYamlError),
-}
-
-impl fmt::Display for SfxIndexAssetError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(error) => write!(formatter, "SFX index read failed: {error}"),
-            Self::Utf8(error) => write!(formatter, "SFX index is not UTF-8: {error}"),
-            Self::Yaml(error) => write!(formatter, "SFX index YAML is invalid: {error}"),
-        }
-    }
-}
-
-impl Error for SfxIndexAssetError {}
 
 #[cfg(test)]
 mod tests {
