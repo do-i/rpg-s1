@@ -1,3 +1,8 @@
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    time::Duration,
+};
+
 use bevy::{input::InputSystems, input::gamepad::Gamepad, prelude::*};
 
 use crate::{
@@ -15,16 +20,54 @@ pub(crate) use crate::input_bindings::{AppAction, MovementAction};
 /// menu that world opens.
 const STICK_DEADZONE: f32 = 0.4;
 
+/// How long a menu direction must be held before the cursor starts moving on its own.
+const MENU_REPEAT_DELAY: Duration = Duration::from_millis(400);
+
+/// The gap between cursor steps once a held menu direction is repeating.
+const MENU_REPEAT_INTERVAL: Duration = Duration::from_millis(90);
+
+/// The menu actions that auto-repeat while held. Back, Confirm and Travel never do.
+const MENU_DIRECTIONS: [AppAction; 4] = [
+    AppAction::Up,
+    AppAction::Down,
+    AppAction::Left,
+    AppAction::Right,
+];
+
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
     just_pressed: [bool; 7],
+    /// Held menu directions whose auto-repeat fired this frame. Kept apart from `just_pressed` so
+    /// that only cursor movement repeats: battle reads a Right press as Confirm, and that must not
+    /// fire again and again under a held key.
+    repeated: [bool; 7],
     movement_pressed: [bool; 4],
+    /// Set whenever a screen reads menu navigation, and cleared by the next input frame. A hold
+    /// only repeats while some screen is listening, so walking with an arrow held and then
+    /// opening a menu does not send its cursor racing.
+    navigation_read: AtomicBool,
 }
 
 impl ActionState {
     pub(crate) fn just_pressed(&self, action: AppAction) -> bool {
         self.just_pressed[action.index()]
+    }
+
+    /// One cursor step toward `back` (-1) or `forward` (+1), a fresh press beating a repeat.
+    fn navigation_step(&self, back: AppAction, forward: AppAction) -> Option<isize> {
+        self.navigation_read.store(true, Ordering::Relaxed);
+        if self.just_pressed(back) {
+            Some(-1)
+        } else if self.just_pressed(forward) {
+            Some(1)
+        } else if self.repeated[back.index()] {
+            Some(-1)
+        } else if self.repeated[forward.index()] {
+            Some(1)
+        } else {
+            None
+        }
     }
 
     /// Resolves same-frame menu navigation to one movement.
@@ -33,14 +76,10 @@ impl ActionState {
     /// Down in one frame has no source-defined simultaneous-key outcome. The Rust port fixes
     /// that ambiguity: Up wins. This prevents a conflicting pair from taking two menu steps and
     /// keeps the result independent of platform event ordering.
+    ///
+    /// A held direction also steps here once it starts repeating; see [`MenuRepeat`].
     pub(crate) fn menu_navigation(&self) -> Option<isize> {
-        if self.just_pressed(AppAction::Up) {
-            Some(-1)
-        } else if self.just_pressed(AppAction::Down) {
-            Some(1)
-        } else {
-            None
-        }
+        self.navigation_step(AppAction::Up, AppAction::Down)
     }
 
     /// Resolves same-frame horizontal menu navigation to one movement.
@@ -49,13 +88,7 @@ impl ActionState {
     /// alongside Up/Down (`battle_input.py:106-109`). Left wins a conflicting pair for the same
     /// reason Up does above: one keypress pair must never take two steps.
     pub(crate) fn menu_navigation_horizontal(&self) -> Option<isize> {
-        if self.just_pressed(AppAction::Left) {
-            Some(-1)
-        } else if self.just_pressed(AppAction::Right) {
-            Some(1)
-        } else {
-            None
-        }
+        self.navigation_step(AppAction::Left, AppAction::Right)
     }
 
     /// Resolves the currently held source-compatible eight-way movement input.
@@ -98,6 +131,16 @@ impl ActionState {
             }
         }
         for (action, value) in [
+            (AppAction::Up, NormalizedAction::MenuRepeatUp),
+            (AppAction::Down, NormalizedAction::MenuRepeatDown),
+            (AppAction::Left, NormalizedAction::MenuRepeatLeft),
+            (AppAction::Right, NormalizedAction::MenuRepeatRight),
+        ] {
+            if self.repeated[action.index()] {
+                normalized.push(value);
+            }
+        }
+        for (action, value) in [
             (MovementAction::Up, NormalizedAction::MoveUp),
             (MovementAction::Left, NormalizedAction::MoveLeft),
             (MovementAction::Down, NormalizedAction::MoveDown),
@@ -114,6 +157,7 @@ impl ActionState {
 
     pub(crate) fn replace_with_normalized(&mut self, normalized: &[NormalizedAction]) {
         self.just_pressed.fill(false);
+        self.repeated.fill(false);
         self.movement_pressed.fill(false);
         for action in normalized {
             match action {
@@ -124,6 +168,10 @@ impl ActionState {
                 NormalizedAction::MenuLeft => self.just_pressed[AppAction::Left.index()] = true,
                 NormalizedAction::MenuRight => self.just_pressed[AppAction::Right.index()] = true,
                 NormalizedAction::Travel => self.just_pressed[AppAction::Travel.index()] = true,
+                NormalizedAction::MenuRepeatUp => self.repeated[AppAction::Up.index()] = true,
+                NormalizedAction::MenuRepeatDown => self.repeated[AppAction::Down.index()] = true,
+                NormalizedAction::MenuRepeatLeft => self.repeated[AppAction::Left.index()] = true,
+                NormalizedAction::MenuRepeatRight => self.repeated[AppAction::Right.index()] = true,
                 NormalizedAction::MoveUp => {
                     self.movement_pressed[MovementAction::Up.index()] = true
                 }
@@ -172,9 +220,8 @@ impl StickDirection {
 /// The previous frame's stick direction, so a stick can drive edge-triggered menu navigation.
 ///
 /// Menu actions are edge-triggered; a stick reports a level. Without this, holding the stick would
-/// step a menu every frame — the one behavior the keyboard path is careful never to do. An edge is
-/// emitted only when an axis newly leaves center or reverses, and there is deliberately no
-/// auto-repeat, because the keyboard has none either.
+/// step a menu every frame. An edge is emitted only when an axis newly leaves center or reverses;
+/// a stick held off center then repeats on the same schedule as a held key, via [`MenuRepeat`].
 #[derive(Resource, Default)]
 pub(crate) struct StickNavigation {
     previous: StickDirection,
@@ -193,6 +240,50 @@ impl StickNavigation {
     }
 }
 
+/// How long each menu direction has been held, so a long press walks the cursor.
+///
+/// Repeats start after [`MENU_REPEAT_DELAY`] and then come every [`MENU_REPEAT_INTERVAL`]. A hold
+/// that spans a frame in which no screen read menu navigation goes stale and never repeats until
+/// it is released: the arrows double as walking keys, and a direction held through the world
+/// must not scroll the menu or dialogue that opens under it.
+#[derive(Resource, Default)]
+pub(crate) struct MenuRepeat {
+    held_for: [Option<Duration>; 7],
+}
+
+impl MenuRepeat {
+    /// Advances one direction by `delta`, returning whether its repeat fires this frame.
+    fn advance(&mut self, action: AppAction, held: bool, began: bool, delta: Duration) -> bool {
+        let slot = &mut self.held_for[action.index()];
+        if !held {
+            *slot = None;
+            return false;
+        }
+        if began {
+            *slot = Some(Duration::ZERO);
+            return false;
+        }
+        let Some(before) = *slot else {
+            return false;
+        };
+        let after = before + delta;
+        *slot = Some(after);
+        repeats_due(after) > repeats_due(before)
+    }
+
+    fn mark_stale(&mut self) {
+        self.held_for.fill(None);
+    }
+}
+
+/// How many repeat steps a hold of this length has earned.
+fn repeats_due(held: Duration) -> u128 {
+    match held.checked_sub(MENU_REPEAT_DELAY) {
+        Some(past) => 1 + past.as_nanos() / MENU_REPEAT_INTERVAL.as_nanos(),
+        None => 0,
+    }
+}
+
 pub(crate) struct ActionInputPlugin;
 
 impl Plugin for ActionInputPlugin {
@@ -200,6 +291,7 @@ impl Plugin for ActionInputPlugin {
         app.init_resource::<PlayerOptions>()
             .init_resource::<ActionState>()
             .init_resource::<StickNavigation>()
+            .init_resource::<MenuRepeat>()
             .add_systems(PreUpdate, update_action_state.after(InputSystems));
     }
 }
@@ -231,6 +323,16 @@ fn menu_stick_edge(action: AppAction, began: StickDirection) -> bool {
     }
 }
 
+fn menu_stick_held(action: AppAction, current: StickDirection) -> bool {
+    match action {
+        AppAction::Up => current.vertical == -1,
+        AppAction::Down => current.vertical == 1,
+        AppAction::Left => current.horizontal == -1,
+        AppAction::Right => current.horizontal == 1,
+        AppAction::Back | AppAction::Confirm | AppAction::Travel => false,
+    }
+}
+
 fn movement_stick_held(action: MovementAction, current: StickDirection) -> bool {
     match action {
         MovementAction::Up => current.vertical == -1,
@@ -244,7 +346,9 @@ pub(crate) fn update_action_state(
     keys: Res<ButtonInput<KeyCode>>,
     gamepads: Query<&Gamepad>,
     options: Res<PlayerOptions>,
+    time: Res<Time>,
     mut stick_navigation: ResMut<StickNavigation>,
+    mut menu_repeat: ResMut<MenuRepeat>,
     mut actions: ResMut<ActionState>,
 ) {
     let bindings: &InputBindings = &options.bindings;
@@ -263,6 +367,21 @@ pub(crate) fn update_action_state(
             .any(|button| gamepads.iter().any(|gamepad| gamepad.just_pressed(*button)));
         actions.just_pressed[action.index()] =
             from_keyboard || from_gamepad || menu_stick_edge(action, began);
+    }
+    if !actions.navigation_read.swap(false, Ordering::Relaxed) {
+        menu_repeat.mark_stale();
+    }
+    actions.repeated.fill(false);
+    for action in MENU_DIRECTIONS {
+        let target = BindingTarget::Menu(action);
+        let held = bindings.keys(target).iter().any(|key| keys.pressed(*key))
+            || bindings
+                .buttons(target)
+                .iter()
+                .any(|button| gamepads.iter().any(|gamepad| gamepad.pressed(*button)))
+            || menu_stick_held(action, stick);
+        actions.repeated[action.index()] =
+            menu_repeat.advance(action, held, actions.just_pressed(action), time.delta());
     }
     for action in MovementAction::ALL {
         let target = BindingTarget::Movement(action);
@@ -459,6 +578,90 @@ mod tests {
                 .menu_navigation_horizontal(),
             Some(1)
         );
+    }
+
+    /// Runs one frame with `key` held, then reads the frame as a listening menu would.
+    fn held_frame(app: &mut App, read: bool) -> (Option<isize>, Option<isize>, bool) {
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        let actions = app.world().resource::<ActionState>();
+        if read {
+            (
+                actions.menu_navigation(),
+                actions.menu_navigation_horizontal(),
+                actions.just_pressed(AppAction::Right),
+            )
+        } else {
+            (None, None, actions.just_pressed(AppAction::Right))
+        }
+    }
+
+    fn repeat_app() -> App {
+        let mut app = action_app();
+        app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
+            Duration::from_millis(50),
+        ));
+        app.update();
+        app
+    }
+
+    #[test]
+    fn a_held_direction_repeats_after_a_delay_while_a_menu_listens() {
+        let mut app = repeat_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowDown);
+        let steps: Vec<_> = (0..16).map(|_| held_frame(&mut app, true).0).collect();
+
+        // The press itself, a 400 ms pause, then a step each time another 90 ms has passed —
+        // every other 50 ms frame.
+        let mut expected = vec![Some(1)];
+        expected.extend([None; 7]);
+        expected.extend([Some(1), None].repeat(4));
+        assert_eq!(steps, expected);
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .release(KeyCode::ArrowDown);
+        assert_eq!(held_frame(&mut app, true).0, None);
+    }
+
+    #[test]
+    fn a_held_right_repeats_the_cursor_but_never_the_press() {
+        let mut app = repeat_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowRight);
+        let frames: Vec<_> = (0..12).map(|_| held_frame(&mut app, true)).collect();
+
+        assert!(frames[0].2, "the press itself is a Right edge");
+        assert!(frames[1..].iter().all(|frame| !frame.2));
+        assert!(frames[8..].iter().any(|frame| frame.1 == Some(1)));
+        assert!(frames.iter().all(|frame| frame.0.is_none()));
+    }
+
+    #[test]
+    fn a_direction_held_while_no_menu_listens_never_repeats() {
+        let mut app = repeat_app();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowDown);
+        // Walking: the press lands in the world, which never reads menu navigation.
+        held_frame(&mut app, false);
+        held_frame(&mut app, false);
+        // A menu opens under the still-held key and listens from now on.
+        assert!((0..20).all(|_| held_frame(&mut app, true).0.is_none()));
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .release(KeyCode::ArrowDown);
+        held_frame(&mut app, true);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowDown);
+        assert_eq!(held_frame(&mut app, true).0, Some(1));
     }
 
     #[test]
