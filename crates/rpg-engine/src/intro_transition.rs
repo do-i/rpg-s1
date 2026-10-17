@@ -7,9 +7,8 @@ use crate::{
     game_state::GameState,
     intro_completion::IntroCompletionSet,
     intro_dialogue::{IntroDialogueCompleted, IntroDialogueSet},
-    runtime_map::{RuntimeMapId, RuntimeMapIdError},
-    scenario_dialogue::{DialogueFade, DialogueTransition},
-    scenario_spatial::{CardinalDirection, Position},
+    runtime_map::RuntimeMapId,
+    scenario_dialogue::DialogueFade,
 };
 
 pub(crate) struct IntroTransitionPlugin;
@@ -17,7 +16,6 @@ pub(crate) struct IntroTransitionPlugin;
 impl Plugin for IntroTransitionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<IntroTransitionState>()
-            .init_resource::<PendingWorldTransition>()
             .add_systems(OnEnter(AppState::Dialogue), reset_intro_transition)
             .add_systems(
                 Update,
@@ -28,97 +26,19 @@ impl Plugin for IntroTransitionPlugin {
     }
 }
 
-/// Exact source-authored arrival data retained for the future World renderer.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct WorldTransition {
-    map: RuntimeMapId,
-    position: Position,
-    fade: DialogueFade,
-    facing: Option<CardinalDirection>,
-}
-
-impl WorldTransition {
-    fn try_from_authored(authored: &DialogueTransition) -> Result<Self, RuntimeMapIdError> {
-        Ok(Self {
-            map: RuntimeMapId::try_new(authored.map.clone())?,
-            position: authored.position,
-            fade: authored.fade,
-            facing: authored.facing,
-        })
-    }
-
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "consumed by the future World renderer")
-    )]
-    pub(crate) fn map(&self) -> &RuntimeMapId {
-        &self.map
-    }
-
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "consumed by the future World renderer")
-    )]
-    pub(crate) const fn position(&self) -> Position {
-        self.position
-    }
-
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "consumed by the future World renderer")
-    )]
-    pub(crate) const fn fade(&self) -> DialogueFade {
-        self.fade
-    }
-
-    pub(crate) const fn facing(&self) -> Option<CardinalDirection> {
-        self.facing
-    }
-}
-
-/// One arrival waiting for the later World presentation systems to consume its fade.
-#[derive(Debug, Default, Eq, PartialEq, Resource)]
-pub(crate) struct PendingWorldTransition(Option<WorldTransition>);
-
-impl PendingWorldTransition {
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "consumed by the future World renderer")
-    )]
-    pub(crate) fn get(&self) -> Option<&WorldTransition> {
-        self.0.as_ref()
-    }
-
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "M3.16 retains the arrival until the future World renderer consumes it"
-        )
-    )]
-    pub(crate) fn take(&mut self) -> Option<WorldTransition> {
-        self.0.take()
-    }
-}
-
 #[derive(Debug, Default, Resource)]
 struct IntroTransitionState {
     applied: bool,
 }
 
-fn reset_intro_transition(
-    mut state: ResMut<IntroTransitionState>,
-    mut pending: ResMut<PendingWorldTransition>,
-) {
+fn reset_intro_transition(mut state: ResMut<IntroTransitionState>) {
     state.applied = false;
-    pending.0 = None;
 }
 
 fn apply_intro_transition(
     mut completions: MessageReader<IntroDialogueCompleted>,
     app_state: Option<Res<State<AppState>>>,
     game: Option<ResMut<GameState>>,
-    mut pending: ResMut<PendingWorldTransition>,
     mut state: ResMut<IntroTransitionState>,
     mut transitions: MessageWriter<AppStateTransitionRequest>,
 ) {
@@ -137,19 +57,21 @@ fn apply_intro_transition(
         let Some(authored) = completion.on_complete().transition.as_ref() else {
             continue;
         };
-        let Ok(arrival) = WorldTransition::try_from_authored(authored) else {
+        let Ok(map) = RuntimeMapId::try_new(authored.map.clone()) else {
             continue;
         };
 
-        // All validation is complete before the infallible mutation below. This Update system is
-        // ordered after the independent flag reader; the central transition request consumer is
-        // in PostUpdate, so map and pending fade state are committed before World can be entered.
-        let facing = arrival.facing().unwrap_or_else(|| game.map().facing());
-        game.map_mut()
-            .move_to(arrival.map.clone(), arrival.position, facing);
-        pending.0 = Some(arrival);
+        // The flag reader runs first and the state request is consumed in PostUpdate, so
+        // the complete logical arrival is installed before World entry.
+        let facing = authored.facing.unwrap_or_else(|| game.map().facing());
+        game.map_mut().move_to(map, authored.position, facing);
         state.applied = true;
-        transitions.write(AppStateTransitionRequest::new(AppState::World));
+        match authored.fade {
+            // WorldTransitionPlugin holds black until publication, then fades in and unlocks.
+            DialogueFade::In => {
+                transitions.write(AppStateTransitionRequest::new(AppState::World));
+            }
+        }
     }
 }
 
@@ -170,7 +92,7 @@ mod tests {
         scenario_dialogue::DialogueActions,
         scenario_new_game_assets::{ActiveNewGameInputs, ActiveNewGameInputsStatus},
         scenario_root::ScenarioRoot,
-        scenario_spatial::CardinalDirection,
+        scenario_spatial::{CardinalDirection, Position},
         scenario_yaml,
         test_support::headless_title_app_with_asset_base,
     };
@@ -300,29 +222,39 @@ on_complete:
     }
 
     #[test]
-    fn authored_transition_converts_exactly_and_rejects_an_empty_runtime_map_id() {
-        let authored: DialogueTransition =
-            scenario_yaml::from_str("map: exact_arrival\nposition: [-3, 12]\nfade: in\n").unwrap();
-        let transition = WorldTransition::try_from_authored(&authored).unwrap();
+    fn invalid_runtime_map_id_preserves_location_and_allows_a_later_valid_arrival() {
+        let package = InventedPackage::new();
+        let mut app = installed_dialogue_app(&package);
+        let original_map = app.world().resource::<GameState>().map().clone();
+        let mut invalid = transition_actions();
+        invalid.transition.as_mut().unwrap().map.clear();
+        app.world_mut()
+            .write_message(IntroDialogueCompleted::for_test(invalid));
+        app.update();
 
-        assert_eq!(transition.map().as_str(), "exact_arrival");
-        assert_eq!(transition.position(), Position::new(-3, 12));
-        assert_eq!(transition.fade(), DialogueFade::In);
-
-        let expected = transition.clone();
-        let mut pending = PendingWorldTransition(Some(transition));
-        assert_eq!(pending.get(), Some(&expected));
-        assert_eq!(pending.take(), Some(expected));
-        assert!(
-            pending.take().is_none(),
-            "an arrival can be consumed only once"
+        assert_eq!(app.world().resource::<GameState>().map(), &original_map);
+        assert_eq!(
+            app.world()
+                .resource::<Messages<AppStateTransitionRequest>>()
+                .len(),
+            0
+        );
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
         );
 
-        let empty: DialogueTransition =
-            scenario_yaml::from_str("map: \"\"\nposition: [1, 2]\nfade: in\n").unwrap();
+        app.world_mut()
+            .write_message(IntroDialogueCompleted::for_test(transition_actions()));
+        app.update();
+        let game = app.world().resource::<GameState>();
+        assert_eq!(game.map().current().unwrap().as_str(), "injected_arrival");
+        assert_eq!(game.map().position(), Position::new(3, 4));
         assert_eq!(
-            WorldTransition::try_from_authored(&empty),
-            Err(RuntimeMapIdError)
+            app.world()
+                .resource::<Messages<AppStateTransitionRequest>>()
+                .len(),
+            1
         );
     }
 
@@ -385,28 +317,11 @@ on_complete:
             expected_rng.next_u64(),
             "transition must not advance gameplay RNG"
         );
-        let pending = app
-            .world()
-            .resource::<PendingWorldTransition>()
-            .get()
-            .expect("authored arrival should remain pending");
-        assert_eq!(pending.map().as_str(), "invented_arrival");
-        assert_eq!(pending.position(), Position::new(8, 9));
-        assert_eq!(pending.fade(), DialogueFade::In);
 
         app.update();
         assert_eq!(
             app.world().resource::<State<AppState>>().get(),
             &AppState::World
-        );
-        assert_eq!(
-            app.world()
-                .resource::<PendingWorldTransition>()
-                .get()
-                .unwrap()
-                .fade(),
-            DialogueFade::In,
-            "Dialogue cleanup must retain the pending fade for World"
         );
     }
 
@@ -419,12 +334,6 @@ on_complete:
             .write_message(IntroDialogueCompleted::for_test(DialogueActions::default()));
         app.update();
         assert_eq!(app.world().resource::<GameState>().map(), &original_map);
-        assert!(
-            app.world()
-                .resource::<PendingWorldTransition>()
-                .get()
-                .is_none()
-        );
         assert_eq!(
             app.world()
                 .resource::<Messages<AppStateTransitionRequest>>()
@@ -475,12 +384,6 @@ on_complete:
 
         app.update();
 
-        assert!(
-            app.world()
-                .resource::<PendingWorldTransition>()
-                .get()
-                .is_none()
-        );
         assert_eq!(
             app.world()
                 .resource::<Messages<AppStateTransitionRequest>>()
@@ -495,12 +398,6 @@ on_complete:
                 .resource::<GameState>()
                 .flags()
                 .is_set("injected_flag")
-        );
-        assert!(
-            app.world()
-                .resource::<PendingWorldTransition>()
-                .get()
-                .is_none()
         );
         assert_eq!(
             app.world().resource::<State<AppState>>().get(),

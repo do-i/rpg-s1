@@ -221,6 +221,105 @@ fn active_entities(world: &mut World) -> Vec<Entity> {
 }
 
 #[test]
+fn intro_arrival_uses_world_publication_and_fades_in_before_unlocking() {
+    use crate::{
+        intro_completion::IntroCompletionPlugin, intro_dialogue::IntroDialogueCompleted,
+        intro_transition::IntroTransitionPlugin,
+    };
+
+    #[derive(Resource)]
+    struct PublishArrival(bool);
+
+    for (authored_facing, expected_facing, expected_frame) in [
+        ("", CardinalDirection::Left, 9),
+        ("    facing: right\n", CardinalDirection::Right, 27),
+    ] {
+        let fixture = Fixture::new();
+        let mut app = fixture.app();
+        app.insert_state(AppState::Dialogue)
+            .add_message::<IntroDialogueCompleted>()
+            .add_plugins((IntroCompletionPlugin, IntroTransitionPlugin))
+            .insert_resource(PublishArrival(false))
+            .configure_sets(
+                Update,
+                crate::world_publication::WorldPublicationSet::Load
+                    .run_if(|gate: Res<PublishArrival>| gate.0),
+            );
+        app.update();
+        let actions = crate::scenario_yaml::from_str(&format!(
+            "set_flag: intro_arrived\ntransition:\n    map: destination\n    position: [1, 0]\n    fade: in\n{authored_facing}"
+        ))
+        .unwrap();
+        app.world_mut()
+            .write_message(IntroDialogueCompleted::for_test(actions));
+        app.update();
+
+        assert_eq!(
+            app.world().resource::<State<AppState>>().get(),
+            &AppState::Dialogue
+        );
+        let game = app.world().resource::<GameState>();
+        assert!(game.flags().is_set("intro_arrived"));
+        assert_eq!(game.map().current().unwrap().as_str(), "destination");
+        assert_eq!(game.map().position(), Position::new(1, 0));
+        assert_eq!(game.map().facing(), expected_facing);
+
+        // Hold publication to prove the fade cannot expose an incomplete arrival.
+        for _ in 0..5 {
+            app.update();
+            assert_eq!(
+                app.world().resource::<State<AppState>>().get(),
+                &AppState::World
+            );
+            let transition = app.world().resource::<WorldTransition>();
+            assert_eq!(transition.phase(), TransitionPhase::Publishing);
+            assert_eq!(transition.alpha(), 1.0);
+            assert!(transition.input_locked());
+            let mut overlay = app
+                .world_mut()
+                .query_filtered::<&BackgroundColor, With<WorldFadeOverlay>>();
+            assert_eq!(overlay.single(app.world()).unwrap().0.alpha(), 1.0);
+        }
+
+        app.world_mut().resource_mut::<PublishArrival>().0 = true;
+        wait_for(&mut app, TransitionPhase::FadingIn);
+        let transition = app.world().resource::<WorldTransition>();
+        assert_eq!(transition.alpha(), 1.0);
+        assert!(transition.input_locked());
+        assert!(transition.pending().is_none());
+        let mut player = app
+            .world_mut()
+            .query_filtered::<(&WorldPlayerMotion, &Sprite), With<WorldPlayer>>();
+        let (motion, sprite) = player.single(app.world()).unwrap();
+        assert_eq!(motion.tile_position(), Position::new(1, 0));
+        assert_eq!(sprite.texture_atlas.as_ref().unwrap().index, expected_frame);
+        assert_eq!(
+            app.world().resource::<GameState>().map().facing(),
+            expected_facing
+        );
+
+        app.update();
+        let transition = app.world().resource::<WorldTransition>();
+        let alpha = transition.alpha();
+        assert!(alpha > 0.0 && alpha < 1.0);
+        assert!(transition.input_locked());
+        let mut overlay = app
+            .world_mut()
+            .query_filtered::<&BackgroundColor, With<WorldFadeOverlay>>();
+        assert_eq!(overlay.single(app.world()).unwrap().0.alpha(), alpha);
+
+        wait_for(&mut app, TransitionPhase::Idle);
+        let transition = app.world().resource::<WorldTransition>();
+        assert_eq!(transition.alpha(), 0.0);
+        assert!(!transition.input_locked());
+        let mut overlay = app
+            .world_mut()
+            .query_filtered::<&BackgroundColor, With<WorldFadeOverlay>>();
+        assert_eq!(overlay.single(app.world()).unwrap().0.alpha(), 0.0);
+    }
+}
+
+#[test]
 fn late_npc_image_failure_restores_exact_source_entities_session_and_save_then_return_works() {
     let fixture = Fixture::new();
     fixture.write("data/maps/destination.yaml", b"id: destination\nname: Destination\ndismiss_companions: true\nnpcs:\n  - id: broken\n    name: Broken\n    position: [1, 1]\n    sprite: media/sprites/late.tsx\n");

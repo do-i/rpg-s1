@@ -1135,3 +1135,56 @@ Validation:
   test can only pass if the shared error survives Bevy's downcast.
 - Headless runtime sweeps over the shipped package: `map-sweep` 54/54 PASS,
   `encounter-sweep` 119 assets loaded with 0 failures, `dialogue-sweep` 0 errors.
+
+## RF-19 — Resolve obsolete intro-transition staging state
+
+Completed 2026-10-16. Baseline: `02e4e56`.
+
+The staging state was redundant. The shipped intro authors `town_01_ardel`, tile
+`[12, 8]`, and `fade: in`; it omits facing. `DialogueFade::In` is the only accepted
+fade value. The source World scene resets its `FadeController` on map load to
+black alpha 255 with input blocked, then fades in at 300 alpha units per second.
+The current native lifecycle already owns the equivalent arrival presentation:
+`WorldTransitionPlugin` resets on World entry, holds alpha 1 while the publication
+barrier waits for the complete destination, and starts the fade only after
+successful publication. Input unlocks at alpha 0. No missing intro behavior was
+found, so no P1 correction was needed.
+
+Removed the intro-only `WorldTransition` wrapper, `PendingWorldTransition`, their
+five dead-code suppressions, and the associated test assertions about stored
+staging data. `apply_intro_transition` still validates the runtime map ID before
+moving the logical map/position/facing in `GameState`, preserves omitted facing,
+and requests World once after the independent flag reader. An exhaustive match
+on the authored fade explicitly assigns `In` to the existing World lifecycle.
+No serialized types, scenario assets, RNG consumption, or presentation code
+changed.
+
+A new headless integration test runs the real intro completion/transition readers
+and World plugins against a disposable package. It passed before removing the
+staging state. It covers preserved and explicitly authored facing, holds the
+publication loaders to assert an opaque overlay and locked input, then publishes
+the destination and observes fade-in through a transparent overlay and unlocked
+input. The final test also checks the spawned player's tile and facing-specific
+sprite frame. The old wrapper-conversion test now checks observable rejection of
+an empty map ID, unchanged location/no World request, and a subsequent successful
+arrival. Existing completion, cancellation, duplicate-message, missing-game,
+flag, session-preservation, and RNG tests remain in place.
+
+Validation:
+
+- Before implementation: formatting, strict workspace/all-targets clippy, all
+  **1,091 workspace tests**, scenario validation against the unchanged baseline,
+  and all three runtime sweeps passed.
+- After implementation: `cargo fmt --all -- --check`, `git diff --check`, strict
+  workspace/all-targets clippy, and `cargo test --workspace --no-fail-fast` passed
+  (**1,092 tests**). The focused intro suite passed all 25 tests.
+- Scenario validation retained exactly the four accepted sorcerer unlock-flag
+  diagnostics, with no new or obsolete baseline entries.
+- Runtime sweeps: all 54 maps passed; dialogue covered 128 documents with zero
+  cycles/errors; encounters constructed 158 encounters and loaded 119 assets
+  without failures.
+- Asset-rights checker unit tests: all 5 passed.
+
+Raw logs are under ignored `temp/refactoring/rf19-*.log`. Verification was headless;
+no new interactive/visual playthrough or campaign acceptance is claimed. RF-19 is
+removed from the working queue; the plan edit remains uncommitted.
