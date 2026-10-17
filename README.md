@@ -64,15 +64,29 @@ After cloning, run these commands from the repository root:
 ```sh
 git lfs install
 git lfs pull
-cargo run -- play rusted_kingdoms --seed 1
+scripts/run.sh -- play rusted_kingdoms --seed 1
 ```
 
-Running `cargo run` with no arguments selects the same default scenario and
-seed. For an optimized build:
+Running `scripts/run.sh` with no arguments selects the same default scenario
+and seed. For an optimized build:
 
 ```sh
-cargo run --release -- play rusted_kingdoms --seed 1
+scripts/run.sh --release -- play rusted_kingdoms --seed 1
+scripts/build.sh --release --locked   # build only, into target/release
 ```
+
+`scripts/build.sh` and `scripts/run.sh` are the project build commands. Each
+first runs `scripts/update_asset_hashes.py --write`, which refreshes the
+SHA-256 of any edited home-grown asset (for example a map saved in Tiled) in
+`docs/asset-license-inventory.md`, then hands every argument unchanged to
+`cargo build` or `cargo run`. They need Python 3 and Git in addition to the
+requirements above. The refresh edits the ledger in place and never stages or
+commits it, so commit the ledger change alongside the asset. It refuses before
+Cargo starts if a third-party hash is stale or a tracked asset has no ledger
+row. Bare `cargo build`, `cargo run`, `cargo test`, and clippy do not refresh
+anything; CI and the release gate only check, with
+`scripts/update_asset_hashes.py --check`, and fail on a stale hash rather than
+repairing it.
 
 On Arch Linux without a Vulkan-capable GPU, the Mesa software Vulkan driver is
 available as `vulkan-swrast`:

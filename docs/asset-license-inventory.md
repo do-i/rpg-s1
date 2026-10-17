@@ -78,7 +78,11 @@ and structural errors still fail in either mode.
 Home-grown files need only a row in the home-grown table. Third-party files
 need a full `Asset entry` block (fields below) or a row in a third-party group
 whose shared fields fit them exactly. When a home-grown file is edited, just update its
-SHA-256; its approval stands.
+SHA-256; its approval stands. `scripts/build.sh` and `scripts/run.sh` do this automatically
+before Cargo starts, by running `scripts/update_asset_hashes.py --write`; commit the refreshed
+row with the asset. The updater rewrites only hash cells of existing rows in the home-grown
+table, never adds rows, and refuses on stale third-party hashes. `--check` (used by CI and the
+release gate) and `--dry-run` never write. Bare Cargo commands do not refresh hashes.
 
 ## Entry fields
 
