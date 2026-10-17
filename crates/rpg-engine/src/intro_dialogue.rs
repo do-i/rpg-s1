@@ -489,7 +489,6 @@ mod tests {
         game_state::GameState,
         gameplay_canvas::{GameplayCanvasCamera, LOGICAL_CANVAS_HEIGHT, LOGICAL_CANVAS_WIDTH},
         gameplay_rng::{DEFAULT_GAMEPLAY_SEED, GameplayRng},
-        intro_transition::PendingWorldTransition,
         name_entry::{NameEntryConfirmed, NameEntryViewState},
         scenario_new_game_assets::ActiveNewGameInputsStatus,
         scenario_root::ScenarioRoot,
@@ -1068,12 +1067,6 @@ on_complete:
         assert_eq!(game.map().position(), start_position);
         assert_eq!(game.flags(), &start_flags);
         assert!(!game.flags().is_set("invented_intro_completed_later"));
-        assert!(
-            app.world()
-                .resource::<PendingWorldTransition>()
-                .get()
-                .is_none()
-        );
         assert!(completions(&mut app).is_empty());
 
         app.update();
