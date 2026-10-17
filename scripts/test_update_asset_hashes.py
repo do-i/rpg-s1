@@ -174,6 +174,7 @@ class ReadOnlyModeTests(UpdaterTestCase):
 
         self.assertEqual(code, updater.EXIT_STALE)
         self.assertIn("ALI-0004", out)
+        self.assertIn("./scripts/build.sh", out)
         self.assertLedgerUnchanged(before)
         self.assertEqual(self.repo.ledger.stat().st_mtime_ns, mtime)
 

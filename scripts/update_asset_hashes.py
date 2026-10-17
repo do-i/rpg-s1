@@ -307,7 +307,10 @@ def run(repo_root: Path, ledger_path: Path, mode: str, lock_timeout: float) -> i
             print(f"Stale home-grown asset hashes ({len(changes)}):")
             for change in changes:
                 print(f"  - {change}")
-            print("Run this script with --write and commit the ledger.")
+            print(
+                "Run ./scripts/build.sh (or this script with --write) "
+                "and commit the refreshed ledger."
+            )
             return EXIT_STALE
         if mode == "dry-run":
             print(f"Would refresh {len(changes)} home-grown asset hash(es):")
