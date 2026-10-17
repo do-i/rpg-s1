@@ -1267,7 +1267,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0129 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/images/ui/ember_atlas.png` | `fedc104155fd24406064ef471417fbaf828070c968f8d6d83fa6d481a54aa659` | image / Ember Atlas parchment base map |
 | ALI-1033 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/images/ui/menu_icons.png` | `30ebea34c304d072ec74a3d7ab4f7ca4a923472aad2a9ec8958d24ad16a11ffe` | image / menu_icons.png |
 | ALI-0318 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/rusted_kingdoms.tiled-project` | `7ff120b8a32974ec9a29c77a2972e85e5a6e8e9bd624b55287e634c8831d219f` | tiled project / rusted_kingdoms.tiled-project |
-| ALI-0008 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` | `4ca57c3c9bac0af6cfdf1f40d0c76263c2da49677bcd0cdbbb57592956f447c7` | TMX / Ardel town map (`town_01_ardel`) |
+| ALI-0008 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx` | `07fd393a8ded90bb3ab574178c243887fac81ce981074940a411cf601feb70dc` | TMX / Ardel town map (`town_01_ardel`) |
 | ALI-0994 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `ec1adea9e78918c26092b1badfd2041e5fdc4c969415bb9a361b510e92104bcc` | map XML / town_01_ardel_epilogue.tmx |
 | ALI-0035 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` | `801869a04530bb8236bb6c4c08dce1a98c2fd1965b47691526960c4228519740` | Tiled map / town_01_ardel_house_01.tmx |
 | ALI-0319 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `a1ee734a54e287417ce8ae5270da6f2161a6ce8b93f263ac78284a21dda3cfb6` | map XML / town_01_ardel_inn_01.tmx |
