@@ -175,7 +175,11 @@ check_local_dev_pushed() {
 
 # The release workflow copies the tracked files selected after applying
 # release-assets-exclude.txt, so the rights gate audits that exact payload.
+# The read-only freshness check runs first so a stale home-grown hash names
+# its fix (./scripts/build.sh) instead of surfacing as a generic mismatch.
 check_asset_rights() {
+    echo "Checking asset hashes are current..."
+    python3 scripts/update_asset_hashes.py --check
     echo "Checking asset rights..."
     python3 scripts/check_asset_rights.py
 }

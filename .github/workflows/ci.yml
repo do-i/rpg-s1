@@ -24,6 +24,12 @@ jobs:
         with:
           lfs: true
           persist-credentials: false
+      # Read-only: an asset edited without committing its refreshed home-grown ledger hash fails
+      # here, before any Cargo step, and the message points at ./scripts/build.sh.
+      - name: Check home-grown asset hashes are current
+        run: |
+          python3 -m unittest -v scripts/test_update_asset_hashes.py scripts/test_build_wrappers.py
+          python3 scripts/update_asset_hashes.py --check
       - name: Install native build dependencies
         run: |
           sudo apt-get update

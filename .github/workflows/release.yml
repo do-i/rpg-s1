@@ -65,9 +65,12 @@ jobs:
       # The bundle step copies the tracked assets selected by
       # release-assets-exclude.txt. Refuse the release unless every selected
       # file has a current approved ledger entry; this is intentionally
-      # stricter than the report-only CI check.
+      # stricter than the report-only CI check. The read-only freshness check
+      # runs first so a stale home-grown hash names its fix, ./scripts/build.sh.
       - name: Verify release asset rights
-        run: python3 scripts/check_asset_rights.py
+        run: |
+          python3 scripts/update_asset_hashes.py --check
+          python3 scripts/check_asset_rights.py
 
       # Same set ci.yml installs: Bevy links X11/Wayland, ALSA, and udev.
       - name: Install native build dependencies
