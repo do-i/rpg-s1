@@ -42,6 +42,10 @@ pub(crate) enum NormalizedAction {
     MoveLeft,
     MoveDown,
     MoveRight,
+    MenuRepeatUp,
+    MenuRepeatDown,
+    MenuRepeatLeft,
+    MenuRepeatRight,
 }
 
 /// All normalized actions observed in one logical update and its resulting checkpoint.
