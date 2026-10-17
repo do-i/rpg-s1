@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -39,6 +39,10 @@ class LedgerEntry:
     destination: str
     destination_sha256: str
     status: str
+    # Where the entry was parsed from: its `## ` section heading and the index, in
+    # `str.splitlines()` terms, of its compact row or expanded-entry heading.
+    section: str = field(default="", compare=False)
+    line: int = field(default=-1, compare=False)
 
 
 @dataclass(frozen=True)
@@ -80,12 +84,14 @@ def parse_ledger(text: str) -> tuple[list[LedgerEntry], list[str]]:
     entries: list[LedgerEntry] = []
     errors: list[str] = []
     shared_status: str | None = None
+    section = ""
     index = 0
 
     while index < len(lines):
         line = lines[index]
         if line.startswith("## "):
             shared_status = None
+            section = line[3:].strip()
 
         shared_match = SHARED_REVIEW.match(line)
         if shared_match:
@@ -94,6 +100,7 @@ def parse_ledger(text: str) -> tuple[list[LedgerEntry], list[str]]:
         heading_match = ENTRY_HEADING.match(line)
         if heading_match:
             entry_id = heading_match.group("id")
+            heading_line = index
             fields: dict[str, str] = {}
             index += 1
             while index < len(lines) and not lines[index].startswith("##"):
@@ -106,7 +113,14 @@ def parse_ledger(text: str) -> tuple[list[LedgerEntry], list[str]]:
             destination_sha256 = fields.get("Destination SHA-256", "")
             status = fields.get("Review status", "")
             entries.append(
-                LedgerEntry(entry_id, destination, destination_sha256, status)
+                LedgerEntry(
+                    entry_id,
+                    destination,
+                    destination_sha256,
+                    status,
+                    section,
+                    heading_line,
+                )
             )
             continue
 
@@ -115,7 +129,9 @@ def parse_ledger(text: str) -> tuple[list[LedgerEntry], list[str]]:
             if shared_status is None:
                 errors.append(f"{cells[0]}: compact entry has no shared review status")
             entries.append(
-                LedgerEntry(cells[0], cells[2], cells[3], shared_status or "")
+                LedgerEntry(
+                    cells[0], cells[2], cells[3], shared_status or "", section, index
+                )
             )
         index += 1
 
