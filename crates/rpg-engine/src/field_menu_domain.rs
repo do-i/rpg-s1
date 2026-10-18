@@ -1951,7 +1951,7 @@ pub(crate) mod tests {
         );
 
         // Towns first (by warp_order), then world zones (by warp_order); landing tiles are the
-        // (27, 12) / (29, 1) / (2, 1) / (19, 29) incoming-portal positions authored elsewhere in
+        // (20, 17) / (29, 1) / (2, 1) / (19, 29) incoming-portal positions authored elsewhere in
         // the scenario, not each map's own spawn point.
         assert_eq!(
             destinations
@@ -1964,23 +1964,22 @@ pub(crate) mod tests {
                 ))
                 .collect::<Vec<_>>(),
             vec![
-                ("town_01_ardel", true, 10, Position::new(27, 12)),
+                ("town_01_ardel", true, 10, Position::new(20, 17)),
                 ("town_02_millhaven", true, 40, Position::new(19, 29)),
                 ("zone_01_starting_forest", false, 20, Position::new(29, 1)),
                 ("zone_02_open_plains", false, 30, Position::new(2, 1)),
             ]
         );
 
-        // town_01_ardel's landing also proves the tie-break: zone_01_starting_forest.tmx has two
-        // portals into town_01_ardel, (27, 12) [object id 1] and (20, 17) [object id 9] — the
-        // first one in TMX document order wins over the later one from the same source.
+        // The forest now has a single return into Ardel, at its southern entrance.
+        // Both Ardel routes still enter the forest, but warp uses this authored return.
         assert_eq!(
             destinations
                 .iter()
                 .find(|destination| destination.map_id == "town_01_ardel")
                 .unwrap()
                 .position,
-            Position::new(27, 12)
+            Position::new(20, 17)
         );
     }
 

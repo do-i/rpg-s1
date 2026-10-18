@@ -237,7 +237,7 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
     };
     let mut query = app.world_mut().query::<&WorldEnemy>();
     let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
-    assert_eq!(enemies.len(), 6);
+    assert_eq!(enemies.len(), 11);
     let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
     assert_eq!(boss.encounter_id(), "zone_01_starting_forest:boss");
     assert_eq!(boss.formation(), ["grik_the_grin"]);
@@ -291,7 +291,7 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         thread::sleep(Duration::from_millis(1));
     }
     let mut query = app.world_mut().query::<&WorldEnemy>();
-    assert_eq!(query.iter(app.world()).count(), 6);
+    assert_eq!(query.iter(app.world()).count(), 11);
 
     app.world_mut()
         .resource_mut::<GameState>()
@@ -431,7 +431,7 @@ fn production_open_plains_and_caves_spawn_or_gracefully_skip_encounters_without_
     let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
     assert_eq!(boss.encounter_id(), "zone_02_open_plains:boss");
     assert_eq!(boss.formation(), ["wolf_beast_black_fur"]);
-    assert_eq!(boss.tile_position(), Position::new(12, 11));
+    assert_eq!(boss.tile_position(), Position::new(3, 18));
 
     // Cave_01: no `data/maps/...yaml`, and no `spawn_tile`/`boss_enemy` authoring at all.
     app.world_mut()

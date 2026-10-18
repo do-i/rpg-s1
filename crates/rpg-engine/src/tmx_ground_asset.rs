@@ -831,7 +831,10 @@ mod tests {
             .unwrap();
 
         assert!(!spawn.visible());
-        assert_eq!(spawn.gids().iter().filter(|gid| !gid.is_empty()).count(), 5);
+        assert_eq!(
+            spawn.gids().iter().filter(|gid| !gid.is_empty()).count(),
+            10
+        );
         let visible_names = map
             .visible_layer_indices
             .iter()
@@ -1268,6 +1271,59 @@ mod tests {
     }
 
     #[test]
+    fn starting_forest_dense_crowns_sort_at_their_roots_when_walkable() {
+        use crate::scenario_spatial::{Position, collision_occupancy::CollisionOccupancy};
+        use crate::world_player::WorldPlayerMotion;
+
+        let mut app = ground_app();
+        let handle = load_map(&mut app, "media/maps/zone_01_starting_forest.tmx");
+        let maps = app.world().resource::<Assets<TmxGroundAsset>>();
+        let map = maps.get(&handle).unwrap();
+        let document = map.document();
+        let occupancy = CollisionOccupancy::from_tmx_document(document).unwrap();
+        let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
+        let bundles = map.visible_bundles(atlases).unwrap();
+
+        for (column, crown_row, root_row, foreground_last_row) in [
+            (9_u32, 22_u32, 28_u32, 28_u32),
+            (25, 21, 29, 29),
+            (35, 21, 30, 30),
+            // These freestanding trees have their bases in decoration.
+            (2, 4, 5, 4),
+            (4, 7, 8, 7),
+        ] {
+            assert_eq!(
+                occupancy.is_open(column as i32, crown_row as i32),
+                Some(true)
+            );
+            let behind =
+                WorldPlayerMotion::from_tile(Position::new(column as i32, crown_row as i32));
+            let front =
+                WorldPlayerMotion::from_tile(Position::new(column as i32, (root_row + 1) as i32));
+            let behind_z = world_entity_y_z(behind.sprite_center_world(0.0).y, 32.0);
+            let front_z = world_entity_y_z(front.sprite_center_world(0.0).y, 32.0);
+            let root_z = world_entity_y_z(-(((root_row + 1) * 32) as f32), 0.0);
+            for row in crown_row..=foreground_last_row {
+                let tile = bundles
+                    .iter()
+                    .find(|bundle| {
+                        bundle.tile.column() == column
+                            && bundle.tile.row() == row
+                            && document.tile_layers()[bundle.tile.layer_index()].name()
+                                == "foreground"
+                    })
+                    .expect("each connected crown row renders in foreground");
+                assert_eq!(
+                    tile.transform.translation.z, root_z,
+                    "tree at {column},{crown_row}; row {row}"
+                );
+                assert!(tile.transform.translation.z > behind_z);
+                assert!(tile.transform.translation.z < front_z);
+            }
+        }
+    }
+
+    #[test]
     fn repeated_forest_canopy_rows_share_the_actual_root_baseline() {
         use crate::scenario_spatial::{Position, collision_occupancy::CollisionOccupancy};
         use crate::world_player::WorldPlayerMotion;
@@ -1276,11 +1332,11 @@ mod tests {
         for (path, trees) in [
             (
                 "media/maps/zone_01_starting_forest.tmx",
-                &[(47_u32, 15_u32, 4_u32, 1_u32), (0, 27, 6, 2)][..],
+                &[(47_u32, 15_u32, 4_u32, 1_u32, 1_u32), (0, 27, 6, 2, 5)][..],
             ),
             (
                 "media/maps/zone_08_corrupted_forest.tmx",
-                &[(13_u32, 4_u32, 3_u32, 2_u32)][..],
+                &[(13_u32, 4_u32, 3_u32, 2_u32, 2_u32)][..],
             ),
         ] {
             let mut app = ground_app();
@@ -1293,7 +1349,7 @@ mod tests {
             let bundles = map.visible_bundles(atlases).unwrap();
             // The four-row exposed edge is one column wide: its right neighbor is
             // a connected forest barrier rather than the other half of that tree.
-            for &(column, row, height, width) in trees {
+            for &(column, row, height, width, first_solid_row) in trees {
                 let behind = WorldPlayerMotion::from_tile(Position::new(
                     column as i32,
                     (row + height - 2) as i32,
@@ -1321,7 +1377,7 @@ mod tests {
                         assert!(baseline > behind_z && baseline < front_z);
                         assert_eq!(
                             occupancy.is_blocked((column + dx) as i32, (row + dy) as i32),
-                            Some(dy == height - 1 || column + dx == 0)
+                            Some(dy >= first_solid_row || column + dx == 0)
                         );
                     }
                 }
