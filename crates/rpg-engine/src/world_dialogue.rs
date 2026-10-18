@@ -1152,7 +1152,7 @@ mod tests {
             DialogueSession::resolve("sign_zone_01_starting_forest", None, dialogue, &flags)
                 .unwrap()
                 .unwrap();
-        assert_eq!(session.current_line(), "Trail Marker — Starting Forest");
+        assert_eq!(session.current_line(), "TRAIL MARKER - STARTING FOREST");
         assert_eq!(
             complete_linear(&mut session, &flags),
             [DialogueActions::default()]
@@ -1602,7 +1602,7 @@ mod tests {
             DialogueSession::resolve("sign_zone_02_open_plains", None, dialogue, &flags)
                 .unwrap()
                 .unwrap();
-        assert_eq!(session.current_line(), "Trail Marker — Open Plains");
+        assert_eq!(session.current_line(), "TRAIL MARKER - OPEN PLAINS");
         assert_eq!(
             complete_linear(&mut session, &flags),
             [DialogueActions::default()]

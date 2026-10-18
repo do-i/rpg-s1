@@ -44,7 +44,8 @@ item_box:
 
 # Message boards: map tiles the player can read. Any cell painted with one of
 # these local tile ids from the named tileset becomes a readable sign that
-# plays the per-map dialogue file `data/dialogue/sign_<map_id>.yaml`.
+# reads `sign_<map_id>_<x>_<y>.yaml` when present, otherwise `sign_<map_id>.yaml`
+# beneath data/dialogue/. Coordinates are zero-based TMX tile positions.
 signs:
   tileset: town
   tile_ids: [17, 18, 19, 20]

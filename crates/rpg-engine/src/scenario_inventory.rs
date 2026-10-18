@@ -32,6 +32,8 @@ pub(crate) struct ScenarioInventory {
     /// knowing that up front lets the world skip requesting a file the asset server would only
     /// report as missing.
     pub(crate) encounter_zones: std::collections::BTreeSet<String>,
+    /// Authored dialogue file stems, used to select optional position-specific sign text.
+    pub(crate) dialogue_ids: std::collections::BTreeSet<String>,
     pub(crate) tmx_directory: Option<ScenarioRelativePath>,
     pub(crate) battle_backgrounds: Option<ScenarioRelativePath>,
     pub(crate) party: Option<ScenarioRelativePath>,
@@ -165,6 +167,17 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
     }
     inventory.classes = yaml_files(&package, manifest.refs.classes.as_relative_path())?;
     inventory.recipes = yaml_files(&package, manifest.refs.recipe.as_relative_path())?;
+    if package.join(manifest.refs.dialogue.as_str()).is_dir() {
+        inventory.dialogue_ids = yaml_files(&package, manifest.refs.dialogue.as_relative_path())?
+            .iter()
+            .filter_map(|path| {
+                Path::new(path.as_str())
+                    .file_stem()?
+                    .to_str()
+                    .map(str::to_owned)
+            })
+            .collect();
+    }
 
     inventory.encounter_zones = yaml_files(&package, manifest.refs.encount.as_relative_path())?
         .iter()
