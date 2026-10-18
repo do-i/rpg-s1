@@ -1093,7 +1093,7 @@ mod tests {
                     .is_file()
             );
         }
-        assert_eq!(maps.len(), 58);
+        assert_eq!(maps.len(), 63);
         // Eleven distinct tilesets, including shrine props and the shared collision marker.
         // The pinned corpus referenced seventeen: `beeler/grass_water_clif.tsx`
         // was used only by the source's `sample_01.tmx` — a sample, not a game map, so the port never

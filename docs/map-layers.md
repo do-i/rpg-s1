@@ -64,6 +64,13 @@ Fixed surfaces can also support decoration in the same cell: for example,
 a kitchen counter belongs in `architecture` when separate cookware occupies
 `decoration` above it. Freestanding low furniture stays in `decoration`.
 
+NPC `position` coordinates in map YAML anchor the top-left of a 64×64 sprite,
+not its feet. Its 20×18 collision box starts 22 pixels right and 41 pixels down
+from that anchor, so its center occupies tile `[x + 1, y + 1]`. To place an NPC
+on floor tile `[x, y]`, author `[x - 1, y - 1]` and check all four collision-box
+corners against the map. The box spans two tile columns; checking only the
+authored tile or the box's center can miss furniture collisions.
+
 Put the uppermost terrain artwork in `terrain` and its opaque backing in
 `ground`. When transparent terrain needs a separate supporting surface, use
 `architecture` beneath `terrain`, retaining the authored appearance. Seven

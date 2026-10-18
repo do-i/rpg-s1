@@ -26,6 +26,11 @@ regions:
       - { id: town_02_millhaven_inn }
       - { id: town_02_millhaven_mill }
       - { id: town_02_millhaven_shop }
+      - { id: town_02_millhaven_shop_weapon }
+      - { id: town_02_millhaven_shop_armor }
+      - { id: town_02_millhaven_shop_mc }
+      - { id: town_02_millhaven_house_01 }
+      - { id: town_02_millhaven_house_02 }
       - { id: zone_02_open_plains, outdoor: true }
       - { id: zone_02_open_plains_cave_01 }
       - { id: zone_02_open_plains_cave_02 }
