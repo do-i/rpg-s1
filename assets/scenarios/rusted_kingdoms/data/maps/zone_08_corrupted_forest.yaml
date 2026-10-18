@@ -12,14 +12,14 @@ npcs:
     name: "Herbalist Veya"
     position: [40, 19]
     dialogue: corrupted_herbalist
-    sprite: media/sprites/npc/village_female_person_base.tsx
+    sprite: media/sprites/npc/female_sword_fighter_base.tsx
     default_facing: left
 
   - id: corrupted_forest_warden
     name: "Warden Ilse"
     position: [29, 10]
     dialogue: corrupted_forest_warden
-    sprite: media/sprites/npc/archer_recurve_scout.tsx
+    sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: down
 
 item_boxes:

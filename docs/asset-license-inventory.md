@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (678 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (683 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1201,31 +1201,31 @@ Everything not listed above. Shared fields for every row:
 | ALI-0896 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_05_ashenveil_inn.yaml` | `3d340582429fa3b67ba9a1b2507ceb0f299fe1f2e9cca9ab099ae70f17a612e0` | scenario YAML / town_05_ashenveil_inn.yaml |
 | ALI-0897 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_05_ashenveil_oracle_sanctum.yaml` | `5c3b4b1204311876050b534b389984aca60e28b371f165764a4cf5f4ffa77d2c` | scenario YAML / town_05_ashenveil_oracle_sanctum.yaml |
 | ALI-0898 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_05_ashenveil_shop.yaml` | `52e01f355292331963a9b22c3f446e9390c72b5ce112044396c1168e15b7ff71` | scenario YAML / town_05_ashenveil_shop.yaml |
-| ALI-0083 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml` | `7460cdb28109ae4819b29be544a9f5773ad7beb99690153853bd565ffa63f5e6` | scenario YAML / zone_01_starting_forest.yaml |
-| ALI-0899 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains.yaml` | `b4a948d0cf59a0b6b86d1084ed137a3cf82b9fd0d0c4f5ee737defc1f7ee11b4` | scenario YAML / zone_02_open_plains.yaml |
+| ALI-0083 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_01_starting_forest.yaml` | `eddb93210952c1cbfa98615d8fcad0a545c79969f84e39d3b6fed61812fc9ae3` | scenario YAML / zone_01_starting_forest.yaml |
+| ALI-0899 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains.yaml` | `6738e9f312edde952895a6a3875d1cb57a3ae43ac62eb29b7e097073dbeec5c5` | scenario YAML / zone_02_open_plains.yaml |
 | ALI-1034 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains_cave_01.yaml` | `a52cc9c74602a47ec0fdf6d6a85b2e92a592964aef24000fa8351277922111f5` | zone_02_open_plains_cave_01.yaml |
 | ALI-1035 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_02_open_plains_cave_02.yaml` | `690728f82b6896535baa593299b743fa5cadb7e9fd9f92731302fa3776f3f7a1` | zone_02_open_plains_cave_02.yaml |
-| ALI-0900 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_03_marshland.yaml` | `7ddeb8bcc87d770b7e348db9937b3640b3b25d914aeec30041a23ec3e52c0fc6` | scenario YAML / zone_03_marshland.yaml |
-| ALI-0901 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_01_gate.yaml` | `6e67a85e2d022a399ca2769688750516d4e2996c77db5d1cf99bffb3a8f99f02` | scenario YAML / zone_04_ancient_ruins_01_gate.yaml |
+| ALI-0900 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_03_marshland.yaml` | `63f7e783aa3e36c8c5ca79f66f6e9e8812ac4ab0ce0f2d4c3f7e6520c2b3d38d` | scenario YAML / zone_03_marshland.yaml |
+| ALI-0901 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_01_gate.yaml` | `3f7e6c685982574abdc8588faee3f733a22cb09dae6830910dadbfcf4e10ca65` | scenario YAML / zone_04_ancient_ruins_01_gate.yaml |
 | ALI-0902 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_02_courtyard.yaml` | `85e041bce70d72f418225b0f27e2391052c251242122bf657ed4348acf1b61e5` | scenario YAML / zone_04_ancient_ruins_02_courtyard.yaml |
-| ALI-0903 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_03_sanctum.yaml` | `6e9a4635d518d2ebd50a8e1e59ca8d79c602510d6253c78c360b62d7756ef92f` | scenario YAML / zone_04_ancient_ruins_03_sanctum.yaml |
-| ALI-0984 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_01.yaml` | `20bbf75d6d8321b896c34a713eb14555e8ff3a0bfcb7e8764be0d4b40dee9863` | scenario YAML / zone_05_mountain_foothills_01.yaml |
+| ALI-0903 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_04_ancient_ruins_03_sanctum.yaml` | `fb70fe3525539f6f304a54895302bb0e70b5b9c8930731190de707c0aff19eda` | scenario YAML / zone_04_ancient_ruins_03_sanctum.yaml |
+| ALI-0984 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_01.yaml` | `a6992593774473442a156d2a0af49d0ce23886908ae0a389b8d8168940c43572` | scenario YAML / zone_05_mountain_foothills_01.yaml |
 | ALI-0222 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_02.yaml` | `afa5d197734e9c07c7effed8ef8f31519894a190be027b4bc6177cc102af7f7e` | scenario YAML / zone_05_mountain_foothills_02.yaml |
 | ALI-0223 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_05_mountain_foothills_03.yaml` | `671cf4856f07cb5f814ed6ce462894254edcbc1896bb975d5f89635eac9b57ef` | scenario YAML / zone_05_mountain_foothills_03.yaml |
-| ALI-0904 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_06_mountain_pass_01.yaml` | `ed0910140400ecdbd497f72e300893f7507c7b243fcb29d4f28d3e8b31b7660c` | scenario YAML / zone_06_mountain_pass_01.yaml |
+| ALI-0904 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_06_mountain_pass_01.yaml` | `69461cfe73571ec2cb29bad3122c5a075e7b0fc9311e5a3f6c28ae6177309b92` | scenario YAML / zone_06_mountain_pass_01.yaml |
 | ALI-0224 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_06_mountain_pass_02.yaml` | `c819f6136202f8817d1940e501f26572458480f74981a194f9cd62a361c9384b` | scenario YAML / zone_06_mountain_pass_02.yaml |
 | ALI-0225 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_06_mountain_pass_03.yaml` | `e5dbd989b0043f27496be24c7a4aca67f906748fb52756219041a7820d7feb69` | scenario YAML / zone_06_mountain_pass_03.yaml |
-| ALI-0905 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_07_sunken_cave.yaml` | `8de077b04a09cd6616c5a5bec9937a75ca34e3c2fc6ad67d044344cc29fd1ae4` | scenario YAML / zone_07_sunken_cave.yaml |
-| ALI-0906 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_08_corrupted_forest.yaml` | `cfe5a44352a61b68821559d0ffb262c786bcf929d60b4224307048ada07ed3c5` | scenario YAML / zone_08_corrupted_forest.yaml |
+| ALI-0905 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_07_sunken_cave.yaml` | `9812559c0d98dd46514bd78edf3c3df31000b485a5851a81e091b4ab9ce9d085` | scenario YAML / zone_07_sunken_cave.yaml |
+| ALI-0906 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_08_corrupted_forest.yaml` | `3d9ae200b12ad58b321274952349f07268b8461350643262872f8b655af02230` | scenario YAML / zone_08_corrupted_forest.yaml |
 | ALI-0985 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_09_marshal_camp.yaml` | `60bb557a21b3e0a6983b22e76b2cd1e23c3d91711cd89d880368e8c5e9d5c12a` | scenario YAML / zone_09_marshal_camp.yaml |
-| ALI-0907 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_09_volcanic_region.yaml` | `9d258165f3abb51c3029243904410e77e30a3ad9c63e6b91eed2c0d7edf7bd97` | scenario YAML / zone_09_volcanic_region.yaml |
+| ALI-0907 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_09_volcanic_region.yaml` | `ea23fbbe339545d8209a87c7ccc30721e424dd1865cc2f473c99cd47a012ca63` | scenario YAML / zone_09_volcanic_region.yaml |
 | ALI-0908 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_final_stronghold.yaml` | `448c949f4806959fc21dcba4280c9cb731bbfee7192eec6df8900c372c8f2fdf` | scenario YAML / zone_10_final_stronghold.yaml |
-| ALI-0986 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_core.yaml` | `627e63a4cca13e55ece21a9f776c7363710edf9ce96f6f6107f69b447dcfd483` | scenario YAML / zone_10_hearth_core.yaml |
-| ALI-0987 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_01.yaml` | `bf67b8b2e606660c0ddeec0ef9e60cfb3a0b70a2deaa57338fee51a246089878` | scenario YAML / zone_10_hearth_descent_01.yaml |
-| ALI-0988 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_02.yaml` | `a9421ee01d467cd30ff620ef6925a448b4bac15cd7203f9b4857be9162c78122` | scenario YAML / zone_10_hearth_descent_02.yaml |
-| ALI-0989 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_03.yaml` | `382670c1a54000f078e8b31d8f1264c1aeea7211799c72b00a559a16ec0bb788` | scenario YAML / zone_10_hearth_descent_03.yaml |
-| ALI-0990 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_04.yaml` | `e57bb55b9e70342ef869ef8d44fd44bfae6d1847cf5725ce6d48698c46640402` | scenario YAML / zone_10_hearth_descent_04.yaml |
-| ALI-0991 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_05.yaml` | `b2d0ec0eba12dd7395d60e5c748b76b3b37f2af845b6390da000ac54e325b656` | scenario YAML / zone_10_hearth_descent_05.yaml |
+| ALI-0986 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_core.yaml` | `73f67d494d63b2271671b55df19c3e804a387f8e761d3f17089a49745991ef5c` | scenario YAML / zone_10_hearth_core.yaml |
+| ALI-0987 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_01.yaml` | `11663d1a571e995c47e0fa05dbf615af5a7eafc763b6b100ac79affb0d64e5f9` | scenario YAML / zone_10_hearth_descent_01.yaml |
+| ALI-0988 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_02.yaml` | `bd3872b4be045e27279cc51ae44009d97dc19f9c1396a3c8652e522c12c3be83` | scenario YAML / zone_10_hearth_descent_02.yaml |
+| ALI-0989 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_03.yaml` | `4c501dd0d827f96d866a8db08f1cdb954d8cfe2503f632148b04863abd9ec321` | scenario YAML / zone_10_hearth_descent_03.yaml |
+| ALI-0990 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_04.yaml` | `9d1b002cd0baee5ae533ab4980e6b02d0ccf2eed29dfdb876bfb2b58c242b5a8` | scenario YAML / zone_10_hearth_descent_04.yaml |
+| ALI-0991 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_05.yaml` | `9d42689ebd17f008905bf1bdac6028911f9e95fc2d1940fab243874d015e3377` | scenario YAML / zone_10_hearth_descent_05.yaml |
 | ALI-0992 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_06.yaml` | `3b2916f3179baacd3299ecb5e37c37c15bdea3a87f7727204c179bd6e44eb6b0` | scenario YAML / zone_10_hearth_descent_06.yaml |
 | ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `52aaeb79ebdb55ff8d8d3a9a2fe89be02f42443423a944428ac98af51023d954` | scenario YAML / Rusted Kingdoms party catalog |
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |

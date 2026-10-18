@@ -12,7 +12,7 @@ npcs:
     name: "Trailhand Corin"
     position: [15, 17]
     dialogue: foothills_trailhand
-    sprite: media/sprites/npc/farmer_male_straw_hat_worker.tsx
+    sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down
 
 item_boxes:

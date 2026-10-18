@@ -12,7 +12,7 @@ npcs:
     name: "Scout Bren"
     position: [20, 8]
     dialogue: plains_scout
-    sprite: media/sprites/npc/archer_crossbow_hunter.tsx
+    sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: left
 
 item_boxes:
