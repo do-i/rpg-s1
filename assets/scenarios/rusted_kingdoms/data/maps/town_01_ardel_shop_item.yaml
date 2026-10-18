@@ -1,0 +1,48 @@
+id: town_01_ardel_shop_item
+name: Ardel Item Shop
+bgm: town.default
+
+npcs:
+  - id: item_shop_keeper
+    name: "Wilkin"
+    dialogue: item_shop_ardel
+    position: [6, 4]
+    sprite: media/sprites/npc/merchant_base.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+
+shop:
+  items:
+    - id: potion
+      name: Potion
+      buy_price: 100
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: hi_potion
+      name: Hi-Potion
+      buy_price: 500
+      tags: [consumable, recovery]
+      unlock_flag: story_act2_started
+    - id: ether
+      name: Ether
+      buy_price: 150
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: tent
+      name: Tent
+      buy_price: 300
+      tags: [consumable, recovery]
+      unlock_flag: story_quest_started
+    - id: antidote
+      name: Antidote
+      buy_price: 80
+      tags: [consumable, status]
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      name: Echo Herb
+      buy_price: 80
+      tags: [consumable, status]
+      unlock_flag: story_quest_started

@@ -83,7 +83,7 @@ npcs:
     name: "Acolyte Fen"
     dialogue: ashenveil_acolyte
     position: [5, 16]
-    sprite: media/sprites/npc/female_wiz_01.tsx
+    sprite: media/sprites/npc/village_female_person_base.tsx
     default_facing: right
     animation:
       mode: step

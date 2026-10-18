@@ -1,0 +1,5 @@
+id: ardel_house_kitchen
+type: npc
+entries:
+  - lines:
+      - "I'm trying a new recipe. My partner says it already smells wonderful."

@@ -1,0 +1,36 @@
+id: town_01_ardel_shop_armor
+name: Ardel Armor Shop
+bgm: town.default
+
+npcs:
+  - id: armor_shop_keeper
+    name: Hetta
+    dialogue: armor_shop_ardel
+    position: [1, 4]
+    sprite: media/sprites/npc/farmer_male_base.tsx
+    default_facing: right
+    interaction_range: 3.5
+    animation:
+      mode: step
+      speed: 0.7
+
+armor_shop:
+  items:
+    - id: cloth_hood
+      buy_price: 40
+      unlock_flag: story_quest_started
+    - id: leather_hat
+      buy_price: 60
+      unlock_flag: story_quest_started
+    - id: cloth_robe
+      buy_price: 70
+      unlock_flag: story_quest_started
+    - id: buckler
+      buy_price: 90
+      unlock_flag: story_quest_started
+    - id: leather_vest
+      buy_price: 150
+      unlock_flag: story_quest_started
+    - id: light_armor
+      buy_price: 300
+      unlock_flag: story_act2_started

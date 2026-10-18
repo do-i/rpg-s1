@@ -349,9 +349,9 @@ mod tests {
         scenario_yaml,
     };
 
-    fn ardel_shop() -> MapMetadata {
+    fn ardel_item_shop() -> MapMetadata {
         scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/town_01_ardel_shop_01.yaml"
+            "data/maps/town_01_ardel_shop_item.yaml"
         )))
         .unwrap()
     }
@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn stock_unlocks_and_buy_is_exact_tagged_and_atomic() {
         let mut game = fixture_game();
-        let map = ardel_shop();
+        let map = ardel_item_shop();
         let shop = map.shop.as_ref().unwrap();
         let rows = visible_stock(shop, game.flags());
         assert!(rows.iter().any(|row| row.id() == "potion"));
@@ -602,7 +602,7 @@ mod tests {
     #[test]
     fn service_results_and_dialogue_quest_flags_survive_native_save_roundtrip() {
         let mut game = fixture_game();
-        let map = ardel_shop();
+        let map = ardel_item_shop();
         let potion = map
             .shop
             .as_ref()

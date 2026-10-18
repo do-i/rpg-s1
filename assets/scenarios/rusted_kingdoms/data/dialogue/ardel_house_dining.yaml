@@ -1,0 +1,5 @@
+id: ardel_house_dining
+type: npc
+entries:
+  - lines:
+      - "We're still settling in together. There's always room for one more at the table."

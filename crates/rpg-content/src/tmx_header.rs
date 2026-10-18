@@ -891,13 +891,15 @@ fn parse_object_group_attributes(
     let attributes = collect_document_attributes(reader, element, offset)?;
     if let Some(name) = attributes
         .keys()
-        .find(|name| !matches!(name.as_str(), "id" | "name"))
+        .find(|name| !matches!(name.as_str(), "id" | "name" | "visible"))
     {
         return Err(TmxMapDocumentError::new(
             offset,
             format!("unsupported `objectgroup` attribute `{name}`"),
         ));
     }
+    // Editor visibility does not disable gameplay objects such as portal triggers.
+    document_visibility(&attributes, offset)?;
     let id = positive_document_u32(&attributes, "id", offset)?;
     let name = required_document_attribute(&attributes, "name", offset)?;
     if !matches!(name, "portals" | "boss_enemy") {
@@ -1077,7 +1079,7 @@ fn parse_rectangle_object_attributes(
     if let Some(name) = attributes.keys().find(|name| {
         !matches!(
             name.as_str(),
-            "id" | "name" | "x" | "y" | "width" | "height"
+            "id" | "name" | "x" | "y" | "width" | "height" | "visible"
         )
     }) {
         return Err(TmxMapDocumentError::new(
@@ -1085,6 +1087,7 @@ fn parse_rectangle_object_attributes(
             format!("unsupported rectangle `object` attribute `{name}`"),
         ));
     }
+    document_visibility(&attributes, offset)?;
     let id = positive_document_u32(&attributes, "id", offset)?;
     let x = finite_document_f64(&attributes, "x", offset)?;
     let y = finite_document_f64(&attributes, "y", offset)?;
@@ -1409,16 +1412,7 @@ fn parse_tile_layer(
     }
     let width = positive_document_u32(&attributes, "width", offset)?;
     let height = positive_document_u32(&attributes, "height", offset)?;
-    let visible = match attributes.get("visible").map(String::as_str) {
-        None | Some("1") => true,
-        Some("0") => false,
-        Some(value) => {
-            return Err(TmxMapDocumentError::new(
-                offset,
-                format!("invalid `visible` attribute `{value}`; expected `0` or `1`"),
-            ));
-        }
-    };
+    let visible = document_visibility(&attributes, offset)?;
     if width != map_header.width || height != map_header.height {
         return Err(TmxMapDocumentError::new(
             offset,
@@ -1664,6 +1658,20 @@ fn collect_document_attributes(
         attributes.insert(name.to_owned(), value);
     }
     Ok(attributes)
+}
+
+fn document_visibility(
+    attributes: &std::collections::BTreeMap<String, String>,
+    offset: u64,
+) -> Result<bool, TmxMapDocumentError> {
+    match attributes.get("visible").map(String::as_str) {
+        None | Some("1") => Ok(true),
+        Some("0") => Ok(false),
+        Some(value) => Err(TmxMapDocumentError::new(
+            offset,
+            format!("invalid `visible` attribute `{value}`; expected `0` or `1`"),
+        )),
+    }
 }
 
 fn required_document_attribute<'a>(
@@ -2312,6 +2320,55 @@ mod tests {
     }
 
     #[test]
+    fn object_visibility_preserves_gameplay_objects_and_properties() {
+        let xml = |group_visibility: &str, object_visibility: &str| {
+            invented_document(&format!(
+                r#"<objectgroup id="1" name="portals" {group_visibility}>
+                    <object id="1" x="32" y="64" width="32" height="16" {object_visibility}>
+                        <properties>
+                            <property name="target_map" value="town"/>
+                            <property name="target_position_x" type="int" value="3"/>
+                            <property name="target_position_y" type="int" value="4"/>
+                        </properties>
+                    </object>
+                    <object id="2" x="0" y="0" {object_visibility}/>
+                </objectgroup>
+                <objectgroup id="2" name="boss_enemy" {group_visibility}/>"#,
+            ))
+        };
+        let expected = parse_tmx_map_document(&xml("", ""), &invented_path()).unwrap();
+        for group_visibility in ["", r#"visible="0""#, r#"visible="1""#] {
+            for object_visibility in ["", r#"visible="0""#, r#"visible="1""#] {
+                let document = parse_tmx_map_document(
+                    &xml(group_visibility, object_visibility),
+                    &invented_path(),
+                )
+                .unwrap();
+                assert_eq!(document.object_groups(), expected.object_groups());
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_object_visibility() {
+        for value in ["", "true", "false", "2", "-1", "0.0"] {
+            for children in [
+                format!(r#"<objectgroup id="1" name="portals" visible="{value}"/>"#),
+                format!(
+                    r#"<objectgroup id="1" name="portals"><object id="1" x="0" y="0" visible="{value}"/></objectgroup>"#
+                ),
+            ] {
+                let error = parse_tmx_map_document(&invented_document(&children), &invented_path())
+                    .unwrap_err();
+                assert_eq!(
+                    error.detail,
+                    format!("invalid `visible` attribute `{value}`; expected `0` or `1`")
+                );
+            }
+        }
+    }
+
+    #[test]
     fn parses_string_float_and_boolean_property_sources_without_coercion() {
         let xml = invented_document(
             r#"
@@ -2840,7 +2897,7 @@ mod tests {
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
         }
 
-        assert_eq!(files.len(), 54);
+        assert_eq!(files.len(), 58);
     }
 
     #[test]
@@ -2896,8 +2953,8 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 54);
-        assert_eq!(parsed_documents, 54);
+        assert_eq!(files.len(), 58);
+        assert_eq!(parsed_documents, 58);
         // Zero, where the pinned corpus had one. Both that inline tileset and the seventeenth
         // distinct source below belonged to the source's `sample_01.tmx` — a sample rather than a
         // game map, which the port never migrated. Every shipped map references its tilesets
@@ -2907,8 +2964,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 207);
-        assert_eq!(distinct_sources.len(), 9);
+        assert_eq!(reference_count, 223);
+        assert_eq!(distinct_sources.len(), 10);
     }
 
     #[test]
@@ -2958,10 +3015,10 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 54);
-        assert_eq!(layer_count, 196);
-        assert_eq!(gid_count, 173_282);
-        assert_eq!(flip_combination_counts, [173_080, 10, 2, 0, 0, 189, 1, 0]);
+        assert_eq!(files.len(), 58);
+        assert_eq!(layer_count, 227);
+        assert_eq!(gid_count, 182_607);
+        assert_eq!(flip_combination_counts, [182_404, 11, 2, 0, 0, 189, 1, 0]);
     }
 
     #[test]
@@ -3026,15 +3083,15 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 54);
-        assert_eq!(portal_groups, 53);
+        assert_eq!(files.len(), 58);
+        assert_eq!(portal_groups, 57);
         assert_eq!(boss_groups, 11);
-        assert_eq!(objects, 125);
+        assert_eq!(objects, 133);
         assert_eq!(zero_sized_objects, 7);
-        assert_eq!(runtime_portals, 108);
-        assert_eq!(properties, 324);
-        assert_eq!(property_strings, 108);
-        assert_eq!(property_integers, 216);
+        assert_eq!(runtime_portals, 116);
+        assert_eq!(properties, 348);
+        assert_eq!(property_strings, 116);
+        assert_eq!(property_integers, 232);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);
     }
