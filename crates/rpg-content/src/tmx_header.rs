@@ -3016,9 +3016,9 @@ mod tests {
         }
 
         assert_eq!(files.len(), 58);
-        assert_eq!(layer_count, 227);
-        assert_eq!(gid_count, 182_607);
-        assert_eq!(flip_combination_counts, [182_404, 11, 2, 0, 0, 189, 1, 0]);
+        assert_eq!(layer_count, 235);
+        assert_eq!(gid_count, 187_493);
+        assert_eq!(flip_combination_counts, [187_289, 12, 2, 0, 0, 189, 1, 0]);
     }
 
     #[test]

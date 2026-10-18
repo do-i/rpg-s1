@@ -33,21 +33,25 @@
  </tile>
  <tile id="17">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="tree top left"/>
   </properties>
  </tile>
  <tile id="18">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="tree top right"/>
   </properties>
  </tile>
  <tile id="19">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="bush top left"/>
   </properties>
  </tile>
  <tile id="20">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="bush top right"/>
   </properties>
  </tile>
@@ -68,21 +72,25 @@
  </tile>
  <tile id="34">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="tree bottom left"/>
   </properties>
  </tile>
  <tile id="35">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="tree bottom right"/>
   </properties>
  </tile>
  <tile id="36">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="bush bottom left"/>
   </properties>
  </tile>
  <tile id="37">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="bush bottom right"/>
   </properties>
  </tile>

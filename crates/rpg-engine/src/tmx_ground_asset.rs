@@ -240,11 +240,22 @@ impl TmxGroundAsset {
                     let rotation = apply_tiled_transform(&mut sprite, resolved.gid());
                     let center =
                         tmx_tile_center(column, row, header.tile_width(), header.tile_height());
-                    let z = tile_layer_z(
-                        layer_index,
-                        layer.name(),
-                        header.height() as f32 * header.tile_height() as f32,
-                    );
+                    let z = if layer.name() == FOREGROUND_LAYER_NAME
+                        && let Some(base_y) = atlas.metadata().sort_base_y(resolved.local_id())
+                    {
+                        // Keep every row of an object at one baseline. This draws the full
+                        // transparent silhouette above actors behind it and below actors in front.
+                        world_entity_y_z(
+                            center.y,
+                            base_y as f32 - header.tile_height() as f32 / 2.0,
+                        )
+                    } else {
+                        tile_layer_z(
+                            layer_index,
+                            layer.name(),
+                            header.height() as f32 * header.tile_height() as f32,
+                        )
+                    };
                     bundles.push(StaticMapTileBundle {
                         tile: StaticMapTile {
                             layer_index,
@@ -1030,7 +1041,11 @@ mod tests {
             ];
             assert_eq!(
                 transform.translation.z,
-                tile_layer_z(tile.layer_index(), names[tile.layer_index()], 640.0)
+                match (names[tile.layer_index()], tile.global_id()) {
+                    ("foreground", 2138..=2141) => world_entity_y_z(expected.y, 48.0),
+                    ("foreground", 2155..=2158) => world_entity_y_z(expected.y, 16.0),
+                    _ => tile_layer_z(tile.layer_index(), names[tile.layer_index()], 640.0),
+                }
             );
             assert_eq!(
                 sprite.texture_atlas.as_ref().unwrap().index,
@@ -1101,6 +1116,96 @@ mod tests {
                 assert!(foreground > actor_at_bottom);
                 assert!(tile_layer_z(index, "decoration", height) < actor_at_top);
                 assert!(tile_layer_z(index, "architecture", height) < actor_at_top);
+            }
+        }
+    }
+
+    #[test]
+    fn migrated_roofs_block_movement_and_complete_trees_sort_at_their_bases() {
+        use crate::scenario_spatial::{Position, collision_occupancy::CollisionOccupancy};
+        use crate::world_player::WorldPlayerMotion;
+
+        let mut app = ground_app();
+        for path in [
+            "media/maps/town_01_ardel.tmx",
+            "media/maps/town_02_millhaven.tmx",
+        ] {
+            let handle = load_map(&mut app, path);
+            let maps = app.world().resource::<Assets<TmxGroundAsset>>();
+            let map = maps.get(&handle).unwrap();
+            let document = map.document();
+            let occupancy = CollisionOccupancy::from_tmx_document(document).unwrap();
+            let first_gid = |suffix: &str| {
+                document
+                    .external_tilesets()
+                    .iter()
+                    .find(|reference| reference.source().as_str().ends_with(suffix))
+                    .unwrap()
+                    .first_gid()
+            };
+            let town = first_gid("/town.tsx");
+            let outdoor = first_gid("/outdoor.tsx");
+            let foreground = document
+                .tile_layers()
+                .iter()
+                .find(|layer| layer.name() == "foreground")
+                .unwrap();
+            let mut roof_count = 0;
+            let mut tree_position = None;
+            for row in 0..foreground.height() {
+                for column in 0..foreground.width() {
+                    let gid = foreground.gid_at(column, row).unwrap().global_id();
+                    if gid
+                        .checked_sub(town)
+                        .is_some_and(|id| matches!(id, 48..=86 | 188..=238))
+                    {
+                        roof_count += 1;
+                        assert_eq!(
+                            occupancy.is_blocked(column as i32, row as i32),
+                            Some(true),
+                            "{path} roof at {column},{row}"
+                        );
+                    }
+                    if gid
+                        .checked_sub(outdoor)
+                        .is_some_and(|id| matches!(id, 17 | 19))
+                        && row > 0
+                        && occupancy.is_open(column as i32, row as i32) == Some(true)
+                        && occupancy.is_open(column as i32, row as i32 + 2) == Some(true)
+                    {
+                        tree_position = Some((column, row));
+                    }
+                }
+            }
+            assert!(roof_count > 100);
+            let (column, row) =
+                tree_position.expect("an accessible tree with space in front and behind");
+            let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
+            let bundles = map.visible_bundles(atlases).unwrap();
+            let behind = WorldPlayerMotion::from_tile(Position::new(column as i32, row as i32));
+            let in_front =
+                WorldPlayerMotion::from_tile(Position::new(column as i32, row as i32 + 2));
+            let behind_z = world_entity_y_z(behind.sprite_center_world(0.0).y, 32.0);
+            let front_z = world_entity_y_z(in_front.sprite_center_world(0.0).y, 32.0);
+            let base_z = world_entity_y_z(-(((row + 2) * 32) as f32), 0.0);
+            for dy in 0..2 {
+                for dx in 0..2 {
+                    let tile = bundles
+                        .iter()
+                        .find(|bundle| {
+                            bundle.tile.column() == column + dx
+                                && bundle.tile.row() == row + dy
+                                && bundle.tile.layer_id() == foreground.id()
+                        })
+                        .expect("every quarter of the tree is in foreground");
+                    assert_eq!(tile.transform.translation.z, base_z);
+                    assert!(tile.transform.translation.z > behind_z);
+                    assert!(tile.transform.translation.z < front_z);
+                    assert_eq!(
+                        occupancy.is_blocked((column + dx) as i32, (row + dy) as i32),
+                        Some(dy == 1)
+                    );
+                }
             }
         }
     }
