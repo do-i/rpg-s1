@@ -21,10 +21,10 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        selectable_card_colors, spawn_header_bars, spawn_meter, spawn_section_rule,
-        spawn_status_panel, spawn_status_text, spawn_windowed_card, status_border,
-        status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
-        status_ready, status_teal, visible_rows, window_start,
+        ScrollWindow, scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
+        spawn_scroll_list, spawn_section_rule, spawn_status_panel, spawn_status_text,
+        status_border, status_border_active, status_ember, status_faint, status_gold, status_ink,
+        status_muted, status_ready, status_teal,
     },
     runtime_member::RuntimeMember,
     scenario_dialogue::DialogueShopKind,
@@ -358,10 +358,13 @@ fn spawn_buy_page(
                 );
                 return;
             }
-            let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-            for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
-                let row = &rows[index];
-                spawn_windowed_card(panel, fades, |panel| {
+            let window =
+                state
+                    .scroll
+                    .window("buy", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
+            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+                for index in window.indices() {
+                    let row = &rows[index];
                     let price = row.buy_price().get();
                     let affordable = game.repository().gp() >= price;
                     let item = catalog.item(row.id());
@@ -382,9 +385,9 @@ fn spawn_buy_page(
                             dim: !affordable,
                         },
                     );
-                });
-            }
-            spawn_window_footer(panel, font, state.selected, rows.len());
+                }
+            });
+            spawn_window_footer(panel, font, state.selected, window);
         });
         spawn_status_panel(columns, buy_detail_panel_node(), "DETAIL", font, |panel| {
             let Some(item) = rows
@@ -567,10 +570,12 @@ fn spawn_sell_page(
             );
             return;
         }
-        let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
-            let item = &rows[index];
-            spawn_windowed_card(panel, fades, |panel| {
+        let window = state
+            .scroll
+            .window("sell", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
+        spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+            for index in window.indices() {
+                let item = &rows[index];
                 let sellable = can_sell(game.repository(), item);
                 spawn_list_row(
                     panel,
@@ -590,9 +595,9 @@ fn spawn_sell_page(
                         dim: !sellable,
                     },
                 );
-            });
-        }
-        spawn_window_footer(panel, font, state.selected, rows.len());
+            }
+        });
+        spawn_window_footer(panel, font, state.selected, window);
     });
 }
 
@@ -617,15 +622,18 @@ fn spawn_core_page(
             );
             return;
         }
-        let first = window_start(state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        for (index, fades) in visible_rows(first, rows.len(), SERVICE_VISIBLE_ROWS) {
-            let item = &rows[index];
-            spawn_windowed_card(panel, fades, |panel| {
+        let window =
+            state
+                .scroll
+                .window("exchange", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
+        spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+            for index in window.indices() {
+                let item = &rows[index];
                 let ItemDefinition::MagicCore(core) = item else {
-                    return;
+                    continue;
                 };
                 let Some(rate) = core.exchange_rate.map(NonZeroU32::get) else {
-                    return;
+                    continue;
                 };
                 spawn_list_row(
                     panel,
@@ -649,9 +657,9 @@ fn spawn_core_page(
                         dim: false,
                     },
                 );
-            });
-        }
-        spawn_window_footer(panel, font, state.selected, rows.len());
+            }
+        });
+        spawn_window_footer(panel, font, state.selected, window);
     });
 }
 
@@ -747,10 +755,15 @@ fn spawn_apothecary_page(
                 spawn_status_text(panel, "No recipes are known.", font, 17.0, status_muted());
                 return;
             }
-            let first = window_start(state.selected, recipes.len(), SERVICE_VISIBLE_ROWS);
-            for (index, fades) in visible_rows(first, recipes.len(), SERVICE_VISIBLE_ROWS) {
-                let recipe = &recipes[index];
-                spawn_windowed_card(panel, fades, |panel| {
+            let window = state.scroll.window(
+                "recipes",
+                state.selected,
+                recipes.len(),
+                SERVICE_VISIBLE_ROWS,
+            );
+            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+                for index in window.indices() {
+                    let recipe = &recipes[index];
                     let availability = recipe_availability(recipe, game.flags(), game.repository());
                     spawn_recipe_row(
                         panel,
@@ -761,9 +774,9 @@ fn spawn_apothecary_page(
                         availability,
                         index == state.selected,
                     );
-                });
-            }
-            spawn_window_footer(panel, font, state.selected, recipes.len());
+                }
+            });
+            spawn_window_footer(panel, font, state.selected, window);
         });
         spawn_status_panel(columns, detail_panel_node(), "RECIPE", font, |panel| {
             let Some(recipe) = recipes.get(state.selected) else {
@@ -1138,18 +1151,19 @@ fn spawn_window_footer(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     selected: usize,
-    len: usize,
+    window: ScrollWindow,
 ) {
+    let len = window.len;
     let position = format!("{:02} OF {len:02}", selected.min(len.saturating_sub(1)) + 1);
-    let text = if len <= SERVICE_VISIBLE_ROWS {
-        position
-    } else {
-        let first = window_start(selected, len, SERVICE_VISIBLE_ROWS);
+    let text = if window.scrolls() {
+        let shown = window.indices();
         format!(
             "{position}   ·   SHOWING {:02}-{:02}",
-            first + 1,
-            (first + SERVICE_VISIBLE_ROWS).min(len)
+            shown.start + 1,
+            shown.end
         )
+    } else {
+        position
     };
     spawn_status_text(parent, text, font, 12.0, status_faint());
 }

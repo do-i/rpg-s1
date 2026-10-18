@@ -2,7 +2,8 @@
 //!
 //! The source game measures a session with wall-clock time.  Consequently, a running session
 //! includes time spent in field menus and any other application state; it is deliberately not
-//! driven by Bevy's pausable virtual gameplay clock.  Callers supply wall-clock samples as
+//! driven by Bevy's pausable virtual gameplay clock.  The one exception is an explicit player
+//! pause ([`crate::game_pause`]), whose span is cut out with [`Playtime::exclude`].  Callers supply wall-clock samples as
 //! [`Duration`] values, which makes the clock boundary deterministic in tests and keeps actual
 //! new-game, load, and save wiring out of this infrastructure task.
 
@@ -50,6 +51,16 @@ impl Playtime {
 
         self.total_seconds = self.total_seconds.saturating_add(elapsed.as_secs());
         self.session_start = Some(now);
+    }
+
+    /// Removes `span` from the active segment by moving its start forward.
+    ///
+    /// Used for an explicit player pause: the paused wall-clock time never reaches the total.
+    /// Without an active segment there is nothing to shorten.
+    pub fn exclude(&mut self, span: Duration) {
+        if let Some(start) = &mut self.session_start {
+            *start = start.saturating_add(span);
+        }
     }
 
     /// Returns committed whole seconds, excluding the active uncommitted segment.
@@ -140,6 +151,25 @@ mod tests {
         playtime.commit_session(Duration::from_secs(130));
 
         assert_eq!(playtime.total_seconds(), 30);
+    }
+
+    #[test]
+    fn an_excluded_pause_never_reaches_the_total() {
+        let mut playtime = Playtime::default();
+        playtime.start_session(Duration::from_secs(10));
+        playtime.exclude(Duration::from_secs(100));
+        playtime.commit_session(Duration::from_secs(130));
+
+        assert_eq!(playtime.total_seconds(), 20);
+    }
+
+    #[test]
+    fn exclude_without_a_session_is_a_no_op() {
+        let mut playtime = Playtime::from_seconds(5);
+        playtime.exclude(Duration::from_secs(100));
+
+        assert_eq!(playtime.session_start(), None);
+        assert_eq!(playtime.total_seconds(), 5);
     }
 
     #[test]

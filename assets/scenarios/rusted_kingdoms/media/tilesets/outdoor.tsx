@@ -57,11 +57,13 @@
  </tile>
  <tile id="23">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="wall left top cap"/>
   </properties>
  </tile>
  <tile id="24">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="wall left top cap inner"/>
   </properties>
  </tile>
@@ -96,11 +98,13 @@
  </tile>
  <tile id="40">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="wall left bottom cap"/>
   </properties>
  </tile>
  <tile id="41">
   <properties>
+   <property name="sort_base_y" type="int" value="32"/>
    <property name="desc" value="wall left bottom cap inner"/>
   </properties>
  </tile>
@@ -116,11 +120,13 @@
  </tile>
  <tile id="57">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="wall left"/>
   </properties>
  </tile>
  <tile id="58">
   <properties>
+   <property name="sort_base_y" type="int" value="64"/>
    <property name="desc" value="wall left inner"/>
   </properties>
  </tile>
@@ -142,6 +148,26 @@
  <tile id="77">
   <properties>
    <property name="desc" value="wall top base right end"/>
+  </properties>
+ </tile>
+ <tile id="51">
+  <properties>
+   <property name="sort_base_y" type="int" value="64"/>
+  </properties>
+ </tile>
+ <tile id="52">
+  <properties>
+   <property name="sort_base_y" type="int" value="64"/>
+  </properties>
+ </tile>
+ <tile id="53">
+  <properties>
+   <property name="sort_base_y" type="int" value="64"/>
+  </properties>
+ </tile>
+ <tile id="54">
+  <properties>
+   <property name="sort_base_y" type="int" value="64"/>
   </properties>
  </tile>
 </tileset>

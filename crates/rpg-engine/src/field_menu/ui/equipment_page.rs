@@ -366,9 +366,14 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
 ) {
     let candidates = equipment_candidates(game, catalog, slot);
     let total = candidates.len() + 1;
-    let first = window_start(state.selected, total, EQUIPMENT_PICKER_VISIBLE_ROWS);
-    for (index, fades) in visible_rows(first, total, EQUIPMENT_PICKER_VISIBLE_ROWS) {
-        spawn_windowed_card(parent, fades, |parent| {
+    let window = state.scroll.window(
+        "equipment_picker",
+        state.selected,
+        total,
+        EQUIPMENT_PICKER_VISIBLE_ROWS,
+    );
+    spawn_scroll_list(parent, window, scroll_list_node(8.0), |parent| {
+        for index in window.indices() {
             let candidate_id = index
                 .checked_sub(1)
                 .and_then(|candidate| candidates.get(candidate).map(String::as_str));
@@ -416,8 +421,8 @@ pub(in crate::field_menu) fn spawn_equipment_picker(
                     };
                     spawn_status_text(row, summary, font, 12.0, color);
                 });
-        });
-    }
+        }
+    });
     spawn_section_rule(parent);
     spawn_equipment_preview(parent, font, state, catalog, member, slot, &candidates);
 }

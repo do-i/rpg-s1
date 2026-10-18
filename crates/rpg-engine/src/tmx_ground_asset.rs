@@ -240,8 +240,10 @@ impl TmxGroundAsset {
                     let rotation = apply_tiled_transform(&mut sprite, resolved.gid());
                     let center =
                         tmx_tile_center(column, row, header.tile_width(), header.tile_height());
-                    let z = if layer.name() == FOREGROUND_LAYER_NAME
-                        && let Some(base_y) = atlas.metadata().sort_base_y(resolved.local_id())
+                    let z = if is_foreground_layer(layer.name())
+                        && let Some(base_y) = layer
+                            .sort_base_y_at(column, row)
+                            .or_else(|| atlas.metadata().sort_base_y(resolved.local_id()))
                     {
                         // Keep every row of an object at one baseline. This draws the full
                         // transparent silhouette above actors behind it and below actors in front.
@@ -344,11 +346,15 @@ fn static_tile_z(layer_index: usize) -> f32 {
 /// Its depth follows the map height so actors at the bottom of tall maps stay behind it too.
 fn tile_layer_z(layer_index: usize, layer_name: &str, map_pixel_height: f32) -> f32 {
     let authored_z = static_tile_z(layer_index);
-    if layer_name == FOREGROUND_LAYER_NAME {
+    if is_foreground_layer(layer_name) {
         world_entity_y_z(-map_pixel_height, 64.0) + STATIC_Z_SPAN + authored_z
     } else {
         authored_z
     }
+}
+
+fn is_foreground_layer(name: &str) -> bool {
+    name == FOREGROUND_LAYER_NAME
 }
 
 fn apply_tiled_transform(sprite: &mut Sprite, gid: crate::tmx_header::TmxTileGid) -> Quat {
@@ -820,13 +826,18 @@ mod tests {
 
         assert!(!spawn.visible());
         assert_eq!(spawn.gids().iter().filter(|gid| !gid.is_empty()).count(), 5);
-        assert_eq!(
-            map.visible_layer_indices
+        let visible_names = map
+            .visible_layer_indices
+            .iter()
+            .map(|&index| map.document().tile_layers()[index].name())
+            .collect::<Vec<_>>();
+        assert!(
+            visible_names
                 .iter()
-                .map(|&index| map.document().tile_layers()[index].name())
-                .collect::<Vec<_>>(),
-            ["ground", "terrain", "collision", "decoration"]
+                .all(|name| !matches!(*name, "collision" | "spawn_tile"))
         );
+        assert!(visible_names.contains(&"ground"));
+        assert!(visible_names.contains(&"foreground"));
         let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
         assert!(
             map.visible_bundles(atlases)
@@ -1248,6 +1259,68 @@ mod tests {
         assert!(column_tile(5).transform.translation.z < in_front_z);
         assert_eq!(collision.is_blocked(2, 5), Some(true));
         assert_eq!(collision.is_open(2, 6), Some(true));
+    }
+
+    #[test]
+    fn repeated_forest_canopy_rows_share_the_actual_root_baseline() {
+        use crate::scenario_spatial::{Position, collision_occupancy::CollisionOccupancy};
+        use crate::world_player::WorldPlayerMotion;
+        // Keep the three-row sample in Corrupted Forest: Starting Forest's
+        // edited layout no longer contains that tree.
+        for (path, trees) in [
+            (
+                "media/maps/zone_01_starting_forest.tmx",
+                &[(47_u32, 15_u32, 4_u32, 1_u32), (0, 27, 6, 2)][..],
+            ),
+            (
+                "media/maps/zone_08_corrupted_forest.tmx",
+                &[(13_u32, 4_u32, 3_u32, 2_u32)][..],
+            ),
+        ] {
+            let mut app = ground_app();
+            let handle = load_map(&mut app, path);
+            let maps = app.world().resource::<Assets<TmxGroundAsset>>();
+            let map = maps.get(&handle).unwrap();
+            let document = map.document();
+            let occupancy = CollisionOccupancy::from_tmx_document(document).unwrap();
+            let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
+            let bundles = map.visible_bundles(atlases).unwrap();
+            // The four-row exposed edge is one column wide: its right neighbor is
+            // a connected forest barrier rather than the other half of that tree.
+            for &(column, row, height, width) in trees {
+                let behind = WorldPlayerMotion::from_tile(Position::new(
+                    column as i32,
+                    (row + height - 2) as i32,
+                ));
+                let front = WorldPlayerMotion::from_tile(Position::new(
+                    column as i32,
+                    (row + height) as i32,
+                ));
+                let behind_z = world_entity_y_z(behind.sprite_center_world(0.0).y, 32.0);
+                let front_z = world_entity_y_z(front.sprite_center_world(0.0).y, 32.0);
+                let baseline = world_entity_y_z(-(((row + height) * 32) as f32), 0.0);
+                for dy in 0..height {
+                    for dx in 0..width {
+                        let tile = bundles
+                            .iter()
+                            .find(|bundle| {
+                                bundle.tile.column() == column + dx
+                                    && bundle.tile.row() == row + dy
+                                    && is_foreground_layer(
+                                        document.tile_layers()[bundle.tile.layer_index()].name(),
+                                    )
+                            })
+                            .expect("all connecting crown tiles render in foreground");
+                        assert_eq!(tile.transform.translation.z, baseline);
+                        assert!(baseline > behind_z && baseline < front_z);
+                        assert_eq!(
+                            occupancy.is_blocked((column + dx) as i32, (row + dy) as i32),
+                            Some(dy == height - 1 || column + dx == 0)
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

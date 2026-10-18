@@ -240,53 +240,93 @@ pub(crate) fn meter_percent(value: u32, maximum: u32) -> f32 {
     }
 }
 
-/// First visible index of a list that scrolls only far enough to keep `selected` on screen.
+/// Rows kept between the cursor and a window edge that hides more rows, so the next row is always
+/// in view before the cursor reaches it, and a scroll arrow never sits over the selected card.
+const SCROLL_MARGIN: usize = 1;
+
+/// First visible index of a scrolled list, moved from `previous` only as far as `selected` needs.
 ///
-/// This is the source `ScrollListState` rule (`engine/common/scroll_list.py`), which the quest
-/// register and the shop family both need: the window holds still until the cursor would leave
-/// it, rather than paging in fixed blocks.
-pub(crate) fn window_start(selected: usize, len: usize, rows: usize) -> usize {
+/// The cursor travels freely inside the window; the window follows only once the cursor comes
+/// within [`SCROLL_MARGIN`] rows of an edge that still hides rows. At the true ends of the list the
+/// cursor walks onto the first and last rows.
+pub(crate) fn scroll_first(previous: usize, selected: usize, len: usize, rows: usize) -> usize {
     if rows == 0 || len <= rows {
         return 0;
     }
-    selected.saturating_sub(rows - 1).min(len - rows)
+    let selected = selected.min(len - 1);
+    let margin = SCROLL_MARGIN.min((rows - 1) / 2);
+    let lowest = (selected + margin + 1).saturating_sub(rows);
+    let highest = selected.saturating_sub(margin);
+    previous.clamp(lowest, highest).min(len - rows)
 }
 
-/// Which edges of a windowed list's visible card have hidden cards beyond them.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct ScrollFades {
-    pub(crate) top: bool,
-    pub(crate) bottom: bool,
+/// The visible slice of a scrolled list.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ScrollWindow {
+    pub(crate) first: usize,
+    pub(crate) len: usize,
+    pub(crate) rows: usize,
 }
 
-impl ScrollFades {
-    /// The fades for the card at `offset` within a window of `shown` cards starting at `first`
-    /// in a list of `len`: the first card fades upward when the window has scrolled, and the
-    /// last fades downward when more cards wait below.
-    pub(crate) const fn for_row(offset: usize, shown: usize, first: usize, len: usize) -> Self {
-        Self {
-            top: offset == 0 && first > 0,
-            bottom: offset + 1 == shown && first + shown < len,
-        }
+impl ScrollWindow {
+    /// Indices of the rows on screen.
+    pub(crate) fn indices(self) -> std::ops::Range<usize> {
+        self.first.min(self.len)..(self.first + self.rows).min(self.len)
     }
 
-    const fn any(self) -> bool {
-        self.top || self.bottom
+    pub(crate) const fn scrolls(self) -> bool {
+        self.len > self.rows
+    }
+
+    const fn hides_above(self) -> bool {
+        self.first > 0
+    }
+
+    const fn hides_below(self) -> bool {
+        self.first + self.rows < self.len
     }
 }
 
-/// The half-card shade marking a list edge with more cards past it.
+/// Where each windowed list of one screen was last scrolled, keyed by a name per list.
+///
+/// Free cursor travel needs the previous window, but the menus redraw from `&State`. The memory
+/// is a view cache rather than menu state, so it updates behind a lock without marking the
+/// state changed and triggering another redraw.
+#[derive(Debug, Default)]
+pub(crate) struct ScrollMemory(std::sync::Mutex<std::collections::BTreeMap<&'static str, usize>>);
+
+impl ScrollMemory {
+    /// The window for `list` with `selected` in view, remembered for the next redraw.
+    pub(crate) fn window(
+        &self,
+        list: &'static str,
+        selected: usize,
+        len: usize,
+        rows: usize,
+    ) -> ScrollWindow {
+        let mut firsts = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let first = scroll_first(firsts.get(list).copied().unwrap_or(0), selected, len, rows);
+        firsts.insert(list, first);
+        ScrollWindow { first, len, rows }
+    }
+}
+
+/// The scroll indicators a windowed list draws: arrow tabs on edges that hide rows, and the
+/// scrollbar thumb.
 #[derive(Clone, Copy, Component, Debug, Eq, PartialEq)]
-pub(crate) enum ScrollFade {
-    Top,
-    Bottom,
+pub(crate) enum ScrollIndicator {
+    Up,
+    Down,
+    Thumb,
 }
 
-/// The scroll fade's colour; its alpha ramps from clear at the card's middle to these stops.
-const SCROLL_FADE_SHADE: Color = Color::srgb(0.02, 0.02, 0.03);
-/// Shade alpha a quarter of the card from its edge, and at the edge itself.
-const SCROLL_FADE_MID_ALPHA: f32 = 0.8;
-const SCROLL_FADE_EDGE_ALPHA: f32 = 0.96;
+/// Width kept free on a scroll list's right for its scrollbar, so cards never sit under it.
+const SCROLL_GUTTER: f32 = 10.0;
+const SCROLL_ARROW_TAB_WIDTH: f32 = 34.0;
+const SCROLL_ARROW_TAB_HEIGHT: f32 = 14.0;
 
 /// Background and border of one selectable list card, highlighted while `selected`.
 pub(crate) fn selectable_card_colors(selected: bool) -> (BackgroundColor, BorderColor) {
@@ -303,100 +343,141 @@ pub(crate) fn selectable_card_colors(selected: bool) -> (BackgroundColor, Border
     }
 }
 
-/// The rows a scrolled list shows: each visible row's index into the full list, with the fades its
-/// card needs to say more rows are hidden above or below.
-pub(crate) fn visible_rows(
-    first: usize,
-    len: usize,
-    rows: usize,
-) -> impl Iterator<Item = (usize, ScrollFades)> {
-    let shown = len.saturating_sub(first).min(rows);
-    (0..shown).map(move |offset| {
-        (
-            first + offset,
-            ScrollFades::for_row(offset, shown, first, len),
-        )
-    })
+/// A plain column for a scroll list's cards, spaced `gap` apart.
+pub(crate) fn scroll_list_node(gap: f32) -> Node {
+    Node {
+        width: percent(100),
+        flex_direction: FlexDirection::Column,
+        flex_shrink: 0.0,
+        row_gap: px(gap),
+        ..default()
+    }
 }
 
-/// Spawns one card of a windowed list, shading the half of it that faces hidden cards.
+/// Spawns a windowed list's cards inside `node`, with its scroll indicators laid over them.
 ///
-/// A card with nothing hidden beyond it is spawned exactly as `spawn_card` builds it. An edge
-/// card is wrapped in a full-width box so the shade can be laid over it absolutely without
-/// knowing the card's height or touching its own children.
-pub(crate) fn spawn_windowed_card(
+/// While rows are hidden, an arrow tab straddles each edge that hides them and a thin scrollbar
+/// on the right shows where the window sits. The cards themselves are never shaded, so the
+/// selected card always reads at full strength. The right padding of `node` is replaced by the
+/// scrollbar's gutter.
+pub(crate) fn spawn_scroll_list(
     parent: &mut ChildSpawnerCommands<'_>,
-    fades: ScrollFades,
-    spawn_card: impl FnOnce(&mut ChildSpawnerCommands<'_>),
+    window: ScrollWindow,
+    node: Node,
+    spawn_rows: impl FnOnce(&mut ChildSpawnerCommands<'_>),
 ) {
-    if !fades.any() {
-        spawn_card(parent);
-        return;
-    }
+    let padding = UiRect {
+        right: px(SCROLL_GUTTER),
+        ..node.padding
+    };
     parent
-        .spawn(Node {
-            width: percent(100),
-            flex_direction: FlexDirection::Column,
-            flex_shrink: 0.0,
-            ..default()
-        })
-        .with_children(|wrapper| {
-            spawn_card(wrapper);
-            spawn_scroll_fades(wrapper, fades);
+        .spawn((Node { padding, ..node }, Name::new("Scroll list")))
+        .with_children(|list| {
+            spawn_rows(list);
+            if !window.scrolls() {
+                return;
+            }
+            spawn_scrollbar(list, window);
+            if window.hides_above() {
+                spawn_scroll_arrow(list, ScrollIndicator::Up);
+            }
+            if window.hides_below() {
+                spawn_scroll_arrow(list, ScrollIndicator::Down);
+            }
         });
 }
 
-/// Lays the shades for `fades` over the node being built, which must not clip them away.
-///
-/// Cards that size themselves by flex (and so cannot sit in [`spawn_windowed_card`]'s wrapper)
-/// call this as their last child instead.
-pub(crate) fn spawn_scroll_fades(parent: &mut ChildSpawnerCommands<'_>, fades: ScrollFades) {
-    for (fade, shown) in [
-        (ScrollFade::Top, fades.top),
-        (ScrollFade::Bottom, fades.bottom),
-    ] {
-        if shown {
-            spawn_scroll_fade(parent, fade);
-        }
-    }
+fn spawn_scrollbar(parent: &mut ChildSpawnerCommands<'_>, window: ScrollWindow) {
+    let share = |rows: usize| rows as f32 / window.len as f32 * 100.0;
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(2),
+                bottom: px(2),
+                right: px(1),
+                width: px(3),
+                border_radius: BorderRadius::all(px(2)),
+                ..default()
+            },
+            BackgroundColor(status_faint().with_alpha(0.3)),
+            Name::new("Scrollbar"),
+        ))
+        .with_children(|track| {
+            track.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(0),
+                    right: px(0),
+                    top: percent(share(window.first)),
+                    height: percent(share(window.rows)),
+                    border_radius: BorderRadius::all(px(2)),
+                    ..default()
+                },
+                BackgroundColor(status_gold()),
+                ScrollIndicator::Thumb,
+            ));
+        });
 }
 
-fn spawn_scroll_fade(parent: &mut ChildSpawnerCommands<'_>, fade: ScrollFade) {
-    // The shade deepens quickly toward the edge the hidden cards lie past.
-    let stops = vec![
-        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(0.0), 0.0),
-        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(SCROLL_FADE_MID_ALPHA), 50.0),
-        ColorStop::percent(SCROLL_FADE_SHADE.with_alpha(SCROLL_FADE_EDGE_ALPHA), 100.0),
-    ];
-    let (gradient, top, bottom, radius) = match fade {
-        ScrollFade::Top => (
-            LinearGradient::to_top(stops),
-            px(0),
-            auto(),
-            BorderRadius::top(px(4)),
-        ),
-        ScrollFade::Bottom => (
-            LinearGradient::to_bottom(stops),
-            auto(),
-            px(0),
-            BorderRadius::bottom(px(4)),
-        ),
+fn spawn_scroll_arrow(parent: &mut ChildSpawnerCommands<'_>, arrow: ScrollIndicator) {
+    let up = arrow == ScrollIndicator::Up;
+    // The tab is centred on the list's edge, half over the outermost card -- which the scroll
+    // margin guarantees is never the selected one.
+    let overhang = px(-SCROLL_ARROW_TAB_HEIGHT / 2.0);
+    let (top, bottom) = if up {
+        (overhang, auto())
+    } else {
+        (auto(), overhang)
     };
-    parent.spawn((
-        Node {
+    parent
+        .spawn(Node {
             position_type: PositionType::Absolute,
             left: px(0),
-            right: px(0),
+            right: px(SCROLL_GUTTER),
             top,
             bottom,
-            height: percent(50),
-            border_radius: radius,
+            justify_content: JustifyContent::Center,
             ..default()
-        },
-        BackgroundGradient(vec![gradient.into()]),
-        fade,
-        Name::new("Scroll fade"),
-    ));
+        })
+        .with_children(|row| {
+            row.spawn((
+                Node {
+                    width: px(SCROLL_ARROW_TAB_WIDTH),
+                    height: px(SCROLL_ARROW_TAB_HEIGHT),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(SCROLL_ARROW_TAB_HEIGHT / 2.0)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba_u8(22, 22, 28, 240)),
+                BorderColor::all(status_border_active()),
+                arrow,
+            ))
+            .with_children(|tab| {
+                // A square with two bordered sides, turned so its corner points the scroll way.
+                // The font has no arrow glyphs, so the chevron is drawn rather than typed.
+                tab.spawn((
+                    Node {
+                        width: px(7),
+                        height: px(7),
+                        border: UiRect {
+                            left: px(2),
+                            top: px(2),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    BorderColor::all(status_gold()),
+                    UiTransform {
+                        translation: Val2::px(0.0, if up { 2.0 } else { -2.0 }),
+                        rotation: Rot2::degrees(if up { 45.0 } else { 225.0 }),
+                        ..UiTransform::IDENTITY
+                    },
+                ));
+            });
+        });
 }
 
 /// Category prefixes the scenario uses to group map ids, dropped from displayed place names.
@@ -437,41 +518,58 @@ fn title_case_word(word: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{ScrollFades, location_display_name, meter_percent, visible_rows, window_start};
+    use super::{ScrollMemory, ScrollWindow, location_display_name, meter_percent, scroll_first};
 
     #[test]
-    fn only_edge_cards_facing_hidden_cards_fade() {
-        // Everything fits: nothing fades.
-        assert_eq!(ScrollFades::for_row(0, 5, 0, 5), ScrollFades::default());
-        assert_eq!(ScrollFades::for_row(4, 5, 0, 5), ScrollFades::default());
-        // At the top of a longer list only the last card fades, downward.
-        assert_eq!(
-            ScrollFades::for_row(6, 7, 0, 20),
-            ScrollFades {
-                top: false,
-                bottom: true
+    fn the_cursor_moves_freely_and_the_window_follows_one_row_from_a_hiding_edge() {
+        // Ten rows in a window of four: walking down holds the window still until the cursor
+        // reaches the row above the bottom edge, then scrolls one row per step.
+        let mut first = 0;
+        let mut walk = Vec::new();
+        for selected in 0..10 {
+            first = scroll_first(first, selected, 10, 4);
+            walk.push(first);
+        }
+        assert_eq!(walk, [0, 0, 0, 1, 2, 3, 4, 5, 6, 6]);
+        // Walking back up from the bottom moves the cursor, not the window, until it nears the top.
+        assert_eq!(scroll_first(6, 8, 10, 4), 6);
+        assert_eq!(scroll_first(6, 7, 10, 4), 6);
+        assert_eq!(scroll_first(6, 6, 10, 4), 5);
+        // A stale window snaps to wherever the cursor now is.
+        assert_eq!(scroll_first(6, 0, 10, 4), 0);
+        assert_eq!(scroll_first(0, 9, 10, 4), 6);
+        // Short lists never scroll.
+        assert_eq!(scroll_first(3, 2, 3, 7), 0);
+    }
+
+    #[test]
+    fn the_selected_row_never_sits_on_an_edge_that_hides_rows() {
+        for len in 0..20 {
+            for rows in 1..8 {
+                let mut first = 0;
+                for selected in (0..len).chain((0..len).rev()) {
+                    first = scroll_first(first, selected, len, rows);
+                    let window = ScrollWindow { first, len, rows };
+                    assert!(
+                        window.indices().contains(&selected),
+                        "{len}/{rows}/{selected}"
+                    );
+                    assert!(window.indices().len() == rows.min(len));
+                    if rows >= 3 {
+                        assert!(!(window.hides_above() && selected == first));
+                        assert!(!(window.hides_below() && selected + 1 == first + rows));
+                    }
+                }
             }
-        );
-        assert_eq!(ScrollFades::for_row(0, 7, 0, 20), ScrollFades::default());
-        // Scrolled to the end only the first card fades, upward.
-        assert_eq!(
-            ScrollFades::for_row(0, 7, 13, 20),
-            ScrollFades {
-                top: true,
-                bottom: false
-            }
-        );
-        assert_eq!(ScrollFades::for_row(6, 7, 13, 20), ScrollFades::default());
-        // A one-card window in the middle fades both ways.
-        assert_eq!(
-            ScrollFades::for_row(0, 1, 3, 9),
-            ScrollFades {
-                top: true,
-                bottom: true
-            }
-        );
-        // Middle cards never fade.
-        assert_eq!(ScrollFades::for_row(3, 7, 5, 20), ScrollFades::default());
+        }
+    }
+
+    #[test]
+    fn scroll_memory_keeps_each_list_apart() {
+        let memory = ScrollMemory::default();
+        assert_eq!(memory.window("a", 9, 10, 4).first, 6);
+        assert_eq!(memory.window("b", 0, 10, 4).first, 0);
+        assert_eq!(memory.window("a", 7, 10, 4).first, 6);
     }
 
     #[test]
@@ -479,18 +577,6 @@ mod tests {
         assert_eq!(meter_percent(3, 0), 0.0);
         assert_eq!(meter_percent(25, 100), 25.0);
         assert_eq!(meter_percent(125, 100), 100.0);
-    }
-
-    #[test]
-    fn a_list_window_holds_still_until_the_cursor_would_leave_it() {
-        // Short lists never scroll, whichever row is selected.
-        assert_eq!(window_start(0, 5, 7), 0);
-        assert_eq!(window_start(4, 5, 7), 0);
-        // Long lists hold at the top until the cursor reaches the last visible row.
-        assert_eq!(window_start(6, 20, 7), 0);
-        assert_eq!(window_start(7, 20, 7), 1);
-        // And stop once the final row is on screen, rather than scrolling past the end.
-        assert_eq!(window_start(19, 20, 7), 13);
     }
 
     #[test]
@@ -518,34 +604,5 @@ mod tests {
     fn an_id_with_nothing_left_to_show_falls_back_to_itself() {
         assert_eq!(location_display_name("zone_01"), "zone_01");
         assert_eq!(location_display_name(""), "");
-    }
-
-    #[test]
-    fn visible_rows_index_the_window_and_fade_only_edges_that_hide_rows() {
-        let fades = |row: (usize, ScrollFades)| (row.0, row.1.top, row.1.bottom);
-        // A scrolled window: hidden rows above and below fade the first and last cards.
-        assert_eq!(
-            visible_rows(2, 10, 4).map(fades).collect::<Vec<_>>(),
-            [
-                (2, true, false),
-                (3, false, false),
-                (4, false, false),
-                (5, false, true)
-            ]
-        );
-        // The end of the list fades only its top edge.
-        assert_eq!(
-            visible_rows(6, 10, 4).map(fades).collect::<Vec<_>>(),
-            [
-                (6, true, false),
-                (7, false, false),
-                (8, false, false),
-                (9, false, false)
-            ]
-        );
-        // A short list shows every row without fades, and a window past the end shows none.
-        assert!(visible_rows(0, 3, 7).all(|(_, fade)| !fade.top && !fade.bottom));
-        assert_eq!(visible_rows(0, 3, 7).count(), 3);
-        assert_eq!(visible_rows(10, 10, 4).count(), 0);
     }
 }

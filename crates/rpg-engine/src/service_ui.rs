@@ -163,6 +163,8 @@ pub(crate) struct ServiceUiState {
     /// Set for the rest of the frame a Back press closes the service, so the same press
     /// cannot fall through to the field menu.
     closed_this_frame: bool,
+    /// Where each of this screen's lists was last scrolled.
+    scroll: crate::menu_chrome::ScrollMemory,
 }
 
 impl ServiceUiState {

@@ -102,23 +102,22 @@ pub(in crate::field_menu) fn spawn_save_page(
                             );
                         });
                 } else {
-                    // The autosave is not a save target, so the list and its fades start at the
-                    // first player slot: slot 1 has nothing above it.
-                    let first = save_window_start(state.selected) - FIRST_PLAYER_SLOT;
-                    for (index, fades) in visible_rows(first, PLAYER_SLOT_COUNT, SAVE_VISIBLE_ROWS)
-                    {
-                        let Some(slot) = saves.slots().get(FIRST_PLAYER_SLOT + index) else {
-                            continue;
-                        };
-                        spawn_windowed_card(modal, fades, |modal| {
+                    // The autosave is not a save target, so the list and its scroll indicators
+                    // start at the first player slot: slot 1 has nothing above it.
+                    let window = save_window(state);
+                    spawn_scroll_list(modal, window, scroll_list_node(6.0), |modal| {
+                        for index in window.indices() {
+                            let Some(slot) = saves.slots().get(FIRST_PLAYER_SLOT + index) else {
+                                continue;
+                            };
                             spawn_field_save_slot_row(
                                 modal,
                                 font,
                                 slot,
                                 slot.index == state.selected,
                             );
-                        });
-                    }
+                        }
+                    });
                 }
                 spawn_status_text(
                     modal,
@@ -307,11 +306,12 @@ pub(in crate::field_menu) fn spawn_save_overwrite_modal(
 
 const PLAYER_SLOT_COUNT: usize = LAST_PLAYER_SLOT - FIRST_PLAYER_SLOT + 1;
 
-/// The first slot shown, scrolled only far enough to keep `selected` on screen.
-pub(in crate::field_menu) fn save_window_start(selected: usize) -> usize {
-    window_start(
-        selected.saturating_sub(FIRST_PLAYER_SLOT),
+/// The visible player slots, indexed from the first player slot.
+pub(in crate::field_menu) fn save_window(state: &FieldMenuState) -> ScrollWindow {
+    state.scroll.window(
+        "save_slots",
+        state.selected.saturating_sub(FIRST_PLAYER_SLOT),
         PLAYER_SLOT_COUNT,
         SAVE_VISIBLE_ROWS,
-    ) + FIRST_PLAYER_SLOT
+    )
 }

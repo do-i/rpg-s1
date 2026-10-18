@@ -38,6 +38,11 @@ that directory's binary. All fixture saves and run evidence belong under ignored
 | 25 | Pike's turn-back path completed | Offer remains available, no state change |
 | 10–15 | Synthesized act/finale flags and map/RNG progression | Serialization probes only; use natural saves for campaign acceptance |
 
+Load Game marks valid saves with `HIGHEST LEVEL`, `LONGEST PLAYTIME`, and
+`MOST RECENT` badges. Rankings include autosave and all numbered slots;
+ties share badges. Level uses the protagonist's level, and most recent uses
+the save timestamp rather than the last time a slot was loaded.
+
 Use title → Load Game to select a slot. Default controls: arrows move/select,
 Enter interacts/confirms, Escape backs out, `M` opens the field menu, `T` opens
 Travel. NPCs may move; face an adjacent NPC before interacting. Fully exit via

@@ -13,9 +13,9 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 
 use crate::{
-    field_menu::FieldMenuState, service_ui::ServiceUiState, transport_ui::TransportUiState,
-    world_encounter::BattleTransition, world_interaction::WorldInteractionState,
-    world_transition::WorldTransition,
+    field_menu::FieldMenuState, game_pause::GamePause, service_ui::ServiceUiState,
+    transport_ui::TransportUiState, world_encounter::BattleTransition,
+    world_interaction::WorldInteractionState, world_transition::WorldTransition,
 };
 
 /// Every World overlay that takes input away from the player.
@@ -30,6 +30,7 @@ pub(crate) struct WorldOverlays<'w> {
     field_menu: Option<Res<'w, FieldMenuState>>,
     service: Option<Res<'w, ServiceUiState>>,
     transport: Option<Res<'w, TransportUiState>>,
+    pause: Option<Res<'w, GamePause>>,
 }
 
 impl WorldOverlays<'_> {
@@ -58,6 +59,7 @@ impl WorldOverlays<'_> {
                 .transport
                 .as_deref()
                 .is_some_and(TransportUiState::input_locked)
+            || self.pause.as_deref().is_some_and(GamePause::is_paused)
     }
 }
 

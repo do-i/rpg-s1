@@ -126,6 +126,14 @@ pub(crate) fn sell_price(item: &ItemDefinition) -> Option<u32> {
     }
 }
 
+/// GP a shop pays per unit: the sell price, or a magic core's exchange rate.
+pub(crate) fn sale_value(item: &ItemDefinition) -> Option<u32> {
+    match item {
+        ItemDefinition::MagicCore(core) => core.exchange_rate.map(std::num::NonZeroU32::get),
+        _ => sell_price(item),
+    }
+}
+
 pub(crate) fn can_sell(repository: &RuntimeRepository, item: &ItemDefinition) -> bool {
     repository.item_count(item.id()) > 0
         && !repository.is_locked(item.id())
