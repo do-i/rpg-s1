@@ -550,6 +550,32 @@ mod tests {
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
 
     #[test]
+    fn editor_hidden_portal_objects_and_groups_remain_active() {
+        let xml = r#"<map orientation="orthogonal" width="4" height="4" tilewidth="32" tileheight="32">
+            <objectgroup id="1" name="portals" visible="0">
+                <object id="1" x="32" y="0" width="32" height="16" visible="0">
+                    <properties>
+                        <property name="target_map" value="town"/>
+                        <property name="target_position_x" type="int" value="3"/>
+                        <property name="target_position_y" type="int" value="4"/>
+                    </properties>
+                </object>
+            </objectgroup>
+        </map>"#;
+        let owner = ScenarioRelativePath::try_from("media/maps/shrine.tmx").unwrap();
+        let document = parse_tmx_map_document(xml, &owner).unwrap();
+        let portals = runtime_portals(&document).unwrap();
+        assert_eq!(portals.len(), 1);
+        assert_eq!(portals[0].target_map().as_str(), "town");
+        assert_eq!(portals[0].target_position(), Position::new(3, 4));
+        assert!(
+            portals[0]
+                .bounds()
+                .is_triggered_by(rect(40.0, 0.0, 20.0, 18.0))
+        );
+    }
+
+    #[test]
     fn python_editor_rectangles_points_and_authored_edges_round_trip_runtime_extraction() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -699,7 +725,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     #[test]
     fn ardel_runtime_portals_preserve_source_bounds_and_destinations() {
         let portals = ardel_portals();
-        assert_eq!(portals.len(), 6);
+        assert_eq!(portals.len(), 10);
         let house = portals
             .iter()
             .find(|portal| portal.name() == Some("house"))
@@ -708,8 +734,8 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         assert_eq!(
             house.bounds(),
             PortalBounds {
-                x: 69.4546,
-                y: 124.818,
+                x: 70.1213,
+                y: 153.818,
                 width: 53.9015,
                 height: 9.59847
             }
@@ -734,10 +760,30 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 "town_01_ardel_inn_01",
                 "zone_01_starting_forest",
                 "town_01_ardel_shrine",
+                "town_01_ardel_shop_weapon",
+                "town_01_ardel_shop_item",
+                "town_01_ardel_shop_mc",
+                "town_01_ardel_shop_armor",
             ]
         );
 
         let return_documents = [
+            (
+                "town_01_ardel_shop_weapon",
+                include_str!(scenario_file!("media/maps/town_01_ardel_shop_weapon.tmx")),
+            ),
+            (
+                "town_01_ardel_shop_armor",
+                include_str!(scenario_file!("media/maps/town_01_ardel_shop_armor.tmx")),
+            ),
+            (
+                "town_01_ardel_shop_item",
+                include_str!(scenario_file!("media/maps/town_01_ardel_shop_item.tmx")),
+            ),
+            (
+                "town_01_ardel_shop_mc",
+                include_str!(scenario_file!("media/maps/town_01_ardel_shop_mc.tmx")),
+            ),
             (
                 "town_01_ardel_house_01",
                 include_str!(scenario_file!("media/maps/town_01_ardel_house_01.tmx")),
@@ -784,7 +830,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             include_str!(scenario_file!("media/maps/town_01_ardel_house_01.tmx")),
         );
         assert_eq!(returns.len(), 1);
-        assert_eq!(returns[0].target_position(), Position::new(3, 4));
+        assert_eq!(returns[0].target_position(), Position::new(3, 5));
     }
 
     #[test]
@@ -876,7 +922,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             include_str!(scenario_file!("media/maps/town_01_ardel_shrine.tmx")),
         );
         assert_eq!(returns.len(), 1);
-        assert_eq!(returns[0].target_position(), Position::new(3, 18));
+        assert_eq!(returns[0].target_position(), Position::new(52, 5));
     }
 
     #[test]
@@ -1327,9 +1373,8 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     fn entry_detector_emits_once_until_player_leaves_and_reenters() {
         let portals = ardel_portals();
         let mut detector = PortalEntryDetector::default();
-        // town_01_ardel's "house" portal is the pixel rect x:[69.4546, 123.3561],
-        // y:[124.818, 134.416]; this rect overlaps only that portal among Ardel's six.
-        let on_house = collision_rect(100.0, 120.0);
+        // This rect overlaps only the relocated house doorway among Ardel's ten portals.
+        let on_house = collision_rect(100.0, 150.0);
         // Far from every authored Ardel portal (shop/inn/hole/shrine/to_zone_01 included).
         let away = collision_rect(300.0, 300.0);
         assert_eq!(
@@ -1359,7 +1404,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             phase: TransitionPhase::Publishing,
             pending: Some(PendingTransition {
                 target_map: RuntimeMapId::try_new("town_01_ardel").unwrap(),
-                target_position: Position::new(3, 4),
+                target_position: Position::new(3, 5),
                 facing: CardinalDirection::Down,
             }),
             ..default()
@@ -1367,7 +1412,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
 
         transition.destination_published();
         transition.phase = TransitionPhase::Idle;
-        let on_house = collision_rect(100.0, 120.0);
+        let on_house = collision_rect(100.0, 150.0);
         let away = collision_rect(300.0, 300.0);
         assert!(transition.suppress_destination_overlap(&portals, on_house));
         assert!(transition.suppress_destination_overlap(&portals, on_house));

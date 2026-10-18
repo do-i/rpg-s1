@@ -48,3 +48,6 @@ assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/45_Landing_01.m
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/52_Dive_02.mp3
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/56_Attack_03.mp3
 assets/scenarios/rusted_kingdoms/media/audio/sfx/player_movement/61_Hit_03.mp3
+
+# Editor-only map template; placeholder portals are not playable content.
+assets/scenarios/rusted_kingdoms/media/map_templates/town_00_shop_template.tmx

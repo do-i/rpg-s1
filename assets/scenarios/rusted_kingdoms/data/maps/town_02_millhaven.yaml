@@ -68,7 +68,7 @@ npcs:
     name: "Hobb"
     dialogue: millhaven_carter
     position: [22, 12]
-    sprite: media/sprites/npc/merchant_traveling_merchant.tsx
+    sprite: media/sprites/npc/farmer_male_straw_hat_worker.tsx
     default_facing: down
     animation:
       mode: wander

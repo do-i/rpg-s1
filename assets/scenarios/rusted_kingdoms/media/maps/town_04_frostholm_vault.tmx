@@ -3,8 +3,8 @@
  <tileset firstgid="1359" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="3407" source="../tilesets/interior.tsx"/>
  <tileset firstgid="3479" source="../tilesets/shop.tsx"/>
- <tileset firstgid="3519" source="../tilesets/town.tsx"/>
- <tileset firstgid="3759" source="../tilesets/decor.tsx"/>
+ <tileset firstgid="3543" source="../tilesets/town.tsx"/>
+ <tileset firstgid="3783" source="../tilesets/decor.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_04_frostholm_palace" x="160.242" y="349.003" width="31.6364" height="3.32955">
    <properties>

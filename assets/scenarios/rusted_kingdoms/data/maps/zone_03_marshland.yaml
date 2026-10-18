@@ -7,7 +7,7 @@ npcs:
     name: "Fen Farmer Olan"
     position: [42, 25]
     dialogue: marsh_farmer
-    sprite: media/sprites/npc/farmer_male_base.tsx
+    sprite: media/sprites/npc/farmer_male_older_farmer.tsx
     default_facing: left
 
   - id: marshland_reedcutter

@@ -78,7 +78,7 @@ npcs:
     name: "Lady Ashwyn"
     dialogue: frostholm_courtier
     position: [33, 15]
-    sprite: media/sprites/npc/merchant_wealthy_bowler.tsx
+    sprite: media/sprites/npc/village_female_person_long_hair_green_skirt.tsx
     default_facing: down
     animation:
       mode: wander
