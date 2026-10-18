@@ -3206,8 +3206,8 @@ mod tests {
 
         assert_eq!(files.len(), 58);
         assert_eq!(layer_count, 345);
-        assert_eq!(gid_count, 280_632);
-        assert_eq!(flip_combination_counts, [280_422, 16, 2, 0, 0, 191, 1, 0]);
+        assert_eq!(gid_count, 280632);
+        assert_eq!(flip_combination_counts, [280422, 16, 2, 0, 0, 191, 1, 0]);
     }
 
     #[test]
@@ -3275,12 +3275,12 @@ mod tests {
         assert_eq!(files.len(), 58);
         assert_eq!(portal_groups, 57);
         assert_eq!(boss_groups, 11);
-        assert_eq!(objects, 133);
+        assert_eq!(objects, 132);
         assert_eq!(zero_sized_objects, 7);
-        assert_eq!(runtime_portals, 116);
-        assert_eq!(properties, 348);
-        assert_eq!(property_strings, 116);
-        assert_eq!(property_integers, 232);
+        assert_eq!(runtime_portals, 115);
+        assert_eq!(properties, 345);
+        assert_eq!(property_strings, 115);
+        assert_eq!(property_integers, 230);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);
     }

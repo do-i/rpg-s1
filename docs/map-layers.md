@@ -108,7 +108,11 @@ other tiles retain their TSX baseline or fixed overhead behavior. The parser
 ignores entries on empty cells so erasing tiles in Tiled does not prevent map
 loading. It rejects duplicate coordinates, out-of-bounds coordinates, and
 negative or malformed offsets. Connected forest barriers retain their collision
-and use per-cell baselines for their visible edges.
+and use per-cell baselines for their visible edges. Connected forest crowns
+sort at their actual root or bottom edge, including repeated crown rows;
+do not give their upper tiles a one-row (`32`) baseline. A walkable upper
+crown must still cover a player behind it. A base drawn in `decoration`
+also counts when determining the foreground crown's baseline.
 
 The remaining-map migration preserves map dimensions, tile positions, portal
 objects, NPC metadata, and spawn data. Roofs, cliffs, water barriers, and map

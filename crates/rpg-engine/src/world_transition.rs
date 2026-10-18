@@ -926,11 +926,11 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn starting_forest_portals_cover_both_ardel_routes_and_the_reversible_wave_boundary() {
+    fn starting_forest_portals_cover_the_ardel_return_and_reversible_plains_boundary() {
         let forest_document =
             include_str!(scenario_file!("media/maps/zone_01_starting_forest.tmx"));
         let forest = portals_for("zone_01_starting_forest", forest_document);
-        assert_eq!(forest.len(), 3);
+        assert_eq!(forest.len(), 2);
         let destinations = forest
             .iter()
             .map(|portal| (portal.target_map().as_str(), portal.target_position()))
@@ -938,7 +938,6 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         assert_eq!(
             destinations,
             [
-                ("town_01_ardel", Position::new(27, 12)),
                 ("zone_02_open_plains", Position::new(28, 6)),
                 ("town_01_ardel", Position::new(20, 17)),
             ]
