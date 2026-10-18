@@ -729,6 +729,15 @@ mod tests {
             "town_02_millhaven_shop" => {
                 include_str!(scenario_file!("data/maps/town_02_millhaven_shop.yaml"))
             }
+            "town_02_millhaven_shop_weapon" => include_str!(scenario_file!(
+                "data/maps/town_02_millhaven_shop_weapon.yaml"
+            )),
+            "town_02_millhaven_shop_armor" => include_str!(scenario_file!(
+                "data/maps/town_02_millhaven_shop_armor.yaml"
+            )),
+            "town_02_millhaven_shop_mc" => {
+                include_str!(scenario_file!("data/maps/town_02_millhaven_shop_mc.yaml"))
+            }
             _ => panic!("unknown Millhaven interior {map_id}"),
         };
         scenario_yaml::from_str(document).unwrap()
@@ -885,26 +894,37 @@ mod tests {
             [("millhaven_miller", Position::new(5, 5), "millhaven_miller")]
         );
 
+        let weapon = millhaven_interior_metadata("town_02_millhaven_shop_weapon");
+        let armor = millhaven_interior_metadata("town_02_millhaven_shop_armor");
+        let magic = millhaven_interior_metadata("town_02_millhaven_shop_mc");
         assert_eq!(shop.shop.as_ref().unwrap().items.len(), 5);
-        assert_eq!(shop.weapon_shop.as_ref().unwrap().items.len(), 6);
-        // 5 + the Leather Band, the first of the B3.6 stat accessories.
-        assert_eq!(shop.armor_shop.as_ref().unwrap().items.len(), 6);
-        let expected_shop_npcs = [
+        assert_eq!(weapon.weapon_shop.as_ref().unwrap().items.len(), 6);
+        assert_eq!(armor.armor_shop.as_ref().unwrap().items.len(), 6);
+        assert!(shop.weapon_shop.is_none() && shop.armor_shop.is_none());
+        let keepers = [
             (
+                &shop,
                 "item_shop_keeper",
-                Position::new(6, 3),
+                Position::new(9, 4),
                 "item_shop_millhaven",
             ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
             (
+                &weapon,
                 "weapon_shop_keeper",
-                Position::new(5, 3),
+                Position::new(6, 4),
                 "weapon_shop_millhaven",
             ),
             (
+                &armor,
                 "armor_shop_keeper",
-                Position::new(12, 3),
+                Position::new(1, 4),
                 "armor_shop_millhaven",
+            ),
+            (
+                &magic,
+                "mc_shop_keeper",
+                Position::new(4, 3),
+                "mc_shop_intro",
             ),
         ];
         for flags in [
@@ -912,17 +932,9 @@ mod tests {
             RuntimeFlags::from_bootstrap(["story_quest_started"]),
             RuntimeFlags::from_bootstrap(["story_quest_started", "story_act2_started"]),
         ] {
-            let observed = present_npcs(&shop, &flags)
-                .iter()
-                .map(|npc| {
-                    (
-                        npc.id.as_str(),
-                        npc.position,
-                        npc.dialogue.as_deref().unwrap_or_default(),
-                    )
-                })
-                .collect::<Vec<_>>();
-            assert_eq!(observed, expected_shop_npcs);
+            for (metadata, id, position, dialogue) in keepers {
+                assert_eq!(observed_npcs(metadata, &flags), [(id, position, dialogue)]);
+            }
         }
     }
 

@@ -1,0 +1,34 @@
+id: town_02_millhaven_shop_armor
+name: Millhaven Armor Shop
+bgm: town.bamboo
+npcs:
+  - id: armor_shop_keeper
+    name: Maud
+    dialogue: armor_shop_millhaven
+    position: [1, 4]
+    sprite: media/sprites/npc/farmer_male_base.tsx
+    default_facing: right
+    interaction_range: 3.5
+    animation:
+      mode: step
+      speed: 0.7
+armor_shop:
+  items:
+    - id: leather_hat
+      buy_price: 60
+      unlock_flag: story_quest_started
+    - id: buckler
+      buy_price: 90
+      unlock_flag: story_quest_started
+    - id: leather_vest
+      buy_price: 150
+      unlock_flag: story_quest_started
+    - id: small_shield
+      buy_price: 180
+      unlock_flag: story_quest_started
+    - id: light_armor
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: leather_band
+      buy_price: 400
+      unlock_flag: story_quest_started

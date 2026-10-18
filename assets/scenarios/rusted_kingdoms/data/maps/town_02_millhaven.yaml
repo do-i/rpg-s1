@@ -28,7 +28,7 @@ npcs:
   - id: millhaven_elder
     name: "Elder Corwin"
     dialogue: millhaven_elder_hint
-    position: [9, 5]
+    position: [8, 6]
     sprite: media/sprites/npc/village_male_person_older_villager.tsx
     default_facing: down
     animation:

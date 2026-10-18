@@ -1,0 +1,26 @@
+id: town_02_millhaven_house_01
+name: Millhaven Village House
+bgm: town.bamboo
+npcs:
+  - id: millhaven_old_woman
+    name: Old Woman
+    dialogue: millhaven_house_old_woman
+    position: [1, 3]
+    sprite: media/sprites/npc/village_female_person_elder_matron.tsx
+    default_facing: down
+    interaction_range: 1.5
+    animation:
+      mode: wander
+      speed: 0.5
+      range: 1
+  - id: millhaven_old_man
+    name: Old Man
+    dialogue: millhaven_house_old_man
+    position: [8, 5]
+    sprite: media/sprites/npc/village_male_person_older_villager.tsx
+    default_facing: left
+    interaction_range: 1.5
+    animation:
+      mode: wander
+      speed: 0.5
+      range: 1

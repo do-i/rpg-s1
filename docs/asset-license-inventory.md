@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (693 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (706 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1179,10 +1179,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1042 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shop_item.yaml` | `baa184804ab1d93486c5c91274ac49d2b53948f7b6d8f8c84678fb9702b13e13` | scenario YAML / Ardel Item Shop; vendor and shop service |
 | ALI-1040 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shop_armor.yaml` | `958ea160b661ae0980db2eb387f14007e880bc116b3745d4d7c6890ee7094a8c` | scenario YAML / Ardel Armor Shop; vendor and shop service |
 | ALI-0881 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_shrine.yaml` | `23ab57a8861663849b5ca0c05a51934283120c7867a3d7784deb50b35ae7c571` | scenario YAML / town_01_ardel_shrine.yaml |
-| ALI-0882 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml` | `6ca5589ad0b92bd54be93d1a5c2858a5736ef00c31731612958c9807b2ddc837` | scenario YAML / town_02_millhaven.yaml |
+| ALI-0882 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven.yaml` | `4fa58dbc8cacca3d9b65734d48e2f8b48e6470538237940a329126c2831f86e5` | scenario YAML / town_02_millhaven.yaml |
 | ALI-0883 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_inn.yaml` | `893ccc3d08549b7c4b5aedfc1fe17e9002ca5d0c01c75fe6f9e142a31d29d009` | scenario YAML / town_02_millhaven_inn.yaml |
 | ALI-0884 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_mill.yaml` | `997d79e5a3f42d444c9f81348c262a098fa0a014b62d25cf49b4cb6a0218e410` | scenario YAML / town_02_millhaven_mill.yaml |
-| ALI-0885 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop.yaml` | `0290d586e1b628af79dbe1bef4b7686a332e9ee265c1080d73f782ca7a78c939` | scenario YAML / town_02_millhaven_shop.yaml |
+| ALI-0885 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop.yaml` | `afd85766349556c57912e565fc45dd51bb4c02befd400a1643d6003e1ea8a623` | scenario YAML / town_02_millhaven_shop.yaml |
 | ALI-0979 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate.yaml` | `b5c96b423500fbd4737926615cc841b2638264869dc31987ee414f54c807a19c` | scenario YAML / town_03_harborgate.yaml |
 | ALI-0980 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_harbormaster.yaml` | `89f3db0c3b783236fdb36e14ab2f1b6d245383948b5f9de59b996eb42b596013` | scenario YAML / town_03_harborgate_harbormaster.yaml |
 | ALI-0981 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_inn.yaml` | `9918d5507b80fcbac8e8ee90e6e9c5b4de8940d05327153e364ece033f5c5ee1` | scenario YAML / town_03_harborgate_inn.yaml |
@@ -1230,7 +1230,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `52aaeb79ebdb55ff8d8d3a9a2fe89be02f42443423a944428ac98af51023d954` | scenario YAML / Rusted Kingdoms party catalog |
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
-| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `92784033dbbb545b634d4a2d1eade5544b211c5871023fe00c6a9ccb610fda25` | scenario YAML / transport.yaml |
+| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `ee27947efd22f683320bf5bbfc9b0fb3576fb0f6a1dafbbfc771e363cbcda382` | scenario YAML / transport.yaml |
 | ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `a1d0594a51ed7d5bfc139d7e1f4942a2595ed24e8d80f23ee96e58d4b698f1bb` | scenario YAML / Rusted Kingdoms scenario manifest |
 | ALI-0028 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` | provenance record / Rusted Kingdoms BGM prompt and source notes |
 | ALI-0226 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Across_the_Sundered_Peaks_64.mp3` | `5910a7b194a72afc272835403ca75220db5ec28c7cdc49125f622548c6449909` | audio / Across_the_Sundered_Peaks_64.mp3 |
@@ -1281,16 +1281,16 @@ Everything not listed above. Shared fields for every row:
 | ALI-0994 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_epilogue.tmx` | `2916d55de95f2c881845cc7b4df61d92aa15488778debc4860a0c7bcb0efd9c7` | map XML / town_01_ardel_epilogue.tmx |
 | ALI-0035 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_house_01.tmx` | `c97bac0bec54442e64586a7b7e5d348c608b2a671068d649061c67f381400b4a` | Tiled map / town_01_ardel_house_01.tmx |
 | ALI-0319 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_inn_01.tmx` | `670532c70c4d9c41e13ccdc888d2463be43382590e01a7b850d83613c0ff8654` | map XML / town_01_ardel_inn_01.tmx |
-| ALI-0320 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `c61ef5344c834e557dac0c4037f2111a46f65545a5718d0f6afec8fbb989a7a2` | TMX / converted Ardel town house |
+| ALI-0320 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_01.tmx` | `4ab6e95678d77a452225bd5e0c10aa96211994adcf36a6e9e96a14bc7faabd25` | TMX / converted Ardel town house |
 | ALI-1039 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_weapon.tmx` | `8cad6ddd4268cc5418b6c7b00f4fa5029e7d5213c0aa206d0e36078f6c9f500b` | map XML / Ardel weapon shop |
 | ALI-1045 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_mc.tmx` | `09fd02edafe649fda75a6c9fcc47d11e635ea44fe524f8d42d7db22a94596fa4` | map XML / Ardel Magic Core Shop |
 | ALI-1043 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_item.tmx` | `41b7c0c30a4a5ef72952a2e855925661d7c991b8bade5adaf9865b1c1d6e2d00` | map XML / Ardel Item Shop |
 | ALI-1041 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shop_armor.tmx` | `7c6efd696a527ebf781b7daf306a97f9e134bd8fc62f558897437bce3af04895` | map XML / Ardel Armor Shop |
 | ALI-0321 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel_shrine.tmx` | `c1ee68fb72595e829f501f6a81501641e22373f9ffb9d23fd4e9d4c464d3af13` | map XML / town_01_ardel_shrine.tmx |
-| ALI-0322 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `9a8bdfa062ceb57835418763c0ad5127f9228767d2d84457669920051883a1d3` | map XML / town_02_millhaven.tmx |
-| ALI-0323 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `c7181c3c6cfc89764a90c8922f3092351eb8fc4c6f0990b62d2ba45d9e9390af` | map XML / town_02_millhaven_inn.tmx |
-| ALI-0324 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `896d717b20e80cf3080710aea8ddbff0eaf3d0b737ff47b736606ae72e8d0be7` | map XML / town_02_millhaven_mill.tmx |
-| ALI-0325 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `6e7d01f69199e62c37ca65c98b7e9bfb258bab67ddb4990510661d50b4096cb1` | map XML / town_02_millhaven_shop.tmx |
+| ALI-0322 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven.tmx` | `66a6d28fe37182295797961e261320cd0a395aaf33c27924104f6e61057787b0` | map XML / town_02_millhaven.tmx |
+| ALI-0323 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `2581631984fdf22f81bd5708d906fe06b087ed843875848df1fdfdb8623fa544` | map XML / town_02_millhaven_inn.tmx |
+| ALI-0324 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `eb266a80e7772f0ccc4173c86c3d0edb289df09e7d7b79e670b57198bd041687` | map XML / town_02_millhaven_mill.tmx |
+| ALI-0325 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `26322b8e142d98dc6476c50ec99235428e5349a2cb95aee902525e389d78e693` | map XML / town_02_millhaven_shop.tmx |
 | ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `34d3aaa5d40921938339c3bfa23ae8811aebc5d3cfaaf9a9bd0bb9aaee0c91fa` | map XML / town_03_harborgate.tmx |
 | ALI-0996 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `9dcf63d8cc3cc1fa8436a5d0e723ded4d69f3b6a4fa40f83fbb7c8e87a50c6d0` | map XML / town_03_harborgate_harbormaster.tmx |
 | ALI-0997 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `a36028ece4b5870eb80cdef1793a261a075a8135d78749fbd0250be1b0997104` | map XML / town_03_harborgate_inn.tmx |
@@ -1669,3 +1669,16 @@ Everything not listed above. Shared fields for every row:
 | ALI-1060 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02.yaml` | `a69a7d448ee7c0128508ab53f2ecfae530fa674e682b2852e4f18e3aef968a61` | dialogue YAML / Open Plains Cave waymark |
 | ALI-1061 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02_57_17.yaml` | `4c8b290f2d4ec63d4a9f29637947adb41cd6fe5bfeaa0b8154a98593c2912d8e` | dialogue YAML / Open Plains Cave waymark |
 | ALI-1062 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02_6_27.yaml` | `adb05f4ef14b8b4e7ce7a05d017b3254443a378e5f8063a0459cbc58bcb371ef` | dialogue YAML / Open Plains Cave waymark |
+| ALI-1074 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_house_old_man.yaml` | `ccdf7413212c712de1f15d86ef9b142290d56c8fb6b2fb37b5a69c899c14f0ed` | scenario YAML / Millhaven shops and village houses |
+| ALI-1073 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_house_old_woman.yaml` | `dcc1468ec517eed9af2462f78953b6c338f35e1ce6deb16c4e8fc7fe293cb5ab` | scenario YAML / Millhaven shops and village houses |
+| ALI-1075 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_house_young_man.yaml` | `c30456c5e40f914377c8a41afd8aa150d63a9a89964b0d1c904626ee7215856a` | scenario YAML / Millhaven shops and village houses |
+| ALI-1070 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_house_01.yaml` | `a7600688b8feb50925e2304b7e799ebfa09ab2505c1fe8823f9f356c46d26e10` | scenario YAML / Millhaven shops and village houses |
+| ALI-1072 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_house_02.yaml` | `d8833400d79e7fe876de10fcdc2232e2febe6973c5948e8fc57a213ff93ce32b` | scenario YAML / Millhaven shops and village houses |
+| ALI-1066 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop_armor.yaml` | `2513ba1a265fa077344d268e1dc2678bb7c13e37ddfee0a413f1dce5d6b31496` | scenario YAML / Millhaven shops and village houses |
+| ALI-1068 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop_mc.yaml` | `5437cb14ceddcb954723a05f8194fa3a1c6b24306fb0536dd95eb4e851fd3203` | scenario YAML / Millhaven shops and village houses |
+| ALI-1064 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_02_millhaven_shop_weapon.yaml` | `d4c190e2d3f48b24ce490ca0dc7838ae47140dcbf881fdd5e562f235d6b801d5` | scenario YAML / Millhaven shops and village houses |
+| ALI-1069 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_house_01.tmx` | `4af64c45e4fa1e12f631dc5a79cec2308aa95015ca5083840f6ac5876f5764ed` | TMX / Millhaven shops and village houses |
+| ALI-1071 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_house_02.tmx` | `176cb7975e02c1766bf6a37b99ea91fc0ce02074193b50c144c325a1b73c83b1` | TMX / Millhaven shops and village houses |
+| ALI-1065 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_armor.tmx` | `9654e6ca2e5e0df0f86a72a1e518599a855289f35c9f3946752e007c41ad077e` | TMX / Millhaven shops and village houses |
+| ALI-1067 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_mc.tmx` | `b4e508e38f74eeb1f36dd4bc1375b15750f3c5e4a2318dca7bff98e01a02ea55` | TMX / Millhaven shops and village houses |
+| ALI-1063 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_weapon.tmx` | `f1ef477ace756ef3d496d43fc830d8ed4b3c5b0da3872c620268f34315456a18` | TMX / Millhaven shops and village houses |

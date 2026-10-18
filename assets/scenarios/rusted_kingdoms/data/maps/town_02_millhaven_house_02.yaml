@@ -1,0 +1,14 @@
+id: town_02_millhaven_house_02
+name: Millhaven Blue-Roof House
+bgm: town.bamboo
+npcs:
+  - id: millhaven_young_man
+    name: Young Man
+    dialogue: millhaven_house_young_man
+    position: [4, 3]
+    sprite: media/sprites/npc/village_male_person_plain_dark_hair.tsx
+    default_facing: down
+    interaction_range: 1.5
+    animation:
+      mode: step
+      speed: 0.6

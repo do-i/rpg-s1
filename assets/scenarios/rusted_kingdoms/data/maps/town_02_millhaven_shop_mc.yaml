@@ -1,0 +1,14 @@
+id: town_02_millhaven_shop_mc
+name: Millhaven Magic Core Shop
+bgm: town.bamboo
+npcs:
+  - id: mc_shop_keeper
+    name: Tibbs
+    dialogue: mc_shop_intro
+    position: [4, 3]
+    sprite: media/sprites/npc/merchant_wealthy_bowler.tsx
+    default_facing: down
+    interaction_range: 3.5
+    animation:
+      mode: step
+      speed: 0.8

@@ -1043,37 +1043,73 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn millhaven_portals_cover_all_four_authored_exits_with_reversible_return_links() {
-        let portals = millhaven_portals();
-        let destinations = portals
+    fn millhaven_portals_cover_every_interior_with_reversible_return_links() {
+        let destinations = millhaven_portals()
             .iter()
-            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .map(|portal| {
+                (
+                    portal.target_map().as_str().to_owned(),
+                    portal.target_position(),
+                )
+            })
             .collect::<Vec<_>>();
-        assert_eq!(
-            destinations,
-            [
-                ("town_02_millhaven_mill", Position::new(10, 11)),
-                ("town_02_millhaven_shop", Position::new(7, 10)),
-                ("town_02_millhaven_inn", Position::new(5, 9)),
-                ("zone_02_open_plains", Position::new(2, 1)),
-            ]
-        );
-
+        let expected = [
+            ("town_02_millhaven_mill", Position::new(10, 11)),
+            ("town_02_millhaven_inn", Position::new(5, 9)),
+            ("zone_02_open_plains", Position::new(2, 1)),
+            ("town_02_millhaven_shop_weapon", Position::new(7, 10)),
+            ("town_02_millhaven_shop_armor", Position::new(7, 10)),
+            ("town_02_millhaven_shop", Position::new(7, 10)),
+            ("town_02_millhaven_shop_mc", Position::new(7, 10)),
+            ("town_02_millhaven_house_01", Position::new(7, 9)),
+            ("town_02_millhaven_house_02", Position::new(4, 7)),
+        ]
+        .map(|(id, position)| (id.to_owned(), position));
+        assert_eq!(destinations, expected);
         let interiors = [
-            (
-                "town_02_millhaven_inn",
-                include_str!(scenario_file!("media/maps/town_02_millhaven_inn.tmx")),
-                Position::new(9, 25),
-            ),
             (
                 "town_02_millhaven_mill",
                 include_str!(scenario_file!("media/maps/town_02_millhaven_mill.tmx")),
-                Position::new(20, 6),
+                Position::new(20, 16),
+            ),
+            (
+                "town_02_millhaven_inn",
+                include_str!(scenario_file!("media/maps/town_02_millhaven_inn.tmx")),
+                Position::new(9, 35),
+            ),
+            (
+                "town_02_millhaven_shop_weapon",
+                include_str!(scenario_file!(
+                    "media/maps/town_02_millhaven_shop_weapon.tmx"
+                )),
+                Position::new(9, 6),
+            ),
+            (
+                "town_02_millhaven_shop_armor",
+                include_str!(scenario_file!(
+                    "media/maps/town_02_millhaven_shop_armor.tmx"
+                )),
+                Position::new(18, 6),
             ),
             (
                 "town_02_millhaven_shop",
                 include_str!(scenario_file!("media/maps/town_02_millhaven_shop.tmx")),
+                Position::new(27, 6),
+            ),
+            (
+                "town_02_millhaven_shop_mc",
+                include_str!(scenario_file!("media/maps/town_02_millhaven_shop_mc.tmx")),
                 Position::new(36, 6),
+            ),
+            (
+                "town_02_millhaven_house_01",
+                include_str!(scenario_file!("media/maps/town_02_millhaven_house_01.tmx")),
+                Position::new(36, 16),
+            ),
+            (
+                "town_02_millhaven_house_02",
+                include_str!(scenario_file!("media/maps/town_02_millhaven_house_02.tmx")),
+                Position::new(35, 36),
             ),
         ];
         for (map_id, document, expected_return_position) in interiors {
@@ -1083,7 +1119,6 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             assert_eq!(returns[0].target_map().as_str(), "town_02_millhaven");
             assert_eq!(returns[0].target_position(), expected_return_position);
         }
-
         assert_reversible_link(
             "town_02_millhaven",
             millhaven_document(),
