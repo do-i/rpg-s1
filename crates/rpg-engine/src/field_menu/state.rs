@@ -39,9 +39,12 @@ pub(super) enum FieldMenuMode {
     ItemTarget,
     EquipmentPicker,
     SpellTarget,
-    #[allow(
-        dead_code,
-        reason = "legacy picker retained only for regression fixtures; runtime uses Ember Atlas"
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "legacy picker retained only for regression fixtures; runtime uses Ember Atlas"
+        )
     )]
     TeleportPicker,
     SaveConfirm,

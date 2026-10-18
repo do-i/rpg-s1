@@ -80,26 +80,17 @@ pub(crate) struct WorldBgmPlayer {
 struct WorldBgmFadeIn(Timer);
 
 impl WorldBgmPlayer {
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are tested now")
-    )]
+    #[cfg(test)]
     pub(crate) fn map_id(&self) -> &str {
         &self.map_id
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are tested now")
-    )]
+    #[cfg(test)]
     pub(crate) fn key(&self) -> &str {
         &self.key
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are tested now")
-    )]
+    #[cfg(test)]
     pub(crate) fn asset_path(&self) -> &str {
         &self.asset_path
     }
@@ -129,18 +120,12 @@ pub(crate) struct WorldBgmState {
 }
 
 impl WorldBgmState {
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are tested now")
-    )]
+    #[cfg(test)]
     pub(crate) const fn status(&self) -> WorldBgmStatus {
         self.status
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are tested now")
-    )]
+    #[cfg(test)]
     pub(crate) const fn failure(&self) -> Option<&WorldBgmFailure> {
         self.failure.as_ref()
     }

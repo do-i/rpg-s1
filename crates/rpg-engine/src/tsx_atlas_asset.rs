@@ -1,13 +1,5 @@
 //! Bevy-native loading and atlas projection for one external TSX atlas.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.10 establishes atlas assets before M4.11 and later world rendering consume them"
-    )
-)]
-
 use std::{error::Error, fmt, path::PathBuf, str};
 
 use bevy::{

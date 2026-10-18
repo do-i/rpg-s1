@@ -210,14 +210,20 @@ mod tests {
         );
     }
 
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "fields exist only so serde reports them as missing"
+    )]
     #[derive(Debug, Deserialize)]
     struct RequiredTopLevel {
         id: String,
         title: RequiredTitle,
     }
 
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "fields exist only so serde reports them as missing"
+    )]
     #[derive(Debug, Deserialize)]
     struct RequiredTitle {
         image: String,

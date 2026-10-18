@@ -4,14 +4,6 @@
 //! or viewport. Each axis follows independently: a map larger than the logical canvas clamps at
 //! its two edges, while a smaller map remains exactly centered on that axis.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.22 establishes the camera system before the later world plugin registers it"
-    )
-)]
-
 use std::{error::Error, fmt};
 
 use bevy::prelude::*;
@@ -55,10 +47,12 @@ impl MapPixelBounds {
         self.max
     }
 
+    #[cfg(test)]
     pub(crate) fn size(self) -> Vec2 {
         self.max - self.min
     }
 
+    #[cfg(test)]
     pub(crate) fn center(self) -> Vec2 {
         (self.min + self.max) * 0.5
     }

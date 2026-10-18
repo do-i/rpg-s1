@@ -1,13 +1,5 @@
 //! Renderer-free collision occupancy derived from one strict TMX collision layer.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.14 establishes collision data before M4.19 movement consumes it"
-    )
-)]
-
 use std::fmt;
 
 use crate::tmx_header::TmxMapDocument;
