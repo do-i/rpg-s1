@@ -1,6 +1,9 @@
 //! Strict metadata for one external, single-image TSX atlas.
 
-use std::{collections::HashSet, fmt, str};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt, str,
+};
 
 use quick_xml::{Reader, XmlVersion, events::Event};
 
@@ -15,6 +18,7 @@ pub struct TsxTilesetMetadata {
     tile_count: u32,
     image: TsxImageMetadata,
     animations: Vec<TsxTileAnimation>,
+    sort_bases: BTreeMap<u32, u32>,
 }
 
 impl TsxTilesetMetadata {
@@ -40,6 +44,12 @@ impl TsxTilesetMetadata {
 
     pub fn animations(&self) -> &[TsxTileAnimation] {
         &self.animations
+    }
+
+    /// Optional map-space sorting baseline, in pixels below this tile's top edge.
+    /// Multi-tile objects give each row an offset to the same world-space base.
+    pub fn sort_base_y(&self, tile_id: u32) -> Option<u32> {
+        self.sort_bases.get(&tile_id).copied()
     }
 }
 
@@ -169,6 +179,7 @@ pub fn parse_tsx_tileset_metadata(
 
     let mut image = None;
     let mut animations = Vec::new();
+    let mut sort_bases = BTreeMap::new();
     let mut seen_tile_ids = HashSet::new();
     let mut depth = 1_u32;
     loop {
@@ -191,7 +202,7 @@ pub fn parse_tsx_tileset_metadata(
                     ));
                 }
                 if element.name().as_ref() == b"tile" && depth == 1 {
-                    let (tile_id, animation) =
+                    let (tile_id, animation, sort_base) =
                         parse_tile(&mut reader, &element, offset, tile_count)?;
                     if !seen_tile_ids.insert(tile_id) {
                         return Err(TsxMetadataError::new(
@@ -201,6 +212,9 @@ pub fn parse_tsx_tileset_metadata(
                     }
                     if let Some(animation) = animation {
                         animations.push(animation);
+                    }
+                    if let Some(base) = sort_base {
+                        sort_bases.insert(tile_id, base);
                     }
                     continue;
                 }
@@ -268,6 +282,7 @@ pub fn parse_tsx_tileset_metadata(
                     tile_count,
                     image,
                     animations,
+                    sort_bases,
                 });
             }
             Event::End(_) => depth -= 1,
@@ -287,11 +302,13 @@ fn parse_tile(
     element: &quick_xml::events::BytesStart<'_>,
     offset: u64,
     tile_count: u32,
-) -> Result<(u32, Option<TsxTileAnimation>), TsxMetadataError> {
+) -> Result<(u32, Option<TsxTileAnimation>, Option<u32>), TsxMetadataError> {
     // Keep structural errors inside the tile more specific than an attribute
     // error on the containing tile (for example, a nested atlas image).
     let tile_id = parse_tile_id(reader, element, offset, tile_count);
     let mut animation = None;
+    let mut sort_base = None;
+    let mut in_properties = false;
     let mut depth = 1_u32;
 
     loop {
@@ -329,7 +346,21 @@ fn parse_tile(
                     "`frame` must be a direct child of `animation`",
                 ));
             }
-            Event::Start(_) => depth += 1,
+            Event::Start(element) => {
+                if element.name().as_ref() == b"properties" && depth == 1 {
+                    in_properties = true;
+                }
+                if element.name().as_ref() == b"property" {
+                    let attributes = collect_attributes(reader, &element, offset)?;
+                    if attributes.get("name").map(String::as_str) == Some("sort_base_y") {
+                        return Err(TsxMetadataError::new(
+                            offset,
+                            "`sort_base_y` must be an empty property with an integer value",
+                        ));
+                    }
+                }
+                depth += 1;
+            }
             Event::Empty(element) if element.name().as_ref() == b"image" => {
                 return Err(TsxMetadataError::new(
                     offset,
@@ -355,9 +386,38 @@ fn parse_tile(
                     "`frame` must be a direct child of `animation`",
                 ));
             }
+            Event::Empty(element) if element.name().as_ref() == b"property" => {
+                let attributes = collect_attributes(reader, &element, offset)?;
+                if attributes.get("name").map(String::as_str) == Some("sort_base_y") {
+                    if !in_properties || depth != 2 {
+                        return Err(TsxMetadataError::new(
+                            offset,
+                            "`sort_base_y` must belong to the tile's direct `properties` element",
+                        ));
+                    }
+                    if sort_base.is_some() {
+                        return Err(TsxMetadataError::new(
+                            offset,
+                            "duplicate `sort_base_y` property",
+                        ));
+                    }
+                    if attributes.get("type").map(String::as_str) != Some("int") {
+                        return Err(TsxMetadataError::new(
+                            offset,
+                            "`sort_base_y` must have type `int`",
+                        ));
+                    }
+                    sort_base = Some(u32_attribute(&attributes, "value", offset)?);
+                }
+            }
             Event::Empty(_) => {}
-            Event::End(_) if depth == 1 => return Ok((tile_id?, animation)),
-            Event::End(_) => depth -= 1,
+            Event::End(_) if depth == 1 => return Ok((tile_id?, animation, sort_base)),
+            Event::End(element) => {
+                if element.name().as_ref() == b"properties" && depth == 2 {
+                    in_properties = false;
+                }
+                depth -= 1;
+            }
             Event::Eof => {
                 return Err(TsxMetadataError::new(
                     offset,
@@ -714,6 +774,32 @@ mod tests {
             (100, 32)
         );
         assert!(metadata.animations().is_empty());
+    }
+
+    #[test]
+    fn retains_explicit_tile_sort_baselines_and_rejects_invalid_properties() {
+        let atlas = |properties: &str| {
+            VALID.replace(
+                "</tileset>",
+                &format!("<tile id=\"1\"><properties>{properties}</properties></tile></tileset>"),
+            )
+        };
+        let xml = atlas(r#"<property name="sort_base_y" type="int" value="64"/>"#);
+        let metadata = parse_tsx_tileset_metadata(&xml, &owner()).unwrap();
+        assert_eq!(metadata.sort_base_y(1), Some(64));
+        assert_eq!(metadata.sort_base_y(0), None);
+        for property in [
+            r#"<property name="sort_base_y" value="64"/>"#,
+            r#"<property name="sort_base_y" type="float" value="64"/>"#,
+            r#"<property name="sort_base_y" type="int" value="-1"/>"#,
+            r#"<property name="sort_base_y" type="int" value="1.5"/>"#,
+            r#"<property name="sort_base_y" type="int" value="32"/><property name="sort_base_y" type="int" value="64"/>"#,
+        ] {
+            assert!(
+                parse_tsx_tileset_metadata(&atlas(property), &owner()).is_err(),
+                "{property}"
+            );
+        }
     }
 
     #[test]
