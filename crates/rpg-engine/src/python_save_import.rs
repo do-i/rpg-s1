@@ -375,7 +375,10 @@ struct PythonSave {
     map: PythonMap,
     #[serde(default)]
     opened_boxes: Vec<String>,
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "declared for deny_unknown_fields; verify_python_checksum checks the raw YAML"
+    )]
     checksum: Option<String>,
 }
 
@@ -387,7 +390,10 @@ struct PythonMeta {
     playtime_seconds: u64,
     #[serde(default)]
     location_display: String,
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "declared for deny_unknown_fields; the caller picks the destination slot"
+    )]
     #[serde(default)]
     is_autosave: bool,
 }

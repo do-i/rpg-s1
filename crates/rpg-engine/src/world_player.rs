@@ -260,14 +260,8 @@ impl Default for WorldPlayerSpawnState {
     }
 }
 
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "spawn diagnostics are observable for tests before a World error UI consumes them"
-    )
-)]
 impl WorldPlayerSpawnState {
+    #[cfg(test)]
     pub(crate) const fn status(&self) -> WorldPlayerSpawnStatus {
         self.status
     }

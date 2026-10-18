@@ -79,18 +79,12 @@ impl WorldEncounterState {
             .collect()
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are test-facing")
-    )]
+    #[cfg(test)]
     pub(crate) const fn status(&self) -> WorldEncounterStatus {
         self.status
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "runtime diagnostics are test-facing")
-    )]
+    #[cfg(test)]
     pub(crate) fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
     }
@@ -133,26 +127,23 @@ pub(crate) struct WorldEnemy {
     pub(super) wander_target: Option<Vec2>,
 }
 
-#[cfg_attr(
-    not(test),
-    allow(
-        dead_code,
-        reason = "runtime inspection accessors support Gate 8 diagnostics"
-    )
-)]
 impl WorldEnemy {
+    #[cfg(test)]
     pub(crate) fn encounter_id(&self) -> &str {
         &self.encounter_id
     }
 
+    #[cfg(test)]
     pub(crate) const fn tile_position(&self) -> Position {
         self.position
     }
 
+    #[cfg(test)]
     pub(crate) fn formation(&self) -> &[String] {
         &self.formation
     }
 
+    #[cfg(test)]
     pub(crate) const fn is_boss(&self) -> bool {
         self.boss
     }

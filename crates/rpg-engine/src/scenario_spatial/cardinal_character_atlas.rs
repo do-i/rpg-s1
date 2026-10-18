@@ -5,14 +5,6 @@
 //! `0`, `9`, `18`, and `27`; those owner tiles are the idle/base frames at column zero of each
 //! row. This adapter validates that engine/content contract before exposing frame rectangles.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the character atlas profile also exposes renderer-independent diagnostics"
-    )
-)]
-
 use std::{error::Error, fmt};
 
 use super::CardinalDirection;
@@ -62,6 +54,7 @@ impl AtlasFrame {
         self.tile_id
     }
 
+    #[cfg(test)]
     pub(crate) const fn rectangle(self) -> AtlasRectangle {
         self.rectangle
     }
@@ -77,18 +70,22 @@ pub(crate) struct AtlasRectangle {
 }
 
 impl AtlasRectangle {
+    #[cfg(test)]
     pub(crate) const fn x(self) -> u32 {
         self.x
     }
 
+    #[cfg(test)]
     pub(crate) const fn y(self) -> u32 {
         self.y
     }
 
+    #[cfg(test)]
     pub(crate) const fn width(self) -> u32 {
         self.width
     }
 
+    #[cfg(test)]
     pub(crate) const fn height(self) -> u32 {
         self.height
     }
@@ -172,22 +169,27 @@ impl CardinalCharacterAtlas {
         })
     }
 
+    #[cfg(test)]
     pub(crate) const fn frame_width(&self) -> u32 {
         self.frame_width
     }
 
+    #[cfg(test)]
     pub(crate) const fn frame_height(&self) -> u32 {
         self.frame_height
     }
 
+    #[cfg(test)]
     pub(crate) const fn columns(&self) -> u32 {
         self.columns
     }
 
+    #[cfg(test)]
     pub(crate) const fn rows(&self) -> u32 {
         self.rows
     }
 
+    #[cfg(test)]
     pub(crate) const fn tile_count(&self) -> u32 {
         self.tile_count
     }

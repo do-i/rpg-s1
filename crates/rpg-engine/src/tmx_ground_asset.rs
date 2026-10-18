@@ -1,13 +1,5 @@
 //! Bevy-native loading and ECS projection for static visible TMX tile layers.
 
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "M4.11-M4.13 establish static map entities before later M4 world activation consumes them"
-    )
-)]
-
 use std::{collections::BTreeMap, error::Error, fmt, path::PathBuf, str};
 
 use bevy::{
@@ -43,8 +35,10 @@ use crate::{
     tsx_atlas_asset::{TsxAtlasAsset, TsxAtlasTileError},
 };
 
+#[cfg(test)]
 pub(crate) const ARDEL_TMX_PATH: &str = "media/maps/town_01_ardel.tmx";
 const GROUND_LAYER_NAME: &str = "ground";
+#[cfg(test)]
 const COLLISION_LAYER_NAME: &str = "collision";
 const FOREGROUND_LAYER_NAME: &str = "foreground";
 const GROUND_Z: f32 = 0.0;
@@ -133,7 +127,6 @@ impl StaticMapRenderState {
 #[derive(Asset, Clone, Debug, TypePath)]
 pub(crate) struct TmxGroundAsset {
     document: TmxMapDocument,
-    ground_layer_index: usize,
     visible_layer_indices: Vec<usize>,
     atlas_reference_indices: Vec<usize>,
     #[dependency]
@@ -145,10 +138,17 @@ impl TmxGroundAsset {
         &self.document
     }
 
-    pub(crate) fn ground_layer(&self) -> &crate::tmx_header::TmxTileLayer {
-        &self.document.tile_layers()[self.ground_layer_index]
+    #[cfg(test)]
+    fn ground_layer_index(&self) -> usize {
+        unique_ground_layer_index(&self.document).expect("the loader validated one ground layer")
     }
 
+    #[cfg(test)]
+    pub(crate) fn ground_layer(&self) -> &crate::tmx_header::TmxTileLayer {
+        &self.document.tile_layers()[self.ground_layer_index()]
+    }
+
+    #[cfg(test)]
     pub(crate) fn atlas_handles(&self) -> &[Handle<TsxAtlasAsset>] {
         &self.atlases
     }
@@ -162,11 +162,12 @@ impl TmxGroundAsset {
     }
 
     /// Projects every non-empty ground cell to a Bevy sprite bundle in TMX row-major order.
+    #[cfg(test)]
     pub(crate) fn ground_bundles(
         &self,
         loaded_atlases: &Assets<TsxAtlasAsset>,
     ) -> Result<Vec<StaticMapTileBundle>, StaticLayerBuildError> {
-        self.bundles_for_layers(loaded_atlases, &[self.ground_layer_index])
+        self.bundles_for_layers(loaded_atlases, &[self.ground_layer_index()])
     }
 
     /// Projects all non-empty tile cells in authored layer and row-major order.
@@ -294,26 +295,32 @@ pub(crate) struct StaticMapTile {
 
 impl StaticMapTile {
     /// Zero-based tile-layer index in the authored TMX source.
+    #[cfg(test)]
     pub(crate) const fn layer_index(self) -> usize {
         self.layer_index
     }
 
+    #[cfg(test)]
     pub(crate) const fn layer_id(self) -> u32 {
         self.layer_id
     }
 
+    #[cfg(test)]
     pub(crate) const fn column(self) -> u32 {
         self.column
     }
 
+    #[cfg(test)]
     pub(crate) const fn row(self) -> u32 {
         self.row
     }
 
+    #[cfg(test)]
     pub(crate) const fn global_id(self) -> u32 {
         self.global_id
     }
 
+    #[cfg(test)]
     pub(crate) const fn local_id(self) -> u32 {
         self.local_id
     }
@@ -549,7 +556,7 @@ impl AssetLoader for TmxGroundAssetLoader {
             &owner,
         )
         .map_err(TmxGroundAssetLoaderError::Document)?;
-        let ground_layer_index = unique_ground_layer_index(&document)?;
+        unique_ground_layer_index(&document)?;
         let visible_layer_indices = visible_layer_indices(&document);
         let atlas_reference_indices =
             visible_atlas_reference_indices(&document, &visible_layer_indices)?;
@@ -566,7 +573,6 @@ impl AssetLoader for TmxGroundAssetLoader {
 
         Ok(TmxGroundAsset {
             document,
-            ground_layer_index,
             visible_layer_indices,
             atlas_reference_indices,
             atlases,
