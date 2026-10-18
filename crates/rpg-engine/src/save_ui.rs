@@ -10,9 +10,10 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
     menu_chrome::{
-        location_display_name, selectable_card_colors, spawn_header_bars, spawn_section_rule,
-        spawn_status_text, spawn_windowed_card, status_border_active, status_ember, status_faint,
-        status_gold, status_ink, status_muted, status_teal, status_violet, visible_rows,
+        location_display_name, scroll_list_node, selectable_card_colors, spawn_header_bars,
+        spawn_scroll_list, spawn_section_rule, spawn_status_text, status_border_active,
+        status_ember, status_faint, status_gold, status_ink, status_muted, status_teal,
+        status_violet,
     },
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
@@ -29,6 +30,51 @@ use crate::{
 
 /// Slot rows drawn per load-picker page.
 const LOAD_VISIBLE_ROWS: usize = 7;
+
+#[derive(Default)]
+struct LoadSlotHighlights {
+    highest_level: Option<u32>,
+    longest_playtime: Option<u64>,
+    most_recent: Option<u64>,
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct LoadSlotBadges {
+    highest_level: bool,
+    longest_playtime: bool,
+    most_recent: bool,
+}
+
+impl LoadSlotHighlights {
+    fn from_slots(slots: &[SaveSlot]) -> Self {
+        let mut highlights = Self::default();
+        for slot in slots.iter().filter(|slot| slot.is_valid()) {
+            let Some(metadata) = &slot.metadata else {
+                continue;
+            };
+            highlights.highest_level = highlights
+                .highest_level
+                .max(Some(metadata.protagonist_level));
+            highlights.longest_playtime = highlights
+                .longest_playtime
+                .max(Some(metadata.playtime_seconds));
+            highlights.most_recent = highlights.most_recent.max(slot.saved_at_unix_seconds);
+        }
+        highlights
+    }
+
+    fn badges(&self, slot: &SaveSlot) -> LoadSlotBadges {
+        let Some(metadata) = slot.metadata.as_ref().filter(|_| slot.is_valid()) else {
+            return LoadSlotBadges::default();
+        };
+        LoadSlotBadges {
+            highest_level: Some(metadata.protagonist_level) == self.highest_level,
+            longest_playtime: Some(metadata.playtime_seconds) == self.longest_playtime,
+            most_recent: slot.saved_at_unix_seconds.is_some()
+                && slot.saved_at_unix_seconds == self.most_recent,
+        }
+    }
+}
 
 pub(crate) struct SaveUiPlugin;
 
@@ -134,6 +180,8 @@ pub(crate) struct TitleLoadMenu {
     just_opened: bool,
     selected: usize,
     message: String,
+    /// Where the slot list was last scrolled.
+    scroll: crate::menu_chrome::ScrollMemory,
 }
 
 impl TitleLoadMenu {
@@ -144,6 +192,7 @@ impl TitleLoadMenu {
             just_opened: true,
             selected: latest,
             message: String::new(),
+            scroll: crate::menu_chrome::ScrollMemory::default(),
         };
     }
 }
@@ -386,22 +435,24 @@ fn spawn_load_panel(
             spawn_load_header(panel, font, catalog, menu);
             spawn_section_rule(panel);
             if catalog.ready {
-                let page_start = load_window_start(menu.selected);
-                let latest = latest_valid_slot(&catalog.slots);
-                for (index, fades) in
-                    visible_rows(page_start, catalog.slots.len(), LOAD_VISIBLE_ROWS)
-                {
-                    let slot = &catalog.slots[index];
-                    spawn_windowed_card(panel, fades, |panel| {
+                let window = menu.scroll.window(
+                    "slots",
+                    menu.selected,
+                    catalog.slots.len(),
+                    LOAD_VISIBLE_ROWS,
+                );
+                let highlights = LoadSlotHighlights::from_slots(&catalog.slots);
+                spawn_scroll_list(panel, window, scroll_list_node(6.0), |panel| {
+                    for slot in &catalog.slots[window.indices()] {
                         spawn_load_slot_row(
                             panel,
                             font,
                             slot,
                             slot.index == menu.selected,
-                            Some(slot.index) == latest,
+                            highlights.badges(slot),
                         );
-                    });
-                }
+                    }
+                });
             } else {
                 panel
                     .spawn(Node {
@@ -515,7 +566,7 @@ fn spawn_load_slot_row(
     font: &Handle<Font>,
     slot: &SaveSlot,
     selected: bool,
-    latest: bool,
+    badges: LoadSlotBadges,
 ) {
     let mut row = parent.spawn((
         Node {
@@ -552,17 +603,16 @@ fn spawn_load_slot_row(
                     status_muted()
                 },
             );
-            if latest {
-                spawn_status_text(label, "LATEST", font, 10.0, status_gold());
-            }
         });
         row.spawn(Node {
             flex_grow: 1.0,
+            min_width: px(0),
             flex_direction: FlexDirection::Column,
             ..default()
         })
         .with_children(|content| {
             spawn_save_slot_summary(content, font, slot);
+            spawn_load_slot_badges(content, font, badges);
         });
         spawn_status_text(
             row,
@@ -572,6 +622,49 @@ fn spawn_load_slot_row(
             save_slot_state_color(slot),
         );
     });
+}
+
+fn spawn_load_slot_badges(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    badges: LoadSlotBadges,
+) {
+    if !badges.highest_level && !badges.longest_playtime && !badges.most_recent {
+        return;
+    }
+    parent
+        .spawn(Node {
+            flex_direction: FlexDirection::Row,
+            flex_wrap: FlexWrap::Wrap,
+            column_gap: px(6),
+            row_gap: px(3),
+            margin: UiRect::top(px(3)),
+            ..default()
+        })
+        .with_children(|row| {
+            for (show, label, color) in [
+                (badges.highest_level, "HIGHEST LEVEL", status_gold()),
+                (badges.longest_playtime, "LONGEST PLAYTIME", status_violet()),
+                (badges.most_recent, "MOST RECENT", status_teal()),
+            ] {
+                if !show {
+                    continue;
+                }
+                row.spawn((
+                    Node {
+                        padding: UiRect::axes(px(6), px(1)),
+                        border: UiRect::all(px(1)),
+                        border_radius: BorderRadius::all(px(3)),
+                        ..default()
+                    },
+                    BackgroundColor(color.with_alpha(0.12)),
+                    BorderColor::all(color.with_alpha(0.65)),
+                ))
+                .with_children(|badge| {
+                    spawn_status_text(badge, label, font, 10.0, color);
+                });
+            }
+        });
 }
 
 /// The middle of a save-slot card: where and who for a valid save, or why the slot cannot load.
@@ -657,11 +750,6 @@ pub(crate) fn latest_valid_slot(slots: &[SaveSlot]) -> Option<usize> {
         .map(|slot| slot.index)
 }
 
-/// The first slot shown, scrolled only far enough to keep `selected` on screen.
-pub(crate) fn load_window_start(selected: usize) -> usize {
-    crate::menu_chrome::window_start(selected, SAVE_SLOT_COUNT, LOAD_VISIBLE_ROWS)
-}
-
 pub(crate) fn save_slot_state_label(slot: &SaveSlot) -> &'static str {
     match slot.state {
         SaveSlotState::Empty => "OPEN",
@@ -694,6 +782,94 @@ fn cleanup_title_load_overlay(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn recorded_slot(index: usize, level: u32, playtime: u64, saved_at: Option<u64>) -> SaveSlot {
+        SaveSlot {
+            index,
+            state: SaveSlotState::Valid,
+            metadata: Some(crate::save_data::SaveMetadata {
+                protagonist_name: "Aric".to_owned(),
+                protagonist_level: level,
+                location: "Ardel".to_owned(),
+                playtime_seconds: playtime,
+            }),
+            saved_at_unix_seconds: saved_at,
+        }
+    }
+
+    #[test]
+    fn load_badges_compare_the_whole_catalog_and_share_ties() {
+        let mut slots = vec![
+            recorded_slot(0, 9, 20, Some(10)),
+            recorded_slot(1, 5, 50, Some(20)),
+            recorded_slot(99, 8, 40, Some(30)),
+            recorded_slot(100, 9, 50, Some(30)),
+        ];
+        for state in [
+            SaveSlotState::Empty,
+            SaveSlotState::Corrupt("bad save".to_owned()),
+            SaveSlotState::Incompatible("old version".to_owned()),
+        ] {
+            let mut invalid = recorded_slot(slots.len(), 999, 999, Some(999));
+            invalid.state = state;
+            slots.push(invalid);
+        }
+        let mut missing_metadata = recorded_slot(7, 999, 999, Some(999));
+        missing_metadata.metadata = None;
+        slots.push(missing_metadata);
+
+        let highlights = LoadSlotHighlights::from_slots(&slots);
+        assert_eq!(
+            highlights.badges(&slots[0]),
+            LoadSlotBadges {
+                highest_level: true,
+                ..default()
+            }
+        );
+        assert_eq!(
+            highlights.badges(&slots[1]),
+            LoadSlotBadges {
+                longest_playtime: true,
+                ..default()
+            }
+        );
+        assert_eq!(
+            highlights.badges(&slots[2]),
+            LoadSlotBadges {
+                most_recent: true,
+                ..default()
+            }
+        );
+        assert_eq!(
+            highlights.badges(&slots[3]),
+            LoadSlotBadges {
+                highest_level: true,
+                longest_playtime: true,
+                most_recent: true,
+            }
+        );
+        for slot in &slots[4..] {
+            assert_eq!(highlights.badges(slot), LoadSlotBadges::default());
+        }
+    }
+
+    #[test]
+    fn load_badges_handle_empty_catalogs_and_unknown_save_times() {
+        let slot = recorded_slot(0, 1, 0, None);
+        assert_eq!(
+            LoadSlotHighlights::from_slots(&[]).badges(&slot),
+            LoadSlotBadges::default()
+        );
+        let highlights = LoadSlotHighlights::from_slots(std::slice::from_ref(&slot));
+        assert_eq!(
+            highlights.badges(&slot),
+            LoadSlotBadges {
+                highest_level: true,
+                longest_playtime: true,
+                most_recent: false,
+            }
+        );
+    }
 
     #[test]
     fn load_picker_selects_latest_valid_slot_and_clamps_navigation() {

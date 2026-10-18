@@ -54,6 +54,13 @@ impl ActionState {
         self.just_pressed[action.index()]
     }
 
+    /// Drops every press, repeat and held direction read this frame.
+    pub(crate) fn clear(&mut self) {
+        self.just_pressed.fill(false);
+        self.repeated.fill(false);
+        self.movement_pressed.fill(false);
+    }
+
     /// One cursor step toward `back` (-1) or `forward` (+1), a fresh press beating a repeat.
     fn navigation_step(&self, back: AppAction, forward: AppAction) -> Option<isize> {
         self.navigation_read.store(true, Ordering::Relaxed);
@@ -156,9 +163,7 @@ impl ActionState {
     }
 
     pub(crate) fn replace_with_normalized(&mut self, normalized: &[NormalizedAction]) {
-        self.just_pressed.fill(false);
-        self.repeated.fill(false);
-        self.movement_pressed.fill(false);
+        self.clear();
         for action in normalized {
             match action {
                 NormalizedAction::Back => self.just_pressed[AppAction::Back.index()] = true,

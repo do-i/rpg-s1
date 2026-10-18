@@ -80,7 +80,7 @@ pub(in crate::field_menu) fn spawn_quests_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_quest_list_column(columns, font, game, quests, selected);
+                spawn_quest_list_column(columns, font, state, game, quests, selected);
                 spawn_quest_detail_column(columns, font, game, quests.get(selected));
             });
             spawn_status_text(
@@ -172,6 +172,7 @@ pub(in crate::field_menu) fn spawn_quest_counter(
 pub(in crate::field_menu) fn spawn_quest_list_column(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    state: &FieldMenuState,
     game: &GameState,
     quests: &[QuestDefinition],
     selected: usize,
@@ -209,27 +210,34 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
                 );
                 return;
             }
-            let first = quest_window_start(selected, quests.len());
+            let window = state
+                .scroll
+                .window("quests", selected, quests.len(), QUEST_VISIBLE_ROWS);
             // The cards share the column's height, so a full window fills it edge to edge.
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    min_height: px(0),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(7),
-                    ..default()
-                })
-                .with_children(|cards| {
-                    for (index, fades) in visible_rows(first, quests.len(), QUEST_VISIBLE_ROWS) {
-                        let quest = &quests[index];
-                        spawn_quest_row(cards, font, quest, game, index == selected, fades);
-                    }
-                });
+            let cards_node = Node {
+                width: percent(100),
+                flex_grow: 1.0,
+                min_height: px(0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(7),
+                ..default()
+            };
+            spawn_scroll_list(panel, window, cards_node, |cards| {
+                for index in window.indices() {
+                    let quest = &quests[index];
+                    spawn_quest_row(cards, font, quest, game, index == selected);
+                }
+            });
             spawn_panel_rule(panel);
             spawn_status_text(
                 panel,
-                register_footer("QUEST", selected, first, quests.len(), QUEST_VISIBLE_ROWS),
+                register_footer(
+                    "QUEST",
+                    selected,
+                    window.first,
+                    quests.len(),
+                    QUEST_VISIBLE_ROWS,
+                ),
                 font,
                 11.0,
                 status_faint(),
@@ -244,7 +252,6 @@ pub(in crate::field_menu) fn spawn_quest_row(
     quest: &QuestDefinition,
     game: &GameState,
     selected: bool,
-    fades: ScrollFades,
 ) {
     let status = quest_status(quest, game.flags());
     let mut row = parent.spawn((
@@ -309,7 +316,6 @@ pub(in crate::field_menu) fn spawn_quest_row(
             );
         });
         spawn_quest_status_pill(row, font, status);
-        spawn_scroll_fades(row, fades);
     });
 }
 
@@ -540,10 +546,6 @@ pub(in crate::field_menu) fn selected_quest_index(
     }
 }
 
-pub(in crate::field_menu) fn quest_window_start(selected: usize, len: usize) -> usize {
-    window_start(selected, len, QUEST_VISIBLE_ROWS)
-}
-
 /// Reports the cursor position, and the visible span too once the register scrolls.
 pub(in crate::field_menu) fn register_footer(
     noun: &str,
@@ -599,14 +601,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_window_keeps_the_selection_visible_at_both_ends() {
-        assert_eq!(quest_window_start(0, 16), 0);
-        assert_eq!(quest_window_start(QUEST_VISIBLE_ROWS - 1, 16), 0);
-        assert_eq!(quest_window_start(QUEST_VISIBLE_ROWS, 16), 1);
-        assert_eq!(quest_window_start(15, 16), 16 - QUEST_VISIBLE_ROWS);
-    }
-
-    #[test]
     fn the_footer_adds_the_visible_span_only_once_the_register_scrolls() {
         assert_eq!(
             register_footer("QUEST", 2, 0, 5, QUEST_VISIBLE_ROWS),
@@ -616,12 +610,5 @@ mod tests {
             register_footer("QUEST", 9, 3, 16, QUEST_VISIBLE_ROWS),
             "QUEST 10 OF 16   ·   SHOWING 04-11"
         );
-    }
-
-    #[test]
-    fn a_short_register_never_scrolls() {
-        assert_eq!(quest_window_start(0, 3), 0);
-        assert_eq!(quest_window_start(2, 3), 0);
-        assert_eq!(quest_window_start(0, QUEST_VISIBLE_ROWS), 0);
     }
 }

@@ -301,7 +301,7 @@ impl InputBindings {
         target: BindingTarget,
         key: KeyCode,
     ) -> Result<RebindOutcome, RebindError> {
-        if crate::input_names::key_name(key).is_none() {
+        if key == crate::game_pause::PAUSE_KEY || crate::input_names::key_name(key).is_none() {
             return Err(RebindError::Unbindable);
         }
         let stolen_from = match self.key_owner(target, key) {
@@ -391,10 +391,9 @@ impl InputBindings {
         if keys.is_empty() {
             return Err(RebindError::WouldUnbind { owner: target });
         }
-        if keys
-            .iter()
-            .any(|key| crate::input_names::key_name(*key).is_none())
-        {
+        if keys.iter().any(|key| {
+            *key == crate::game_pause::PAUSE_KEY || crate::input_names::key_name(*key).is_none()
+        }) {
             return Err(RebindError::Unbindable);
         }
         let mut deduplicated = Vec::with_capacity(keys.len());
@@ -613,6 +612,20 @@ mod tests {
             [GamepadButton::North, GamepadButton::Start]
         );
         assert_eq!(bindings.keys(TRAVEL), [KeyCode::KeyT], "keys are untouched");
+    }
+
+    #[test]
+    fn the_pause_key_is_reserved() {
+        let mut bindings = InputBindings::default();
+
+        assert_eq!(
+            bindings.bind_key(TRAVEL, crate::game_pause::PAUSE_KEY),
+            Err(RebindError::Unbindable)
+        );
+        assert_eq!(
+            bindings.set_keys(TRAVEL, vec![crate::game_pause::PAUSE_KEY]),
+            Err(RebindError::Unbindable)
+        );
     }
 
     #[test]

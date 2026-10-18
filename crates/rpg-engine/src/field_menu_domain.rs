@@ -109,6 +109,16 @@ impl FieldMenuCatalog {
     pub(crate) fn map(&self, id: &str) -> Option<&MapMetadata> {
         self.maps.get(id)
     }
+    /// Cheapest price any shop in the scenario asks for `id`, or `None` when no shop stocks it.
+    pub(crate) fn shop_buy_price(&self, id: &str) -> Option<u32> {
+        self.maps
+            .values()
+            .filter_map(|map| map.shop.as_ref())
+            .flat_map(|shop| &shop.items)
+            .filter(|row| row.id() == id)
+            .map(|row| row.buy_price().get())
+            .min()
+    }
     pub(crate) fn recipes(&self) -> &[RecipeDefinition] {
         &self.recipes
     }
@@ -1475,6 +1485,30 @@ pub(crate) mod tests {
             failure: None,
             ..default()
         }
+    }
+
+    /// [`catalog`] plus the Ardel item shop, so shop-price lookups have real stock to read.
+    pub(crate) fn catalog_with_item_shop() -> FieldMenuCatalog {
+        let shop: MapMetadata = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/town_01_ardel_shop_item.yaml"
+        )))
+        .unwrap();
+        let mut catalog = catalog();
+        catalog
+            .maps
+            .insert("town_01_ardel_shop_item".to_owned(), shop);
+        catalog
+    }
+
+    #[test]
+    fn shop_buy_price_reads_shop_stock_and_sale_value_covers_cores() {
+        let catalog = catalog_with_item_shop();
+        assert_eq!(catalog.shop_buy_price("potion"), Some(100));
+        assert_eq!(catalog.shop_buy_price("phoenix_wing"), None);
+        let value = |id| crate::service_domain::sale_value(catalog.item(id).unwrap());
+        assert_eq!(value("potion"), Some(50));
+        assert_eq!(value("mc_s"), Some(10));
+        assert_eq!(value("phoenix_wing"), None);
     }
 
     pub(crate) fn game(flags: impl IntoIterator<Item = &'static str>) -> GameState {

@@ -89,13 +89,25 @@ pub(in crate::field_menu) fn spawn_items_page(
                 spawn_item_list_column(
                     columns,
                     font,
+                    state,
                     game,
                     catalog,
                     &ids,
                     list_index,
                     !pouch_focused,
                 );
-                spawn_item_detail_column(columns, font, state, game, catalog, &ids, list_index);
+                // Detail describes the list cursor, which does not exist until the list has
+                // focus; hold the column's width so the other columns stay put.
+                if pouch_focused {
+                    columns.spawn(Node {
+                        width: px(ITEMS_DETAIL_WIDTH),
+                        ..default()
+                    });
+                } else {
+                    spawn_item_detail_column(
+                        columns, font, state, game, catalog, &ids, list_index,
+                    );
+                }
             });
 
             let hint = match state.mode {
@@ -234,9 +246,14 @@ pub(in crate::field_menu) fn spawn_pouch_column(
     );
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the item list reads the menu's scroll memory alongside the filtered inventory"
+)]
 pub(in crate::field_menu) fn spawn_item_list_column(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
     ids: &[&str],
@@ -272,10 +289,10 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 );
                 return;
             }
-            let page = inventory_window(ids.len(), list_index);
-            for (index, fades) in visible_rows(page.start, ids.len(), page.len()) {
-                let id = &ids[index];
-                spawn_windowed_card(panel, fades, |panel| {
+            let window = inventory_window(state, ids.len(), list_index);
+            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+                for index in window.indices() {
+                    let id = &ids[index];
                     let item = catalog.item(id).expect("filtered inventory item exists");
                     // The cursor shows only once the list, not the pouch, has focus.
                     let selected = focused && index == list_index;
@@ -324,8 +341,8 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                             status_muted(),
                         );
                     });
-                });
-            }
+                }
+            });
             spawn_status_text(
                 panel,
                 format!("ITEM {:02} / {:02}", list_index + 1, ids.len()),
@@ -431,6 +448,23 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
             spawn_status_text(panel, "DESCRIPTION", font, 13.0, status_gold());
             spawn_status_text(panel, item_description(item), font, 16.0, status_ink());
             spawn_section_rule(panel);
+            let cost = catalog.shop_buy_price(id);
+            // Cores without an exchange rate are kept for crafting; say so rather than leave the
+            // value blank as if it were missing.
+            let value = sale_value(item)
+                .map(|value| format!("{value} GP"))
+                .or_else(|| {
+                    matches!(item, ItemDefinition::MagicCore(_)).then(|| "Crafting only".to_owned())
+                });
+            if cost.is_some() || value.is_some() {
+                if let Some(cost) = cost {
+                    spawn_quest_meta_row(panel, font, "COST", &format!("{cost} GP"));
+                }
+                if let Some(value) = value {
+                    spawn_quest_meta_row(panel, font, "VALUE", &value);
+                }
+                spawn_section_rule(panel);
+            }
             spawn_item_chips(panel, font, game, catalog, id, item);
             spawn_status_text(panel, "ENTER  -  ACTIONS", font, 14.0, status_muted());
         },
@@ -692,10 +726,15 @@ fn spawn_tag_editor(
     };
     spawn_status_text(parent, "EDIT TAGS", font, 13.0, status_muted());
     let rows = tag_editor_rows(game, id);
-    let first = window_start(state.selected, rows.len(), TAG_EDITOR_VISIBLE_ROWS);
-    for (index, fades) in visible_rows(first, rows.len(), TAG_EDITOR_VISIBLE_ROWS) {
-        let row = rows[index].clone();
-        spawn_windowed_card(parent, fades, |parent| {
+    let window = state.scroll.window(
+        "item_tags",
+        state.selected,
+        rows.len(),
+        TAG_EDITOR_VISIBLE_ROWS,
+    );
+    spawn_scroll_list(parent, window, scroll_list_node(9.0), |parent| {
+        for index in window.indices() {
+            let row = rows[index].clone();
             let selected = index == state.selected;
             match row {
                 TagEditorRow::New => {
@@ -716,8 +755,8 @@ fn spawn_tag_editor(
                     spawn_item_modal_row(parent, font, &tag, subtitle, selected);
                 }
             }
-        });
-    }
+        }
+    });
 }
 
 /// Free-text prompt for a new custom tag, with a live character budget.
@@ -780,10 +819,15 @@ fn spawn_manage_rows(
 ) {
     let ids = manage_ids(game, catalog);
     spawn_status_text(parent, "SHOW / HIDE", font, 13.0, status_muted());
-    let first = window_start(state.selected, ids.len(), ITEM_MANAGE_VISIBLE_ROWS);
-    for (index, fades) in visible_rows(first, ids.len(), ITEM_MANAGE_VISIBLE_ROWS) {
-        let id = &ids[index];
-        spawn_windowed_card(parent, fades, |parent| {
+    let window = state.scroll.window(
+        "item_manage",
+        state.selected,
+        ids.len(),
+        ITEM_MANAGE_VISIBLE_ROWS,
+    );
+    spawn_scroll_list(parent, window, scroll_list_node(9.0), |parent| {
+        for index in window.indices() {
+            let id = &ids[index];
             let name = catalog.item(id).map_or(*id, item_name);
             let hidden = game.repository().is_hidden(id);
             spawn_item_modal_row(
@@ -793,8 +837,8 @@ fn spawn_manage_rows(
                 if hidden { "HIDDEN" } else { "shown" },
                 index == state.selected,
             );
-        });
-    }
+        }
+    });
     spawn_status_text(
         parent,
         "ENTER   TOGGLE      H / ESC   BACK",

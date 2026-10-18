@@ -9,7 +9,7 @@ use crate::{
     field_menu::FieldMenuState,
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
-    menu_chrome::{spawn_windowed_card, visible_rows},
+    menu_chrome::{ScrollWindow, scroll_list_node, spawn_scroll_list},
     runtime_map::RuntimeMapId,
     scenario_class::{AbilityKind, UtilityAbility},
     scenario_inventory::ScenarioInventory,
@@ -97,6 +97,8 @@ pub(crate) struct TransportUiState {
     pending: Option<TravelRequest>,
     animation_elapsed: f32,
     animation_duration: f32,
+    /// Where the destination list was last scrolled.
+    scroll: crate::menu_chrome::ScrollMemory,
 }
 
 impl Default for TransportUiState {
@@ -112,6 +114,7 @@ impl Default for TransportUiState {
             pending: None,
             animation_elapsed: 0.0,
             animation_duration: 0.0,
+            scroll: crate::menu_chrome::ScrollMemory::default(),
         }
     }
 }
@@ -573,7 +576,9 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
     let font = asset_server.load(root.resolve(font_path));
     let map_image = asset_server.load(root.resolve(&transport.map_image));
     let rows = destinations(&state, &domain, &catalog, &game);
-    let first = window_start(state.selected, rows.len(), DESTINATION_ROWS);
+    let window = state
+        .scroll
+        .window("destinations", state.selected, rows.len(), DESTINATION_ROWS);
     let selected = rows.get(state.selected);
     let current_region = game
         .map()
@@ -657,7 +662,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                             );
                         }
                     });
-                    spawn_destination_panel(body, &font, &state, &domain, &rows, first, selected);
+                    spawn_destination_panel(body, &font, &state, &domain, &rows, window, selected);
                 });
             overlay.spawn((
                 Text::new(footer(&state)),
@@ -787,7 +792,7 @@ fn spawn_destination_panel(
     state: &TransportUiState,
     domain: &TransportDomain,
     rows: &[TravelDestination],
-    first: usize,
+    window: ScrollWindow,
     selected: Option<&TravelDestination>,
 ) {
     body.spawn((
@@ -831,7 +836,7 @@ fn spawn_destination_panel(
                     TextColor(Color::srgb_u8(244, 192, 104)),
                 ));
                 heading.spawn((
-                    Text::new(destination_count_copy(first, rows.len())),
+                    Text::new(destination_count_copy(window.first, rows.len())),
                     TextFont {
                         font: font.clone().into(),
                         font_size: FontSize::Px(12.0),
@@ -874,19 +879,18 @@ fn spawn_destination_panel(
                     ));
                 });
         } else {
-            for (index, fades) in visible_rows(first, rows.len(), DESTINATION_ROWS) {
-                let destination = &rows[index];
-                spawn_windowed_card(panel, fades, |panel| {
+            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+                for index in window.indices() {
                     spawn_destination_row(
                         panel,
                         font,
                         state.mode,
-                        destination,
+                        &rows[index],
                         index == state.selected,
                         domain,
                     );
-                });
-            }
+                }
+            });
         }
 
         panel.spawn(Node {
@@ -1429,17 +1433,6 @@ fn mode_accent(mode: TravelMode) -> Color {
     }
 }
 
-fn window_start(selected: usize, len: usize, visible: usize) -> usize {
-    if len <= visible {
-        0
-    } else {
-        selected
-            .saturating_add(1)
-            .saturating_sub(visible)
-            .min(len - visible)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1477,14 +1470,6 @@ mod tests {
 
     fn collect_cues(mut cues: MessageReader<PlaySfx>, mut heard: ResMut<HeardCues>) {
         heard.0.extend(cues.read().map(|cue| cue.key()));
-    }
-
-    #[test]
-    fn eight_row_window_tracks_selection() {
-        assert_eq!(window_start(0, 12, 8), 0);
-        assert_eq!(window_start(7, 12, 8), 0);
-        assert_eq!(window_start(8, 12, 8), 1);
-        assert_eq!(window_start(11, 12, 8), 4);
     }
 
     #[test]

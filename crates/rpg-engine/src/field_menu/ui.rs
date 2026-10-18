@@ -12,11 +12,11 @@ use crate::{
     },
     game_state::GameState,
     menu_chrome::{
-        ScrollFades, location_display_name, selectable_card_colors, spawn_focus_panel,
-        spawn_header_bars, spawn_meter, spawn_panel_rule, spawn_scroll_fades, spawn_section_rule,
-        spawn_status_panel, spawn_status_text, spawn_windowed_card, status_border,
+        ScrollWindow, location_display_name, scroll_list_node, selectable_card_colors,
+        spawn_focus_panel, spawn_header_bars, spawn_meter, spawn_panel_rule, spawn_scroll_list,
+        spawn_section_rule, spawn_status_panel, spawn_status_text, status_border,
         status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
-        status_ready, status_teal, status_violet, visible_rows, window_start,
+        status_ready, status_teal, status_violet,
     },
     options_store::PlayerOptions,
     runtime_member::EquipmentSlot,
@@ -33,7 +33,9 @@ use crate::{
     scenario_quest::{QuestDefinition, QuestKind},
     scenario_recipe::RecipeDefinition,
     scenario_root::ScenarioRoot,
-    service_domain::{RecipeAvailability, recipe_availability, recipe_input_requirements},
+    service_domain::{
+        RecipeAvailability, recipe_availability, recipe_input_requirements, sale_value,
+    },
     transport_domain::TransportDomain,
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
@@ -112,25 +114,13 @@ pub(super) const RECIPE_LIST_WIDTH: f32 = 512.0;
 pub(super) const RECIPE_COLUMN_GAP: f32 = 18.0;
 pub(super) const BATTLE_LIST_WIDTH: f32 = 512.0;
 
-/// The visible slice of the inventory list, scrolled only far enough to keep `selected` on screen.
-pub(super) fn inventory_window(len: usize, selected: usize) -> std::ops::Range<usize> {
-    let start = crate::menu_chrome::window_start(selected, len, INVENTORY_PAGE_ROWS);
-    start..(start + INVENTORY_PAGE_ROWS).min(len)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn inventory_window_scrolls_one_row_at_a_time() {
-        let rows = INVENTORY_PAGE_ROWS;
-        assert_eq!(inventory_window(0, 0), 0..0);
-        assert_eq!(inventory_window(5, 4), 0..5);
-        assert_eq!(inventory_window(25, rows - 1), 0..rows);
-        // Stepping past the last visible row scrolls by one, not by a whole page.
-        assert_eq!(inventory_window(25, rows), 1..rows + 1);
-        // The end of the list fills the window rather than showing a short final page.
-        assert_eq!(inventory_window(25, 24), 25 - rows..25);
-    }
+/// The visible slice of the inventory list, which follows the cursor through the scroll margin.
+pub(super) fn inventory_window(
+    state: &FieldMenuState,
+    len: usize,
+    selected: usize,
+) -> ScrollWindow {
+    state
+        .scroll
+        .window("items", selected, len, INVENTORY_PAGE_ROWS)
 }

@@ -1094,12 +1094,12 @@ mod tests {
             );
         }
         assert_eq!(maps.len(), 58);
-        // Ten distinct tilesets, including the shrine props. The original nine exclude that atlas.
+        // Eleven distinct tilesets, including shrine props and the shared collision marker.
         // The pinned corpus referenced seventeen: `beeler/grass_water_clif.tsx`
         // was used only by the source's `sample_01.tmx` — a sample, not a game map, so the port never
         // migrated it and the unused tileset was deleted — and on 2026-10-09 the eight Astral Pixels
         // tilesets were replaced by one project-authored `interior/interior.tsx`, because that pack
         // forbids redistribution.
-        assert_eq!(targets.len(), 10);
+        assert_eq!(targets.len(), 11);
     }
 }

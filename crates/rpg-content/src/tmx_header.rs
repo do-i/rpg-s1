@@ -4,7 +4,10 @@
 //! additionally scans direct external tileset references, finite CSV tile layers, and direct
 //! rectangle object groups, decoding orthogonal tile transforms from each raw GID.
 
-use std::{collections::HashSet, fmt, str};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt, str,
+};
 
 use quick_xml::{Reader, XmlVersion, events::Event};
 
@@ -174,6 +177,7 @@ pub struct TmxTileLayer {
     width: u32,
     height: u32,
     visible: bool,
+    sort_base_y_overrides: BTreeMap<(u32, u32), u32>,
     gids: Vec<TmxTileGid>,
 }
 
@@ -286,6 +290,11 @@ impl TmxTileLayer {
 
     pub const fn visible(&self) -> bool {
         self.visible
+    }
+
+    /// Per-cell baseline override for variable-height objects in the foreground layer.
+    pub fn sort_base_y_at(&self, column: u32, row: u32) -> Option<u32> {
+        self.sort_base_y_overrides.get(&(column, row)).copied()
     }
 
     pub fn gids(&self) -> &[TmxTileGid] {
@@ -1424,12 +1433,31 @@ fn parse_tile_layer(
     }
 
     let mut csv = None;
+    let mut properties = None;
     let mut depth = 1_u32;
     loop {
         let child_offset = reader.buffer_position();
         match reader.read_event().map_err(|error| {
             TmxMapDocumentError::new(child_offset, format!("malformed XML: {error}"))
         })? {
+            Event::Start(child) if child.name().as_ref() == b"properties" && depth == 1 => {
+                if properties.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "tile layer has multiple `properties` elements",
+                    ));
+                }
+                properties = Some(parse_typed_properties(reader, &child, child_offset)?);
+            }
+            Event::Empty(child) if child.name().as_ref() == b"properties" && depth == 1 => {
+                require_no_attributes(reader, &child, child_offset, "properties")?;
+                if properties.replace(Vec::new()).is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "tile layer has multiple `properties` elements",
+                    ));
+                }
+            }
             Event::Start(child) if child.name().as_ref() == b"data" => {
                 if depth != 1 {
                     return Err(TmxMapDocumentError::new(
@@ -1471,12 +1499,20 @@ fn parse_tile_layer(
                     )
                 })?;
                 let gids = parse_csv_gids(&csv, width, height, offset, name)?;
+                let sort_base_y_overrides = parse_sort_base_y_overrides(
+                    properties.as_deref().unwrap_or_default(),
+                    width,
+                    height,
+                    &gids,
+                    offset,
+                )?;
                 return Ok(TmxTileLayer {
                     id,
                     name: name.to_owned(),
                     width,
                     height,
                     visible,
+                    sort_base_y_overrides,
                     gids,
                 });
             }
@@ -1490,6 +1526,53 @@ fn parse_tile_layer(
             _ => {}
         }
     }
+}
+
+/// Whitespace-separated `column,row:pixel_offset` entries on the existing foreground layer.
+fn parse_sort_base_y_overrides(
+    properties: &[TmxProperty],
+    width: u32,
+    height: u32,
+    gids: &[TmxTileGid],
+    offset: u64,
+) -> Result<BTreeMap<(u32, u32), u32>, TmxMapDocumentError> {
+    let mut overrides = BTreeMap::new();
+    let Some(property) = properties
+        .iter()
+        .find(|p| p.name == "sort_base_y_overrides")
+    else {
+        return Ok(overrides);
+    };
+    let TmxPropertyValue::String(entries) = &property.value else {
+        return Err(TmxMapDocumentError::new(
+            offset,
+            "layer `sort_base_y_overrides` must have type `string`",
+        ));
+    };
+    for entry in entries.split_whitespace() {
+        let invalid = || {
+            TmxMapDocumentError::new(
+                offset,
+                format!(
+                    "invalid `sort_base_y_overrides` entry `{entry}`: expected unique in-bounds column,row:offset with nonnegative u32 values"
+                ),
+            )
+        };
+        let (cell, baseline) = entry.split_once(':').ok_or_else(invalid)?;
+        let (column, row) = cell.split_once(',').ok_or_else(invalid)?;
+        let column = column.parse::<u32>().map_err(|_| invalid())?;
+        let row = row.parse::<u32>().map_err(|_| invalid())?;
+        let baseline = baseline.parse::<u32>().map_err(|_| invalid())?;
+        if column >= width || row >= height || overrides.insert((column, row), baseline).is_some() {
+            return Err(invalid());
+        }
+    }
+    // Tiled preserves layer properties when tiles are erased or moved. Stale
+    // overrides on empty cells have no effect and must not prevent map loading.
+    overrides.retain(|&(column, row), _| {
+        !gids[(u64::from(row) * u64::from(width) + u64::from(column)) as usize].is_empty()
+    });
+    Ok(overrides)
 }
 
 fn validate_csv_data_attributes(
@@ -2901,6 +2984,70 @@ mod tests {
     }
 
     #[test]
+    fn foreground_cell_baselines_validate_coordinates_and_offsets() {
+        let xml = |property: &str| {
+            invented_document(&format!(
+                r#"<layer id="1" name="foreground" width="3" height="2"><properties>{property}</properties><data encoding="csv">1,1,0,
+0,1,0</data></layer>"#
+            )).replace(r#"width="9" height="7""#, r#"width="3" height="2""#)
+        };
+        let document = parse_tmx_map_document(
+            &xml(r#"<property name="sort_base_y_overrides" value="0,0:96 1,0:64 1,1:0"/>"#),
+            &invented_path(),
+        )
+        .unwrap();
+        let layer = &document.tile_layers()[0];
+        assert_eq!(layer.sort_base_y_at(0, 0), Some(96));
+        assert_eq!(layer.sort_base_y_at(1, 0), Some(64));
+        assert_eq!(layer.sort_base_y_at(1, 1), Some(0));
+        assert_eq!(layer.sort_base_y_at(0, 1), None);
+        let document = parse_tmx_map_document(&xml(""), &invented_path()).unwrap();
+        assert_eq!(document.tile_layers()[0].sort_base_y_at(0, 0), None);
+        for entry in [
+            "0,0:-1",
+            "0,0:4294967296",
+            "3,0:64",
+            "0,2:64",
+            "0,0:64 0,0:96",
+            "0:64",
+            "0,0",
+            "x,0:64",
+        ] {
+            let property = format!(r#"<property name="sort_base_y_overrides" value="{entry}"/>"#);
+            assert!(
+                parse_tmx_map_document(&xml(&property), &invented_path()).is_err(),
+                "{entry}"
+            );
+        }
+        assert!(
+            parse_tmx_map_document(
+                &xml(r#"<property name="sort_base_y_overrides" type="int" value="96"/>"#),
+                &invented_path()
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn erasing_foreground_tiles_leaves_harmless_baseline_properties() {
+        let original = invented_document(
+            r#"<layer id="1" name="foreground" width="3" height="2">
+<properties><property name="sort_base_y_overrides" value="0,0:96 1,0:64 2,0:32"/></properties>
+<data encoding="csv">1,1,1,
+0,0,0</data></layer>"#,
+        )
+        .replace(r#"width="9" height="7""#, r#"width="3" height="2""#);
+        let edited = original.replace("1,1,1,", "0,1,0,");
+        let original = parse_tmx_map_document(&original, &invented_path()).unwrap();
+        let edited = parse_tmx_map_document(&edited, &invented_path()).unwrap();
+        assert_eq!(original.tile_layers()[0].sort_base_y_at(0, 0), Some(96));
+        let layer = &edited.tile_layers()[0];
+        assert_eq!(layer.sort_base_y_at(0, 0), None);
+        assert_eq!(layer.sort_base_y_at(1, 0), Some(64));
+        assert_eq!(layer.sort_base_y_at(2, 0), None);
+    }
+
+    #[test]
     fn audits_every_shipped_tmx_external_tileset_reference() {
         let maps = scenario_package_dir().join("media/maps");
         let maps = Path::new(&maps);
@@ -2964,8 +3111,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 223);
-        assert_eq!(distinct_sources.len(), 10);
+        assert_eq!(reference_count, 281);
+        assert_eq!(distinct_sources.len(), 11);
     }
 
     #[test]
@@ -2997,7 +3144,49 @@ mod tests {
             let document = scan_tmx_map_document(&xml, &logical)
                 .unwrap_or_else(|error| panic!("{logical}: {error}"))
                 .document;
+            for role in [
+                "ground",
+                "architecture",
+                "decoration",
+                "foreground",
+                "collision",
+            ] {
+                assert!(
+                    document
+                        .tile_layers()
+                        .iter()
+                        .any(|layer| layer.name() == role),
+                    "{logical}: missing {role}"
+                );
+            }
+            let mut names = HashSet::new();
             for layer in document.tile_layers() {
+                assert!(
+                    matches!(
+                        layer.name(),
+                        "ground"
+                            | "terrain"
+                            | "architecture"
+                            | "decoration"
+                            | "foreground"
+                            | "collision"
+                            | "spawn_tile"
+                    ),
+                    "{logical}: unapproved layer {}",
+                    layer.name()
+                );
+                assert!(
+                    names.insert(layer.name()),
+                    "{logical}: duplicate layer {}",
+                    layer.name()
+                );
+                if matches!(layer.name(), "collision" | "spawn_tile") {
+                    assert!(
+                        !layer.visible(),
+                        "{logical}: {} is semantic data",
+                        layer.name()
+                    );
+                }
                 assert_eq!(layer.width(), document.header().width());
                 assert_eq!(layer.height(), document.header().height());
                 assert_eq!(
@@ -3016,9 +3205,9 @@ mod tests {
         }
 
         assert_eq!(files.len(), 58);
-        assert_eq!(layer_count, 235);
-        assert_eq!(gid_count, 187_493);
-        assert_eq!(flip_combination_counts, [187_289, 12, 2, 0, 0, 189, 1, 0]);
+        assert_eq!(layer_count, 345);
+        assert_eq!(gid_count, 280_632);
+        assert_eq!(flip_combination_counts, [280_422, 16, 2, 0, 0, 191, 1, 0]);
     }
 
     #[test]

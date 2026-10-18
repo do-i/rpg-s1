@@ -23,6 +23,7 @@ mod field_menu;
 mod field_menu_domain;
 mod frame_timing;
 mod game_over;
+mod game_pause;
 pub mod game_state;
 pub mod gameplay_canvas;
 pub mod gameplay_rng;
@@ -253,6 +254,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(BattleEntryPlugin)
     .add_plugins(BattlePlugin)
     .add_plugins(GameOverPlugin)
+    .add_plugins(game_pause::GamePausePlugin)
     .add_plugins(CreditsPlugin)
     .add_plugins(world_transition::hot_reload::ScenarioHotReloadPlugin::new(
         asset_base,

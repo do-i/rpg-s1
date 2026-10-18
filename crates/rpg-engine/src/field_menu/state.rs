@@ -92,6 +92,8 @@ pub(crate) struct FieldMenuState {
     /// Draft text for the new-custom-tag prompt.
     pub(super) text_input: String,
     pub(super) message: String,
+    /// Where each of this screen's lists was last scrolled.
+    pub(super) scroll: crate::menu_chrome::ScrollMemory,
 }
 
 impl FieldMenuState {

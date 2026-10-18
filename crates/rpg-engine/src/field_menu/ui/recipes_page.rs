@@ -86,7 +86,7 @@ pub(in crate::field_menu) fn spawn_recipes_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_recipe_list_column(columns, font, game, catalog, recipes, selected);
+                spawn_recipe_list_column(columns, font, state, game, catalog, recipes, selected);
                 spawn_recipe_detail_column(columns, font, game, catalog, recipes.get(selected));
             });
             spawn_status_text(
@@ -182,6 +182,7 @@ pub(in crate::field_menu) fn spawn_recipes_header(
 pub(in crate::field_menu) fn spawn_recipe_list_column(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
     recipes: &[RecipeDefinition],
@@ -214,38 +215,32 @@ pub(in crate::field_menu) fn spawn_recipe_list_column(
                 );
                 return;
             }
-            let first = recipe_window_start(selected, recipes.len());
+            let window =
+                state
+                    .scroll
+                    .window("recipes", selected, recipes.len(), RECIPE_VISIBLE_ROWS);
             // The cards share the column's height, so a full window fills it edge to edge.
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    min_height: px(0),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(7),
-                    ..default()
-                })
-                .with_children(|cards| {
-                    for (index, fades) in visible_rows(first, recipes.len(), RECIPE_VISIBLE_ROWS) {
-                        let recipe = &recipes[index];
-                        spawn_recipe_book_row(
-                            cards,
-                            font,
-                            recipe,
-                            game,
-                            catalog,
-                            index == selected,
-                            fades,
-                        );
-                    }
-                });
+            let cards_node = Node {
+                width: percent(100),
+                flex_grow: 1.0,
+                min_height: px(0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(7),
+                ..default()
+            };
+            spawn_scroll_list(panel, window, cards_node, |cards| {
+                for index in window.indices() {
+                    let recipe = &recipes[index];
+                    spawn_recipe_book_row(cards, font, recipe, game, catalog, index == selected);
+                }
+            });
             spawn_panel_rule(panel);
             spawn_status_text(
                 panel,
                 register_footer(
                     "RECIPE",
                     selected,
-                    first,
+                    window.first,
                     recipes.len(),
                     RECIPE_VISIBLE_ROWS,
                 ),
@@ -264,7 +259,6 @@ pub(in crate::field_menu) fn spawn_recipe_book_row(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     selected: bool,
-    fades: ScrollFades,
 ) {
     let availability = recipe_availability(recipe, game.flags(), game.repository());
     let sealed = availability == RecipeAvailability::Locked;
@@ -322,7 +316,6 @@ pub(in crate::field_menu) fn spawn_recipe_book_row(
             );
         });
         spawn_recipe_state_pill(row, font, availability);
-        spawn_scroll_fades(row, fades);
     });
 }
 
@@ -595,8 +588,4 @@ pub(in crate::field_menu) fn selected_recipe_index(
     } else {
         state.selected.min(recipes.len() - 1)
     }
-}
-
-pub(in crate::field_menu) fn recipe_window_start(selected: usize, len: usize) -> usize {
-    window_start(selected, len, RECIPE_VISIBLE_ROWS)
 }

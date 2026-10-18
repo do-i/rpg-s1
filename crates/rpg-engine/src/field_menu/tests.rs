@@ -397,8 +397,42 @@ fn items_page_builds_the_original_three_column_pouch_structure() {
         .collect::<Vec<_>>();
     assert!(labels.contains(&"POUCH"));
     assert!(labels.contains(&"ITEMS"));
-    assert!(labels.contains(&"DETAIL"));
+    assert!(!labels.contains(&"DETAIL"));
     assert!(labels.contains(&"Pouch is empty."));
+}
+
+#[test]
+fn item_detail_stays_hidden_until_the_list_has_focus() {
+    let labels_in = |mode| {
+        let mut game = fixture_game();
+        // The save fixture hides its potion; the list only shows visible items.
+        game.repository_mut().set_hidden("potion", false);
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(crate::field_menu_domain::tests::catalog_with_item_shop())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Items,
+                mode,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_items_page);
+        app.update();
+        let world = app.world_mut();
+        world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>()
+    };
+
+    let browse = labels_in(FieldMenuMode::Browse);
+    assert!(!browse.iter().any(|label| label == "DETAIL"));
+    assert!(!browse.iter().any(|label| label == "DESCRIPTION"));
+
+    let list = labels_in(FieldMenuMode::ItemList);
+    assert!(list.iter().any(|label| label == "DETAIL"));
+    assert!(list.iter().any(|label| label == "DESCRIPTION"));
 }
 
 #[test]
@@ -464,6 +498,62 @@ fn item_details_show_repository_tags_and_locked_actions_offer_unlock() {
     assert!(labels.contains(&"TRAVEL"));
     assert!(labels.contains(&"LOCKED"));
     assert!(labels.contains(&"Unlock"));
+}
+
+#[test]
+fn item_details_mark_unexchangeable_cores_as_crafting_only() {
+    let mut app = App::new();
+    app.insert_resource(fixture_game())
+        .insert_resource(crate::field_menu_domain::tests::catalog_with_item_shop())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Items,
+            mode: FieldMenuMode::ItemActions,
+            pending_id: Some("mc_m".to_owned()),
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_items_page);
+
+    app.update();
+
+    let world = app.world_mut();
+    let labels = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.as_str())
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"VALUE"));
+    assert!(labels.contains(&"Crafting only"));
+    assert!(!labels.contains(&"COST"));
+}
+
+#[test]
+fn item_details_show_shop_cost_and_sale_value() {
+    let mut app = App::new();
+    app.insert_resource(fixture_game())
+        .insert_resource(crate::field_menu_domain::tests::catalog_with_item_shop())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Items,
+            mode: FieldMenuMode::ItemActions,
+            pending_id: Some("potion".to_owned()),
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_items_page);
+
+    app.update();
+
+    let world = app.world_mut();
+    let labels = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.as_str())
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"Potion"));
+    assert!(labels.contains(&"COST"));
+    assert!(labels.contains(&"100 GP"));
+    assert!(labels.contains(&"VALUE"));
+    assert!(labels.contains(&"50 GP"));
 }
 
 #[test]
@@ -790,12 +880,23 @@ fn save_overwrite_confirmation_uses_a_focused_modal() {
 }
 
 #[test]
-fn save_window_scrolls_one_slot_at_a_time() {
-    assert_eq!(save_window_start(1), 1);
-    assert_eq!(save_window_start(SAVE_VISIBLE_ROWS), 1);
-    assert_eq!(save_window_start(SAVE_VISIBLE_ROWS + 1), 2);
+fn save_window_indexes_player_slots_and_ends_on_the_last_one() {
+    let mut state = FieldMenuState {
+        selected: FIRST_PLAYER_SLOT,
+        ..default()
+    };
+    assert_eq!(save_window(&state).first, 0);
+    // The cursor walks down the first window without scrolling it.
+    state.selected = FIRST_PLAYER_SLOT + SAVE_VISIBLE_ROWS - 2;
+    assert_eq!(save_window(&state).first, 0);
     // The last slot sits at the bottom of a full window.
-    assert_eq!(save_window_start(100), 100 - SAVE_VISIBLE_ROWS + 1);
+    state.selected = crate::save_store::LAST_PLAYER_SLOT;
+    let window = save_window(&state);
+    assert_eq!(
+        window.indices().end,
+        crate::save_store::LAST_PLAYER_SLOT - FIRST_PLAYER_SLOT + 1
+    );
+    assert_eq!(window.indices().len(), SAVE_VISIBLE_ROWS);
 }
 
 #[test]
@@ -1128,7 +1229,7 @@ fn the_battle_page_lists_each_member_with_mode_and_command() {
     );
 }
 
-fn quest_board_fades(selected: usize) -> (usize, Vec<crate::menu_chrome::ScrollFade>) {
+fn quest_board_indicators(selected: usize) -> (usize, Vec<crate::menu_chrome::ScrollIndicator>) {
     fn spawn_board(
         mut commands: Commands,
         state: Res<FieldMenuState>,
@@ -1152,32 +1253,38 @@ fn quest_board_fades(selected: usize) -> (usize, Vec<crate::menu_chrome::ScrollF
     app.update();
     let world = app.world_mut();
     let rows = world.query::<&QuestBoardRow>().iter(world).count();
-    let mut fades = world
-        .query::<&crate::menu_chrome::ScrollFade>()
+    let mut indicators = world
+        .query::<&crate::menu_chrome::ScrollIndicator>()
         .iter(world)
         .copied()
         .collect::<Vec<_>>();
-    fades.sort_by_key(|fade| *fade as u8);
-    (rows, fades)
+    indicators.sort_by_key(|indicator| *indicator as u8);
+    (rows, indicators)
 }
 
 #[test]
-fn a_scrolled_quest_board_fills_its_window_and_fades_the_edges_with_hidden_cards() {
-    use crate::menu_chrome::ScrollFade::{Bottom, Top};
+fn a_scrolled_quest_board_fills_its_window_and_marks_the_edges_with_hidden_cards() {
+    use crate::menu_chrome::ScrollIndicator::{Down, Thumb, Up};
     let len = crate::field_menu_domain::tests::catalog_with_quests()
         .quests()
         .len();
     assert!(len > QUEST_VISIBLE_ROWS, "the shipped register must scroll");
 
-    // Top of the list: a full window, shaded only toward the cards below.
-    assert_eq!(quest_board_fades(0), (QUEST_VISIBLE_ROWS, vec![Bottom]));
+    // Top of the list: a full window, with an arrow only toward the cards below.
+    assert_eq!(
+        quest_board_indicators(0),
+        (QUEST_VISIBLE_ROWS, vec![Down, Thumb])
+    );
     // Mid-list: cards hidden on both sides.
     assert_eq!(
-        quest_board_fades(QUEST_VISIBLE_ROWS),
-        (QUEST_VISIBLE_ROWS, vec![Top, Bottom])
+        quest_board_indicators(QUEST_VISIBLE_ROWS),
+        (QUEST_VISIBLE_ROWS, vec![Up, Down, Thumb])
     );
     // End of the list: only the cards above are hidden.
-    assert_eq!(quest_board_fades(len - 1), (QUEST_VISIBLE_ROWS, vec![Top]));
+    assert_eq!(
+        quest_board_indicators(len - 1),
+        (QUEST_VISIBLE_ROWS, vec![Up, Thumb])
+    );
 }
 
 fn fixture_battle_log(lines: usize) -> LastBattleLog {
