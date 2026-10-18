@@ -3111,8 +3111,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 333);
-        assert_eq!(distinct_sources.len(), 11);
+        assert_eq!(reference_count, 334);
+        assert_eq!(distinct_sources.len(), 12);
     }
 
     #[test]
