@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (706 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (717 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1187,7 +1187,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0980 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_harbormaster.yaml` | `89f3db0c3b783236fdb36e14ab2f1b6d245383948b5f9de59b996eb42b596013` | scenario YAML / town_03_harborgate_harbormaster.yaml |
 | ALI-0981 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_inn.yaml` | `9918d5507b80fcbac8e8ee90e6e9c5b4de8940d05327153e364ece033f5c5ee1` | scenario YAML / town_03_harborgate_inn.yaml |
 | ALI-0982 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_quarantine.yaml` | `44afedd650154df136db3571ad6dba86369b6bd90c98da9fee290a503df0a18b` | scenario YAML / town_03_harborgate_quarantine.yaml |
-| ALI-0983 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop.yaml` | `10f0b36d5f5b11db9ea22e634f451262d27c9e4354568f7286efe849a3b352f1` | scenario YAML / town_03_harborgate_shop.yaml |
+| ALI-0983 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop.yaml` | `f7a2bc1cddf605d765b1befa0dcfe4b6977b1ad0f18eed4fbd14983e9dccaaef` | scenario YAML / town_03_harborgate_shop.yaml |
 | ALI-0886 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch.yaml` | `2865769e1c89213bd4f2d5b6a290f4cddf0132e736fcbcadb28f03f017060065` | scenario YAML / town_03_ruinwatch.yaml |
 | ALI-0887 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_inn.yaml` | `74802ec30f06b6a3f2ced8fa06c5f5b2b31ec5f768802da0bc2839cd40c737aa` | scenario YAML / town_03_ruinwatch_inn.yaml |
 | ALI-0888 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_monastery_vaults.yaml` | `0822746fa356c6718c46732f6feff4c1b12895f04f685b6618885bc7f82efed3` | scenario YAML / town_03_ruinwatch_monastery_vaults.yaml |
@@ -1230,7 +1230,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `52aaeb79ebdb55ff8d8d3a9a2fe89be02f42443423a944428ac98af51023d954` | scenario YAML / Rusted Kingdoms party catalog |
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
-| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `ee27947efd22f683320bf5bbfc9b0fb3576fb0f6a1dafbbfc771e363cbcda382` | scenario YAML / transport.yaml |
+| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `dbac1c6ad3664e07dd030ab79cfdc840a5c45f351a052d9f2e1bc2620671f69a` | scenario YAML / transport.yaml |
 | ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `a1d0594a51ed7d5bfc139d7e1f4942a2595ed24e8d80f23ee96e58d4b698f1bb` | scenario YAML / Rusted Kingdoms scenario manifest |
 | ALI-0028 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` | provenance record / Rusted Kingdoms BGM prompt and source notes |
 | ALI-0226 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Across_the_Sundered_Peaks_64.mp3` | `5910a7b194a72afc272835403ca75220db5ec28c7cdc49125f622548c6449909` | audio / Across_the_Sundered_Peaks_64.mp3 |
@@ -1291,11 +1291,11 @@ Everything not listed above. Shared fields for every row:
 | ALI-0323 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `2581631984fdf22f81bd5708d906fe06b087ed843875848df1fdfdb8623fa544` | map XML / town_02_millhaven_inn.tmx |
 | ALI-0324 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `eb266a80e7772f0ccc4173c86c3d0edb289df09e7d7b79e670b57198bd041687` | map XML / town_02_millhaven_mill.tmx |
 | ALI-0325 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `26322b8e142d98dc6476c50ec99235428e5349a2cb95aee902525e389d78e693` | map XML / town_02_millhaven_shop.tmx |
-| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `34d3aaa5d40921938339c3bfa23ae8811aebc5d3cfaaf9a9bd0bb9aaee0c91fa` | map XML / town_03_harborgate.tmx |
+| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `0ab3720b2b18ae470683181a330959cd2e75605f41099eec768cf601c1cad159` | map XML / town_03_harborgate.tmx |
 | ALI-0996 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `9dcf63d8cc3cc1fa8436a5d0e723ded4d69f3b6a4fa40f83fbb7c8e87a50c6d0` | map XML / town_03_harborgate_harbormaster.tmx |
 | ALI-0997 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `a36028ece4b5870eb80cdef1793a261a075a8135d78749fbd0250be1b0997104` | map XML / town_03_harborgate_inn.tmx |
 | ALI-0998 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `e45654772ea9861b35478c28aa5bb6cb1d62a5d313071a1952813e141ad814a9` | map XML / town_03_harborgate_quarantine.tmx |
-| ALI-0999 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `b0eb9ab1d895c1d85bc8eb5570932a13203d5d1b42fd016e828456023f8114bb` | map XML / town_03_harborgate_shop.tmx |
+| ALI-0999 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop.tmx` | `511a7cbe22872cecdfc10c6df44f2bce3778e5a5d8e39f5cc07ea813bc58b8d6` | map XML / town_03_harborgate_shop.tmx |
 | ALI-0913 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch.tmx` | `44f20f70e2941d77b7124f073394c4523c7c6cee6acb66f7802951c102b1da89` | map XML / town_03_ruinwatch.tmx |
 | ALI-0326 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_inn.tmx` | `56405c77a05b3fb358021d71666fbee5e2b16d35f51e22da2a0994fb8148b1f8` | map XML / town_03_ruinwatch_inn.tmx |
 | ALI-0914 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_monastery_vaults.tmx` | `1b700459b4fdfedcc43a154e9ac003589df91c17bbcd03db7d302241e348f525` | map XML / town_03_ruinwatch_monastery_vaults.tmx |
@@ -1682,3 +1682,14 @@ Everything not listed above. Shared fields for every row:
 | ALI-1065 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_armor.tmx` | `9654e6ca2e5e0df0f86a72a1e518599a855289f35c9f3946752e007c41ad077e` | TMX / Millhaven shops and village houses |
 | ALI-1067 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_mc.tmx` | `b4e508e38f74eeb1f36dd4bc1375b15750f3c5e4a2318dca7bff98e01a02ea55` | TMX / Millhaven shops and village houses |
 | ALI-1063 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop_weapon.tmx` | `f1ef477ace756ef3d496d43fc830d8ed4b3c5b0da3872c620268f34315456a18` | TMX / Millhaven shops and village houses |
+| ALI-1076 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/harborgate_house_young_resident.yaml` | `0ffde22a6d6d494848a7b5181f67b5325f36c7a4f30ac34c609145f9083bebc1` | scenario YAML / Harborgate shops and houses |
+| ALI-1077 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_house_02.yaml` | `8714f624a799113cf57f0e8e7858f99b1fc35b7b1bec9d25523bb72d0e482b13` | scenario YAML / Harborgate shops and houses |
+| ALI-1078 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop_armor.yaml` | `423ef0a99080699738619ab06fb2437924f83ca72dcbeef4cc6d91e67f30e23d` | scenario YAML / Harborgate shops and houses |
+| ALI-1079 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop_item.yaml` | `5c384cab2cd810bacc0f003e2e2fa41ac9d83979858ed022114928b5b40127d1` | scenario YAML / Harborgate shops and houses |
+| ALI-1080 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop_mc.yaml` | `2ccb303df32abb6c74128429db163dfc0f77584b511d302f90b8d629ceb470be` | scenario YAML / Harborgate shops and houses |
+| ALI-1081 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_shop_weapon.yaml` | `2164690604d3b1cdc3bdbc9dbdf32f2a01100f308aa9c071073190ccddcd1c03` | scenario YAML / Harborgate shops and houses |
+| ALI-1082 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_house_02.tmx` | `7d9138392b76f6fb5cbf72b20183eaf7d7959f500d87c33fa0cf4d7dfe7796e2` | TMX / Harborgate shops and houses |
+| ALI-1083 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop_armor.tmx` | `0a1844e4022c5d019521f0c953fda524e25392a1341094157d9dd2205161b8a0` | TMX / Harborgate shops and houses |
+| ALI-1084 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop_item.tmx` | `8298f4a3ed6a8b2d62069833ee0eab734a6b7ec34e2c5ac38c1f507164ead116` | TMX / Harborgate shops and houses |
+| ALI-1085 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop_mc.tmx` | `30a088c7c3c2a07b940dc1a1b6a4a3158bd483d191e60118ffb116a2c7b7c78b` | TMX / Harborgate shops and houses |
+| ALI-1086 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop_weapon.tmx` | `1b271fd1381dadcb1582fd19d1f961a6f1cb0bfa7b7d53be1911fb7ac8a9b7ff` | TMX / Harborgate shops and houses |

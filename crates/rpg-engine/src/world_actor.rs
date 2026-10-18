@@ -952,11 +952,23 @@ mod tests {
         .unwrap()
     }
 
-    fn harborgate_shop_metadata() -> MapMetadata {
-        scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/town_03_harborgate_shop.yaml"
-        )))
-        .unwrap()
+    fn harborgate_shop_metadata(map_id: &str) -> MapMetadata {
+        let document = match map_id {
+            "town_03_harborgate_shop_item" => include_str!(scenario_file!(
+                "data/maps/town_03_harborgate_shop_item.yaml"
+            )),
+            "town_03_harborgate_shop_weapon" => include_str!(scenario_file!(
+                "data/maps/town_03_harborgate_shop_weapon.yaml"
+            )),
+            "town_03_harborgate_shop_armor" => include_str!(scenario_file!(
+                "data/maps/town_03_harborgate_shop_armor.yaml"
+            )),
+            "town_03_harborgate_shop_mc" => {
+                include_str!(scenario_file!("data/maps/town_03_harborgate_shop_mc.yaml"))
+            }
+            _ => panic!("unknown Harborgate shop {map_id}"),
+        };
+        scenario_yaml::from_str(document).unwrap()
     }
 
     /// Unlike Millhaven's Reiya (`excludes: [npc_reiya_joined]`), none of the five authored
@@ -1062,52 +1074,53 @@ mod tests {
         }
     }
 
-    /// The shop interior's four keepers (item, magic-core, weapon, armor) are likewise ungated —
+    /// The four separate shops' keepers (item, magic-core, weapon, armor) are ungated —
     /// only their shop inventories carry `unlock_flag` gates (exercised via `open_shop`/service
     /// routing, not NPC presence). All four spawn under every flag state.
     #[test]
     fn presence_conditions_keep_all_four_shop_keepers_present_across_story_flags() {
-        let metadata = harborgate_shop_metadata();
-        assert_eq!(metadata.npcs.len(), 4);
-
-        let expected = [
+        let shops = [
             (
+                "town_03_harborgate_shop_item",
                 "item_shop_keeper",
-                Position::new(6, 3),
+                Position::new(9, 4),
                 "item_shop_harborgate",
             ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
             (
+                "town_03_harborgate_shop_weapon",
                 "weapon_shop_keeper",
-                Position::new(5, 3),
+                Position::new(6, 4),
                 "weapon_shop_harborgate",
             ),
             (
+                "town_03_harborgate_shop_armor",
                 "armor_shop_keeper",
-                Position::new(12, 3),
+                Position::new(1, 4),
                 "armor_shop_harborgate",
             ),
+            (
+                "town_03_harborgate_shop_mc",
+                "mc_shop_keeper",
+                Position::new(4, 3),
+                "mc_shop_intro",
+            ),
         ];
-
-        for flags in [
-            RuntimeFlags::default(),
-            RuntimeFlags::from_bootstrap(["story_quest_started"]),
-            RuntimeFlags::from_bootstrap(["story_act2_started", "story_act3_started"]),
-        ] {
-            let present = present_npcs(&metadata, &flags);
-            assert_eq!(present.len(), 4);
-            let observed = present
-                .iter()
-                .map(|npc| {
-                    (
-                        npc.id.as_str(),
-                        npc.position,
-                        npc.dialogue.as_deref().unwrap_or_default(),
-                    )
-                })
-                .collect::<Vec<_>>();
-            assert_eq!(observed, expected);
+        for (map_id, id, position, dialogue) in shops {
+            let metadata = harborgate_shop_metadata(map_id);
+            for flags in [
+                RuntimeFlags::default(),
+                RuntimeFlags::from_bootstrap(["story_quest_started"]),
+                RuntimeFlags::from_bootstrap(["story_act2_started", "story_act3_started"]),
+            ] {
+                assert_eq!(observed_npcs(&metadata, &flags), [(id, position, dialogue)]);
+            }
         }
+        let house: MapMetadata = scenario_yaml::from_str(include_str!(scenario_file!(
+            "data/maps/town_03_harborgate_shop.yaml"
+        )))
+        .unwrap();
+        assert!(house.npcs.is_empty());
+        assert!(house.shop.is_none() && house.weapon_shop.is_none() && house.armor_shop.is_none());
     }
 
     fn ruinwatch_metadata(map_id: &str) -> MapMetadata {

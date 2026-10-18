@@ -1,0 +1,14 @@
+id: town_03_harborgate_house_02
+name: Harborgate Northeast House
+bgm: town.default
+npcs:
+  - id: harborgate_young_resident
+    name: Niko
+    dialogue: harborgate_house_young_resident
+    position: [4, 3]
+    sprite: media/sprites/npc/village_male_person_market_runner.tsx
+    default_facing: down
+    interaction_range: 1.5
+    animation:
+      mode: step
+      speed: 0.6

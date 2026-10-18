@@ -1184,23 +1184,30 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn harborgate_portals_cover_all_five_authored_exits_with_reversible_return_links() {
-        let portals = harborgate_portals();
-        let destinations = portals
+    fn harborgate_portals_cover_every_interior_with_reversible_return_links() {
+        let destinations = harborgate_portals()
             .iter()
-            .map(|portal| (portal.target_map().as_str(), portal.target_position()))
+            .map(|portal| {
+                (
+                    portal.target_map().as_str().to_owned(),
+                    portal.target_position(),
+                )
+            })
             .collect::<Vec<_>>();
-        assert_eq!(
-            destinations,
-            [
-                ("town_03_harborgate_quarantine", Position::new(5, 9)),
-                ("town_03_harborgate_shop", Position::new(7, 10)),
-                ("town_03_harborgate_inn", Position::new(5, 9)),
-                ("town_03_harborgate_harbormaster", Position::new(10, 11)),
-                ("zone_03_marshland", Position::new(21, 37)),
-            ]
-        );
-
+        let expected = [
+            ("town_03_harborgate_quarantine", Position::new(5, 9)),
+            ("town_03_harborgate_inn", Position::new(5, 9)),
+            ("town_03_harborgate_harbormaster", Position::new(10, 11)),
+            ("zone_03_marshland", Position::new(21, 37)),
+            ("town_03_harborgate_shop_weapon", Position::new(7, 10)),
+            ("town_03_harborgate_shop_armor", Position::new(7, 10)),
+            ("town_03_harborgate_shop_item", Position::new(7, 10)),
+            ("town_03_harborgate_shop_mc", Position::new(7, 10)),
+            ("town_03_harborgate_shop", Position::new(7, 9)),
+            ("town_03_harborgate_house_02", Position::new(4, 7)),
+        ]
+        .map(|(id, position)| (id.to_owned(), position));
+        assert_eq!(destinations, expected);
         let interiors = [
             (
                 "town_03_harborgate_quarantine",
@@ -1208,11 +1215,6 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                     "media/maps/town_03_harborgate_quarantine.tmx"
                 )),
                 Position::new(20, 6),
-            ),
-            (
-                "town_03_harborgate_shop",
-                include_str!(scenario_file!("media/maps/town_03_harborgate_shop.tmx")),
-                Position::new(36, 6),
             ),
             (
                 "town_03_harborgate_inn",
@@ -1225,6 +1227,42 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                     "media/maps/town_03_harborgate_harbormaster.tmx"
                 )),
                 Position::new(35, 26),
+            ),
+            (
+                "town_03_harborgate_shop_weapon",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_harborgate_shop_weapon.tmx"
+                )),
+                Position::new(6, 37),
+            ),
+            (
+                "town_03_harborgate_shop_armor",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_harborgate_shop_armor.tmx"
+                )),
+                Position::new(15, 37),
+            ),
+            (
+                "town_03_harborgate_shop_item",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_harborgate_shop_item.tmx"
+                )),
+                Position::new(24, 37),
+            ),
+            (
+                "town_03_harborgate_shop_mc",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_shop_mc.tmx")),
+                Position::new(33, 37),
+            ),
+            (
+                "town_03_harborgate_shop",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_shop.tmx")),
+                Position::new(20, 6),
+            ),
+            (
+                "town_03_harborgate_house_02",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_house_02.tmx")),
+                Position::new(36, 6),
             ),
         ];
         for (map_id, document, expected_return_position) in interiors {
@@ -1239,7 +1277,6 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             assert_eq!(returns[0].target_map().as_str(), "town_03_harborgate");
             assert_eq!(returns[0].target_position(), expected_return_position);
         }
-
         assert_reversible_link(
             "town_03_harborgate",
             harborgate_document(),

@@ -43,6 +43,11 @@ regions:
       - { id: town_03_harborgate_inn }
       - { id: town_03_harborgate_quarantine }
       - { id: town_03_harborgate_shop }
+      - { id: town_03_harborgate_shop_weapon }
+      - { id: town_03_harborgate_shop_armor }
+      - { id: town_03_harborgate_shop_item }
+      - { id: town_03_harborgate_shop_mc }
+      - { id: town_03_harborgate_house_02 }
       - { id: zone_03_marshland, outdoor: true }
   - id: ruinwatch
     name: Ruinwatch

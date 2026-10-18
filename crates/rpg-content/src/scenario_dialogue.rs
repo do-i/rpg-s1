@@ -669,8 +669,8 @@ entries:
             }
         }
 
-        assert_eq!(files.len(), 143);
-        assert_eq!((cutscenes, entry_documents, line_pools), (1, 141, 1));
+        assert_eq!(files.len(), 144);
+        assert_eq!((cutscenes, entry_documents, line_pools), (1, 142, 1));
         assert_eq!(idless, 2);
     }
 }
