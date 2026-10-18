@@ -1,0 +1,34 @@
+id: town_03_harborgate_shop_item
+name: Harborgate Item Shop
+bgm: town.default
+npcs:
+  - id: item_shop_keeper
+    name: Salvo
+    dialogue: item_shop_harborgate
+    position: [9, 4]
+    sprite: media/sprites/npc/merchant_base.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.7
+shop:
+  items:
+    - id: potion
+      buy_price: 100
+      unlock_flag: story_quest_started
+    - id: antidote
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: echo_herb
+      buy_price: 80
+      unlock_flag: story_quest_started
+    - id: remedy
+      buy_price: 300
+      unlock_flag: story_act2_started
+    - id: hi_potion
+      buy_price: 500
+      unlock_flag: story_act2_started
+    - id: revival_herb
+      buy_price: 800
+      unlock_flag: story_act2_started

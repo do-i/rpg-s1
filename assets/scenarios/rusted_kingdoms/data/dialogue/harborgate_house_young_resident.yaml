@@ -1,0 +1,6 @@
+id: harborgate_house_young_resident
+type: npc
+entries:
+  - lines:
+      - I'm Niko. I carry parcels up from the harbor when the boats come in.
+      - This is my first room of my own. It's quiet here, away from the loading bells.
