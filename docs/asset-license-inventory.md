@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (683 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (693 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1089,10 +1089,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-0181 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_03_ruinwatch.yaml` | `7de8ec4a2bc06d5f26037afc4981a192fdde5988d6b414453aa73ddbae1cefda` | scenario YAML / sign_town_03_ruinwatch.yaml |
 | ALI-0182 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_04_frostholm.yaml` | `1986fdcdeeec177e2895b2bb055c0a54505f2e89711d980cd4e36e5ef0468d1e` | scenario YAML / sign_town_04_frostholm.yaml |
 | ALI-0183 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_town_05_ashenveil.yaml` | `e5c2576f49ffc2a2eef8c8aba4a41eba8939a1ebbacb9b3ba57fb3002ee9527c` | scenario YAML / sign_town_05_ashenveil.yaml |
-| ALI-0080 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml` | `8a844f6e7065b48f868f4cb305ef3b8076bf465c690783e80eea96c206964b52` | scenario YAML / sign_zone_01_starting_forest.yaml |
+| ALI-0080 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest.yaml` | `832def224f929b6eebfb4e5880437ee5bd8c49e27f5721496d396249a1e8a5c0` | scenario YAML / sign_zone_01_starting_forest.yaml |
 | ALI-1046 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_house_kitchen.yaml` | `f448b9a5ff49764a54c5675a9cfefcc31feca8a48657465f8b5bb70e14398a99` | scenario YAML / young couple household dialogue |
 | ALI-1047 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/ardel_house_dining.yaml` | `f4da0f9ffbdfade153ce468fe3ac3d355aeb75e4180a4a22205fdb80063e2c61` | scenario YAML / young couple household dialogue |
-| ALI-0184 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains.yaml` | `ebaee2ace6abfed216322dde0d9484298fa33b905ba9b371e0d97ebcda646242` | scenario YAML / sign_zone_02_open_plains.yaml |
+| ALI-0184 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains.yaml` | `76d6a910f4516ff246bde90dd24ea8f30d32f555c3b0d978fedf81092ad31139` | scenario YAML / sign_zone_02_open_plains.yaml |
 | ALI-0963 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_03_marshland.yaml` | `c273e296a04ad2fa60ac2b619952f86a89a8e885e52b785caa95972f68778b72` | scenario YAML / sign_zone_03_marshland.yaml |
 | ALI-0964 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_05_mountain_foothills_01.yaml` | `cb59c9302dc2086645c5ca84479933a92920fa2b4ba9f2a3a1ac23a781d4622d` | scenario YAML / sign_zone_05_mountain_foothills_01.yaml |
 | ALI-0185 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_05_mountain_foothills_02.yaml` | `5b5a3cf5af2934014144eea0db7ad00a38eeb659852aafb85ba363758e597f0e` | scenario YAML / sign_zone_05_mountain_foothills_02.yaml |
@@ -1231,7 +1231,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
 | ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `92784033dbbb545b634d4a2d1eade5544b211c5871023fe00c6a9ccb610fda25` | scenario YAML / transport.yaml |
-| ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `0747573c49f6e45f912510fbbba6566618a1da24c8dab5cd961fefa9e1ee9821` | scenario YAML / Rusted Kingdoms scenario manifest |
+| ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `a1d0594a51ed7d5bfc139d7e1f4942a2595ed24e8d80f23ee96e58d4b698f1bb` | scenario YAML / Rusted Kingdoms scenario manifest |
 | ALI-0028 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` | provenance record / Rusted Kingdoms BGM prompt and source notes |
 | ALI-0226 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Across_the_Sundered_Peaks_64.mp3` | `5910a7b194a72afc272835403ca75220db5ec28c7cdc49125f622548c6449909` | audio / Across_the_Sundered_Peaks_64.mp3 |
 | ALI-0911 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `f2e777876ea1ebd7d6442e4e4311a8328be390bb36153d664df4088f846b1afc` | audio / Chronicles_of_the_Lost_Flame_Title.mp3 |
@@ -1659,3 +1659,13 @@ Everything not listed above. Shared fields for every row:
 | ALI-1050 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/map_templates/town_00_shop_template.tmx` | `f8c32c102129848bb28a45d0735bb7f79926a9d98b4db619bf38ef9d225bbd6f` | editor-only shop template / excluded from release payload |
 | ALI-1051 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/collision.png` | `a65b6c306f914404f7433162502c57a5dbcc42b0d1f1c5ec19f6d13c25ede823` | image / opaque 32x32 #FF0000 collision marker; deterministic flat color, 2026-10-18 |
 | ALI-1052 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/collision.tsx` | `d15a8ecf475d51580f5eedea36f839ec6df63648804be3d9793cfe18ce265ea3` | tileset XML / single collision marker tile |
+| ALI-1053 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest_27_2.yaml` | `031ead6edad4bd4e86b3d1874f645ad93e07fc7eb21095e160496f0f33751c46` | dialogue YAML / location-specific trail sign |
+| ALI-1054 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_01_starting_forest_2_24.yaml` | `80a911ac9cb562a86e7f45d318688725876da58dba290d6a125c71ef037c633b` | dialogue YAML / location-specific trail sign |
+| ALI-1055 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_10_7.yaml` | `8a1de59a45c8636ea3a051ec8a0f850f1c9e26818e8102b5247b2307a167a499` | dialogue YAML / location-specific trail sign |
+| ALI-1056 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_24_3.yaml` | `9000557235cdb05ed380b4263f333a2044b542c1eff8a31e0db60b477fb3fe83` | dialogue YAML / location-specific trail sign |
+| ALI-1057 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_29_3.yaml` | `95d3c452ba09ae277db1ab1daa2570a8e6784a0afd06647e816a09e848576540` | dialogue YAML / location-specific trail sign |
+| ALI-1058 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_3_3.yaml` | `5937dcdfeaa60ef245ec71b3e1323e2c352dc9e39ef4892952d0a63bdafed4bb` | dialogue YAML / location-specific trail sign |
+| ALI-1059 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_5_18.yaml` | `3eaa3d88f09ed6389fe749a9d7e552bd5f95584f83be3d971b9e71da710be868` | dialogue YAML / location-specific trail sign |
+| ALI-1060 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02.yaml` | `a69a7d448ee7c0128508ab53f2ecfae530fa674e682b2852e4f18e3aef968a61` | dialogue YAML / Open Plains Cave waymark |
+| ALI-1061 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02_57_17.yaml` | `4c8b290f2d4ec63d4a9f29637947adb41cd6fe5bfeaa0b8154a98593c2912d8e` | dialogue YAML / Open Plains Cave waymark |
+| ALI-1062 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/sign_zone_02_open_plains_cave_02_6_27.yaml` | `adb05f4ef14b8b4e7ce7a05d017b3254443a378e5f8063a0459cbc58bcb371ef` | dialogue YAML / Open Plains Cave waymark |

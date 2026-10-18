@@ -39,7 +39,7 @@ use crate::{
     tmx_header::{TmxMapDocument, TmxTilesetRanges, parse_tmx_map_document},
     tsx_metadata::parse_tsx_tileset_metadata,
     world_actor::present_npcs,
-    world_object::sign_tiles,
+    world_object::{sign_dialogue_id, sign_tiles},
     world_transition::runtime_portals,
 };
 
@@ -489,9 +489,8 @@ fn map_id_is_resolvable(id: &str, tmx_stems: &BTreeSet<String>) -> bool {
             .any(|candidate| is_numeric_tmx_segment(id, candidate))
 }
 
-/// Runs the production sign-tile scan ([`crate::world_object::sign_tiles`]) and checks that a
-/// map with any discovered signs has the dialogue id the production sign-interaction path would
-/// look up (`sign_{map_id}`, the exact convention `world_object::drive_world_object_load` uses).
+/// Runs the production sign-tile scan ([`crate::world_object::sign_tiles`]) and checks that
+/// each discovered sign has the dialogue selected by the production interaction path.
 fn check_signs(
     document: &TmxMapDocument,
     stem: &str,
@@ -500,14 +499,14 @@ fn check_signs(
     findings: &mut Vec<SweepFinding>,
 ) -> usize {
     let positions = sign_tiles(document, &manifest.signs);
-    if !positions.is_empty() {
-        let dialogue_id = format!("sign_{stem}");
+    for &position in &positions {
+        let dialogue_id = sign_dialogue_id(stem, position, dialogue_ids);
         if !dialogue_ids.contains(&dialogue_id) {
             findings.push(SweepFinding::new(
                 SweepCategory::Object,
                 format!(
-                    "{} sign(s) present but dialogue `{dialogue_id}` is missing",
-                    positions.len()
+                    "sign at ({}, {}) references missing dialogue `{dialogue_id}`",
+                    position.x, position.y
                 ),
             ));
         }
@@ -1210,7 +1209,7 @@ item_boxes:
     }
 
     #[test]
-    fn signs_present_without_matching_dialogue_is_an_object_finding() {
+    fn signs_require_the_selected_position_or_map_dialogue() {
         let fixture = TempScenario::new();
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" orientation="orthogonal" renderorder="right-down" width="1" height="1" tilewidth="32" tileheight="32" infinite="0" nextlayerid="2" nextobjectid="1">
@@ -1235,6 +1234,13 @@ item_boxes:
         let object_findings = findings(village, SweepCategory::Object);
         assert_eq!(object_findings.len(), 1);
         assert!(object_findings[0].contains("sign_village"));
+
+        fixture.write(
+            "data/dialogue/sign_village_0_0.yaml",
+            "id: sign_village_0_0\ntype: board\nentries:\n  - lines: [The village road.]\n",
+        );
+        let report = build_map_sweep(&fixture.0);
+        assert!(findings(entry(&report, "village"), SweepCategory::Object).is_empty());
     }
 
     #[test]

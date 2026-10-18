@@ -257,6 +257,7 @@ fn drive_world_object_load(
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     scenario_root: Res<ScenarioRoot>,
+    inventory: Res<ScenarioInventory>,
     game: Option<Res<GameState>>,
     existing_signs: Query<(), With<WorldSign>>,
     existing_boxes: Query<(), With<WorldItemBox>>,
@@ -327,7 +328,7 @@ fn drive_world_object_load(
             Transform::from_translation(tile_center(position).extend(0.0)),
             WorldSign {
                 id: format!("sign_{map_id}_{index}"),
-                dialogue_id: format!("sign_{map_id}"),
+                dialogue_id: sign_dialogue_id(map_id, position, &inventory.dialogue_ids),
                 position,
             },
         ));
@@ -361,6 +362,20 @@ fn drive_world_object_load(
         ));
     }
     state.status = WorldObjectStatus::Spawned;
+}
+
+/// A board can override the map's shared message without depending on sign discovery order.
+pub(crate) fn sign_dialogue_id(
+    map_id: &str,
+    position: Position,
+    dialogue_ids: &BTreeSet<String>,
+) -> String {
+    let specific = format!("sign_{map_id}_{}_{}", position.x, position.y);
+    if dialogue_ids.contains(&specific) {
+        specific
+    } else {
+        format!("sign_{map_id}")
+    }
 }
 
 pub(crate) fn sign_tiles(document: &TmxMapDocument, signs: &ManifestSigns) -> Vec<Position> {
@@ -443,6 +458,71 @@ fn cleanup_world_objects(
 mod tests {
     use super::*;
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
+
+    #[test]
+    fn sign_dialogue_prefers_its_position_and_preserves_the_map_fallback() {
+        let ids = BTreeSet::from(["sign_village".to_owned(), "sign_village_2_3".to_owned()]);
+        assert_eq!(
+            sign_dialogue_id("village", Position::new(2, 3), &ids),
+            "sign_village_2_3"
+        );
+        assert_eq!(
+            sign_dialogue_id("village", Position::new(3, 2), &ids),
+            "sign_village"
+        );
+        assert_eq!(
+            sign_dialogue_id("other", Position::new(2, 3), &ids),
+            "sign_other"
+        );
+    }
+
+    #[test]
+    fn zone_one_and_two_boards_have_individual_readable_dialogues() {
+        let package = crate::test_support::scenario_package_dir();
+        let assets = package.parent().unwrap().parent().unwrap();
+        let inventory = ScenarioInventory::discover(assets, &ScenarioRoot::default());
+        assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
+        let manifest: Manifest = crate::scenario_yaml::from_str(
+            &std::fs::read_to_string(package.join("manifest.yaml")).unwrap(),
+        )
+        .unwrap();
+        for (map_id, expected) in [
+            ("zone_01_starting_forest", &[(2, 24), (27, 2)][..]),
+            ("zone_02_open_plains_cave_02", &[(6, 27), (57, 17)][..]),
+            (
+                "zone_02_open_plains",
+                &[(3, 3), (5, 18), (10, 7), (24, 3), (29, 3)][..],
+            ),
+        ] {
+            let path = format!("media/maps/{map_id}.tmx");
+            let owner = ScenarioRelativePath::try_from(path.as_str()).unwrap();
+            let document = parse_tmx_map_document(
+                &std::fs::read_to_string(package.join(&path)).unwrap(),
+                &owner,
+            )
+            .unwrap();
+            let positions = sign_tiles(&document, &manifest.signs);
+            assert_eq!(
+                positions,
+                expected
+                    .iter()
+                    .map(|&(x, y)| Position::new(x, y))
+                    .collect::<Vec<_>>()
+            );
+            for position in positions {
+                let dialogue = sign_dialogue_id(map_id, position, &inventory.dialogue_ids);
+                assert_eq!(
+                    dialogue,
+                    format!("sign_{map_id}_{}_{}", position.x, position.y)
+                );
+                let text =
+                    std::fs::read_to_string(package.join(format!("data/dialogue/{dialogue}.yaml")))
+                        .unwrap();
+                crate::scenario_yaml::from_str::<crate::scenario_dialogue::DialogueDocument>(&text)
+                    .unwrap();
+            }
+        }
+    }
 
     #[test]
     fn known_ardel_sign_cells_route_to_the_configured_tileset_profile() {

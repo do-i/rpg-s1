@@ -1,8 +1,7 @@
-# data/dialogue/sign_zone_02_open_plains.yaml
 id: sign_zone_02_open_plains
 type: board
 entries:
   - lines:
-      - "Trail Marker — Open Plains"
-      - "The long road between Millhaven and the sea. Open ground, open sky — and nowhere to hide from what wanders it."
-      - "Follow the ruts east and you'll smell salt before you see Harborgate."
+      - "TRAIL MARKER - OPEN PLAINS"
+      - "North: Millhaven. East: Starting Forest and the road to Ardel. South: Marshland."
+      - "The cave entrance is in the northeast. Replenish your supplies before leaving the open road."

@@ -32,6 +32,12 @@ Discuss a layout that cannot fit these layers before adding another layer.
 Keep existing `portals` and `boss_enemy` object groups for gameplay metadata.
 Hidden `spawn_tile` layers retain encounter data beside the collision mask.
 Signs are visible decoration; their tileset IDs identify interactions.
+Each board can use `data/dialogue/sign_<map_id>_<x>_<y>.yaml`, where `x,y`
+are its zero-based tile coordinates. Its dialogue ID must match the filename.
+Boards without that file use `sign_<map_id>.yaml`. This keeps messages tied
+to locations when other boards are added; moving a board also requires moving
+or rewriting its location-specific dialogue file. Restart after adding files
+so the scenario inventory discovers them.
 
 The shrine omits `terrain`. Keep the existing plural name `portals` for the
 object group; the runtime uses that name to find map transitions. TMX stores
