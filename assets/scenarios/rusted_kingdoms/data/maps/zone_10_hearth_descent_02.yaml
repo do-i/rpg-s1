@@ -12,5 +12,5 @@ npcs:
     name: "Reiya, as she was"
     position: [9, 5]
     dialogue: hearth_memory_reiya
-    sprite: media/sprites/party/03_reiya_walk.tsx
+    sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: down

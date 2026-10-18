@@ -13,7 +13,7 @@ npcs:
     name: "Ranger Toma"
     position: [8, 14]
     dialogue: forest_ranger
-    sprite: media/sprites/npc/archer_base.tsx
+    sprite: media/sprites/npc/male_sword_fighter_longsword_guard.tsx
     default_facing: right
 
   - id: bridge_guard_zone5
@@ -31,7 +31,7 @@ npcs:
     type: gate
     position: [28, 8]
     dialogue: stronghold_gate_guard
-    sprite: media/sprites/npc/knight_01.tsx
+    sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     present:
       excludes: [boss_zone09_defeated]
 

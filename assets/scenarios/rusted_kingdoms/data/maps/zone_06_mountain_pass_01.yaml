@@ -12,7 +12,7 @@ npcs:
     name: "Pilgrim Edras"
     position: [30, 15]
     dialogue: mountain_pilgrim
-    sprite: media/sprites/npc/old_man_01.tsx
+    sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: left
 
 item_boxes:

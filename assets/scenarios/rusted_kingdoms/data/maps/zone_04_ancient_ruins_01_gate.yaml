@@ -14,7 +14,7 @@ npcs:
     name: "Surveyor Adran"
     position: [24, 3]
     dialogue: ruins_gate_surveyor
-    sprite: media/sprites/npc/male_old_02.tsx
+    sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: down
 
 item_boxes:

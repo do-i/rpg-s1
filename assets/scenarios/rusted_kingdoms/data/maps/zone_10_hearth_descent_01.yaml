@@ -24,5 +24,5 @@ npcs:
     name: "Elise, as she was"
     position: [9, 5]
     dialogue: hearth_memory_elise
-    sprite: media/sprites/party/02_elise_walk.tsx
+    sprite: media/sprites/npc/female_sword_fighter_base.tsx
     default_facing: down
