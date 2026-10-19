@@ -769,6 +769,7 @@ mod tests {
     const FLOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/floor.tsx");
     const FLOOR_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/floor.png");
     const WALL_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/wall.tsx");
+    const ROOF_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/roof.tsx");
     const WINDOWS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/windows.tsx");
     const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor.tsx");
     const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop.tsx");
@@ -952,6 +953,7 @@ mod tests {
                     WALL_TSX_ASSET_PATH.to_owned(),
                     WINDOWS_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
+                    ROOF_TSX_ASSET_PATH.to_owned(),
                 ]
                 .into_iter()
                 .collect()
@@ -1193,7 +1195,7 @@ mod tests {
                     .unwrap()
                     .first_gid()
             };
-            let town = first_gid("/town.tsx");
+            let roof = first_gid("/roof.tsx");
             let outdoor = first_gid("/outdoor.tsx");
             let foreground = document
                 .tile_layers()
@@ -1205,10 +1207,7 @@ mod tests {
             for row in 0..foreground.height() {
                 for column in 0..foreground.width() {
                     let gid = foreground.gid_at(column, row).unwrap().global_id();
-                    if gid
-                        .checked_sub(town)
-                        .is_some_and(|id| matches!(id, 48..=86 | 188..=238))
-                    {
+                    if gid.checked_sub(roof).is_some_and(|id| id < 84) {
                         roof_count += 1;
                         assert_eq!(
                             occupancy.is_blocked(column as i32, row as i32),
@@ -1432,6 +1431,8 @@ mod tests {
             "media/tilesets/floor.png",
             "media/tilesets/wall.tsx",
             "media/tilesets/wall.png",
+            "media/tilesets/roof.tsx",
+            "media/tilesets/roof.png",
             "media/tilesets/windows.tsx",
             "media/tilesets/windows.png",
             "media/tilesets/CREDITS-floor.txt",
