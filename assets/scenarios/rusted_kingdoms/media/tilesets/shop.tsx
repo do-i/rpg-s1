@@ -191,11 +191,6 @@
    <property name="desc" value="island counter right" />
   </properties>
  </tile>
- <tile id="43">
-  <properties>
-   <property name="desc" value="wood counter right return" />
-  </properties>
- </tile>
  <tile id="44">
   <properties>
    <property name="desc" value="gray counter vertical section" />
@@ -224,11 +219,6 @@
  <tile id="50">
   <properties>
    <property name="desc" value="island counter front right (16px top / 16px front)" />
-  </properties>
- </tile>
- <tile id="51">
-  <properties>
-   <property name="desc" value="wood counter left return" />
   </properties>
  </tile>
  <tile id="53">
