@@ -156,4 +156,8 @@
    <property name="desc" value="island counter front right (16px top / 16px front)"/>
   </properties>
  </tile>
+ <tile id="0"><properties><property name="desc" value="weapon shop badge: diagonal sword"/></properties></tile>
+ <tile id="6"><properties><property name="desc" value="magic core shop badge: faceted cyan crystal"/></properties></tile>
+ <tile id="7"><properties><property name="desc" value="item shop badge: leather supply bag"/></properties></tile>
+ <tile id="63"><properties><property name="desc" value="apothecary shop badge: mortar, pestle and herbs"/></properties></tile>
 </tileset>
