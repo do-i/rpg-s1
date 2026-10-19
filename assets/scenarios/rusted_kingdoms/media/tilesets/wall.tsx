@@ -461,4 +461,9 @@
    <property name="desc" value="town building wall section 60" />
   </properties>
  </tile>
+ <tile id="109">
+  <properties>
+   <property name="desc" value="stone building wall cap" />
+  </properties>
+ </tile>
 </tileset>
