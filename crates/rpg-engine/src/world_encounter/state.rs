@@ -66,6 +66,18 @@ impl WorldEncounterState {
         }
     }
 
+    /// Whether `map_id` has wandering enemies, or `None` while its encounters are unresolved.
+    pub(crate) fn ambient_encounters(&self, map_id: &str) -> Option<bool> {
+        if self.map_id.as_deref() != Some(map_id) {
+            return None;
+        }
+        match self.status {
+            WorldEncounterStatus::Spawned => Some(true),
+            WorldEncounterStatus::NoEncounters => Some(false),
+            _ => None,
+        }
+    }
+
     pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
         self.metadata
             .iter()

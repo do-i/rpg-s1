@@ -78,6 +78,7 @@ mod world_debug_overlay;
 mod world_dialogue;
 mod world_encounter;
 mod world_interaction;
+mod world_mp_regen;
 mod world_object;
 mod world_pause;
 mod world_player;
@@ -248,6 +249,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(WorldInteractionPlugin)
     .add_plugins(ServiceUiPlugin)
     .add_plugins(WorldPlayerPlugin)
+    .add_plugins(world_mp_regen::WorldMpRegenPlugin)
     .add_plugins(WorldDebugOverlayPlugin)
     .add_plugins(FieldMenuPlugin)
     .add_plugins(TransportUiPlugin)
