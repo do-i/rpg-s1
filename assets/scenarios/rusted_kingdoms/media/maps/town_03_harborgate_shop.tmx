@@ -6,6 +6,7 @@
  <tileset firstgid="375" source="../tilesets/town.tsx"/>
  <tileset firstgid="615" source="../tilesets/decor.tsx"/>
  <tileset firstgid="811" source="../tilesets/collision.tsx"/>
+ <tileset firstgid="812" source="../tilesets/windows.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_03_harborgate" x="224" y="346" width="32" height="6">
    <properties>
@@ -63,8 +64,8 @@
  <layer id="3" name="decoration" width="16" height="11">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,37,0,37,789,0,0,0,0,0,0,0,37,0,0,
-0,0,49,0,49,803,0,0,0,0,0,0,0,49,0,0,
+0,0,822,0,822,789,0,0,0,0,0,0,0,822,0,0,
+0,0,827,0,827,803,0,0,0,0,0,0,0,827,0,0,
 0,668,64,668,66,61,748,751,749,750,725,58,44,45,58,0,
 0,0,0,0,0,0,0,0,0,0,0,0,56,57,0,0,
 0,0,0,0,0,0,47,59,60,46,0,0,0,0,0,0,

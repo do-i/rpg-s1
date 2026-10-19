@@ -6,6 +6,7 @@
  <tileset firstgid="509" source="../tilesets/shrine_props.tsx" />
  <tileset firstgid="626" source="../tilesets/collision.tsx" />
  <tileset firstgid="627" source="../tilesets/storage_props.tsx" />
+ <tileset firstgid="633" source="../tilesets/windows.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_03_ruinwatch" x="352" y="730" width="96" height="6">
    <properties>
@@ -99,7 +100,7 @@
  <layer id="2" name="decoration" width="25" height="23">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,51,0,0,0,0,51,0,0,572,573,574,0,0,51,0,0,0,0,51,0,0,0,
+0,0,0,650,0,0,0,0,650,0,0,572,573,574,0,0,650,0,0,0,0,650,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,581,582,583,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,53,53,53,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

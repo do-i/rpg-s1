@@ -6,6 +6,7 @@
  <tileset firstgid="1834" source="../tilesets/town.tsx"/>
  <tileset firstgid="2074" source="../tilesets/decor.tsx"/>
  <tileset firstgid="2270" source="../tilesets/collision.tsx"/>
+ <tileset firstgid="2271" source="../tilesets/windows.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_05_ashenveil" x="224.458" y="350.019" width="31" height="1.64773">
    <properties>
@@ -78,8 +79,8 @@
  <layer id="3" name="decoration" width="16" height="11">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,1496,0,1496,2248,0,0,0,0,0,0,0,1496,0,0,
-0,0,1508,0,1508,2262,0,0,0,0,0,0,0,1508,0,0,
+0,0,2281,0,2281,2248,0,0,0,0,0,0,0,2281,0,0,
+0,0,2286,0,2286,2262,0,0,0,0,0,0,0,2286,0,0,
 0,2127,0,2127,0,1520,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,1572,0,0,0,0,0,0,0,0,0,1520,0,
 0,0,0,0,1580,1581,1581,1581,1581,1581,1581,1581,1581,1581,1582,0,

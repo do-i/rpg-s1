@@ -5,6 +5,7 @@
  <tileset firstgid="137" source="../tilesets/decor.tsx"/>
  <tileset firstgid="333" source="../tilesets/town.tsx"/>
  <tileset firstgid="573" source="../tilesets/collision.tsx"/>
+ <tileset firstgid="574" source="../tilesets/windows.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="6" name="town_01_ardel" x="198.801" y="378.947" width="83.6775" height="3.19787">
    <properties>
@@ -65,8 +66,8 @@
  <layer id="3" name="decoration" width="15" height="12">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,102,102,0,0,0,0,311,0,0,0,102,102,0,0,
-0,114,114,0,0,0,0,325,0,0,0,114,114,0,0,
+0,585,585,0,0,0,0,311,0,0,0,585,585,0,0,
+0,590,590,0,0,0,0,325,0,0,0,590,590,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,136,0,0,17,18,26,0,21,22,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
