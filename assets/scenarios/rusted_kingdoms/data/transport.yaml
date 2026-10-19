@@ -58,6 +58,11 @@ regions:
       - { id: town_03_ruinwatch_inn }
       - { id: town_03_ruinwatch_monastery_vaults }
       - { id: town_03_ruinwatch_shop }
+      - { id: town_03_ruinwatch_shop_weapon }
+      - { id: town_03_ruinwatch_shop_armor }
+      - { id: town_03_ruinwatch_shop_apothecary }
+      - { id: town_03_ruinwatch_shop_mc }
+      - { id: town_03_ruinwatch_storage }
       - { id: zone_04_ancient_ruins_01_gate, outdoor: true }
       - { id: zone_04_ancient_ruins_02_courtyard, outdoor: true }
       - { id: zone_04_ancient_ruins_03_sanctum }

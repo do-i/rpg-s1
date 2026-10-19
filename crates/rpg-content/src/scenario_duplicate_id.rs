@@ -570,7 +570,7 @@ mod tests {
                 (CatalogNamespace::Abilities, 42),
                 (CatalogNamespace::Items, 210),
                 (CatalogNamespace::FieldUseItems, 14),
-                (CatalogNamespace::Maps, 69),
+                (CatalogNamespace::Maps, 74),
                 (CatalogNamespace::Npcs, 116),
                 (CatalogNamespace::ItemBoxes, 39),
                 (CatalogNamespace::Dialogue, 144),
