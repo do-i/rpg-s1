@@ -770,6 +770,7 @@ mod tests {
     const FLOOR_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/floor.png");
     const WALL_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/wall.tsx");
     const ROOF_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/roof.tsx");
+    const DOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/door.tsx");
     const WINDOWS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/windows.tsx");
     const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor.tsx");
     const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop.tsx");
@@ -954,6 +955,7 @@ mod tests {
                     WINDOWS_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
                     ROOF_TSX_ASSET_PATH.to_owned(),
+                    DOOR_TSX_ASSET_PATH.to_owned(),
                 ]
                 .into_iter()
                 .collect()
@@ -1433,6 +1435,8 @@ mod tests {
             "media/tilesets/wall.png",
             "media/tilesets/roof.tsx",
             "media/tilesets/roof.png",
+            "media/tilesets/door.tsx",
+            "media/tilesets/door.png",
             "media/tilesets/windows.tsx",
             "media/tilesets/windows.png",
             "media/tilesets/CREDITS-floor.txt",
