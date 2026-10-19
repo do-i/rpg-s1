@@ -11,11 +11,6 @@
    <property name="desc" value="dirt path" />
   </properties>
  </tile>
- <tile id="16">
-  <properties>
-   <property name="desc" value="wood door top" />
-  </properties>
- </tile>
  <tile id="17">
   <properties>
    <property name="sort_base_y" type="int" value="64" />
@@ -50,11 +45,6 @@
   <properties>
    <property name="sort_base_y" type="int" value="64" />
    <property name="desc" value="wall left top cap inner" />
-  </properties>
- </tile>
- <tile id="33">
-  <properties>
-   <property name="desc" value="wood door bottom" />
   </properties>
  </tile>
  <tile id="34">
