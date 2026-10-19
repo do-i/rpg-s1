@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="41" height="50" tilewidth="32" tileheight="32" infinite="0" nextlayerid="13" nextobjectid="26">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
- <tileset firstgid="2049" source="../tilesets/interior.tsx"/>
  <tileset firstgid="2121" source="../tilesets/outdoor.tsx"/>
  <tileset firstgid="2359" source="../tilesets/town.tsx"/>
  <tileset firstgid="2599" source="../tilesets/shop.tsx"/>
  <tileset firstgid="2671" source="../tilesets/collision.tsx"/>
  <tileset firstgid="2672" source="../tilesets/harbor_dock.tsx"/>
  <tileset firstgid="2678" source="../tilesets/windows.tsx"/>
+ <tileset firstgid="2698" source="../tilesets/interior.tsx"/>
  <objectgroup id="8" name="portals">
   <object id="14" name="inn" x="288.364" y="797" width="31.4545" height="5">
    <properties>
