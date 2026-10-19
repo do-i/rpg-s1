@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="wall" tilewidth="32" tileheight="32" tilecount="126" columns="18">
- <image source="wall.png" width="576" height="224" />
+<tileset version="1.10" tiledversion="1.12.1" name="wall" tilewidth="32" tileheight="32" tilecount="180" columns="18">
+ <image source="wall.png" width="576" height="320" />
  <tile id="0">
   <properties>
    <property name="desc" value="interior tile 0" />
@@ -464,6 +464,146 @@
  <tile id="109">
   <properties>
    <property name="desc" value="stone building wall cap" />
+  </properties>
+ </tile>
+ <tile id="114">
+  <properties>
+   <property name="desc" value="structural or stone column section 84" />
+  </properties>
+ </tile>
+ <tile id="126">
+  <properties>
+   <property name="desc" value="structural or stone column section 0" />
+  </properties>
+ </tile>
+ <tile id="127">
+  <properties>
+   <property name="desc" value="structural or stone column section 1" />
+  </properties>
+ </tile>
+ <tile id="129">
+  <properties>
+   <property name="desc" value="structural or stone column section 42" />
+  </properties>
+ </tile>
+ <tile id="130">
+  <properties>
+   <property name="desc" value="structural or stone column section 43" />
+  </properties>
+ </tile>
+ <tile id="132">
+  <properties>
+   <property name="desc" value="structural or stone column section 98" />
+  </properties>
+ </tile>
+ <tile id="134">
+  <properties>
+   <property name="desc" value="structural or stone column section 101" />
+  </properties>
+ </tile>
+ <tile id="135">
+  <properties>
+   <property name="desc" value="structural or stone column section 102" />
+  </properties>
+ </tile>
+ <tile id="136">
+  <properties>
+   <property name="desc" value="structural or stone column section 103" />
+  </properties>
+ </tile>
+ <tile id="138">
+  <properties>
+   <property name="desc" value="structural or stone column section 18" />
+  </properties>
+ </tile>
+ <tile id="140">
+  <properties>
+   <property name="desc" value="structural or stone column section 46" />
+  </properties>
+ </tile>
+ <tile id="142">
+  <properties>
+   <property name="desc" value="structural or stone column section 88" />
+  </properties>
+ </tile>
+ <tile id="144">
+  <properties>
+   <property name="desc" value="structural or stone column section 14" />
+  </properties>
+ </tile>
+ <tile id="145">
+  <properties>
+   <property name="desc" value="structural or stone column section 15" />
+  </properties>
+ </tile>
+ <tile id="147">
+  <properties>
+   <property name="desc" value="structural or stone column section 56" />
+  </properties>
+ </tile>
+ <tile id="148">
+  <properties>
+   <property name="desc" value="structural or stone column section 57" />
+  </properties>
+ </tile>
+ <tile id="150">
+  <properties>
+   <property name="desc" value="structural or stone column section 112" />
+  </properties>
+ </tile>
+ <tile id="152">
+  <properties>
+   <property name="desc" value="structural or stone column section 115" />
+  </properties>
+ </tile>
+ <tile id="153">
+  <properties>
+   <property name="desc" value="structural or stone column section 116" />
+  </properties>
+ </tile>
+ <tile id="156">
+  <properties>
+   <property name="desc" value="structural or stone column section 32" />
+  </properties>
+ </tile>
+ <tile id="158">
+  <properties>
+   <property name="desc" value="structural or stone column section 60" />
+  </properties>
+ </tile>
+ <tile id="162">
+  <properties>
+   <property name="desc" value="structural or stone column section 28" />
+  </properties>
+ </tile>
+ <tile id="163">
+  <properties>
+   <property name="desc" value="structural or stone column section 29" />
+  </properties>
+ </tile>
+ <tile id="165">
+  <properties>
+   <property name="desc" value="structural or stone column section 70" />
+  </properties>
+ </tile>
+ <tile id="166">
+  <properties>
+   <property name="desc" value="structural or stone column section 71" />
+  </properties>
+ </tile>
+ <tile id="168">
+  <properties>
+   <property name="desc" value="structural or stone column section 126" />
+  </properties>
+ </tile>
+ <tile id="170">
+  <properties>
+   <property name="desc" value="structural or stone column section 129" />
+  </properties>
+ </tile>
+ <tile id="176">
+  <properties>
+   <property name="desc" value="structural or stone column section 74" />
   </properties>
  </tile>
 </tileset>
