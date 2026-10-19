@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="door" tilewidth="32" tileheight="32" tilecount="40" columns="8">
- <image source="door.png" width="256" height="160" />
+<tileset version="1.10" tiledversion="1.12.1" name="door" tilewidth="32" tileheight="32" tilecount="32" columns="8">
+ <image source="door.png" width="256" height="128" />
  <tile id="0">
   <properties>
    <property name="desc" value="wood door top" />
@@ -96,21 +96,6 @@
    <property name="desc" value="door lintel trim" />
   </properties>
  </tile>
- <tile id="20">
-  <properties>
-   <property name="desc" value="wooden gate row 1, column 1" />
-  </properties>
- </tile>
- <tile id="21">
-  <properties>
-   <property name="desc" value="wooden gate row 1, column 2" />
-  </properties>
- </tile>
- <tile id="22">
-  <properties>
-   <property name="desc" value="wooden gate row 1, column 3" />
-  </properties>
- </tile>
  <tile id="24">
   <properties>
    <property name="desc" value="iron banded plank door bottom" />
@@ -119,36 +104,6 @@
  <tile id="25">
   <properties>
    <property name="desc" value="wooden door panel bottom" />
-  </properties>
- </tile>
- <tile id="28">
-  <properties>
-   <property name="desc" value="wooden gate row 2, column 1" />
-  </properties>
- </tile>
- <tile id="29">
-  <properties>
-   <property name="desc" value="wooden gate row 2, column 2" />
-  </properties>
- </tile>
- <tile id="30">
-  <properties>
-   <property name="desc" value="wooden gate row 2, column 3" />
-  </properties>
- </tile>
- <tile id="36">
-  <properties>
-   <property name="desc" value="wooden gate row 3, column 1" />
-  </properties>
- </tile>
- <tile id="37">
-  <properties>
-   <property name="desc" value="wooden gate row 3, column 2" />
-  </properties>
- </tile>
- <tile id="38">
-  <properties>
-   <property name="desc" value="wooden gate row 3, column 3" />
   </properties>
  </tile>
 </tileset>

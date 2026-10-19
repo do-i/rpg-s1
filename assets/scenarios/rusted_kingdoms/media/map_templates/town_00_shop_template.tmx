@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="15" height="12" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="8">
  <tileset firstgid="1" source="../tilesets/shop.tsx"/>
- <tileset firstgid="137" source="../tilesets/decor.tsx"/>
  <tileset firstgid="333" source="../tilesets/town.tsx"/>
  <tileset firstgid="573" source="../tilesets/windows.tsx"/>
  <tileset firstgid="593" source="../tilesets/interior.tsx"/>
- <tileset firstgid="827" source="../tilesets/floor.tsx"/>
  <tileset firstgid="939" source="../tilesets/wall.tsx"/>
+ <tileset firstgid="1119" source="../tilesets/floor.tsx"/>
  <objectgroup id="4" name="portal">
   <object id="6" name="change_me" x="198.801" y="378.947" width="83.6775" height="3.19787">
    <properties>
@@ -22,14 +21,14 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,844,844,844,844,844,844,844,844,844,844,844,844,844,0,
-0,857,844,844,844,844,844,844,844,844,844,844,844,844,0,
+0,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,0,
+0,1149,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,857,844,844,844,844,844,844,844,844,844,844,844,844,0,
-0,0,0,0,0,0,857,844,844,0,0,0,0,0,0,
-0,0,0,0,0,0,857,844,844,0,0,0,0,0,0,
-0,0,0,0,0,0,857,844,844,0,0,0,0,0,0,
-0,0,0,0,0,0,857,844,844,0,0,0,0,0,0
+0,1149,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,1136,0,
+0,0,0,0,0,0,1149,1136,1136,0,0,0,0,0,0,
+0,0,0,0,0,0,1149,1136,1136,0,0,0,0,0,0,
+0,0,0,0,0,0,1149,1136,1136,0,0,0,0,0,0,
+0,0,0,0,0,0,1149,1136,1136,0,0,0,0,0,0
 </data>
  </layer>
  <layer id="1" name="collision" width="15" height="12">

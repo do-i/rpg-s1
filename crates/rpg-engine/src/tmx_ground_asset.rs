@@ -991,7 +991,7 @@ mod tests {
         let image_handle = query.iter(world).next().unwrap().1.image.clone();
         assert_eq!(
             images.get(&image_handle).unwrap().size(),
-            UVec2::new(512, 224)
+            UVec2::new(512, 384)
         );
         let bottom_right = query
             .iter(world)
