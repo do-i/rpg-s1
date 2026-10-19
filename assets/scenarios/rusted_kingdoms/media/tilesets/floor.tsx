@@ -31,11 +31,6 @@
    <property name="desc" value="grass alt" />
   </properties>
  </tile>
- <tile id="6">
-  <properties>
-   <property name="desc" value="outdoor tile 78" />
-  </properties>
- </tile>
  <tile id="8">
   <properties>
    <property name="prop" value="nave flagstones: 2x2 repeat" />
