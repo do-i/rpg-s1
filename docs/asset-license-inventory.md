@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (719 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (723 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1291,7 +1291,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0323 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `2581631984fdf22f81bd5708d906fe06b087ed843875848df1fdfdb8623fa544` | map XML / town_02_millhaven_inn.tmx |
 | ALI-0324 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `eb266a80e7772f0ccc4173c86c3d0edb289df09e7d7b79e670b57198bd041687` | map XML / town_02_millhaven_mill.tmx |
 | ALI-0325 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `26322b8e142d98dc6476c50ec99235428e5349a2cb95aee902525e389d78e693` | map XML / town_02_millhaven_shop.tmx |
-| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `15bafcef24a46e08cf56f1fc92ed7dd6c3becb2a236f2f3af04cf9f17e695c8c` | map XML / town_03_harborgate.tmx |
+| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `d8cec5db02b6863beed9951699faca5e9dbcfa249cb9409ec5a744aed2108231` | map XML / town_03_harborgate.tmx |
 | ALI-0996 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `9dcf63d8cc3cc1fa8436a5d0e723ded4d69f3b6a4fa40f83fbb7c8e87a50c6d0` | map XML / town_03_harborgate_harbormaster.tmx |
 | ALI-0997 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `a36028ece4b5870eb80cdef1793a261a075a8135d78749fbd0250be1b0997104` | map XML / town_03_harborgate_inn.tmx |
 | ALI-0998 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `e45654772ea9861b35478c28aa5bb6cb1d62a5d313071a1952813e141ad814a9` | map XML / town_03_harborgate_quarantine.tmx |
@@ -1695,3 +1695,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-1086 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_shop_weapon.tmx` | `1b271fd1381dadcb1582fd19d1f961a6f1cb0bfa7b7d53be1911fb7ac8a9b7ff` | TMX / Harborgate shops and houses |
 | ALI-1087 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/harbor_dock.png` | `864d414047a67bdddaccc304f4714ab4b39a7a457a085138d7c8612624933f57` | image / Harbor dock; generated with OpenAI imagegen, normalized to a 3x2 sheet of 32x32 tiles |
 | ALI-1088 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/harbor_dock.tsx` | `823a9cc05f2d45a0c096b164078830397b98aeb4ac0a3753b9ee1ba41e10dd70` | tileset XML / Harbor dock; generated with OpenAI imagegen, normalized to a 3x2 sheet of 32x32 tiles |
+| ALI-1089 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_storage.tmx` | `37abbb22a9322bd394801f8e1463cc7ace55541bb1f7d3586bbe432e13aa02ad` | TMX / Harborgate northwest storehouse |
+| ALI-1090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_storage.yaml` | `2ed98915b7bf4f825a54523cb6fc46148dda97655585a27bcb8542fcaa43e14a` | scenario YAML / Harborgate northwest storehouse |
+| ALI-1091 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/storage_props.png` | `f2cb20bc3c1d305e0178e4e5b48f38b52a779a0aa37b1f2edc9547de6aba97be` | image / Storage props; generated with OpenAI imagegen, normalized to six 32x32 tiles |
+| ALI-1092 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/storage_props.tsx` | `351975bcce2ea77e4655ae415c277a42174fd7abd2e4ce05cc00771d96680a93` | tileset XML / Storage props |
