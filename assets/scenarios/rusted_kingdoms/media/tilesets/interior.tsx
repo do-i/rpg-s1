@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="interior" tilewidth="32" tileheight="32" tilecount="54" columns="18">
- <image source="interior.png" width="576" height="96" />
+<tileset version="1.10" tiledversion="1.12.1" name="interior" tilewidth="32" tileheight="32" tilecount="60" columns="20">
+ <image source="interior.png" width="640" height="96" />
  <tile id="0">
   <properties>
    <property name="desc" value="interior tile 39" />
@@ -66,159 +66,189 @@
    <property name="desc" value="interior tile 44" />
   </properties>
  </tile>
- <tile id="18">
+ <tile id="13">
   <properties>
-   <property name="desc" value="interior tile 51" />
+   <property name="desc" value="grandfather clock top" />
   </properties>
  </tile>
- <tile id="19">
+ <tile id="14">
   <properties>
-   <property name="desc" value="interior tile 52" />
+   <property name="desc" value="standing mirror top" />
   </properties>
  </tile>
  <tile id="20">
   <properties>
-   <property name="desc" value="interior tile 53" />
+   <property name="desc" value="interior tile 51" />
   </properties>
  </tile>
  <tile id="21">
   <properties>
-   <property name="desc" value="interior tile 54" />
+   <property name="desc" value="interior tile 52" />
   </properties>
  </tile>
  <tile id="22">
   <properties>
-   <property name="desc" value="wooden wardrobe bottom" />
+   <property name="desc" value="interior tile 53" />
   </properties>
  </tile>
  <tile id="23">
   <properties>
-   <property name="desc" value="potion cabinet bottom" />
+   <property name="desc" value="interior tile 54" />
   </properties>
  </tile>
  <tile id="24">
   <properties>
-   <property name="desc" value="bookcase bottom" />
+   <property name="desc" value="wooden wardrobe bottom" />
   </properties>
  </tile>
  <tile id="25">
   <properties>
-   <property name="desc" value="supply shelf bottom" />
+   <property name="desc" value="potion cabinet bottom" />
   </properties>
  </tile>
  <tile id="26">
   <properties>
-   <property name="desc" value="filled bookcase bottom" />
+   <property name="desc" value="bookcase bottom" />
   </properties>
  </tile>
  <tile id="27">
   <properties>
-   <property name="desc" value="linen cabinet bottom" />
+   <property name="desc" value="supply shelf bottom" />
   </properties>
  </tile>
  <tile id="28">
   <properties>
-   <property name="desc" value="storage cabinet bottom" />
+   <property name="desc" value="filled bookcase bottom" />
   </properties>
  </tile>
  <tile id="29">
   <properties>
-   <property name="desc" value="interior tile 55" />
+   <property name="desc" value="linen cabinet bottom" />
   </properties>
  </tile>
  <tile id="30">
   <properties>
+   <property name="desc" value="storage cabinet bottom" />
+  </properties>
+ </tile>
+ <tile id="31">
+  <properties>
+   <property name="desc" value="interior tile 55" />
+  </properties>
+ </tile>
+ <tile id="32">
+  <properties>
    <property name="desc" value="interior tile 56" />
   </properties>
  </tile>
- <tile id="36">
+ <tile id="33">
   <properties>
-   <property name="desc" value="interior tile 45" />
+   <property name="desc" value="grandfather clock bottom" />
   </properties>
  </tile>
- <tile id="37">
+ <tile id="34">
   <properties>
-   <property name="desc" value="interior tile 46" />
-  </properties>
- </tile>
- <tile id="38">
-  <properties>
-   <property name="desc" value="interior tile 47" />
-  </properties>
- </tile>
- <tile id="39">
-  <properties>
-   <property name="desc" value="interior tile 58" />
+   <property name="desc" value="standing mirror bottom" />
   </properties>
  </tile>
  <tile id="40">
   <properties>
-   <property name="desc" value="interior tile 59" />
+   <property name="desc" value="interior tile 45" />
   </properties>
  </tile>
  <tile id="41">
   <properties>
-   <property name="desc" value="interior tile 57" />
+   <property name="desc" value="interior tile 46" />
   </properties>
  </tile>
  <tile id="42">
   <properties>
-   <property name="desc" value="interior tile 60" />
+   <property name="desc" value="interior tile 47" />
   </properties>
  </tile>
  <tile id="43">
   <properties>
-   <property name="desc" value="interior tile 61" />
+   <property name="desc" value="interior tile 58" />
   </properties>
  </tile>
  <tile id="44">
   <properties>
-   <property name="desc" value="interior tile 62" />
+   <property name="desc" value="interior tile 59" />
   </properties>
  </tile>
  <tile id="45">
   <properties>
-   <property name="desc" value="interior tile 63" />
+   <property name="desc" value="interior tile 57" />
   </properties>
  </tile>
  <tile id="46">
   <properties>
-   <property name="desc" value="interior tile 64" />
+   <property name="desc" value="interior tile 60" />
   </properties>
  </tile>
  <tile id="47">
   <properties>
-   <property name="desc" value="interior tile 65" />
+   <property name="desc" value="interior tile 61" />
   </properties>
  </tile>
  <tile id="48">
   <properties>
-   <property name="desc" value="interior tile 66" />
+   <property name="desc" value="interior tile 62" />
   </properties>
  </tile>
  <tile id="49">
   <properties>
-   <property name="desc" value="interior tile 67" />
+   <property name="desc" value="interior tile 63" />
   </properties>
  </tile>
  <tile id="50">
   <properties>
-   <property name="desc" value="interior tile 68" />
+   <property name="desc" value="interior tile 64" />
   </properties>
  </tile>
  <tile id="51">
   <properties>
-   <property name="desc" value="interior tile 69" />
+   <property name="desc" value="interior tile 65" />
   </properties>
  </tile>
  <tile id="52">
   <properties>
-   <property name="desc" value="interior tile 70" />
+   <property name="desc" value="interior tile 66" />
   </properties>
  </tile>
  <tile id="53">
   <properties>
+   <property name="desc" value="interior tile 67" />
+  </properties>
+ </tile>
+ <tile id="54">
+  <properties>
+   <property name="desc" value="interior tile 68" />
+  </properties>
+ </tile>
+ <tile id="55">
+  <properties>
+   <property name="desc" value="interior tile 69" />
+  </properties>
+ </tile>
+ <tile id="56">
+  <properties>
+   <property name="desc" value="interior tile 70" />
+  </properties>
+ </tile>
+ <tile id="57">
+  <properties>
    <property name="desc" value="interior tile 71" />
+  </properties>
+ </tile>
+ <tile id="58">
+  <properties>
+   <property name="desc" value="round wooden table" />
+  </properties>
+ </tile>
+ <tile id="59">
+  <properties>
+   <property name="desc" value="green stool" />
   </properties>
  </tile>
 </tileset>
