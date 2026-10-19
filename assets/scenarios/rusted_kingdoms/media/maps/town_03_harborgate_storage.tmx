@@ -2,7 +2,6 @@
 <map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="15" height="13" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="2">
  <tileset firstgid="73" source="../tilesets/shop.tsx"/>
  <tileset firstgid="137" source="../tilesets/outdoor.tsx"/>
- <tileset firstgid="375" source="../tilesets/town.tsx"/>
  <tileset firstgid="811" source="../tilesets/collision.tsx"/>
  <tileset firstgid="812" source="../tilesets/storage_props.tsx"/>
  <tileset firstgid="818" source="../tilesets/interior.tsx"/>

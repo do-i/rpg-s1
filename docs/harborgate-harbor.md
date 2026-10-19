@@ -43,8 +43,9 @@ into the water. Both end mooring posts on row 46 are blocked; the deck between
 them is walkable. Water and shoreline fragments around the dock are blocked,
 as is the southern map boundary. The existing underlying shore art is retained.
 
-The built-in OpenAI imagegen tool generated the new dock using `town.png` as a
-style reference. The result was trimmed, scaled to 96×64 with nearest-neighbor
+The built-in OpenAI imagegen tool generated the new dock using the former
+`town.png` (preserved in Git history) as a style reference. The result was
+trimmed, scaled to 96×64 with nearest-neighbor
 sampling, given a hard alpha mask and reduced to 48 colors before integration.
 No existing tilesheet or tile IDs were replaced.
 

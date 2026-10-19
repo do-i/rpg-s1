@@ -774,7 +774,6 @@ mod tests {
     const WINDOWS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/windows.tsx");
     const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor.tsx");
     const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop.tsx");
-    const TOWN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/town.tsx");
     const INTERIOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/interior.tsx");
 
     fn ground_app() -> App {
@@ -948,7 +947,6 @@ mod tests {
                 atlas_paths,
                 [
                     OUTDOOR_TSX_ASSET_PATH.to_owned(),
-                    TOWN_TSX_ASSET_PATH.to_owned(),
                     SHOP_TSX_ASSET_PATH.to_owned(),
                     FLOOR_TSX_ASSET_PATH.to_owned(),
                     WALL_TSX_ASSET_PATH.to_owned(),
@@ -1008,7 +1006,7 @@ mod tests {
         let mut app = ground_app();
         let map_handle = load_ardel(&mut app);
 
-        let expected_count = {
+        let (expected_count, outdoor_first_gid) = {
             let maps = app.world().resource::<Assets<TmxGroundAsset>>();
             let map = maps.get(&map_handle).unwrap();
             assert_eq!(
@@ -1055,7 +1053,14 @@ mod tests {
                     .windows(2)
                     .all(|pair| { pair[0].tile.layer_index() <= pair[1].tile.layer_index() })
             );
-            expected_count
+            let outdoor_first_gid = map
+                .document()
+                .external_tilesets()
+                .iter()
+                .find(|reference| reference.source().as_str() == "media/tilesets/outdoor.tsx")
+                .unwrap()
+                .first_gid();
+            (expected_count, outdoor_first_gid)
         };
         *app.world_mut().resource_mut::<StaticMapRenderState>() = StaticMapRenderState {
             map_id: Some("town_01_ardel".to_owned()),
@@ -1095,9 +1100,12 @@ mod tests {
             ];
             assert_eq!(
                 transform.translation.z,
-                match (names[tile.layer_index()], tile.global_id()) {
-                    ("foreground", 2138..=2141) => world_entity_y_z(expected.y, 48.0),
-                    ("foreground", 2155..=2158) => world_entity_y_z(expected.y, 16.0),
+                match (
+                    names[tile.layer_index()],
+                    tile.global_id().checked_sub(outdoor_first_gid),
+                ) {
+                    ("foreground", Some(0..=3)) => world_entity_y_z(expected.y, 48.0),
+                    ("foreground", Some(16..=19)) => world_entity_y_z(expected.y, 16.0),
                     _ => tile_layer_z(tile.layer_index(), names[tile.layer_index()], 640.0),
                 }
             );
@@ -1219,7 +1227,7 @@ mod tests {
                     }
                     if gid
                         .checked_sub(outdoor)
-                        .is_some_and(|id| matches!(id, 17 | 19))
+                        .is_some_and(|id| matches!(id, 0 | 2))
                         && row > 0
                         && occupancy.is_open(column as i32, row as i32) == Some(true)
                         && occupancy.is_open(column as i32, row as i32 + 2) == Some(true)
