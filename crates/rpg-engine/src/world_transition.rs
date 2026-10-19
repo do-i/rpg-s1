@@ -1372,7 +1372,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn ruinwatch_portals_cover_all_four_authored_exits_with_reversible_return_links() {
+    fn ruinwatch_portals_cover_every_interior_with_reversible_return_links() {
         let portals = portals_for("town_03_ruinwatch", ruinwatch_document());
         assert_eq!(
             portals
@@ -1380,10 +1380,15 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .map(|portal| (portal.target_map().as_str(), portal.target_position()))
                 .collect::<Vec<_>>(),
             [
-                ("town_03_ruinwatch_monastery_vaults", Position::new(5, 9),),
-                ("town_03_ruinwatch_shop", Position::new(7, 10)),
-                ("town_03_ruinwatch_inn", Position::new(5, 9)),
+                ("town_03_ruinwatch_shop_weapon", Position::new(7, 9)),
+                ("town_03_ruinwatch_shop_armor", Position::new(7, 9)),
+                ("town_03_ruinwatch_inn", Position::new(7, 5)),
+                ("town_03_ruinwatch_shop_mc", Position::new(7, 9)),
                 ("zone_04_ancient_ruins_01_gate", Position::new(28, 1),),
+                ("town_03_ruinwatch_monastery_vaults", Position::new(11, 20)),
+                ("town_03_ruinwatch_storage", Position::new(4, 8)),
+                ("town_03_ruinwatch_shop", Position::new(7, 9)),
+                ("town_03_ruinwatch_shop_apothecary", Position::new(7, 9)),
             ]
         );
 
@@ -1396,14 +1401,45 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             (
                 "town_03_ruinwatch_shop",
                 include_str!(scenario_file!("media/maps/town_03_ruinwatch_shop.tmx")),
-                Position::new(36, 6),
+                Position::new(54, 7),
             ),
             (
                 "town_03_ruinwatch_monastery_vaults",
                 include_str!(scenario_file!(
                     "media/maps/town_03_ruinwatch_monastery_vaults.tmx"
                 )),
+                Position::new(45, 16),
+            ),
+            (
+                "town_03_ruinwatch_shop_weapon",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_ruinwatch_shop_weapon.tmx"
+                )),
                 Position::new(20, 6),
+            ),
+            (
+                "town_03_ruinwatch_shop_armor",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_ruinwatch_shop_armor.tmx"
+                )),
+                Position::new(36, 6),
+            ),
+            (
+                "town_03_ruinwatch_shop_mc",
+                include_str!(scenario_file!("media/maps/town_03_ruinwatch_shop_mc.tmx")),
+                Position::new(35, 26),
+            ),
+            (
+                "town_03_ruinwatch_storage",
+                include_str!(scenario_file!("media/maps/town_03_ruinwatch_storage.tmx")),
+                Position::new(55, 25),
+            ),
+            (
+                "town_03_ruinwatch_shop_apothecary",
+                include_str!(scenario_file!(
+                    "media/maps/town_03_ruinwatch_shop_apothecary.tmx"
+                )),
+                Position::new(45, 6),
             ),
         ];
         for (map_id, document, expected_return_position) in interiors {

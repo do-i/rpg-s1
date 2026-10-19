@@ -1074,7 +1074,7 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     assert_eq!(report.counts.abilities, 42);
     assert_eq!(report.counts.items, 210);
     assert_eq!(report.counts.field_use_items, 14);
-    assert_eq!(report.counts.maps, 69);
+    assert_eq!(report.counts.maps, 74);
     assert_eq!(report.counts.dialogue_documents, 144);
     assert_eq!(report.counts.enemies, 108);
     assert_eq!(report.counts.boss_move_sets, 11);

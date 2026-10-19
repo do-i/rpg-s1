@@ -1132,6 +1132,22 @@ mod tests {
             "town_03_ruinwatch_shop" => {
                 include_str!(scenario_file!("data/maps/town_03_ruinwatch_shop.yaml"))
             }
+            "town_03_ruinwatch_shop_weapon" => {
+                include_str!(scenario_file!(
+                    "data/maps/town_03_ruinwatch_shop_weapon.yaml"
+                ))
+            }
+            "town_03_ruinwatch_shop_armor" => {
+                include_str!(scenario_file!(
+                    "data/maps/town_03_ruinwatch_shop_armor.yaml"
+                ))
+            }
+            "town_03_ruinwatch_shop_mc" => {
+                include_str!(scenario_file!("data/maps/town_03_ruinwatch_shop_mc.yaml"))
+            }
+            "town_03_ruinwatch_shop_apothecary" => include_str!(scenario_file!(
+                "data/maps/town_03_ruinwatch_shop_apothecary.yaml"
+            )),
             "town_03_ruinwatch_monastery_vaults" => include_str!(scenario_file!(
                 "data/maps/town_03_ruinwatch_monastery_vaults.yaml"
             )),
@@ -1199,26 +1215,11 @@ mod tests {
         let inn = ruinwatch_metadata("town_03_ruinwatch_inn");
         let shop = ruinwatch_metadata("town_03_ruinwatch_shop");
         let expected_inn = [("inn_keeper", Position::new(8, 4), "inn_ruinwatch")];
-        let expected_shop = [
-            // B3.7 added a late-town apothecary here; the roster stays ungated.
-            ("apothecary", Position::new(8, 3), "apothecary_ruinwatch"),
-            (
-                "item_shop_keeper",
-                Position::new(6, 3),
-                "item_shop_ruinwatch",
-            ),
-            ("mc_shop_keeper", Position::new(10, 3), "mc_shop_intro"),
-            (
-                "weapon_shop_keeper",
-                Position::new(5, 3),
-                "weapon_shop_ruinwatch",
-            ),
-            (
-                "armor_shop_keeper",
-                Position::new(12, 3),
-                "armor_shop_ruinwatch",
-            ),
-        ];
+        let expected_shop = [(
+            "item_shop_keeper",
+            Position::new(6, 4),
+            "item_shop_ruinwatch",
+        )];
 
         for flags in [
             RuntimeFlags::default(),
@@ -1231,13 +1232,45 @@ mod tests {
         ] {
             assert_eq!(observed_npcs(&inn, &flags), expected_inn);
             assert_eq!(observed_npcs(&shop, &flags), expected_shop);
+            for (map, keeper, position, dialogue) in [
+                (
+                    "town_03_ruinwatch_shop_weapon",
+                    "weapon_shop_keeper",
+                    Position::new(6, 4),
+                    "weapon_shop_ruinwatch",
+                ),
+                (
+                    "town_03_ruinwatch_shop_armor",
+                    "armor_shop_keeper",
+                    Position::new(1, 4),
+                    "armor_shop_ruinwatch",
+                ),
+                (
+                    "town_03_ruinwatch_shop_mc",
+                    "mc_shop_keeper",
+                    Position::new(4, 3),
+                    "mc_shop_intro",
+                ),
+                (
+                    "town_03_ruinwatch_shop_apothecary",
+                    "apothecary",
+                    Position::new(6, 4),
+                    "apothecary_ruinwatch",
+                ),
+            ] {
+                let metadata = ruinwatch_metadata(map);
+                assert_eq!(
+                    observed_npcs(&metadata, &flags),
+                    [(keeper, position, dialogue)]
+                );
+            }
         }
     }
 
     #[test]
     fn presence_conditions_remove_jep_from_the_monastery_vaults_only_after_recruitment() {
         let metadata = ruinwatch_metadata("town_03_ruinwatch_monastery_vaults");
-        let expected = [("jep", Position::new(10, 5), "jep_join")];
+        let expected = [("jep", Position::new(19, 8), "jep_join")];
 
         assert_eq!(observed_npcs(&metadata, &RuntimeFlags::default()), expected);
         assert_eq!(
