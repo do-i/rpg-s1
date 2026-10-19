@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. 6 approved,
    1 needs-review, 326 needs-evidence.
-2. **Home-grown** (723 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (729 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -1231,7 +1231,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
 | ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `d67a03e1ef2a1c7f1717776746c5de114f8c30e1df2b4731d63ba30466f2c819` | scenario YAML / transport.yaml |
-| ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `a1d0594a51ed7d5bfc139d7e1f4942a2595ed24e8d80f23ee96e58d4b698f1bb` | scenario YAML / Rusted Kingdoms scenario manifest |
+| ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `6d9692eee3f440be8b007e6744cec2d0654a7769d04fb0ef0ce0f1030bdd3129` | scenario YAML / Rusted Kingdoms scenario manifest |
 | ALI-0028 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` | provenance record / Rusted Kingdoms BGM prompt and source notes |
 | ALI-0226 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Across_the_Sundered_Peaks_64.mp3` | `5910a7b194a72afc272835403ca75220db5ec28c7cdc49125f622548c6449909` | audio / Across_the_Sundered_Peaks_64.mp3 |
 | ALI-0911 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Chronicles_of_the_Lost_Flame_Title.mp3` | `f2e777876ea1ebd7d6442e4e4311a8328be390bb36153d664df4088f846b1afc` | audio / Chronicles_of_the_Lost_Flame_Title.mp3 |
@@ -1699,3 +1699,9 @@ Everything not listed above. Shared fields for every row:
 | ALI-1090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_harborgate_storage.yaml` | `2ed98915b7bf4f825a54523cb6fc46148dda97655585a27bcb8542fcaa43e14a` | scenario YAML / Harborgate northwest storehouse |
 | ALI-1091 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/storage_props.png` | `f2cb20bc3c1d305e0178e4e5b48f38b52a779a0aa37b1f2edc9547de6aba97be` | image / Storage props; generated with OpenAI imagegen, normalized to six 32x32 tiles |
 | ALI-1092 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/storage_props.tsx` | `351975bcce2ea77e4655ae415c277a42174fd7abd2e4ce05cc00771d96680a93` | tileset XML / Storage props |
+| ALI-1093 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_armored_walk.png` | `77ae85ff98aaa078778d5018fafca9d788bece89095890c65321f04971b5475f` | image / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |
+| ALI-1094 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_armored_walk.tsx` | `bab8f0bddb3ed6eee57aeeb16573f973941a46354c22fde8507b59acf89e56fe` | TSX / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |
+| ALI-1095 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_classic_walk.png` | `f6e879e78862b46a51a8041e8e819b95ce8691c0ee9684877998b3ab7e80f05c` | image / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |
+| ALI-1096 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_classic_walk.tsx` | `5106f3e511467f2c6190f4043dfc8dc54381da39578f7083fdc67e622d0069f7` | TSX / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |
+| ALI-1097 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_traveler_walk.png` | `baa4586b1e4e095544d16f8d1ff029e0a0b8f27a2ee2c552e4d923b6d19d1c36` | image / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |
+| ALI-1098 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_traveler_walk.tsx` | `a27125fd6a197ca78f10d33e06454c204169ca898436285939c32cab92721499` | TSX / Aric selectable sprite; generated with OpenAI imagegen, prompts and animation repair in art/aric-sprite-variants/README.md |

@@ -10,7 +10,7 @@ use bevy::prelude::Resource;
 use crate::{
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_item::{FieldUseCatalogFile, ItemCatalogFile},
-    scenario_manifest::Manifest,
+    scenario_manifest::{Manifest, ManifestSpriteVariant},
     scenario_party::PartyCatalog,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -39,11 +39,10 @@ pub(crate) struct ScenarioInventory {
     pub(crate) party: Option<ScenarioRelativePath>,
     /// Walk-cycle TSX per party member, in authored `party.yaml` order.
     ///
-    /// Nothing in the source data names these files: Python's `load_party_member_sprite` derives
-    /// `{NN}_{id}_walk.tsx` from the member's party index and falls back to `{id}_walk.tsx`.
-    /// Resolving that convention once here keeps the World sprite and the switch modal reading the
-    /// same list, and members whose sheet is absent are simply omitted.
+    /// The protagonist uses the explicit manifest sprite. Companions retain the source's
+    /// `{NN}_{id}_walk.tsx` / `{id}_walk.tsx` convention; absent sheets are omitted.
     pub(crate) party_sprites: Vec<(String, ScenarioRelativePath)>,
+    pub(crate) protagonist_sprite_variants: Vec<ManifestSpriteVariant>,
     pub(crate) balance: Option<ScenarioRelativePath>,
     pub(crate) item_catalogs: Vec<ScenarioRelativePath>,
     pub(crate) field_use: Option<ScenarioRelativePath>,
@@ -74,6 +73,46 @@ pub(crate) struct ServiceArt {
 }
 
 impl ScenarioInventory {
+    pub(crate) fn sprite_variant_index(&self, game: &crate::game_state::GameState) -> usize {
+        self.protagonist_sprite_variants
+            .iter()
+            .position(|variant| Some(variant.id.as_str()) == game.protagonist_sprite_variant())
+            .or_else(|| {
+                self.protagonist_sprite_variants.iter().position(|variant| {
+                    self.party_sprites.iter().any(|(id, path)| {
+                        game.party()
+                            .protagonist()
+                            .is_some_and(|member| member.id() == id)
+                            && *path == variant.sprite
+                    })
+                })
+            })
+            .unwrap_or(0)
+    }
+
+    pub(crate) fn party_sprite<'a>(
+        &'a self,
+        game: &crate::game_state::GameState,
+        member_id: &str,
+    ) -> Option<&'a ScenarioRelativePath> {
+        if game
+            .party()
+            .protagonist()
+            .is_some_and(|member| member.id() == member_id)
+            && let Some(variant) = game.protagonist_sprite_variant().and_then(|id| {
+                self.protagonist_sprite_variants
+                    .iter()
+                    .find(|variant| variant.id == id)
+            })
+        {
+            return Some(&variant.sprite);
+        }
+        self.party_sprites
+            .iter()
+            .find(|(id, _)| id == member_id)
+            .map(|(_, path)| path)
+    }
+
     pub(crate) fn discover(asset_base: &Path, root: &ScenarioRoot) -> Self {
         match discover(asset_base, root) {
             Ok(inventory) => inventory,
@@ -149,6 +188,7 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         tmx_directory: Some(manifest.refs.tmx.as_relative_path().clone()),
         battle_backgrounds: Some(manifest.refs.battle_backgrounds.clone()),
         party: Some(manifest.refs.party.clone()),
+        protagonist_sprite_variants: manifest.protagonist.sprite_variants.clone(),
         balance: Some(manifest.refs.balance.clone()),
         ..Default::default()
     };
@@ -255,6 +295,9 @@ fn party_sprites(package: &Path, manifest: &Manifest) -> Vec<(String, ScenarioRe
         .enumerate()
         .filter_map(|(index, member)| {
             let id = member.data().id.as_str();
+            if id == manifest.protagonist.id {
+                return Some((id.to_owned(), manifest.protagonist.sprite.clone()));
+            }
             let candidates = [
                 format!("{directory}/{:02}_{id}_walk.tsx", index + 1),
                 format!("{directory}/{id}_walk.tsx"),
@@ -349,7 +392,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_shipped_party_member_resolves_a_numbered_walk_sheet() {
+    fn resolves_the_authored_protagonist_and_numbered_companion_walk_sheets() {
         let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let root = ScenarioRoot::try_for_package_key("rusted_kingdoms").unwrap();
 
@@ -364,7 +407,7 @@ mod tests {
         assert_eq!(
             sprites,
             vec![
-                ("aric", "media/sprites/party/01_aric_walk.tsx"),
+                ("aric", "media/sprites/party/01_aric_armored_walk.tsx"),
                 ("elise", "media/sprites/party/02_elise_walk.tsx"),
                 ("reiya", "media/sprites/party/03_reiya_walk.tsx"),
                 ("jep", "media/sprites/party/04_jep_walk.tsx"),

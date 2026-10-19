@@ -81,6 +81,8 @@ pub(crate) struct FieldMenuState {
     pub(super) mode: FieldMenuMode,
     pub(super) selected: usize,
     pub(super) member_index: usize,
+    /// Draft appearance in the Character overlay; committed only by Confirm.
+    pub(super) sprite_choice: usize,
     pub(super) status_page: StatusPage,
     pub(super) tab_index: usize,
     /// Highlighted entry in the Battle page's tactic picker, an index into `TACTIC_CHOICES`.

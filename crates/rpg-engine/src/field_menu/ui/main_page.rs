@@ -59,7 +59,7 @@ pub(in crate::field_menu) fn sync_main_menu_page(
             &mut layouts,
         ));
     }
-    let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game);
+    let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game, &inventory);
     commands.entity(menu_root).with_children(|parent| {
         spawn_main_menu_page(
             parent,
@@ -76,9 +76,12 @@ pub(in crate::field_menu) fn sync_main_menu_page(
 }
 
 /// The idle down-facing frame of each party member's walk sheet, once its TSX has loaded.
+type WalkSpriteFrame = (Handle<Image>, Handle<TextureAtlasLayout>);
+
 #[derive(Default)]
 pub(in crate::field_menu) struct PartyWalkThumbnails {
-    frames: std::collections::BTreeMap<String, (Handle<Image>, Handle<TextureAtlasLayout>)>,
+    frames: std::collections::BTreeMap<String, WalkSpriteFrame>,
+    variants: Vec<(String, Option<WalkSpriteFrame>)>,
 }
 
 impl PartyWalkThumbnails {
@@ -86,11 +89,18 @@ impl PartyWalkThumbnails {
         sheets: &PartyWalkSheets,
         atlases: &Assets<TsxAtlasAsset>,
         game: &GameState,
+        inventory: &ScenarioInventory,
     ) -> Self {
         let mut thumbnails = Self::default();
         for member in game.party().members() {
-            let Some(atlas) = sheets
-                .sheet(member.id())
+            let selected_variant = if member.is_protagonist() {
+                game.protagonist_sprite_variant()
+            } else {
+                None
+            };
+            let Some(atlas) = selected_variant
+                .and_then(|id| sheets.variant(id))
+                .or_else(|| sheets.sheet(member.id()))
                 .and_then(|handle| atlases.get(handle))
             else {
                 continue;
@@ -100,7 +110,30 @@ impl PartyWalkThumbnails {
                 (atlas.image().clone(), atlas.layout().clone()),
             );
         }
+        thumbnails.variants = inventory
+            .protagonist_sprite_variants
+            .iter()
+            .map(|variant| {
+                let frame = sheets
+                    .variant(&variant.id)
+                    .and_then(|handle| atlases.get(handle))
+                    .map(|atlas| (atlas.image().clone(), atlas.layout().clone()));
+                (variant.name.clone(), frame)
+            })
+            .collect();
         thumbnails
+    }
+
+    fn variant_frame(&self, index: usize) -> Option<ImageNode> {
+        let (_, frame) = self.variants.get(index)?;
+        let (image, layout) = frame.as_ref()?;
+        Some(ImageNode::from_atlas_image(
+            image.clone(),
+            TextureAtlas {
+                layout: layout.clone(),
+                index: WALK_SHEET_IDLE_DOWN_TILE,
+            },
+        ))
     }
 
     fn frame(&self, member_id: &str) -> Option<ImageNode> {
@@ -475,6 +508,8 @@ pub(in crate::field_menu) fn spawn_field_menu_character_modal(
     game: &GameState,
     thumbnails: &PartyWalkThumbnails,
 ) {
+    let has_choices = member_at(game, state.selected).is_some_and(|member| member.is_protagonist())
+        && !thumbnails.variants.is_empty();
     parent
         .spawn((
             Node {
@@ -495,7 +530,7 @@ pub(in crate::field_menu) fn spawn_field_menu_character_modal(
             overlay
                 .spawn((
                     Node {
-                        width: px(460),
+                        width: px(if has_choices { 620 } else { 460 }),
                         flex_direction: FlexDirection::Column,
                         row_gap: px(8),
                         padding: UiRect::all(px(18)),
@@ -516,20 +551,99 @@ pub(in crate::field_menu) fn spawn_field_menu_character_modal(
                             modal,
                             font,
                             member.name(),
-                            thumbnails.frame(member.id()),
+                            if selected && has_choices {
+                                thumbnails.variant_frame(state.sprite_choice)
+                            } else {
+                                thumbnails.frame(member.id())
+                            },
                             selected,
                             active,
                         );
                     }
+                    if has_choices {
+                        spawn_character_sprite_choices(modal, font, state, thumbnails);
+                    }
                     spawn_section_rule(modal);
                     spawn_status_text(
                         modal,
-                        "UP/DOWN   SELECT      ENTER   CONFIRM      ESC   CANCEL",
+                        if has_choices {
+                            "UP/DOWN CHARACTER   LEFT/RIGHT SPRITE   ENTER APPLY   ESC CANCEL"
+                        } else {
+                            "UP/DOWN   SELECT      ENTER   CONFIRM      ESC   CANCEL"
+                        },
                         font,
                         14.0,
                         status_gold(),
                     );
                 });
+        });
+}
+
+fn spawn_character_sprite_choices(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    thumbnails: &PartyWalkThumbnails,
+) {
+    spawn_section_rule(parent);
+    spawn_status_text(parent, "SPRITE", font, 14.0, status_gold());
+    parent
+        .spawn(Node {
+            width: percent(100),
+            column_gap: px(10),
+            ..default()
+        })
+        .with_children(|choices| {
+            for (index, (name, _)) in thumbnails.variants.iter().enumerate() {
+                let selected = state.sprite_choice == index;
+                choices
+                    .spawn((
+                        Node {
+                            flex_grow: 1.0,
+                            flex_basis: px(0),
+                            height: px(108),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                            ..default()
+                        },
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(79, 51, 38, 214)
+                        } else {
+                            Color::srgba_u8(30, 30, 38, 164)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            status_border()
+                        }),
+                        Name::new(format!("Sprite choice {name}")),
+                    ))
+                    .with_children(|card| {
+                        if let Some(frame) = thumbnails.variant_frame(index) {
+                            card.spawn((
+                                frame,
+                                Node {
+                                    width: px(80),
+                                    height: px(80),
+                                    ..default()
+                                },
+                            ));
+                        }
+                        spawn_status_text(
+                            card,
+                            name,
+                            font,
+                            17.0,
+                            if selected {
+                                status_gold()
+                            } else {
+                                status_muted()
+                            },
+                        );
+                    });
+            }
         });
 }
 
@@ -623,5 +737,63 @@ pub(in crate::field_menu) fn main_command_accent(index: usize) -> Color {
         4 => Color::srgb_u8(91, 143, 183),
         5 => Color::srgb_u8(124, 158, 116),
         _ => Color::srgb_u8(190, 72, 66),
+    }
+}
+
+#[cfg(test)]
+mod appearance_tests {
+    use super::*;
+
+    #[test]
+    fn character_overlay_shows_the_three_sprite_choices_and_controls() {
+        let mut app = App::new();
+        app.insert_resource(crate::save_data::tests::fixture_game());
+        app.add_systems(Update, |mut commands: Commands, game: Res<GameState>| {
+            let state = FieldMenuState {
+                open: true,
+                mode: FieldMenuMode::CharacterSwitch,
+                sprite_choice: 1,
+                ..default()
+            };
+            let thumbnails = PartyWalkThumbnails {
+                variants: ["Armored", "Classic", "Traveler"]
+                    .into_iter()
+                    .map(|name| (name.to_owned(), None))
+                    .collect(),
+                ..default()
+            };
+            commands.spawn(Node::default()).with_children(|parent| {
+                spawn_field_menu_character_modal(
+                    parent,
+                    &Handle::default(),
+                    &state,
+                    &game,
+                    &thumbnails,
+                );
+            });
+        });
+        app.update();
+        let world = app.world_mut();
+        let names = world
+            .query::<&Name>()
+            .iter(world)
+            .map(|name| name.as_str().to_owned())
+            .collect::<Vec<_>>();
+        for name in ["Armored", "Classic", "Traveler"] {
+            assert!(names.contains(&format!("Sprite choice {name}")));
+        }
+        let text = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(text.iter().any(|line| line.contains("LEFT/RIGHT SPRITE")));
+        assert!(text.iter().any(|line| line.contains("ESC CANCEL")));
+        assert!(
+            world
+                .resource::<GameState>()
+                .protagonist_sprite_variant()
+                .is_none()
+        );
     }
 }

@@ -47,6 +47,7 @@ pub struct GameState {
     map: RuntimeMapState,
     opened_boxes: RuntimeOpenedBoxes,
     controlled_member_id: String,
+    protagonist_sprite_variant: Option<String>,
     rng: GameplayRng,
     playtime: Playtime,
 }
@@ -69,6 +70,7 @@ impl GameState {
             map: parts.map,
             opened_boxes: parts.opened_boxes,
             controlled_member_id: parts.controlled_member_id,
+            protagonist_sprite_variant: None,
             rng: parts.rng,
             playtime: parts.playtime,
         })
@@ -122,6 +124,27 @@ impl GameState {
 
     pub fn controlled_member_id(&self) -> &str {
         &self.controlled_member_id
+    }
+
+    pub fn protagonist_sprite_variant(&self) -> Option<&str> {
+        self.protagonist_sprite_variant.as_deref()
+    }
+
+    /// `None` uses the scenario's default sprite; saves store only the appearance id.
+    pub fn set_protagonist_sprite_variant(
+        &mut self,
+        variant: Option<String>,
+    ) -> Result<(), GameStateError> {
+        if variant.as_deref().is_some_and(|id| {
+            id.is_empty()
+                || !id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
+        }) {
+            return Err(GameStateError::InvalidSpriteVariantId);
+        }
+        self.protagonist_sprite_variant = variant;
+        Ok(())
     }
 
     /// Selects an owned party member without changing the selection on failure.
@@ -187,6 +210,7 @@ fn validate_controlled_member(party: &RuntimeParty, member_id: &str) -> Result<(
 /// Invalid composition or controlled-member selection at the root boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum GameStateError {
+    InvalidSpriteVariantId,
     MissingProtagonist,
     MissingCurrentMap,
     EmptyControlledMemberId,
@@ -196,6 +220,9 @@ pub enum GameStateError {
 impl fmt::Display for GameStateError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidSpriteVariantId => {
+                formatter.write_str("sprite variant id must be nonempty and portable")
+            }
             Self::MissingProtagonist => formatter.write_str("game state requires one protagonist"),
             Self::MissingCurrentMap => formatter.write_str("game state requires a current map"),
             Self::EmptyControlledMemberId => {

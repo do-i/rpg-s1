@@ -241,6 +241,7 @@ pub(crate) struct WorldPlayerSpawnState {
     map_id: Option<String>,
     /// Party member the loaded atlas belongs to, so a switch re-requests the right sheet.
     member_id: Option<String>,
+    sprite_path: Option<crate::scenario_path::ScenarioRelativePath>,
     /// Sub-tile position carried across a sprite swap, so switching does not snap to tile centre.
     pending_motion: Option<WorldPlayerMotion>,
     status: WorldPlayerSpawnStatus,
@@ -253,6 +254,7 @@ impl Default for WorldPlayerSpawnState {
             atlas: None,
             map_id: None,
             member_id: None,
+            sprite_path: None,
             pending_motion: None,
             status: WorldPlayerSpawnStatus::Idle,
             failure: None,
@@ -340,6 +342,7 @@ fn begin_world_player_load(game: Option<Res<GameState>>, mut state: ResMut<World
             .and_then(|game| game.map().current())
             .map(|map| map.as_str().to_owned()),
         member_id: None,
+        sprite_path: None,
         pending_motion: None,
         status: WorldPlayerSpawnStatus::WaitingForManifest,
         failure: None,
@@ -372,10 +375,6 @@ fn request_world_player_atlas(
     let controlled = game
         .as_deref()
         .map(|game| game.controlled_member_id().to_owned());
-    let unchanged = state.atlas.is_some() && state.member_id == controlled;
-    if unchanged {
-        return;
-    }
     if active_manifest.status() == ActiveManifestStatus::Failed {
         fail_spawn(&mut state, WorldPlayerSpawnFailure::ManifestLoad);
         return;
@@ -387,13 +386,16 @@ fn request_world_player_atlas(
     let sprite = controlled
         .as_deref()
         .and_then(|member_id| {
-            inventory
-                .party_sprites
-                .iter()
-                .find(|(id, _)| id == member_id)
-                .map(|(_, path)| path)
+            game.as_deref()
+                .and_then(|game| inventory.party_sprite(game, member_id))
         })
         .unwrap_or(&manifest.protagonist.sprite);
+    if state.atlas.is_some()
+        && state.member_id == controlled
+        && state.sprite_path.as_ref() == Some(sprite)
+    {
+        return;
+    }
 
     // Only the initial request has no player to replace; a switch respawns one mid-walk, so its
     // pixel position is carried over rather than re-derived from the containing tile.
@@ -402,6 +404,7 @@ fn request_world_player_atlas(
         state.pending_motion = Some(*motion);
     }
     state.atlas = Some(asset_server.load(scenario_root.resolve(sprite)));
+    state.sprite_path = Some(sprite.clone());
     state.member_id = controlled;
     state.status = WorldPlayerSpawnStatus::Loading;
     state.failure = None;
@@ -819,6 +822,48 @@ mod tests {
     }
 
     #[test]
+    fn sprite_variants_reload_the_same_member_without_moving_or_turning() {
+        let mut app = world_app(
+            Path::new(REPOSITORY_ASSET_BASE),
+            ScenarioRoot::default(),
+            Some(new_game()),
+        );
+        wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
+        let before = one_player(&mut app).1.translation;
+        let original_motion = app
+            .world_mut()
+            .query::<&WorldPlayerMotion>()
+            .single(app.world())
+            .unwrap()
+            .top_left();
+        for (choice, expected) in [
+            (Some("classic"), "01_aric_classic_walk.tsx"),
+            (Some("traveler"), "01_aric_traveler_walk.tsx"),
+            (Some("retired_style"), "01_aric_armored_walk.tsx"),
+            (None, "01_aric_armored_walk.tsx"),
+        ] {
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .set_protagonist_sprite_variant(choice.map(str::to_owned))
+                .unwrap();
+            app.update();
+            wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
+            assert!(requested_sprite(&app).ends_with(expected));
+            assert_eq!(one_player(&mut app).1.translation, before);
+            assert_eq!(one_player(&mut app).2, 18);
+            assert_eq!(player_count(&mut app), 1);
+            assert_eq!(
+                app.world_mut()
+                    .query::<&WorldPlayerMotion>()
+                    .single(app.world())
+                    .unwrap()
+                    .top_left(),
+                original_motion
+            );
+        }
+    }
+
+    #[test]
     fn switching_the_controlled_member_reskins_the_player_without_moving_it() {
         let mut app = world_app(
             Path::new(REPOSITORY_ASSET_BASE),
@@ -827,7 +872,7 @@ mod tests {
         );
         wait_for_status(&mut app, WorldPlayerSpawnStatus::Spawned);
         let (_, before, _) = one_player(&mut app);
-        assert!(requested_sprite(&app).ends_with("01_aric_walk.tsx"));
+        assert!(requested_sprite(&app).ends_with("01_aric_armored_walk.tsx"));
 
         let shipped: PartyCatalog = scenario_yaml::from_str(
             &fs::read_to_string(

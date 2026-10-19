@@ -7,7 +7,9 @@ use super::{
     member_at, member_id_at,
     state::{FieldMenuMode, FieldMenuScreen, FieldMenuState, wrapped, wrapped_or_zero},
 };
-use crate::{game_state::GameState, save_store::FIRST_PLAYER_SLOT};
+use crate::{
+    game_state::GameState, save_store::FIRST_PLAYER_SLOT, scenario_inventory::ScenarioInventory,
+};
 
 /// Rows per column on the main command deck; the deck grows a column as commands are added.
 pub(super) const MAIN_COMMAND_ROWS: usize = 4;
@@ -80,7 +82,7 @@ pub(super) const MAIN_COMMANDS: [MainCommand; 10] = [
         label: "Character",
         badge: "CH",
         icon: 7,
-        description: "control a different party member",
+        description: "choose your character and sprite",
         screen: None,
     },
     MainCommand {
@@ -103,6 +105,7 @@ pub(super) fn handle_input(
     state: &mut ResMut<'_, FieldMenuState>,
     game: &mut ResMut<'_, GameState>,
     input: &MenuInput<'_>,
+    inventory: Option<&ScenarioInventory>,
     exit: &mut MessageWriter<'_, AppExit>,
 ) {
     match state.mode {
@@ -115,6 +118,8 @@ pub(super) fn handle_input(
                 if state.selected == CHARACTER_COMMAND_INDEX {
                     state.mode = FieldMenuMode::CharacterSwitch;
                     state.selected = controlled_member_index(game);
+                    state.sprite_choice =
+                        inventory.map_or(0, |inventory| inventory.sprite_variant_index(game));
                 } else if state.selected == SAVE_COMMAND_INDEX {
                     state.screen = FieldMenuScreen::Save;
                     state.selected = FIRST_PLAYER_SLOT;
@@ -130,9 +135,20 @@ pub(super) fn handle_input(
         FieldMenuMode::CharacterSwitch => {
             if let Some(delta) = input.vertical {
                 state.selected = wrapped_or_zero(state.selected, game.party().len(), delta);
+                state.sprite_choice =
+                    inventory.map_or(0, |inventory| inventory.sprite_variant_index(game));
+            }
+            if let (Some(delta), Some(inventory)) = (input.page, inventory)
+                && character_has_sprite_choices(game, state, Some(inventory))
+            {
+                state.sprite_choice = wrapped_or_zero(
+                    state.sprite_choice,
+                    inventory.protagonist_sprite_variants.len(),
+                    delta,
+                );
             }
             if input.confirm {
-                switch_controlled_member(game, state);
+                switch_controlled_member(game, state, inventory);
             }
         }
         FieldMenuMode::QuitConfirm => {
@@ -156,16 +172,44 @@ pub(super) fn controlled_member_index(game: &GameState) -> usize {
         .unwrap_or_default()
 }
 
-/// Applies the switch overlay's selection and closes it.
-///
-/// Ports `switch_character_scene._confirm_selection`: the overlay closes on confirm whether or not
-/// the selection changed, and the World sprite follows through `controlled_member_id`.
-pub(super) fn switch_controlled_member(game: &mut GameState, state: &mut FieldMenuState) {
+pub(super) fn character_has_sprite_choices(
+    game: &GameState,
+    state: &FieldMenuState,
+    inventory: Option<&ScenarioInventory>,
+) -> bool {
+    inventory.is_some_and(|inventory| !inventory.protagonist_sprite_variants.is_empty())
+        && member_at(game, state.selected).is_some_and(|member| member.is_protagonist())
+}
+
+/// Commits the selected character and appearance before returning to the deck.
+pub(super) fn switch_controlled_member(
+    game: &mut GameState,
+    state: &mut FieldMenuState,
+    inventory: Option<&ScenarioInventory>,
+) {
     let Some(member_id) = member_id_at(game, state.selected).map(ToOwned::to_owned) else {
         return;
     };
     let name = member_at(game, state.selected)
         .map_or_else(|| member_id.clone(), |member| member.name().to_owned());
+    if character_has_sprite_choices(game, state, inventory)
+        && let Some(inventory) = inventory
+        && let Some(variant) = inventory
+            .protagonist_sprite_variants
+            .get(state.sprite_choice)
+    {
+        let is_default = inventory
+            .party_sprites
+            .iter()
+            .any(|(id, path)| id == &member_id && *path == variant.sprite);
+        if game
+            .set_protagonist_sprite_variant((!is_default).then(|| variant.id.clone()))
+            .is_err()
+        {
+            state.message = "That sprite cannot be selected.".to_owned();
+            return;
+        }
+    }
     state.mode = FieldMenuMode::Browse;
     state.selected = CHARACTER_COMMAND_INDEX;
     state.message = if game.set_controlled_member(member_id).is_ok() {
@@ -233,7 +277,7 @@ mod tests {
         state.mode = FieldMenuMode::CharacterSwitch;
         state.selected = 1;
 
-        switch_controlled_member(&mut game, &mut state);
+        switch_controlled_member(&mut game, &mut state, None);
 
         assert_eq!(game.controlled_member_id(), "elise");
         assert_eq!(state.mode, FieldMenuMode::Browse);

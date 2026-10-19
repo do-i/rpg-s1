@@ -17,6 +17,7 @@ use crate::{
     game_state::GameState,
     save_store::SaveStore,
     save_ui::SaveSlotCatalog,
+    scenario_inventory::ScenarioInventory,
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, cue},
     transport_ui::TransportUiState,
@@ -44,7 +45,7 @@ pub(super) struct MenuInput<'a> {
 pub(super) fn handle_field_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
-    catalog: Res<FieldMenuCatalog>,
+    (catalog, inventory): (Res<FieldMenuCatalog>, Option<Res<ScenarioInventory>>),
     mut menu_settings: MenuSettings,
     interaction: Res<WorldInteractionState>,
     service: Option<Res<ServiceUiState>>,
@@ -157,7 +158,13 @@ pub(super) fn handle_field_menu_input(
         typed,
     };
     match state.screen {
-        FieldMenuScreen::Main => main_deck::handle_input(&mut state, &mut game, &input, &mut exit),
+        FieldMenuScreen::Main => main_deck::handle_input(
+            &mut state,
+            &mut game,
+            &input,
+            inventory.as_deref(),
+            &mut exit,
+        ),
         FieldMenuScreen::Status => status::handle_input(&mut state, &mut game, &input),
         FieldMenuScreen::Items => inventory::handle_input(
             &mut state,

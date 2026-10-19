@@ -230,6 +230,11 @@ are logged and remain session-only unless you explicitly save. Set
 `RPG_S1_MUTE_AUDIO=1` to mute audio or `RPG_S1_DEBUG_COLLISION=1` to draw world
 collision and portal outlines.
 
+Aric starts with the Armored field sprite. In **Character**, highlight Aric and
+use Left/Right to preview Armored, Classic or Traveler. Enter applies the choice;
+Escape cancels it. Sprite choices persist in native saves, and older saves use
+the Armored default.
+
 The four focused battle-acceptance fixtures enter battle directly and use a
 safe Starting Forest return point. Keep their saves isolated from campaign
 slots (and leave audio enabled when checking cues):
