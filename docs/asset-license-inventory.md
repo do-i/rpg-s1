@@ -1230,7 +1230,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `52aaeb79ebdb55ff8d8d3a9a2fe89be02f42443423a944428ac98af51023d954` | scenario YAML / Rusted Kingdoms party catalog |
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `342f002b69dff4df8dac3d2ed45346d415e7d0f98407a2e97ab5c571792e98a4` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `58312a9df3d0fda6b6deec906b2f3cdf7ad1e3ef7ef4d8d53b850eb20bfb9d72` | scenario YAML / all_recipe.yaml |
-| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `dbac1c6ad3664e07dd030ab79cfdc840a5c45f351a052d9f2e1bc2620671f69a` | scenario YAML / transport.yaml |
+| ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `d67a03e1ef2a1c7f1717776746c5de114f8c30e1df2b4731d63ba30466f2c819` | scenario YAML / transport.yaml |
 | ALI-0019 | author / AI agents | `assets/scenarios/rusted_kingdoms/manifest.yaml` | `a1d0594a51ed7d5bfc139d7e1f4942a2595ed24e8d80f23ee96e58d4b698f1bb` | scenario YAML / Rusted Kingdoms scenario manifest |
 | ALI-0028 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/audio/README-audio.md` | `e6ac9366ee7c63097dd607c31c40866cfc98d90915864e6dd73557100fbd805f` | provenance record / Rusted Kingdoms BGM prompt and source notes |
 | ALI-0226 | AI-generated music, author-directed | `assets/scenarios/rusted_kingdoms/media/audio/bgm/Across_the_Sundered_Peaks_64.mp3` | `5910a7b194a72afc272835403ca75220db5ec28c7cdc49125f622548c6449909` | audio / Across_the_Sundered_Peaks_64.mp3 |
@@ -1291,7 +1291,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0323 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_inn.tmx` | `2581631984fdf22f81bd5708d906fe06b087ed843875848df1fdfdb8623fa544` | map XML / town_02_millhaven_inn.tmx |
 | ALI-0324 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_mill.tmx` | `eb266a80e7772f0ccc4173c86c3d0edb289df09e7d7b79e670b57198bd041687` | map XML / town_02_millhaven_mill.tmx |
 | ALI-0325 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_02_millhaven_shop.tmx` | `26322b8e142d98dc6476c50ec99235428e5349a2cb95aee902525e389d78e693` | map XML / town_02_millhaven_shop.tmx |
-| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `d8cec5db02b6863beed9951699faca5e9dbcfa249cb9409ec5a744aed2108231` | map XML / town_03_harborgate.tmx |
+| ALI-0995 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate.tmx` | `201dbefa66aac6ac5e1a6ec1fc1822ace21d64daa26fba3c954d10e58ca60245` | map XML / town_03_harborgate.tmx |
 | ALI-0996 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_harbormaster.tmx` | `9dcf63d8cc3cc1fa8436a5d0e723ded4d69f3b6a4fa40f83fbb7c8e87a50c6d0` | map XML / town_03_harborgate_harbormaster.tmx |
 | ALI-0997 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_inn.tmx` | `a36028ece4b5870eb80cdef1793a261a075a8135d78749fbd0250be1b0997104` | map XML / town_03_harborgate_inn.tmx |
 | ALI-0998 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/maps/town_03_harborgate_quarantine.tmx` | `e45654772ea9861b35478c28aa5bb6cb1d62a5d313071a1952813e141ad814a9` | map XML / town_03_harborgate_quarantine.tmx |

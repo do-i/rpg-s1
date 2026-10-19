@@ -1184,7 +1184,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn harborgate_portals_cover_every_interior_with_reversible_return_links() {
+    fn harborgate_authored_doors_have_reversible_interior_links() {
         let destinations = harborgate_portals()
             .iter()
             .map(|portal| {
@@ -1195,7 +1195,6 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             })
             .collect::<Vec<_>>();
         let expected = [
-            ("town_03_harborgate_quarantine", Position::new(5, 9)),
             ("town_03_harborgate_inn", Position::new(5, 9)),
             ("town_03_harborgate_harbormaster", Position::new(10, 11)),
             ("zone_03_marshland", Position::new(21, 37)),
@@ -1205,17 +1204,11 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             ("town_03_harborgate_shop_mc", Position::new(7, 10)),
             ("town_03_harborgate_shop", Position::new(7, 9)),
             ("town_03_harborgate_house_02", Position::new(4, 7)),
+            ("town_03_harborgate_storage", Position::new(7, 11)),
         ]
         .map(|(id, position)| (id.to_owned(), position));
         assert_eq!(destinations, expected);
         let interiors = [
-            (
-                "town_03_harborgate_quarantine",
-                include_str!(scenario_file!(
-                    "media/maps/town_03_harborgate_quarantine.tmx"
-                )),
-                Position::new(20, 6),
-            ),
             (
                 "town_03_harborgate_inn",
                 include_str!(scenario_file!("media/maps/town_03_harborgate_inn.tmx")),
@@ -1263,6 +1256,11 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 "town_03_harborgate_house_02",
                 include_str!(scenario_file!("media/maps/town_03_harborgate_house_02.tmx")),
                 Position::new(36, 6),
+            ),
+            (
+                "town_03_harborgate_storage",
+                include_str!(scenario_file!("media/maps/town_03_harborgate_storage.tmx")),
+                Position::new(7, 16),
             ),
         ];
         for (map_id, document, expected_return_position) in interiors {

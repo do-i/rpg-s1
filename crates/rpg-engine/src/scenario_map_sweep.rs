@@ -1265,7 +1265,7 @@ item_boxes:
         let report = build_map_sweep(&root);
 
         assert!(report.load_error.is_none());
-        assert_eq!(report.entries.len(), 68);
+        assert_eq!(report.entries.len(), 69);
         assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert!(
             !report
@@ -1289,8 +1289,8 @@ item_boxes:
         let root = crate::test_support::scenario_package_dir();
         let report = build_map_sweep(&root);
 
-        assert_eq!(report.entries.len(), 68);
-        assert_eq!(report.clean_count(), 68);
+        assert_eq!(report.entries.len(), 69);
+        assert_eq!(report.clean_count(), 69);
         assert_eq!(report.maps_with_findings(), 0);
         assert_eq!(report.category_count(SweepCategory::Tmx), 0);
         assert_eq!(report.category_count(SweepCategory::Collision), 0);
