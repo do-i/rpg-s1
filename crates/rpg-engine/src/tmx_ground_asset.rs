@@ -766,7 +766,10 @@ mod tests {
 
     const ASSET_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
     const TERRAIN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/terrain-v7.tsx");
-    const TERRAIN_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/terrain-v7.png");
+    const FLOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/floor.tsx");
+    const FLOOR_IMAGE_ASSET_PATH: &str = scenario_asset!("media/tilesets/floor.png");
+    const WALL_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/wall.tsx");
+    const WINDOWS_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/windows.tsx");
     const OUTDOOR_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/outdoor.tsx");
     const SHOP_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/shop.tsx");
     const TOWN_TSX_ASSET_PATH: &str = scenario_asset!("media/tilesets/town.tsx");
@@ -869,9 +872,20 @@ mod tests {
             ),
             (25, 13)
         );
-        // One atlas: the project-authored `interior.tsx` replaced the seven visible Astral Pixels
-        // sheets this map drew from (2026-10-09).
-        assert_eq!(map.atlas_handles().len(), 1);
+        assert_eq!(
+            map.atlas_handles()
+                .iter()
+                .map(|handle| handle.path().unwrap().path().to_string_lossy().into_owned())
+                .collect::<std::collections::BTreeSet<_>>(),
+            [
+                INTERIOR_TSX_ASSET_PATH.to_owned(),
+                FLOOR_TSX_ASSET_PATH.to_owned(),
+                WALL_TSX_ASSET_PATH.to_owned(),
+                WINDOWS_TSX_ASSET_PATH.to_owned(),
+            ]
+            .into_iter()
+            .collect()
+        );
         let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
         let bundles = map.visible_bundles(atlases).unwrap();
         let transformed = bundles
@@ -880,7 +894,17 @@ mod tests {
                 bundle.tile.layer_id() == 3 && bundle.tile.column() == 18 && bundle.tile.row() == 3
             })
             .expect("source H+D transformed floor tile should render");
-        assert_eq!(transformed.tile.global_id(), 23);
+        assert_eq!(transformed.tile.local_id(), 1);
+        assert_eq!(
+            transformed
+                .sprite
+                .image
+                .path()
+                .unwrap()
+                .path()
+                .to_string_lossy(),
+            FLOOR_IMAGE_ASSET_PATH
+        );
         assert_eq!(
             transformed.transform.rotation,
             Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
@@ -894,21 +918,25 @@ mod tests {
         let mut app = ground_app();
         let map_handle = load_ardel(&mut app);
 
-        let bundles = {
+        let (bundles, floor_first_gid) = {
             let maps = app.world().resource::<Assets<TmxGroundAsset>>();
             let map = maps.get(&map_handle).unwrap();
+            let floor_first_gid = map
+                .document()
+                .external_tilesets()
+                .iter()
+                .find(|reference| reference.source().as_str() == "media/tilesets/floor.tsx")
+                .unwrap()
+                .first_gid();
             let header = map.document().header();
             assert_eq!((header.width(), header.height()), (55, 20));
             assert_eq!((header.tile_width(), header.tile_height()), (32, 32));
             assert_eq!(map.ground_layer().id(), 1);
             assert_eq!(map.ground_layer().name(), GROUND_LAYER_NAME);
             assert_eq!(map.ground_layer().gids().len(), 1100);
-            assert!(
-                map.ground_layer()
-                    .gids()
-                    .iter()
-                    .all(|gid| matches!(gid.global_id(), 386 | 387))
-            );
+            assert!(map.ground_layer().gids().iter().all(|gid| {
+                [floor_first_gid + 74, floor_first_gid + 75].contains(&gid.global_id())
+            }));
             let atlas_paths = map
                 .atlas_handles()
                 .iter()
@@ -920,14 +948,16 @@ mod tests {
                     OUTDOOR_TSX_ASSET_PATH.to_owned(),
                     TOWN_TSX_ASSET_PATH.to_owned(),
                     SHOP_TSX_ASSET_PATH.to_owned(),
-                    INTERIOR_TSX_ASSET_PATH.to_owned(),
+                    FLOOR_TSX_ASSET_PATH.to_owned(),
+                    WALL_TSX_ASSET_PATH.to_owned(),
+                    WINDOWS_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
                 ]
                 .into_iter()
                 .collect()
             );
             let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
-            map.ground_bundles(atlases).unwrap()
+            (map.ground_bundles(atlases).unwrap(), floor_first_gid)
         };
         assert_eq!(bundles.len(), 1100);
         app.world_mut().spawn_batch(bundles);
@@ -936,8 +966,8 @@ mod tests {
         let mut query = world.query::<(&StaticMapTile, &Sprite, &Transform)>();
         assert_eq!(query.iter(world).count(), 1100);
         for (tile, sprite, transform) in query.iter(world) {
-            assert!(matches!(tile.global_id(), 386 | 387));
-            assert_eq!(tile.local_id(), tile.global_id() - 1);
+            assert!(matches!(tile.local_id(), 74 | 75));
+            assert_eq!(tile.global_id(), floor_first_gid + tile.local_id());
             assert_eq!(tile.layer_index(), 1);
             assert_eq!(tile.layer_id(), 1);
             let expected = tmx_tile_center(tile.column(), tile.row(), 32, 32);
@@ -949,7 +979,7 @@ mod tests {
             assert_eq!(atlas.index, tile.local_id() as usize);
             assert_eq!(
                 sprite.image.path().unwrap().path().to_string_lossy(),
-                TERRAIN_IMAGE_ASSET_PATH
+                FLOOR_IMAGE_ASSET_PATH
             );
         }
 
@@ -957,7 +987,7 @@ mod tests {
         let image_handle = query.iter(world).next().unwrap().1.image.clone();
         assert_eq!(
             images.get(&image_handle).unwrap().size(),
-            UVec2::new(1024, 2048)
+            UVec2::new(512, 224)
         );
         let bottom_right = query
             .iter(world)
@@ -1398,6 +1428,13 @@ mod tests {
             "media/tilesets/shop.png",
             "media/tilesets/interior.tsx",
             "media/tilesets/interior.png",
+            "media/tilesets/floor.tsx",
+            "media/tilesets/floor.png",
+            "media/tilesets/wall.tsx",
+            "media/tilesets/wall.png",
+            "media/tilesets/windows.tsx",
+            "media/tilesets/windows.png",
+            "media/tilesets/CREDITS-floor.txt",
             "media/tilesets/terrain-v7.tsx",
             "media/tilesets/terrain-v7.png",
             "media/tilesets/CREDITS-terrain.txt",
