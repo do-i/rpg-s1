@@ -22,6 +22,9 @@ pub struct BalanceData {
     pub battle: BattleBalance,
     pub spawner: SpawnerBalance,
     pub movement: MovementBalance,
+    /// Optional: scenarios that predate field MP regeneration get the built-in rates.
+    #[serde(default)]
+    pub mp_regen: MpRegenBalance,
 }
 
 impl Default for BalanceData {
@@ -52,6 +55,7 @@ impl Default for BalanceData {
             movement: MovementBalance {
                 player_speed: PositiveInteger::new(5).expect("constant is nonzero"),
             },
+            mp_regen: MpRegenBalance::default(),
         }
     }
 }
@@ -128,6 +132,33 @@ pub struct SpawnerBalance {
 #[serde(deny_unknown_fields)]
 pub struct MovementBalance {
     pub player_speed: PositiveInteger,
+}
+
+/// Out-of-battle MP regeneration for living party members.
+///
+/// Each tick restores `max_percent_per_tick` percent of a member's max MP, but never less than one
+/// point, so a small early pool and a large late pool refill over comparable spans. A map with
+/// ambient encounters ticks only on steps (one tile of actual movement); a safe map (no encounter
+/// zone, i.e. towns and interiors) ticks faster on steps and also on elapsed World time.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MpRegenBalance {
+    pub field_steps_per_tick: PositiveInteger,
+    pub safe_steps_per_tick: PositiveInteger,
+    pub safe_seconds_per_tick: PositiveFinite,
+    pub max_percent_per_tick: PositiveInteger,
+}
+
+impl Default for MpRegenBalance {
+    fn default() -> Self {
+        Self {
+            field_steps_per_tick: PositiveInteger::new(8).expect("constant is nonzero"),
+            safe_steps_per_tick: PositiveInteger::new(4).expect("constant is nonzero"),
+            safe_seconds_per_tick: PositiveFinite::new(2.0)
+                .expect("constant is positive and finite"),
+            max_percent_per_tick: PositiveInteger::new(1).expect("constant is nonzero"),
+        }
+    }
 }
 
 /// A positive integer scalar, including the underscore-separated YAML integer spelling used by
@@ -233,6 +264,7 @@ mod tests {
         assert_eq!(balance.spawner.stealth_cloak_reduction, 4);
         assert_eq!(balance.spawner.lure_charm_interval_mult.get(), 1.25);
         assert_eq!(balance.movement.player_speed.get(), 6);
+        assert_eq!(balance.mp_regen, super::MpRegenBalance::default());
     }
 
     #[test]
@@ -295,6 +327,35 @@ mod tests {
     }
 
     #[test]
+    fn an_authored_mp_regen_group_must_be_complete_and_positive() {
+        let valid = include_str!("../../../tests/fixtures/balance-complete.yaml");
+        let group = "mp_regen:\n  field_steps_per_tick: 10\n  safe_steps_per_tick: 3\n  \
+                     safe_seconds_per_tick: 1.5\n  max_percent_per_tick: 2\n";
+        let authored = format!("{valid}\n{group}");
+        let balance: BalanceData =
+            scenario_yaml::from_str(&authored).expect("complete mp_regen group should load");
+        assert_eq!(balance.mp_regen.field_steps_per_tick.get(), 10);
+        assert_eq!(balance.mp_regen.safe_steps_per_tick.get(), 3);
+        assert_eq!(balance.mp_regen.safe_seconds_per_tick.get(), 1.5);
+        assert_eq!(balance.mp_regen.max_percent_per_tick.get(), 2);
+
+        for document in [
+            authored.replacen("field_steps_per_tick: 10", "field_steps_per_tick: 0", 1),
+            authored.replacen(
+                "safe_seconds_per_tick: 1.5",
+                "safe_seconds_per_tick: 0.0",
+                1,
+            ),
+            authored.replacen("  max_percent_per_tick: 2\n", "", 1),
+        ] {
+            assert!(
+                scenario_yaml::from_str::<BalanceData>(&document).is_err(),
+                "accepted:\n{document}"
+            );
+        }
+    }
+
+    #[test]
     fn audits_the_complete_shipped_balance_file() {
         let path = scenario_package_dir().join("data/balance.yaml");
         let document = fs::read_to_string(&path)
@@ -313,5 +374,9 @@ mod tests {
         assert_eq!(balance.spawner.stealth_cloak_reduction, 3);
         assert_eq!(balance.spawner.lure_charm_interval_mult.get(), 0.5);
         assert_eq!(balance.movement.player_speed.get(), 5);
+        assert_eq!(balance.mp_regen.field_steps_per_tick.get(), 8);
+        assert_eq!(balance.mp_regen.safe_steps_per_tick.get(), 4);
+        assert_eq!(balance.mp_regen.safe_seconds_per_tick.get(), 2.0);
+        assert_eq!(balance.mp_regen.max_percent_per_tick.get(), 1);
     }
 }
