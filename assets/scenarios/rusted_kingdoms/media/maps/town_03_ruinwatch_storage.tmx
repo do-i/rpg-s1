@@ -5,6 +5,7 @@
  <tileset firstgid="377" source="../tilesets/storage_props.tsx"/>
  <tileset firstgid="383" source="../tilesets/collision.tsx"/>
  <tileset firstgid="384" source="../tilesets/interior.tsx"/>
+ <tileset firstgid="492" source="../tilesets/wall.tsx"/>
  <objectgroup id="4" name="portals">
   <object id="1" name="town_03_ruinwatch" x="128" y="346" width="96" height="6">
    <properties>
@@ -47,16 +48,16 @@
  <layer id="5" name="architecture" width="11" height="11">
   <data encoding="csv">
 118,110,110,110,110,110,110,110,110,110,119,
-117,290,290,290,290,290,290,290,290,290,117,
-117,305,305,305,305,305,305,305,305,305,117,
+117,573,573,573,573,573,573,573,573,573,117,
+117,591,591,591,591,591,591,591,591,591,117,
 117,0,0,0,0,0,0,0,0,0,117,
 117,0,0,0,0,0,0,0,0,0,117,
 117,0,0,0,0,0,0,0,0,0,117,
 117,0,0,0,0,0,0,0,0,0,117,
 117,0,0,0,0,0,0,0,0,0,117,
 126,110,110,110,0,0,0,110,110,110,127,
-117,290,290,290,0,0,0,290,290,290,117,
-117,305,305,305,0,0,0,305,305,305,117
+117,573,573,573,0,0,0,573,573,573,117,
+117,591,591,591,0,0,0,591,591,591,117
 </data>
  </layer>
  <layer id="2" name="decoration" width="11" height="11">

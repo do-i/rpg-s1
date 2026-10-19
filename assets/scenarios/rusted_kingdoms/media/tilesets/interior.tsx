@@ -1,111 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.12.1" name="interior" tilewidth="32" tileheight="32" tilecount="108" columns="18">
  <image source="interior.png" width="576" height="192" />
- <tile id="0">
-  <properties>
-   <property name="desc" value="interior tile 0" />
-  </properties>
- </tile>
- <tile id="1">
-  <properties>
-   <property name="desc" value="interior tile 1" />
-  </properties>
- </tile>
- <tile id="2">
-  <properties>
-   <property name="desc" value="interior tile 2" />
-  </properties>
- </tile>
- <tile id="3">
-  <properties>
-   <property name="desc" value="interior tile 3" />
-  </properties>
- </tile>
- <tile id="4">
-  <properties>
-   <property name="desc" value="interior tile 4" />
-  </properties>
- </tile>
- <tile id="5">
-  <properties>
-   <property name="desc" value="interior tile 5" />
-  </properties>
- </tile>
- <tile id="6">
-  <properties>
-   <property name="desc" value="interior tile 6" />
-  </properties>
- </tile>
- <tile id="7">
-  <properties>
-   <property name="desc" value="interior tile 7" />
-  </properties>
- </tile>
- <tile id="8">
-  <properties>
-   <property name="desc" value="interior tile 8" />
-  </properties>
- </tile>
- <tile id="9">
-  <properties>
-   <property name="desc" value="interior tile 9" />
-  </properties>
- </tile>
- <tile id="10">
-  <properties>
-   <property name="desc" value="interior tile 10" />
-  </properties>
- </tile>
- <tile id="11">
-  <properties>
-   <property name="desc" value="interior tile 11" />
-  </properties>
- </tile>
- <tile id="18">
-  <properties>
-   <property name="desc" value="interior tile 12" />
-  </properties>
- </tile>
- <tile id="19">
-  <properties>
-   <property name="desc" value="interior tile 13" />
-  </properties>
- </tile>
- <tile id="20">
-  <properties>
-   <property name="desc" value="interior tile 14" />
-  </properties>
- </tile>
- <tile id="21">
-  <properties>
-   <property name="desc" value="interior tile 15" />
-  </properties>
- </tile>
- <tile id="22">
-  <properties>
-   <property name="desc" value="interior tile 16" />
-  </properties>
- </tile>
- <tile id="23">
-  <properties>
-   <property name="desc" value="interior tile 17" />
-  </properties>
- </tile>
- <tile id="24">
-  <properties>
-   <property name="desc" value="interior tile 18" />
-  </properties>
- </tile>
- <tile id="25">
-  <properties>
-   <property name="desc" value="interior tile 19" />
-  </properties>
- </tile>
- <tile id="26">
-  <properties>
-   <property name="desc" value="interior tile 20" />
-  </properties>
- </tile>
  <tile id="27">
   <properties>
    <property name="desc" value="interior tile 21" />
@@ -119,26 +14,6 @@
  <tile id="29">
   <properties>
    <property name="desc" value="interior tile 23" />
-  </properties>
- </tile>
- <tile id="36">
-  <properties>
-   <property name="desc" value="interior tile 24" />
-  </properties>
- </tile>
- <tile id="37">
-  <properties>
-   <property name="desc" value="interior tile 25" />
-  </properties>
- </tile>
- <tile id="38">
-  <properties>
-   <property name="desc" value="interior tile 26" />
-  </properties>
- </tile>
- <tile id="39">
-  <properties>
-   <property name="desc" value="interior tile 27" />
   </properties>
  </tile>
  <tile id="40">
