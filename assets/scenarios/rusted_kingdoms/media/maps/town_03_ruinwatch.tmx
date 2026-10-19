@@ -5,7 +5,7 @@
  <tileset firstgid="2121" source="../tilesets/outdoor.tsx"/>
  <tileset firstgid="2359" source="../tilesets/town.tsx"/>
  <tileset firstgid="2599" source="../tilesets/shop.tsx"/>
- <tileset firstgid="2663" source="../tilesets/exterior_windows.tsx"/>
+ <tileset firstgid="2663" source="../tilesets/windows.tsx"/>
  <tileset firstgid="2671" source="../tilesets/exterior_walls.tsx"/>
  <tileset firstgid="2683" source="../tilesets/collision.tsx"/>
  <objectgroup id="8" name="portals">
