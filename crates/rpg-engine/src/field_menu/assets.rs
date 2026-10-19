@@ -60,9 +60,16 @@ pub(super) const WALK_SHEET_IDLE_DOWN_TILE: usize = 18;
 #[derive(Debug, Default, Resource)]
 pub(super) struct PartyWalkSheets {
     sheets: Vec<(String, Handle<TsxAtlasAsset>)>,
+    variants: Vec<(String, Handle<TsxAtlasAsset>)>,
 }
 
 impl PartyWalkSheets {
+    pub(super) fn variant(&self, id: &str) -> Option<&Handle<TsxAtlasAsset>> {
+        self.variants
+            .iter()
+            .find(|(key, _)| key == id)
+            .map(|(_, handle)| handle)
+    }
     pub(super) fn sheet(&self, member_id: &str) -> Option<&Handle<TsxAtlasAsset>> {
         self.sheets
             .iter()
@@ -84,5 +91,15 @@ pub(super) fn load_party_walk_sheets(
         .party_sprites
         .iter()
         .map(|(member_id, path)| (member_id.clone(), asset_server.load(root.resolve(path))))
+        .collect();
+    sheets.variants = inventory
+        .protagonist_sprite_variants
+        .iter()
+        .map(|variant| {
+            (
+                variant.id.clone(),
+                asset_server.load(root.resolve(&variant.sprite)),
+            )
+        })
         .collect();
 }

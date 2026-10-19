@@ -54,7 +54,17 @@ protagonist:
   id: aric
   name: "Aric"
   class: hero
-  sprite: media/sprites/party/01_aric_walk.tsx
+  sprite: media/sprites/party/01_aric_armored_walk.tsx
+  sprite_variants:
+    - id: armored
+      name: Armored
+      sprite: media/sprites/party/01_aric_armored_walk.tsx
+    - id: classic
+      name: Classic
+      sprite: media/sprites/party/01_aric_classic_walk.tsx
+    - id: traveler
+      name: Traveler
+      sprite: media/sprites/party/01_aric_traveler_walk.tsx
 
 start:
   map: town_01_ardel

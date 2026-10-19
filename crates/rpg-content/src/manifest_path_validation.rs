@@ -183,6 +183,12 @@ pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReferenc
     if let Some(menu_icons) = &manifest.ui.menu_icons {
         references.insert(4, file_reference("ui.menu_icons", menu_icons));
     }
+    for variant in &manifest.protagonist.sprite_variants {
+        references.push(file_reference(
+            "protagonist.sprite_variants[].sprite",
+            &variant.sprite,
+        ));
+    }
     references
 }
 

@@ -167,6 +167,43 @@ pub struct ManifestProtagonist {
     #[serde(deserialize_with = "deserialize_string")]
     pub class: String,
     pub sprite: ScenarioRelativePath,
+    #[serde(default, deserialize_with = "deserialize_sprite_variants")]
+    pub sprite_variants: Vec<ManifestSpriteVariant>,
+}
+
+/// Optional field-sprite appearances offered by the Character menu.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub struct ManifestSpriteVariant {
+    #[serde(deserialize_with = "deserialize_string")]
+    pub id: String,
+    #[serde(deserialize_with = "deserialize_string")]
+    pub name: String,
+    pub sprite: ScenarioRelativePath,
+}
+
+fn deserialize_sprite_variants<'de, D>(
+    deserializer: D,
+) -> Result<Vec<ManifestSpriteVariant>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let variants = Vec::<ManifestSpriteVariant>::deserialize(deserializer)?;
+    let mut ids = std::collections::BTreeSet::new();
+    for variant in &variants {
+        if variant.id.is_empty()
+            || !variant
+                .id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
+            || variant.name.trim().is_empty()
+            || !ids.insert(&variant.id)
+        {
+            return Err(serde::de::Error::custom(
+                "sprite variants need unique portable ids and nonempty names",
+            ));
+        }
+    }
+    Ok(variants)
 }
 
 /// The authored new-game map location and opening dialogue.
@@ -305,6 +342,40 @@ mod tests {
     };
     use crate::scenario_yaml;
     use crate::{scenario_path::ScenarioRelativePathError, scenario_spatial::Position};
+
+    #[test]
+    fn sprite_variants_validate_ids_and_their_manifest_paths() {
+        let document = include_str!(scenario_file!("manifest.yaml"));
+        let manifest: Manifest = scenario_yaml::from_str(document).unwrap();
+        assert_eq!(
+            manifest
+                .protagonist
+                .sprite_variants
+                .iter()
+                .map(|variant| variant.id.as_str())
+                .collect::<Vec<_>>(),
+            ["armored", "classic", "traveler"]
+        );
+        let paths = crate::manifest_path_validation::manifest_path_references(&manifest);
+        assert_eq!(
+            paths
+                .iter()
+                .filter(|reference| reference.field_path == "protagonist.sprite_variants[].sprite")
+                .count(),
+            3
+        );
+        for invalid in [
+            document.replace("id: traveler", "id: classic"),
+            document.replace("id: traveler", "id: ../../outside"),
+            document.replace("name: Traveler", "name: ''"),
+            document.replace(
+                "sprite: media/sprites/party/01_aric_traveler_walk.tsx",
+                "sprite: ../outside.tsx",
+            ),
+        ] {
+            assert!(scenario_yaml::from_str::<Manifest>(&invalid).is_err());
+        }
+    }
 
     #[test]
     fn loads_pinned_identity_and_window_values_from_complete_manifest_shape() {
@@ -450,6 +521,7 @@ mod tests {
                     name: "Aric".to_owned(),
                     class: "hero".to_owned(),
                     sprite: "media/sprites/party/01_aric_walk.tsx".try_into().unwrap(),
+                    sprite_variants: Vec::new(),
                 },
                 start: ManifestStart {
                     map: "town_01_ardel".to_owned(),

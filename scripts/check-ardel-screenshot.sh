@@ -5,7 +5,7 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 
 map="$repo_root/assets/scenarios/rusted_kingdoms/media/maps/town_01_ardel.tmx"
-aric="$repo_root/assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_walk.png"
+aric="$repo_root/assets/scenarios/rusted_kingdoms/media/sprites/party/01_aric_armored_walk.png"
 oracle="$repo_root/tests/fixtures/ardel-screenshot/rgba8.sha256"
 output="${1:-$repo_root/target/ardel-new-game.png}"
 

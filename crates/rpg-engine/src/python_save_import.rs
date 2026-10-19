@@ -595,6 +595,7 @@ impl PythonSave {
             },
             opened_boxes,
             controlled_member_id,
+            protagonist_sprite_variant: None,
             rng_state,
             playtime_seconds: self.meta.playtime_seconds,
         })

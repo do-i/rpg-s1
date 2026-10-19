@@ -17,6 +17,9 @@
 *.tmx.bak
 /assets/scenarios/*/.cache/
 
+# Disposable scenarios created by scripts/preview-aric.py.
+/assets/scenarios/aric_preview_*/
+
 # The map editor's Python environment and bytecode. Its dependencies are declared in
 # tools/requirements.txt and installed by scripts/map-editor.sh setup.
 /tools/.venv/

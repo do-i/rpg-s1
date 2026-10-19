@@ -63,6 +63,8 @@ pub(crate) struct SavePayload {
     pub map: SaveMap,
     pub opened_boxes: Vec<SaveOpenedBox>,
     pub controlled_member_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protagonist_sprite_variant: Option<String>,
     pub rng_state: u64,
     pub playtime_seconds: u64,
 }
@@ -301,6 +303,7 @@ impl SavePayload {
                 })
                 .collect(),
             controlled_member_id: game.controlled_member_id().to_owned(),
+            protagonist_sprite_variant: game.protagonist_sprite_variant().map(str::to_owned),
             rng_state: game.rng().state(),
             playtime_seconds: game.playtime().to_seconds(),
         })
@@ -366,7 +369,7 @@ impl SavePayload {
                 ));
             }
         }
-        GameState::try_from_parts(GameStateParts {
+        let mut game = GameState::try_from_parts(GameStateParts {
             flags: RuntimeFlags::from_bootstrap(flags),
             party,
             repository,
@@ -376,7 +379,10 @@ impl SavePayload {
             rng: GameplayRng::from_state(self.rng_state),
             playtime: Playtime::from_seconds(self.playtime_seconds),
         })
-        .map_err(invalid)
+        .map_err(invalid)?;
+        game.set_protagonist_sprite_variant(self.protagonist_sprite_variant)
+            .map_err(invalid)?;
+        Ok(game)
     }
 }
 
@@ -667,6 +673,40 @@ pub(crate) mod tests {
                 .unwrap();
 
         assert_eq!(restored.party().member("aric").unwrap().tactics(), tactics);
+    }
+
+    #[test]
+    fn sprite_variants_round_trip_while_older_saves_keep_the_default() {
+        let mut game = fixture_game();
+        for choice in [None, Some("classic"), Some("traveler")] {
+            game.set_protagonist_sprite_variant(choice.map(str::to_owned))
+                .unwrap();
+            let encoded = NativeSaveEnvelope::from_game_state(
+                &game,
+                "my_rpg_story",
+                "1.0.0",
+                1_700_000_000,
+                "Starting Forest",
+            )
+            .unwrap()
+            .encode()
+            .unwrap();
+            assert_eq!(
+                String::from_utf8_lossy(&encoded).contains("protagonist_sprite_variant:"),
+                choice.is_some()
+            );
+            let (_, restored) =
+                NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                    .unwrap();
+            assert_eq!(restored.protagonist_sprite_variant(), choice);
+            assert_eq!(
+                SavePayload::from_game_state(&restored).unwrap(),
+                SavePayload::from_game_state(&game).unwrap()
+            );
+        }
+        let mut payload = SavePayload::from_game_state(&game).unwrap();
+        payload.protagonist_sprite_variant = Some("../../outside".to_owned());
+        assert!(payload.into_game_state(&fixture_balance()).is_err());
     }
 
     #[test]

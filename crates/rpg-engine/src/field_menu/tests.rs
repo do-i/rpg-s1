@@ -1611,6 +1611,71 @@ fn menu_input_app(game: GameState, state: FieldMenuState) -> App {
 }
 
 #[test]
+fn character_sprite_choice_is_previewed_then_confirmed_or_cancelled() {
+    let inventory = crate::scenario_inventory::ScenarioInventory::discover(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets"),
+        &crate::scenario_root::ScenarioRoot::default(),
+    );
+    let mut app = menu_input_app(
+        fixture_game_with_recruit(),
+        FieldMenuState {
+            open: true,
+            selected: CHARACTER_COMMAND_INDEX,
+            ..default()
+        },
+    );
+    app.insert_resource(inventory);
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::ArrowRight);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 1);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        None
+    );
+    tap(&mut app, KeyCode::Escape);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        None
+    );
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 0);
+    tap(&mut app, KeyCode::ArrowLeft);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 2);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        Some("traveler")
+    );
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 2);
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        None
+    );
+    // Selecting another member keeps the protagonist's appearance independent.
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::ArrowDown);
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    let game = app.world().resource::<GameState>();
+    assert_eq!(game.controlled_member_id(), "elise");
+    assert_eq!(game.protagonist_sprite_variant(), Some("classic"));
+}
+
+#[test]
 fn rejected_options_survive_every_field_menu_battle_setting_change() {
     let root = std::env::temp_dir().join(format!("rpg-s1-rf04-field-{}", std::process::id()));
     std::fs::create_dir_all(&root).unwrap();
