@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.10" tiledversion="1.12.1" name="floor" tilewidth="32" tileheight="32" tilecount="112" columns="16">
- <image source="floor.png" width="512" height="224" />
+<tileset version="1.10" tiledversion="1.12.1" name="floor" tilewidth="32" tileheight="32" tilecount="192" columns="16">
+ <image source="floor.png" width="512" height="384" />
  <tile id="0">
   <properties>
    <property name="desc" value="interior tile 21" />
@@ -489,6 +489,206 @@
  <tile id="107">
   <properties>
    <property name="desc" value="terrain-v7 tile 2017" />
+  </properties>
+ </tile>
+ <tile id="112">
+  <properties>
+   <property name="desc" value="white hexagon mark row 1, column 1" />
+  </properties>
+ </tile>
+ <tile id="113">
+  <properties>
+   <property name="desc" value="white hexagon mark row 1, column 2" />
+  </properties>
+ </tile>
+ <tile id="114">
+  <properties>
+   <property name="desc" value="white hexagon mark row 1, column 3" />
+  </properties>
+ </tile>
+ <tile id="116">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 1, column 1" />
+  </properties>
+ </tile>
+ <tile id="117">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 1, column 2" />
+  </properties>
+ </tile>
+ <tile id="118">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 1, column 3" />
+  </properties>
+ </tile>
+ <tile id="120">
+  <properties>
+   <property name="desc" value="rope bridge row 1, column 1" />
+  </properties>
+ </tile>
+ <tile id="121">
+  <properties>
+   <property name="desc" value="rope bridge row 1, column 2" />
+  </properties>
+ </tile>
+ <tile id="122">
+  <properties>
+   <property name="desc" value="rope bridge row 1, column 3" />
+  </properties>
+ </tile>
+ <tile id="128">
+  <properties>
+   <property name="desc" value="white hexagon mark row 2, column 1" />
+  </properties>
+ </tile>
+ <tile id="129">
+  <properties>
+   <property name="desc" value="white hexagon mark row 2, column 2" />
+  </properties>
+ </tile>
+ <tile id="130">
+  <properties>
+   <property name="desc" value="white hexagon mark row 2, column 3" />
+  </properties>
+ </tile>
+ <tile id="132">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 2, column 1" />
+  </properties>
+ </tile>
+ <tile id="133">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 2, column 2" />
+  </properties>
+ </tile>
+ <tile id="134">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 2, column 3" />
+  </properties>
+ </tile>
+ <tile id="136">
+  <properties>
+   <property name="desc" value="rope bridge row 2, column 1" />
+  </properties>
+ </tile>
+ <tile id="137">
+  <properties>
+   <property name="desc" value="rope bridge row 2, column 2" />
+  </properties>
+ </tile>
+ <tile id="138">
+  <properties>
+   <property name="desc" value="rope bridge row 2, column 3" />
+  </properties>
+ </tile>
+ <tile id="144">
+  <properties>
+   <property name="desc" value="white hexagon mark row 3, column 1" />
+  </properties>
+ </tile>
+ <tile id="145">
+  <properties>
+   <property name="desc" value="white hexagon mark row 3, column 2" />
+  </properties>
+ </tile>
+ <tile id="146">
+  <properties>
+   <property name="desc" value="white hexagon mark row 3, column 3" />
+  </properties>
+ </tile>
+ <tile id="148">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 3, column 1" />
+  </properties>
+ </tile>
+ <tile id="149">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 3, column 2" />
+  </properties>
+ </tile>
+ <tile id="150">
+  <properties>
+   <property name="desc" value="cyan hexagon mark row 3, column 3" />
+  </properties>
+ </tile>
+ <tile id="152">
+  <properties>
+   <property name="desc" value="rope bridge row 3, column 1" />
+  </properties>
+ </tile>
+ <tile id="153">
+  <properties>
+   <property name="desc" value="rope bridge row 3, column 2" />
+  </properties>
+ </tile>
+ <tile id="154">
+  <properties>
+   <property name="desc" value="rope bridge row 3, column 3" />
+  </properties>
+ </tile>
+ <tile id="160">
+  <properties>
+   <property name="desc" value="cave terrain section 19" />
+  </properties>
+ </tile>
+ <tile id="161">
+  <properties>
+   <property name="desc" value="cave terrain section 20" />
+  </properties>
+ </tile>
+ <tile id="163">
+  <properties>
+   <property name="desc" value="cave terrain section 94" />
+  </properties>
+ </tile>
+ <tile id="164">
+  <properties>
+   <property name="desc" value="cave terrain section 95" />
+  </properties>
+ </tile>
+ <tile id="166">
+  <properties>
+   <property name="desc" value="cave terrain section 88" />
+  </properties>
+ </tile>
+ <tile id="167">
+  <properties>
+   <property name="desc" value="cave terrain section 89" />
+  </properties>
+ </tile>
+ <tile id="176">
+  <properties>
+   <property name="desc" value="cave terrain section 31" />
+  </properties>
+ </tile>
+ <tile id="177">
+  <properties>
+   <property name="desc" value="cave terrain section 32" />
+  </properties>
+ </tile>
+ <tile id="179">
+  <properties>
+   <property name="desc" value="cave terrain section 106" />
+  </properties>
+ </tile>
+ <tile id="180">
+  <properties>
+   <property name="desc" value="cave terrain section 107" />
+  </properties>
+ </tile>
+ <tile id="182">
+  <properties>
+   <property name="desc" value="cave terrain section 112" />
+  </properties>
+ </tile>
+ <tile id="183">
+  <properties>
+   <property name="desc" value="cave terrain section 113" />
+  </properties>
+ </tile>
+ <tile id="184">
+  <properties>
+   <property name="desc" value="cave terrain section 114" />
   </properties>
  </tile>
  <wangsets>

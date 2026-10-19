@@ -1,7 +1,7 @@
 Floor atlas consolidation, 2026-10-19
 
 floor.png contains 56 unaltered 32x32 tiles selected from the LPC terrain-v7
-atlas, plus 42 project-authored tiles from interior, town, outdoor, cave and
+atlas, plus 82 project-authored tiles from interior, town, outdoor, cave and
 shrine_props. Tiles were rearranged without changing their pixels. The
 corresponding source slots were cleared, and map/stamp references updated.
 
@@ -21,3 +21,8 @@ notice retained for its project-authored components.
 terrain-v7.png retains its original dimensions and remaining artwork; the 56
 tiles now in floor.png have transparent source slots. The associated Wang
 terrain rules were transferred to floor.tsx for those tiles.
+
+Additional consolidation, 2026-10-19: the remaining cave terrain, white and
+cyan hexagon floor marks, and rope bridge moved here without pixel changes.
+The emptied cave and decor sheets were retired. Their original project-
+authored artwork retains its MIT notice; preserve the root LICENSE.
