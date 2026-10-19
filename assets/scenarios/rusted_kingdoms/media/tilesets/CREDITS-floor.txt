@@ -1,0 +1,23 @@
+Floor atlas consolidation, 2026-10-19
+
+floor.png contains 56 unaltered 32x32 tiles selected from the LPC terrain-v7
+atlas, plus 42 project-authored tiles from interior, town, outdoor, cave and
+shrine_props. Tiles were rearranged without changing their pixels. The
+corresponding source slots were cleared, and map/stamp references updated.
+
+The LPC artwork is distributed under Creative Commons Attribution-ShareAlike
+3.0 Unported (CC-BY-SA-3.0):
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Preserve CREDITS-terrain.txt beside this notice, unchanged. It contains the
+complete original creator, component-title, license and source-link record.
+All LPC creators listed there remain credited for the selected terrain tiles.
+
+The project-authored artwork is by Joji Doi / AI agents and was originally
+published under the repository's MIT license. Preserve the root LICENSE.
+The combined floor.png atlas is distributed under CC-BY-SA-3.0, with the MIT
+notice retained for its project-authored components.
+
+terrain-v7.png retains its original dimensions and remaining artwork; the 56
+tiles now in floor.png have transparent source slots. The associated Wang
+terrain rules were transferred to floor.tsx for those tiles.
