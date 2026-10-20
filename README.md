@@ -290,13 +290,25 @@ This list describes implemented systems, not final campaign acceptance. Active
 acceptance evidence and blockers are maintained locally under the ignored
 `plans/` directory.
 
-## Licensing and credits
+
+## License
+
+The source code, scripts, and build configurations of **rpg-s1** are licensed under the [MIT License](LICENSE).
+
+This project contains third-party assets that are governed by a separate license:
+* **Assets License:** The terrain tileset file (`assets/.../terrain-v7.png`) is licensed under the [Creative Commons Attribution-ShareAlike 3.0 Unported (CC-BY-SA 3.0)](https://creativecommons.org) license. Any direct modifications to this asset file must be shared under these same terms.
+
+## Credits
 
 Code is [MIT](LICENSE). Assets keep their own terms. The single source of truth
 for every asset's provenance, license, and release status is
 [`docs/asset-license-inventory.md`](docs/asset-license-inventory.md); required
 notices (OFL, CC BY-SA attributions) ship beside the files they cover. Many
 assets are still blocked, so do not redistribute the asset bundle yet.
+
+### Third-Party Assets
+
+* **[LPC] Terrains** (`assets/.../terrain-v7.png`): Created by bluecarrot16, Lanea Zimmerman (Sharm), Daniel Eddeland (Daneeklu), Richard Kettering (Jetrel), Zachariah Husiar (Zabin), Hyptosis, Casper Nilsson, Buko Studios, Nushio, ZaPaper, billknye, William Thompson, caeles, Redshrike, Bertram, and Rayane Félix (RayaneFLX). Available on [OpenGameArt](https://opengameart.org).
 
 ### Development assistance
 
