@@ -107,7 +107,7 @@ def build_portal_graph(
                 has_apothecary=meta["has_apothecary"],
                 has_magic_core_shop=meta["has_magic_core_shop"],
                 npcs=meta["npcs"],
-                item_boxes=meta["item_boxes"],
+                item_boxes=tmx_info["item_boxes"] if tmx_info["item_boxes"] is not None else meta["item_boxes"],
                 encounter=meta["encounter"],
                 transport=meta["transport"],
                 map_size_px=(tmx_info["map_w_px"], tmx_info["map_h_px"]),
@@ -221,10 +221,24 @@ def _read_tmx_info(tmx_path: Path) -> dict:
             "map_w_px": 0,
             "map_h_px": 0,
             "portals": [],
+            "item_boxes": None,
         }
     portals: list[dict] = []
+    boxes: list[ItemBoxMeta] | None = None
     for layer in tmx.layers:
         if not isinstance(layer, pytmx.TiledObjectGroup):
+            continue
+        if layer.name == "item_boxes":
+            # PyTMX normalizes tile-object anchors to top-left pixel coordinates.
+            boxes = [
+                ItemBoxMeta(
+                    box_id=str(obj.name or f"object_{obj.id}"),
+                    position=(int((obj.x + obj.width / 2) // tmx.tilewidth),
+                              int((obj.y + obj.height / 2) // tmx.tileheight)),
+                    sprite=None,
+                )
+                for obj in layer
+            ]
             continue
         if layer.name != "portals":
             continue
@@ -253,4 +267,5 @@ def _read_tmx_info(tmx_path: Path) -> dict:
         "map_w_px": tmx.width * tmx.tilewidth,
         "map_h_px": tmx.height * tmx.tileheight,
         "portals": portals,
+        "item_boxes": tuple(boxes) if boxes is not None else None,
     }

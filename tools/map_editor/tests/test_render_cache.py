@@ -82,6 +82,36 @@ class RenderCacheTests(unittest.TestCase):
         for directory in (self.cache._cache_dir, self.cache._full_cache_dir):
             self.assertFalse(list(directory.glob('*.png')))
 
+    def test_chest_objects_supply_editor_positions_and_respect_foreground(self):
+        from tools.map_editor.graph.portal_graph import build_portal_graph
+
+        root = ET.parse(self.path).getroot()
+        layer = ET.Element('objectgroup', id='90', name='item_boxes')
+        for ident, name, x, y in [('91', 'one', '31', '63'), ('92', 'two', '64', '32')]:
+            obj = ET.SubElement(layer, 'object', id=ident, name=name, gid='2',
+                                x=x, y=y, width='32', height='32')
+            props = ET.SubElement(obj, 'properties')
+            ET.SubElement(props, 'property', name='item_box_id', value='supplies')
+        foreground = root.find("layer[@name='foreground']")
+        if foreground is None:
+            foreground = ET.SubElement(root, 'layer', id='94', name='foreground', width='4', height='4')
+            ET.SubElement(foreground, 'data', encoding='csv')
+            root.set('nextlayerid', '95')
+        root.insert(list(root).index(foreground), layer)
+        gids = ['0'] * 16
+        gids[5] = '1'
+        foreground.find('data').text = ','.join(gids)
+        self.path.write_bytes(ET.tostring(root))
+
+        surface = pygame.Surface((128, 128), pygame.SRCALPHA)
+        TileRenderer(self.path).render(surface)
+        self.assertEqual(tuple(surface.get_at((31, 31))), GREEN)
+        self.assertEqual(tuple(surface.get_at((32, 32))), RED)
+        self.assertEqual(tuple(surface.get_at((64, 0))), GREEN)
+        node = build_portal_graph([self.path], lambda _: None).nodes[0]
+        self.assertEqual([(box.box_id, box.position) for box in node.item_boxes],
+                         [('one', (1, 1)), ('two', (2, 0))])
+
     def test_long_lived_cache_tracks_tmx_tsx_and_same_timestamp_image(self):
         self.assert_pixels(RED)
         old = self.both_files()
