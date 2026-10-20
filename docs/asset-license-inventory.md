@@ -1004,7 +1004,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0930 | author / AI agents | `assets/README.md` | `eac7db3607e90c3aec5bf994b05ba75c4a5d5e06f80cd9be915e29749aa0882c` | markdown / README.md |
 | ALI-0026 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/audio/bgm_index.yaml` | `13ef5861ab5ed1298d5eed7cb6490fea883e1c3cf11dcdd99d13bc7e846da572` | scenario audio-index YAML / Rusted Kingdoms BGM index |
 | ALI-0069 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/audio/sfx_index.yaml` | `4eec9fa7a1cbab42d6911d5d2e419fafeb381ec50dfb9e6789e97d783b8349d5` | scenario YAML / sfx_index.yaml |
-| ALI-0021 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/balance.yaml` | `6aba77a84c85aac323af3ceea7c7340d2ddcc8395e112b32953f4d2fb5a4fe80` | scenario YAML / Rusted Kingdoms balance data |
+| ALI-0021 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/balance.yaml` | `253f70f4ffdf5059bcf59f3aa23155134003acf021b6dd3376c1a3901bca2a53` | scenario YAML / Rusted Kingdoms balance data |
 | ALI-0112 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/battle_backgrounds.yaml` | `483aa5150c74fc5c3acc060b4a7622d012ad1018e6407c346bad186e564ffdee` | scenario YAML / battle-background catalog |
 | ALI-0084 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/classes/cleric.yaml` | `8168a37e564be1a6151956b2b49b3733dd91532dbe27588eba518f919a06a650` | scenario YAML / cleric class |
 | ALI-0085 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/classes/hero.yaml` | `bbb45da4d8efd0dcd5f608fafaff52b501e6cbc19d4927074440641971cfb7ae` | scenario YAML / hero.yaml |
