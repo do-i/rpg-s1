@@ -56,3 +56,14 @@ grouped below. Former tiles 3, 4, 5 and 15 moved to last-row IDs 176-179 for
 replacement review. Map/stamp references and tile properties were remapped,
 including tile flips; all 50 affected maps and both bridge stamp previews
 remain pixel-identical. See docs/floor-tileset.md for the layout and usage.
+
+Rock-building extension and floor moves, 2026-10-20: retained sandy tile 179
+moved losslessly to 22; rubble tiles 108-110 moved to 131-133. The rock object
+was extended to a 3x3 selection at rows 68-70, 84-86 and 100-102. Existing right
+pieces 85/101 moved to 86/102. Five new AI-generated, author-directed tiles
+(68, 69, 70, 85, 101) close the top and fill both center cells; the original
+four pieces retain their pixels. New artwork was normalized to the original
+palette and binary transparency, with joining strips aligned to the retained
+pieces. The atlas now has 86 visible tiles. Project-authored additions retain
+the existing authored-art MIT notice within the combined atlas distribution.
+The generation request and layout are recorded in docs/floor-tileset.md.

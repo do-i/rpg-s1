@@ -96,6 +96,11 @@
    <property name="desc" value="shrine_props tile 86" />
   </properties>
  </tile>
+ <tile id="22">
+  <properties>
+   <property name="desc" value="town tile 152" />
+  </properties>
+ </tile>
  <tile id="32">
   <properties>
    <property name="desc" value="shrine_props tile 90" />
@@ -216,6 +221,21 @@
    <property name="desc" value="rope bridge row 2, column 3" />
   </properties>
  </tile>
+ <tile id="68">
+  <properties>
+   <property name="desc" value="rock building: top left cap" />
+  </properties>
+ </tile>
+ <tile id="69">
+  <properties>
+   <property name="desc" value="rock building: top center cap" />
+  </properties>
+ </tile>
+ <tile id="70">
+  <properties>
+   <property name="desc" value="rock building: top right cap" />
+  </properties>
+ </tile>
  <tile id="71">
   <properties>
    <property name="desc" value="white hexagon mark row 3, column 1" />
@@ -283,6 +303,11 @@
  </tile>
  <tile id="85">
   <properties>
+   <property name="desc" value="rock building: middle center inset" />
+  </properties>
+ </tile>
+ <tile id="86">
+  <properties>
    <property name="desc" value="cave terrain section 20" />
   </properties>
  </tile>
@@ -328,6 +353,11 @@
  </tile>
  <tile id="101">
   <properties>
+   <property name="desc" value="rock building: bottom center masonry" />
+  </properties>
+ </tile>
+ <tile id="102">
+  <properties>
    <property name="desc" value="cave terrain section 32" />
   </properties>
  </tile>
@@ -339,21 +369,6 @@
  <tile id="105">
   <properties>
    <property name="desc" value="cave terrain section 107" />
-  </properties>
- </tile>
- <tile id="108">
-  <properties>
-   <property name="desc" value="cave terrain section 112" />
-  </properties>
- </tile>
- <tile id="109">
-  <properties>
-   <property name="desc" value="cave terrain section 113" />
-  </properties>
- </tile>
- <tile id="110">
-  <properties>
-   <property name="desc" value="cave terrain section 114" />
   </properties>
  </tile>
  <tile id="112">
@@ -386,6 +401,21 @@
    <property name="desc" value="cave tile 80" />
   </properties>
  </tile>
+ <tile id="131">
+  <properties>
+   <property name="desc" value="cave terrain section 112" />
+  </properties>
+ </tile>
+ <tile id="132">
+  <properties>
+   <property name="desc" value="cave terrain section 113" />
+  </properties>
+ </tile>
+ <tile id="133">
+  <properties>
+   <property name="desc" value="cave terrain section 114" />
+  </properties>
+ </tile>
  <tile id="176">
   <properties>
    <property name="desc" value="dark grass" />
@@ -399,11 +429,6 @@
  <tile id="178">
   <properties>
    <property name="desc" value="grass alt" />
-  </properties>
- </tile>
- <tile id="179">
-  <properties>
-   <property name="desc" value="town tile 152" />
   </properties>
  </tile>
 </tileset>
