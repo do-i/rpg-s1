@@ -895,7 +895,7 @@ mod tests {
                 bundle.tile.layer_id() == 3 && bundle.tile.column() == 18 && bundle.tile.row() == 3
             })
             .expect("source H+D transformed floor tile should render");
-        assert_eq!(transformed.tile.local_id(), 1);
+        assert_eq!(transformed.tile.local_id(), 3);
         assert_eq!(
             transformed
                 .sprite
@@ -919,14 +919,14 @@ mod tests {
         let mut app = ground_app();
         let map_handle = load_ardel(&mut app);
 
-        let (bundles, floor_first_gid) = {
+        let (bundles, terrain_first_gid) = {
             let maps = app.world().resource::<Assets<TmxGroundAsset>>();
             let map = maps.get(&map_handle).unwrap();
-            let floor_first_gid = map
+            let terrain_first_gid = map
                 .document()
                 .external_tilesets()
                 .iter()
-                .find(|reference| reference.source().as_str() == "media/tilesets/floor.tsx")
+                .find(|reference| reference.source().as_str() == "media/tilesets/terrain-v7.tsx")
                 .unwrap()
                 .first_gid();
             let header = map.document().header();
@@ -936,7 +936,7 @@ mod tests {
             assert_eq!(map.ground_layer().name(), GROUND_LAYER_NAME);
             assert_eq!(map.ground_layer().gids().len(), 1100);
             assert!(map.ground_layer().gids().iter().all(|gid| {
-                [floor_first_gid + 74, floor_first_gid + 75].contains(&gid.global_id())
+                [terrain_first_gid + 1866, terrain_first_gid + 1867].contains(&gid.global_id())
             }));
             let atlas_paths = map
                 .atlas_handles()
@@ -948,7 +948,6 @@ mod tests {
                 [
                     OUTDOOR_TSX_ASSET_PATH.to_owned(),
                     SHOP_TSX_ASSET_PATH.to_owned(),
-                    FLOOR_TSX_ASSET_PATH.to_owned(),
                     WALL_TSX_ASSET_PATH.to_owned(),
                     WINDOWS_TSX_ASSET_PATH.to_owned(),
                     TERRAIN_TSX_ASSET_PATH.to_owned(),
@@ -959,7 +958,7 @@ mod tests {
                 .collect()
             );
             let atlases = app.world().resource::<Assets<TsxAtlasAsset>>();
-            (map.ground_bundles(atlases).unwrap(), floor_first_gid)
+            (map.ground_bundles(atlases).unwrap(), terrain_first_gid)
         };
         assert_eq!(bundles.len(), 1100);
         app.world_mut().spawn_batch(bundles);
@@ -968,8 +967,8 @@ mod tests {
         let mut query = world.query::<(&StaticMapTile, &Sprite, &Transform)>();
         assert_eq!(query.iter(world).count(), 1100);
         for (tile, sprite, transform) in query.iter(world) {
-            assert!(matches!(tile.local_id(), 74 | 75));
-            assert_eq!(tile.global_id(), floor_first_gid + tile.local_id());
+            assert!(matches!(tile.local_id(), 1866 | 1867));
+            assert_eq!(tile.global_id(), terrain_first_gid + tile.local_id());
             assert_eq!(tile.layer_index(), 1);
             assert_eq!(tile.layer_id(), 1);
             let expected = tmx_tile_center(tile.column(), tile.row(), 32, 32);
@@ -981,7 +980,7 @@ mod tests {
             assert_eq!(atlas.index, tile.local_id() as usize);
             assert_eq!(
                 sprite.image.path().unwrap().path().to_string_lossy(),
-                FLOOR_IMAGE_ASSET_PATH
+                scenario_asset!("media/tilesets/terrain-v7.png")
             );
         }
 
@@ -989,7 +988,7 @@ mod tests {
         let image_handle = query.iter(world).next().unwrap().1.image.clone();
         assert_eq!(
             images.get(&image_handle).unwrap().size(),
-            UVec2::new(512, 384)
+            UVec2::new(1024, 2048)
         );
         let bottom_right = query
             .iter(world)

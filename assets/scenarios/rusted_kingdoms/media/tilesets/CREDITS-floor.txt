@@ -1,9 +1,10 @@
 Floor atlas consolidation, 2026-10-19
 
-floor.png contains 56 unaltered 32x32 tiles selected from the LPC terrain-v7
-atlas, plus 81 project-authored tiles from interior, town, outdoor, cave and
-shrine_props. Tiles were rearranged without changing their pixels. The
-corresponding source slots were cleared, and map/stamp references updated.
+floor.png now contains 81 project-authored 32x32 tiles from interior, town,
+outdoor, cave and shrine_props. All 56 LPC terrain tiles originally selected
+for this atlas have been removed from floor.png in two duplicate-removal
+passes. Maps now use the pixel-identical tiles in terrain-v7.png. During duplicate removal,
+the floor atlas dimensions, remaining IDs and remaining pixels were unchanged.
 
 The LPC artwork is distributed under Creative Commons Attribution-ShareAlike
 3.0 Unported (CC-BY-SA-3.0):
@@ -11,16 +12,17 @@ https://creativecommons.org/licenses/by-sa/3.0/
 
 Preserve CREDITS-terrain.txt beside this notice, unchanged. It contains the
 complete original creator, component-title, license and source-link record.
-All LPC creators listed there remain credited for the selected terrain tiles.
+All LPC creators listed there remain credited for the terrain tiles, now
+referenced directly from terrain-v7.png.
 
 The project-authored artwork is by Joji Doi / AI agents and was originally
 published under the repository's MIT license. Preserve the root LICENSE.
 The combined floor.png atlas is distributed under CC-BY-SA-3.0, with the MIT
 notice retained for its project-authored components.
 
-terrain-v7.png retains its original dimensions and remaining artwork; the 56
-tiles now in floor.png have transparent source slots. The associated Wang
-terrain rules were transferred to floor.tsx for those tiles.
+terrain-v7.png was restored by the repository owner to its original image
+on 2026-10-20. Its SHA-256 matches the recorded original LPC source. All
+terrain Wang rules formerly in floor.tsx now use terrain-v7.tsx tile IDs.
 
 Additional consolidation, 2026-10-19: the remaining cave terrain, white and
 cyan hexagon floor marks, and rope bridge moved here without pixel changes.
@@ -31,3 +33,26 @@ Outdoor cave-entrance base returned to outdoor.png, 2026-10-19: floor tile 6
 (original outdoor tile 78) moved losslessly to outdoor tile 117. Its old floor
 slot was cleared and map/stamp references updated; the authored-art MIT
 notice is unchanged. All LPC tiles and their attribution remain unchanged.
+
+Duplicate removal, 2026-10-19: 25 floor tiles had pixel-identical copies in
+remaining terrain-v7.png slots. Only those 25 floor slots were cleared; the
+remaining 112 visible tiles retain their positions and pixels. All affected
+map references now use the existing terrain-v7 copies, preserving tile flips
+and map rendering. Their 21 Wang rules were transferred to terrain-v7.tsx,
+reusing two existing identical rules. terrain-v7.png itself is unchanged.
+
+Further duplicate removal, 2026-10-20: the restored original terrain-v7.png
+revealed 31 additional exact matches. Only those 31 floor slots were cleared;
+16,586 placements across 19 maps now use terrain-v7 IDs, preserving tile
+flips. All 19 before/after map renders are pixel-identical. The remaining
+27 floor Wang rules and their color-preview references moved to terrain-v7.tsx.
+The restored terrain-v7.png was not edited during this removal.
+
+Layout reorganization, 2026-10-20: all 81 remaining tiles were rearranged
+without changing their pixels. Wood textures occupy row 1, with former tiles
+14 and 30 at IDs 0 and 1. Stone flagstones follow in 2x2 blocks. Hex-circle
+marks and the rope bridge begin on row 3; cave ground and stone details are
+grouped below. Former tiles 3, 4, 5 and 15 moved to last-row IDs 176-179 for
+replacement review. Map/stamp references and tile properties were remapped,
+including tile flips; all 50 affected maps and both bridge stamp previews
+remain pixel-identical. See docs/floor-tileset.md for the layout and usage.
