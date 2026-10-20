@@ -86,24 +86,9 @@
    <property name="desc" value="iron banded plank door top" />
   </properties>
  </tile>
- <tile id="17">
-  <properties>
-   <property name="desc" value="wooden door panel top" />
-  </properties>
- </tile>
- <tile id="18">
-  <properties>
-   <property name="desc" value="door lintel trim" />
-  </properties>
- </tile>
  <tile id="24">
   <properties>
    <property name="desc" value="iron banded plank door bottom" />
-  </properties>
- </tile>
- <tile id="25">
-  <properties>
-   <property name="desc" value="wooden door panel bottom" />
   </properties>
  </tile>
 </tileset>
