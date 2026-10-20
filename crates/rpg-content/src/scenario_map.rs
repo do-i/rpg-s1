@@ -65,8 +65,7 @@ impl MapMetadata {
         self.id.as_deref().unwrap_or(filename_stem)
     }
 
-    /// Metadata for a `data/maps/<id>.yaml` that legitimately does not exist (a TMX-only map,
-    /// e.g. `zone_02_open_plains_cave_01`).
+    /// Metadata for a `data/maps/<id>.yaml` that legitimately does not exist (a TMX-only map).
     ///
     /// Mirrors the pinned Python engine's `load_yaml_optional(path) or {}`
     /// (`engine/world/world_map_init.py`): a missing per-map YAML is a valid runtime state, not a

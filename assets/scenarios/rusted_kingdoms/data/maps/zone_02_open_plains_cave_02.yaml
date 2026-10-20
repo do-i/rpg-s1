@@ -1,3 +1,31 @@
 id: zone_02_open_plains_cave_02
 name: Open Plains Cave
 bgm: zone.dark
+
+enemy_spawn:
+  init: 3
+  max: 5
+  interval: 28.0
+
+item_boxes:
+  - id: plains_cave_02_chest_01
+    position: [16, 7]
+    loot:
+      items:
+        - id: potion
+          qty: 2
+  - id: plains_cave_02_chest_02
+    position: [39, 10]
+    loot:
+      items:
+        - id: antidote
+          qty: 2
+  - id: plains_cave_02_chest_03
+    position: [51, 24]
+    loot:
+      items:
+        - id: ether
+          qty: 1
+      magic_cores:
+        - size: s
+          qty: 2

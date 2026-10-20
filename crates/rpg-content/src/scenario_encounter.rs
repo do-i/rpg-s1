@@ -343,10 +343,10 @@ mod tests {
             zones.push(zone);
         }
 
-        assert_eq!(files.len(), 19);
+        assert_eq!(files.len(), 21);
         assert_eq!(
             zones.iter().map(|zone| zone.entries.len()).sum::<usize>(),
-            147
+            153
         );
         assert_eq!(zones.iter().filter(|zone| zone.boss.is_some()).count(), 11);
         assert_eq!(
@@ -361,7 +361,7 @@ mod tests {
                 .iter()
                 .filter(|zone| zone.spawn_frequency.is_some())
                 .count(),
-            2
+            4
         );
         assert_eq!(
             zones
@@ -369,7 +369,7 @@ mod tests {
                 .flat_map(|zone| zone.entries.iter())
                 .filter(|entry| entry.chase_range > 0)
                 .count(),
-            15
+            21
         );
         assert_eq!(
             zones
@@ -377,7 +377,7 @@ mod tests {
                 .flat_map(|zone| zone.entries.iter())
                 .filter(|entry| entry.enemy_ids.len() == 1)
                 .count(),
-            65
+            69
         );
         assert_eq!(
             zones
@@ -385,7 +385,7 @@ mod tests {
                 .flat_map(|zone| zone.entries.iter())
                 .filter(|entry| entry.enemy_ids.len() == 2)
                 .count(),
-            80
+            82
         );
         assert_eq!(
             zones
