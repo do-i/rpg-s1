@@ -3111,8 +3111,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 365);
-        assert_eq!(distinct_sources.len(), 13);
+        assert_eq!(reference_count, 439);
+        assert_eq!(distinct_sources.len(), 14);
     }
 
     #[test]
@@ -3171,6 +3171,7 @@ mod tests {
                             | "foreground"
                             | "collision"
                             | "spawn_tile"
+                            | "item_boxes"
                     ),
                     "{logical}: unapproved layer {}",
                     layer.name()
@@ -3180,7 +3181,7 @@ mod tests {
                     "{logical}: duplicate layer {}",
                     layer.name()
                 );
-                if matches!(layer.name(), "collision" | "spawn_tile") {
+                if matches!(layer.name(), "collision" | "spawn_tile" | "item_boxes") {
                     assert!(
                         !layer.visible(),
                         "{logical}: {} is semantic data",

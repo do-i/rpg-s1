@@ -142,7 +142,7 @@ pub(super) fn drive_active_encounter_assets(
         if !inventory.has_encounter_zone(&map_id) {
             // Matches the pinned engine's `EncounterManager.set_zone`: a map with no
             // `data/encount/<id>.yaml` has encounters disabled ("towns, inns — encounters
-            // disabled") even when spawn tiles are painted (e.g. `zone_02_open_plains_cave_02`).
+            // disabled") even when spawn tiles are painted.
             // Deciding from the inventory avoids requesting a file the asset server would log as
             // missing on every town and inn arrival.
             state.status = WorldEncounterStatus::NoEncounters;

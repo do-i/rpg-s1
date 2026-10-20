@@ -1,0 +1,16 @@
+id: zone_02_open_plains_cave_02
+name: Open Plains Cave
+background: zone2-bg-1280x468
+density: 0.35
+spawn_frequency: 28.0
+
+entries:
+  - formation: [mouse_thief_base]
+    weight: 40
+    chase_range: 2
+  - formation: [mouse_thief_base, mouse_thief_white_mouse]
+    weight: 35
+    chase_range: 2
+  - formation: [rabbit_bandit_knife_bandit]
+    weight: 25
+    chase_range: 2
