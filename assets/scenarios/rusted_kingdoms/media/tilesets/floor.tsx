@@ -221,21 +221,6 @@
    <property name="desc" value="rope bridge row 2, column 3" />
   </properties>
  </tile>
- <tile id="68">
-  <properties>
-   <property name="desc" value="rock building: top left cap" />
-  </properties>
- </tile>
- <tile id="69">
-  <properties>
-   <property name="desc" value="rock building: top center cap" />
-  </properties>
- </tile>
- <tile id="70">
-  <properties>
-   <property name="desc" value="rock building: top right cap" />
-  </properties>
- </tile>
  <tile id="71">
   <properties>
    <property name="desc" value="white hexagon mark row 3, column 1" />
@@ -296,19 +281,19 @@
    <property name="desc" value="cave tile 5" />
   </properties>
  </tile>
+ <tile id="83">
+  <properties>
+   <property name="desc" value="rock building: top left cap" />
+  </properties>
+ </tile>
  <tile id="84">
   <properties>
-   <property name="desc" value="cave terrain section 19" />
+   <property name="desc" value="rock building: top center cap" />
   </properties>
  </tile>
  <tile id="85">
   <properties>
-   <property name="desc" value="rock building: middle center inset" />
-  </properties>
- </tile>
- <tile id="86">
-  <properties>
-   <property name="desc" value="cave terrain section 20" />
+   <property name="desc" value="rock building: top right cap" />
   </properties>
  </tile>
  <tile id="88">
@@ -321,14 +306,19 @@
    <property name="desc" value="cave terrain section 95" />
   </properties>
  </tile>
- <tile id="92">
-  <properties>
-   <property name="desc" value="cave terrain section 88" />
-  </properties>
- </tile>
  <tile id="93">
   <properties>
-   <property name="desc" value="cave terrain section 89" />
+   <property name="desc" value="vertical rope bridge row 1, column 1" />
+  </properties>
+ </tile>
+ <tile id="94">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 1, column 2" />
+  </properties>
+ </tile>
+ <tile id="95">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 1, column 3" />
   </properties>
  </tile>
  <tile id="96">
@@ -346,19 +336,19 @@
    <property name="desc" value="cave tile 17" />
   </properties>
  </tile>
+ <tile id="99">
+  <properties>
+   <property name="desc" value="cave terrain section 19" />
+  </properties>
+ </tile>
  <tile id="100">
   <properties>
-   <property name="desc" value="cave terrain section 31" />
+   <property name="desc" value="rock building: middle center inset" />
   </properties>
  </tile>
  <tile id="101">
   <properties>
-   <property name="desc" value="rock building: bottom center masonry" />
-  </properties>
- </tile>
- <tile id="102">
-  <properties>
-   <property name="desc" value="cave terrain section 32" />
+   <property name="desc" value="cave terrain section 20" />
   </properties>
  </tile>
  <tile id="104">
@@ -369,6 +359,21 @@
  <tile id="105">
   <properties>
    <property name="desc" value="cave terrain section 107" />
+  </properties>
+ </tile>
+ <tile id="109">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 2, column 1: vertically repeatable rail" />
+  </properties>
+ </tile>
+ <tile id="110">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 2, column 2" />
+  </properties>
+ </tile>
+ <tile id="111">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 2, column 3: vertically repeatable rail" />
   </properties>
  </tile>
  <tile id="112">
@@ -384,6 +389,36 @@
  <tile id="114">
   <properties>
    <property name="desc" value="cave tile 29" />
+  </properties>
+ </tile>
+ <tile id="115">
+  <properties>
+   <property name="desc" value="cave terrain section 31" />
+  </properties>
+ </tile>
+ <tile id="116">
+  <properties>
+   <property name="desc" value="rock building: bottom center masonry" />
+  </properties>
+ </tile>
+ <tile id="117">
+  <properties>
+   <property name="desc" value="cave terrain section 32" />
+  </properties>
+ </tile>
+ <tile id="125">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 3, column 1" />
+  </properties>
+ </tile>
+ <tile id="126">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 3, column 2" />
+  </properties>
+ </tile>
+ <tile id="127">
+  <properties>
+   <property name="desc" value="vertical rope bridge row 3, column 3" />
   </properties>
  </tile>
  <tile id="128">
@@ -414,21 +449,6 @@
  <tile id="133">
   <properties>
    <property name="desc" value="cave terrain section 114" />
-  </properties>
- </tile>
- <tile id="176">
-  <properties>
-   <property name="desc" value="dark grass" />
-  </properties>
- </tile>
- <tile id="177">
-  <properties>
-   <property name="desc" value="cave floor" />
-  </properties>
- </tile>
- <tile id="178">
-  <properties>
-   <property name="desc" value="grass alt" />
   </properties>
  </tile>
 </tileset>
