@@ -16,8 +16,8 @@
   <object id="12" name="zone_04_ancient_ruins_01_gate" x="0" y="992" width="9.33333" height="94.6667">
    <properties>
     <property name="target_map" value="zone_04_ancient_ruins_01_gate"/>
-    <property name="target_position_x" type="int" value="39"/>
-    <property name="target_position_y" type="int" value="14"/>
+    <property name="target_position_x" type="int" value="62"/>
+    <property name="target_position_y" type="int" value="23"/>
    </properties>
   </object>
   <object id="14" name="town_03_harborgate" x="643.333" y="1268" width="96" height="28">

@@ -42,7 +42,7 @@
   <object id="16" name="zone_04_ancient_ruins_01_gate" x="591.25" y="987.25" width="100.5" height="6">
    <properties>
     <property name="target_map" value="zone_04_ancient_ruins_01_gate"/>
-    <property name="target_position_x" type="int" value="28"/>
+    <property name="target_position_x" type="int" value="49"/>
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>
