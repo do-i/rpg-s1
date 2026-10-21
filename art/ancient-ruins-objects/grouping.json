@@ -1,0 +1,113 @@
+{
+  "atlas": {
+    "image": "ancient_ruins.png",
+    "tile_size": 32,
+    "columns": 20,
+    "rows": 28
+  },
+  "objects": {
+    "gate": {
+      "atlas_rect": [
+        0,
+        0,
+        18,
+        14
+      ],
+      "map_instances": [
+        {
+          "position": [
+            24,
+            7
+          ],
+          "flip_horizontal": false
+        }
+      ]
+    },
+    "wall": {
+      "atlas_rect": [
+        0,
+        14,
+        12,
+        5
+      ],
+      "map_instances": [
+        {
+          "position": [
+            12,
+            15
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            42,
+            15
+          ],
+          "flip_horizontal": true
+        }
+      ]
+    },
+    "house_a": {
+      "atlas_rect": [
+        0,
+        20,
+        9,
+        8
+      ],
+      "map_instances": [
+        {
+          "position": [
+            4,
+            4
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            50,
+            28
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            54,
+            4
+          ],
+          "flip_horizontal": true
+        }
+      ]
+    },
+    "house_b": {
+      "atlas_rect": [
+        10,
+        22,
+        10,
+        6
+      ],
+      "map_instances": [
+        {
+          "position": [
+            8,
+            20
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            13,
+            37
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            38,
+            34
+          ],
+          "flip_horizontal": true
+        }
+      ]
+    }
+  }
+}

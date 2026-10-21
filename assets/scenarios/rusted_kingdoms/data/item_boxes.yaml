@@ -102,6 +102,35 @@ item_boxes:
       magic_cores:
         - size: m
           qty: 3
+  ruins_gate_reliquary:
+    trap:
+      damage: 25
+    loot:
+      items:
+        - id: ether
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 5
+  ruins_gate_ward_cache:
+    loot:
+      items:
+        - id: fire_vial
+          qty: 2
+        - id: hi_potion
+          qty: 1
+  ruins_gate_sunken_cache:
+    trap:
+      damage: 18
+    loot:
+      items:
+        - id: antidote
+          qty: 2
+        - id: smelling_salts
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 3
   ruins_courtyard_chest_01:
     loot:
       items:

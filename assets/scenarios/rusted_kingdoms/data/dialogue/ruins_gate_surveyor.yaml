@@ -1,7 +1,6 @@
 # data/dialogue/ruins_gate_surveyor.yaml
 #
-# Flavor NPC: a surveyor camped outside the Ancient Ruins gate. The whole
-# zone-04 arc had no NPCs, so nothing in it explained what the ruins are.
+# A surveyor at the excavation camp beside the road to Ruinwatch.
 id: ruins_gate_surveyor
 type: npc
 
@@ -15,11 +14,14 @@ entries:
   - condition:
       requires: [ruins_gate_surveyor_briefed]
     lines:
-      - "Gate, courtyard, sanctum. Three doors, and the third one is the one that matters."
+      - "Through the arch, then follow the broken lane west for the courtyard. The northern road returns to Ruinwatch."
+      - "The flooded colonnade has a stone crossing. The houses beyond it haven't been opened in centuries. That isn't a promise of safety."
 
   - lines:
       - "Third season measuring this gate and I still can't tell you who built it."
       - "The stone's older than the kingdom. Older than the language we'd need to ask it anything."
+      - "The sentries still defend the breach. Draw them out, then search the roofless homes to the southeast."
+      - "Someone pried the lids off every empty tomb. If you find one still sealed, mind the trap."
       - "Take a lamp oil ration. Past the courtyard the daylight stops meaning much."
     on_complete:
       set_flag: ruins_gate_surveyor_briefed
