@@ -820,7 +820,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
     }
 
     let maps = [
-        ("zone_04_ancient_ruins_01_gate", Position::new(1, 31), 7),
+        ("zone_04_ancient_ruins_01_gate", Position::new(62, 23), 16),
         (
             "zone_04_ancient_ruins_02_courtyard",
             Position::new(1, 12),
@@ -881,6 +881,48 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         let enemies = query.iter(app.world()).cloned().collect::<Vec<_>>();
         assert_eq!(enemies.len(), expected_enemies, "{map_id}");
         assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
+        if map_id == "zone_04_ancient_ruins_01_gate" {
+            let mut boxes = app
+                .world_mut()
+                .query::<&crate::world_object::WorldItemBox>();
+            let boxes = boxes.iter(app.world()).collect::<Vec<_>>();
+            assert_eq!(boxes.len(), 6);
+            assert_eq!(
+                boxes.iter().filter(|chest| chest.trap().is_some()).count(),
+                2
+            );
+            assert!(
+                boxes
+                    .iter()
+                    .any(|chest| chest.id() == "ruins_gate_chest_01")
+            );
+            assert!(
+                boxes
+                    .iter()
+                    .any(|chest| chest.id() == "ruins_gate_chest_02")
+            );
+            let maps = app
+                .world()
+                .resource::<Assets<crate::tmx_ground_asset::TmxGroundAsset>>();
+            let gate =
+                maps.iter()
+                    .map(|(_, map)| map)
+                    .find(|map| {
+                        map.document().external_tilesets().iter().any(|tileset| {
+                            tileset.source().as_str().ends_with("/ancient_ruins.tsx")
+                        })
+                    })
+                    .expect("the gate loads its themed object atlas");
+            let collision = crate::scenario_spatial::collision_occupancy::CollisionOccupancy::from_tmx_document(gate.document()).unwrap();
+            for column in [32, 33] {
+                for row in 5..24 {
+                    assert_eq!(collision.is_blocked(column, row), Some(false));
+                }
+            }
+            for (column, row) in [(26, 20), (40, 20), (5, 10), (9, 24)] {
+                assert_eq!(collision.is_blocked(column, row), Some(true));
+            }
+        }
     }
 
     let boss = {
