@@ -581,7 +581,7 @@ mod tests {
                 (CatalogNamespace::FieldUseItems, 14),
                 (CatalogNamespace::Maps, 74),
                 (CatalogNamespace::Npcs, 116),
-                (CatalogNamespace::ItemBoxes, 44),
+                (CatalogNamespace::ItemBoxes, 47),
                 (CatalogNamespace::Dialogue, 144),
                 (CatalogNamespace::Enemies, 108),
                 (CatalogNamespace::BossMoveSets, 11),

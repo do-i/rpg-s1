@@ -3250,8 +3250,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 457);
-        assert_eq!(distinct_sources.len(), 14);
+        assert_eq!(reference_count, 458);
+        assert_eq!(distinct_sources.len(), 15);
     }
 
     #[test]
@@ -3390,8 +3390,8 @@ mod tests {
 
         assert_eq!(files.len(), 74);
         assert_eq!(layer_count, 420);
-        assert_eq!(gid_count, 303961);
-        assert_eq!(flip_combination_counts, [303755, 12, 2, 0, 0, 191, 1, 0]);
+        assert_eq!(gid_count, 315833);
+        assert_eq!(flip_combination_counts, [315450, 189, 2, 0, 0, 191, 1, 0]);
     }
 
     #[test]
@@ -3462,11 +3462,11 @@ mod tests {
         assert_eq!(portal_groups, 73);
         assert_eq!(boss_groups, 11);
         assert_eq!(box_groups, 19);
-        assert_eq!(objects, 206);
+        assert_eq!(objects, 210);
         assert_eq!(zero_sized_objects, 5);
         assert_eq!(runtime_portals, 146);
-        assert_eq!(properties, 484);
-        assert_eq!(property_strings, 192);
+        assert_eq!(properties, 488);
+        assert_eq!(property_strings, 196);
         assert_eq!(property_integers, 292);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);

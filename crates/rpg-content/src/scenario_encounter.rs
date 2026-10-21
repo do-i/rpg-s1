@@ -361,7 +361,7 @@ mod tests {
                 .iter()
                 .filter(|zone| zone.spawn_frequency.is_some())
                 .count(),
-            4
+            5
         );
         assert_eq!(
             zones
@@ -369,7 +369,7 @@ mod tests {
                 .flat_map(|zone| zone.entries.iter())
                 .filter(|entry| entry.chase_range > 0)
                 .count(),
-            21
+            30
         );
         assert_eq!(
             zones
