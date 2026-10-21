@@ -1,4 +1,4 @@
-//! Map-authored readable signs and persistent item boxes.
+//! Map-authored signs and TMX chest placements joined to cached reusable definitions.
 
 use std::collections::BTreeSet;
 
@@ -10,6 +10,7 @@ use crate::{
     runtime_map::RuntimeMapId,
     runtime_opened_boxes::OpenedBoxKey,
     scenario_inventory::ScenarioInventory,
+    scenario_item_box::{ItemBoxCatalog, item_box_placements},
     scenario_manifest::{Manifest, ManifestSigns},
     scenario_map::{
         ItemBoxLoot, ItemBoxTrap, MapMetadata, OptionalMapMetadata, optional_map_metadata,
@@ -17,6 +18,7 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
     scenario_spatial::Position,
+    scenario_yaml_asset::ScenarioYamlLoader,
     tile_coordinates::tmx_tile_center,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tmx_header::TmxMapDocument,
@@ -29,7 +31,9 @@ pub(crate) struct WorldObjectPlugin;
 
 impl Plugin for WorldObjectPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<WorldObjectState>()
+        app.init_asset::<ItemBoxCatalog>()
+            .register_asset_loader(ScenarioYamlLoader::<ItemBoxCatalog>::new("item boxes"))
+            .init_resource::<WorldObjectState>()
             .add_systems(OnEnter(AppState::World), reset_world_objects)
             .add_systems(
                 Update,
@@ -66,6 +70,7 @@ pub(crate) struct WorldObjectState {
     metadata: Option<Handle<MapMetadata>>,
     manifest: Option<Handle<Manifest>>,
     box_atlas: Option<Handle<TsxAtlasAsset>>,
+    definitions: Option<Handle<ItemBoxCatalog>>,
     status: WorldObjectStatus,
     failure: Option<String>,
 }
@@ -100,6 +105,7 @@ impl WorldObjectState {
             .map(|h| h.id().untyped())
             .chain(self.manifest.iter().map(|h| h.id().untyped()))
             .chain(self.box_atlas.iter().map(|h| h.id().untyped()))
+            .chain(self.definitions.iter().map(|h| h.id().untyped()))
             .collect()
     }
 
@@ -149,6 +155,7 @@ pub(crate) struct WorldItemBox {
     position: Position,
     loot: ItemBoxLoot,
     trap: Option<ItemBoxTrap>,
+    closed_tile: usize,
 }
 
 impl WorldItemBox {
@@ -166,6 +173,7 @@ impl WorldItemBox {
             position,
             loot,
             trap,
+            closed_tile: 0,
         }
     }
 
@@ -253,6 +261,7 @@ fn drive_world_object_load(
     asset_server: Res<AssetServer>,
     metadata_assets: Res<Assets<MapMetadata>>,
     manifests: Res<Assets<Manifest>>,
+    definitions: Res<Assets<ItemBoxCatalog>>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
@@ -303,17 +312,34 @@ fn drive_world_object_load(
         state.fail("object metadata id does not match the destination");
         return;
     }
-    if state.box_atlas.is_none() {
-        state.box_atlas = Some(asset_server.load(scenario_root.resolve(&manifest.item_box.sprite)));
-        return;
+    if let Some(path) = &manifest.refs.item_boxes {
+        if state.definitions.is_none() {
+            state.definitions = Some(asset_server.load(scenario_root.resolve(path)));
+            return;
+        }
+        let handle = state.definitions.as_ref().expect("requested definitions");
+        if crate::world_publication::asset_failed(&asset_server, handle.id()) {
+            state.fail("item-box definitions failed to load");
+            return;
+        }
+        if definitions.get(handle).is_none() {
+            return;
+        }
     }
-    let box_atlas_handle = state.box_atlas.as_ref().expect("set above");
-    if crate::world_publication::asset_failed(&asset_server, box_atlas_handle.id()) {
-        state.fail("item-box sprite or image dependency failed to load");
-        return;
-    }
-    if !asset_server.is_loaded_with_dependencies(box_atlas_handle.id()) {
-        return;
+    if manifest.refs.item_boxes.is_none() {
+        if state.box_atlas.is_none() {
+            state.box_atlas =
+                Some(asset_server.load(scenario_root.resolve(&manifest.item_box.sprite)));
+            return;
+        }
+        let box_atlas_handle = state.box_atlas.as_ref().expect("set above");
+        if crate::world_publication::asset_failed(&asset_server, box_atlas_handle.id()) {
+            state.fail("item-box sprite or image dependency failed to load");
+            return;
+        }
+        if !asset_server.is_loaded_with_dependencies(box_atlas_handle.id()) {
+            return;
+        }
     }
     if !existing_signs.is_empty() || !existing_boxes.is_empty() {
         state.status = WorldObjectStatus::Spawned;
@@ -335,31 +361,109 @@ fn drive_world_object_load(
     }
     let map_id_value = RuntimeMapId::try_new(map_id.to_owned())
         .expect("GameState current map id is validated nonempty");
-    let box_atlas = atlases.get(box_atlas_handle);
-    for item_box in metadata
-        .item_boxes
-        .iter()
-        .filter(|item_box| game.flags().satisfies(&item_box.present))
+    let box_atlas = state
+        .box_atlas
+        .as_ref()
+        .and_then(|handle| atlases.get(handle));
+    if let Some(catalog) = state
+        .definitions
+        .as_ref()
+        .and_then(|handle| definitions.get(handle))
     {
-        let opened = game.opened_boxes().contains(
-            &OpenedBoxKey::try_new(map_id_value.clone(), item_box.id.clone())
-                .expect("source box id is nonempty"),
-        );
-        let sprite = box_atlas
-            .and_then(|atlas| atlas.sprite_for_tile(u32::from(opened)).ok())
-            .unwrap_or_else(|| Sprite::from_color(Color::srgb_u8(140, 90, 30), Vec2::splat(32.0)));
-        let center = tile_center(item_box.position);
-        commands.spawn((
-            sprite,
-            Transform::from_translation(center.extend(world_entity_y_z(center.y, 16.0))),
-            WorldItemBox {
-                map_id: map_id_value.clone(),
-                id: item_box.id.clone(),
-                position: item_box.position,
-                loot: item_box.loot.clone(),
-                trap: item_box.trap,
-            },
-        ));
+        let placements = match item_box_placements(map.document()) {
+            Ok(placements) => placements,
+            Err(error) => {
+                state.fail(error);
+                return;
+            }
+        };
+        // Resolve every definition and image before publishing any chest entities.
+        let mut resolved = Vec::new();
+        for placement in placements {
+            let Some(definition) = catalog.item_boxes.get(&placement.definition_id) else {
+                state.fail(format!(
+                    "item-box `{}` references unknown definition `{}`",
+                    placement.instance_id, placement.definition_id
+                ));
+                return;
+            };
+            if !game.flags().satisfies(&definition.present) {
+                continue;
+            }
+            let key = OpenedBoxKey::try_new(map_id_value.clone(), placement.instance_id.clone())
+                .expect("validated chest identity");
+            let opened = game.opened_boxes().contains(&key);
+            let (sprite, rotation, closed_tile) =
+                match map.item_box_sprite(placement.gid, opened, &atlases) {
+                    Ok(image) => image,
+                    Err(error) => {
+                        state.fail(error);
+                        return;
+                    }
+                };
+            let center = Vec2::new(
+                placement.x as f32 + TILE_SIZE as f32 / 2.0,
+                -(placement.y as f32 + TILE_SIZE as f32 / 2.0),
+            );
+            let above_foreground =
+                map.document()
+                    .tile_layers()
+                    .iter()
+                    .enumerate()
+                    .any(|(index, layer)| {
+                        layer.name() == "foreground" && index < placement.tile_layer_index
+                    });
+            let z = if above_foreground {
+                world_entity_y_z(
+                    -(map.document().header().height() as f32 * TILE_SIZE as f32),
+                    64.0,
+                ) + 3.0
+            } else {
+                world_entity_y_z(center.y, 16.0)
+            };
+            resolved.push((
+                sprite,
+                Transform::from_translation(center.extend(z)).with_rotation(rotation),
+                WorldItemBox {
+                    map_id: map_id_value.clone(),
+                    id: placement.instance_id,
+                    position: placement.position,
+                    loot: definition.loot.clone(),
+                    trap: definition.trap,
+                    closed_tile,
+                },
+            ));
+        }
+        commands.spawn_batch(resolved);
+    } else {
+        for item_box in metadata
+            .item_boxes
+            .iter()
+            .filter(|item_box| game.flags().satisfies(&item_box.present))
+        {
+            let opened = game.opened_boxes().contains(
+                &OpenedBoxKey::try_new(map_id_value.clone(), item_box.id.clone())
+                    .expect("source box id is nonempty"),
+            );
+            let sprite = box_atlas
+                .and_then(|atlas| atlas.sprite_for_tile(u32::from(opened)).ok())
+                .unwrap_or_else(|| {
+                    Sprite::from_color(Color::srgb_u8(140, 90, 30), Vec2::splat(32.0))
+                });
+            let center = tile_center(item_box.position);
+            commands.spawn((
+                sprite,
+                Transform::from_translation(center.extend(world_entity_y_z(center.y, 16.0))),
+                WorldItemBox {
+                    map_id: map_id_value.clone(),
+                    id: item_box.id.clone(),
+                    position: item_box.position,
+                    loot: item_box.loot.clone(),
+                    trap: item_box.trap,
+                    closed_tile: 0,
+                },
+            ));
+        }
     }
     state.status = WorldObjectStatus::Spawned;
 }
@@ -425,7 +529,8 @@ fn sync_opened_box_sprites(
     };
     for (item_box, mut sprite) in &mut boxes {
         if let Some(atlas) = sprite.texture_atlas.as_mut() {
-            atlas.index = usize::from(game.opened_boxes().contains(&item_box.key()));
+            atlas.index =
+                item_box.closed_tile + usize::from(game.opened_boxes().contains(&item_box.key()));
         }
     }
 }

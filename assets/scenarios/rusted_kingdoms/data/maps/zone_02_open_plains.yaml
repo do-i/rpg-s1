@@ -14,17 +14,3 @@ npcs:
     dialogue: plains_scout
     sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: left
-
-item_boxes:
-  - id: plains_chest_01
-    position: [10, 6]
-    loot:
-      items:
-        - id: potion
-          qty: 3
-  - id: plains_chest_02
-    position: [22, 15]
-    loot:
-      magic_cores:
-        - size: s
-          qty: 5

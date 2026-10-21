@@ -118,6 +118,11 @@ impl<'a> Validator<'a> {
         self.catalogs.classes = self.load_yaml_directory(manifest.refs.classes.as_str());
         self.load_items(manifest.refs.items.as_str());
         self.catalogs.maps = self.load_yaml_directory(manifest.refs.maps.as_str());
+        if let Some(path) = &manifest.refs.item_boxes {
+            self.catalogs.item_boxes = self
+                .read_yaml::<crate::scenario_item_box::ItemBoxCatalog>(path.as_str())
+                .map(|value| located(path.as_str(), value));
+        }
         self.catalogs.dialogue = self.load_yaml_directory(manifest.refs.dialogue.as_str());
         self.load_enemies(manifest.refs.enemies.as_str());
         self.catalogs.encounters = self.load_yaml_directory(manifest.refs.encount.as_str());

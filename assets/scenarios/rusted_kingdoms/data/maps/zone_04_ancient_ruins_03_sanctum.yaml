@@ -9,24 +9,3 @@ npcs:
     dialogue: ruins_sanctum_penitent
     sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     default_facing: down
-
-item_boxes:
-  - id: ruins_sanctum_chest_01
-    position: [29, 7]
-    loot:
-      items:
-        - id: hi_potion
-          qty: 3
-        - id: remedy
-          qty: 1
-  - id: ruins_sanctum_chest_02
-    position: [9, 22]
-    trap:
-      damage: 30
-    loot:
-      items:
-        - id: hi_ether
-          qty: 2
-      magic_cores:
-        - size: l
-          qty: 1

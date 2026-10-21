@@ -14,19 +14,3 @@ npcs:
     dialogue: mountain_pilgrim
     sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: left
-
-item_boxes:
-  - id: pass_chest_01
-    position: [17, 10]
-    loot:
-      items:
-        - id: hi_potion
-          qty: 2
-  - id: pass_chest_02
-    position: [50, 18]
-    loot:
-      magic_cores:
-        - size: l
-          qty: 1
-        - size: m
-          qty: 2

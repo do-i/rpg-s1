@@ -6,20 +6,3 @@ enemy_spawn:
   init: 2
   max: 3
   interval: 28.0
-
-item_boxes:
-  - id: plains_cave_01_chest_01
-    position: [26, 14]
-    loot:
-      items:
-        - id: potion
-          qty: 3
-  - id: plains_cave_01_chest_02
-    position: [13, 20]
-    loot:
-      items:
-        - id: ether
-          qty: 1
-      magic_cores:
-        - size: s
-          qty: 2

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="42" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="4">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="42" height="30" tilewidth="32" tileheight="32" infinite="0" nextlayerid="11" nextobjectid="6">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="3382" source="../tilesets/outdoor.tsx"/>
  <tileset firstgid="4056" source="../tilesets/collision.tsx"/>
  <tileset firstgid="4295" source="../tilesets/wall.tsx"/>
  <tileset firstgid="4475" source="../tilesets/floor.tsx"/>
+ <tileset firstgid="4667" source="../sprites/objects/item_box.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="1" name="entry_zone_04_ancient_ruins_01_gate" x="1336.67" y="432" width="12" height="78.6667">
    <properties>
@@ -225,6 +226,18 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="10" name="item_boxes">
+  <object id="4" name="ruins_courtyard_chest_01" gid="4667" x="256" y="224" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="ruins_courtyard_chest_01"/>
+   </properties>
+  </object>
+  <object id="5" name="ruins_courtyard_chest_02" gid="4667" x="384" y="640" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="ruins_courtyard_chest_02"/>
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="9" name="foreground" width="42" height="30">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

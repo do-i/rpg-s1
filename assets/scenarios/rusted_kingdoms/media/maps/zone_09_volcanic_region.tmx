@@ -1,9 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="50" height="34" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9007" nextobjectid="4">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="50" height="34" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9008" nextobjectid="5">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="2289" source="../tilesets/collision.tsx"/>
  <tileset firstgid="2290" source="../tilesets/floor.tsx"/>
  <tileset firstgid="2482" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="2626" source="../sprites/objects/item_box.tsx"/>
  <objectgroup id="2" name="portals">
   <object id="1" name="entry_zone_08_corrupted_forest" x="-4" y="544" width="12" height="128">
    <properties>
@@ -251,6 +252,13 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="9007" name="item_boxes">
+  <object id="4" name="volcanic_chest_01" gid="2626" x="1376" y="896" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="volcanic_chest_01"/>
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="9005" name="foreground" width="50" height="34">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

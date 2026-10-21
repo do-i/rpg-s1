@@ -21,31 +21,3 @@ npcs:
     dialogue: corrupted_forest_warden
     sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: down
-
-item_boxes:
-  - id: corrupted_forest_chest_01
-    position: [6, 8]
-    loot:
-      items:
-        - id: remedy
-          qty: 2
-      magic_cores:
-        - size: l
-          qty: 2
-  - id: corrupted_forest_chest_02
-    position: [35, 17]
-    loot:
-      items:
-        - id: holy_water
-          qty: 3
-        - id: hi_potion
-          qty: 3
-  - id: corrupted_forest_chest_03
-    position: [6, 32]
-    loot:
-      items:
-        - id: life_crystal
-          qty: 1
-      magic_cores:
-        - size: xl
-          qty: 1

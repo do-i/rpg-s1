@@ -26,6 +26,27 @@ fn is_numeric_tmx_segment(parent: &str, candidate: &str) -> bool {
 
 impl<'a> Validator<'a> {
     pub(super) fn validate_maps(&mut self, index: &ReferenceIndex) {
+        if let Some(file) = self.catalogs.item_boxes.clone() {
+            for (id, definition) in file.value.item_boxes {
+                if definition.loot.items.is_empty() && definition.loot.magic_cores.is_empty() {
+                    self.warning(
+                        "content.empty_loot",
+                        &file.path,
+                        format!("item_boxes.{id}.loot"),
+                        format!("item box `{id}` has empty loot"),
+                    );
+                }
+                for (i, item) in definition.loot.items.iter().enumerate() {
+                    self.checked(
+                        "item",
+                        &index.items,
+                        &item.id,
+                        &file.path,
+                        format!("item_boxes.{id}.loot.items[{i}].id"),
+                    );
+                }
+            }
+        }
         let maps = self.catalogs.maps.clone();
         for file in maps {
             if let Some(bgm) = &file.value.bgm {
@@ -161,6 +182,42 @@ impl<'a> Validator<'a> {
                         &item.id,
                         &file.path,
                         format!("item_boxes[{box_index}].loot.items[{item_index}].id"),
+                    );
+                }
+            }
+        }
+    }
+
+    pub(super) fn validate_tmx_item_boxes(&mut self, logical: &str) {
+        let Some(xml) = self.read_text(logical) else {
+            return;
+        };
+        let Ok(path) = ScenarioRelativePath::try_from(logical) else {
+            return;
+        };
+        let document = match crate::tmx_header::parse_tmx_map_document(&xml, &path) {
+            Ok(document) => document,
+            Err(error) => {
+                self.error("item_box.tmx", logical, "item_boxes", error.to_string());
+                return;
+            }
+        };
+        match crate::scenario_item_box::item_box_placements(&document) {
+            Err(error) => self.error("item_box.placement", logical, "item_boxes", error),
+            Ok(placements) => {
+                let known = self
+                    .catalogs
+                    .item_boxes
+                    .as_ref()
+                    .map(|f| f.value.item_boxes.keys().cloned().collect())
+                    .unwrap_or_default();
+                for placement in placements {
+                    self.checked(
+                        "item-box definition",
+                        &known,
+                        &placement.definition_id,
+                        logical,
+                        format!("item_boxes.{}.item_box_id", placement.instance_id),
                     );
                 }
             }

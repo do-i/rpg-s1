@@ -187,9 +187,14 @@ pub struct TmxObjectGroup {
     id: u32,
     name: String,
     objects: Vec<TmxRectangleObject>,
+    tile_layer_index: usize,
 }
 
 impl TmxObjectGroup {
+    pub const fn tile_layer_index(&self) -> usize {
+        self.tile_layer_index
+    }
+
     pub const fn id(&self) -> u32 {
         self.id
     }
@@ -203,7 +208,8 @@ impl TmxObjectGroup {
     }
 }
 
-/// Renderer-independent bounds and typed ordered properties for one rectangle object.
+/// Map-space bounds and typed properties for a rectangle or an item-box tile object.
+/// Object coordinates include the enclosing object group's pixel offset.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TmxRectangleObject {
     id: u32,
@@ -213,9 +219,14 @@ pub struct TmxRectangleObject {
     width: f64,
     height: f64,
     properties: Vec<TmxProperty>,
+    gid: Option<TmxTileGid>,
 }
 
 impl TmxRectangleObject {
+    pub const fn gid(&self) -> Option<TmxTileGid> {
+        self.gid
+    }
+
     pub const fn id(&self) -> u32 {
         self.id
     }
@@ -662,13 +673,15 @@ fn scan_tmx_map_document(
             Event::Start(element) => {
                 if element.name().as_ref() == b"objectgroup" {
                     require_root_object_group(depth, offset)?;
-                    let group = parse_object_group(&mut reader, &element, offset, &mut object_ids)?;
+                    let mut group =
+                        parse_object_group(&mut reader, &element, offset, &mut object_ids)?;
                     validate_object_group_identity(
                         &group,
                         &mut object_group_ids,
                         &mut object_group_names,
                         offset,
                     )?;
+                    group.tile_layer_index = scan.document.tile_layers.len();
                     scan.document.object_groups.push(group);
                     continue;
                 }
@@ -711,13 +724,14 @@ fn scan_tmx_map_document(
             Event::Empty(element) => {
                 if element.name().as_ref() == b"objectgroup" {
                     require_root_object_group(depth, offset)?;
-                    let group = parse_empty_object_group(&reader, &element, offset)?;
+                    let mut group = parse_empty_object_group(&reader, &element, offset)?;
                     validate_object_group_identity(
                         &group,
                         &mut object_group_ids,
                         &mut object_group_names,
                         offset,
                     )?;
+                    group.tile_layer_index = scan.document.tile_layers.len();
                     scan.document.object_groups.push(group);
                     continue;
                 }
@@ -819,11 +833,12 @@ fn parse_empty_object_group(
     element: &quick_xml::events::BytesStart<'_>,
     offset: u64,
 ) -> Result<TmxObjectGroup, TmxMapDocumentError> {
-    let (id, name) = parse_object_group_attributes(reader, element, offset)?;
+    let (id, name, _) = parse_object_group_attributes(reader, element, offset)?;
     Ok(TmxObjectGroup {
         id,
         name,
         objects: Vec::new(),
+        tile_layer_index: 0,
     })
 }
 
@@ -833,7 +848,7 @@ fn parse_object_group(
     offset: u64,
     object_ids: &mut HashSet<u32>,
 ) -> Result<TmxObjectGroup, TmxMapDocumentError> {
-    let (id, name) = parse_object_group_attributes(reader, element, offset)?;
+    let (id, name, [offset_x, offset_y]) = parse_object_group_attributes(reader, element, offset)?;
     let mut objects = Vec::new();
     loop {
         let child_offset = reader.buffer_position();
@@ -842,6 +857,12 @@ fn parse_object_group(
         })? {
             Event::Start(child) if child.name().as_ref() == b"object" => {
                 let object = parse_rectangle_object(reader, &child, child_offset)?;
+                if name != "item_boxes" && object.gid.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "unsupported rectangle `object` attribute `gid`",
+                    ));
+                }
                 validate_object_id(object.id, object_ids, child_offset)?;
                 if name == "portals" {
                     validate_portal_properties(&object, child_offset)?;
@@ -850,6 +871,12 @@ fn parse_object_group(
             }
             Event::Empty(child) if child.name().as_ref() == b"object" => {
                 let object = parse_empty_rectangle_object(reader, &child, child_offset)?;
+                if name != "item_boxes" && object.gid.is_some() {
+                    return Err(TmxMapDocumentError::new(
+                        child_offset,
+                        "unsupported rectangle `object` attribute `gid`",
+                    ));
+                }
                 validate_object_id(object.id, object_ids, child_offset)?;
                 if name == "portals" {
                     validate_portal_properties(&object, child_offset)?;
@@ -868,7 +895,26 @@ fn parse_object_group(
             Event::Text(text) if text.as_ref().iter().all(u8::is_ascii_whitespace) => {}
             Event::Comment(_) => {}
             Event::End(end) if end.name().as_ref() == b"objectgroup" => {
-                return Ok(TmxObjectGroup { id, name, objects });
+                // Normalize once so every consumer uses the same map-space coordinates.
+                for object in &mut objects {
+                    object.x += offset_x;
+                    object.y += offset_y;
+                    if !object.x.is_finite() || !object.y.is_finite() {
+                        return Err(TmxMapDocumentError::new(
+                            offset,
+                            format!(
+                                "object {} position overflows after object-group offset",
+                                object.id
+                            ),
+                        ));
+                    }
+                }
+                return Ok(TmxObjectGroup {
+                    id,
+                    name,
+                    objects,
+                    tile_layer_index: 0,
+                });
             }
             Event::End(_) => {
                 return Err(TmxMapDocumentError::new(
@@ -896,12 +942,14 @@ fn parse_object_group_attributes(
     reader: &Reader<&[u8]>,
     element: &quick_xml::events::BytesStart<'_>,
     offset: u64,
-) -> Result<(u32, String), TmxMapDocumentError> {
+) -> Result<(u32, String, [f64; 2]), TmxMapDocumentError> {
     let attributes = collect_document_attributes(reader, element, offset)?;
-    if let Some(name) = attributes
-        .keys()
-        .find(|name| !matches!(name.as_str(), "id" | "name" | "visible"))
-    {
+    if let Some(name) = attributes.keys().find(|name| {
+        !matches!(
+            name.as_str(),
+            "id" | "name" | "visible" | "offsetx" | "offsety"
+        )
+    }) {
         return Err(TmxMapDocumentError::new(
             offset,
             format!("unsupported `objectgroup` attribute `{name}`"),
@@ -911,13 +959,19 @@ fn parse_object_group_attributes(
     document_visibility(&attributes, offset)?;
     let id = positive_document_u32(&attributes, "id", offset)?;
     let name = required_document_attribute(&attributes, "name", offset)?;
-    if !matches!(name, "portals" | "boss_enemy") {
+    if !matches!(name, "portals" | "boss_enemy" | "item_boxes") {
         return Err(TmxMapDocumentError::new(
             offset,
             format!("unsupported object-group name `{name}`"),
         ));
     }
-    Ok((id, name.to_owned()))
+    let mut translation = [0.0; 2];
+    for (axis, attribute) in ["offsetx", "offsety"].into_iter().enumerate() {
+        if attributes.contains_key(attribute) {
+            translation[axis] = finite_document_f64(&attributes, attribute, offset)?;
+        }
+    }
+    Ok((id, name.to_owned(), translation))
 }
 
 fn validate_object_group_identity(
@@ -1088,7 +1142,7 @@ fn parse_rectangle_object_attributes(
     if let Some(name) = attributes.keys().find(|name| {
         !matches!(
             name.as_str(),
-            "id" | "name" | "x" | "y" | "width" | "height" | "visible"
+            "id" | "name" | "x" | "y" | "width" | "height" | "visible" | "gid"
         )
     }) {
         return Err(TmxMapDocumentError::new(
@@ -1110,6 +1164,24 @@ fn parse_rectangle_object_attributes(
         width,
         height,
         properties,
+        gid: attributes
+            .get("gid")
+            .map(|raw| {
+                let raw = raw
+                    .parse::<u32>()
+                    .map_err(|_| TmxMapDocumentError::new(offset, "invalid tile-object gid"))?;
+                let gid = TmxTileGid::decode_orthogonal(raw).map_err(|_| {
+                    TmxMapDocumentError::new(offset, "invalid tile-object gid flags")
+                })?;
+                if gid.is_empty() {
+                    return Err(TmxMapDocumentError::new(
+                        offset,
+                        "tile-object gid must be nonzero",
+                    ));
+                }
+                Ok(gid)
+            })
+            .transpose()?,
     })
 }
 
@@ -2403,6 +2475,73 @@ mod tests {
     }
 
     #[test]
+    fn object_group_offsets_normalize_rectangle_and_tile_object_positions() {
+        for (group_name, gid) in [
+            ("portals", ""),
+            ("boss_enemy", ""),
+            ("item_boxes", r#"gid="1""#),
+        ] {
+            for (attributes, dx, dy) in [
+                ("", 0.0, 0.0),
+                (r#"offsetx="0" offsety="0""#, 0.0, 0.0),
+                (r#"offsetx="670" offsety="-228.667""#, 670.0, -228.667),
+                (r#"offsetx="-1.5""#, -1.5, 0.0),
+                (r#"offsety="2.25""#, 0.0, 2.25),
+            ] {
+                let xml = invented_document(&format!(
+                    r#"<objectgroup id="1" name="{group_name}" {attributes}>
+                        <object id="1" x="32" y="64" width="32" height="16" {gid}>
+                            <properties>
+                                <property name="target_map" value="next_map"/>
+                                <property name="target_position_x" type="int" value="3"/>
+                                <property name="target_position_y" type="int" value="4"/>
+                            </properties>
+                        </object>
+                        <object id="2" x="-4" y="8" {gid}/>
+                    </objectgroup>"#,
+                ));
+                let document = parse_tmx_map_document(&xml, &invented_path()).unwrap();
+                let objects = document.object_groups()[0].objects();
+                assert_eq!((objects[0].x(), objects[0].y()), (32.0 + dx, 64.0 + dy));
+                assert_eq!((objects[1].x(), objects[1].y()), (-4.0 + dx, 8.0 + dy));
+                assert_eq!((objects[0].width(), objects[0].height()), (32.0, 16.0));
+                assert_eq!(objects[0].properties()[0].name(), "target_map");
+                assert_eq!(
+                    objects[0].properties()[1].value(),
+                    &TmxPropertyValue::Integer(3)
+                );
+                assert_eq!(objects[0].gid().is_some(), group_name == "item_boxes");
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_object_group_offsets_even_on_empty_groups() {
+        for attribute in ["offsetx", "offsety"] {
+            for value in ["", "bad", "NaN", "inf", "-inf", "1e309"] {
+                for children in ["/>", "></objectgroup>"] {
+                    let xml = invented_document(&format!(
+                        r#"<objectgroup id="1" name="portals" {attribute}="{value}"{children}"#,
+                    ));
+                    let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+                    assert!(
+                        error
+                            .detail
+                            .contains(&format!("invalid `{attribute}` attribute"))
+                    );
+                }
+            }
+            let coordinate = if attribute == "offsetx" { "x" } else { "y" };
+            let other = if coordinate == "x" { "y" } else { "x" };
+            let xml = invented_document(&format!(
+                r#"<objectgroup id="1" name="portals" {attribute}="1e308"><object id="1" {coordinate}="1e308" {other}="0"/></objectgroup>"#,
+            ));
+            let error = parse_tmx_map_document(&xml, &invented_path()).unwrap_err();
+            assert!(error.detail.contains("position overflows"));
+        }
+    }
+
+    #[test]
     fn object_visibility_preserves_gameplay_objects_and_properties() {
         let xml = |group_visibility: &str, object_visibility: &str| {
             invented_document(&format!(
@@ -3111,7 +3250,7 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 439);
+        assert_eq!(reference_count, 457);
         assert_eq!(distinct_sources.len(), 14);
     }
 
@@ -3206,9 +3345,9 @@ mod tests {
         }
 
         assert_eq!(files.len(), 74);
-        assert_eq!(layer_count, 423);
-        assert_eq!(gid_count, 302599);
-        assert_eq!(flip_combination_counts, [302393, 12, 2, 0, 0, 191, 1, 0]);
+        assert_eq!(layer_count, 419);
+        assert_eq!(gid_count, 303763);
+        assert_eq!(flip_combination_counts, [303557, 12, 2, 0, 0, 191, 1, 0]);
     }
 
     #[test]
@@ -3228,6 +3367,7 @@ mod tests {
 
         let mut portal_groups = 0;
         let mut boss_groups = 0;
+        let mut box_groups = 0;
         let mut objects = 0;
         let mut zero_sized_objects = 0;
         let mut properties = 0;
@@ -3251,6 +3391,7 @@ mod tests {
                 match group.name() {
                     "portals" => portal_groups += 1,
                     "boss_enemy" => boss_groups += 1,
+                    "item_boxes" => box_groups += 1,
                     name => panic!("unexpected accepted object-group name {name}"),
                 }
                 for object in group.objects() {
@@ -3276,11 +3417,12 @@ mod tests {
         assert_eq!(files.len(), 74);
         assert_eq!(portal_groups, 73);
         assert_eq!(boss_groups, 11);
-        assert_eq!(objects, 161);
+        assert_eq!(box_groups, 19);
+        assert_eq!(objects, 206);
         assert_eq!(zero_sized_objects, 5);
         assert_eq!(runtime_portals, 146);
-        assert_eq!(properties, 438);
-        assert_eq!(property_strings, 146);
+        assert_eq!(properties, 484);
+        assert_eq!(property_strings, 192);
         assert_eq!(property_integers, 292);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);

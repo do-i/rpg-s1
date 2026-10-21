@@ -1492,7 +1492,7 @@ mod tests {
         save_data::tests::fixture_game,
         scenario_dialogue::DialogueDocument,
         scenario_manifest::Manifest,
-        scenario_map::{ItemBoxLoot, MapMetadata},
+        scenario_map::ItemBoxLoot,
         scenario_yaml,
         test_support::headless_title_app_with_asset_base,
     };
@@ -2092,10 +2092,8 @@ mod tests {
             scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
         let balance: BalanceData =
             scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
-        let metadata: MapMetadata = scenario_yaml::from_str(include_str!(scenario_file!(
-            "data/maps/zone_01_starting_forest.yaml"
-        )))
-        .unwrap();
+        let definitions: crate::scenario_item_box::ItemBoxCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/item_boxes.yaml"))).unwrap();
         let mut game = build_new_game_state(
             NewGameScenario {
                 manifest: &manifest,
@@ -2106,19 +2104,27 @@ mod tests {
             Duration::ZERO,
         )
         .unwrap();
-        let source = &metadata.item_boxes[0];
+        let source = &definitions.item_boxes["forest_chest_01"];
         let item_box = WorldItemBox::for_test(
             RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
-            source.id.clone(),
-            source.position,
+            "forest_chest_01",
+            Position::new(10, 6),
             source.loot.clone(),
             source.trap,
         );
 
         let catalog = crate::field_menu_domain::tests::catalog();
 
+        let other = WorldItemBox::for_test(
+            RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+            "another_instance",
+            Position::new(11, 6),
+            source.loot.clone(),
+            source.trap,
+        );
         let first = open_item_box(&item_box, &mut game, &catalog);
         let second = open_item_box(&item_box, &mut game, &catalog);
+        assert!(!game.opened_boxes().contains(&other.key()));
 
         assert!(first.opened);
         // Display names, not the `potion`/`antidote` ids the player never sees elsewhere.
@@ -2145,6 +2151,9 @@ mod tests {
         assert_eq!(game.repository().item_count("mc_s"), 10);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
+        assert!(open_item_box(&other, &mut game, &catalog).opened);
+        assert!(game.opened_boxes().contains(&other.key()));
+        assert!(game.opened_boxes().contains(&item_box.key()));
     }
 
     /// Builds a fresh protagonist-only session plus the shipped catalog, for the trap cases.
@@ -2308,24 +2317,21 @@ mod tests {
             "the rogue must keep the passive these traps consume"
         );
 
+        let definitions: crate::scenario_item_box::ItemBoxCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/item_boxes.yaml"))).unwrap();
         let trapped = [
-            include_str!(scenario_file!(
-                "data/maps/zone_04_ancient_ruins_02_courtyard.yaml"
-            )),
-            include_str!(scenario_file!(
-                "data/maps/zone_04_ancient_ruins_03_sanctum.yaml"
-            )),
-            include_str!(scenario_file!("data/maps/zone_07_sunken_cave.yaml")),
-            include_str!(scenario_file!("data/maps/zone_09_marshal_camp.yaml")),
-            include_str!(scenario_file!("data/maps/zone_10_final_stronghold.yaml")),
+            "ruins_courtyard",
+            "ruins_sanctum",
+            "sunken_cave",
+            "marshal_camp",
+            "stronghold",
         ]
         .into_iter()
-        .map(|document| {
-            let metadata: MapMetadata = scenario_yaml::from_str(document).unwrap();
-            metadata
+        .map(|prefix| {
+            definitions
                 .item_boxes
                 .iter()
-                .filter(|item_box| item_box.trap.is_some())
+                .filter(|(id, entry)| id.starts_with(prefix) && entry.trap.is_some())
                 .count()
         })
         .collect::<Vec<_>>();

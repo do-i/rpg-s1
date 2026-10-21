@@ -425,6 +425,15 @@ mod tests {
             }
         }
 
+        let box_path = data.join("item_boxes.yaml");
+        let box_catalog: crate::scenario_item_box::ItemBoxCatalog = load(&box_path);
+        for id in box_catalog.item_boxes.keys() {
+            add(CatalogId::scenario_wide(
+                CatalogNamespace::ItemBoxes,
+                id.clone(),
+                location(&box_path, format!("item_boxes.{id}")),
+            ));
+        }
         for path in yaml_files(&data.join("maps")) {
             let map: MapMetadata = load(&path);
             let stem = file_stem(&path);

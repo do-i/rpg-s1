@@ -43,32 +43,3 @@ npcs:
     default_facing: down
     present:
       requires: [marshal_fought]
-
-item_boxes:
-  - id: marshal_camp_chest_01
-    position: [5, 3]
-    loot:
-      items:
-        - id: hi_potion
-          qty: 3
-        - id: remedy
-          qty: 2
-  - id: marshal_camp_chest_02
-    position: [21, 16]
-    trap:
-      damage: 55
-    loot:
-      items:
-        - id: life_crystal
-          qty: 1
-      magic_cores:
-        - size: l
-          qty: 2
-  - id: marshal_camp_chest_03
-    position: [10, 19]
-    loot:
-      items:
-        - id: elixir
-          qty: 1
-        - id: hi_ether
-          qty: 2

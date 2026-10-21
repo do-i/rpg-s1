@@ -53,6 +53,7 @@ pub struct MapMetadata {
     pub dismiss_companions: bool,
     #[serde(default)]
     pub npcs: Vec<NpcMetadata>,
+    /// Legacy placements for packages without `refs.item_boxes`; migrated packages use TMX.
     #[serde(default)]
     pub item_boxes: Vec<ItemBoxMetadata>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
@@ -283,6 +284,7 @@ pub enum NpcAnimationMode {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
+/// Compatibility schema for the original per-map YAML chest placements.
 pub struct ItemBoxMetadata {
     #[serde(deserialize_with = "deserialize_string")]
     pub id: String,

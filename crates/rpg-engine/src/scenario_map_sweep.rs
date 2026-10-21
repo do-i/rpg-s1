@@ -27,6 +27,7 @@ use crate::{
     runtime_flags::RuntimeFlags,
     runtime_map::RuntimeMapId,
     runtime_opened_boxes::OpenedBoxKey,
+    scenario_item_box::{ItemBoxCatalog, item_box_placements},
     scenario_manifest::Manifest,
     scenario_map::MapMetadata,
     scenario_map_report::is_numeric_tmx_segment,
@@ -165,6 +166,20 @@ pub(crate) fn build_map_sweep(physical_root: &Path) -> MapSweepReport {
         &tmx_stems,
     );
 
+    let definitions = if let Some(path) = &manifest.refs.item_boxes {
+        let Some(text) = read_file_safely(physical_root, canonical_root.as_deref(), path.as_str())
+        else {
+            return MapSweepReport::with_load_error("item-box definitions could not be read");
+        };
+        match scenario_yaml::from_str::<ItemBoxCatalog>(&text) {
+            Ok(catalog) => Some(catalog),
+            Err(error) => {
+                return MapSweepReport::with_load_error(format!("item-box definitions: {error}"));
+            }
+        }
+    } else {
+        None
+    };
     let context = SweepContext {
         physical_root,
         canonical_root: canonical_root.as_deref(),
@@ -173,6 +188,7 @@ pub(crate) fn build_map_sweep(physical_root: &Path) -> MapSweepReport {
         collisions: &collisions,
         dialogue_ids: &dialogue_ids,
         maps_dir: &maps_dir,
+        definitions: definitions.as_ref(),
     };
     let entries = tmx_stems
         .iter()
@@ -196,6 +212,7 @@ struct SweepContext<'a> {
     collisions: &'a BTreeMap<String, CollisionOccupancy>,
     dialogue_ids: &'a BTreeSet<String>,
     maps_dir: &'a Path,
+    definitions: Option<&'a ItemBoxCatalog>,
 }
 
 fn build_entry(stem: &str, context: &SweepContext<'_>) -> MapSweepEntry {
@@ -207,6 +224,7 @@ fn build_entry(stem: &str, context: &SweepContext<'_>) -> MapSweepEntry {
         collisions,
         dialogue_ids,
         maps_dir,
+        definitions,
     } = context;
     let mut findings = Vec::new();
     let mut portal_count = 0;
@@ -258,7 +276,11 @@ fn build_entry(stem: &str, context: &SweepContext<'_>) -> MapSweepEntry {
             &mut findings,
         );
         npc_flag_states = states;
-        item_box_count = boxes;
+        item_box_count = if let Some(catalog) = definitions {
+            check_tmx_boxes(document, catalog, collisions.get(stem), &mut findings)
+        } else {
+            boxes
+        };
     }
 
     MapSweepEntry {
@@ -340,44 +362,41 @@ fn check_visible_pipeline(
         }
     };
 
-    for &layer_index in &visible {
-        for gid in document.tile_layers()[layer_index]
+    let tile_gids = visible.iter().flat_map(|&i| {
+        document.tile_layers()[i]
             .gids()
             .iter()
             .copied()
-            .filter(|gid| !gid.is_empty())
-        {
-            match ranges.resolve(gid) {
-                Ok(Some(resolved)) => {
-                    let tile_count = atlas_references
-                        .iter()
-                        .position(|&index| {
-                            std::ptr::eq(&document.external_tilesets()[index], resolved.tileset())
-                        })
-                        .and_then(|position| metadata.get(position))
-                        .map(|metadata| metadata.tile_count());
-                    if let Some(tile_count) = tile_count
-                        && resolved.local_id() >= tile_count
-                    {
-                        findings.push(SweepFinding::new(
-                            SweepCategory::Tmx,
-                            format!(
-                                "visible tile local id {} is outside atlas tilecount {tile_count}",
-                                resolved.local_id()
-                            ),
-                        ));
-                        return;
-                    }
-                }
-                Ok(None) => {}
-                Err(error) => {
+            .map(|gid| (gid, false))
+    });
+    let box_gids = document.object_groups().iter().flat_map(|group| {
+        group
+            .objects()
+            .iter()
+            .filter_map(|object| object.gid().map(|gid| (gid, true)))
+    });
+    for (gid, chest) in tile_gids.chain(box_gids).filter(|(gid, _)| !gid.is_empty()) {
+        match ranges.resolve(gid) {
+            Ok(Some(resolved)) => {
+                let tile_count = atlas_references
+                    .iter()
+                    .position(|&index| {
+                        std::ptr::eq(&document.external_tilesets()[index], resolved.tileset())
+                    })
+                    .and_then(|position| metadata.get(position))
+                    .map(|metadata| metadata.tile_count());
+                if tile_count.is_some_and(|count| resolved.local_id() + u32::from(chest) >= count) {
                     findings.push(SweepFinding::new(
                         SweepCategory::Tmx,
-                        format!("visible GID is invalid: {error}"),
+                        "tile image or opened chest frame is outside atlas tilecount",
                     ));
-                    return;
                 }
             }
+            Ok(None) => {}
+            Err(error) => findings.push(SweepFinding::new(
+                SweepCategory::Tmx,
+                format!("visible tile GID could not be resolved: {error}"),
+            )),
         }
     }
 }
@@ -667,6 +686,49 @@ fn check_npcs_and_boxes(
     }
 
     (states.len(), metadata.item_boxes.len())
+}
+
+fn check_tmx_boxes(
+    document: &TmxMapDocument,
+    catalog: &ItemBoxCatalog,
+    occupancy: Option<&CollisionOccupancy>,
+    findings: &mut Vec<SweepFinding>,
+) -> usize {
+    let placements = match item_box_placements(document) {
+        Ok(placements) => placements,
+        Err(error) => {
+            findings.push(SweepFinding::new(SweepCategory::Object, error));
+            return 0;
+        }
+    };
+    for placement in &placements {
+        let Some(definition) = catalog.item_boxes.get(&placement.definition_id) else {
+            findings.push(SweepFinding::new(
+                SweepCategory::Object,
+                format!(
+                    "item-box `{}` has unknown definition `{}`",
+                    placement.instance_id, placement.definition_id
+                ),
+            ));
+            continue;
+        };
+        if definition.loot.items.is_empty() && definition.loot.magic_cores.is_empty() {
+            findings.push(SweepFinding::new(
+                SweepCategory::Object,
+                format!("item-box `{}` has no loot entries", placement.instance_id),
+            ));
+        }
+        if occupancy.is_some_and(|o| !has_standing_tile(o, placement.position)) {
+            findings.push(SweepFinding::new(
+                SweepCategory::Object,
+                format!(
+                    "item-box `{}` has no open tile to stand on",
+                    placement.instance_id
+                ),
+            ));
+        }
+    }
+    placements.len()
 }
 
 /// True when some open tile exists from which the interaction path could select a box on `target`.

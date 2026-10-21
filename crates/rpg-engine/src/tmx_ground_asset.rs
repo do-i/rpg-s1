@@ -138,6 +138,37 @@ impl TmxGroundAsset {
         &self.document
     }
 
+    pub(crate) fn item_box_sprite(
+        &self,
+        gid: crate::tmx_header::TmxTileGid,
+        opened: bool,
+        atlases: &Assets<TsxAtlasAsset>,
+    ) -> Result<(Sprite, Quat, usize), String> {
+        let references = self.document.external_tilesets();
+        let index = references
+            .partition_point(|r| r.first_gid() <= gid.global_id())
+            .checked_sub(1)
+            .ok_or("unmapped item-box image")?;
+        let dependency = self
+            .atlas_reference_indices
+            .iter()
+            .position(|i| *i == index)
+            .ok_or("item-box atlas is not loaded")?;
+        let atlas = atlases
+            .get(&self.atlases[dependency])
+            .ok_or("item-box atlas is not ready")?;
+        let closed = gid.global_id() - references[index].first_gid();
+        // Every authored chest image is followed by its opened-state frame.
+        atlas
+            .sprite_for_tile(closed + 1)
+            .map_err(|e| e.to_string())?;
+        let mut sprite = atlas
+            .sprite_for_tile(closed + u32::from(opened))
+            .map_err(|e| e.to_string())?;
+        let rotation = apply_tiled_transform(&mut sprite, gid);
+        Ok((sprite, rotation, closed as usize))
+    }
+
     #[cfg(test)]
     fn ground_layer_index(&self) -> usize {
         unique_ground_layer_index(&self.document).expect("the loader validated one ground layer")
@@ -624,23 +655,22 @@ pub(crate) fn visible_atlas_reference_indices(
 ) -> Result<Vec<usize>, TmxGroundAssetLoaderError> {
     let references = document.external_tilesets();
     let mut selected = BTreeMap::new();
-    for &layer_index in visible_layer_indices {
-        for gid in document.tile_layers()[layer_index]
-            .gids()
-            .iter()
-            .copied()
-            .filter(|gid| !gid.is_empty())
-        {
-            let upper =
-                references.partition_point(|reference| reference.first_gid() <= gid.global_id());
-            let index =
-                upper
-                    .checked_sub(1)
-                    .ok_or(TmxGroundAssetLoaderError::UnmappedVisibleGid(
-                        gid.global_id(),
-                    ))?;
-            selected.insert(index, ());
-        }
+    let tile_gids = visible_layer_indices
+        .iter()
+        .flat_map(|&i| document.tile_layers()[i].gids().iter().copied());
+    let object_gids = document
+        .object_groups()
+        .iter()
+        .flat_map(|group| group.objects().iter().filter_map(|object| object.gid()));
+    for gid in tile_gids.chain(object_gids).filter(|gid| !gid.is_empty()) {
+        let upper =
+            references.partition_point(|reference| reference.first_gid() <= gid.global_id());
+        let index = upper
+            .checked_sub(1)
+            .ok_or(TmxGroundAssetLoaderError::UnmappedVisibleGid(
+                gid.global_id(),
+            ))?;
+        selected.insert(index, ());
     }
     Ok(selected.into_keys().collect())
 }

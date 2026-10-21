@@ -84,6 +84,7 @@ engine_managed_flags:
   - boss_zone10_defeated
 
 refs:
+  item_boxes: data/item_boxes.yaml
   transport:  data/transport.yaml
   party:      data/party.yaml
   classes:    data/classes/
