@@ -3283,6 +3283,35 @@ mod tests {
             let document = scan_tmx_map_document(&xml, &logical)
                 .unwrap_or_else(|error| panic!("{logical}: {error}"))
                 .document;
+            let layer_order = [
+                "portals",
+                "boss_enemy",
+                "collision",
+                "spawn_tile",
+                "ground",
+                "terrain",
+                "architecture",
+                "decoration",
+                "item_boxes",
+                "foreground",
+            ];
+            let mut previous_rank = None;
+            for index in 0..=document.tile_layers().len() {
+                let names = document
+                    .object_groups()
+                    .iter()
+                    .filter(|group| group.tile_layer_index() == index)
+                    .map(TmxObjectGroup::name)
+                    .chain(document.tile_layers().get(index).map(TmxTileLayer::name));
+                for name in names {
+                    let rank = layer_order.iter().position(|&role| role == name).unwrap();
+                    assert!(
+                        previous_rank.is_none_or(|previous| previous < rank),
+                        "{logical}: {name} is out of layer order"
+                    );
+                    previous_rank = Some(rank);
+                }
+            }
             for role in [
                 "ground",
                 "architecture",
@@ -3296,6 +3325,21 @@ mod tests {
                         .iter()
                         .any(|layer| layer.name() == role),
                     "{logical}: missing {role}"
+                );
+            }
+            let collision = document
+                .tile_layers()
+                .iter()
+                .find(|layer| layer.name() == "collision")
+                .unwrap();
+            for chest in crate::scenario_item_box::item_box_placements(&document).unwrap() {
+                assert!(
+                    !collision
+                        .gid_at(chest.position.x as u32, chest.position.y as u32)
+                        .unwrap()
+                        .is_empty(),
+                    "{logical}: chest {} needs collision beneath its center",
+                    chest.instance_id
                 );
             }
             let mut names = HashSet::new();
@@ -3345,9 +3389,9 @@ mod tests {
         }
 
         assert_eq!(files.len(), 74);
-        assert_eq!(layer_count, 419);
-        assert_eq!(gid_count, 303763);
-        assert_eq!(flip_combination_counts, [303557, 12, 2, 0, 0, 191, 1, 0]);
+        assert_eq!(layer_count, 420);
+        assert_eq!(gid_count, 303961);
+        assert_eq!(flip_combination_counts, [303755, 12, 2, 0, 0, 191, 1, 0]);
     }
 
     #[test]
