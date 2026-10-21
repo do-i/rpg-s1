@@ -528,8 +528,8 @@ fn production_open_plains_and_caves_spawn_encounters_and_treasure() {
                 .find(|(b, _, _)| b.id() == "plains_cave_01_chest_02")
                 .unwrap();
             assert_eq!(moved.0.tile_position(), Position::new(12, 19));
-            assert!((moved.2.translation.x - 409.5).abs() < 0.01);
-            assert!((moved.2.translation.y + 620.5).abs() < 0.01);
+            assert!((moved.2.translation.x - 401.5).abs() < 0.01);
+            assert!((moved.2.translation.y + 624.5).abs() < 0.01);
             app.world_mut()
                 .resource_mut::<GameState>()
                 .opened_boxes_mut()

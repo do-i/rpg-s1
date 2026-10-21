@@ -26,6 +26,9 @@ To add a chest in Tiled:
 2. Select the closed tile in the `item_box` tileset and press **T** (Insert Tile).
 3. Place a 32×32 tile object and give it a unique Name.
 4. Add the string property `item_box_id` with a key from the contents catalog.
+5. Paint a tile from `collision.tsx` in the `collision` layer at the tile
+   containing the chest image's center. Keep an adjacent standing tile open
+   so the player can interact, and save the collision layer hidden.
 
 Positions belong only to TMX. Tile objects use Tiled's default bottom-left
 anchor; the engine retains fractional pixel coordinates and uses the tile
@@ -33,6 +36,11 @@ containing the image center for interaction. Use the map's tile size without sca
 rotation. The tile immediately after the selected closed image is its opened
 frame. The engine draws one runtime sprite and changes that frame when opened;
 the object image is not also drawn as a static map tile.
+
+Collision uses that same center tile, including for fractional placements and
+object-group offsets. For a default 32×32 tile object, its center is at
+`(x + offsetx + 16, y + offsety - 16)` in map pixels. Opening the chest keeps
+its collision tile in place.
 
 Definitions contain loot, optional traps and optional `present` flag
 conditions. The catalog is cached by the asset loader and resolved when a map

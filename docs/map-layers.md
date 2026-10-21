@@ -1,9 +1,8 @@
 # Map layers
 
-The shrine established this convention. Ardel, Millhaven, and their roof/tree
-corrections have passed visual review. The remaining 44 maps now use the
-same separation and await visual review. All 58 playable maps have hidden
-collision layers; encounter spawn markers are also hidden and remain active.
+All 74 playable maps and the editor template use the layer order below.
+Optional layers and object groups may be absent. Collision layers and encounter
+spawn markers are hidden and remain active.
 
 Use the single 32×32 opaque red (`#FF0000`) tile from `collision.tsx` /
 `collision.png` to paint blocked cells. Show the `collision` layer in Tiled to
@@ -13,23 +12,26 @@ uses nonzero tile IDs for blocking, regardless of the tile's color or visibility
 Global IDs vary by map; select the tile from the `collision` tileset rather than
 assuming it has GID 1. No additional layer is needed.
 
-Usual layer order, **top to bottom in Tiled** (`terrain` is optional):
+Layer order, **top to bottom in Tiled**:
 
 | Layer | Rendering | Movement |
 | --- | --- | --- |
 | `foreground` | Overhead art; complete trees sort at their authored base | Does not block |
+| `item_boxes` | Chest tile objects below overhead art | Paint collision beneath each chest's center tile |
 | `decoration` | Below characters; candles, signs, low objects, and object bases | Does not block |
 | `architecture` | Below decoration; walls, buildings, and fixed supporting surfaces | Does not block |
 | `terrain` | Above ground; paths and terrain overlays, where needed | Does not block |
 | `ground` | Base floor or landscape | Does not block |
+| `spawn_tile` | Hidden encounter markers, where needed | Does not block |
 | `collision` | Hidden (`visible="0"`); solid footprints only | Every nonzero tile blocks movement |
+| `boss_enemy` | Optional object group for boss markers | Defines boss encounters |
 | `portals` | Object group for transition triggers | Defines map connections |
 
 Use only the established tile-layer names: `ground`, `terrain`, `architecture`,
 `decoration`, `foreground`, `collision`, and `spawn_tile`. Each name appears at
 most once per map. **New layer names require the owner's explicit permission.**
 Discuss a layout that cannot fit these layers before adding another layer.
-Keep existing `portals` and `boss_enemy` object groups for gameplay metadata.
+Keep existing `portals`, `boss_enemy`, and `item_boxes` object groups for gameplay metadata.
 Hidden `spawn_tile` layers retain encounter data beside the collision mask.
 Signs are visible decoration; their tileset IDs identify interactions.
 Each board can use `data/dialogue/sign_<map_id>_<x>_<y>.yaml`, where `x,y`
@@ -71,13 +73,9 @@ on floor tile `[x, y]`, author `[x - 1, y - 1]` and check all four collision-box
 corners against the map. The box spans two tile columns; checking only the
 authored tile or the box's center can miss furniture collisions.
 
-Put the uppermost terrain artwork in `terrain` and its opaque backing in
-`ground`. When transparent terrain needs a separate supporting surface, use
-`architecture` beneath `terrain`, retaining the authored appearance. Seven
-outdoor maps use this order: Starting Forest, Marshland, Sunken Cave, Mountain
-Foothills 01, and Mountain Pass 01–03. Their cliff or terrain backing uses
-`architecture`; no additional layer is needed. Covered tiles that contribute
-no pixels can be omitted. Collision and encounter data remain independent.
+Put terrain artwork in `terrain` and its opaque backing in `ground`.
+Keep structural tiles in `architecture`, above terrain on every map.
+Collision and encounter data remain independent.
 
 The Ardel migration keeps map sizes, portals, NPC metadata, and prop positions.
 Roofs, complete trees, and tall furniture tops use `foreground`. Roof footprints
