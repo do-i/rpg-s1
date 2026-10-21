@@ -54,6 +54,7 @@ macro_rules! scenario_assets {
         $action::<Font>($target);
         $action::<Manifest>($target);
         $action::<crate::scenario_map::MapMetadata>($target);
+        $action::<crate::scenario_item_box::ItemBoxCatalog>($target);
         $action::<crate::scenario_audio::BgmIndex>($target);
         $action::<crate::scenario_audio::SfxIndex>($target);
         $action::<crate::scenario_party::PartyCatalog>($target);

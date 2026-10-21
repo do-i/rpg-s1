@@ -16,20 +16,3 @@ npcs:
     dialogue: ruins_gate_surveyor
     sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: down
-
-item_boxes:
-  - id: ruins_gate_chest_01
-    position: [18, 7]
-    loot:
-      items:
-        - id: hi_potion
-          qty: 2
-  - id: ruins_gate_chest_02
-    position: [35, 23]
-    loot:
-      items:
-        - id: smelling_salts
-          qty: 2
-      magic_cores:
-        - size: m
-          qty: 3

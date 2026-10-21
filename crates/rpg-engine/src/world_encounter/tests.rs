@@ -428,8 +428,9 @@ fn production_open_plains_and_caves_spawn_encounters_and_treasure() {
     assert_eq!(boss.tile_position(), Position::new(3, 18));
 
     for (map_id, entry, expected_enemies, expected_boxes) in [
-        ("zone_02_open_plains_cave_01", Position::new(1, 3), 6, 2),
+        ("zone_02_open_plains_cave_01", Position::new(1, 3), 6, 4),
         ("zone_02_open_plains_cave_02", Position::new(8, 27), 9, 3),
+        ("zone_02_open_plains_cave_01", Position::new(1, 3), 6, 4),
     ] {
         app.world_mut()
             .resource_mut::<GameState>()
@@ -492,6 +493,58 @@ fn production_open_plains_and_caves_spawn_encounters_and_treasure() {
                 .iter(app.world())
                 .all(|item_box| !item_box.loot().items.is_empty())
         );
+        if map_id == "zone_02_open_plains_cave_01" {
+            let key = crate::runtime_opened_boxes::OpenedBoxKey::try_new(
+                RuntimeMapId::try_new(map_id).unwrap(),
+                "plains_cave_01_chest_01",
+            )
+            .unwrap();
+            let already_open = app
+                .world()
+                .resource::<GameState>()
+                .opened_boxes()
+                .contains(&key);
+            let mut query =
+                app.world_mut()
+                    .query::<(&crate::world_object::WorldItemBox, &Sprite, &Transform)>();
+            let rows = query.iter(app.world()).collect::<Vec<_>>();
+            let one = rows
+                .iter()
+                .find(|(b, _, _)| b.id() == "plains_cave_01_chest_01")
+                .unwrap();
+            let shared = rows
+                .iter()
+                .find(|(b, _, _)| b.id() == "plains_cave_01_chest_03")
+                .unwrap();
+            assert_eq!(one.0.loot(), shared.0.loot());
+            assert_ne!(one.0.key(), shared.0.key());
+            assert_eq!(
+                one.1.texture_atlas.as_ref().unwrap().index,
+                usize::from(already_open)
+            );
+            assert_eq!(shared.1.texture_atlas.as_ref().unwrap().index, 0);
+            let moved = rows
+                .iter()
+                .find(|(b, _, _)| b.id() == "plains_cave_01_chest_02")
+                .unwrap();
+            assert_eq!(moved.0.tile_position(), Position::new(12, 19));
+            assert!((moved.2.translation.x - 409.5).abs() < 0.01);
+            assert!((moved.2.translation.y + 620.5).abs() < 0.01);
+            app.world_mut()
+                .resource_mut::<GameState>()
+                .opened_boxes_mut()
+                .record(key);
+            app.update();
+            let mut query = app
+                .world_mut()
+                .query::<(&crate::world_object::WorldItemBox, &Sprite)>();
+            for (chest, sprite) in query.iter(app.world()) {
+                assert_eq!(
+                    sprite.texture_atlas.as_ref().unwrap().index,
+                    usize::from(chest.id() == "plains_cave_01_chest_01")
+                );
+            }
+        }
     }
 }
 

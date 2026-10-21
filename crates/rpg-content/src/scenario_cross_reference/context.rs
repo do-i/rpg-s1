@@ -45,6 +45,7 @@ pub(super) struct ScenarioCatalogs {
     pub(super) items: Vec<Located<ItemCatalogFile>>,
     pub(super) field_use: Option<Located<FieldUseCatalogFile>>,
     pub(super) maps: Vec<Located<MapMetadata>>,
+    pub(super) item_boxes: Option<Located<crate::scenario_item_box::ItemBoxCatalog>>,
     pub(super) dialogue: Vec<Located<DialogueDocument>>,
     pub(super) enemies: Vec<Located<EnemyCatalogFile>>,
     pub(super) boss_move_sets: Vec<Located<BossMoveSet>>,

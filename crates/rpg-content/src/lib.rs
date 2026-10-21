@@ -18,6 +18,7 @@ pub mod scenario_duplicate_id;
 pub mod scenario_encounter;
 pub mod scenario_enemy;
 pub mod scenario_item;
+pub mod scenario_item_box;
 pub mod scenario_manifest;
 pub mod scenario_map;
 pub mod scenario_party;

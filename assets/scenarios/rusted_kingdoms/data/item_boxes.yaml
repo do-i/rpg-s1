@@ -1,0 +1,309 @@
+# Reusable chest contents. Placements and instance names live in TMX item_boxes objects.
+item_boxes:
+  forest_chest_01:
+    loot:
+      items:
+        - id: potion
+          qty: 2
+        - id: antidote
+          qty: 1
+      magic_cores:
+        - size: m
+          qty: 3
+        - size: s
+          qty: 10
+  forest_chest_02:
+    loot:
+      items:
+        - id: potion
+          qty: 2
+  forest_chest_03:
+    loot:
+      items:
+        - id: antidote
+          qty: 1
+      magic_cores:
+        - size: s
+          qty: 2
+  plains_chest_01:
+    loot:
+      items:
+        - id: potion
+          qty: 3
+  plains_chest_02:
+    loot:
+      magic_cores:
+        - size: s
+          qty: 5
+  plains_cave_01_chest_01:
+    loot:
+      items:
+        - id: potion
+          qty: 3
+  plains_cave_01_chest_02:
+    loot:
+      items:
+        - id: ether
+          qty: 1
+      magic_cores:
+        - size: s
+          qty: 2
+  plains_cave_02_chest_01:
+    loot:
+      items:
+        - id: potion
+          qty: 2
+  plains_cave_02_chest_02:
+    loot:
+      items:
+        - id: antidote
+          qty: 2
+  plains_cave_02_chest_03:
+    loot:
+      items:
+        - id: ether
+          qty: 1
+      magic_cores:
+        - size: s
+          qty: 2
+  marshland_chest_01:
+    loot:
+      items:
+        - id: antidote
+          qty: 2
+      magic_cores:
+        - size: s
+          qty: 4
+  marshland_chest_02:
+    loot:
+      items:
+        - id: potion
+          qty: 3
+        - id: echo_herb
+          qty: 1
+  marshland_chest_03:
+    loot:
+      items:
+        - id: ether
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 2
+  ruins_gate_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  ruins_gate_chest_02:
+    loot:
+      items:
+        - id: smelling_salts
+          qty: 2
+      magic_cores:
+        - size: m
+          qty: 3
+  ruins_courtyard_chest_01:
+    loot:
+      items:
+        - id: ether
+          qty: 2
+        - id: antidote
+          qty: 2
+  ruins_courtyard_chest_02:
+    trap:
+      damage: 25
+    loot:
+      items:
+        - id: fire_vial
+          qty: 3
+      magic_cores:
+        - size: m
+          qty: 4
+  ruins_sanctum_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: remedy
+          qty: 1
+  ruins_sanctum_chest_02:
+    trap:
+      damage: 30
+    loot:
+      items:
+        - id: hi_ether
+          qty: 2
+      magic_cores:
+        - size: l
+          qty: 1
+  foothills_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 1
+        - id: potion
+          qty: 2
+  foothills_chest_02:
+    loot:
+      magic_cores:
+        - size: m
+          qty: 2
+  foothills_02_chest_01:
+    loot:
+      items:
+        - id: potion
+          qty: 3
+        - id: antidote
+          qty: 1
+  foothills_02_chest_02:
+    loot:
+      magic_cores:
+        - size: m
+          qty: 2
+  foothills_03_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  foothills_03_chest_02:
+    loot:
+      magic_cores:
+        - size: m
+          qty: 3
+  pass_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+  pass_chest_02:
+    loot:
+      magic_cores:
+        - size: l
+          qty: 1
+        - size: m
+          qty: 2
+  pass_02_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 2
+        - id: antidote
+          qty: 1
+  pass_02_chest_02:
+    loot:
+      magic_cores:
+        - size: l
+          qty: 2
+  pass_03_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+  pass_03_chest_02:
+    loot:
+      magic_cores:
+        - size: l
+          qty: 2
+        - size: m
+          qty: 2
+  sunken_cave_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: echo_herb
+          qty: 2
+  sunken_cave_chest_02:
+    trap:
+      damage: 40
+    loot:
+      items:
+        - id: shock_vial
+          qty: 3
+      magic_cores:
+        - size: l
+          qty: 2
+  sunken_cave_chest_03:
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+        - id: hi_ether
+          qty: 2
+  corrupted_forest_chest_01:
+    loot:
+      items:
+        - id: remedy
+          qty: 2
+      magic_cores:
+        - size: l
+          qty: 2
+  corrupted_forest_chest_02:
+    loot:
+      items:
+        - id: holy_water
+          qty: 3
+        - id: hi_potion
+          qty: 3
+  corrupted_forest_chest_03:
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+      magic_cores:
+        - size: xl
+          qty: 1
+  marshal_camp_chest_01:
+    loot:
+      items:
+        - id: hi_potion
+          qty: 3
+        - id: remedy
+          qty: 2
+  marshal_camp_chest_02:
+    trap:
+      damage: 55
+    loot:
+      items:
+        - id: life_crystal
+          qty: 1
+      magic_cores:
+        - size: l
+          qty: 2
+  marshal_camp_chest_03:
+    loot:
+      items:
+        - id: elixir
+          qty: 1
+        - id: hi_ether
+          qty: 2
+  volcanic_chest_01:
+    loot:
+      items:
+        - id: phoenix_wing
+          qty: 1
+
+  stronghold_chest_01:
+    loot:
+      items:
+        - id: elixir
+          qty: 1
+        - id: hi_potion
+          qty: 4
+  stronghold_chest_02:
+    loot:
+      items:
+        - id: life_crystal
+          qty: 2
+        - id: remedy
+          qty: 2
+  stronghold_chest_03:
+    trap:
+      damage: 70
+    loot:
+      items:
+        - id: hi_ether
+          qty: 3
+      magic_cores:
+        - size: xl
+          qty: 2

@@ -237,6 +237,8 @@ pub struct ManifestFlagsRefs {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestRefs {
     #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub item_boxes: Option<ScenarioRelativePath>,
+    #[serde(default, deserialize_with = "deserialize_present_option")]
     pub transport: Option<ScenarioRelativePath>,
     pub party: ScenarioRelativePath,
     pub classes: ScenarioDirectoryPath,
@@ -555,6 +557,7 @@ mod tests {
         assert_eq!(
             manifest.refs,
             ManifestRefs {
+                item_boxes: None,
                 transport: Some("data/transport.yaml".try_into().unwrap()),
                 party: "data/party.yaml".try_into().unwrap(),
                 classes: "data/classes/".try_into().unwrap(),

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0" nextlayerid="11" nextobjectid="12">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0" nextlayerid="12" nextobjectid="14">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="2049" source="../tilesets/outdoor.tsx"/>
  <tileset firstgid="2321" source="../tilesets/shop.tsx"/>
  <tileset firstgid="2591" source="../tilesets/collision.tsx"/>
  <tileset firstgid="2592" source="../tilesets/floor.tsx"/>
+ <tileset firstgid="2784" source="../sprites/objects/item_box.tsx"/>
  <objectgroup id="5" name="portals">
   <object id="1" name="zone_02_open_plains_cave_02" x="817" y="82">
    <properties>
@@ -182,6 +183,18 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="11" name="item_boxes">
+  <object id="12" name="plains_chest_01" gid="2784" x="320" y="224" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="plains_chest_01"/>
+   </properties>
+  </object>
+  <object id="13" name="plains_chest_02" gid="2784" x="704" y="512" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="plains_chest_02"/>
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="10" name="foreground" width="30" height="20">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

@@ -14,19 +14,3 @@ npcs:
     dialogue: foothills_trailhand
     sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down
-
-item_boxes:
-  - id: foothills_chest_01
-    position: [43, 5]
-    loot:
-      items:
-        - id: hi_potion
-          qty: 1
-        - id: potion
-          qty: 2
-  - id: foothills_chest_02
-    position: [28, 18]
-    loot:
-      magic_cores:
-        - size: m
-          qty: 2

@@ -130,6 +130,16 @@ fn collect_flag_edges(
             }
         }
     }
+    if let Some(file) = &catalogs.item_boxes {
+        for (id, definition) in &file.value.item_boxes {
+            add_conditions(
+                &mut consumed,
+                &definition.present,
+                &file.path,
+                format!("item_boxes.{id}.present"),
+            );
+        }
+    }
     for file in &catalogs.maps {
         for (i, npc) in file.value.npcs.iter().enumerate() {
             add_conditions(

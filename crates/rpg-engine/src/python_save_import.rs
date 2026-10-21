@@ -59,6 +59,7 @@ pub(crate) struct PythonImportCatalog {
     classes: BTreeMap<String, ClassDefinition>,
     items: BTreeMap<String, ItemDefinition>,
     maps: BTreeMap<String, MapMetadata>,
+    box_ids: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl PythonImportCatalog {
@@ -113,6 +114,28 @@ impl PythonImportCatalog {
                 )));
             }
         }
+        let mut box_ids = BTreeMap::new();
+        if manifest.refs.item_boxes.is_some() {
+            for id in maps.keys() {
+                let logical = format!("{}/{id}.tmx", manifest.refs.tmx.as_str());
+                let path = package.join(&logical);
+                if !path.is_file() {
+                    continue;
+                }
+                let xml = fs::read_to_string(&path)
+                    .map_err(|e| PythonImportError::Content(e.to_string()))?;
+                let owner = crate::scenario_path::ScenarioRelativePath::try_from(logical.as_str())
+                    .map_err(|e| PythonImportError::Content(e.to_string()))?;
+                let doc = crate::tmx_header::parse_tmx_map_document(&xml, &owner)
+                    .map_err(|e| PythonImportError::Content(e.to_string()))?;
+                let placements = crate::scenario_item_box::item_box_placements(&doc)
+                    .map_err(PythonImportError::Content)?;
+                box_ids.insert(
+                    id.clone(),
+                    placements.into_iter().map(|p| p.instance_id).collect(),
+                );
+            }
+        }
         Ok(Self {
             manifest,
             balance,
@@ -120,6 +143,7 @@ impl PythonImportCatalog {
             classes,
             items,
             maps,
+            box_ids,
         })
     }
 }
@@ -545,7 +569,10 @@ impl PythonSave {
                     "opened-box map `{legacy_map_id}` is unavailable"
                 ))
             })?;
-            if !map.item_boxes.iter().any(|item_box| item_box.id == box_id) {
+            if !catalog.box_ids.get(&map_id).map_or_else(
+                || map.item_boxes.iter().any(|item_box| item_box.id == box_id),
+                |ids| ids.contains(box_id),
+            ) {
                 return Err(PythonImportError::Content(format!(
                     "opened box `{map_id}:{box_id}` is not in current map metadata"
                 )));

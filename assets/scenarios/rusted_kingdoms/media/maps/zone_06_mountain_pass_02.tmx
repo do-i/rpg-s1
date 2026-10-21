@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="52" height="36" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9006" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="52" height="36" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9007" nextobjectid="5">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="2289" source="../tilesets/collision.tsx"/>
  <tileset firstgid="2290" source="../tilesets/floor.tsx"/>
  <tileset firstgid="2482" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="2626" source="../sprites/objects/item_box.tsx"/>
  <objectgroup id="2" name="portals">
   <object id="1" name="entry_zone_06_mountain_pass" x="-4" y="480" width="12" height="128">
    <properties>
@@ -260,6 +261,18 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   </data>
  </layer>
+ <objectgroup id="9006" name="item_boxes">
+  <object id="3" name="pass_02_chest_01" gid="2626" x="1216" y="416" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="pass_02_chest_01"/>
+   </properties>
+  </object>
+  <object id="4" name="pass_02_chest_02" gid="2626" x="576" y="896" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="pass_02_chest_02"/>
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="9005" name="foreground" width="52" height="36">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

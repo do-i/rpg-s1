@@ -70,7 +70,8 @@ not close its visual/listening or validator-owner acceptance.
    `RPG_S1_DEBUG_COLLISION=1`. On that same map, edit a visible ground tile and a
    collision cell in its TMX. After publication, inspect both the changed tile and
    collision overlay; walk against the new blocked cell. Edit the referenced TSX
-   or PNG, then the map YAML's NPC/item-box definitions, and verify the corresponding
+   or PNG, then the map YAML's NPC definitions and `data/item_boxes.yaml` chest
+   definitions, and verify the corresponding
    sprites/entities change without leaving the map or rebuilding Rust.
 4. Edit an item/recipe/quest/class or transport catalog. After publication, open the
    relevant menu and inspect the revised data. Close menus before expecting another

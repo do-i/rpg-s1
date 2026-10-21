@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="56" height="32" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="56" height="32" tilewidth="32" tileheight="32" infinite="0" nextlayerid="10" nextobjectid="5">
  <tileset firstgid="1" source="../tilesets/terrain-v7.tsx"/>
  <tileset firstgid="2289" source="../tilesets/collision.tsx"/>
  <tileset firstgid="2290" source="../tilesets/floor.tsx"/>
  <tileset firstgid="2482" source="../tilesets/outdoor.tsx"/>
+ <tileset firstgid="2626" source="../sprites/objects/item_box.tsx"/>
  <objectgroup id="2" name="portals">
   <object id="1" name="entry_zone_05_mountain_foothills_01" x="-4" y="448" width="12" height="128">
    <properties>
@@ -236,6 +237,18 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="9" name="item_boxes">
+  <object id="3" name="foothills_02_chest_01" gid="2626" x="640" y="320" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="foothills_02_chest_01"/>
+   </properties>
+  </object>
+  <object id="4" name="foothills_02_chest_02" gid="2626" x="160" y="576" width="32" height="32">
+   <properties>
+    <property name="item_box_id" value="foothills_02_chest_02"/>
+   </properties>
+  </object>
+ </objectgroup>
  <layer id="8" name="foreground" width="56" height="32">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,

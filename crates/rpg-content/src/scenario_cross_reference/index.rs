@@ -145,6 +145,18 @@ impl ReferenceIndex {
                 );
             }
         }
+        if let Some(file) = &catalogs.item_boxes {
+            for id in file.value.item_boxes.keys() {
+                add_catalog_id(
+                    &mut index.catalog_ids,
+                    CatalogNamespace::ItemBoxes,
+                    "",
+                    id,
+                    &file.path,
+                    format!("item_boxes.{id}"),
+                );
+            }
+        }
         for file in &catalogs.maps {
             let id = file.value.effective_id(&file.stem);
             add_catalog_id(
@@ -391,6 +403,10 @@ impl<'a> Validator<'a> {
                 && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
             {
                 index.maps.insert(stem.to_owned());
+                if self.catalogs.item_boxes.is_some() {
+                    let logical = format!("{}/{stem}.tmx", index.tmx_root);
+                    self.validate_tmx_item_boxes(&logical);
+                }
             }
         }
     }

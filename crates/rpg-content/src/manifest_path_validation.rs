@@ -176,6 +176,9 @@ pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReferenc
         directory_reference("refs.assets", &manifest.refs.assets),
         directory_reference("refs.tmx", &manifest.refs.tmx),
     ];
+    if let Some(path) = &manifest.refs.item_boxes {
+        references.push(file_reference("refs.item_boxes", path));
+    }
     if let Some(transport) = &manifest.refs.transport {
         references.insert(15, file_reference("refs.transport", transport));
     }

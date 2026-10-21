@@ -34,33 +34,3 @@ npcs:
     sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     present:
       excludes: [boss_zone09_defeated]
-
-item_boxes:
-  - id: forest_chest_01
-    position: [47, 30]
-    loot:
-      items:
-        - id: potion
-          qty: 2
-        - id: antidote
-          qty: 1
-      magic_cores:
-        - size: m
-          qty: 3
-        - size: s
-          qty: 10
-  - id: forest_chest_02
-    position: [28, 11]
-    loot:
-      items:
-        - id: potion
-          qty: 2
-  - id: forest_chest_03
-    position: [5, 25]
-    loot:
-      items:
-        - id: antidote
-          qty: 1
-      magic_cores:
-        - size: s
-          qty: 2

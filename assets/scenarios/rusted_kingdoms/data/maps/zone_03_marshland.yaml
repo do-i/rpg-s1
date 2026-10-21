@@ -16,31 +16,3 @@ npcs:
     dialogue: marshland_reedcutter
     sprite: media/sprites/npc/female_sword_fighter_base.tsx
     default_facing: down
-
-item_boxes:
-  - id: marshland_chest_01
-    position: [24, 5]
-    loot:
-      items:
-        - id: antidote
-          qty: 2
-      magic_cores:
-        - size: s
-          qty: 4
-  - id: marshland_chest_02
-    position: [30, 18]
-    loot:
-      items:
-        - id: potion
-          qty: 3
-        - id: echo_herb
-          qty: 1
-  - id: marshland_chest_03
-    position: [8, 35]
-    loot:
-      items:
-        - id: ether
-          qty: 2
-      magic_cores:
-        - size: m
-          qty: 2
