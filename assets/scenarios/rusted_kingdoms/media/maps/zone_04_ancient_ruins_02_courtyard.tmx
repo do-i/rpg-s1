@@ -11,7 +11,7 @@
    <properties>
     <property name="target_map" value="zone_04_ancient_ruins_01_gate"/>
     <property name="target_position_x" type="int" value="1"/>
-    <property name="target_position_y" type="int" value="23"/>
+    <property name="target_position_y" type="int" value="29"/>
    </properties>
   </object>
   <object id="2" name="exit_zone_04_ancient_ruins_03_sanctum" x="-0.666663" y="460.666" width="12" height="76.6667">

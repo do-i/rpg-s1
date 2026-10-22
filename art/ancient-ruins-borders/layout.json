@@ -1,0 +1,412 @@
+{
+  "base_concept": "02-timber-palisade",
+  "southern_stone_sections": [
+    [
+      8,
+      50,
+      12,
+      5
+    ],
+    [
+      52,
+      50,
+      12,
+      5
+    ]
+  ],
+  "southern_stone_proportion": "one third",
+  "all_source_interior_tiles_unchanged": true,
+  "same_layers_and_portals": true,
+  "walkable_cells_connected": 2185,
+  "exits_and_chests_reachable": true,
+  "source_interior_rgba_identical": true,
+  "concept_02_northern_composition_rgba_identical": true,
+  "map": "zone_04_ancient_ruins_01_gate",
+  "map_size": [
+    72,
+    55
+  ],
+  "source_offset": [
+    4,
+    6
+  ],
+  "arrivals": {
+    "zone_03_marshland": [
+      70,
+      29
+    ],
+    "zone_04_ancient_ruins_02_courtyard": [
+      1,
+      29
+    ],
+    "town_03_ruinwatch": [
+      53,
+      1
+    ]
+  },
+  "npcs": {
+    "ruins_duelist": [
+      38,
+      31
+    ],
+    "ruins_gate_surveyor": [
+      56,
+      11
+    ]
+  },
+  "additional_props": [
+    {
+      "object": "dead_tree",
+      "position": [
+        0,
+        -1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 11
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        0,
+        9
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 15
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        0,
+        36
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 15
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        16,
+        -1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 12
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        30,
+        0
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 15
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        46,
+        -1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 11
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        56,
+        -1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 12
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        68,
+        0
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 14
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        69,
+        17
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 15
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        69,
+        43
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 15
+    },
+    {
+      "object": "fence",
+      "position": [
+        0,
+        1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        0,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        4,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 4
+    },
+    {
+      "object": "fence",
+      "position": [
+        4,
+        51
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        4,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        8,
+        1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 4
+    },
+    {
+      "object": "fence",
+      "position": [
+        12,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 3
+    },
+    {
+      "object": "fence",
+      "position": [
+        16,
+        1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        20,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 3
+    },
+    {
+      "object": "fence",
+      "position": [
+        20,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        24,
+        51
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        24,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        28,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        32,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        36,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        40,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        44,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        44,
+        51
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        44,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "fence",
+      "position": [
+        48,
+        1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 4
+    },
+    {
+      "object": "fence",
+      "position": [
+        48,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        52,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 2
+    },
+    {
+      "object": "fence",
+      "position": [
+        56,
+        1
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 4
+    },
+    {
+      "object": "fence",
+      "position": [
+        64,
+        51
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        64,
+        53
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 5
+    },
+    {
+      "object": "fence",
+      "position": [
+        68,
+        1
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 3
+    },
+    {
+      "object": "fence",
+      "position": [
+        68,
+        53
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 6
+    },
+    {
+      "object": "stump",
+      "position": [
+        32,
+        51
+      ],
+      "flip_horizontal": true,
+      "visible_tile_count": 4
+    },
+    {
+      "object": "stump",
+      "position": [
+        49,
+        51
+      ],
+      "flip_horizontal": false,
+      "visible_tile_count": 4
+    }
+  ],
+  "original_yard_prop_count": 41,
+  "additional_border_prop_count": 39
+}

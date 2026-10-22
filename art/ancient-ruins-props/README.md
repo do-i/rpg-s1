@@ -16,7 +16,7 @@ matching `ancient_ruins_props.tsx`. It is **320×416 pixels**, 10 columns and
 13 rows of exactly 32×32 pixels, with 130 slots. Complete objects stay together;
 transparent gutters separate vegetation/hay, supplies, and wreckage bands.
 
-| Object | Atlas column, row | Width × height in tiles | Map instances |
+| Object | Atlas column, row | Width × height in tiles | Original yard instances |
 | --- | --- | --- | --- |
 | Dead tree | 0, 0 | 3×5 | 7 |
 | Charred stump | 4, 3 | 2×2 | 4 |
@@ -45,7 +45,7 @@ magick art/ancient-ruins-props/generated-wheelbarrow.png \
   PNG32:temp/ancient-ruins-props/wheelbarrow.png
 ```
 
-[layout.json](layout.json) records atlas rectangles, all 41 map origins and
+[layout.json](layout.json) records atlas rectangles, the original 41 yard origins and
 horizontal flips, and exact collision cells. Placements occupy former supply
 yards beside houses and gate approaches; dead trees and stumps follow the
 outer lanes and abandoned edges. Upper rows use the existing `foreground`
@@ -54,9 +54,13 @@ whole object's base, following `zone_03_marshland.tmx`. Bottom rows use
 `decoration`. Only tree trunks block movement; other solid props block their
 base rows, with two rows for the deeper wheelbarrow/wagon footprints.
 
-The map retains its existing layers, dimensions, portals, treasure objects,
-NPCs, encounter markers, ground, terrain, and architecture. All walkable cells
-remain connected, all original shortest exit/NPC approaches are preserved,
-and all six chest standing areas remain accessible. The building PNG and
-owner-regenerated building TSX are unchanged. Higher-zone placeholder maps
-were not used as references.
+The perimeter expansion moves these placements and their collision cells four
+tiles east and six tiles south. Thirty-nine additional boundary prop placements
+are recorded in [the border manifest](../ancient-ruins-borders/layout.json).
+The original yard counts above exclude those perimeter instances.
+
+The map retains its existing layers, portal graph, treasure identities and
+encounter markers. All walkable cells remain connected and all six chest
+standing areas remain accessible. NPCs and return arrivals follow the expanded
+map geometry. The building PNG and owner-regenerated building TSX are unchanged.
+Higher-zone placeholder maps were not used as references.

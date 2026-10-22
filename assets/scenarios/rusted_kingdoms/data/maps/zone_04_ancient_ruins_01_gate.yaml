@@ -5,14 +5,14 @@ bgm: zone.ruins
 npcs:
   - id: ruins_duelist
     name: "Duelist Mirel"
-    position: [34, 25]
+    position: [38, 31]
     dialogue: ruins_duelist
     sprite: media/sprites/npc/female_sword_fighter_rapier_duelist.tsx
     default_facing: right
 
   - id: ruins_gate_surveyor
     name: "Surveyor Adran"
-    position: [52, 5]
+    position: [56, 11]
     dialogue: ruins_gate_surveyor
     sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: down

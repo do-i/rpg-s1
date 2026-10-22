@@ -30,9 +30,11 @@ its exact pixels and internal tile arrangement.
 
 [grouping.json](grouping.json) records each object's atlas rectangle and every
 map placement, including horizontal flips. The half-roof block supplies the
-northwest `[4,4]`, northeast `[54,4]`, and southeast `[50,28]` houses. The
-collapsed-roof block supplies the west `[8,20]`, southwest `[13,37]`, and south
-`[38,34]` houses. All coordinates are zero-based tile origins. Map appearances,
+northwest `[8,10]`, northeast `[58,10]`, and southeast `[54,34]` houses. The
+collapsed-roof block supplies the west `[12,26]`, southwest `[17,43]`, and south
+`[42,40]` houses. The expanded perimeter also uses three northern houses clipped by the map
+edge and two southern curtain-wall sections at `[8,50]` and `[52,50]`.
+All coordinates are zero-based tile origins. Map appearances,
 layer order and collision are preserved
 through explicit GID remapping.
 
@@ -65,7 +67,7 @@ magick art/ancient-ruins-objects/generated-gate.png \
 The owner-regenerated TSX contains image-grid metadata only, without per-tile
 descriptions or `sort_base_y` properties. Upper object rows belong in
 `foreground`; the last row belongs in `decoration`. Collision
-is authored independently, with a clear two-tile gate passage. No map layer
+is authored independently, with a connected gate passage that retains the owner's edited arch footprint. No map layer
 was added. Lower-zone maps supplied collision/layer conventions; higher-zone
 placeholder maps were not used as references.
 
