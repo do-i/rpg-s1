@@ -913,6 +913,12 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
                         })
                     })
                     .expect("the gate loads its themed object atlas");
+            assert!(gate.document().external_tilesets().iter().any(|tileset| {
+                tileset
+                    .source()
+                    .as_str()
+                    .ends_with("/ancient_ruins_props.tsx")
+            }));
             let collision = crate::scenario_spatial::collision_occupancy::CollisionOccupancy::from_tmx_document(gate.document()).unwrap();
             for column in [32, 33] {
                 for row in 5..24 {
@@ -922,6 +928,10 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
             for (column, row) in [(26, 20), (40, 20), (5, 10), (9, 24)] {
                 assert_eq!(collision.is_blocked(column, row), Some(true));
             }
+            for (column, row) in [(2, 6), (14, 11), (19, 9), (22, 10)] {
+                assert_eq!(collision.is_blocked(column, row), Some(true));
+            }
+            assert_eq!(collision.is_blocked(1, 6), Some(false));
         }
     }
 
