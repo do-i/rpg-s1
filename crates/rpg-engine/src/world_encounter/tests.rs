@@ -820,7 +820,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
     }
 
     let maps = [
-        ("zone_04_ancient_ruins_01_gate", Position::new(62, 23), 16),
+        ("zone_04_ancient_ruins_01_gate", Position::new(70, 29), 16),
         (
             "zone_04_ancient_ruins_02_courtyard",
             Position::new(1, 12),
@@ -919,19 +919,34 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
                     .as_str()
                     .ends_with("/ancient_ruins_props.tsx")
             }));
+            assert!(gate.document().external_tilesets().iter().any(|tileset| {
+                tileset
+                    .source()
+                    .as_str()
+                    .ends_with("/ancient_ruins_borders.tsx")
+            }));
             let collision = crate::scenario_spatial::collision_occupancy::CollisionOccupancy::from_tmx_document(gate.document()).unwrap();
-            for column in [32, 33] {
-                for row in 5..24 {
-                    assert_eq!(collision.is_blocked(column, row), Some(false));
+            for column in [36, 37] {
+                for row in 11..30 {
+                    assert_eq!(
+                        collision.is_blocked(column, row),
+                        Some((column, row) == (37, 24))
+                    );
                 }
             }
-            for (column, row) in [(26, 20), (40, 20), (5, 10), (9, 24)] {
+            for (column, row) in [(30, 26), (44, 26), (9, 16), (13, 30)] {
                 assert_eq!(collision.is_blocked(column, row), Some(true));
             }
-            for (column, row) in [(2, 6), (14, 11), (19, 9), (22, 10)] {
+            for (column, row) in [(6, 12), (18, 17), (23, 15), (26, 16)] {
                 assert_eq!(collision.is_blocked(column, row), Some(true));
             }
-            assert_eq!(collision.is_blocked(1, 6), Some(false));
+            assert_eq!(collision.is_blocked(5, 12), Some(false));
+            for (column, row) in [(1, 10), (70, 10), (8, 54), (55, 54)] {
+                assert_eq!(collision.is_blocked(column, row), Some(true));
+            }
+            for (column, row) in [(0, 29), (71, 29), (53, 0)] {
+                assert_eq!(collision.is_blocked(column, row), Some(false));
+            }
         }
     }
 
