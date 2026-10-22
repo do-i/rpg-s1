@@ -1154,7 +1154,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             destinations,
             [
                 ("zone_02_open_plains", Position::new(3, 18)),
-                ("zone_04_ancient_ruins_01_gate", Position::new(62, 23)),
+                ("zone_04_ancient_ruins_01_gate", Position::new(70, 29)),
                 ("town_03_harborgate", Position::new(4, 1)),
             ]
         );
@@ -1344,7 +1344,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .map(|portal| (portal.target_map().as_str(), portal.target_position()))
                 .collect::<Vec<_>>(),
             [
-                ("zone_04_ancient_ruins_01_gate", Position::new(1, 23),),
+                ("zone_04_ancient_ruins_01_gate", Position::new(1, 29),),
                 ("zone_04_ancient_ruins_03_sanctum", Position::new(36, 11),),
             ]
         );
@@ -1384,7 +1384,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 ("town_03_ruinwatch_shop_armor", Position::new(7, 9)),
                 ("town_03_ruinwatch_inn", Position::new(7, 5)),
                 ("town_03_ruinwatch_shop_mc", Position::new(7, 9)),
-                ("zone_04_ancient_ruins_01_gate", Position::new(49, 1),),
+                ("zone_04_ancient_ruins_01_gate", Position::new(53, 1),),
                 ("town_03_ruinwatch_monastery_vaults", Position::new(11, 20)),
                 ("town_03_ruinwatch_storage", Position::new(4, 8)),
                 ("town_03_ruinwatch_shop", Position::new(7, 9)),
