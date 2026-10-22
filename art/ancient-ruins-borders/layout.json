@@ -15,9 +15,8 @@
     ]
   ],
   "southern_stone_proportion": "one third",
-  "all_source_interior_tiles_unchanged": true,
   "same_layers_and_portals": true,
-  "walkable_cells_connected": 2185,
+  "walkable_cells_connected": 3085,
   "exits_and_chests_reachable": true,
   "source_interior_rgba_identical": true,
   "concept_02_northern_composition_rgba_identical": true,
@@ -62,7 +61,8 @@
         -1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 11
+      "visible_tile_count": 11,
+      "collision": []
     },
     {
       "object": "dead_tree",
@@ -71,7 +71,13 @@
         9
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 15
+      "visible_tile_count": 15,
+      "collision": [
+        [
+          1,
+          13
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -80,7 +86,13 @@
         36
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 15
+      "visible_tile_count": 15,
+      "collision": [
+        [
+          1,
+          40
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -89,7 +101,13 @@
         -1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 12
+      "visible_tile_count": 12,
+      "collision": [
+        [
+          17,
+          3
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -98,7 +116,13 @@
         0
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 15
+      "visible_tile_count": 15,
+      "collision": [
+        [
+          31,
+          4
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -107,7 +131,13 @@
         -1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 11
+      "visible_tile_count": 11,
+      "collision": [
+        [
+          47,
+          3
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -116,7 +146,13 @@
         -1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 12
+      "visible_tile_count": 12,
+      "collision": [
+        [
+          57,
+          3
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -125,7 +161,8 @@
         0
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 14
+      "visible_tile_count": 14,
+      "collision": []
     },
     {
       "object": "dead_tree",
@@ -134,7 +171,13 @@
         17
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 15
+      "visible_tile_count": 15,
+      "collision": [
+        [
+          70,
+          21
+        ]
+      ]
     },
     {
       "object": "dead_tree",
@@ -143,7 +186,13 @@
         43
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 15
+      "visible_tile_count": 15,
+      "collision": [
+        [
+          70,
+          47
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -152,7 +201,25 @@
         1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -161,7 +228,25 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          0,
+          54
+        ],
+        [
+          1,
+          54
+        ],
+        [
+          2,
+          54
+        ],
+        [
+          3,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -170,7 +255,21 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          4,
+          2
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          7,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -179,7 +278,25 @@
         51
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          4,
+          52
+        ],
+        [
+          5,
+          52
+        ],
+        [
+          6,
+          52
+        ],
+        [
+          7,
+          52
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -188,7 +305,21 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          5,
+          54
+        ],
+        [
+          6,
+          54
+        ],
+        [
+          7,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -197,7 +328,25 @@
         1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          8,
+          2
+        ],
+        [
+          9,
+          2
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          11,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -206,7 +355,21 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 3
+      "visible_tile_count": 3,
+      "collision": [
+        [
+          12,
+          2
+        ],
+        [
+          13,
+          2
+        ],
+        [
+          15,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -215,7 +378,25 @@
         1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          16,
+          2
+        ],
+        [
+          17,
+          2
+        ],
+        [
+          18,
+          2
+        ],
+        [
+          19,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -224,7 +405,17 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 3
+      "visible_tile_count": 3,
+      "collision": [
+        [
+          20,
+          2
+        ],
+        [
+          21,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -233,7 +424,21 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          20,
+          54
+        ],
+        [
+          21,
+          54
+        ],
+        [
+          23,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -242,7 +447,25 @@
         51
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          24,
+          52
+        ],
+        [
+          25,
+          52
+        ],
+        [
+          26,
+          52
+        ],
+        [
+          27,
+          52
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -251,7 +474,25 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          24,
+          54
+        ],
+        [
+          25,
+          54
+        ],
+        [
+          26,
+          54
+        ],
+        [
+          27,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -260,7 +501,21 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          28,
+          54
+        ],
+        [
+          29,
+          54
+        ],
+        [
+          30,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -269,7 +524,25 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          32,
+          54
+        ],
+        [
+          33,
+          54
+        ],
+        [
+          34,
+          54
+        ],
+        [
+          35,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -278,7 +551,25 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          36,
+          54
+        ],
+        [
+          37,
+          54
+        ],
+        [
+          38,
+          54
+        ],
+        [
+          39,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -287,7 +578,21 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          41,
+          54
+        ],
+        [
+          42,
+          54
+        ],
+        [
+          43,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -296,7 +601,25 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          44,
+          2
+        ],
+        [
+          45,
+          2
+        ],
+        [
+          46,
+          2
+        ],
+        [
+          47,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -305,7 +628,25 @@
         51
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          44,
+          52
+        ],
+        [
+          45,
+          52
+        ],
+        [
+          46,
+          52
+        ],
+        [
+          47,
+          52
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -314,7 +655,25 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          44,
+          54
+        ],
+        [
+          45,
+          54
+        ],
+        [
+          46,
+          54
+        ],
+        [
+          47,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -323,7 +682,21 @@
         1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          48,
+          2
+        ],
+        [
+          49,
+          2
+        ],
+        [
+          51,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -332,7 +705,21 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          48,
+          54
+        ],
+        [
+          50,
+          54
+        ],
+        [
+          51,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -341,7 +728,13 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 2
+      "visible_tile_count": 2,
+      "collision": [
+        [
+          55,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -350,7 +743,21 @@
         1
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          56,
+          2
+        ],
+        [
+          57,
+          2
+        ],
+        [
+          58,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -359,7 +766,21 @@
         51
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          64,
+          52
+        ],
+        [
+          65,
+          52
+        ],
+        [
+          67,
+          52
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -368,7 +789,21 @@
         53
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 5
+      "visible_tile_count": 5,
+      "collision": [
+        [
+          64,
+          54
+        ],
+        [
+          65,
+          54
+        ],
+        [
+          66,
+          54
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -377,7 +812,17 @@
         1
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 3
+      "visible_tile_count": 3,
+      "collision": [
+        [
+          70,
+          2
+        ],
+        [
+          71,
+          2
+        ]
+      ]
     },
     {
       "object": "fence",
@@ -386,7 +831,25 @@
         53
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 6
+      "visible_tile_count": 6,
+      "collision": [
+        [
+          68,
+          54
+        ],
+        [
+          69,
+          54
+        ],
+        [
+          70,
+          54
+        ],
+        [
+          71,
+          54
+        ]
+      ]
     },
     {
       "object": "stump",
@@ -395,7 +858,17 @@
         51
       ],
       "flip_horizontal": true,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          32,
+          52
+        ],
+        [
+          33,
+          52
+        ]
+      ]
     },
     {
       "object": "stump",
@@ -404,9 +877,34 @@
         51
       ],
       "flip_horizontal": false,
-      "visible_tile_count": 4
+      "visible_tile_count": 4,
+      "collision": [
+        [
+          49,
+          52
+        ],
+        [
+          50,
+          52
+        ]
+      ]
     }
   ],
   "original_yard_prop_count": 41,
-  "additional_border_prop_count": 39
+  "additional_border_prop_count": 39,
+  "all_source_interior_art_tiles_unchanged": true,
+  "walkable_cells_total": 3101,
+  "unreachable_outer_edge_grass_cells": 16,
+  "border_collision": {
+    "policy": "Block masonry bases, water, palisade runs, fence bases, stumps and tree trunks; leave open ground and grass walkable.",
+    "old_source_edge_cleared": 202,
+    "removed_blank_ground_cells": 916,
+    "retained_border_collision_cells": 388,
+    "protected_interior_rect": [
+      5,
+      7,
+      62,
+      42
+    ]
+  }
 }

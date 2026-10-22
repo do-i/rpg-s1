@@ -70,6 +70,12 @@ edge. Thirty-nine additional prop placements decorate the boundary. West and
 east openings remain at row 29, and the north opening remains at column 53.
 The previous map contents, including the owner's edits, move together by four
 tiles east and six tiles south; NPCs and incoming portal coordinates follow.
+Collision follows the visible structures and water rather than filling the
+added margin. The former rectangular map-edge blockers are removed from open
+ground and grass. Walls block their bottom two courses, homes their lower
+halves, and trees only their trunk bases, matching the original map's depth
+conventions. All exits, NPC approaches, encounters, and chest approaches remain
+reachable through the main playable area.
 
 `ancient_ruins_borders.png`/`.tsx` adds four 32×32 slots in a 128×32 sheet:
 north cap, two repeating bodies, and south cap. The side palisade has a constant

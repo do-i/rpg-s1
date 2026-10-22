@@ -3,8 +3,8 @@
 The approved fourth border concept surrounds the original ruin with weathered
 wood, two southern mossy stone wall sections, and northern house remnants,
 dead trees, broken fences, and a pool. The map is 72×55 tiles. Its former 64×44
-interior moves four tiles east and six tiles south, preserving every original
-tile, the owner's gate edits, and existing layer IDs and order.
+interior moves four tiles east and six tiles south, preserving the original
+artwork, the owner's gate edits, and existing layer IDs and order.
 
 The palisade uses a due-south orthographic camera pitched down 45 degrees,
 without yaw or perspective taper. Gray-brown cracked timber, rusty fastenings,
@@ -48,3 +48,13 @@ southern stone sections, and 39 additional boundary prop placements. The
 original 41 yard props remain documented in the separate prop manifest.
 The building atlas and owner-regenerated building TSX are unchanged. No new
 map layers were added. Lower-zone collision conventions remain in use.
+
+Collision follows the object bases and water instead of blocking the whole
+added margin. The cleanup removes 916 unsupported blockers, including 202
+left along the former rectangular map edge. Stone walls block their bottom
+two courses; northern homes use the lower half of their footprint. Fences
+and stumps block their bases, dead trees their central trunk tile, and the
+continuous side palisades their narrow runs. Grass and ground under upper
+silhouettes stay walkable, following the original map's depth conventions.
+The manifest records those base cells for each added prop. It also distinguishes
+reachable playable ground from small grass pockets behind northern fences.

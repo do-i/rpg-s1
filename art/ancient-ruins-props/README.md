@@ -60,7 +60,7 @@ are recorded in [the border manifest](../ancient-ruins-borders/layout.json).
 The original yard counts above exclude those perimeter instances.
 
 The map retains its existing layers, portal graph, treasure identities and
-encounter markers. All walkable cells remain connected and all six chest
+encounter markers. All original playable approaches and all six chest
 standing areas remain accessible. NPCs and return arrivals follow the expanded
 map geometry. The building PNG and owner-regenerated building TSX are unchanged.
 Higher-zone placeholder maps were not used as references.

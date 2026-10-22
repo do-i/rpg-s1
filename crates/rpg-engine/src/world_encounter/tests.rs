@@ -947,6 +947,25 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
             for (column, row) in [(0, 29), (71, 29), (53, 0)] {
                 assert_eq!(collision.is_blocked(column, row), Some(false));
             }
+            // Grass and ground between the old map edge and the new perimeter
+            // must stay walkable, including space behind tall wall silhouettes.
+            for (column, row) in [
+                (0, 10),
+                (2, 10),
+                (4, 10),
+                (67, 10),
+                (69, 10),
+                (71, 10),
+                (25, 49),
+                (30, 51),
+                (5, 5),
+                (8, 50),
+            ] {
+                assert_eq!(collision.is_blocked(column, row), Some(false));
+            }
+            for (column, row) in [(31, 4), (34, 2), (9, 2), (5, 52), (32, 52)] {
+                assert_eq!(collision.is_blocked(column, row), Some(true));
+            }
         }
     }
 
