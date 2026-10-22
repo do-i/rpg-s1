@@ -1,0 +1,937 @@
+{
+  "map": "zone_04_ancient_ruins_01_gate",
+  "tile_size": 32,
+  "atlas_columns": 10,
+  "atlas_rows": 13,
+  "firstgid": 3128,
+  "objects": {
+    "dead_tree": {
+      "atlas_rect": [
+        0,
+        0,
+        3,
+        5
+      ]
+    },
+    "stump": {
+      "atlas_rect": [
+        4,
+        3,
+        2,
+        2
+      ]
+    },
+    "haystack": {
+      "atlas_rect": [
+        7,
+        3,
+        3,
+        2
+      ]
+    },
+    "wheelbarrow": {
+      "atlas_rect": [
+        0,
+        6,
+        2,
+        3
+      ]
+    },
+    "crates": {
+      "atlas_rect": [
+        3,
+        7,
+        2,
+        2
+      ]
+    },
+    "barrel": {
+      "atlas_rect": [
+        6,
+        7,
+        2,
+        2
+      ]
+    },
+    "wagon": {
+      "atlas_rect": [
+        0,
+        10,
+        4,
+        3
+      ]
+    },
+    "fence": {
+      "atlas_rect": [
+        5,
+        11,
+        4,
+        2
+      ]
+    }
+  },
+  "placements": [
+    {
+      "object": "dead_tree",
+      "position": [
+        1,
+        2
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          2,
+          6
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        16,
+        0
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          17,
+          4
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        56,
+        12
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          57,
+          16
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        4,
+        15
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          4,
+          16
+        ],
+        [
+          5,
+          16
+        ],
+        [
+          6,
+          16
+        ]
+      ]
+    },
+    {
+      "object": "wheelbarrow",
+      "position": [
+        8,
+        15
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          8,
+          16
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          8,
+          17
+        ],
+        [
+          9,
+          17
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        14,
+        8
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          14,
+          9
+        ],
+        [
+          15,
+          9
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        14,
+        10
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          14,
+          11
+        ],
+        [
+          15,
+          11
+        ]
+      ]
+    },
+    {
+      "object": "stump",
+      "position": [
+        14,
+        3
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          14,
+          4
+        ],
+        [
+          15,
+          4
+        ]
+      ]
+    },
+    {
+      "object": "fence",
+      "position": [
+        5,
+        18
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          5,
+          19
+        ],
+        [
+          6,
+          19
+        ],
+        [
+          7,
+          19
+        ],
+        [
+          8,
+          19
+        ]
+      ]
+    },
+    {
+      "object": "wagon",
+      "position": [
+        19,
+        8
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          19,
+          9
+        ],
+        [
+          20,
+          9
+        ],
+        [
+          21,
+          9
+        ],
+        [
+          22,
+          9
+        ],
+        [
+          19,
+          10
+        ],
+        [
+          20,
+          10
+        ],
+        [
+          21,
+          10
+        ],
+        [
+          22,
+          10
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        19,
+        20
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          19,
+          21
+        ],
+        [
+          20,
+          21
+        ],
+        [
+          21,
+          21
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        25,
+        21
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          25,
+          22
+        ],
+        [
+          26,
+          22
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        29,
+        24
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          29,
+          25
+        ],
+        [
+          30,
+          25
+        ]
+      ]
+    },
+    {
+      "object": "wagon",
+      "position": [
+        37,
+        24
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          37,
+          25
+        ],
+        [
+          38,
+          25
+        ],
+        [
+          39,
+          25
+        ],
+        [
+          40,
+          25
+        ],
+        [
+          37,
+          26
+        ],
+        [
+          38,
+          26
+        ],
+        [
+          39,
+          26
+        ],
+        [
+          40,
+          26
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        42,
+        11
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          42,
+          12
+        ],
+        [
+          43,
+          12
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        45,
+        13
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          45,
+          14
+        ],
+        [
+          46,
+          14
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        55,
+        17
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          55,
+          18
+        ],
+        [
+          56,
+          18
+        ],
+        [
+          57,
+          18
+        ]
+      ]
+    },
+    {
+      "object": "wheelbarrow",
+      "position": [
+        60,
+        13
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          60,
+          14
+        ],
+        [
+          61,
+          14
+        ],
+        [
+          60,
+          15
+        ],
+        [
+          61,
+          15
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        55,
+        19
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          55,
+          20
+        ],
+        [
+          56,
+          20
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        60,
+        18
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          60,
+          19
+        ],
+        [
+          61,
+          19
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        5,
+        23
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          5,
+          24
+        ],
+        [
+          6,
+          24
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        19,
+        24
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          19,
+          25
+        ],
+        [
+          20,
+          25
+        ]
+      ]
+    },
+    {
+      "object": "stump",
+      "position": [
+        1,
+        18
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          1,
+          19
+        ],
+        [
+          2,
+          19
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        1,
+        26
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          2,
+          30
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        1,
+        34
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          2,
+          38
+        ]
+      ]
+    },
+    {
+      "object": "wheelbarrow",
+      "position": [
+        26,
+        27
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          26,
+          28
+        ],
+        [
+          27,
+          28
+        ],
+        [
+          26,
+          29
+        ],
+        [
+          27,
+          29
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        27,
+        30
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          28,
+          34
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        24,
+        35
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          24,
+          36
+        ],
+        [
+          25,
+          36
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        28,
+        39
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          28,
+          40
+        ],
+        [
+          29,
+          40
+        ],
+        [
+          30,
+          40
+        ]
+      ]
+    },
+    {
+      "object": "stump",
+      "position": [
+        32,
+        38
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          32,
+          39
+        ],
+        [
+          33,
+          39
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        9,
+        39
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          9,
+          40
+        ],
+        [
+          10,
+          40
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        8,
+        41
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          8,
+          42
+        ],
+        [
+          9,
+          42
+        ],
+        [
+          10,
+          42
+        ]
+      ]
+    },
+    {
+      "object": "fence",
+      "position": [
+        26,
+        41
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          26,
+          42
+        ],
+        [
+          27,
+          42
+        ],
+        [
+          28,
+          42
+        ],
+        [
+          29,
+          42
+        ]
+      ]
+    },
+    {
+      "object": "wagon",
+      "position": [
+        52,
+        24
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          52,
+          25
+        ],
+        [
+          53,
+          25
+        ],
+        [
+          54,
+          25
+        ],
+        [
+          55,
+          25
+        ],
+        [
+          52,
+          26
+        ],
+        [
+          53,
+          26
+        ],
+        [
+          54,
+          26
+        ],
+        [
+          55,
+          26
+        ]
+      ]
+    },
+    {
+      "object": "wheelbarrow",
+      "position": [
+        46,
+        28
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          46,
+          29
+        ],
+        [
+          47,
+          29
+        ],
+        [
+          46,
+          30
+        ],
+        [
+          47,
+          30
+        ]
+      ]
+    },
+    {
+      "object": "barrel",
+      "position": [
+        43,
+        30
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          43,
+          31
+        ],
+        [
+          44,
+          31
+        ]
+      ]
+    },
+    {
+      "object": "stump",
+      "position": [
+        60,
+        28
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          60,
+          29
+        ],
+        [
+          61,
+          29
+        ]
+      ]
+    },
+    {
+      "object": "dead_tree",
+      "position": [
+        60,
+        34
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          61,
+          38
+        ]
+      ]
+    },
+    {
+      "object": "crates",
+      "position": [
+        60,
+        39
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          60,
+          40
+        ],
+        [
+          61,
+          40
+        ]
+      ]
+    },
+    {
+      "object": "haystack",
+      "position": [
+        50,
+        39
+      ],
+      "flip_horizontal": true,
+      "collision": [
+        [
+          50,
+          40
+        ],
+        [
+          51,
+          40
+        ],
+        [
+          52,
+          40
+        ]
+      ]
+    },
+    {
+      "object": "fence",
+      "position": [
+        53,
+        40
+      ],
+      "flip_horizontal": false,
+      "collision": [
+        [
+          53,
+          41
+        ],
+        [
+          54,
+          41
+        ],
+        [
+          55,
+          41
+        ],
+        [
+          56,
+          41
+        ]
+      ]
+    }
+  ]
+}

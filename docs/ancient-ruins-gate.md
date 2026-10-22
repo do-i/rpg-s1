@@ -16,6 +16,11 @@ residential quarter replace the former flat ornamental ruins.
   and western quarter offer guarded caches and routes around the fallen walls.
 - The northeast has a small surviving devotional stone and a cache. Adran waits
   beside the northern road with advice and supplies.
+- Forty-one abandoned props fill former yards and supply areas: six scorched
+  haystacks, four broken wheelbarrows, seven crate clusters, seven damaged
+  barrels, seven dead trees, four charred stumps, three wrecked wagons, and
+  three broken fences. Every sprite uses a straight-front orthographic camera
+  pitched down 45 degrees, showing top and front surfaces without isometric yaw.
 
 Six independent chest instances use the shared contents catalog. The two
 original instance names remain intact for save compatibility; two of the new
@@ -45,6 +50,18 @@ Gate towers and house roof footprints are solid. The gate keeps a two-tile-wide
 north/south passage at columns 32–33. Upper silhouettes use `foreground`;
 foundations and low rubble use `decoration`. The owner-regenerated TSX contains
 image-grid metadata without per-tile sorting offsets.
+
+The separate `ancient_ruins_props.png`/`.tsx` atlas is 320×416 pixels, with
+10 columns and 130 slots. Complete props are grouped into vegetation/hay,
+supplies, and wreckage bands with transparent gutters. Its TSX uses minimal
+image-grid metadata. Per-placement depth offsets live on the existing
+`foreground` layer, following the lower-zone Marshland pattern. Object bases
+use `decoration`; solid bases have collision, while dead-tree branches remain
+walkable underneath. The original shortest exit/NPC approaches, both gate
+passage columns, all encounter markers, all chest standing tiles, and all
+arrival points remain reachable. Source art, prompts, tile rectangles, exact
+placements, and collision footprints are recorded in
+[the prop sources](../art/ancient-ruins-props/README.md).
 
 Collision and layer patterns follow Starting Forest, Open Plains, and Marshland.
 Higher-zone placeholder maps were not visual or structural references.
