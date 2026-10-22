@@ -1,0 +1,25 @@
+{
+  "tile_size": 32,
+  "opaque_width": 18,
+  "opaque_x_bounds": [
+    [
+      7,
+      24
+    ],
+    [
+      7,
+      24
+    ],
+    [
+      7,
+      24
+    ],
+    [
+      7,
+      24
+    ]
+  ],
+  "middle_rows_constant_width": true,
+  "all_allowed_vertical_rgba_joins_identical": true,
+  "binary_alpha": true
+}

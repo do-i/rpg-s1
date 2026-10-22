@@ -16,8 +16,8 @@
       "map_instances": [
         {
           "position": [
-            24,
-            7
+            28,
+            13
           ],
           "flip_horizontal": false
         }
@@ -33,15 +33,29 @@
       "map_instances": [
         {
           "position": [
-            12,
-            15
+            16,
+            21
           ],
           "flip_horizontal": false
         },
         {
           "position": [
-            42,
-            15
+            46,
+            21
+          ],
+          "flip_horizontal": true
+        },
+        {
+          "position": [
+            8,
+            50
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            52,
+            50
           ],
           "flip_horizontal": true
         }
@@ -57,24 +71,32 @@
       "map_instances": [
         {
           "position": [
-            4,
-            4
-          ],
-          "flip_horizontal": false
-        },
-        {
-          "position": [
-            50,
-            28
+            8,
+            10
           ],
           "flip_horizontal": false
         },
         {
           "position": [
             54,
-            4
+            34
+          ],
+          "flip_horizontal": false
+        },
+        {
+          "position": [
+            58,
+            10
           ],
           "flip_horizontal": true
+        },
+        {
+          "position": [
+            7,
+            -4
+          ],
+          "flip_horizontal": false,
+          "clipped_at_north_edge": true
         }
       ]
     },
@@ -88,24 +110,40 @@
       "map_instances": [
         {
           "position": [
-            8,
-            20
+            12,
+            26
           ],
           "flip_horizontal": false
         },
         {
           "position": [
-            13,
-            37
+            17,
+            43
           ],
           "flip_horizontal": false
         },
         {
           "position": [
-            38,
-            34
+            42,
+            40
           ],
           "flip_horizontal": true
+        },
+        {
+          "position": [
+            22,
+            -3
+          ],
+          "flip_horizontal": false,
+          "clipped_at_north_edge": true
+        },
+        {
+          "position": [
+            60,
+            -3
+          ],
+          "flip_horizontal": true,
+          "clipped_at_north_edge": true
         }
       ]
     }
