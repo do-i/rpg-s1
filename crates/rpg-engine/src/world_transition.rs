@@ -1345,7 +1345,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .collect::<Vec<_>>(),
             [
                 ("zone_04_ancient_ruins_01_gate", Position::new(1, 29),),
-                ("zone_04_ancient_ruins_03_sanctum", Position::new(36, 11),),
+                ("zone_04_ancient_ruins_03_sanctum", Position::new(58, 34),),
             ]
         );
         assert_reversible_link(
