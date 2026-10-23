@@ -1,0 +1,79 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-22",
+  "camera": "due south, looking north, pitched down 45 degrees, zero yaw",
+  "assets": [
+    {
+      "name": "ridge",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: a massive wide isolated GRANITE ROCK RIDGE / CLIFF OUTCROP, roughly sixteen tiles wide by eight tall (512x256 final). Irregular long flat weathered upper ledge, thin patchy snow sitting on top, tall fractured vertical SOUTH FACING granite cliff face, layered slabs, deep dark fissures, broken boulders along the foot. Both ends naturally taper into separate low broken rocks. Broad imposing landscape silhouette, wider than tall, no trees or structures. Exposed slate-gray and muted brown-gray granite with icy crevice accents; snow is a restrained thin cap, rock face dominates. This is ONE complete natural rock barrier to place in a map, not a modular wall sheet. No enclosed building, no receding side walls.",
+      "source": "generated-ridge.png",
+      "atlas_rect": [
+        0,
+        0,
+        16,
+        8
+      ],
+      "source_sha256": "500431e5471f6e1c3f9b38d67b56b8bf5fd587055d18df67a4258d7078b0737d"
+    },
+    {
+      "name": "pine",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: one tall mature ALPINE PINE TREE, approximately four tiles wide by seven tall (128x224 final). Irregular layered dark desaturated green conifer boughs, sparse powder-snow patches on upper surfaces, crooked brown trunk visibly exposed near base, rugged roots, asymmetrical storm-worn silhouette. Snow does not cover every branch; dark needles and rough bark remain readable. Compact ground contact only, no terrain island, no decorations, no ornaments. Single whole tree.",
+      "source": "generated-pine.png",
+      "atlas_rect": [
+        18,
+        0,
+        4,
+        7
+      ],
+      "source_sha256": "b9465a96f4ff035be2d5d6a8601ef0145f8f73aef954e6a300b9889e27579f43"
+    },
+    {
+      "name": "shelter",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: one complete medieval ALPINE TRAIL SHELTER, approximately ten tiles wide by seven tall (320x224 final). Low sturdy gray-stone refuge, dark brown timber gable roof with patchy melting snow, chipped stone chimney at left with no smoke, small dark wooden central door and two narrow shuttered windows on the FRONT facade, stacked split logs under the front eaves at right, stone base and a few stones close to its foot. Front roof ridge and front facade horizontal, squarely front-on; NO visible outside left or right wall and no diagonal side roof plane. Worn but usable, a safe trail refuge, no ruin collapse, no signs or text. Keep roof, chimney and complete foundation.",
+      "source": "generated-shelter.png",
+      "atlas_rect": [
+        0,
+        10,
+        10,
+        7
+      ],
+      "source_sha256": "34d210e6a16f96e9787617eb02bd042a6456eb8998880ae5f17e99c6b4455471"
+    },
+    {
+      "name": "workshop",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: ONE abandoned medieval GOBLIN TINKER WORKSHOP / BOMB-MAKER WORKBENCH grouped prop, approximately nine tiles wide by seven tall (288x224 final). A low open-front timber lean-to with a sagging patchily snow-dusted plank roof on four sturdy posts; beneath it one heavy workbench bearing small dull iron gears, an unlit brass timer and a few inert squat iron bomb shells, no fire, no explosion, no smoke. A large worn wooden gear propped behind the bench, rusty hand tools, broken crate and short stack of empty barrels at the base. Brown timber and dark rusted iron, muted brass accents. Square FRONT and TOP view only, no exterior side face, no surrounding fence or floor plane. Whole roof and foot included.",
+      "source": "generated-workshop.png",
+      "atlas_rect": [
+        12,
+        10,
+        9,
+        7
+      ],
+      "source_sha256": "28cb236b6f6c13c5d29332abd3334f5c87c598c82e1793e3ba0290cd8a56560c"
+    },
+    {
+      "name": "cairn",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: ONE medieval alpine TRAIL BELL CAIRN, approximately three tiles wide by five tall (96x160 final). An irregular small stacked slate-gray stone cairn supports a weathered two-post timber yoke carrying ONE tarnished bronze hand bell, with a frayed rope hanging down the front. Thin snow on the cairn shoulders and crosspiece, a faded red cloth strip tied to the left post, no lettering. No archway or large building; slim readable silhouette with a solid low stone base. Whole object uncropped.",
+      "source": "generated-cairn.png",
+      "atlas_rect": [
+        23,
+        1,
+        3,
+        5
+      ],
+      "source_sha256": "46eada06bd9dfa2298b3a39fa47aab9f683676e75b7f240e99e47ebb72a63110"
+    },
+    {
+      "name": "boulder",
+      "prompt": "Use case: stylized-concept. Asset type: production pixel-art RPG map object to be normalized into a 32x32 tile-grid atlas. ONE whole isolated object, genuinely transparent background with clear margins, no scenery, no ground plane, no text, no watermark or painted checkerboard. Camera: orthographic looking NORTH from exactly DUE SOUTH, pitched DOWN 45 DEGREES, ZERO YAW. Horizontal front edges stay horizontal; front and top surfaces visible; no three-quarter/isometric rotation and no exterior side face. Detailed deliberate chunky hard-edged pixel clusters for a classic 32px RPG. Desaturated slate-gray rock, warm weathered brown wood, cool pale snow, subdued dark green foliage, restrained moss. A harsh medieval alpine foothill route above an abandoned stone kingdom. No characters, no magic glow, no outside cast shadow; keep whole silhouette uncropped. Subject: ONE clustered group of three angular alpine GRANITE BOULDERS, approximately four tiles wide by three tall (128x96 final). One large slab-sided boulder in the center with a smaller rock at either side, chipped facets, dark cracks, a restrained thin cap of patchy snow on upper ledges, tiny moss in a sheltered crack. Compact broad silhouette, exposed rock dominates, natural horizontal ground contact, no tree, no whole cliff or scenery. One complete isolated cluster.",
+      "source": "generated-boulder.png",
+      "atlas_rect": [
+        23,
+        8,
+        4,
+        3
+      ],
+      "source_sha256": "338c8f31dca2708ed3442276f1a1997d2e319f56a411437416d7f7d355e1c013"
+    }
+  ]
+}
