@@ -826,7 +826,11 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
             Position::new(66, 24),
             20,
         ),
-        ("zone_04_ancient_ruins_03_sanctum", Position::new(1, 16), 9),
+        (
+            "zone_04_ancient_ruins_03_sanctum",
+            Position::new(58, 34),
+            17,
+        ),
     ];
     for (index, (map_id, position, expected_enemies)) in maps.into_iter().enumerate() {
         app.world_mut()
@@ -1037,11 +1041,11 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
     };
     assert_eq!(boss.encounter_id(), "zone_04_ancient_ruins_03_sanctum:boss");
     assert_eq!(boss.formation(), ["skeleton_knight_base"]);
-    assert_eq!(boss.tile_position(), Position::new(19, 14));
+    assert_eq!(boss.tile_position(), Position::new(30, 21));
 
     let barrier_context = PreBattleReturnContext {
         map_id: "zone_04_ancient_ruins_03_sanctum".to_owned(),
-        position: Position::new(1, 16),
+        position: Position::new(58, 34),
         facing: CardinalDirection::Down,
         world_bgm_key: None,
         world_enemies: Vec::new(),

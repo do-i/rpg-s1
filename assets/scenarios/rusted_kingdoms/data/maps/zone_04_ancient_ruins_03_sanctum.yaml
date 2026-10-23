@@ -5,7 +5,7 @@ bgm: zone.ruins
 npcs:
   - id: ruins_sanctum_penitent
     name: "The Penitent"
-    position: [17, 2]
+    position: [47, 18]
     dialogue: ruins_sanctum_penitent
     sprite: media/sprites/npc/plate_knight_open_helmet.tsx
     default_facing: down

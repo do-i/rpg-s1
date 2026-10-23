@@ -28,8 +28,9 @@ reachable interaction tile beside it.
 The graph remains Gate ↔ Courtyard ↔ Sanctum. Gate arrivals enter the courtyard
 at `[66,24]`; Sanctum arrivals enter at `[1,24]`. The two portal strips span
 rows 22–26 at the east and west edges. Outgoing destinations remain Gate
-`[1,29]` and Sanctum `[36,11]`. Neighboring maps change only their courtyard
-return coordinates; their artwork and collision remain unchanged.
+`[1,29]` and Sanctum `[58,34]`, following the
+[sanctum redesign](ancient-ruins-sanctum.md). The gate's artwork and collision
+remain unchanged.
 
 The map reuses the accepted building, aftermath-prop and palisade atlases and
 adds a separate grouped civic-object atlas. Generated sources, full prompts,
