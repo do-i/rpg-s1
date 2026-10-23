@@ -1100,6 +1100,6 @@ mod tests {
         // migrated it and the unused tileset was deleted — and on 2026-10-09 the eight Astral Pixels
         // tilesets were replaced by one project-authored `interior/interior.tsx`, because that pack
         // forbids redistribution.
-        assert_eq!(targets.len(), 19);
+        assert_eq!(targets.len(), 20);
     }
 }

@@ -77,6 +77,86 @@ fn quest(game: &GameState, id: &str) -> QuestStatus {
     )
 }
 
+#[test]
+fn foothills_bell_reports_survive_saves_and_reward_either_visit_order_once() {
+    let directory = FixtureDirectory::new("trail-bells");
+    let store = SaveStore::new(directory.0.clone());
+    for (index, (first, second, early)) in [
+        ("foothills_shelf_lookout", "foothills_ascent_keeper", false),
+        ("foothills_ascent_keeper", "foothills_shelf_lookout", false),
+        ("foothills_ascent_keeper", "foothills_shelf_lookout", true),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut game = fresh_game();
+        assert_eq!(quest(&game, "sq_trail_bells"), QuestStatus::Inactive);
+        if early {
+            talk(first, &mut game);
+            talk(second, &mut game);
+            assert_eq!(quest(&game, "sq_trail_bells"), QuestStatus::Inactive);
+        }
+        talk("foothills_trailhand", &mut game);
+        assert_eq!(quest(&game, "sq_trail_bells"), QuestStatus::Active);
+        if !early {
+            talk(first, &mut game);
+            talk("foothills_trailhand", &mut game);
+            assert_eq!(game.repository().item_count("guardian_pendant"), 0);
+        }
+        save(&store, index * 2 + 1, &game);
+        let mut game = load(&store, index * 2 + 1);
+        talk(second, &mut game);
+        talk("foothills_trailhand", &mut game);
+        assert_eq!(quest(&game, "sq_trail_bells"), QuestStatus::Completed);
+        assert_eq!(game.repository().item_count("guardian_pendant"), 1);
+        assert_eq!(game.repository().item_count("rare_coin"), 1);
+        save(&store, index * 2 + 2, &game);
+        let mut restored = load(&store, index * 2 + 2);
+        let inventory = restored.repository().clone();
+        talk(first, &mut restored);
+        talk(second, &mut restored);
+        talk("foothills_trailhand", &mut restored);
+        assert_eq!(restored.repository(), &inventory);
+    }
+}
+
+#[test]
+fn foothills_equipment_caches_keep_their_rewards_and_opened_state_after_reload() {
+    let directory = FixtureDirectory::new("foothills-caches");
+    let store = SaveStore::new(directory.0.clone());
+    let definitions: crate::scenario_item_box::ItemBoxCatalog =
+        scenario_yaml::from_str(include_str!(scenario_file!("data/item_boxes.yaml"))).unwrap();
+    let catalog = FieldMenuCatalog::production_class_fixture();
+    for (index, (segment, id, item)) in [
+        ("01", "foothills_chest_03", "steel_sword"),
+        ("01", "foothills_chest_04", "kite_shield"),
+        ("02", "foothills_02_chest_03", "war_hammer"),
+        ("02", "foothills_02_chest_04", "shadow_buckler"),
+        ("03", "foothills_03_chest_03", "war_mace"),
+        ("03", "foothills_03_chest_04", "blessed_shield"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let source = &definitions.item_boxes[id];
+        let chest = WorldItemBox::for_test(
+            RuntimeMapId::try_new(format!("zone_05_mountain_foothills_{segment}")).unwrap(),
+            id,
+            Position::new(1, 1),
+            source.loot.clone(),
+            source.trap,
+        );
+        let mut game = fresh_game();
+        let initial = game.repository().item_count(item);
+        assert!(open_item_box(&chest, &mut game, &catalog).opened);
+        assert_eq!(game.repository().item_count(item), initial + 1);
+        save(&store, index + 1, &game);
+        let mut restored = load(&store, index + 1);
+        assert!(!open_item_box(&chest, &mut restored, &catalog).opened);
+        assert_eq!(restored.repository().item_count(item), initial + 1);
+    }
+}
+
 fn save_operator_fixture(store: &SaveStore, slot: usize, game: &GameState) {
     crate::debug_launch::validate_debug_launch(
         &crate::test_support::scenario_package_dir(),

@@ -1366,7 +1366,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .collect::<Vec<_>>(),
             [
                 ("zone_04_ancient_ruins_02_courtyard", Position::new(1, 24),),
-                ("zone_05_mountain_foothills_01", Position::new(8, 28),),
+                ("zone_05_mountain_foothills_01", Position::new(12, 56),),
             ]
         );
     }
