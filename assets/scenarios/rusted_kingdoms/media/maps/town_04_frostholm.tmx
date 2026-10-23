@@ -43,8 +43,8 @@
   <object id="16" name="zone_05_mountain_foothills_03" x="616" y="974" width="50" height="6">
    <properties>
     <property name="target_map" value="zone_05_mountain_foothills_03"/>
-    <property name="target_position_x" type="int" value="46"/>
-    <property name="target_position_y" type="int" value="12"/>
+    <property name="target_position_x" type="int" value="74"/>
+    <property name="target_position_y" type="int" value="15"/>
    </properties>
   </object>
  </objectgroup>

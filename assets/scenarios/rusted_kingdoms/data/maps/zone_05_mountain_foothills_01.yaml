@@ -3,14 +3,14 @@ warp_order: 110
 bgm: zone.alpine
 
 enemy_spawn:
-  init: 4
-  max: 8
+  init: 6
+  max: 12
   interval: 22.0
 
 npcs:
   - id: foothills_trailhand
     name: "Trailhand Corin"
-    position: [15, 17]
+    position: [19, 39]
     dialogue: foothills_trailhand
     sprite: media/sprites/npc/male_sword_fighter_axe_fighter.tsx
     default_facing: down

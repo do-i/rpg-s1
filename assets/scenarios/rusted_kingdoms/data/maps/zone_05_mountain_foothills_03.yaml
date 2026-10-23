@@ -3,6 +3,14 @@ warp_order: 125
 bgm: zone.alpine
 
 enemy_spawn:
-  init: 3
-  max: 7
+  init: 5
+  max: 10
   interval: 24.0
+
+npcs:
+  - id: foothills_ascent_keeper
+    name: "Keeper Iven"
+    position: [12, 18]
+    dialogue: foothills_ascent_keeper
+    sprite: media/sprites/npc/male_sword_fighter_longsword_guard.tsx
+    default_facing: down
