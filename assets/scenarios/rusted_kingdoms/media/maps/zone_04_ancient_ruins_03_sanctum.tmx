@@ -11,7 +11,7 @@
    <properties>
     <property name="target_map" value="zone_04_ancient_ruins_02_courtyard"/>
     <property name="target_position_x" type="int" value="1"/>
-    <property name="target_position_y" type="int" value="16"/>
+    <property name="target_position_y" type="int" value="24"/>
    </properties>
   </object>
   <object id="2" name="exit_zone_05_mountain_foothills" x="544" y="-4" width="160" height="12">
