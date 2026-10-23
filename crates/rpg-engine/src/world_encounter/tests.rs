@@ -823,8 +823,8 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         ("zone_04_ancient_ruins_01_gate", Position::new(70, 29), 16),
         (
             "zone_04_ancient_ruins_02_courtyard",
-            Position::new(1, 12),
-            13,
+            Position::new(66, 24),
+            20,
         ),
         ("zone_04_ancient_ruins_03_sanctum", Position::new(1, 16), 9),
     ];
@@ -964,6 +964,64 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
                 assert_eq!(collision.is_blocked(column, row), Some(false));
             }
             for (column, row) in [(31, 4), (34, 2), (9, 2), (5, 52), (32, 52)] {
+                assert_eq!(collision.is_blocked(column, row), Some(true));
+            }
+        }
+        if map_id == "zone_04_ancient_ruins_02_courtyard" {
+            let mut boxes = app
+                .world_mut()
+                .query::<&crate::world_object::WorldItemBox>();
+            let boxes = boxes.iter(app.world()).collect::<Vec<_>>();
+            assert_eq!(boxes.len(), 6);
+            assert_eq!(
+                boxes.iter().filter(|chest| chest.trap().is_some()).count(),
+                2
+            );
+            for original in ["ruins_courtyard_chest_01", "ruins_courtyard_chest_02"] {
+                assert!(boxes.iter().any(|chest| chest.id() == original));
+            }
+            let maps = app
+                .world()
+                .resource::<Assets<crate::tmx_ground_asset::TmxGroundAsset>>();
+            let courtyard = maps
+                .iter()
+                .map(|(_, map)| map)
+                .find(|map| {
+                    map.document().external_tilesets().iter().any(|tileset| {
+                        tileset
+                            .source()
+                            .as_str()
+                            .ends_with("/ancient_ruins_courtyard.tsx")
+                    })
+                })
+                .expect("courtyard loads its grouped civic object atlas");
+            assert_eq!(courtyard.document().header().width(), 68);
+            assert_eq!(courtyard.document().header().height(), 52);
+            let collision = crate::scenario_spatial::collision_occupancy::CollisionOccupancy::from_tmx_document(courtyard.document()).unwrap();
+            for (column, row) in [
+                (66, 24),
+                (1, 24),
+                (0, 24),
+                (67, 24),
+                (4, 10),
+                (63, 26),
+                (29, 28),
+                (15, 36),
+            ] {
+                assert_eq!(collision.is_blocked(column, row), Some(false));
+            }
+            for (column, row) in [
+                (33, 24),
+                (8, 38),
+                (1, 10),
+                (66, 10),
+                (17, 14),
+                (15, 40),
+                (61, 15),
+                (36, 44),
+                (11, 30),
+                (61, 36),
+            ] {
                 assert_eq!(collision.is_blocked(column, row), Some(true));
             }
         }

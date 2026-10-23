@@ -1316,7 +1316,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .map(|portal| (portal.target_map().as_str(), portal.target_position()))
                 .collect::<Vec<_>>(),
             [
-                ("zone_04_ancient_ruins_02_courtyard", Position::new(40, 15),),
+                ("zone_04_ancient_ruins_02_courtyard", Position::new(66, 24),),
                 ("zone_03_marshland", Position::new(1, 31)),
                 ("town_03_ruinwatch", Position::new(19, 29)),
             ]
@@ -1365,7 +1365,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .map(|portal| (portal.target_map().as_str(), portal.target_position()))
                 .collect::<Vec<_>>(),
             [
-                ("zone_04_ancient_ruins_02_courtyard", Position::new(1, 16),),
+                ("zone_04_ancient_ruins_02_courtyard", Position::new(1, 24),),
                 ("zone_05_mountain_foothills_01", Position::new(8, 28),),
             ]
         );

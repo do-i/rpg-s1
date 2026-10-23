@@ -369,7 +369,7 @@ mod tests {
                 .flat_map(|zone| zone.entries.iter())
                 .filter(|entry| entry.chase_range > 0)
                 .count(),
-            30
+            39
         );
         assert_eq!(
             zones
