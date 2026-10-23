@@ -1,0 +1,21 @@
+id: foothills_shelf_lookout
+type: npc
+
+entries:
+  - condition:
+      requires: [sq_trail_bells_done]
+    lines:
+      - "Corin got your report? Good. He worries loud enough to start an avalanche."
+
+  - condition:
+      requires: [sq_trail_bells_shelf]
+    lines:
+      - "One bell for clear weather. Two for trouble. Three means I dropped the rope again."
+      - "Tell Corin I'm keeping the shelf post. Iven's refuge is farther up, on the western trail."
+
+  - lines:
+      - "Mind the rope. I spent half the morning untangling it from a pine."
+      - "You're checking the bells? Tell Corin that Mara's alive, the shelf post is sound, and the upper crossing still holds."
+      - "Iven is at the western refuge on Ticker's Ascent. If he's counting explosions again, don't encourage him."
+    on_complete:
+      set_flag: sq_trail_bells_shelf

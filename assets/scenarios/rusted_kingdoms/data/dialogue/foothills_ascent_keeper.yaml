@@ -1,0 +1,22 @@
+id: foothills_ascent_keeper
+type: npc
+
+entries:
+  - condition:
+      requires: [sq_trail_bells_done, boss_zone05_defeated]
+    lines:
+      - "Quiet at last. I can count my own thoughts again. There aren't many, but they're mine."
+
+  - condition:
+      requires: [sq_trail_bells_ascent]
+    lines:
+      - "Tell Corin I'm well and the western refuge bell still answers. Mara keeps the shelf bell below us."
+      - "Titch's old workbench is on the eastern rise. Keep your hands off anything that ticks."
+
+  - lines:
+      - "I counted steps for Titch once. He wanted to know exactly where a traveler would stop to breathe."
+      - "Stopped counting when he started leaving bombs on those steps."
+      - "Tell Corin that Iven's alive, the western refuge is sound, and the bell works. I've been using it to count the explosions."
+      - "If Mara's still at the northeast shelf refuge, bring her report back too. Corin ought to sleep for once."
+    on_complete:
+      set_flag: sq_trail_bells_ascent

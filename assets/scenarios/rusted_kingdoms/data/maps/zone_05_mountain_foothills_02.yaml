@@ -3,6 +3,14 @@ warp_order: 120
 bgm: zone.alpine
 
 enemy_spawn:
-  init: 4
-  max: 8
+  init: 6
+  max: 12
   interval: 22.0
+
+npcs:
+  - id: foothills_shelf_lookout
+    name: "Lookout Mara"
+    position: [60, 14]
+    dialogue: foothills_shelf_lookout
+    sprite: media/sprites/npc/archer_recurve_scout.tsx
+    default_facing: down

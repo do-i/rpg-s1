@@ -6,31 +6,31 @@ density: 0.14
 entries:
   - formation: [goblin_bomber_base, goblin_bomber_base]
     weight: 22
-    chase_range: 0
+    chase_range: 3
   - formation: [goblin_bomber_redcap_bomber]
     weight: 15
-    chase_range: 0
+    chase_range: 4
   - formation: [goblin_bomber_club_sapper, goblin_bomber_base]
     weight: 12
-    chase_range: 0
+    chase_range: 2
   - formation: [goblin_crossbowman_base, goblin_crossbowman_base]
     weight: 15
-    chase_range: 0
+    chase_range: 4
   - formation: [goblin_crossbowman_hooded_marksman]
     weight: 10
-    chase_range: 0
+    chase_range: 4
   - formation: [goblin_crossbowman_knife_backup, goblin_crossbowman_base]
     weight: 10
-    chase_range: 0
+    chase_range: 3
   - formation: [frankenstein_brawler_base]
     weight: 8
-    chase_range: 0
+    chase_range: 2
   - formation: [frankenstein_brawler_scarred_construct]
     weight: 5
-    chase_range: 0
+    chase_range: 3
   - formation: [pumpkin_jack_lantern_duelist]
     weight: 3
-    chase_range: 0
+    chase_range: 3
 
 barrier_enemies:
   - id: pumpkin_jack_lantern_duelist

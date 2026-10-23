@@ -140,3 +140,11 @@
   description: "The ashgatherer swept a silver locket out of the drifts — somebody's whole heart in an ash-pan. The mourner in the square knows every grief in the city."
   started_flag: sq_locket_started
   completed_flag: sq_locket_done
+
+- id: sq_trail_bells
+  name: "The Answering Bells"
+  type: sub
+  location: "Mountain Foothills"
+  description: "Corin no longer hears the trail bells answer. Check on Mara at Windcut Shelf's northeast refuge and Iven at the western refuge on Ticker's Ascent, then bring both reports back to Corin."
+  started_flag: sq_trail_bells_started
+  completed_flag: sq_trail_bells_done

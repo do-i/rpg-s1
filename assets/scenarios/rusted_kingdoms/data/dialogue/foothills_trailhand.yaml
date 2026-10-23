@@ -2,5 +2,53 @@ id: foothills_trailhand
 type: npc
 
 entries:
-  - lines:
+  - condition:
+      requires: [sq_trail_bells_done]
+    lines:
+      - "Two bells, two keepers, no missing fingers. A fine day's work."
+      - "Mara's still counting echoes, is she? She counts that as company."
+
+  - condition:
+      requires: [sq_trail_bells_started, sq_trail_bells_shelf, sq_trail_bells_ascent]
+      excludes: [sq_trail_bells_done]
+    lines:
+      - "Both posts answered? Then the next caravan has a road worth trusting."
+      - "Iven used the bell to count Titch's explosions? Sensible. Cheaper than a clock."
+      - "Take this pendant. A trailhand gave it to me when I was the one who needed finding."
+    on_complete:
+      set_flag: sq_trail_bells_done
+      give_items:
+        - id: guardian_pendant
+          qty: 1
+        - id: rare_coin
+          qty: 1
+
+  - condition:
+      requires: [sq_trail_bells_started, sq_trail_bells_shelf]
+      excludes: [sq_trail_bells_ascent]
+    lines:
+      - "Mara's safe. Good. Iven keeps the bell at the western refuge on Ticker's Ascent."
+      - "He used to count steps for Titch. Ask him how that went."
+
+  - condition:
+      requires: [sq_trail_bells_started, sq_trail_bells_ascent]
+      excludes: [sq_trail_bells_shelf]
+    lines:
+      - "Iven's safe. Now find Mara at the northeast refuge on Windcut Shelf."
+      - "Either bridge reaches her side. The lower crossing has more room to catch your breath."
+
+  - condition:
+      requires: [sq_trail_bells_started]
+    lines:
+      - "Mara keeps the northeast bell on Windcut Shelf. Iven keeps the western refuge bell on Ticker's Ascent."
+      - "Find out if they're well, then bring word back. A ringing bell isn't proof of a living keeper."
+
+  - condition:
+      excludes: [sq_trail_bells_started]
+    lines:
       - "Snow hides the loose stone. Follow the worn ground, even when the climb looks longer."
+      - "Our trail bells used to answer one another every evening. Lately all I hear is wind and Titch's blasted ticking."
+      - "Would you check on Mara at the northeast refuge on Windcut Shelf, then Iven at the western refuge on Ticker's Ascent?"
+      - "Bring word from both. No heroics needed. We lose enough people to those."
+    on_complete:
+      set_flag: sq_trail_bells_started

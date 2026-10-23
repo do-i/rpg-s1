@@ -199,6 +199,74 @@ item_boxes:
       magic_cores:
         - size: m
           qty: 3
+  foothills_chest_03:
+    loot:
+      items:
+        - id: steel_sword
+          qty: 1
+  foothills_chest_04:
+    loot:
+      items:
+        - id: kite_shield
+          qty: 1
+  foothills_chest_05:
+    loot:
+      items:
+        - id: rare_coin
+          qty: 2
+  foothills_chest_06:
+    loot:
+      items:
+        - id: ether
+          qty: 2
+        - id: remedy
+          qty: 1
+  foothills_02_chest_03:
+    loot:
+      items:
+        - id: war_hammer
+          qty: 1
+  foothills_02_chest_04:
+    loot:
+      items:
+        - id: shadow_buckler
+          qty: 1
+  foothills_02_chest_05:
+    trap:
+      damage: 30
+    loot:
+      items:
+        - id: elixir
+          qty: 1
+  foothills_02_chest_06:
+    loot:
+      magic_cores:
+        - size: l
+          qty: 1
+  foothills_03_chest_03:
+    loot:
+      items:
+        - id: war_mace
+          qty: 1
+  foothills_03_chest_04:
+    loot:
+      items:
+        - id: blessed_shield
+          qty: 1
+  foothills_03_chest_05:
+    trap:
+      damage: 35
+    loot:
+      items:
+        - id: rare_coin
+          qty: 3
+        - id: elixir
+          qty: 1
+  foothills_03_chest_06:
+    loot:
+      items:
+        - id: silver_ring
+          qty: 1
   pass_chest_01:
     loot:
       items:

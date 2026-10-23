@@ -31,8 +31,9 @@ The graph remains Courtyard ↔ Sanctum ↔ Mountain Foothills. The eastern port
 spans rows 32–36; Courtyard arrivals enter at `[58,34]`. The northern portal
 spans columns 29–33; Mountain arrivals enter at `[31,2]`. Both trigger strips
 are inside the map. Outgoing destinations remain Courtyard `[1,24]` and
-Mountain Foothills `[8,28]`. Neighboring maps change only their sanctum return
-coordinates; their artwork and collision remain unchanged.
+Mountain Foothills `[12,56]`, following the
+[Zone 05 redesign](mountain-foothills.md). The courtyard's artwork and collision
+remain unchanged.
 
 All existing layer names, IDs and order are retained. Collision and spawn
 layers remain hidden. Upper silhouettes use `foreground` with per-cell base
