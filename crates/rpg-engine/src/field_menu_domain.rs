@@ -2037,8 +2037,8 @@ pub(crate) mod tests {
                 ))
                 .collect::<Vec<_>>(),
             vec![
-                ("zone_05_mountain_foothills_02", 120, Position::new(53, 21)),
-                ("zone_05_mountain_foothills_03", 125, Position::new(2, 20)),
+                ("zone_05_mountain_foothills_02", 120, Position::new(78, 19)),
+                ("zone_05_mountain_foothills_03", 125, Position::new(1, 47)),
             ]
         );
     }

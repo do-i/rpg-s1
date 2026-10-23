@@ -196,7 +196,7 @@ mod tests {
         let catalog: QuestCatalogFile = scenario_yaml::from_str(&document)
             .unwrap_or_else(|error| panic!("{} should load: {error}", path.display()));
 
-        assert_eq!(catalog.entries().len(), 17);
+        assert_eq!(catalog.entries().len(), 18);
         assert_eq!(
             catalog
                 .entries()
@@ -211,7 +211,7 @@ mod tests {
                 .iter()
                 .filter(|quest| quest.kind == QuestKind::Sub)
                 .count(),
-            12
+            13
         );
         // Every main quest precedes every sub-quest. Expressed as a partition rather than a
         // hardcoded split index, which silently encoded "there are exactly four main quests" and
