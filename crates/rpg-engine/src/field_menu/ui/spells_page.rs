@@ -91,6 +91,16 @@ pub(in crate::field_menu) fn spawn_spells_page(
                     party_focused,
                 );
                 spawn_spellbook_column(columns, font, state, game, catalog, !party_focused);
+                if party_focused {
+                    columns.spawn(Node {
+                        width: px(ITEMS_DETAIL_WIDTH),
+                        ..default()
+                    });
+                } else if let Some(member) = member_at(game, state.member_index) {
+                    let abilities = learned_field_abilities(member, game, catalog);
+                    let selected = selected_spell_index(state, &abilities);
+                    spawn_spell_detail(columns, font, member, abilities.get(selected).copied());
+                }
             });
             spawn_status_text(
                 page,
@@ -199,18 +209,7 @@ pub(in crate::field_menu) fn spawn_spellbook_column(
         font,
         focused,
         |panel| {
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_grow: 1.0,
-                    flex_direction: FlexDirection::Row,
-                    column_gap: px(16),
-                    ..default()
-                })
-                .with_children(|body| {
-                    spawn_spell_list(body, font, state, member, &abilities, selected, focused);
-                    spawn_spell_detail(body, font, member, abilities.get(selected).copied());
-                });
+            spawn_spell_list(panel, font, state, member, &abilities, selected, focused);
         },
     );
 }
@@ -226,8 +225,9 @@ pub(in crate::field_menu) fn spawn_spell_list(
 ) {
     parent
         .spawn(Node {
+            width: percent(100),
             flex_basis: px(0),
-            flex_grow: 1.12,
+            flex_grow: 1.0,
             flex_direction: FlexDirection::Column,
             row_gap: px(7),
             ..default()
@@ -337,24 +337,21 @@ pub(in crate::field_menu) fn spawn_spell_detail(
     member: &crate::runtime_member::RuntimeMember,
     ability: Option<&Ability>,
 ) {
-    parent
-        .spawn((
-            Node {
-                flex_basis: px(0),
-                flex_grow: 0.88,
-                flex_direction: FlexDirection::Column,
-                row_gap: px(11),
-                padding: UiRect::all(px(14)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(5)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(10, 10, 14, 150)),
-            BorderColor::all(status_border()),
-        ))
-        .with_children(|detail| {
-            spawn_status_text(detail, "DETAIL", font, 13.0, status_gold());
-            spawn_section_rule(detail);
+    spawn_status_panel(
+        parent,
+        Node {
+            width: px(ITEMS_DETAIL_WIDTH),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(11),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        "DETAIL",
+        font,
+        |detail| {
             let Some(ability) = ability else {
                 spawn_status_text(
                     detail,
@@ -404,7 +401,8 @@ pub(in crate::field_menu) fn spawn_spell_detail(
                     status_muted()
                 },
             );
-        });
+        },
+    );
 }
 
 pub(in crate::field_menu) fn spawn_spell_overlay(

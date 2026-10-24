@@ -705,7 +705,7 @@ fn equipment_picker_keeps_the_slot_context_and_renders_a_preview() {
 }
 
 #[test]
-fn spells_page_reuses_party_cards_and_builds_the_spellbook_detail_layout() {
+fn spells_page_reuses_party_cards_and_hides_details_while_choosing_a_caster() {
     let game = fixture_game();
     let party_len = game.party().len();
     let mut app = App::new();
@@ -733,8 +733,71 @@ fn spells_page_reuses_party_cards_and_builds_the_spellbook_detail_layout() {
         .collect::<Vec<_>>();
     assert!(labels.contains(&"PARTY"));
     assert!(labels.contains(&"SPELLBOOK"));
-    assert!(labels.contains(&"DETAIL"));
+    assert!(!labels.contains(&"DETAIL"));
     assert!(labels.contains(&"No learned field abilities."));
+}
+
+#[test]
+fn spell_details_follow_spellbook_focus_and_remain_visible_while_targeting() {
+    for mode in [
+        FieldMenuMode::Browse,
+        FieldMenuMode::SpellList,
+        FieldMenuMode::SpellTarget,
+        FieldMenuMode::TeleportPicker,
+    ] {
+        let game = fixture_game_with_recruit();
+        let catalog = crate::field_menu_domain::tests::catalog();
+        let member = super::member_at(&game, 1).unwrap();
+        let ability = learned_field_abilities(member, &game, &catalog)[0];
+        let description = ability.description.clone();
+        let pending_id = Some(ability.id.clone());
+        let mut app = App::new();
+        app.insert_resource(game)
+            .insert_resource(catalog)
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Spells,
+                mode,
+                member_index: 1,
+                pending_id,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_spells_page);
+
+        app.update();
+
+        let world = app.world_mut();
+        let labels = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        let show_details = mode != FieldMenuMode::Browse;
+        assert_eq!(labels.contains(&"DETAIL"), show_details, "{mode:?}");
+        assert_eq!(
+            labels.contains(&description.as_str()),
+            show_details,
+            "{mode:?}"
+        );
+        if show_details {
+            let mut title_parent = |title: &str| {
+                world
+                    .query::<(&Text, &ChildOf)>()
+                    .iter(world)
+                    .find_map(|(text, parent)| (text.0 == title).then_some(parent.parent()))
+                    .unwrap()
+            };
+            let party = title_parent("PARTY");
+            let spellbook = title_parent("SPELLBOOK");
+            let detail = title_parent("DETAIL");
+            let columns = world.get::<ChildOf>(spellbook).unwrap().parent();
+            assert_eq!(world.get::<ChildOf>(party).unwrap().parent(), columns);
+            assert_eq!(world.get::<ChildOf>(detail).unwrap().parent(), columns);
+            let detail_node = world.get::<Node>(detail).unwrap();
+            assert_eq!(detail_node.width, px(ITEMS_DETAIL_WIDTH));
+            assert_eq!(detail_node.height, percent(100));
+        }
+    }
 }
 
 #[test]
