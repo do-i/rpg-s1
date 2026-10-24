@@ -15,7 +15,7 @@
    <properties>
     <property name="target_map" value="zone_06_mountain_pass_01"/>
     <property name="target_position_x" type="int" value="1"/>
-    <property name="target_position_y" type="int" value="16"/>
+    <property name="target_position_y" type="int" value="44"/>
    </properties>
   </object>
   <object id="12" name="palace" x="624" y="192" width="64" height="5">

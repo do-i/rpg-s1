@@ -10,7 +10,7 @@ enemy_spawn:
 npcs:
   - id: mountain_pilgrim
     name: "Pilgrim Edras"
-    position: [30, 15]
+    position: [18, 37]
     dialogue: mountain_pilgrim
     sprite: media/sprites/npc/plate_knight_mace_knight.tsx
     default_facing: left

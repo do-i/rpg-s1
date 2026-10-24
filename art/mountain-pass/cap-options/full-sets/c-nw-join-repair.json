@@ -1,0 +1,16 @@
+{
+  "source": "generated-c-nw-join.png",
+  "cap_reference": "c-nw-before-join.png",
+  "middle_reference": "c-nw-middle-reference.png",
+  "tool": "built-in OpenAI image generation",
+  "prompt": "Use case: precise-object-edit. Edit target image 1 is an enlarged exact 32x32 pixel-art northwest stone bridge cap. Its sculpture is a mountain ram guardian face with curled horns. Supporting reference image 2 shows the cap on LEFT and adjacent middle stone rail on RIGHT. Output ONLY the single square cap tile, same fixed canvas and registration. Repair only its RIGHTMOST FOUR ORIGINAL PIXEL COLUMNS: remove the thin vertical floating connector and replace it with a short horizontal stone rail stub aligned with reference 2. Those four columns must be transparent at original rows 0..9, opaque masonry rows 10..31: light granite top rows 10..21, darker fascia rows 22..31. Preserve the other 28 columns EXACTLY, including the horns, guardian face and plinth, snow, shading, scale and footprint. Do not move, recenter, trim, mirror or resize the object. Smooth only the narrow connector transition at its right edge. Sharp square pixels, nearest-neighbor pixel art, no antialiasing, new colors, text, border or additional decoration. Transparent background. Output one square cap, not the two-tile reference.",
+  "edited_rect": [
+    28,
+    0,
+    4,
+    32
+  ],
+  "normalization": "Fixed 32x32 canvas, nearest neighbor. Preserve leftmost 28 columns. Constrain edited columns to the adjacent middle tile row palette and alpha profile; last column exactly matches the middle tile first column.",
+  "source_sha256": "04f10059960a4ff401a99d4591487ecc66408eceada80d18617c3f8d40789161",
+  "tile_sha256": "19f6cb930e7c009b6e5daa02eb336f374f400e3f02e76a38ee5df7941706d7b5"
+}

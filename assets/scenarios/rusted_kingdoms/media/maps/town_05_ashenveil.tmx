@@ -42,8 +42,8 @@
   <object id="16" name="zone_06_mountain_pass_03" x="580.846" y="974" width="128.12" height="15.1141">
    <properties>
     <property name="target_map" value="zone_06_mountain_pass_03"/>
-    <property name="target_position_x" type="int" value="47"/>
-    <property name="target_position_y" type="int" value="17"/>
+    <property name="target_position_x" type="int" value="78"/>
+    <property name="target_position_y" type="int" value="15"/>
    </properties>
   </object>
  </objectgroup>

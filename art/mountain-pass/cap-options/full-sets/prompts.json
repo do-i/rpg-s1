@@ -1,0 +1,105 @@
+{
+  "tool": "built-in image_gen",
+  "active_for_zone06": "B",
+  "requests": [
+    {
+      "style": "A",
+      "name": "Warded pier",
+      "corner": "nw",
+      "source": "generated-a-nw.png",
+      "tile": "a-nw.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Warded pier design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHWEST cap: the target cap is the left tile. Create ONLY a matching NORTHWEST version of this approved design: the same broad beveled octagonal newel and large recessed diamond ward; small northwest snow lip. The decorative cap is on the LEFT end of a horizontal east-west rail, and the plain rail connector extends to the RIGHT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "3a5cd18fcf528e1e74c2b91101f74cebed69d15d6756f591ed66c7f1642306a3",
+      "tile_sha256": "ccc6656f74f8fdce6668213cba00e022fe2ccab5e8db5f19231a8fdd3ae09c5b"
+    },
+    {
+      "style": "A",
+      "name": "Warded pier",
+      "corner": "ne",
+      "source": "generated-a-ne.png",
+      "tile": "a-ne.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Warded pier design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHEAST cap: the target cap is the right tile. Create ONLY a matching NORTHEAST version of this approved design: the same broad beveled octagonal newel and large recessed diamond ward; small northwest snow lip. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "59dfa0d1c1b257f5d34dc8a20127e3ccffab7a06f8156f9e0f3777b5629d4294",
+      "tile_sha256": "8956448d4c3fff0b4d7b51a00f731f5ccfb6d8546a078d1c2b22e1721658aca3"
+    },
+    {
+      "style": "A",
+      "name": "Warded pier",
+      "corner": "se",
+      "source": "generated-a-se.png",
+      "tile": "a-se.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Warded pier design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary lower/south bridge rail and the CURRENT target SOUTHEAST cap: the target cap is the right tile. Create ONLY a matching SOUTHEAST version of this approved design: the same broad beveled octagonal newel and large recessed diamond ward; small northwest snow lip. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 in the LOWER part of its tile, matching the original lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "fe2b1292c1ca8c5bff825f8808d88b977694dcdde91e1733c25a4a24a475872c",
+      "tile_sha256": "cab601405c1f97e1d80230a3bb573673e2dd2526face6391efb2468ebb3d955a"
+    },
+    {
+      "style": "B",
+      "name": "Battlement crown",
+      "corner": "nw",
+      "source": "generated-b-nw.png",
+      "tile": "b-nw.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Battlement crown design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHWEST cap: the target cap is the left tile. Create ONLY a matching NORTHWEST version of this approved design: the same three chunky merlons, deep notches, stepped plinth and front-facing recessed chevron. The decorative cap is on the LEFT end of a horizontal east-west rail, and the plain rail connector extends to the RIGHT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "0d647c91904a27f81fa0834540f481d4644ae670b9c514b2148a0d144c554bd8",
+      "tile_sha256": "a988977c708a67c1683c1f5c4dd54d465b73a837201d5f94d30d7afa37797d0c"
+    },
+    {
+      "style": "B",
+      "name": "Battlement crown",
+      "corner": "ne",
+      "source": "generated-b-ne.png",
+      "tile": "b-ne.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Battlement crown design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHEAST cap: the target cap is the right tile. Create ONLY a matching NORTHEAST version of this approved design: the same three chunky merlons, deep notches, stepped plinth and front-facing recessed chevron. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "ae3ec4570e3908bbdc7a3150abd9e67d619a462d44c7ca7e076b81a569593bf7",
+      "tile_sha256": "fd9c77f0a166ee639e0d99ae6f39ba27de277b7fb9ba313e9425c67dfbf23704"
+    },
+    {
+      "style": "B",
+      "name": "Battlement crown",
+      "corner": "se",
+      "source": "generated-b-se.png",
+      "tile": "b-se.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Battlement crown design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary lower/south bridge rail and the CURRENT target SOUTHEAST cap: the target cap is the right tile. Create ONLY a matching SOUTHEAST version of this approved design: the same three chunky merlons, deep notches, stepped plinth and front-facing recessed chevron. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 in the LOWER part of its tile, matching the original lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "ba0b1533699a0ea67c6dba641a8ee262e36308191f221cdb44b9d5c496c34330",
+      "tile_sha256": "654847ea972e729de0ab4607437db3d271b78d8c7166a844f473c8707953bf23"
+    },
+    {
+      "style": "C",
+      "name": "Ram guardian",
+      "corner": "nw",
+      "source": "generated-c-nw.png",
+      "tile": "c-nw.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Ram guardian design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHWEST cap: the target cap is the left tile. Create ONLY a matching NORTHWEST version of this approved design: the same two large curled ram horns, blunt carved face and solid square plinth; eyes and muzzle upright. The decorative cap is on the LEFT end of a horizontal east-west rail, and the plain rail connector extends to the RIGHT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "a881a8c3579008a37a495c192d6fc0712ee3273a02ffe92ffb5c4e85de05a50d",
+      "tile_sha256": "19f6cb930e7c009b6e5daa02eb336f374f400e3f02e76a38ee5df7941706d7b5"
+    },
+    {
+      "style": "C",
+      "name": "Ram guardian",
+      "corner": "ne",
+      "source": "generated-c-ne.png",
+      "tile": "c-ne.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Ram guardian design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary upper/north bridge rail and the CURRENT target NORTHEAST cap: the target cap is the right tile. Create ONLY a matching NORTHEAST version of this approved design: the same two large curled ram horns, blunt carved face and solid square plinth; eyes and muzzle upright. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 at the TOP of its tile with transparent pixels below; original upper masonry is distinct from lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "f6161d1979939cb4a9968e9194752aef9272b79e5f1ee7c469389823e6ef8ee2",
+      "tile_sha256": "d515e68327ef853c428a767c558266a48d34947bb736dabfa6f47b019754b72e"
+    },
+    {
+      "style": "C",
+      "name": "Ram guardian",
+      "corner": "se",
+      "source": "generated-c-se.png",
+      "tile": "c-se.png",
+      "prompt": "Use case: precise-object-edit. Asset type: one 32x32 RPG bridge cap variant. Reference 1 is the approved original southwest Ram guardian design. Reference 2 is its actual approved 32x32 game tile enlarged, whose silhouette, ornament size and chunky pixels must match. Reference 3 shows the ordinary lower/south bridge rail and the CURRENT target SOUTHEAST cap: the target cap is the right tile. Create ONLY a matching SOUTHEAST version of this approved design: the same two large curled ram horns, blunt carved face and solid square plinth; eyes and muzzle upright. The decorative cap is on the RIGHT end of a horizontal east-west rail, and the plain rail connector extends to the LEFT. Its narrow connector must match the plain profile in reference 3 in the LOWER part of its tile, matching the original lower masonry. Adapt the connector to this corner; preserve the decorative identity and scale of the approved southwest cap. Keep the emblem, merlons or ram face UPRIGHT, do NOT vertically flip the motif or turn the camera to the other side. The near-overhead orthographic camera and front-facing carving stay the same as reference 1, no yaw, no isometric diagonal. Bold massive stone cap filling most of ONE square tile, shallow gray granite plinth, muted warm gray stone, dark grooves, sparse pale snow that does not obscure the ornament, restrained upper-left lighting. Chunky crisp pixel art designed to read at 32x32, matching reference 2 without fine noisy details. Actual transparent alpha background, minimal margins, one standalone cap only. NO neighboring rail segment, no bridge span, no floor, no scene, no label, no text, no ground shadow, no extra props, no gold or glow. Do not redesign the approved ornament; change only its endpoint/connector arrangement for the requested corner.",
+      "source_sha256": "f6201ca6324a96a895d411ec3e3101acdb6c37a1ce7780ba474856c9a4dbae22",
+      "tile_sha256": "49ccf391a37f947101f35b604cca8723f3d988591e0469d160d435da1c60e0ae"
+    }
+  ],
+  "normalization": {
+    "size": [
+      32,
+      32
+    ],
+    "alpha": "binary",
+    "palette": "native cap references plus approved southwest tiles",
+    "preserved_connector": "NW/NE use their per-style join-repair.json files; southwest/east preserve native four-column connectors"
+  }
+}

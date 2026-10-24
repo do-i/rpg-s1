@@ -1,0 +1,16 @@
+{
+  "source": "generated-b-nw-join.png",
+  "cap_reference": "b-nw-before-join.png",
+  "middle_reference": "b-nw-middle-reference.png",
+  "tool": "built-in OpenAI image generation",
+  "prompt": "Use case: precise-object-edit. Edit target image 1 is an enlarged exact 32x32 pixel-art northwest stone bridge cap, each source pixel enlarged 16x. Image 2 is supporting alignment reference: the same cap on LEFT joined to the adjacent upper middle stone rail on RIGHT. Output ONLY the single square cap tile from image 1, same fixed canvas and registration, same three battlement merlons, snow, plinth, chevron, palette and all pixels except its RIGHTMOST FOUR ORIGINAL PIXEL COLUMNS. Repair just those four columns, removing the thin vertical floating connector at the extreme right and replacing it with a horizontal stone rail stub aligned to image 2's rail: its top starts 10/32 down the tile, bottom at tile bottom. Thus far right columns y=0..9 are fully transparent, y=10..31 are opaque masonry. Rail is light granite top at rows 10..21 and dark fascia rows 22..31. Extend this aligned stone stub left into the existing cap edge smoothly. Keep cap leftmost 28/32 width exactly unchanged, retain all three crown teeth, central carved chevron, exact footprint and scale. This is a precision sprite repair, no redesign. Do not move, trim, enlarge or recenter object. Pixelated nearest-neighbor style, sharp square pixels, no antialiasing, no new colors, no text, no border. Transparent background. Output square single cap tile, NOT the two-tile reference.",
+  "edited_rect": [
+    28,
+    0,
+    4,
+    32
+  ],
+  "normalization": "Fixed 32x32 canvas, nearest neighbor. Preserve first 28 columns. Constrain edited columns to the adjacent middle tile row palette and alpha profile; last column exactly matches the middle tile first column.",
+  "source_sha256": "e20de2a50d30169f788805afaf2b108607640b50c62e1ae415bca1113360c13a",
+  "tile_sha256": "a988977c708a67c1683c1f5c4dd54d465b73a837201d5f94d30d7afa37797d0c"
+}

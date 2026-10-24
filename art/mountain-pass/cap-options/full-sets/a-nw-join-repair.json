@@ -1,0 +1,16 @@
+{
+  "source": "generated-a-nw-join.png",
+  "cap_reference": "a-nw-before-join.png",
+  "middle_reference": "a-nw-middle-reference.png",
+  "tool": "built-in OpenAI image generation",
+  "prompt": "Use case: precise-object-edit. Edit target image 1 is an enlarged exact 32x32 pixel-art northwest stone bridge cap. Its sculpture is an octagonal warded pier with recessed diamond rune. Supporting reference image 2 shows the cap on LEFT and adjacent middle stone rail on RIGHT. Output ONLY the single square cap tile, same fixed canvas and registration. Repair only its RIGHTMOST FOUR ORIGINAL PIXEL COLUMNS: remove the thin vertical floating connector and replace it with a short horizontal stone rail stub aligned with reference 2. Those four columns must be transparent at original rows 0..9, opaque masonry rows 10..31: light granite top rows 10..21, darker fascia rows 22..31. Preserve the other 28 columns EXACTLY, including the octagonal shape, central diamond rune, bevels, snow, shading, scale and footprint. Do not move, recenter, trim, mirror or resize the object. Smooth only the narrow connector transition at its right edge. Sharp square pixels, nearest-neighbor pixel art, no antialiasing, new colors, text, border or additional decoration. Transparent background. Output one square cap, not the two-tile reference.",
+  "edited_rect": [
+    28,
+    0,
+    4,
+    32
+  ],
+  "normalization": "Fixed 32x32 canvas, nearest neighbor. Preserve leftmost 28 columns. Constrain edited columns to the adjacent middle tile row palette and alpha profile; last column exactly matches the middle tile first column.",
+  "source_sha256": "ac2dccada277d7b4d4978b6dff304470d7d0487bc797c94cf4f14c2222cc9f5e",
+  "tile_sha256": "ccc6656f74f8fdce6668213cba00e022fe2ccab5e8db5f19231a8fdd3ae09c5b"
+}
