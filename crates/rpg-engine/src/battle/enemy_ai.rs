@@ -1,4 +1,5 @@
 use crate::{
+    battle_log::LogKind,
     encounter::BattleSide,
     gameplay_rng::GameplayRng,
     scenario_enemy::{
@@ -291,7 +292,10 @@ pub(super) fn resolve_enemy_ability(
         }
     }
     state.feedback_events.extend(events.iter().copied());
-    state.message = format!("{} uses {}!", source.name, display_ability_name(ability_id));
+    state.announce(
+        LogKind::Ability,
+        format!("{} uses {}!", source.name, display_ability_name(ability_id)),
+    );
     state.transcript.push(format!(
         "ENEMY_ABILITY {} {} {}",
         source.id,

@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 
 use super::{
+    equipment::equip_refusal,
     input::MenuInput,
     member_id_at,
     state::{FieldMenuMode, FieldMenuState, wrapped, wrapped_or_zero, wrapped_quantity},
@@ -12,12 +13,12 @@ use crate::{
     engine_settings::EngineSettings,
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab, custom_tags,
-        discard_item, inventory_ids, normalize_custom_tag, targets_whole_party, use_field_item,
-        use_field_item_on_party,
+        discard_item, equip_item, inventory_ids, is_equipment, item_name, normalize_custom_tag,
+        targets_whole_party, use_field_item, use_field_item_on_party,
     },
     game_state::GameState,
     scenario_item::ItemDefinition,
-    sfx_cue::MenuSfx,
+    sfx_cue::{MenuSfx, cue},
 };
 
 /// Item-action rows, in the order the modal lists them.
@@ -113,6 +114,11 @@ pub(super) fn handle_input(
                     .clone()
                     .expect("item action requires an item");
                 match state.selected {
+                    // Equipment swaps Use for Equip, which hands the item to a party member.
+                    0 if catalog.item(&id).is_some_and(is_equipment) => {
+                        state.mode = FieldMenuMode::ItemEquipTarget;
+                        state.selected = first_equipper(game, catalog, &id);
+                    }
                     // A party-wide item never reaches the target picker: the source branches on
                     // the effect's target before offering one, and routing a Tent through the
                     // picker is what made it unusable -- every member was an invalid target.
@@ -244,6 +250,21 @@ pub(super) fn handle_input(
                 }
             }
         }
+        FieldMenuMode::ItemEquipTarget => {
+            if let Some(delta) = input.vertical {
+                state.selected = wrapped_or_zero(state.selected, game.party().len(), delta);
+            }
+            if input.confirm {
+                let Some(member_id) = member_id_at(game, state.selected).map(str::to_owned) else {
+                    return;
+                };
+                let item_id = state
+                    .pending_id
+                    .clone()
+                    .expect("equipping from the pouch requires an item");
+                equip_from_pouch(state, game, catalog, menu_sfx, &member_id, &item_id);
+            }
+        }
         FieldMenuMode::ItemTarget => {
             if let Some(delta) = input.vertical {
                 state.selected = wrapped_or_zero(state.selected, game.party().len(), delta);
@@ -266,6 +287,53 @@ pub(super) fn handle_input(
             }
         }
         _ => {}
+    }
+}
+
+/// The first party member who can wear the item, so the equip picker opens on a useful row.
+pub(super) fn first_equipper(game: &GameState, catalog: &FieldMenuCatalog, item_id: &str) -> usize {
+    game.party()
+        .members()
+        .position(|member| equip_refusal(member, item_id, catalog).is_none())
+        .unwrap_or(0)
+}
+
+/// Equips a pouch item on one member and returns to the list, or explains the refusal.
+pub(super) fn equip_from_pouch(
+    state: &mut FieldMenuState,
+    game: &mut GameState,
+    catalog: &FieldMenuCatalog,
+    menu_sfx: &mut MenuSfx<'_>,
+    member_id: &str,
+    item_id: &str,
+) {
+    let Some(member) = game.party().member(member_id) else {
+        return;
+    };
+    if let Some(refusal) = equip_refusal(member, item_id, catalog) {
+        menu_sfx.blocked();
+        state.message = refusal;
+        return;
+    }
+    let member_name = member.name().to_owned();
+    let name_of = |id: &str| catalog.item(id).map_or(id, item_name).to_owned();
+    match equip_item(game, catalog, member_id, item_id) {
+        Ok(displaced) => {
+            menu_sfx.play(cue::EQUIP);
+            state.return_to_list();
+            state.message = match displaced {
+                Some(old) if old != item_id => format!(
+                    "{member_name} equipped {}; {} returned to the pouch.",
+                    name_of(item_id),
+                    name_of(&old)
+                ),
+                _ => format!("{member_name} equipped {}.", name_of(item_id)),
+            };
+        }
+        Err(error) => {
+            menu_sfx.blocked();
+            state.message = error.to_string();
+        }
     }
 }
 
@@ -338,19 +406,23 @@ pub(super) fn toggle_item_lock(game: &mut GameState, state: &mut FieldMenuState,
     let locked = !game.repository().is_locked(item_id);
     game.repository_mut().set_locked(item_id, locked);
     state.message = if locked {
-        "Locked against discarding and selling.".to_owned()
+        "Locked against discarding, selling and auto-battle use.".to_owned()
     } else {
-        "Unlocked for discarding and selling.".to_owned()
+        "Unlocked for discarding, selling and auto-battle use.".to_owned()
     };
 }
 
-/// Returns the live label for an item action; lock protection is the only stateful row.
+/// Returns the live label for an item action: equipment reads Equip in place of Use, and lock
+/// protection follows the stack's current state.
 pub(super) fn item_action_row(
     index: usize,
     game: &GameState,
+    catalog: &FieldMenuCatalog,
     item_id: &str,
 ) -> (&'static str, &'static str) {
-    if index == ITEM_ACTION_LOCK && game.repository().is_locked(item_id) {
+    if index == 0 && catalog.item(item_id).is_some_and(is_equipment) {
+        ("Equip", "give to a party member")
+    } else if index == ITEM_ACTION_LOCK && game.repository().is_locked(item_id) {
         ("Unlock", "allow discard and sale")
     } else {
         ITEM_ACTIONS[index]
@@ -466,21 +538,31 @@ mod tests {
     #[test]
     fn toggling_a_lock_updates_protection_and_the_live_action_label() {
         let mut game = fixture_game();
+        let catalog = crate::field_menu_domain::tests::catalog();
         let mut state = FieldMenuState::default();
 
         assert!(game.repository().is_locked("potion"));
         assert_eq!(
-            item_action_row(ITEM_ACTION_LOCK, &game, "potion").0,
+            item_action_row(ITEM_ACTION_LOCK, &game, &catalog, "potion").0,
             "Unlock"
         );
         toggle_item_lock(&mut game, &mut state, "potion");
         assert!(!game.repository().is_locked("potion"));
-        assert_eq!(state.message, "Unlocked for discarding and selling.");
-        assert_eq!(item_action_row(ITEM_ACTION_LOCK, &game, "potion").0, "Lock");
+        assert_eq!(
+            state.message,
+            "Unlocked for discarding, selling and auto-battle use."
+        );
+        assert_eq!(
+            item_action_row(ITEM_ACTION_LOCK, &game, &catalog, "potion").0,
+            "Lock"
+        );
 
         toggle_item_lock(&mut game, &mut state, "potion");
         assert!(game.repository().is_locked("potion"));
-        assert_eq!(state.message, "Locked against discarding and selling.");
+        assert_eq!(
+            state.message,
+            "Locked against discarding, selling and auto-battle use."
+        );
     }
 
     #[test]

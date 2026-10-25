@@ -6,10 +6,10 @@ use super::{
     ability::{AbilityError, ElementalAffinity, elemental_damage, resolve_ability},
     action::{BattleAction, BattleEvent},
     enemy_ai::{EnemyAction, pick_enemy_action, resolve_enemy_ability, resolve_targets},
-    item::{ItemUseError, resolve_item as resolve_battle_item},
+    item::{ItemUseError, auto_items, resolve_item as resolve_battle_item},
     model::{
-        BattleCombatant, BattlePhase, BattleState, CombatantKey, FleeOutcome, TargetGroup,
-        TargetSelector,
+        BattleCombatant, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
+        TargetGroup, TargetSelector,
     },
     resolver::resolve_action,
     rewards::{RewardError, apply_rewards, calculate_rewards},
@@ -183,6 +183,7 @@ pub(super) fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         pending_item: None,
         target: None,
         message: String::new(),
+        message_tag: Default::default(),
         transcript: Vec::new(),
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
@@ -668,6 +669,35 @@ fn troll_shaman_charm_sleeps_its_target_and_allure_rolls_per_target() {
         })
         .count();
     assert!((1..40).contains(&slept), "allure landed {slept}/40 times");
+}
+
+#[test]
+fn auto_members_never_spend_locked_items() {
+    let definitions = ["potion", "ether"]
+        .map(|id| ItemDefinition::Consumable(consumable(id)))
+        .into_iter()
+        .map(|definition| (definition.id().to_owned(), definition))
+        .collect::<BTreeMap<_, _>>();
+    let choices = ["potion", "ether"]
+        .map(|id| BattleItemChoice {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            quantity: 3,
+        })
+        .to_vec();
+    let mut repository = RuntimeRepository::default();
+    let _ = repository.add_item("potion", 3).unwrap();
+    let _ = repository.add_item("ether", 3).unwrap();
+    let ids = |repository: &RuntimeRepository| {
+        auto_items(&choices, repository, |id| definitions.get(id))
+            .into_iter()
+            .map(|item| item.id.as_str())
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(ids(&repository), ["potion", "ether"]);
+    repository.set_locked("potion", true);
+    assert_eq!(ids(&repository), ["ether"]);
 }
 
 #[test]
@@ -1717,6 +1747,7 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         pending_item: None,
         target: None,
         message: String::new(),
+        message_tag: Default::default(),
         transcript: Vec::new(),
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
@@ -1749,6 +1780,7 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         pending_item: None,
         target: None,
         message: String::new(),
+        message_tag: Default::default(),
         transcript: vec![],
         feedback_events: Vec::new(),
         used_enemy_moves: std::collections::HashSet::new(),
@@ -1788,6 +1820,7 @@ fn deterministic_basic_battle_transcript_is_stable() {
             pending_item: None,
             target: None,
             message: String::new(),
+            message_tag: Default::default(),
             transcript: vec!["START fixture".to_owned()],
             feedback_events: Vec::new(),
             used_enemy_moves: std::collections::HashSet::new(),

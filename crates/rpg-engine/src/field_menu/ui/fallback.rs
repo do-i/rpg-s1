@@ -10,6 +10,7 @@ pub(in crate::field_menu) fn screen_title(state: &FieldMenuState) -> &'static st
         FieldMenuScreen::Quests => "Quest Board",
         FieldMenuScreen::Recipes => "Recipe Book",
         FieldMenuScreen::Battle => "Battle Tactics",
+        FieldMenuScreen::Settings => "Settings",
         FieldMenuScreen::Save => "Save Game",
     }
 }
@@ -38,6 +39,7 @@ pub(in crate::field_menu) fn render_body(
         FieldMenuScreen::Quests => render_quests(state, game, catalog),
         FieldMenuScreen::Recipes => render_recipes(state, game, catalog),
         FieldMenuScreen::Battle => render_battle(state, game),
+        FieldMenuScreen::Settings => render_settings(state),
         FieldMenuScreen::Save => render_save(state, saves),
     };
     if !state.message.is_empty() {
@@ -45,6 +47,12 @@ pub(in crate::field_menu) fn render_body(
         text.push_str(&state.message);
     }
     text
+}
+
+/// The settings page's text mirror. The sound value lives in the player options, which this text
+/// does not read, so it names the row and leaves the value to the page.
+pub(in crate::field_menu) fn render_settings(state: &FieldMenuState) -> String {
+    format!("{} Sound", if state.selected == 0 { ">" } else { " " })
 }
 
 /// The battle tactics page's text mirror.
@@ -307,7 +315,7 @@ pub(in crate::field_menu) fn render_items(
                     .pending_id
                     .as_deref()
                     .expect("item actions require an item");
-                let (label, _) = item_action_row(index, game, id);
+                let (label, _) = item_action_row(index, game, catalog, id);
                 format!(
                     "{} {label}",
                     if index == state.selected { ">" } else { " " }
@@ -359,6 +367,7 @@ pub(in crate::field_menu) fn render_items(
             .join("\n"),
         FieldMenuMode::DiscardQuantity => format!("Discard how many?  {}", state.quantity),
         FieldMenuMode::ItemTarget => render_targets(state, game),
+        FieldMenuMode::ItemEquipTarget => render_equip_targets(state, game, catalog),
         _ => String::new(),
     };
     format!(
@@ -530,6 +539,34 @@ pub(in crate::field_menu) fn render_targets(state: &FieldMenuState, game: &GameS
         .join("\n")
 }
 
+/// The equip picker's text mirror: each member, and whether they can wear the pending item.
+pub(in crate::field_menu) fn render_equip_targets(
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) -> String {
+    let Some(id) = state.pending_id.as_deref() else {
+        return String::new();
+    };
+    game.party()
+        .members()
+        .enumerate()
+        .map(|(index, member)| {
+            format!(
+                "{} {:<12} {}",
+                if index == state.selected { ">" } else { " " },
+                member.name(),
+                if equip_refusal(member, id, catalog).is_some() {
+                    "can't equip"
+                } else {
+                    "can equip"
+                }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub(in crate::field_menu) fn render_save(
     state: &FieldMenuState,
     saves: &SaveSlotCatalog,
@@ -626,10 +663,12 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "UP/DOWN scroll  LEFT/RIGHT page  ESC back"
         }
         (FieldMenuScreen::Battle, _) => "UP/DOWN select  ENTER change  ESC back",
+        (FieldMenuScreen::Settings, _) => "UP/DOWN select  ENTER toggle  ESC back",
         (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
             "UP/DOWN slot  ENTER save  ESC back  M close"
         }
         (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => "Y/ENTER overwrite  N/ESC cancel",
+        (_, FieldMenuMode::ItemEquipTarget) => "UP/DOWN member  ENTER equip  ESC cancel",
         (_, FieldMenuMode::ItemTarget | FieldMenuMode::SpellTarget) => {
             "UP/DOWN target  ENTER confirm  ESC cancel"
         }

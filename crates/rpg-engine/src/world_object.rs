@@ -637,12 +637,10 @@ mod tests {
             &owner,
         )
         .unwrap();
-        let signs = ManifestSigns {
-            tileset: "town".into(),
-            tile_ids: vec![17, 18, 19, 20],
-        };
+        let manifest: Manifest =
+            crate::scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
         assert_eq!(
-            sign_tiles(&map, &signs),
+            sign_tiles(&map, &manifest.signs),
             [
                 Position::new(16, 4),
                 Position::new(19, 16),
@@ -659,12 +657,10 @@ mod tests {
             &owner,
         )
         .unwrap();
-        let signs = ManifestSigns {
-            tileset: "town".into(),
-            tile_ids: vec![17, 18, 19, 20],
-        };
+        let manifest: Manifest =
+            crate::scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
         assert_eq!(
-            sign_tiles(&map, &signs),
+            sign_tiles(&map, &manifest.signs),
             [Position::new(5, 0), Position::new(17, 28)]
         );
     }

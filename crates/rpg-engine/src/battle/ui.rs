@@ -4,7 +4,7 @@ use bevy::{asset::LoadState, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
-    battle_log::LastBattleLog,
+    battle_log::{BattleLogLine, LastBattleLog, spawn_log_line},
     battle_tactics::{AutoCommand, TurnPause},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
@@ -26,7 +26,7 @@ use crate::{
 use super::{
     ability::{AbilityError, AbilityTargetPlan, resolve_ability, target_plan},
     fx::AttackKind,
-    item::{ItemUseError, battle_item, resolve_item, target_plan as item_target_plan},
+    item::{ItemUseError, auto_items, battle_item, resolve_item, target_plan as item_target_plan},
     model::{
         BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
         TargetGroup, TargetSelector,
@@ -1845,11 +1845,9 @@ fn run_auto_turn(
         .active()
         .map(|active| active.name.clone())
         .unwrap_or_default();
-    let items = state
-        .item_choices
-        .iter()
-        .filter_map(|choice| catalog.item(&choice.id).and_then(battle_item))
-        .collect::<Vec<_>>();
+    let items = auto_items(&state.item_choices, game.repository(), |id| {
+        catalog.item(id)
+    });
     let plan = plan_auto_action(state, actor, command, &items, game.rng_mut());
     state.transcript.push(format!("AUTO {name} {plan:?}"));
     match plan {
@@ -2173,14 +2171,23 @@ fn sync_battle_message(
     let prompting = is_prompt_phase(state.phase);
     if !prompting && !state.message.is_empty() && state.message != history.last {
         let enemy = state.active_key().map(|key| key.side) == Some(BattleSide::Enemy);
-        let color = if enemy { battle_ember() } else { battle_teal() };
+        let line = BattleLogLine {
+            text: state.message.clone(),
+            enemy,
+            kind: state.message_kind(),
+        };
         if let Some(record) = record.as_deref_mut() {
-            record.push(&state.message, enemy);
+            record.push(line.clone());
         }
         if let (Ok((list, mut scroll)), Some(assets)) = (lists.single_mut(), assets.as_deref()) {
-            let line = state.message.clone();
             commands.entity(list).with_children(|list| {
-                spawn_battle_text(list, line, &assets.font, 16.0, color, Justify::Left);
+                spawn_log_line(
+                    list,
+                    &line,
+                    &assets.font,
+                    16.0,
+                    TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
+                );
             });
             // Layout clamps this to the real bottom, so the newest entry is always in view.
             scroll.0.y = f32::MAX;

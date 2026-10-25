@@ -1,5 +1,5 @@
 use super::*;
-use crate::battle_log::LastBattleLog;
+use crate::battle_log::{LastBattleLog, spawn_log_line};
 use crate::battle_tactics::choice_label;
 
 #[expect(
@@ -528,12 +528,13 @@ fn spawn_battle_log_panel(
                 status_faint(),
             );
             for line in &lines[first..end] {
-                let color = if line.enemy {
-                    status_ember()
-                } else {
-                    status_teal()
-                };
-                spawn_status_text(panel, &line.text, font, 14.0, color);
+                spawn_log_line(
+                    panel,
+                    line,
+                    font,
+                    14.0,
+                    TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
+                );
             }
         },
     );

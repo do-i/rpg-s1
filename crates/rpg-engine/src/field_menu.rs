@@ -8,6 +8,7 @@ mod inventory;
 mod main_deck;
 mod markers;
 mod save;
+mod settings;
 mod spells;
 mod state;
 mod status;
@@ -25,7 +26,7 @@ use self::{
         cleanup_field_menu, sync_battle_page, sync_custom_field_menu_content_visibility,
         sync_equipment_page, sync_field_menu_generic_text, sync_field_menu_overlay_lifecycle,
         sync_items_page, sync_main_menu_page, sync_quests_page, sync_recipes_page, sync_save_page,
-        sync_spells_page, sync_status_page,
+        sync_settings_page, sync_spells_page, sync_status_page,
     },
 };
 use crate::{app_state::AppState, game_state::GameState, sfx_cue::PlaySfx};
@@ -59,6 +60,7 @@ impl Plugin for FieldMenuPlugin {
                     sync_recipes_page,
                     sync_battle_page,
                     sync_save_page,
+                    sync_settings_page,
                 )
                     .chain()
                     .run_if(in_state(AppState::World)),

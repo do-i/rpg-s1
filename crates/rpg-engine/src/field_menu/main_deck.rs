@@ -28,7 +28,7 @@ pub(super) struct MainCommand {
     pub(super) screen: Option<FieldMenuScreen>,
 }
 
-pub(super) const MAIN_COMMANDS: [MainCommand; 10] = [
+pub(super) const MAIN_COMMANDS: [MainCommand; 11] = [
     MainCommand {
         label: "Status",
         badge: "ST",
@@ -98,6 +98,13 @@ pub(super) const MAIN_COMMANDS: [MainCommand; 10] = [
         icon: 9,
         description: "set each member to manual or auto",
         screen: Some(FieldMenuScreen::Battle),
+    },
+    MainCommand {
+        label: "Settings",
+        badge: "SE",
+        icon: 10,
+        description: "sound and other player preferences",
+        screen: Some(FieldMenuScreen::Settings),
     },
 ];
 
@@ -321,7 +328,7 @@ mod tests {
     #[test]
     fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
         // Column 0 holds Status, Spells, Items, Quit; column 1 holds Save, Equipment, Quests,
-        // Character; column 2 holds Recipes and Battle.
+        // Character; column 2 holds Recipes, Battle, and Settings.
         assert_eq!(stepped_main_command(0, Some(1), None), 1);
         assert_eq!(stepped_main_command(3, Some(1), None), 0);
         assert_eq!(stepped_main_command(0, Some(-1), None), 3);
@@ -333,11 +340,12 @@ mod tests {
         assert_eq!(stepped_main_command(8, None, Some(1)), 0);
         // The short column 2 keeps the row while it can and clamps below its last command.
         assert_eq!(stepped_main_command(5, None, Some(1)), 9);
-        assert_eq!(stepped_main_command(7, None, Some(1)), 9);
-        // Vertical movement wraps inside the two-command column.
+        assert_eq!(stepped_main_command(7, None, Some(1)), 10);
+        // Vertical movement wraps inside the three-command column.
         assert_eq!(stepped_main_command(8, Some(1), None), 9);
-        assert_eq!(stepped_main_command(9, Some(1), None), 8);
-        assert_eq!(stepped_main_command(8, Some(-1), None), 9);
+        assert_eq!(stepped_main_command(9, Some(1), None), 10);
+        assert_eq!(stepped_main_command(10, Some(1), None), 8);
+        assert_eq!(stepped_main_command(8, Some(-1), None), 10);
     }
 
     #[test]
@@ -347,7 +355,7 @@ mod tests {
         assert_eq!(main_command_columns(), 3);
         assert_eq!(main_command_column_len(0), 4);
         assert_eq!(main_command_column_len(1), 4);
-        assert_eq!(main_command_column_len(2), 2);
+        assert_eq!(main_command_column_len(2), 3);
 
         assert_eq!(stepped_main_command(3, None, Some(1)), 7);
         for row in 0..MAIN_COMMAND_ROWS {
@@ -361,7 +369,7 @@ mod tests {
         for row in 0..MAIN_COMMAND_ROWS {
             assert_eq!(
                 stepped_main_command(MAIN_COMMAND_ROWS + row, None, Some(1)),
-                2 * MAIN_COMMAND_ROWS + row.min(1),
+                2 * MAIN_COMMAND_ROWS + row.min(2),
                 "row {row} must land in the short last column"
             );
         }

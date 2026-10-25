@@ -1,4 +1,5 @@
 use crate::{
+    battle_log::LogKind,
     encounter::{BattleEntry, BattleSide},
     gameplay_rng::GameplayRng,
 };
@@ -49,6 +50,7 @@ impl BattleState {
             pending_item: None,
             target: None,
             message: "Battle start!".to_owned(),
+            message_tag: Default::default(),
             transcript: vec![format!("START {}", entry.encounter_id)],
             feedback_events: Vec::new(),
             used_enemy_moves: std::collections::HashSet::new(),
@@ -170,7 +172,10 @@ impl BattleState {
 
         match event {
             BattleEvent::Miss { .. } => {
-                self.message = format!("{attacker_name} attacks {target_name}, but misses.");
+                self.announce(
+                    LogKind::Miss,
+                    format!("{attacker_name} attacks {target_name}, but misses."),
+                );
                 self.transcript
                     .push(format!("MISS {attacker_id} -> {target_id}"));
             }
@@ -185,10 +190,17 @@ impl BattleState {
                     .map(|target| target.apply_resolved_damage(amount))
                     .unwrap_or(0);
                 debug_assert_eq!(actual, amount);
-                self.message = format!(
-                    "{}{attacker_name} attacks {target_name} for {actual} damage.{}",
-                    if critical { "Critical hit! " } else { "" },
-                    if knocked_out { " KO!" } else { "" }
+                self.announce(
+                    if target_key.side == BattleSide::Party {
+                        LogKind::HitParty
+                    } else {
+                        LogKind::HitEnemy
+                    },
+                    format!(
+                        "{}{attacker_name} attacks {target_name} for {actual} damage.{}",
+                        if critical { "Critical hit! " } else { "" },
+                        if knocked_out { " KO!" } else { "" }
+                    ),
                 );
                 self.transcript.push(format!(
                     "{} {attacker_id} -> {target_id} {actual}{}",

@@ -92,7 +92,14 @@ fn spawn_fixture_items_page(
     catalog: Res<FieldMenuCatalog>,
 ) {
     commands.spawn(Node::default()).with_children(|parent| {
-        spawn_items_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+        spawn_items_page(
+            parent,
+            &Handle::<Font>::default(),
+            &state,
+            &game,
+            &catalog,
+            &StatusPortraitAssets::default(),
+        );
     });
 }
 
@@ -1128,7 +1135,8 @@ fn main_page_matches_the_source_command_deck_structure() {
             "Quests",
             "Character",
             "Recipes",
-            "Battle"
+            "Battle",
+            "Settings"
         ]
     );
     assert_eq!(MAIN_COMMANDS[QUIT_COMMAND_INDEX].label, "Quit");
@@ -1353,7 +1361,11 @@ fn a_scrolled_quest_board_fills_its_window_and_marks_the_edges_with_hidden_cards
 fn fixture_battle_log(lines: usize) -> LastBattleLog {
     let mut log = LastBattleLog::default();
     for index in 0..lines {
-        log.push(&format!("Line {}", index + 1), index % 2 == 1);
+        log.push(crate::battle_log::BattleLogLine {
+            text: format!("Line {}", index + 1),
+            enemy: index % 2 == 1,
+            kind: crate::battle_log::LogKind::Info,
+        });
     }
     log
 }
@@ -2281,5 +2293,245 @@ fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
             .read(app.world().resource::<Messages<AppExit>>())
             .collect::<Vec<_>>(),
         [&AppExit::Success]
+    );
+}
+
+/// A pouch holding one visible Leather Vest, which Aric can wear and Elise cannot.
+fn game_with_pouched_vest() -> GameState {
+    let mut game = fixture_game_with_recruit();
+    let _outcome = game.repository_mut().add_item("leather_vest", 1).unwrap();
+    game.repository_mut().set_hidden("leather_vest", false);
+    game
+}
+
+fn equipment_tab_index() -> usize {
+    InventoryTab::ALL
+        .iter()
+        .position(|tab| *tab == InventoryTab::Equipment)
+        .expect("the pouch lists an equipment tab")
+}
+
+#[test]
+fn the_equipment_pouch_lists_only_gear() {
+    let game = game_with_pouched_vest();
+    let catalog = crate::field_menu_domain::tests::catalog();
+    let ids = inventory_ids(&game, &catalog, InventoryTab::Equipment);
+    assert!(ids.contains(&"leather_vest"));
+    assert!(
+        ids.iter()
+            .all(|id| crate::field_menu_domain::is_equipment(catalog.item(id).unwrap()))
+    );
+}
+
+#[test]
+fn equip_from_the_pouch_refuses_the_wrong_class_then_equips_the_chosen_member() {
+    use FieldMenuMode::{ItemActions, ItemEquipTarget, ItemList};
+    let game = game_with_pouched_vest();
+    let catalog = crate::field_menu_domain::tests::catalog();
+    let tab_index = equipment_tab_index();
+    let vest = inventory_ids(&game, &catalog, InventoryTab::Equipment)
+        .iter()
+        .position(|id| *id == "leather_vest")
+        .unwrap();
+    let mut app = menu_input_app(
+        game,
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Items,
+            mode: ItemList,
+            tab_index,
+            selected: vest,
+            ..default()
+        },
+    );
+    let state = |app: &App| {
+        let state = app.world().resource::<FieldMenuState>();
+        (state.mode, state.selected, state.message.clone())
+    };
+
+    assert_eq!(tap(&mut app, KeyCode::Enter).1, ItemActions);
+    // Gear swaps Use for Equip, and Equip opens on the first member who can wear it.
+    assert_eq!(tap(&mut app, KeyCode::Enter).1, ItemEquipTarget);
+    assert_eq!(state(&app).1, 0);
+
+    tap(&mut app, KeyCode::ArrowDown);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        state(&app),
+        (
+            ItemEquipTarget,
+            1,
+            "Elise (Cleric) can't equip Leather Vest.".to_owned()
+        )
+    );
+
+    // Escape steps back to the action list, not out of the item.
+    assert_eq!(tap(&mut app, KeyCode::Escape).1, ItemActions);
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::Enter);
+    let (mode, selected, message) = state(&app);
+    assert_eq!((mode, selected), (ItemList, vest));
+    assert!(message.ends_with("equipped Leather Vest."), "{message}");
+    let game = app.world().resource::<GameState>();
+    assert_eq!(
+        game.party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Body),
+        Some("leather_vest")
+    );
+}
+
+#[test]
+fn the_equip_picker_shows_party_cards_and_previews_the_highlighted_member() {
+    let labels_for = |selected| {
+        let mut app = App::new();
+        app.insert_resource(game_with_pouched_vest())
+            .insert_resource(crate::field_menu_domain::tests::catalog())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Items,
+                mode: FieldMenuMode::ItemEquipTarget,
+                tab_index: equipment_tab_index(),
+                pending_id: Some("leather_vest".to_owned()),
+                selected,
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_items_page);
+        app.update();
+        let world = app.world_mut();
+        assert_eq!(
+            world.query::<&ItemEquipMemberCard>().iter(world).count(),
+            2,
+            "one card per party member"
+        );
+        assert_eq!(
+            world
+                .query::<&SelectedItemEquipMemberCard>()
+                .iter(world)
+                .count(),
+            1
+        );
+        world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>()
+    };
+
+    let aric = labels_for(0);
+    assert!(aric.iter().any(|label| label == "STATUS CHANGE"));
+    assert!(aric.iter().any(|label| label.contains("->")));
+    assert!(aric.iter().any(|label| label == "ENTER  -  EQUIP"));
+
+    let elise = labels_for(1);
+    assert!(
+        elise
+            .iter()
+            .any(|label| label == "Elise (Cleric) can't equip Leather Vest.")
+    );
+    assert!(!elise.iter().any(|label| label == "ENTER  -  EQUIP"));
+}
+
+#[test]
+fn equipment_detail_names_who_can_equip_it() {
+    let mut app = App::new();
+    app.insert_resource(game_with_pouched_vest())
+        .insert_resource(crate::field_menu_domain::tests::catalog())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Items,
+            mode: FieldMenuMode::ItemActions,
+            tab_index: equipment_tab_index(),
+            pending_id: Some("leather_vest".to_owned()),
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_items_page);
+    app.update();
+    let world = app.world_mut();
+    let labels = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.clone())
+        .collect::<Vec<_>>();
+    assert!(labels.iter().any(|label| label == "EQUIPPABLE BY"));
+    assert!(labels.iter().any(|label| label == "CAN'T"));
+    assert!(labels.iter().any(|label| label == "Equip"));
+    assert!(!labels.iter().any(|label| label == "Use"));
+}
+
+#[test]
+fn the_save_panel_keeps_its_rows_when_a_message_or_the_overwrite_modal_appears() {
+    let save_nodes = |mode, message: &str| {
+        let mut app = App::new();
+        app.insert_resource(fixture_game())
+            .insert_resource(SaveSlotCatalog::default())
+            .insert_resource(FieldMenuState {
+                open: true,
+                screen: FieldMenuScreen::Save,
+                mode,
+                selected: 4,
+                message: message.to_owned(),
+                ..default()
+            })
+            .add_systems(Update, spawn_fixture_save_page);
+        app.update();
+        let world = app.world_mut();
+        let overwrite = world
+            .query::<(Entity, &SaveOverwriteModal)>()
+            .iter(world)
+            .map(|(entity, _)| entity)
+            .next();
+        // Count the main panel's nodes: everything outside the overwrite modal's overlay.
+        let in_modal = |world: &World, mut entity: Entity| loop {
+            if Some(entity) == overwrite {
+                return true;
+            }
+            match world.get::<ChildOf>(entity) {
+                Some(parent) => entity = parent.parent(),
+                None => return false,
+            }
+        };
+        let overlay = overwrite.map(|modal| {
+            let mut entity = modal;
+            while let Some(parent) = world.get::<ChildOf>(entity) {
+                if world.get::<FieldMenuSavePage>(parent.parent()).is_some() {
+                    break;
+                }
+                entity = parent.parent();
+            }
+            entity
+        });
+        let entities = world
+            .query_filtered::<Entity, With<Node>>()
+            .iter(world)
+            .collect::<Vec<_>>();
+        entities
+            .into_iter()
+            .filter(|entity| !in_modal(world, *entity))
+            .filter(|entity| {
+                overlay.is_none_or(|overlay| {
+                    let mut current = *entity;
+                    loop {
+                        if current == overlay {
+                            return false;
+                        }
+                        match world.get::<ChildOf>(current) {
+                            Some(parent) => current = parent.parent(),
+                            None => return true,
+                        }
+                    }
+                })
+            })
+            .count()
+    };
+
+    let idle = save_nodes(FieldMenuMode::Browse, "");
+    assert_eq!(save_nodes(FieldMenuMode::Browse, "Slot 04 saved."), idle);
+    assert_eq!(
+        save_nodes(FieldMenuMode::SaveConfirm, "Overwrite Slot 04?"),
+        idle,
+        "opening the overwrite modal must not add or drop a row in the panel behind it"
     );
 }

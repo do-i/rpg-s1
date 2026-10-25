@@ -1,4 +1,5 @@
 use crate::{
+    battle_log::LogKind,
     encounter::BattleSide,
     runtime_repository::RuntimeRepository,
     scenario_item::{ConsumableEffect, ConsumableItem, EnemyTrait, ItemDefinition, ItemUseContext},
@@ -7,7 +8,7 @@ use crate::{
 use super::{
     ability::{ElementalAffinity, elemental_damage},
     action::BattleEvent,
-    model::{BattlePhase, BattleState, CombatantKey, TargetGroup},
+    model::{BattleItemChoice, BattlePhase, BattleState, CombatantKey, TargetGroup},
     status::StatusEffect,
 };
 
@@ -40,6 +41,20 @@ pub(super) fn battle_item(definition: &ItemDefinition) -> Option<&ConsumableItem
                 | ConsumableEffect::Throw(_)
         ))
     .then_some(item)
+}
+
+/// The battle items an auto member may spend: every carried choice the player has not locked.
+/// Locked items stay usable from the manual Item command.
+pub(super) fn auto_items<'a>(
+    choices: &[BattleItemChoice],
+    repository: &RuntimeRepository,
+    definition: impl Fn(&str) -> Option<&'a ItemDefinition>,
+) -> Vec<&'a ConsumableItem> {
+    choices
+        .iter()
+        .filter(|choice| !repository.is_locked(&choice.id))
+        .filter_map(|choice| definition(&choice.id).and_then(battle_item))
+        .collect()
 }
 
 pub(super) fn target_plan(item: &ConsumableItem) -> ItemTargetPlan {
@@ -192,7 +207,7 @@ pub(super) fn resolve_item(
         .remove_item(&item.id, 1)
         .map_err(|_| ItemUseError::Unavailable)?;
     state.feedback_events.extend(events.iter().copied());
-    state.message = format!("{source_name} uses {}!", item.name);
+    state.announce(LogKind::Item, format!("{source_name} uses {}!", item.name));
     state.transcript.push(format!(
         "ITEM {source_id} {} {:?}:{}",
         item.id, target.side, target.index

@@ -122,3 +122,18 @@ pub(super) struct StatusMemberCard;
 
 #[derive(Component)]
 pub(super) struct SelectedStatusMemberCard;
+
+#[derive(Component)]
+pub(super) struct FieldMenuSettingsPage;
+
+#[derive(Component)]
+pub(super) struct SettingsRow;
+
+#[derive(Component)]
+pub(super) struct SelectedSettingsRow;
+
+#[derive(Component)]
+pub(super) struct ItemEquipMemberCard;
+
+#[derive(Component)]
+pub(super) struct SelectedItemEquipMemberCard;

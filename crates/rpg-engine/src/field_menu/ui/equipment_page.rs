@@ -443,6 +443,19 @@ pub(in crate::field_menu) fn spawn_equipment_preview(
     let before = derived_stats(member, catalog);
     let after = preview_stats(member, catalog, slot, candidate_id);
     spawn_status_text(parent, "PREVIEW", font, 13.0, status_gold());
+    spawn_stat_change_grid(parent, font, before, after);
+    if let Some(item) = candidate_id.and_then(|id| catalog.item(id)) {
+        spawn_status_text(parent, item_description(item), font, 13.0, status_muted());
+    }
+}
+
+/// One tile per attribute reading `old -> new`, bordered and tinted by the change's direction.
+pub(in crate::field_menu) fn spawn_stat_change_grid(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    before: crate::field_menu_domain::DerivedStats,
+    after: crate::field_menu_domain::DerivedStats,
+) {
     parent
         .spawn(Node {
             width: percent(100),
@@ -479,9 +492,6 @@ pub(in crate::field_menu) fn spawn_equipment_preview(
                     });
             }
         });
-    if let Some(item) = candidate_id.and_then(|id| catalog.item(id)) {
-        spawn_status_text(parent, item_description(item), font, 13.0, status_muted());
-    }
 }
 
 pub(in crate::field_menu) fn equipment_preview_summary(

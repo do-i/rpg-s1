@@ -2064,6 +2064,64 @@ mod tests {
     }
 
     #[test]
+    fn interacting_with_map_discovered_signs_opens_their_authored_dialogue() {
+        use crate::{
+            tmx_header::parse_tmx_map_document,
+            world_object::{sign_dialogue_id, sign_tiles},
+        };
+
+        let package = crate::test_support::scenario_package_dir();
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        for (map_id, position, expected_line) in [
+            (
+                "town_01_ardel",
+                Position::new(19, 16),
+                "Notice Board — Ardel Village",
+            ),
+            (
+                "zone_01_starting_forest",
+                Position::new(27, 2),
+                "ARDEL ROAD",
+            ),
+        ] {
+            let mut app = interaction_app(map_id, Position::new(position.x, position.y - 1));
+            let path = format!("media/maps/{map_id}.tmx");
+            let owner = ScenarioRelativePath::try_from(path.as_str()).unwrap();
+            let map = parse_tmx_map_document(
+                &std::fs::read_to_string(package.join(&path)).unwrap(),
+                &owner,
+            )
+            .unwrap();
+            let signs = sign_tiles(&map, &manifest.signs);
+            assert!(
+                signs.contains(&position),
+                "{map_id}: sign was not discovered"
+            );
+            for (index, position) in signs.into_iter().enumerate() {
+                let id = sign_dialogue_id(
+                    map_id,
+                    position,
+                    &app.world().resource::<ScenarioInventory>().dialogue_ids,
+                );
+                app.world_mut().spawn(WorldSign::for_test(
+                    format!("sign_{map_id}_{index}"),
+                    id,
+                    position,
+                ));
+            }
+
+            press_confirm_and_settle(&mut app);
+
+            let state = app.world().resource::<WorldInteractionState>();
+            assert!(state.failure.is_none(), "{map_id}: {:?}", state.failure);
+            let session = state.session.as_ref().expect("discovered sign must speak");
+            assert_eq!(session.current_line(), expected_line);
+            assert!(state.portrait.is_none());
+        }
+    }
+
+    #[test]
     fn interacting_with_a_ruinwatch_sign_opens_its_authored_dialogue() {
         let mut app = interaction_app("town_03_ruinwatch", Position::new(5, 5));
         app.world_mut().spawn(WorldSign::for_test(

@@ -178,7 +178,7 @@ pub(super) fn battle_row_choices(
 #[derive(bevy::ecs::system::SystemParam)]
 pub(super) struct MenuSettings<'w> {
     pub(super) engine: Res<'w, EngineSettings>,
-    options: Option<ResMut<'w, PlayerOptions>>,
+    pub(super) options: Option<ResMut<'w, PlayerOptions>>,
     options_store: Option<Res<'w, OptionsStore>>,
     options_load: Option<ResMut<'w, OptionsLoadStatus>>,
     persistence: Option<ResMut<'w, PersistenceStatus>>,
@@ -211,6 +211,11 @@ impl MenuSettings<'_> {
         if !apply_battle_choice(game, self.options.as_deref_mut(), row, choice) {
             return;
         }
+        self.save_options(state);
+    }
+
+    /// Writes the options file and reports the outcome on the field menu's message line.
+    pub(super) fn save_options(&mut self, state: &mut FieldMenuState) {
         if let (Some(store), Some(options)) =
             (self.options_store.as_deref(), self.options.as_deref())
         {

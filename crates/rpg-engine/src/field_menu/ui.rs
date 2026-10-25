@@ -7,7 +7,7 @@ use super::{
 use crate::{
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
-        can_equip, derived_stats, inventory_ids, item_description, item_name,
+        can_equip, derived_stats, equipment_slot, inventory_ids, item_description, item_name,
         learned_field_abilities, preview_stats,
     },
     game_state::GameState,
@@ -49,6 +49,7 @@ mod main_page;
 mod quests_page;
 mod recipes_page;
 mod save_page;
+mod settings_page;
 mod shared;
 mod shell;
 mod spells_page;
@@ -62,6 +63,7 @@ pub(super) use main_page::*;
 pub(super) use quests_page::*;
 pub(super) use recipes_page::*;
 pub(super) use save_page::*;
+pub(super) use settings_page::*;
 pub(super) use shared::*;
 pub(super) use shell::*;
 pub(super) use spells_page::*;
@@ -105,6 +107,9 @@ pub(super) const STATUS_CARD_MAX_HEIGHT: f32 = 128.0;
 pub(super) const ITEMS_POUCH_WIDTH: f32 = 286.0;
 pub(super) const ITEMS_DETAIL_WIDTH: f32 = 378.0;
 pub(super) const ITEMS_COLUMN_GAP: f32 = 18.0;
+/// Party card height in the items page's equip picker. Five cards plus the modal's chrome fit the
+/// canvas; the portrait is square, so it scales with this.
+pub(super) const ITEM_EQUIP_CARD_HEIGHT: f32 = 76.0;
 pub(super) const EQUIPMENT_SLOT_WIDTH: f32 = 306.0;
 pub(super) const MAIN_DECK_WIDTH: f32 = 772.0;
 pub(super) const MAIN_DECK_COLUMN_GAP: f32 = 14.0;

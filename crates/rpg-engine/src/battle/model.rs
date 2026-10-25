@@ -457,6 +457,9 @@ pub(super) struct BattleState {
     pub(super) pending_item: Option<String>,
     pub(super) target: Option<TargetSelector>,
     pub(super) message: String,
+    /// What `message` reported and the text it was set for. Any later message that did not set
+    /// its own kind reads as plain information, so a stale kind never colours it.
+    pub(super) message_tag: (crate::battle_log::LogKind, String),
     pub(super) transcript: Vec<String>,
     pub(super) feedback_events: Vec<super::action::BattleEvent>,
     pub(super) used_enemy_moves: HashSet<(CombatantKey, String)>,
@@ -478,6 +481,21 @@ pub(super) struct BattleItemChoice {
 }
 
 impl BattleState {
+    /// Sets the message together with the kind of event it reports.
+    pub(super) fn announce(&mut self, kind: crate::battle_log::LogKind, text: String) {
+        self.message_tag = (kind, text.clone());
+        self.message = text;
+    }
+
+    /// The kind of the current message.
+    pub(super) fn message_kind(&self) -> crate::battle_log::LogKind {
+        if self.message_tag.1 == self.message {
+            self.message_tag.0
+        } else {
+            crate::battle_log::LogKind::Info
+        }
+    }
+
     pub(super) fn battle_ability_indices(&self) -> Vec<usize> {
         self.active()
             .into_iter()

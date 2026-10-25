@@ -205,6 +205,9 @@ pub(super) fn handle_field_menu_input(
         FieldMenuScreen::Save => {
             save::handle_input(&mut state, &mut game, &input, &store, &mut saves, &time);
         }
+        FieldMenuScreen::Settings => {
+            super::settings::handle_input(&mut state, &input, &mut menu_settings);
+        }
         FieldMenuScreen::Battle => {
             battle::handle_input(
                 &mut state,

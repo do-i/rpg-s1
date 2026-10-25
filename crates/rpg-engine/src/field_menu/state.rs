@@ -21,6 +21,8 @@ pub(super) enum FieldMenuScreen {
     Save,
     /// Per-member Manual/Auto tactics and the auto default command.
     Battle,
+    /// Player preferences that are not tied to battle, such as sound.
+    Settings,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -37,6 +39,8 @@ pub(super) enum FieldMenuMode {
     EquipmentSlots,
     DiscardQuantity,
     ItemTarget,
+    /// Party picker for equipping the pending item, previewing each member's stat change.
+    ItemEquipTarget,
     EquipmentPicker,
     SpellTarget,
     #[cfg_attr(
@@ -220,6 +224,7 @@ impl FieldMenuState {
             }
             FieldMenuMode::DiscardQuantity
             | FieldMenuMode::ItemTarget
+            | FieldMenuMode::ItemEquipTarget
             | FieldMenuMode::SpellTarget
             | FieldMenuMode::TeleportPicker => {
                 self.quantity = 1;

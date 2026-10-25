@@ -95,7 +95,7 @@ impl fmt::Display for OptionsStoreError {
 impl Error for OptionsStoreError {}
 
 /// Everything the options screen can change.
-#[derive(Clone, Debug, Default, PartialEq, Resource)]
+#[derive(Clone, Debug, PartialEq, Resource)]
 pub(crate) struct PlayerOptions {
     pub(crate) bindings: InputBindings,
     /// The player's typewriter-speed override, or `None` to follow `assets/settings.yaml`.
@@ -108,6 +108,27 @@ pub(crate) struct PlayerOptions {
     /// Whether a won battle returns straight to the world, skipping the victory sting and the
     /// reward modal. Rewards are applied either way.
     pub(crate) skip_victory_screen: bool,
+    /// The master switch. Off mutes all game audio whatever the two switches below say.
+    pub(crate) sound_enabled: bool,
+    /// Whether background music plays while the master switch is on.
+    pub(crate) music_enabled: bool,
+    /// Whether sound effects play while the master switch is on.
+    pub(crate) sfx_enabled: bool,
+}
+
+impl Default for PlayerOptions {
+    fn default() -> Self {
+        Self {
+            bindings: InputBindings::default(),
+            text_speed: None,
+            auto_enemy_turns: false,
+            turn_pause: TurnPause::default(),
+            skip_victory_screen: false,
+            sound_enabled: true,
+            music_enabled: true,
+            sfx_enabled: true,
+        }
+    }
 }
 
 impl PlayerOptions {
@@ -175,6 +196,12 @@ struct OptionsDocument {
     turn_pause: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     skip_victory_screen: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sound_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    music_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sfx_enabled: Option<bool>,
     keyboard: DeviceBindings,
     gamepad: DeviceBindings,
 }
@@ -206,6 +233,10 @@ impl OptionsDocument {
             // Defaults stay out of the file, so it only records what the player changed.
             auto_enemy_turns: options.auto_enemy_turns.then_some(true),
             skip_victory_screen: options.skip_victory_screen.then_some(true),
+            // Sound defaults to on, so only the muted state reaches the file.
+            sound_enabled: (!options.sound_enabled).then_some(false),
+            music_enabled: (!options.music_enabled).then_some(false),
+            sfx_enabled: (!options.sfx_enabled).then_some(false),
             turn_pause: (options.turn_pause != TurnPause::default())
                 .then(|| options.turn_pause.label().to_owned()),
             ..Self::default()
@@ -268,6 +299,9 @@ impl OptionsDocument {
 
         options.auto_enemy_turns = self.auto_enemy_turns.unwrap_or(false);
         options.skip_victory_screen = self.skip_victory_screen.unwrap_or(false);
+        options.sound_enabled = self.sound_enabled.unwrap_or(true);
+        options.music_enabled = self.music_enabled.unwrap_or(true);
+        options.sfx_enabled = self.sfx_enabled.unwrap_or(true);
         if let Some(label) = &self.turn_pause {
             match TurnPause::from_label(label) {
                 Some(pause) => options.turn_pause = pause,
@@ -778,6 +812,9 @@ mod tests {
             auto_enemy_turns: true,
             turn_pause: TurnPause::Half,
             skip_victory_screen: true,
+            sound_enabled: false,
+            music_enabled: false,
+            sfx_enabled: false,
             ..PlayerOptions::default()
         };
         options
@@ -797,6 +834,42 @@ mod tests {
 
         assert_eq!(loaded, options);
         assert!(warnings.is_empty(), "a file we wrote must load cleanly");
+        let _ = fs::remove_dir_all(store.root);
+    }
+
+    #[test]
+    fn sound_is_saved_only_when_the_player_turns_it_off() {
+        let store = temporary_store("sound");
+        store.store(&PlayerOptions::default()).expect("a write");
+        let text = fs::read_to_string(store.path()).expect("the file");
+        assert!(
+            !text.contains("sound_enabled"),
+            "the default stays out of the file"
+        );
+
+        let muted = PlayerOptions {
+            sound_enabled: false,
+            ..PlayerOptions::default()
+        };
+        store.store(&muted).expect("a write");
+        let (loaded, _) = store.load().expect("the file just written");
+        assert!(!loaded.sound_enabled);
+        let _ = fs::remove_dir_all(store.root);
+    }
+
+    #[test]
+    fn music_and_sfx_switches_are_saved_only_when_turned_off() {
+        let store = temporary_store("channels");
+        let quiet_music = PlayerOptions {
+            music_enabled: false,
+            ..PlayerOptions::default()
+        };
+        store.store(&quiet_music).expect("a write");
+        let text = fs::read_to_string(store.path()).expect("the file");
+        assert!(text.contains("music_enabled"));
+        assert!(!text.contains("sfx_enabled"));
+        let (loaded, _) = store.load().expect("the file just written");
+        assert!(loaded.sound_enabled && !loaded.music_enabled && loaded.sfx_enabled);
         let _ = fs::remove_dir_all(store.root);
     }
 

@@ -1,4 +1,5 @@
 use crate::{
+    battle_log::LogKind,
     encounter::BattleSide,
     gameplay_rng::GameplayRng,
     scenario_class::{
@@ -244,7 +245,10 @@ pub(super) fn resolve_ability(
         }
     }
     state.feedback_events.extend(events.iter().copied());
-    state.message = format!("{} uses {}!", caster.name, ability.name);
+    state.announce(
+        LogKind::Ability,
+        format!("{} uses {}!", caster.name, ability.name),
+    );
     state.transcript.push(format!(
         "ABILITY {} {} {}",
         caster.id,

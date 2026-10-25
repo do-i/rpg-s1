@@ -615,18 +615,20 @@ pub(crate) enum InventoryTab {
     Recovery,
     Status,
     Battle,
+    Equipment,
     Material,
     Core,
     Key,
 }
 
 impl InventoryTab {
-    pub(crate) const ALL: [Self; 8] = [
+    pub(crate) const ALL: [Self; 9] = [
         Self::All,
         Self::New,
         Self::Recovery,
         Self::Status,
         Self::Battle,
+        Self::Equipment,
         Self::Material,
         Self::Core,
         Self::Key,
@@ -638,6 +640,7 @@ impl InventoryTab {
             Self::Recovery => "Recovery",
             Self::Status => "Status",
             Self::Battle => "Battle",
+            Self::Equipment => "Equipment",
             Self::Material => "Material",
             Self::Core => "Core",
             Self::Key => "Key",
@@ -745,6 +748,7 @@ fn item_matches_tab(item: &ItemDefinition, is_new: bool, tab: InventoryTab) -> b
         InventoryTab::Battle => {
             matches!(item, ItemDefinition::Consumable(value) if matches!(value.effect, crate::scenario_item::ConsumableEffect::Throw(_)))
         }
+        InventoryTab::Equipment => is_equipment(item),
         InventoryTab::Material => matches!(item, ItemDefinition::Material(_)),
         InventoryTab::Core => matches!(item, ItemDefinition::MagicCore(_)),
         InventoryTab::Key => matches!(item, ItemDefinition::Key(_)),
@@ -926,6 +930,16 @@ fn item_slot_and_category(item: &ItemDefinition) -> Option<(EquipmentSlot, &str)
         ItemDefinition::Accessory(_) => Some((EquipmentSlot::Accessory, "all")),
         _ => None,
     }
+}
+
+/// Whether the item goes in an equipment slot rather than the pouch's usable stock.
+pub(crate) fn is_equipment(item: &ItemDefinition) -> bool {
+    equipment_slot(item).is_some()
+}
+
+/// The slot an equipment item occupies, or `None` for anything else.
+pub(crate) fn equipment_slot(item: &ItemDefinition) -> Option<EquipmentSlot> {
+    item_slot_and_category(item).map(|(slot, _)| slot)
 }
 
 fn slot_allowed(slots: &ClassEquipmentSlots, slot: EquipmentSlot, category: &str) -> bool {

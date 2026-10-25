@@ -43,6 +43,21 @@ pub(in crate::field_menu) fn item_kind_label(item: &ItemDefinition) -> &'static 
     }
 }
 
+/// The type-driven tags the kind chip already says, so the tag chips can skip them.
+pub(in crate::field_menu) fn item_kind_tags(item: &ItemDefinition) -> &'static [&'static str] {
+    match item {
+        ItemDefinition::Consumable(_) => &["consumable"],
+        ItemDefinition::Material(_) => &["material"],
+        ItemDefinition::Key(_) => &["key"],
+        ItemDefinition::MagicCore(_) => &["magic_core"],
+        ItemDefinition::Weapon(_) => &["equipment", "weapon"],
+        ItemDefinition::Shield(_) => &["equipment", "shield"],
+        ItemDefinition::Helmet(_) => &["equipment", "helmet"],
+        ItemDefinition::Body(_) => &["equipment", "body"],
+        ItemDefinition::Accessory(_) => &["equipment", "accessory"],
+    }
+}
+
 pub(in crate::field_menu) fn item_kind_abbreviation(item: &ItemDefinition) -> &'static str {
     match item {
         ItemDefinition::Consumable(_) => "USE",

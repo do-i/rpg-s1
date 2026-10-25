@@ -130,9 +130,27 @@ pub(in crate::field_menu) fn spawn_save_page(
                     14.0,
                     status_muted(),
                 );
-                if !state.message.is_empty() {
-                    spawn_save_message(modal, font, &state.message, status_border());
-                }
+                // The panel is sized to its rows and centred, so a banner that came and went
+                // would shift it. The row is always laid out and only hidden when empty, and the
+                // overwrite question is left to its own modal rather than repeated here.
+                let message = Some(state.message.as_str()).filter(|message| {
+                    !message.is_empty() && state.mode != FieldMenuMode::SaveConfirm
+                });
+                modal
+                    .spawn((
+                        Node {
+                            width: percent(100),
+                            ..default()
+                        },
+                        if message.is_some() {
+                            Visibility::Inherited
+                        } else {
+                            Visibility::Hidden
+                        },
+                    ))
+                    .with_children(|row| {
+                        spawn_save_message(row, font, message.unwrap_or("-"), status_border());
+                    });
             });
             spawn_save_overwrite_modal(page, font, state, saves);
         });

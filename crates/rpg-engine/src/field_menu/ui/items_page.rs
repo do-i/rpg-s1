@@ -44,8 +44,9 @@ pub(in crate::field_menu) fn sync_items_page(
     let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
+    let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_items_page(parent, &font, &state, &game, &catalog);
+        spawn_items_page(parent, &font, &state, &game, &catalog, &portraits);
     });
 }
 
@@ -55,6 +56,7 @@ pub(in crate::field_menu) fn spawn_items_page(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
 ) {
     let tab = InventoryTab::ALL[state.tab_index];
     let ids = inventory_ids(game, catalog, tab);
@@ -103,6 +105,8 @@ pub(in crate::field_menu) fn spawn_items_page(
                         width: px(ITEMS_DETAIL_WIDTH),
                         ..default()
                     });
+                } else if state.mode == FieldMenuMode::ItemEquipTarget {
+                    spawn_item_equip_preview_column(columns, font, state, game, catalog);
                 } else {
                     spawn_item_detail_column(
                         columns, font, state, game, catalog, &ids, list_index,
@@ -126,7 +130,7 @@ pub(in crate::field_menu) fn spawn_items_page(
             if !state.message.is_empty() {
                 spawn_items_message(page, font, &state.message);
             }
-            spawn_item_modal(page, font, state, game, catalog);
+            spawn_item_modal(page, font, state, game, catalog, portraits);
         });
 }
 
@@ -466,7 +470,169 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
                 spawn_section_rule(panel);
             }
             spawn_item_chips(panel, font, game, catalog, id, item);
+            if let Some(slot) = equipment_slot(item) {
+                spawn_section_rule(panel);
+                spawn_equippable_by(panel, font, game, catalog, id, slot);
+            }
             spawn_status_text(panel, "ENTER  -  ACTIONS", font, 14.0, status_muted());
+        },
+    );
+}
+
+/// Every party member with whether they can wear this item, so gear can be routed at a glance.
+pub(in crate::field_menu) fn spawn_equippable_by(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    id: &str,
+    slot: EquipmentSlot,
+) {
+    spawn_status_text(parent, "EQUIPPABLE BY", font, 13.0, status_gold());
+    for member in game.party().members() {
+        let allowed = equip_refusal(member, id, catalog).is_none();
+        let (verdict, verdict_color) = if member.equipment().get(slot) == Some(id) {
+            ("EQUIPPED", status_teal())
+        } else if allowed {
+            ("CAN EQUIP", status_ready())
+        } else {
+            ("CAN'T", status_ember())
+        };
+        parent
+            .spawn(Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: px(8),
+                ..default()
+            })
+            .with_children(|row| {
+                row.spawn(Node {
+                    flex_grow: 1.0,
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Baseline,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|who| {
+                    spawn_status_text(
+                        who,
+                        member.name(),
+                        font,
+                        15.0,
+                        if allowed {
+                            status_ink()
+                        } else {
+                            status_faint()
+                        },
+                    );
+                    spawn_status_text(
+                        who,
+                        class_name(member.class_id(), catalog).to_uppercase(),
+                        font,
+                        11.0,
+                        status_muted(),
+                    );
+                });
+                spawn_status_text(row, verdict, font, 12.0, verdict_color);
+            });
+    }
+}
+
+/// The detail column while the equip picker is open: what the highlighted member would gain or
+/// lose by wearing the pending item, or why they cannot.
+pub(in crate::field_menu) fn spawn_item_equip_preview_column(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+) {
+    spawn_status_panel(
+        parent,
+        Node {
+            width: px(ITEMS_DETAIL_WIDTH),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(11),
+            padding: UiRect::all(px(16)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        "DETAIL",
+        font,
+        |panel| {
+            let Some(id) = state.pending_id.as_deref() else {
+                return;
+            };
+            let (Some(item), Some(member)) = (catalog.item(id), member_at(game, state.selected))
+            else {
+                return;
+            };
+            let Some(slot) = equipment_slot(item) else {
+                return;
+            };
+            spawn_status_text(panel, item_name(item), font, 23.0, status_gold());
+            spawn_status_text(
+                panel,
+                format!(
+                    "{}    {} SLOT",
+                    item_kind_label(item),
+                    slot.as_str().to_uppercase()
+                ),
+                font,
+                13.0,
+                status_muted(),
+            );
+            spawn_section_rule(panel);
+            spawn_status_text(panel, "STATUS CHANGE", font, 13.0, status_gold());
+            spawn_status_text(
+                panel,
+                format!(
+                    "{}    {}",
+                    member.name(),
+                    class_name(member.class_id(), catalog).to_uppercase()
+                ),
+                font,
+                18.0,
+                status_ink(),
+            );
+            let current = member.equipment().get(slot).and_then(|id| catalog.item(id));
+            spawn_quest_meta_row(panel, font, "NOW", current.map_or("—", item_name));
+            spawn_quest_meta_row(panel, font, "NEW", item_name(item));
+            if let Some(refusal) = equip_refusal(member, id, catalog) {
+                spawn_section_rule(panel);
+                spawn_status_text(
+                    panel,
+                    "CAN'T EQUIP - CLASS RESTRICTED",
+                    font,
+                    14.0,
+                    status_ember(),
+                );
+                spawn_status_text(panel, refusal, font, 14.0, status_muted());
+                return;
+            }
+            spawn_stat_change_grid(
+                panel,
+                font,
+                derived_stats(member, catalog),
+                preview_stats(member, catalog, slot, Some(id)),
+            );
+            let summary = equipment_preview_summary(member, catalog, slot, Some(id));
+            spawn_status_text(
+                panel,
+                if summary.is_empty() {
+                    "No attribute change.".to_owned()
+                } else {
+                    summary
+                },
+                font,
+                13.0,
+                status_muted(),
+            );
+            spawn_section_rule(panel);
+            spawn_status_text(panel, "ENTER  -  EQUIP", font, 14.0, status_muted());
         },
     );
 }
@@ -499,7 +665,12 @@ pub(in crate::field_menu) fn spawn_item_chips(
             if game.repository().is_locked(id) {
                 spawn_item_chip(chips, font, "LOCKED", status_violet());
             }
-            for tag in game.repository().item_tags(id) {
+            let kind_tags = item_kind_tags(item);
+            for tag in game
+                .repository()
+                .item_tags(id)
+                .filter(|tag| !kind_tags.contains(tag))
+            {
                 spawn_item_chip(
                     chips,
                     font,
@@ -562,11 +733,15 @@ pub(in crate::field_menu) fn spawn_item_modal(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
 ) {
     // Only the item's own modals draw here; the pouch and the list are the page itself.
     if state.selected_is_list_cursor() {
         return;
     }
+    // The equip picker leaves the detail column uncovered, since that is where it previews the
+    // highlighted member's stat change.
+    let equip_picker = state.mode == FieldMenuMode::ItemEquipTarget;
     let title = match state.mode {
         FieldMenuMode::ItemManage => "MANAGE POUCH",
         _ => state
@@ -580,7 +755,11 @@ pub(in crate::field_menu) fn spawn_item_modal(
             Node {
                 position_type: PositionType::Absolute,
                 left: px(0),
-                right: px(0),
+                right: px(if equip_picker {
+                    ITEMS_DETAIL_WIDTH + ITEMS_COLUMN_GAP
+                } else {
+                    0.0
+                }),
                 top: px(0),
                 bottom: px(0),
                 justify_content: JustifyContent::Center,
@@ -593,7 +772,7 @@ pub(in crate::field_menu) fn spawn_item_modal(
             spawn_status_panel(
                 overlay,
                 Node {
-                    width: px(390),
+                    width: px(if equip_picker { 460 } else { 390 }),
                     min_height: px(190),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(9),
@@ -613,7 +792,7 @@ pub(in crate::field_menu) fn spawn_item_modal(
                                 .as_deref()
                                 .expect("item actions require an item");
                             for index in 0..ITEM_ACTIONS.len() {
-                                let (label, subtitle) = item_action_row(index, game, id);
+                                let (label, subtitle) = item_action_row(index, game, catalog, id);
                                 spawn_item_modal_row(
                                     modal,
                                     font,
@@ -669,6 +848,9 @@ pub(in crate::field_menu) fn spawn_item_modal(
                                 );
                             }
                         }
+                        FieldMenuMode::ItemEquipTarget => {
+                            spawn_equip_member_cards(modal, font, state, game, catalog, portraits);
+                        }
                         FieldMenuMode::ItemAoeConfirm => {
                             spawn_status_text(
                                 modal,
@@ -709,6 +891,123 @@ pub(in crate::field_menu) fn spawn_item_modal(
                 },
             );
         });
+}
+
+/// The equip picker's party cards, laid out like the Equipment page's party column: portrait,
+/// name and level, class, and what the member wears in the item's slot today.
+fn spawn_equip_member_cards(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
+    portraits: &StatusPortraitAssets,
+) {
+    let Some(id) = state.pending_id.as_deref() else {
+        return;
+    };
+    let Some(slot) = catalog.item(id).and_then(equipment_slot) else {
+        return;
+    };
+    spawn_status_text(parent, "CHOOSE WHO EQUIPS IT", font, 13.0, status_muted());
+    for (index, member) in game.party().members().enumerate() {
+        let selected = index == state.selected;
+        let refused = equip_refusal(member, id, catalog).is_some();
+        let worn = member.equipment().get(slot).and_then(|id| catalog.item(id));
+        let mut card = parent.spawn((
+            Node {
+                width: percent(100),
+                height: px(ITEM_EQUIP_CARD_HEIGHT),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Stretch,
+                column_gap: px(12),
+                padding: UiRect::all(px(7)),
+                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                border_radius: BorderRadius::all(px(5)),
+                ..default()
+            },
+            BackgroundColor(if selected {
+                Color::srgba_u8(79, 51, 38, 214)
+            } else {
+                Color::srgba_u8(30, 30, 38, 164)
+            }),
+            BorderColor::all(if selected {
+                status_border_active()
+            } else {
+                status_border()
+            }),
+            ItemEquipMemberCard,
+            Name::new(format!("Equip card: {}", member.name())),
+        ));
+        if selected {
+            card.insert(SelectedItemEquipMemberCard);
+        }
+        card.with_children(|card| {
+            spawn_portrait_frame(
+                card,
+                font,
+                member.name(),
+                portraits.profile(member.id()),
+                selected,
+                "Equip portrait",
+            );
+            card.spawn(Node {
+                flex_grow: 1.0,
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                row_gap: px(2),
+                ..default()
+            })
+            .with_children(|summary| {
+                spawn_status_text(
+                    summary,
+                    format!("{}     LV {}", member.name(), member.level()),
+                    font,
+                    17.0,
+                    if refused {
+                        status_faint()
+                    } else {
+                        status_ink()
+                    },
+                );
+                spawn_status_text(
+                    summary,
+                    class_name(member.class_id(), catalog).to_uppercase(),
+                    font,
+                    12.0,
+                    status_gold(),
+                );
+                if refused {
+                    spawn_status_text(
+                        summary,
+                        "CAN'T EQUIP - CLASS RESTRICTED",
+                        font,
+                        12.0,
+                        status_ember(),
+                    );
+                } else {
+                    spawn_status_text(
+                        summary,
+                        format!(
+                            "{}  {}",
+                            slot.as_str().to_uppercase(),
+                            worn.map_or("—", item_name)
+                        ),
+                        font,
+                        12.0,
+                        status_muted(),
+                    );
+                }
+            });
+        });
+    }
+    spawn_status_text(
+        parent,
+        "UP/DOWN   MEMBER      ENTER   EQUIP      ESC   BACK",
+        font,
+        13.0,
+        status_muted(),
+    );
 }
 
 /// Tag editor rows: the curatorial set, this item's own tags, then the free-text prompt.
