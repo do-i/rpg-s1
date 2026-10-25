@@ -9,8 +9,22 @@ use super::{
 };
 use crate::options_store::PlayerOptions;
 
-/// Rows on the settings page: the master sound switch, then music and sound effects.
-pub(super) const SETTINGS_ROW_COUNT: usize = 3;
+/// Cards in the left column of the settings page.
+pub(super) const SETTINGS_CARD_COUNT: usize = 1;
+/// The settings card that switches all game audio on and off.
+pub(super) const SOUND_ROW: usize = 0;
+/// Sub switch of the Sound card for background music alone.
+pub(super) const MUSIC_ROW: usize = 0;
+/// Sub switch of the Sound card for sound effects alone.
+pub(super) const SFX_ROW: usize = 1;
+
+/// Sub switches under a left-column card; zero means the card has no right column.
+pub(super) const fn sub_count(card: usize) -> usize {
+    match card {
+        SOUND_ROW => 2,
+        _ => 0,
+    }
+}
 
 pub(super) fn handle_input(
     state: &mut ResMut<'_, FieldMenuState>,
@@ -20,28 +34,36 @@ pub(super) fn handle_input(
     if state.mode != FieldMenuMode::Browse {
         return;
     }
-    if let Some(delta) = input.vertical {
-        state.selected = wrapped_or_zero(state.selected, SETTINGS_ROW_COUNT, delta);
+    let card = state.selected;
+    // Right enters the sub switches of the selected card; Left returns to the list.
+    match input.horizontal {
+        Some(1) if state.settings_sub.is_none() && sub_count(card) > 0 => {
+            state.settings_sub = Some(0);
+        }
+        Some(-1) => state.settings_sub = None,
+        _ => {}
     }
-    if input.confirm && state.selected < SETTINGS_ROW_COUNT {
+    if let Some(delta) = input.vertical {
+        match state.settings_sub {
+            Some(sub) => {
+                state.settings_sub = Some(wrapped_or_zero(sub, sub_count(card), delta));
+            }
+            None => state.selected = wrapped_or_zero(card, SETTINGS_CARD_COUNT, delta),
+        }
+    }
+    if input.confirm {
         let Some(options) = menu_settings.options.as_deref_mut() else {
             return;
         };
-        match state.selected {
-            SOUND_ROW => toggle_sound(options),
-            MUSIC_ROW => options.music_enabled = !options.music_enabled,
-            _ => options.sfx_enabled = !options.sfx_enabled,
+        match (card, state.settings_sub) {
+            (SOUND_ROW, None) => toggle_sound(options),
+            (SOUND_ROW, Some(MUSIC_ROW)) => options.music_enabled = !options.music_enabled,
+            (SOUND_ROW, Some(_)) => options.sfx_enabled = !options.sfx_enabled,
+            _ => return,
         }
         menu_settings.save_options(state);
     }
 }
-
-/// The settings row that switches all game audio on and off.
-pub(super) const SOUND_ROW: usize = 0;
-/// The settings row for background music alone.
-pub(super) const MUSIC_ROW: usize = 1;
-/// The settings row for sound effects alone.
-pub(super) const SFX_ROW: usize = 2;
 
 /// Flips the Sound setting. Applying it to the audio output is the sound system's job.
 pub(super) fn toggle_sound(options: &mut PlayerOptions) {
@@ -51,6 +73,12 @@ pub(super) fn toggle_sound(options: &mut PlayerOptions) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_sound_card_has_sub_switches() {
+        assert_eq!(sub_count(SOUND_ROW), 2);
+        assert_eq!(sub_count(SOUND_ROW + 1), 0);
+    }
 
     #[test]
     fn toggling_sound_flips_the_setting_and_back() {

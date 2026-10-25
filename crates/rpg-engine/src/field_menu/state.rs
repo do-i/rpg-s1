@@ -101,6 +101,9 @@ pub(crate) struct FieldMenuState {
     /// Draft text for the new-custom-tag prompt.
     pub(super) text_input: String,
     pub(super) message: String,
+    /// The Settings page's right-column cursor: `Some(row)` while focus is on the selected card's
+    /// sub switches, `None` while it is on the left list.
+    pub(super) settings_sub: Option<usize>,
     /// Where each of this screen's lists was last scrolled.
     pub(super) scroll: crate::menu_chrome::ScrollMemory,
 }

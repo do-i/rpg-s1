@@ -1,5 +1,5 @@
 use super::*;
-use crate::field_menu::settings::{MUSIC_ROW, SFX_ROW, SOUND_ROW};
+use crate::field_menu::settings::{MUSIC_ROW, SFX_ROW, SOUND_ROW, sub_count};
 
 #[expect(
     clippy::too_many_arguments,
@@ -68,58 +68,54 @@ pub(in crate::field_menu) fn spawn_settings_page(
             page.spawn(Node {
                 width: percent(100),
                 flex_grow: 1.0,
+                flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Start,
-                justify_content: JustifyContent::Center,
+                column_gap: px(STATUS_COLUMN_GAP),
                 ..default()
             })
-            .with_children(|body| {
-                spawn_status_panel(
-                    body,
-                    Node {
-                        width: px(SETTINGS_PANEL_WIDTH),
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(8),
-                        padding: UiRect::all(px(16)),
-                        border: UiRect::all(px(1)),
-                        border_radius: BorderRadius::all(px(6)),
-                        ..default()
-                    },
-                    "AUDIO",
-                    font,
-                    |panel| {
-                        spawn_settings_row(
-                            panel,
-                            font,
-                            "Sound",
-                            "Master switch for all audio",
-                            if options.sound_enabled { "ON" } else { "OFF" },
-                            options.sound_enabled,
-                            state.selected == SOUND_ROW,
-                        );
-                        spawn_settings_row(
-                            panel,
-                            font,
-                            "Music",
-                            "Background music",
-                            if options.music_enabled { "ON" } else { "OFF" },
-                            options.sound_enabled && options.music_enabled,
-                            state.selected == MUSIC_ROW,
-                        );
-                        spawn_settings_row(
-                            panel,
-                            font,
-                            "Sound effects",
-                            "Menu, battle and field effects",
-                            if options.sfx_enabled { "ON" } else { "OFF" },
-                            options.sound_enabled && options.sfx_enabled,
-                            state.selected == SFX_ROW,
-                        );
-                    },
-                );
+            .with_children(|columns| {
+                let in_sub = state.settings_sub.is_some();
+                spawn_status_panel(columns, settings_panel_node(), "SETTINGS", font, |panel| {
+                    spawn_settings_row(
+                        panel,
+                        font,
+                        "Sound",
+                        "Master switch for all audio",
+                        if options.sound_enabled { "ON" } else { "OFF" },
+                        options.sound_enabled,
+                        state.selected == SOUND_ROW,
+                        sub_count(SOUND_ROW) > 0,
+                    );
+                });
+                if sub_count(state.selected) == 0 {
+                    return;
+                }
+                spawn_status_panel(columns, settings_panel_node(), "SOUND", font, |panel| {
+                    spawn_settings_row(
+                        panel,
+                        font,
+                        "Music",
+                        "Background music",
+                        if options.music_enabled { "ON" } else { "OFF" },
+                        options.sound_enabled && options.music_enabled,
+                        in_sub && state.settings_sub == Some(MUSIC_ROW),
+                        false,
+                    );
+                    spawn_settings_row(
+                        panel,
+                        font,
+                        "Sound effects",
+                        "Menu, battle and field effects",
+                        if options.sfx_enabled { "ON" } else { "OFF" },
+                        options.sound_enabled && options.sfx_enabled,
+                        in_sub && state.settings_sub == Some(SFX_ROW),
+                        false,
+                    );
+                });
             });
             spawn_status_text(
                 page,
-                "UP/DOWN   SELECT      ENTER   TOGGLE      ESC   BACK",
+                "UP/DOWN   SELECT      ENTER / SPACE   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      ESC   BACK",
                 font,
                 15.0,
                 status_muted(),
@@ -127,8 +123,20 @@ pub(in crate::field_menu) fn spawn_settings_page(
         });
 }
 
-/// Fixed width of the settings panel. Wide enough for the label, subtitle, and value chip.
-const SETTINGS_PANEL_WIDTH: f32 = 460.0;
+/// Fixed width of each settings column. Wide enough for the label, subtitle, and value chip.
+const SETTINGS_PANEL_WIDTH: f32 = 440.0;
+
+fn settings_panel_node() -> Node {
+    Node {
+        width: px(SETTINGS_PANEL_WIDTH),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(8),
+        padding: UiRect::all(px(16)),
+        border: UiRect::all(px(1)),
+        border_radius: BorderRadius::all(px(6)),
+        ..default()
+    }
+}
 
 fn spawn_settings_header(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
     parent
@@ -154,6 +162,10 @@ fn spawn_settings_header(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Fo
         });
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a row is its label, subtitle, value chip, two highlight states, and whether it opens a column"
+)]
 fn spawn_settings_row(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -162,6 +174,7 @@ fn spawn_settings_row(
     value: &str,
     active: bool,
     selected: bool,
+    opens_column: bool,
 ) {
     let mut row = parent.spawn((
         Node {
@@ -209,5 +222,9 @@ fn spawn_settings_row(
         .with_children(|chip| {
             spawn_status_text(chip, value, font, 13.0, color);
         });
+        if opens_column {
+            // ASCII on purpose: the menu font has no arrow glyphs to rely on.
+            spawn_status_text(row, ">", font, 18.0, status_gold());
+        }
     });
 }
