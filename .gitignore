@@ -11,6 +11,10 @@
 
 # Scratch: run evidence screenshots and save-file backups kept out of history.
 /temp/
+# Legacy scratch root; use sequential directories under temp/art instead.
+/art/
+# Temporary Tiled layout reference; retain locally under temp/art.
+/assets/scenarios/rusted_kingdoms/media/tilesets/sample.tmx
 
 # Derived output from the map editor (tools/map_editor) and from Tiled. Existing tracked
 # source backups remain tracked; newly generated backups and thumbnails do not.

@@ -47,8 +47,8 @@ item_box:
 # reads `sign_<map_id>_<x>_<y>.yaml` when present, otherwise `sign_<map_id>.yaml`
 # beneath data/dialogue/. Coordinates are zero-based TMX tile positions.
 signs:
-  tileset: town
-  tile_ids: [17, 18, 19, 20]
+  tileset: outdoor
+  tile_ids: [12, 13, 14, 15]
 
 protagonist:
   id: aric

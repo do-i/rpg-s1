@@ -3,62 +3,62 @@
  <image source="wall.png" width="576" height="320" />
  <tile id="0">
   <properties>
-   <property name="desc" value="interior tile 0" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, upper header, left end" />
   </properties>
  </tile>
  <tile id="1">
   <properties>
-   <property name="desc" value="interior tile 1" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, upper header, horizontal repeat" />
   </properties>
  </tile>
  <tile id="2">
   <properties>
-   <property name="desc" value="interior tile 2" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, upper header, right end" />
   </properties>
  </tile>
  <tile id="3">
   <properties>
-   <property name="desc" value="interior tile 3" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, upper header, narrow return" />
   </properties>
  </tile>
  <tile id="4">
   <properties>
-   <property name="desc" value="interior tile 4" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 4" />
   </properties>
  </tile>
  <tile id="5">
   <properties>
-   <property name="desc" value="interior tile 5" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 5" />
   </properties>
  </tile>
  <tile id="6">
   <properties>
-   <property name="desc" value="interior tile 6" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 6" />
   </properties>
  </tile>
  <tile id="7">
   <properties>
-   <property name="desc" value="interior tile 7" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 7" />
   </properties>
  </tile>
  <tile id="8">
   <properties>
-   <property name="desc" value="interior tile 8" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 8" />
   </properties>
  </tile>
  <tile id="9">
   <properties>
-   <property name="desc" value="interior tile 9" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 9" />
   </properties>
  </tile>
  <tile id="10">
   <properties>
-   <property name="desc" value="interior tile 10" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 10" />
   </properties>
  </tile>
  <tile id="11">
   <properties>
-   <property name="desc" value="interior tile 11" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 11" />
   </properties>
  </tile>
  <tile id="12">
@@ -93,47 +93,47 @@
  </tile>
  <tile id="18">
   <properties>
-   <property name="desc" value="interior tile 12" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, middle plaster, left end" />
   </properties>
  </tile>
  <tile id="19">
   <properties>
-   <property name="desc" value="interior tile 13" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, middle plaster, horizontal repeat" />
   </properties>
  </tile>
  <tile id="20">
   <properties>
-   <property name="desc" value="interior tile 14" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, middle plaster, right end" />
   </properties>
  </tile>
  <tile id="21">
   <properties>
-   <property name="desc" value="interior tile 15" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, middle plaster, narrow return" />
   </properties>
  </tile>
  <tile id="22">
   <properties>
-   <property name="desc" value="interior tile 16" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 22" />
   </properties>
  </tile>
  <tile id="23">
   <properties>
-   <property name="desc" value="interior tile 17" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 23" />
   </properties>
  </tile>
  <tile id="24">
   <properties>
-   <property name="desc" value="interior tile 18" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 24" />
   </properties>
  </tile>
  <tile id="25">
   <properties>
-   <property name="desc" value="interior tile 19" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 25" />
   </properties>
  </tile>
  <tile id="26">
   <properties>
-   <property name="desc" value="interior tile 20" />
+   <property name="desc" value="aged oak-edged dark interior structural cut, module 26" />
   </properties>
  </tile>
  <tile id="30">
@@ -168,22 +168,22 @@
  </tile>
  <tile id="36">
   <properties>
-   <property name="desc" value="interior tile 24" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, lower skirting, left end" />
   </properties>
  </tile>
  <tile id="37">
   <properties>
-   <property name="desc" value="interior tile 25" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, lower skirting, horizontal repeat" />
   </properties>
  </tile>
  <tile id="38">
   <properties>
-   <property name="desc" value="interior tile 26" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, lower skirting, right end" />
   </properties>
  </tile>
  <tile id="39">
   <properties>
-   <property name="desc" value="interior tile 27" />
+   <property name="desc" value="aged oak and worn lime plaster interior wall, lower skirting, narrow return" />
   </properties>
  </tile>
  <tile id="40">

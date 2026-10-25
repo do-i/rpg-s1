@@ -76,7 +76,7 @@
     "assets/scenarios/rusted_kingdoms/media/maps/zone_10_hearth_descent_06.tmx"
   ],
   "excluded_maps": [],
-  "editor_sample": "assets/scenarios/rusted_kingdoms/media/tilesets/sample.tmx (outside gameplay map directory)",
+  "editor_sample": "temp/art/009-mountain-pass/sample.tmx (ignored local editor sample)",
   "map_counts": {
     "ancient_ruins": {
       "zone_04_ancient_ruins_01_gate": 895,
@@ -458,8 +458,8 @@
     }
   },
   "sources": {
-    "art/tile-style-audit/audit_usage.py": "1a45d6bbb032e3e51ee90f99ad3d6b36704403a3a4ccd124dd0fa4189d48a337",
-    "art/tile-style-audit/families.json": "c016445b076f08d66700c6b33d242291a59ab05d496f671f18399a76f1ab5e02",
+    "temp/art/011-tile-style-audit/audit_usage.py": "78796c91dbd10a97d907843b23b3ad137917b67ccf50f2d0b57bfd309900f130",
+    "temp/art/011-tile-style-audit/families.json": "c016445b076f08d66700c6b33d242291a59ab05d496f671f18399a76f1ab5e02",
     "assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel.yaml": "cfab7e92199ae1be40ffebf52d1ed102cca9a30ece93384fc7d5701921dd0f20",
     "assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_epilogue.yaml": "19e7facf298f94ec264b45bf429e7efd51b7ddf2604868b765bcfdf432faad01",
     "assets/scenarios/rusted_kingdoms/data/maps/town_01_ardel_house_01.yaml": "e32977e1a03ea2229f510c43b1995ab5c2854613ce770a24b14d45058bd09579",
@@ -639,7 +639,6 @@
     "assets/scenarios/rusted_kingdoms/media/tilesets/outdoor.tsx": "397978aa26cee207f4fe3fd96adfa1707c02738cf633e3fb23d0e8f67eec2aa2",
     "assets/scenarios/rusted_kingdoms/media/tilesets/roof.png": "974f2e4c2e2c62bb2b36f6eaf289deaf660686aaed66d3f8d51a4cec2ea9a36a",
     "assets/scenarios/rusted_kingdoms/media/tilesets/roof.tsx": "633f900b1e8aa021e856282431f36fb7dfd4a7066eef876e61c8b963c52c5ea4",
-    "assets/scenarios/rusted_kingdoms/media/tilesets/sample.tmx": "bfc6d862284fd4d610db011df4943495f379551809cd463024a5b78498ee21f2",
     "assets/scenarios/rusted_kingdoms/media/tilesets/shop.png": "b73d2cde7128d5f86aa6f009c852309e5b3d29220a02041c99a86e33bfb00f82",
     "assets/scenarios/rusted_kingdoms/media/tilesets/shop.tsx": "2b0538d5aee24c96482948bddf7d801eb54c4555de9ac1aa7b2e321af350e9b3",
     "assets/scenarios/rusted_kingdoms/media/tilesets/shrine_props.png": "5711f26f31e6df3d2cc8f6efcf843d2a388fd19691663b2c9e0adcb0aa098d83",
@@ -679,6 +678,29 @@
     "assets/scenarios/rusted_kingdoms/media/tilesets/wall.tsx": "e71006466fc86ea9190ee969a0aff301fb90724ea6d36e787f8a6b8ec8aecf82",
     "assets/scenarios/rusted_kingdoms/media/tilesets/windows.png": "9195dbf69be408cf9c93f62cbe9adf22a00669db36d9ee1ab3a52c6163e160c6",
     "assets/scenarios/rusted_kingdoms/media/tilesets/windows.tsx": "9488d4e8a7d53066234faea0ba6f13776e75d76f64a5e93cff2891820d988f46",
-    "assets/scenarios/rusted_kingdoms/media/tilesets/wood_stairs_up_right_32x32_v4.png": "2cbf85487226abe5e048c1a7a00e19fb5adb85ba32c51131fce074060ba9769a"
+    "assets/scenarios/rusted_kingdoms/media/tilesets/wood_stairs_up_right_32x32_v4.png": "2cbf85487226abe5e048c1a7a00e19fb5adb85ba32c51131fce074060ba9769a",
+    "temp/art/009-mountain-pass/sample.tmx": "66f8028ef4eaca5c142635c5d157b3c97e9241459e23e261266c24116f993d94"
+  },
+  "source_relocation": {
+    "mapping": {
+      "art/ancient-ruins-borders": "temp/art/002-ancient-ruins-borders",
+      "art/ancient-ruins-courtyard": "temp/art/003-ancient-ruins-courtyard",
+      "art/ancient-ruins-objects": "temp/art/004-ancient-ruins-objects",
+      "art/ancient-ruins-props": "temp/art/005-ancient-ruins-props",
+      "art/ancient-ruins-sanctum": "temp/art/006-ancient-ruins-sanctum",
+      "art/aric-sprite-variants": "temp/art/007-aric-sprite-variants",
+      "art/mountain-foothills": "temp/art/008-mountain-foothills",
+      "art/mountain-pass": "temp/art/009-mountain-pass",
+      "art/ruinwatch-shop-badges": "temp/art/010-ruinwatch-shop-badges",
+      "art/tile-style-audit": "temp/art/011-tile-style-audit"
+    },
+    "original_audit_script_sha256": "1a45d6bbb032e3e51ee90f99ad3d6b36704403a3a4ccd124dd0fa4189d48a337",
+    "evidence": "temp/art/012-art-migration/manifest.json",
+    "temporary_sample": {
+      "from": "assets/scenarios/rusted_kingdoms/media/tilesets/sample.tmx",
+      "to": "temp/art/009-mountain-pass/sample.tmx",
+      "original_sha256": "bfc6d862284fd4d610db011df4943495f379551809cd463024a5b78498ee21f2",
+      "evidence": "temp/art/009-mountain-pass/sample-relocation.json"
+    }
   }
 }

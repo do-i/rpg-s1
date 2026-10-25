@@ -43,4 +43,4 @@ walkable. No new map layers or progression requirements are introduced.
 
 The new altar and sarcophagus are grouped in a separate transparent atlas.
 Generated sources, full prompts, export instructions and exact placements are
-retained in [the sanctum art sources](../art/ancient-ruins-sanctum/README.md).
+retained in [the sanctum art sources](../temp/art/006-ancient-ruins-sanctum/README.md).

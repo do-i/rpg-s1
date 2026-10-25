@@ -35,7 +35,7 @@ remain unchanged.
 The map reuses the accepted building, aftermath-prop and palisade atlases and
 adds a separate grouped civic-object atlas. Generated sources, full prompts,
 reproducible export and placement/collision details are retained in
-[the courtyard art sources](../art/ancient-ruins-courtyard/README.md).
+[the courtyard art sources](../temp/art/003-ancient-ruins-courtyard/README.md).
 
 Existing layer IDs and order are retained: `portals`, `collision`, `spawn_tile`,
 `ground`, `terrain`, `architecture`, `decoration`, `item_boxes`, `foreground`.

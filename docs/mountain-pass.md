@@ -79,13 +79,13 @@ Existing tileset GIDs and source pixels are preserved. The first two maps add
 `mountain_foothills.tsx` at 2388; Shaman Gate adds it at 2628. Ravine Crossing
 adds `mountain_pass.tsx` at 2847 and Shaman Gate at 3087. New source artwork,
 full prompts, normalization, regeneration and navigation checks are retained
-in [the Mountain Pass art directory](../art/mountain-pass/README.md).
+in [the Mountain Pass art directory](../temp/art/009-mountain-pass/README.md).
 
 The bridge parapets use ten tiles instead of 36: separate upper and lower
 sets with two end caps and three middle variants (bare, light snow and heavy
 snow). Different middle sequences preserve the varied snow coverage.
-`art/mountain-pass/bridge_tiles.json` retains the source cuts and sequences.
-The production atlas follows the owner's `sample.tmx`: **384×352**, 12×11
+`temp/art/009-mountain-pass/bridge_tiles.json` retains the source cuts and sequences.
+The production atlas follows the owner's temporary [local sample](../temp/art/009-mountain-pass/sample.tmx), kept outside Git: **384×352**, 12×11
 tiles, **132 slots and 106 visible tiles**. The first two rows group bridge
 parts by style: B caps at IDs 0/2/12/14, C ram caps at 3/5/15/17, and A caps
 at 6/8/18/20. Bare, light-snow and heavy-snow middle tiles occupy 1/13, 4/16
@@ -102,9 +102,9 @@ Upper middle tiles move their ten transparent bottom rows above the unchanged
 stonework. Upper-cap connectors fit this lower elevation while preserving each
 cap's other 28 columns and all lower-cap pixels. Zone 06 uses B, with ten
 active bridge tiles. Sources, prompts, placement data and previews are retained
-in [the art directory](../art/mountain-pass/README.md).
+in [the art directory](../temp/art/009-mountain-pass/README.md).
 The gateway stays a complete 12×9 object and the broken rope end stays 2×3.
-`art/mountain-pass/tile_layout.json` maps the authoring layout to production
+`temp/art/009-mountain-pass/tile_layout.json` maps the authoring layout to production
 IDs. The deck and both banks still share their native terrain tile, with
 unchanged collision. Only the two stone parapet strips change appearance;
 the rest of Ravine Crossing and the whole Shaman Gate render are preserved.

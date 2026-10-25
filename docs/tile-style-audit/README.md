@@ -12,7 +12,7 @@ The scope is scenario map tiles: every TSX atlas in `media/tilesets`, external T
 - [Source hashes and map list](sources.json): 222 inputs, including all playable maps/YAML, atlas PNG/TSX files, editor stamps, template, sample and the audit/classification sources.
 - [Legacy atlas comparison](legacy-atlases.png) and [recent reference comparison](reference-atlases.png).
 - [Ardel exterior before](ardel-before.png) and [Ardel shop before](shop-before.png): contextual Tiled renders from this snapshot. These are scaled previews; inspect original atlases at 1x for pixel-level judgments.
-- Classification scopes and reasons: [families.json](../../art/tile-style-audit/families.json).
+- Classification scopes and reasons: [families.json](../../temp/art/011-tile-style-audit/families.json).
 
 The engine selects the adjacent open chest frame at runtime (`crates/rpg-engine/src/world_object.rs`). Its zero authored placements do not mean the open state is unused. Both frames belong to the same family. The unreferenced standalone stairs and ritual seals are recorded without inventing new map usage.
 
@@ -88,7 +88,7 @@ The issue drafts rank replacement families by **placements + 40 × distinct maps
 Run from the repository root with Python 3 and ImageMagick installed:
 
 ```sh
-python3 art/tile-style-audit/audit_usage.py
+python3 temp/art/011-tile-style-audit/audit_usage.py
 ```
 
 This refreshes `usage.csv` and `sources.json`. It does not regenerate the manually inspected screenshots/contact sheets or change the art classifications. Refresh those when their input hashes change. The current counts and classification were cross-checked against a separate first-pass parser; all family totals agree. This planning audit does not claim that future redesigns have passed gameplay validation.

@@ -44,7 +44,7 @@ merchant interactions, and Jep's complete wander area.
 
 Shared shop badges use a diagonal sword for weapons, a supply bag for items, a
 faceted cyan crystal for Magic Cores, and a mortar with herbs for apothecaries.
-The armor badge remains a shield. See `art/ruinwatch-shop-badges/README.md` for
+The armor badge remains a shield. See `temp/art/010-ruinwatch-shop-badges/README.md` for
 the generation prompt and atlas normalization. The user-authored inn layout is
 preserved tile for tile; its collision mask is hidden and an empty required
 `foreground` layer is restored.

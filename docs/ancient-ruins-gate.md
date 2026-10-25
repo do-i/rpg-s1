@@ -45,7 +45,7 @@ transparent tile column, with both foundations aligned on atlas row 27.
 The northwest, northeast, and southeast half-roof houses use a camera
 pitched down 45 degrees facing their front facade, with no exterior side wall
 visible. Generated sources, prompts, normalization details,
-and object rectangles are retained in [the art sources](../art/ancient-ruins-objects/README.md).
+and object rectangles are retained in [the art sources](../temp/art/004-ancient-ruins-objects/README.md).
 Gate towers and house roof footprints are solid. The north/south passage stays connected through columns 36–37, retaining
 the owner's edited arch collision footprint, including the blocked tile `[37,24]`. Upper silhouettes use `foreground`;
 foundations and low rubble use `decoration`. The owner-regenerated TSX contains
@@ -61,7 +61,7 @@ walkable underneath. The original shortest exit/NPC approaches, the gate
 passage, all encounter markers, all chest standing tiles, and all
 arrival points remain reachable. Source art, prompts, tile rectangles, exact
 placements, and collision footprints are recorded in
-[the prop sources](../art/ancient-ruins-props/README.md).
+[the prop sources](../temp/art/005-ancient-ruins-props/README.md).
 
 The approved perimeter combines a weathered timber palisade with two 12×5-tile
 mossy stone wall sections along the south, at `[8,50]` and `[52,50]`.
@@ -81,7 +81,7 @@ reachable through the main playable area.
 north cap, two repeating bodies, and south cap. The side palisade has a constant
 18-pixel width and exact matching RGBA connection rows, with caps only at run
 ends. Its reproducible export, generated sources, prompts, and placement
-manifest are retained in [the border sources](../art/ancient-ruins-borders/README.md).
+manifest are retained in [the border sources](../temp/art/002-ancient-ruins-borders/README.md).
 
 Collision and layer patterns follow Starting Forest, Open Plains, and Marshland.
 Higher-zone placeholder maps were not visual or structural references.

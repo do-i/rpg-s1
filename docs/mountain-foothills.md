@@ -114,4 +114,4 @@ reloading preserves both the loot and their opened state.
 The new atlas contains complete grouped objects with binary alpha and clear
 gutters. Generated sources, exact prompts, export scripts, placement records
 and map regeneration instructions are in
-[the foothills art sources](../art/mountain-foothills/README.md).
+[the foothills art sources](../temp/art/008-mountain-foothills/README.md).
