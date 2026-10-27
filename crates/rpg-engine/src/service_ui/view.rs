@@ -1200,10 +1200,8 @@ mod tests {
     #[test]
     fn the_detail_pages_claim_the_wide_frame_and_the_rest_stay_narrow() {
         let mut state = ServiceUiState::default();
-        for page in [ServicePage::Buy] {
-            state.page = Some(page);
-            assert_eq!(panel_width(&state), WIDE_PANEL_WIDTH, "{page:?}");
-        }
+        state.page = Some(ServicePage::Buy);
+        assert_eq!(panel_width(&state), WIDE_PANEL_WIDTH);
         for page in [ServicePage::Apothecary, ServicePage::RecipeDetail] {
             state.page = Some(page);
             assert_eq!(panel_width(&state), APOTHECARY_WIDTH, "{page:?}");

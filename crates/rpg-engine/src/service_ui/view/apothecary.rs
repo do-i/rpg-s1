@@ -885,7 +885,7 @@ mod tests {
                 },
             );
         app.update();
-        std::mem::replace(app.world_mut(), World::new())
+        std::mem::take(app.world_mut())
     }
 
     #[test]
