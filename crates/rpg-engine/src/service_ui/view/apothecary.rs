@@ -327,10 +327,6 @@ fn spawn_filters(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, rea
         });
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "a recipe card binds its catalog identity and availability to its control"
-)]
 fn spawn_recipe_card(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
