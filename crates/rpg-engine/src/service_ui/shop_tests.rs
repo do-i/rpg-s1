@@ -208,7 +208,7 @@ fn changed_funds_locks_and_stock_are_revalidated_without_partial_transactions() 
         );
         assert_eq!(state.pending, None);
         assert_eq!(state.pending_id, None);
-        assert!(state.toast.is_some());
+        assert!(state.shop_error.is_some());
     }
 }
 
@@ -400,4 +400,149 @@ fn type_pills_only_offer_available_stock_or_sellable_inventory() {
     assert_eq!(state.shop_category, InventoryTab::All);
     assert_eq!(state.shop_focus, ShopFocus::Category);
     assert_eq!(types(&app, false), [InventoryTab::All]);
+}
+
+#[test]
+fn pointer_quantity_buttons_change_counts_without_bypassing_review() {
+    fn click(app: &mut App, step: isize) {
+        app.world_mut()
+            .resource_mut::<ActionState>()
+            .replace_with_normalized(&[]);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        let button = app
+            .world_mut()
+            .spawn((
+                ShopControl::Quantity(step),
+                ComputedNode {
+                    size: Vec2::splat(100.0),
+                    ..default()
+                },
+                UiGlobalTransform::default(),
+            ))
+            .id();
+        app.insert_resource(CanvasPointer::at_viewport_position(Vec2::ZERO, true));
+        app.update();
+        app.world_mut().despawn(button);
+    }
+    let mut app = app();
+    enter_items(&mut app);
+    let before = repository(&app).clone();
+    click(&mut app, 1);
+    assert_eq!(app.world().resource::<ServiceUiState>().quantity, 2);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_focus,
+        ShopFocus::Detail
+    );
+    click(&mut app, -1);
+    click(&mut app, -1);
+    assert_eq!(app.world().resource::<ServiceUiState>().quantity, 1);
+    assert_eq!(repository(&app), &before);
+    // A changed wallet clamps mouse input just like the keyboard controls.
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .repository_mut()
+        .spend_gp(9_900)
+        .unwrap();
+    click(&mut app, 1);
+    assert_eq!(app.world().resource::<ServiceUiState>().quantity, 1);
+    let before = repository(&app).clone();
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().page,
+        Some(ServicePage::ShopConfirm)
+    );
+    click(&mut app, -1);
+    assert_eq!(app.world().resource::<ServiceUiState>().quantity, 1);
+    assert_eq!(repository(&app), &before);
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(repository(&app).gp(), 0);
+    assert_eq!(
+        repository(&app).item_count("potion"),
+        before.item_count("potion") + 1
+    );
+}
+
+#[test]
+fn insufficient_funds_opens_a_modal_that_consumes_dismissal_input() {
+    let mut app = app();
+    enter_items(&mut app);
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .repository_mut()
+        .spend_gp(10_000)
+        .unwrap();
+    let before = repository(&app).clone();
+    press(&mut app, NormalizedAction::Confirm);
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(state.shop_error.is_some());
+    assert!(state.toast.is_none());
+    assert_eq!(state.page, Some(ServicePage::Buy));
+    assert_eq!(state.shop_focus, ShopFocus::Items);
+    // Navigation and elapsed time leave the modal open and the background selection still.
+    press(&mut app, NormalizedAction::MenuDown);
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(state.shop_error.is_some());
+    assert_eq!(state.selected, 0);
+    press(&mut app, NormalizedAction::Confirm);
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(state.shop_error.is_none());
+    assert_eq!(state.page, Some(ServicePage::Buy));
+    assert_eq!(state.pending, None);
+    assert_eq!(repository(&app), &before);
+    press(&mut app, NormalizedAction::Confirm);
+    assert!(
+        app.world()
+            .resource::<ServiceUiState>()
+            .shop_error
+            .is_some()
+    );
+    press(&mut app, NormalizedAction::Back);
+    assert!(
+        app.world()
+            .resource::<ServiceUiState>()
+            .shop_error
+            .is_none()
+    );
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_focus,
+        ShopFocus::Items
+    );
+    assert_eq!(repository(&app), &before);
+}
+
+#[test]
+fn shop_error_can_be_dismissed_by_its_mouse_button() {
+    let mut app = app();
+    enter_items(&mut app);
+    app.world_mut()
+        .resource_mut::<ServiceUiState>()
+        .announce("Not enough GP.", ToastTone::Warn);
+    let before = repository(&app).clone();
+    app.world_mut()
+        .resource_mut::<ActionState>()
+        .replace_with_normalized(&[]);
+    app.world_mut().spawn((
+        ShopControl::DismissError,
+        ComputedNode {
+            size: Vec2::splat(100.0),
+            ..default()
+        },
+        UiGlobalTransform::default(),
+    ));
+    app.insert_resource(CanvasPointer::at_viewport_position(Vec2::ZERO, true));
+    app.update();
+    assert!(
+        app.world()
+            .resource::<ServiceUiState>()
+            .shop_error
+            .is_none()
+    );
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().page,
+        Some(ServicePage::Buy)
+    );
+    assert_eq!(app.world().resource::<ServiceUiState>().pending, None);
+    assert_eq!(repository(&app), &before);
 }

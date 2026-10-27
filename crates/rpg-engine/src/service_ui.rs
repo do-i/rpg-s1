@@ -122,6 +122,12 @@ enum ShopFocus {
     Detail,
 }
 
+#[derive(Clone, Copy, Component, Debug)]
+pub(crate) enum ShopControl {
+    Quantity(isize),
+    DismissError,
+}
+
 impl PendingTransaction {
     const fn origin(self) -> ServicePage {
         match self {
@@ -179,6 +185,7 @@ pub(crate) struct ServiceUiState {
     /// The apothecary keeps actual catalog indices while filtering its visible rows.
     ready_recipes_only: bool,
     toast: Option<Toast>,
+    shop_error: Option<String>,
     suppress_confirm: bool,
     /// Set for the rest of the frame a Back press closes the service, so the same press
     /// cannot fall through to the field menu.
@@ -235,8 +242,21 @@ impl ServiceUiState {
     }
 
     fn announce(&mut self, text: impl Into<String>, tone: ToastTone) {
+        let text = text.into();
+        if tone == ToastTone::Warn
+            && matches!(
+                self.request,
+                Some(ServiceRequest::Shop(
+                    DialogueShopKind::Item | DialogueShopKind::Weapon | DialogueShopKind::Armor
+                ))
+            )
+        {
+            self.shop_error = Some(text);
+            self.toast = None;
+            return;
+        }
         self.toast = Some(Toast {
-            text: text.into(),
+            text,
             tone,
             remaining: TOAST_SECONDS,
         });
@@ -272,6 +292,7 @@ pub(crate) fn handle_service_input(
     mut menu_sfx: MenuSfx,
     mut pointer: Option<ResMut<CanvasPointer>>,
     controls: Query<(&ApothecaryControl, &ComputedNode, &UiGlobalTransform)>,
+    shop_controls: Query<(&ShopControl, &ComputedNode, &UiGlobalTransform)>,
 ) {
     // The latch belongs to the frame that set it; releasing it here keeps the field menu
     // from reacting to a Back press this service already consumed.
@@ -311,11 +332,38 @@ pub(crate) fn handle_service_input(
     } else {
         None
     };
-    if apothecary_control.is_some() {
+    let shop_control = if state.shop_error.is_some()
+        || (matches!(state.page, Some(ServicePage::Buy | ServicePage::Sell))
+            && state.shop_item_selected())
+    {
+        pointer
+            .as_deref()
+            .filter(|p| p.just_clicked())
+            .and_then(|p| {
+                shop_controls
+                    .iter()
+                    .find(|(control, node, transform)| {
+                        matches!(control, ShopControl::DismissError) == state.shop_error.is_some()
+                            && p.is_over(node, transform)
+                    })
+                    .map(|(control, _, _)| *control)
+            })
+    } else {
+        None
+    };
+    if apothecary_control.is_some() || shop_control.is_some() {
         state.toast = None;
         if let Some(pointer) = pointer.as_deref_mut() {
             pointer.consume();
         }
+    }
+
+    if state.shop_error.is_some() {
+        if confirm || back || matches!(shop_control, Some(ShopControl::DismissError)) {
+            state.shop_error = None;
+            menu_sfx.cancel();
+        }
+        return;
     }
 
     match state.page {
@@ -337,6 +385,17 @@ pub(crate) fn handle_service_input(
                     ShopFocus::Mode => state.close(),
                 }
                 state.quantity = 1;
+                return;
+            }
+            if let Some(ShopControl::Quantity(step)) = shop_control {
+                state.shop_focus = ShopFocus::Detail;
+                state.quantity = adjust_quantity(
+                    state.quantity,
+                    step,
+                    pending_max_for_selected(&state, is_buy, &catalog, &game),
+                    false,
+                );
+                menu_sfx.hover();
                 return;
             }
             if !is_buy && keys.just_pressed(KeyCode::KeyT) {

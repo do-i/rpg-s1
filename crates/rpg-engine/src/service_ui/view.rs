@@ -10,7 +10,7 @@ use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use super::{
     PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
-    ShopFocus, ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment,
+    ShopControl, ShopFocus, ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment,
     owned_exchangeable_cores, pending_max, sell_rows, shop_categories,
     sprites::{ServiceKeeper, ServiceSprites},
 };
@@ -45,6 +45,9 @@ pub(super) struct ServiceRoot;
 
 /// Panel width for the plain list and confirmation pages (source `MODAL_W`).
 const PANEL_WIDTH: f32 = 620.0;
+
+const SHOP_VISIBLE_ROWS: usize = 7;
+const SHOP_CARD_HEIGHT: f32 = 56.0;
 
 const APOTHECARY_WIDTH: f32 = 1228.0;
 const APOTHECARY_HEIGHT: f32 = 718.0;
@@ -182,7 +185,19 @@ pub(super) fn sync_service_overlay(
                         spawn_service_body(panel, &font, &state, &catalog, &game);
                         spawn_section_rule(panel);
                         spawn_status_text(panel, service_hint(&state), &font, 12.0, status_faint());
-                        spawn_toast(panel, &font, &state);
+                        if let Some(error) = state.shop_error.as_deref() {
+                            spawn_shop_error(panel, &font, error);
+                        } else if state.toast.is_some() {
+                            panel
+                                .spawn(Node {
+                                    position_type: PositionType::Absolute,
+                                    left: px(22),
+                                    right: px(22),
+                                    bottom: px(40),
+                                    ..default()
+                                })
+                                .with_children(|notice| spawn_toast(notice, &font, &state));
+                        }
                     } else {
                         spawn_service_header(panel, &font, &state, &game, face);
                         spawn_section_rule(panel);
@@ -302,7 +317,7 @@ fn spawn_item_shop_header(
                     spawn_status_text(wallet, "YOUR COIN", font, 11.0, status_muted());
                     spawn_status_text(
                         wallet,
-                        format!("{} GP", game.repository().gp()),
+                        format!("{} GP", format_shop_number(game.repository().gp())),
                         font,
                         26.0,
                         status_gold(),
@@ -593,77 +608,98 @@ fn spawn_item_shop(
                         flex_shrink: 0.0,
                         height: percent(100),
                         min_height: px(0),
+                        padding: UiRect::all(px(12)),
+                        row_gap: px(4),
                         ..stacked_panel_node()
                     },
                     if buying { "STOCK" } else { "CARRIED" },
                     font,
                     |panel| {
-                        let window =
-                            state
-                                .scroll
-                                .window("shop-items", state.selected, row_count, 5);
-                        spawn_scroll_list(panel, window, scroll_list_node(6.0), |list| {
-                            if row_count == 0 {
-                                spawn_status_text(
-                                    list,
-                                    if buying {
-                                        "No stock in this category."
-                                    } else {
-                                        "Nothing to sell in this category."
-                                    },
-                                    font,
-                                    17.0,
-                                    status_muted(),
-                                );
-                            }
-                            for index in window.indices() {
-                                if buying {
-                                    let row = buy[index];
-                                    let item = catalog.item(row.id());
-                                    spawn_list_row(
+                        let window = state.scroll.window(
+                            "shop-items",
+                            state.selected,
+                            row_count,
+                            SHOP_VISIBLE_ROWS,
+                        );
+                        spawn_scroll_list(
+                            panel,
+                            window,
+                            Node {
+                                flex_basis: px(0),
+                                flex_grow: 1.0,
+                                flex_shrink: 1.0,
+                                min_height: px(0),
+                                ..scroll_list_node(4.0)
+                            },
+                            |list| {
+                                if row_count == 0 {
+                                    spawn_status_text(
                                         list,
-                                        font,
-                                        ListRow {
-                                            item_id: Some(row.id()),
-                                            selected: state.shop_item_selected()
-                                                && index == state.selected,
-                                            accent: item.map_or_else(status_teal, item_accent),
-                                            label: item.map_or(row.id(), |i| item_name(i)),
-                                            note: format!(
-                                                "owned {}",
-                                                game.repository().item_count(row.id())
-                                            ),
-                                            value: format!("{} GP", row.buy_price().get()),
-                                            value_color: status_gold(),
-                                            dim: false,
+                                        if buying {
+                                            "No stock in this category."
+                                        } else {
+                                            "Nothing to sell in this category."
                                         },
-                                    );
-                                } else {
-                                    let item = sell[index];
-                                    spawn_list_row(
-                                        list,
                                         font,
-                                        ListRow {
-                                            item_id: Some(item.id()),
-                                            selected: state.shop_item_selected()
-                                                && index == state.selected,
-                                            accent: item_accent(item),
-                                            label: item_name(item),
-                                            note: format!(
-                                                "x{} owned",
-                                                game.repository().item_count(item.id())
-                                            ),
-                                            value: sell_price(item).map_or_else(
-                                                || "—".to_owned(),
-                                                |v| format!("{v} GP"),
-                                            ),
-                                            value_color: status_gold(),
-                                            dim: false,
-                                        },
+                                        17.0,
+                                        status_muted(),
                                     );
                                 }
-                            }
-                        });
+                                for index in window.indices() {
+                                    if buying {
+                                        let row = buy[index];
+                                        let item = catalog.item(row.id());
+                                        spawn_shop_list_row(
+                                            list,
+                                            font,
+                                            ListRow {
+                                                item_id: Some(row.id()),
+                                                selected: state.shop_item_selected()
+                                                    && index == state.selected,
+                                                accent: item.map_or_else(status_teal, item_accent),
+                                                label: item.map_or(row.id(), |i| item_name(i)),
+                                                note: format!(
+                                                    "owned {}",
+                                                    format_shop_number(
+                                                        game.repository().item_count(row.id())
+                                                    )
+                                                ),
+                                                value: format_shop_number(row.buy_price().get()),
+                                                unit: Some("GP"),
+                                                value_color: status_gold(),
+                                                dim: false,
+                                            },
+                                        );
+                                    } else {
+                                        let item = sell[index];
+                                        spawn_shop_list_row(
+                                            list,
+                                            font,
+                                            ListRow {
+                                                item_id: Some(item.id()),
+                                                selected: state.shop_item_selected()
+                                                    && index == state.selected,
+                                                accent: item_accent(item),
+                                                label: item_name(item),
+                                                note: format!(
+                                                    "x{} owned",
+                                                    format_shop_number(
+                                                        game.repository().item_count(item.id())
+                                                    )
+                                                ),
+                                                value: sell_price(item).map_or_else(
+                                                    || "—".to_owned(),
+                                                    format_shop_number,
+                                                ),
+                                                unit: Some("GP"),
+                                                value_color: status_gold(),
+                                                dim: false,
+                                            },
+                                        );
+                                    }
+                                }
+                            },
+                        );
                         if state.shop_item_selected() {
                             spawn_window_footer(panel, font, state.selected, window);
                         } else {
@@ -753,71 +789,6 @@ fn spawn_item_shop(
                             flex_grow: 1.0,
                             ..default()
                         },));
-                        panel
-                            .spawn((
-                                Node {
-                                    width: percent(100),
-                                    min_height: px(64),
-                                    flex_shrink: 0.0,
-                                    flex_direction: FlexDirection::Row,
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::SpaceBetween,
-                                    padding: UiRect::horizontal(px(18)),
-                                    border: UiRect::all(px(1)),
-                                    border_radius: BorderRadius::all(px(5)),
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba_u8(12, 12, 16, 230)),
-                                BorderColor::all(if state.shop_focus == ShopFocus::Detail {
-                                    status_border_active()
-                                } else {
-                                    status_border()
-                                }),
-                            ))
-                            .with_children(|qty| {
-                                qty.spawn(Node {
-                                    flex_direction: FlexDirection::Column,
-                                    align_items: AlignItems::Center,
-                                    row_gap: px(4),
-                                    ..default()
-                                })
-                                .with_children(|controls| {
-                                    spawn_status_text(controls, "+", font, 17.0, status_gold());
-                                    spawn_status_text(controls, "-", font, 17.0, status_gold());
-                                });
-                                spawn_status_text(
-                                    qty,
-                                    format!("{}", state.quantity),
-                                    font,
-                                    31.0,
-                                    status_ink(),
-                                );
-                                let unit = if buying {
-                                    buy.get(state.selected).map_or(0, |r| r.buy_price().get())
-                                } else {
-                                    sell.get(state.selected)
-                                        .and_then(|r| sell_price(r))
-                                        .unwrap_or(0)
-                                };
-                                spawn_status_text(
-                                    qty,
-                                    format!("{} GP total", unit.saturating_mul(state.quantity)),
-                                    font,
-                                    21.0,
-                                    status_gold(),
-                                );
-                                spawn_status_text(
-                                    qty,
-                                    if buying {
-                                        "ENTER  ·  BUY"
-                                    } else {
-                                        "ENTER  ·  SELL"
-                                    },
-                                    font,
-                                    17.0,
-                                    status_ink(),
-                                );
-                            });
                         let unit = if buying {
                             buy.get(state.selected).map_or(0, |r| r.buy_price().get())
                         } else {
@@ -825,6 +796,7 @@ fn spawn_item_shop(
                                 .and_then(|r| sell_price(r))
                                 .unwrap_or(0)
                         };
+                        spawn_shop_quantity(panel, font, state, buying, unit);
                         let delta = unit.saturating_mul(state.quantity);
                         let balance = if buying {
                             game.repository().gp().saturating_sub(delta)
@@ -836,7 +808,7 @@ fn spawn_item_shop(
                         };
                         spawn_status_text(
                             panel,
-                            format!("{} GP per item   ·   After transaction: {balance} GP", unit),
+                            format!("After transaction: {} GP", format_shop_number(balance)),
                             font,
                             14.0,
                             status_muted(),
@@ -844,6 +816,207 @@ fn spawn_item_shop(
                     },
                 );
             });
+        });
+}
+
+fn spawn_shop_error(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, error: &str) {
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(-22),
+                right: px(-22),
+                top: px(-20),
+                bottom: px(-14),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(5, 5, 8, 190)),
+            ZIndex(3),
+            Name::new("Shop error popup"),
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: px(560),
+                        min_height: px(230),
+                        padding: UiRect::all(px(25)),
+                        border: UiRect::all(px(2)),
+                        border_radius: BorderRadius::all(px(8)),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        row_gap: px(20),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba_u8(23, 24, 30, 255)),
+                    BorderColor::all(status_ember()),
+                ))
+                .with_children(|dialog| {
+                    spawn_status_text(dialog, "TRANSACTION UNAVAILABLE", font, 20.0, status_gold());
+                    spawn_status_text(dialog, error, font, 19.0, status_ink());
+                    dialog
+                        .spawn((
+                            Node {
+                                width: px(200),
+                                height: px(44),
+                                border: UiRect::all(px(1)),
+                                border_radius: BorderRadius::all(px(4)),
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                ..default()
+                            },
+                            ShopControl::DismissError,
+                            BackgroundColor(Color::srgba_u8(72, 49, 25, 255)),
+                            BorderColor::all(status_border_active()),
+                        ))
+                        .with_children(|button| {
+                            spawn_status_text(
+                                button,
+                                "OK  ·  ENTER / ESC",
+                                font,
+                                16.0,
+                                status_ink(),
+                            );
+                        });
+                });
+        });
+}
+
+fn spawn_shop_quantity(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &ServiceUiState,
+    buying: bool,
+    unit: u32,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                min_height: px(64),
+                flex_shrink: 0.0,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                column_gap: px(16),
+                padding: UiRect::horizontal(px(18)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(5)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(12, 12, 16, 230)),
+            BorderColor::all(if state.shop_focus == ShopFocus::Detail {
+                status_border_active()
+            } else {
+                status_border()
+            }),
+            Name::new("Shop quantity panel"),
+        ))
+        .with_children(|qty| {
+            qty.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                ..default()
+            })
+            .with_children(|price| {
+                spawn_status_text(
+                    price,
+                    if buying { "UNIT PRICE" } else { "UNIT VALUE" },
+                    font,
+                    10.0,
+                    status_muted(),
+                );
+                spawn_status_text(
+                    price,
+                    format!("{} GP", format_shop_number(unit)),
+                    font,
+                    20.0,
+                    status_gold(),
+                );
+            });
+            qty.spawn(Node {
+                align_items: AlignItems::Center,
+                column_gap: px(16),
+                ..default()
+            })
+            .with_children(|picker| {
+                picker
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(4),
+                        ..default()
+                    })
+                    .with_children(|buttons| {
+                        for (label, step) in [("+", 1), ("-", -1)] {
+                            buttons
+                                .spawn((
+                                    Node {
+                                        width: px(52),
+                                        height: px(28),
+                                        flex_shrink: 0.0,
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        border: UiRect::all(px(1)),
+                                        border_radius: BorderRadius::all(px(3)),
+                                        ..default()
+                                    },
+                                    ShopControl::Quantity(step),
+                                    BackgroundColor(Color::srgba_u8(72, 49, 25, 255)),
+                                    BorderColor::all(status_border_active()),
+                                    Name::new(format!("Shop quantity {label}")),
+                                ))
+                                .with_children(|button| {
+                                    spawn_status_text(button, label, font, 20.0, status_gold())
+                                });
+                        }
+                    });
+                picker
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    })
+                    .with_children(|count| {
+                        spawn_status_text(
+                            count,
+                            format_shop_number(state.quantity),
+                            font,
+                            29.0,
+                            status_ink(),
+                        );
+                        spawn_status_text(count, "QUANTITY", font, 10.0, status_muted());
+                    });
+            });
+            qty.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::End,
+                ..default()
+            })
+            .with_children(|total| {
+                spawn_status_text(total, "TOTAL", font, 10.0, status_muted());
+                spawn_status_text(
+                    total,
+                    format!(
+                        "{} GP",
+                        format_shop_number(unit.saturating_mul(state.quantity))
+                    ),
+                    font,
+                    21.0,
+                    status_gold(),
+                );
+            });
+            spawn_status_text(
+                qty,
+                if buying {
+                    "ENTER  ·  BUY"
+                } else {
+                    "ENTER  ·  SELL"
+                },
+                font,
+                17.0,
+                status_ink(),
+            );
         });
 }
 
@@ -922,17 +1095,23 @@ fn spawn_shop_confirmation(
                         dialog,
                         format!(
                             "{} × {}",
-                            state.quantity,
+                            format_shop_number(state.quantity),
                             item.map_or(id, |value| item_name(value))
                         ),
                         font,
                         30.0,
                         status_ink(),
                     );
-                    spawn_status_text(dialog, format!("{} GP", amount), font, 28.0, status_gold());
                     spawn_status_text(
                         dialog,
-                        format!("Balance after: {balance} GP"),
+                        format!("{} GP", format_shop_number(amount)),
+                        font,
+                        28.0,
+                        status_gold(),
+                    );
+                    spawn_status_text(
+                        dialog,
+                        format!("Balance after: {} GP", format_shop_number(balance)),
                         font,
                         18.0,
                         status_ready(),
@@ -1173,6 +1352,7 @@ fn spawn_core_page(
                             }
                         },
                         value: format!("{rate} GP"),
+                        unit: None,
                         value_color: status_gold(),
                         dim: false,
                     },
@@ -1365,8 +1545,21 @@ struct ListRow<'a> {
     label: &'a str,
     note: String,
     value: String,
+    unit: Option<&'a str>,
     value_color: Color,
     dim: bool,
+}
+
+fn format_shop_number(value: u32) -> String {
+    let digits = value.to_string();
+    let mut formatted = String::with_capacity(digits.len() + digits.len() / 3);
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            formatted.push(',');
+        }
+        formatted.push(digit);
+    }
+    formatted
 }
 
 /// An outline marks focus without changing a control's measured size.
@@ -1383,25 +1576,62 @@ fn shop_focus_outline(focused: bool) -> Outline {
 }
 
 fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, row: ListRow<'_>) {
+    spawn_sized_list_row(parent, font, row, service_list_row_node(), 32.0, 16.0);
+}
+
+fn spawn_shop_list_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    row: ListRow<'_>,
+) {
+    spawn_sized_list_row(
+        parent,
+        font,
+        row,
+        Node {
+            flex_basis: px(0),
+            flex_grow: 1.0,
+            min_height: px(48),
+            max_height: px(SHOP_CARD_HEIGHT),
+            padding: UiRect::axes(px(9), px(1)),
+            ..service_list_row_node()
+        },
+        44.0,
+        18.0,
+    );
+}
+
+fn service_list_row_node() -> Node {
+    Node {
+        width: percent(100),
+        min_height: px(40),
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        padding: UiRect::horizontal(px(9)),
+        border: UiRect::all(px(1)),
+        border_radius: BorderRadius::all(px(4)),
+        ..default()
+    }
+}
+
+fn spawn_sized_list_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    row: ListRow<'_>,
+    node: Node,
+    icon_size: f32,
+    title_size: f32,
+) {
     parent
         .spawn((
-            Node {
-                width: percent(100),
-                min_height: px(40),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                padding: UiRect::horizontal(px(9)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
+            node,
             selectable_card_colors(row.selected),
             shop_focus_outline(row.selected),
             Name::new(format!("Service item: {}", row.label)),
         ))
         .with_children(|node| {
             if let Some(id) = row.item_id {
-                spawn_item_icon(node, id, 32.0);
+                spawn_item_icon(node, id, icon_size);
             }
             node.spawn((
                 Node {
@@ -1422,7 +1652,7 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
                     label,
                     row.label,
                     font,
-                    16.0,
+                    title_size,
                     if row.dim {
                         status_faint()
                     } else {
@@ -1431,7 +1661,20 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
                 );
                 spawn_status_text(label, row.note, font, 12.0, status_muted());
             });
-            spawn_status_text(node, row.value, font, 15.0, row.value_color);
+            if let Some(unit) = row.unit {
+                node.spawn(Node {
+                    flex_shrink: 0.0,
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::End,
+                    ..default()
+                })
+                .with_children(|price| {
+                    spawn_status_text(price, row.value, font, 16.0, row.value_color);
+                    spawn_status_text(price, unit, font, 10.0, status_muted());
+                });
+            } else {
+                spawn_status_text(node, row.value, font, 15.0, row.value_color);
+            }
         });
 }
 
@@ -1631,6 +1874,10 @@ mod tests {
     use super::*;
 
     fn shop_view(focus: ShopFocus) -> App {
+        shop_view_at(focus, false, 0)
+    }
+
+    fn shop_view_at(focus: ShopFocus, selling: bool, selected: usize) -> App {
         use crate::{
             field_menu_domain::tests::{catalog_with_item_shop, game},
             runtime_map::RuntimeMapId,
@@ -1638,6 +1885,15 @@ mod tests {
         };
         let catalog = catalog_with_item_shop();
         let mut game = game(["story_quest_started"]);
+        if selling {
+            for item in catalog
+                .ordered_items()
+                .filter(|item| sell_price(item).is_some())
+                .take(15)
+            {
+                let _ = game.repository_mut().add_item(item.id(), 1).unwrap();
+            }
+        }
         game.map_mut().move_to(
             RuntimeMapId::try_new("town_01_ardel_shop_item").unwrap(),
             Position::new(6, 6),
@@ -1646,6 +1902,10 @@ mod tests {
         let mut state = ServiceUiState::default();
         state.open(ServiceRequest::Shop(DialogueShopKind::Item), None);
         state.shop_focus = focus;
+        state.selected = selected;
+        if selling {
+            state.page = Some(ServicePage::Sell);
+        }
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.world_mut()
@@ -1745,6 +2005,173 @@ mod tests {
     }
 
     #[test]
+    fn shop_stock_uses_seven_large_cards_and_scrolls_to_the_last_item() {
+        for selected in [0, 14] {
+            let mut app = shop_view_at(ShopFocus::Items, true, selected);
+            let world = app.world_mut();
+            let cards = world
+                .query::<(&Name, &Node, &Outline)>()
+                .iter(world)
+                .filter(|(name, _, _)| name.as_str().starts_with("Service item:"))
+                .collect::<Vec<_>>();
+            assert_eq!(cards.len(), 7);
+            assert_eq!(
+                cards
+                    .iter()
+                    .filter(|(_, _, outline)| outline.color != Color::NONE)
+                    .count(),
+                1
+            );
+            assert!(
+                cards
+                    .iter()
+                    .all(|(_, node, _)| node.min_height == px(48) && node.max_height == px(56))
+            );
+            let list = world
+                .query::<(&Name, &Node)>()
+                .iter(world)
+                .find(|(name, _)| name.as_str() == "Scroll list")
+                .unwrap()
+                .1;
+            assert_eq!(
+                list.flex_grow, 1.0,
+                "the list must fill the stock panel's free height"
+            );
+            if selected == 14 {
+                assert!(
+                    world
+                        .query::<&Text>()
+                        .iter(world)
+                        .any(|text| text.0.contains("SHOWING 09-15"))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn quantity_buttons_have_visible_boxes_and_a_labelled_count() {
+        let mut app = shop_view(ShopFocus::Items);
+        let world = app.world_mut();
+        let controls = world
+            .query::<(&ShopControl, &Node, &BackgroundColor, &BorderColor)>()
+            .iter(world)
+            .collect::<Vec<_>>();
+        assert_eq!(controls.len(), 2);
+        assert!(controls.iter().all(|(_, node, background, _)| {
+            node.width == px(52)
+                && node.height == px(28)
+                && node.border == UiRect::all(px(1))
+                && background.0 != Color::NONE
+        }));
+        let text = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(text.contains(&"QUANTITY"));
+        assert!(text.contains(&"1"));
+        assert!(text.contains(&"UNIT PRICE"));
+        assert!(text.contains(&"TOTAL"));
+    }
+
+    #[test]
+    fn shop_money_uses_commas_and_a_small_unit_under_the_gold_price() {
+        for (value, expected) in [
+            (0, "0"),
+            (450, "450"),
+            (1_000, "1,000"),
+            (12_345, "12,345"),
+            (1_000_000, "1,000,000"),
+            (u32::MAX, "4,294,967,295"),
+        ] {
+            assert_eq!(format_shop_number(value), expected);
+        }
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_shop_list_row(
+                    root,
+                    &Handle::default(),
+                    ListRow {
+                        item_id: Some("potion"),
+                        selected: true,
+                        accent: status_teal(),
+                        label: "Potion",
+                        note: "owned 1".to_owned(),
+                        value: format_shop_number(4_500),
+                        unit: Some("GP"),
+                        value_color: status_gold(),
+                        dim: false,
+                    },
+                );
+            });
+        app.update();
+        let world = app.world_mut();
+        let mut texts = world.query::<(&Text, &TextFont, &TextColor)>();
+        let (_, font, color) = texts
+            .iter(world)
+            .find(|(text, _, _)| text.0 == "4,500")
+            .unwrap();
+        assert_eq!(font.font_size, FontSize::Px(16.0));
+        assert_eq!(color.0, status_gold());
+        let (_, font, color) = texts
+            .iter(world)
+            .find(|(text, _, _)| text.0 == "GP")
+            .unwrap();
+        assert_eq!(font.font_size, FontSize::Px(10.0));
+        assert_eq!(color.0, status_muted());
+    }
+
+    #[test]
+    fn shop_error_is_a_modal_overlay_with_an_explicit_dismiss_button() {
+        let mut app = shop_view(ShopFocus::Items);
+        let before = {
+            let world = app.world_mut();
+            world
+                .query::<(&Name, &Node)>()
+                .iter(world)
+                .filter(|(name, _)| {
+                    name.as_str().starts_with("Shop ") || name.as_str().starts_with("Service item:")
+                })
+                .map(|(name, node)| (name.as_str().to_owned(), node.clone()))
+                .collect::<std::collections::BTreeMap<_, _>>()
+        };
+        app.world_mut()
+            .commands()
+            .spawn((Node::default(), GlobalZIndex(5_100)))
+            .with_children(|root| spawn_shop_error(root, &Handle::default(), "Not enough GP."));
+        app.update();
+        let world = app.world_mut();
+        for (name, node) in world.query::<(&Name, &Node)>().iter(world) {
+            if let Some(original) = before.get(name.as_str()) {
+                assert_eq!(node, original, "error feedback must not resize {name}");
+            }
+        }
+        let (_, node, z) = world
+            .query::<(&Name, &Node, &ZIndex)>()
+            .iter(world)
+            .find(|(name, _, _)| name.as_str() == "Shop error popup")
+            .unwrap();
+        assert_eq!(node.position_type, PositionType::Absolute);
+        assert!(z.0 > 0);
+        assert!(
+            world
+                .query::<&ShopControl>()
+                .iter(world)
+                .any(|control| matches!(control, ShopControl::DismissError))
+        );
+        assert!(
+            world
+                .query::<&Text>()
+                .iter(world)
+                .any(|text| text.0 == "Not enough GP.")
+        );
+    }
+
+    #[test]
     fn the_detail_pages_claim_the_wide_frame_and_the_rest_stay_narrow() {
         let mut state = ServiceUiState::default();
         for page in [
@@ -1828,7 +2255,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(text.contains(&"3 × Potion"));
         assert!(text.contains(&"150 GP"));
-        assert!(text.contains(&"Balance after: 1150 GP"));
+        assert!(text.contains(&"Balance after: 1,150 GP"));
         assert!(text.contains(&"SELL  ·  ENTER"));
     }
 
