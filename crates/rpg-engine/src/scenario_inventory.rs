@@ -24,6 +24,8 @@ pub(crate) struct ScenarioInventory {
     pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
     /// The command deck's icon sheet; `None` keeps the letter badges.
     pub(crate) menu_icons: Option<ScenarioRelativePath>,
+    /// Optional item artwork, keyed by the catalog id matching each PNG's filename.
+    pub(crate) item_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
@@ -267,6 +269,18 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         }
     }
     inventory.quests = Some(manifest.refs.quests.clone());
+    let item_images = ScenarioRelativePath::try_from("media/images/items")
+        .expect("the item image directory is scenario-relative");
+    if package.join(item_images.as_str()).is_dir() {
+        for path in extension_files(&package, &item_images, "png")? {
+            if let Some(id) = Path::new(path.as_str())
+                .file_stem()
+                .and_then(|id| id.to_str())
+            {
+                inventory.item_images.insert(id.to_owned(), path);
+            }
+        }
+    }
     inventory.party_sprites = party_sprites(&package, &manifest);
     Ok(inventory)
 }
@@ -392,6 +406,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_shipped_item_has_artwork_under_its_catalog_id() {
+        let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let root = ScenarioRoot::default();
+        let inventory = ScenarioInventory::discover(&asset_base, &root);
+        assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
+        let package = asset_base.join(root.logical_root());
+        let mut item_ids = std::collections::BTreeSet::new();
+        for path in &inventory.item_catalogs {
+            let document = fs::read_to_string(package.join(path.as_str())).unwrap();
+            let catalog: ItemCatalogFile = scenario_yaml::from_str(&document).unwrap();
+            for item in catalog.0 {
+                let id = item.id();
+                let image = inventory
+                    .item_images
+                    .get(id)
+                    .unwrap_or_else(|| panic!("missing image for item {id}"));
+                assert!(package.join(image.as_str()).is_file(), "{id}: {image}");
+                item_ids.insert(id.to_owned());
+            }
+        }
+        assert!(!item_ids.is_empty());
+        assert_eq!(item_ids, inventory.item_images.keys().cloned().collect());
+    }
+
+    #[test]
     fn resolves_the_authored_protagonist_and_numbered_companion_walk_sheets() {
         let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let root = ScenarioRoot::try_for_package_key("rusted_kingdoms").unwrap();
@@ -425,6 +464,7 @@ mod tests {
 
         assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
         assert!(inventory.item_catalogs.is_empty());
+        assert!(inventory.item_images.is_empty());
         assert!(inventory.classes.is_empty());
         assert!(inventory.maps.is_empty());
         assert!(inventory.enemy_catalogs.is_empty());

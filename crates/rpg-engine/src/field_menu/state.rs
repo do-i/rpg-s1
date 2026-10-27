@@ -34,14 +34,15 @@ pub(super) enum FieldMenuMode {
     ItemList,
     /// Spells page with the spellbook focused; `Browse` there is the caster column.
     SpellList,
-    /// Equipment page with the slot column focused. `Browse` there is the party column, and
-    /// `EquipmentPicker` the inventory column, so Left/Right walk the page's three columns.
+    /// Equipment page's horizontal row of equipped cards; Down opens the inventory below.
     EquipmentSlots,
     DiscardQuantity,
     ItemTarget,
     /// Party picker for equipping the pending item, previewing each member's stat change.
     ItemEquipTarget,
     EquipmentPicker,
+    /// Equipment comparison's Equip/Unequip button; only Confirm here changes equipment.
+    EquipmentConfirm,
     SpellTarget,
     #[cfg_attr(
         not(test),
@@ -205,7 +206,12 @@ impl FieldMenuState {
                 self.mode = FieldMenuMode::Browse;
                 self.message.clear();
             }
-            // Each step back moves one column left, keeping the cursor on the slot just left.
+            FieldMenuMode::EquipmentConfirm => {
+                self.mode = FieldMenuMode::EquipmentPicker;
+                self.pending_id = None;
+                self.message.clear();
+            }
+            // Inventory returns to the equipped card that opened it.
             FieldMenuMode::EquipmentPicker => {
                 self.selected = state_slot_index(self);
                 self.mode = FieldMenuMode::EquipmentSlots;

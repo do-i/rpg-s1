@@ -225,11 +225,10 @@ fn custom_menu_row_budgets_fit_the_baseline_canvas() {
     // Pouch list: 40px rows over 5px gaps plus a "PAGE nn/nn" footer, in a 14px-padded panel.
     let items =
         INVENTORY_PAGE_ROWS * 40 + (INVENTORY_PAGE_ROWS - 1) * 5 + 15 + panel_chrome(14, 1, 17, 5);
-    // Equipment picker: 52px rows over 8px gaps, under the worn-item summary it sits below.
+    // The shelf is above the split inventory/comparison row; images live outside the list.
     let equipment = EQUIPMENT_PICKER_VISIBLE_ROWS * 52
         + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8
-        + 180
-        + panel_chrome(16, 1, 17, 8);
+        + panel_chrome(14, 1, 17, 8);
     // Spellbook: 58px rows over 7px gaps in a 16px-padded panel.
     let spellbook =
         SPELLBOOK_VISIBLE_ROWS * 58 + (SPELLBOOK_VISIBLE_ROWS - 1) * 7 + panel_chrome(16, 1, 17, 8);
@@ -238,7 +237,7 @@ fn custom_menu_row_budgets_fit_the_baseline_canvas() {
         QUEST_VISIBLE_ROWS * 54 + (QUEST_VISIBLE_ROWS - 1) * 7 + 13 + panel_chrome(16, 1, 17, 7);
     assert!(items <= PAGE_COLUMN_HEIGHT, "pouch list: {items}px");
     assert!(
-        equipment <= PAGE_COLUMN_HEIGHT,
+        equipment + EQUIPMENT_SHELF_HEIGHT as usize + 16 <= PAGE_COLUMN_HEIGHT,
         "equipment picker: {equipment}px"
     );
     assert!(spellbook <= PAGE_COLUMN_HEIGHT, "spellbook: {spellbook}px");
@@ -564,11 +563,12 @@ fn item_details_show_shop_cost_and_sale_value() {
 }
 
 #[test]
-fn moving_focus_between_equipment_columns_never_changes_a_frame_border() {
+fn equipment_focus_moves_without_reflowing_any_of_the_four_panels() {
     for mode in [
         FieldMenuMode::Browse,
         FieldMenuMode::EquipmentSlots,
         FieldMenuMode::EquipmentPicker,
+        FieldMenuMode::EquipmentConfirm,
     ] {
         let mut app = App::new();
         app.insert_resource(fixture_game())
@@ -589,7 +589,11 @@ fn moving_focus_between_equipment_columns_never_changes_a_frame_border() {
             .iter(world)
             .map(|(node, outline)| (node.border.top, outline.color))
             .collect::<Vec<_>>();
-        assert_eq!(frames.len(), 3, "{mode:?}: party, slots, inventory");
+        assert_eq!(
+            frames.len(),
+            4,
+            "{mode:?}: party, equipped, inventory, details"
+        );
         // Focus is the outline alone: every frame keeps the same 1px border, so nothing
         // inside reflows, and exactly one frame carries the bright rim.
         assert!(
@@ -634,7 +638,7 @@ fn the_slot_cursor_appears_once_the_slot_column_has_focus() {
 }
 
 #[test]
-fn equipment_page_reuses_party_cards_and_builds_slots_and_inventory_columns() {
+fn equipment_page_reuses_party_cards_and_starts_without_slot_or_inventory_cursors() {
     let game = fixture_game();
     let party_len = game.party().len();
     let mut app = App::new();
@@ -672,9 +676,17 @@ fn equipment_page_reuses_party_cards_and_builds_slots_and_inventory_columns() {
         .map(|text| text.0.as_str())
         .collect::<Vec<_>>();
     assert!(labels.contains(&"PARTY"));
-    assert!(labels.contains(&"SLOTS"));
+    assert!(labels.contains(&"EQUIPPED"));
     assert!(labels.contains(&"INVENTORY"));
-    assert!(labels.contains(&"TOTALS"));
+    assert!(labels.contains(&"DETAILS"));
+    assert!(labels.contains(&"CHARACTER TOTALS"));
+    assert_eq!(
+        world
+            .query::<&SelectedEquipmentPickerRow>()
+            .iter(world)
+            .count(),
+        0
+    );
 }
 
 #[test]
@@ -708,7 +720,83 @@ fn equipment_picker_keeps_the_slot_context_and_renders_a_preview() {
         .map(|text| text.0.as_str())
         .collect::<Vec<_>>();
     assert!(labels.contains(&"(Unequip)"));
-    assert!(labels.contains(&"PREVIEW"));
+    assert!(labels.contains(&"COMPARE"));
+    assert_eq!(
+        world
+            .query::<&SelectedEquipmentPickerRow>()
+            .iter(world)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn equipment_shelf_keeps_all_five_images_at_native_size_and_leaves_inventory_unselected() {
+    let mut game = fixture_game();
+    for (slot, id) in EquipmentSlot::ALL.into_iter().zip([
+        "iron_sword",
+        "buckler",
+        "leather_hat",
+        "leather_vest",
+        "silver_ring",
+    ]) {
+        game.party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .equip(slot, id)
+            .unwrap();
+    }
+    let _ = game.repository_mut().add_item("steel_sword", 1).unwrap();
+    let mut app = App::new();
+    app.insert_resource(game)
+        .insert_resource(crate::field_menu_domain::tests::catalog())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Equipment,
+            mode: FieldMenuMode::EquipmentSlots,
+            ..default()
+        })
+        .add_systems(Update, spawn_fixture_equipment_page);
+    app.update();
+    let world = app.world_mut();
+    let cards = world
+        .query_filtered::<&Children, With<EquipmentSlotRow>>()
+        .iter(world)
+        .map(|children| children.iter().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    assert_eq!(cards.len(), 5);
+    for children in cards {
+        let images = children
+            .into_iter()
+            .filter(|entity| world.get::<crate::item_images::ItemIcon>(*entity).is_some())
+            .collect::<Vec<_>>();
+        assert_eq!(images.len(), 1);
+        let image = world.get::<Node>(images[0]).unwrap();
+        assert_eq!(
+            (image.width, image.height, image.flex_shrink),
+            (px(128), px(128), 0.0)
+        );
+    }
+    assert!(world.query::<&EquipmentPickerRow>().iter(world).count() > 0);
+    assert_eq!(
+        world
+            .query::<&SelectedEquipmentPickerRow>()
+            .iter(world)
+            .count(),
+        0
+    );
+    assert_eq!(
+        world.query::<&EquipmentCommitButton>().iter(world).count(),
+        0
+    );
+    let labels = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|t| t.0.as_str())
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"DETAILS"));
+    assert!(labels.contains(&"Iron Sword"));
+    assert!(!labels.contains(&"COMPARE"));
 }
 
 #[test]
@@ -1860,7 +1948,7 @@ fn tap(app: &mut App, key: KeyCode) -> (FieldMenuScreen, FieldMenuMode, usize, u
 }
 
 #[test]
-fn equipment_arrows_walk_party_then_slots_then_inventory_and_back() {
+fn equipment_arrows_walk_party_shelf_and_inventory_and_reset_to_weapon_on_reentry() {
     use FieldMenuMode::{Browse, EquipmentPicker, EquipmentSlots};
     use FieldMenuScreen::{Equipment, Main};
     let mut app = menu_input_app(
@@ -1880,24 +1968,297 @@ fn equipment_arrows_walk_party_then_slots_then_inventory_and_back() {
         (Equipment, EquipmentSlots, 1, 0)
     );
     assert_eq!(
-        tap(&mut app, KeyCode::ArrowDown),
+        tap(&mut app, KeyCode::ArrowRight),
         (Equipment, EquipmentSlots, 1, 1)
     );
-    // Right opens that slot's inventory; Left comes back to the same slot, then the party.
-    assert_eq!(tap(&mut app, KeyCode::ArrowRight).1, EquipmentPicker);
+    // Down opens inventory; Left returns to the same slot, then walks the shelf to Party.
+    assert_eq!(tap(&mut app, KeyCode::ArrowDown).1, EquipmentPicker);
     assert_eq!(slot(&app), 1);
     assert_eq!(
         tap(&mut app, KeyCode::ArrowLeft),
         (Equipment, EquipmentSlots, 1, 1)
     );
-    assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Equipment, Browse, 1, 1));
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowLeft),
+        (Equipment, EquipmentSlots, 1, 0)
+    );
+    assert_eq!(tap(&mut app, KeyCode::ArrowLeft), (Equipment, Browse, 1, 0));
     // Enter also moves right, and Esc retraces the same columns before leaving the page.
     assert_eq!(
         tap(&mut app, KeyCode::Enter),
-        (Equipment, EquipmentSlots, 1, 1)
+        (Equipment, EquipmentSlots, 1, 0)
     );
-    assert_eq!(tap(&mut app, KeyCode::Escape), (Equipment, Browse, 1, 1));
+    assert_eq!(tap(&mut app, KeyCode::Escape), (Equipment, Browse, 1, 0));
     assert_eq!(tap(&mut app, KeyCode::Escape).0, Main);
+}
+
+#[test]
+fn equipment_preview_and_cancel_never_mutate_items_and_only_the_button_commits() {
+    let mut game = fixture_game();
+    let _ = game.repository_mut().add_item("steel_sword", 1).unwrap();
+    let original = game
+        .party()
+        .member("aric")
+        .unwrap()
+        .equipment()
+        .get(EquipmentSlot::Weapon)
+        .map(str::to_owned);
+    let mut app = menu_input_app(
+        game,
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Equipment,
+            ..default()
+        },
+    );
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::ArrowDown);
+    let selected_id = {
+        let game = app.world().resource::<GameState>();
+        equipment_candidates(
+            game,
+            app.world().resource::<FieldMenuCatalog>(),
+            EquipmentSlot::Weapon,
+        )[0]
+        .clone()
+    };
+    let count = app
+        .world()
+        .resource::<GameState>()
+        .repository()
+        .item_count(&selected_id);
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowRight).1,
+        FieldMenuMode::EquipmentConfirm
+    );
+    assert_eq!(
+        app.world()
+            .resource::<FieldMenuState>()
+            .pending_id
+            .as_deref(),
+        Some(selected_id.as_str())
+    );
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Weapon),
+        original.as_deref()
+    );
+    assert_eq!(
+        tap(&mut app, KeyCode::Escape).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .repository()
+            .item_count(&selected_id),
+        count
+    );
+    assert_eq!(
+        tap(&mut app, KeyCode::Enter).1,
+        FieldMenuMode::EquipmentConfirm
+    );
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Weapon),
+        original.as_deref()
+    );
+    assert_eq!(
+        tap(&mut app, KeyCode::Enter).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    let game = app.world().resource::<GameState>();
+    assert_eq!(
+        game.party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Weapon),
+        Some(selected_id.as_str())
+    );
+    assert_eq!(game.repository().item_count(&selected_id), count - 1);
+    assert_eq!(
+        state_slot_index(app.world().resource::<FieldMenuState>()),
+        0
+    );
+    // Returning up out of the first row restores the original equipped-card cursor.
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowUp).1,
+        FieldMenuMode::EquipmentSlots
+    );
+}
+
+#[test]
+fn equipment_confirmation_keeps_the_previewed_item_if_inventory_order_changes() {
+    let mut game = fixture_game();
+    let _ = game.repository_mut().add_item("steel_sword", 1).unwrap();
+    let mut app = menu_input_app(
+        game,
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Equipment,
+            ..default()
+        },
+    );
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::ArrowDown);
+    tap(&mut app, KeyCode::ArrowRight);
+    assert_eq!(
+        app.world()
+            .resource::<FieldMenuState>()
+            .pending_id
+            .as_deref(),
+        Some("steel_sword")
+    );
+    // Insert an earlier-sorting candidate after the comparison's button has focus.
+    let _ = app
+        .world_mut()
+        .resource_mut::<GameState>()
+        .repository_mut()
+        .add_item("iron_sword", 1)
+        .unwrap();
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Weapon),
+        Some("steel_sword")
+    );
+}
+
+#[test]
+fn equipment_unequip_is_last_and_cancel_preserves_the_slot_and_item_count() {
+    let game = fixture_game();
+    let old = game
+        .party()
+        .member("aric")
+        .unwrap()
+        .equipment()
+        .get(EquipmentSlot::Shield)
+        .unwrap()
+        .to_owned();
+    let count = game.repository().item_count(&old);
+    let mut app = menu_input_app(
+        game,
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Equipment,
+            mode: FieldMenuMode::EquipmentSlots,
+            selected: 1,
+            ..default()
+        },
+    );
+    tap(&mut app, KeyCode::ArrowDown);
+    let candidates = equipment_candidates(
+        app.world().resource::<GameState>(),
+        app.world().resource::<FieldMenuCatalog>(),
+        EquipmentSlot::Shield,
+    );
+    for _ in 0..candidates.len() {
+        tap(&mut app, KeyCode::ArrowDown);
+    }
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowRight).1,
+        FieldMenuMode::EquipmentConfirm
+    );
+    assert_eq!(app.world().resource::<FieldMenuState>().pending_id, None);
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowLeft).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .repository()
+            .item_count(&old),
+        count
+    );
+    tap(&mut app, KeyCode::ArrowRight);
+    assert_eq!(
+        tap(&mut app, KeyCode::Enter).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    let game = app.world().resource::<GameState>();
+    assert_eq!(
+        game.party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Shield),
+        None
+    );
+    assert_eq!(game.repository().item_count(&old), count + 1);
+    assert_eq!(
+        state_slot_index(app.world().resource::<FieldMenuState>()),
+        1
+    );
+}
+
+#[test]
+fn equipment_restricted_and_empty_choices_cannot_reach_the_commit_button() {
+    let mut game = fixture_game_with_recruit();
+    let _ = game.repository_mut().add_item("leather_vest", 1).unwrap();
+    let mut app = menu_input_app(
+        game,
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Equipment,
+            mode: FieldMenuMode::EquipmentSlots,
+            member_index: 1,
+            selected: 3,
+            ..default()
+        },
+    );
+    tap(&mut app, KeyCode::ArrowDown);
+    assert_eq!(
+        tap(&mut app, KeyCode::ArrowRight).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    assert!(
+        app.world()
+            .resource::<FieldMenuState>()
+            .message
+            .contains("can't equip Leather Vest")
+    );
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .repository()
+            .item_count("leather_vest"),
+        1
+    );
+    *app.world_mut().resource_mut::<FieldMenuState>() = FieldMenuState {
+        open: true,
+        screen: FieldMenuScreen::Equipment,
+        mode: FieldMenuMode::EquipmentSlots,
+        selected: 4,
+        ..default()
+    };
+    tap(&mut app, KeyCode::ArrowDown);
+    assert_eq!(
+        tap(&mut app, KeyCode::Enter).1,
+        FieldMenuMode::EquipmentPicker
+    );
+    assert!(
+        app.world()
+            .resource::<FieldMenuState>()
+            .message
+            .contains("already empty")
+    );
 }
 
 #[test]

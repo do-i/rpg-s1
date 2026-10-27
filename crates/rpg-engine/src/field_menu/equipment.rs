@@ -1,11 +1,11 @@
-//! Equipment page actions: the party, slot, and inventory columns, and equip/unequip.
+//! Equipment focus: party, equipped cards, inventory, then the comparison's commit button.
 
 use bevy::prelude::*;
 
 use super::{
     input::MenuInput,
     member_id_at,
-    state::{FieldMenuMode, FieldMenuState, cycle_member, wrapped, wrapped_or_zero},
+    state::{FieldMenuMode, FieldMenuState, cycle_member},
     ui,
 };
 use crate::{
@@ -24,80 +24,108 @@ pub(super) fn handle_input(
     menu_sfx: &mut MenuSfx<'_>,
 ) {
     match state.mode {
-        // Party column: Up/Down picks the member, Right or Enter moves into their slots.
         FieldMenuMode::Browse => {
             if let Some(delta) = input.vertical {
                 cycle_member(state, game.party().len(), delta);
             }
             if input.horizontal == Some(1) || input.confirm {
                 state.mode = FieldMenuMode::EquipmentSlots;
+                state.selected = 0;
+                state.pending_id = None;
             }
         }
-        // Slot column: Up/Down picks the slot, Right or Enter opens its inventory, Left returns
-        // to the party.
         FieldMenuMode::EquipmentSlots => {
-            if let Some(delta) = input.vertical {
-                state.selected = wrapped(state.selected, EquipmentSlot::ALL.len(), delta);
-            }
-            if input.horizontal == Some(-1) {
+            if input.horizontal == Some(-1) && state.selected == 0 {
                 state.back();
-            } else if input.horizontal == Some(1) || input.confirm {
+            } else if let Some(delta) = input.horizontal {
+                state.selected = state
+                    .selected
+                    .saturating_add_signed(delta)
+                    .min(EquipmentSlot::ALL.len() - 1);
+            } else if input.vertical == Some(1) || input.confirm {
                 state.quantity = state.selected as u32 + 1;
                 state.mode = FieldMenuMode::EquipmentPicker;
                 state.selected = 0;
+                state.pending_id = None;
             }
         }
         FieldMenuMode::EquipmentPicker => {
+            if input.horizontal == Some(-1) || (input.vertical == Some(-1) && state.selected == 0) {
+                state.back();
+                return;
+            }
+            let slot = EquipmentSlot::ALL[state_slot_index(state)];
+            let candidates = equipment_candidates(game, catalog, slot);
+            if let Some(delta) = input.vertical {
+                state.selected = state
+                    .selected
+                    .saturating_add_signed(delta)
+                    .min(candidates.len());
+            }
+            if input.horizontal == Some(1) || input.confirm {
+                let Some(member) = super::member_at(game, state.member_index) else {
+                    return;
+                };
+                let candidate = candidates.get(state.selected);
+                let refusal = candidate.map_or_else(
+                    || {
+                        member
+                            .equipment()
+                            .get(slot)
+                            .is_none()
+                            .then(|| "That slot is already empty.".to_owned())
+                    },
+                    |id| equip_refusal(member, id, catalog),
+                );
+                if let Some(refusal) = refusal {
+                    menu_sfx.blocked();
+                    state.message = refusal;
+                    return;
+                }
+                state.pending_id = candidate.cloned();
+                state.mode = FieldMenuMode::EquipmentConfirm;
+            }
+        }
+        FieldMenuMode::EquipmentConfirm => {
             if input.horizontal == Some(-1) {
                 state.back();
+                return;
+            }
+            if !input.confirm {
                 return;
             }
             let Some(member_id) = member_id_at(game, state.member_index).map(str::to_owned) else {
                 return;
             };
             let slot = EquipmentSlot::ALL[state_slot_index(state)];
-            let candidates = equipment_candidates(game, catalog, slot);
-            if let Some(delta) = input.vertical {
-                state.selected = wrapped_or_zero(state.selected, candidates.len() + 1, delta);
-            }
-            if input.confirm {
-                if state.selected == 0 {
-                    match unequip_item(game, &member_id, slot) {
-                        Ok(Some(_)) => {
-                            menu_sfx.play(cue::UNEQUIP);
-                            state.message = "Equipment returned to the repository.".to_owned()
-                        }
-                        Ok(None) => {
-                            menu_sfx.blocked();
-                            state.message = "That slot is already empty.".to_owned()
-                        }
-                        Err(error) => {
-                            menu_sfx.blocked();
-                            state.message = error.to_string()
-                        }
+            let result = if let Some(id) = state.pending_id.as_deref() {
+                equip_item(game, catalog, &member_id, id).map(|_| true)
+            } else {
+                unequip_item(game, &member_id, slot).map(|removed| removed.is_some())
+            };
+            match result {
+                Ok(true) => {
+                    let equipped = state.pending_id.is_some();
+                    menu_sfx.play(if equipped { cue::EQUIP } else { cue::UNEQUIP });
+                    state.mode = FieldMenuMode::EquipmentPicker;
+                    state.pending_id = None;
+                    state.selected = state
+                        .selected
+                        .min(equipment_candidates(game, catalog, slot).len());
+                    state.message = if equipped {
+                        "Equipment changed."
+                    } else {
+                        "Equipment returned to the repository."
                     }
-                } else if let Some(id) = candidates.get(state.selected - 1) {
-                    let refusal = game
-                        .party()
-                        .member(&member_id)
-                        .and_then(|member| equip_refusal(member, id, catalog));
-                    if let Some(refusal) = refusal {
-                        menu_sfx.blocked();
-                        state.message = refusal;
-                        return;
-                    }
-                    match equip_item(game, catalog, &member_id, id) {
-                        Ok(_) => {
-                            menu_sfx.play(cue::EQUIP);
-                            state.mode = FieldMenuMode::EquipmentSlots;
-                            state.selected = slot_index(slot);
-                            state.message = "Equipment changed.".to_owned();
-                        }
-                        Err(error) => {
-                            menu_sfx.blocked();
-                            state.message = error.to_string()
-                        }
-                    }
+                    .to_owned();
+                }
+                Ok(false) => {
+                    menu_sfx.blocked();
+                    state.message = "That slot is already empty.".to_owned();
+                }
+                Err(error) => {
+                    menu_sfx.blocked();
+                    state.message = error.to_string();
                 }
             }
         }
@@ -106,7 +134,10 @@ pub(super) fn handle_input(
 }
 
 pub(super) fn state_slot_index(state: &FieldMenuState) -> usize {
-    if state.mode == FieldMenuMode::EquipmentPicker {
+    if matches!(
+        state.mode,
+        FieldMenuMode::EquipmentPicker | FieldMenuMode::EquipmentConfirm
+    ) {
         // Picker selection replaces the slot cursor, so retain the chosen slot in quantity.
         state.quantity.saturating_sub(1) as usize
     } else {
@@ -114,11 +145,16 @@ pub(super) fn state_slot_index(state: &FieldMenuState) -> usize {
     }
 }
 
-pub(super) fn slot_index(slot: EquipmentSlot) -> usize {
-    EquipmentSlot::ALL
-        .iter()
-        .position(|candidate| *candidate == slot)
-        .expect("known slot")
+/// The confirmation keeps the item identity stable even if the repository changes.
+pub(super) fn equipment_candidate<'a>(
+    state: &'a FieldMenuState,
+    candidates: &'a [String],
+) -> Option<&'a str> {
+    if state.mode == FieldMenuMode::EquipmentConfirm {
+        state.pending_id.as_deref()
+    } else {
+        candidates.get(state.selected).map(String::as_str)
+    }
 }
 
 /// Why `member` cannot equip `item_id`, phrased for the player, or `None` when they can.

@@ -33,6 +33,7 @@ mod input_record;
 mod intro_completion;
 mod intro_dialogue;
 mod intro_transition;
+mod item_images;
 mod menu_chrome;
 mod name_entry;
 pub mod new_game;
@@ -219,6 +220,7 @@ fn run_game(arguments: cli::PlayArguments) {
     )
     .add_plugins(ScenarioNewGameAssetsPlugin)
     .add_plugins(FieldMenuDomainPlugin)
+    .add_plugins(item_images::ItemImagesPlugin)
     .add_plugins(TransportDomainPlugin)
     .add_plugins(TsxAtlasAssetPlugin)
     .add_plugins(TmxGroundAssetPlugin)

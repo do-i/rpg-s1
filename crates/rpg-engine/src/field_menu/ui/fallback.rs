@@ -405,7 +405,10 @@ pub(in crate::field_menu) fn render_equipment(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    if state.mode != FieldMenuMode::EquipmentPicker {
+    if !matches!(
+        state.mode,
+        FieldMenuMode::EquipmentPicker | FieldMenuMode::EquipmentConfirm
+    ) {
         return format!(
             "Member {}/{}  {} — {}\n\n{slots}",
             state.member_index + 1,
@@ -416,8 +419,10 @@ pub(in crate::field_menu) fn render_equipment(
     }
     let slot = EquipmentSlot::ALL[slot_index];
     let candidates = equipment_candidates(game, catalog, slot);
-    let rows = std::iter::once(None)
-        .chain(candidates.iter().map(|id| Some(id.as_str())))
+    let rows = candidates
+        .iter()
+        .map(|id| Some(id.as_str()))
+        .chain(std::iter::once(None))
         .enumerate()
         .map(|(index, id)| {
             let cursor = if index == state.selected { ">" } else { " " };
@@ -435,12 +440,13 @@ pub(in crate::field_menu) fn render_equipment(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let selected_id = state
-        .selected
-        .checked_sub(1)
-        .and_then(|index| candidates.get(index).map(String::as_str));
+    let selected_id = equipment_candidate(state, &candidates);
     let before = derived_stats(member, catalog);
-    let after = preview_stats(member, catalog, slot, selected_id);
+    let after = if selected_id.is_some_and(|id| equip_refusal(member, id, catalog).is_some()) {
+        before
+    } else {
+        preview_stats(member, catalog, slot, selected_id)
+    };
     format!(
         "Member {}/{}  {} — {}\n\n{slots}\n\nChoose {}\n{}\n\nPreview  STR {}->{}, DEX {}->{}, CON {}->{}, INT {}->{}",
         state.member_index + 1,
@@ -643,10 +649,16 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "UP/DOWN quantity  LEFT one  RIGHT whole stack  ENTER discard  ESC cancel"
         }
         (FieldMenuScreen::Equipment, FieldMenuMode::Browse) => {
-            "UP/DOWN member  RIGHT/ENTER slots  ESC back"
+            equipment_hint(FieldMenuMode::Browse)
         }
         (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentSlots) => {
-            "UP/DOWN slot  RIGHT/ENTER inventory  LEFT/ESC party"
+            equipment_hint(FieldMenuMode::EquipmentSlots)
+        }
+        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentPicker) => {
+            equipment_hint(FieldMenuMode::EquipmentPicker)
+        }
+        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentConfirm) => {
+            equipment_hint(FieldMenuMode::EquipmentConfirm)
         }
         (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
             "UP/DOWN caster  RIGHT/ENTER spellbook  ESC back"

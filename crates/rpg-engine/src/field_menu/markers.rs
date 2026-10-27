@@ -67,6 +67,12 @@ pub(super) struct SelectedEquipmentSlotRow;
 pub(super) struct EquipmentPickerRow;
 
 #[derive(Component)]
+pub(super) struct SelectedEquipmentPickerRow;
+
+#[derive(Component)]
+pub(super) struct EquipmentCommitButton;
+
+#[derive(Component)]
 pub(super) struct FieldMenuSpellsPage;
 
 #[derive(Component)]

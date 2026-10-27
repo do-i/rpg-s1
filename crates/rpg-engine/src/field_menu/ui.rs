@@ -70,7 +70,7 @@ pub(super) use spells_page::*;
 pub(super) use status_page::*;
 
 pub(super) const INVENTORY_PAGE_ROWS: usize = 11;
-pub(super) const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 5;
+pub(super) const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 pub(super) const SPELLBOOK_VISIBLE_ROWS: usize = 8;
 /// Windowed lists show as many cards as their column fits (see the row-budget test), so a
 /// scrolled list fills its panel and the fade on its edge card is what says more are hidden.
@@ -110,7 +110,7 @@ pub(super) const ITEMS_COLUMN_GAP: f32 = 18.0;
 /// Party card height in the items page's equip picker. Five cards plus the modal's chrome fit the
 /// canvas; the portrait is square, so it scales with this.
 pub(super) const ITEM_EQUIP_CARD_HEIGHT: f32 = 76.0;
-pub(super) const EQUIPMENT_SLOT_WIDTH: f32 = 306.0;
+pub(super) const EQUIPMENT_SHELF_HEIGHT: f32 = 264.0;
 pub(super) const MAIN_DECK_WIDTH: f32 = 772.0;
 pub(super) const MAIN_DECK_COLUMN_GAP: f32 = 14.0;
 pub(super) const QUEST_LIST_WIDTH: f32 = 512.0;
