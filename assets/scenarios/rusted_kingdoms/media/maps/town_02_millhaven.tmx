@@ -11,14 +11,14 @@
  <tileset firstgid="2446" source="../tilesets/wall.tsx"/>
  <tileset firstgid="2626" source="../tilesets/floor.tsx"/>
  <objectgroup id="8" name="portals">
-  <object id="12" name="mill" x="624" y="512" width="64" height="5">
+  <object id="12" name="mill" x="644" y="504" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_mill"/>
     <property name="target_position_x" type="int" value="10"/>
     <property name="target_position_y" type="int" value="11"/>
    </properties>
   </object>
-  <object id="14" name="inn" x="272" y="1120" width="64" height="5">
+  <object id="14" name="inn" x="292" y="1112" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_inn"/>
     <property name="target_position_x" type="int" value="5"/>
@@ -32,42 +32,42 @@
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>
-  <object id="19" name="shop_weapon" x="288" y="186" width="32" height="6">
+  <object id="19" name="shop_weapon" x="292" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_shop_weapon"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="20" name="shop_armor" x="576" y="186" width="32" height="6">
+  <object id="20" name="shop_armor" x="580" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_shop_armor"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="21" name="shop_item" x="864" y="186" width="32" height="6">
+  <object id="21" name="shop_item" x="868" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_shop"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="22" name="shop_mc" x="1152" y="186" width="32" height="6">
+  <object id="22" name="shop_mc" x="1156" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_shop_mc"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="23" name="house_old_couple" x="1152" y="506" width="32" height="6">
+  <object id="23" name="house_old_couple" x="1156" y="504" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_house_01"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="24" name="house_blue_roof" x="1120" y="1146" width="32" height="6">
+  <object id="24" name="house_blue_roof" x="1124" y="1144" width="24" height="6">
    <properties>
     <property name="target_map" value="town_02_millhaven_house_02"/>
     <property name="target_position_x" type="int" value="4"/>

@@ -1,0 +1,15 @@
+id: town_05_ashenveil_house_03
+name: Ashenveil Village Home 03
+bgm: town.default
+npcs:
+- id: ashenveil_house_03
+  name: Elin
+  dialogue: ashenveil_house_03
+  position:
+  - 8
+  - 5
+  sprite: media/sprites/npc/village_female_person_practical_pants.tsx
+  default_facing: down
+  animation:
+    mode: step
+    speed: 0.5

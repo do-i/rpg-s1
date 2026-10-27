@@ -1,0 +1,6 @@
+id: ashenveil_house_01
+type: npc
+entries:
+- lines:
+  - We sweep the ash from our doorstep every morning. By evening it has returned,
+    but so have our neighbors.

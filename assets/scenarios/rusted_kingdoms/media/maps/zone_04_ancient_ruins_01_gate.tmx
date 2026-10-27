@@ -21,7 +21,7 @@
    <properties>
     <property name="target_map" value="zone_03_marshland"/>
     <property name="target_position_x" type="int" value="1"/>
-    <property name="target_position_y" type="int" value="31"/>
+    <property name="target_position_y" type="int" value="43"/>
    </properties>
   </object>
   <object id="5" name="town_03_ruinwatch" x="1664.0" y="0" width="96" height="12">

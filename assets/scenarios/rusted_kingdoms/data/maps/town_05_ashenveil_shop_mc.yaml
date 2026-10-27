@@ -1,0 +1,16 @@
+id: town_05_ashenveil_shop_mc
+name: Ashenveil Magic Core Shop
+bgm: town.default
+npcs:
+- id: mc_shop_keeper
+  name: Orrin
+  dialogue: mc_shop_intro
+  position:
+  - 4
+  - 3
+  sprite: media/sprites/npc/merchant_wealthy_bowler.tsx
+  default_facing: down
+  interaction_range: 3.0
+  animation:
+    mode: step
+    speed: 0.8

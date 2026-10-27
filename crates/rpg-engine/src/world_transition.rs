@@ -723,21 +723,22 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
-    fn ardel_runtime_portals_preserve_source_bounds_and_destinations() {
+    fn ardel_runtime_portals_use_inset_doorway_bounds_and_preserve_destinations() {
         let portals = ardel_portals();
         assert_eq!(portals.len(), 10);
         let house = portals
             .iter()
-            .find(|portal| portal.name() == Some("house"))
+            .find(|portal| portal.target_map().as_str() == "town_01_ardel_house_01")
             .unwrap();
         assert_eq!(house.object_id(), 7);
+        assert_eq!(house.name(), Some("house_cheif"));
         assert_eq!(
             house.bounds(),
             PortalBounds {
-                x: 70.1213,
-                y: 153.818,
-                width: 53.9015,
-                height: 9.59847
+                x: 68.0,
+                y: 152.0,
+                width: 56.0,
+                height: 6.0
             }
         );
         assert_eq!(house.target_map().as_str(), "town_01_ardel_house_01");
@@ -986,7 +987,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 ("zone_02_open_plains_cave_02", Position::new(8, 27)),
                 ("zone_01_starting_forest", Position::new(1, 26)),
                 ("town_02_millhaven", Position::new(19, 29)),
-                ("zone_03_marshland", Position::new(27, 1)),
+                ("zone_03_marshland", Position::new(40, 1)),
             ]
         );
     }
@@ -1171,7 +1172,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             .into_iter()
             .find(|portal| portal.target_map().as_str() == "zone_03_marshland")
             .unwrap();
-        assert_eq!(plains_to_marshland.target_position(), Position::new(27, 1));
+        assert_eq!(plains_to_marshland.target_position(), Position::new(40, 1));
 
         // The W12.4 boundary (Ancient Ruins) only needs to parse here; the destination
         // map is out of this wave's scope and asserting a reverse link would be a false
@@ -1197,7 +1198,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         let expected = [
             ("town_03_harborgate_inn", Position::new(5, 9)),
             ("town_03_harborgate_harbormaster", Position::new(10, 11)),
-            ("zone_03_marshland", Position::new(21, 37)),
+            ("zone_03_marshland", Position::new(57, 58)),
             ("town_03_harborgate_shop_weapon", Position::new(7, 10)),
             ("town_03_harborgate_shop_armor", Position::new(7, 10)),
             ("town_03_harborgate_shop_item", Position::new(7, 10)),
@@ -1317,7 +1318,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
                 .collect::<Vec<_>>(),
             [
                 ("zone_04_ancient_ruins_02_courtyard", Position::new(66, 24),),
-                ("zone_03_marshland", Position::new(1, 31)),
+                ("zone_03_marshland", Position::new(1, 43)),
                 ("town_03_ruinwatch", Position::new(19, 29)),
             ]
         );
@@ -1458,6 +1459,144 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         );
     }
 
+    #[test]
+    fn town_building_doorways_allow_sideways_passing_and_trigger_on_walking_in() {
+        let towns = [
+            (
+                "town_01_ardel",
+                include_str!(scenario_file!("media/maps/town_01_ardel.tmx")),
+                8,
+                9,
+            ),
+            (
+                "town_02_millhaven",
+                include_str!(scenario_file!("media/maps/town_02_millhaven.tmx")),
+                8,
+                8,
+            ),
+            (
+                "town_03_harborgate",
+                include_str!(scenario_file!("media/maps/town_03_harborgate.tmx")),
+                9,
+                9,
+            ),
+            (
+                "town_03_ruinwatch",
+                include_str!(scenario_file!("media/maps/town_03_ruinwatch.tmx")),
+                8,
+                8,
+            ),
+            (
+                "town_04_frostholm",
+                include_str!(scenario_file!("media/maps/town_04_frostholm.tmx")),
+                8,
+                8,
+            ),
+            (
+                "town_05_ashenveil",
+                include_str!(scenario_file!("media/maps/town_05_ashenveil.tmx")),
+                11,
+                12,
+            ),
+        ];
+        for (map_id, xml, expected_entrances, expected_door_tiles) in towns {
+            assert_town_doorway_passage(map_id, xml, expected_entrances, expected_door_tiles);
+        }
+    }
+
+    fn assert_town_doorway_passage(
+        map_id: &str,
+        xml: &str,
+        expected_entrances: usize,
+        expected_door_tiles: usize,
+    ) {
+        use crate::scenario_spatial::collision_occupancy::CollisionOccupancy;
+
+        let owner = ScenarioRelativePath::try_from(format!("media/maps/{map_id}.tmx")).unwrap();
+        let document = parse_tmx_map_document(xml, &owner).unwrap();
+        let occupancy = CollisionOccupancy::from_tmx_document(&document).unwrap();
+        let portals = runtime_portals(&document).unwrap();
+        let entrances = portals
+            .iter()
+            .filter(|portal| {
+                portal
+                    .target_map()
+                    .as_str()
+                    .strip_prefix(map_id)
+                    .is_some_and(|suffix| suffix.starts_with('_'))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(entrances.len(), expected_entrances, "{map_id}");
+        let door_first_gid = document
+            .external_tilesets()
+            .iter()
+            .find(|tileset| tileset.source().as_str().ends_with("/door.tsx"))
+            .unwrap()
+            .first_gid();
+        let mut door_count = 0;
+        for layer in document.tile_layers() {
+            if matches!(layer.name(), "collision" | "spawn_tile") {
+                continue;
+            }
+            for (index, gid) in layer.gids().iter().enumerate() {
+                let Some(local_id) = gid.global_id().checked_sub(door_first_gid) else {
+                    continue;
+                };
+                if !matches!(local_id, 8..=15 | 24) {
+                    continue;
+                }
+                door_count += 1;
+                let column = index as u32 % layer.width();
+                let row = index as u32 / layer.width();
+                let left = (column * occupancy.tile_width()) as f32;
+                let bottom = ((row + 1) * occupancy.tile_height()) as f32;
+                assert_eq!(occupancy.is_open(column as i32, row as i32), Some(true));
+
+                // Pass in either direction along the pavement, including exact wall contact.
+                for y_offset in [0.0, 0.5, 1.0, 7.0, 16.0, 32.0] {
+                    for x_offset in -32..=64 {
+                        let feet = collision_rect(left + x_offset as f32, bottom + y_offset);
+                        assert!(
+                            entrances
+                                .iter()
+                                .all(|portal| !portal.bounds().is_triggered_by(feet)),
+                            "{map_id}: sideways passage triggered a portal at door {column},{row}"
+                        );
+                    }
+                }
+
+                // Walk north from the pavement using the live player's foot rectangle.
+                let mut motion =
+                    WorldPlayerMotion::from_tile(Position::new(column as i32, row as i32 + 1));
+                let mut entered = false;
+                for _ in 0..8 {
+                    let feet = motion.collision_rect();
+                    assert!(!occupancy.is_rect_blocked(feet.x, feet.y, feet.width, feet.height));
+                    if entrances
+                        .iter()
+                        .any(|portal| portal.bounds().is_triggered_by(feet))
+                    {
+                        assert!(
+                            (bottom - 8.0..bottom).contains(&feet.y),
+                            "{map_id}: entrance must trigger just inside the bottom of the door"
+                        );
+                        entered = true;
+                        break;
+                    }
+                    motion.set_top_left(motion.top_left() - Vec2::new(0.0, 5.0));
+                }
+                assert!(
+                    entered,
+                    "{map_id}: door {column},{row} cannot be entered from the pavement"
+                );
+            }
+        }
+        assert_eq!(
+            door_count, expected_door_tiles,
+            "{map_id}: include every door leaf"
+        );
+    }
+
     /// A player collision rect (the live 20x18 source-pixel size) at an arbitrary top-left.
     fn collision_rect(x: f32, y: f32) -> CharacterCollisionRect {
         rect(x, y, 20.0, 18.0)
@@ -1503,7 +1642,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         let portals = ardel_portals();
         let house = portals
             .iter()
-            .find(|portal| portal.name() == Some("house"))
+            .find(|portal| portal.target_map().as_str() == "town_01_ardel_house_01")
             .unwrap();
         let mut transition = WorldTransition {
             phase: TransitionPhase::Publishing,
@@ -1625,7 +1764,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         );
         let portal = ardel_portals()
             .into_iter()
-            .find(|portal| portal.name() == Some("house"))
+            .find(|portal| portal.target_map().as_str() == "town_01_ardel_house_01")
             .unwrap();
         let mut transition = WorldTransition {
             phase: TransitionPhase::Idle,

@@ -72,6 +72,12 @@ regions:
     maps:
       - { id: town_04_frostholm, outdoor: true }
       - { id: town_04_frostholm_inn }
+      - { id: town_04_frostholm_house_01 }
+      - { id: town_04_frostholm_house_02 }
+      - { id: town_04_frostholm_house_03 }
+      - { id: town_04_frostholm_shop_weapon }
+      - { id: town_04_frostholm_shop_armor }
+      - { id: town_04_frostholm_shop_mc }
       - { id: town_04_frostholm_palace }
       - { id: town_04_frostholm_shop }
       - { id: town_04_frostholm_vault }
@@ -86,6 +92,14 @@ regions:
       - { id: town_05_ashenveil_inn }
       - { id: town_05_ashenveil_oracle_sanctum }
       - { id: town_05_ashenveil_shop }
+      - { id: town_05_ashenveil_chief_house }
+      - { id: town_05_ashenveil_house_03 }
+      - { id: town_05_ashenveil_house_02 }
+      - { id: town_05_ashenveil_house_01 }
+      - { id: town_05_ashenveil_shop_mc }
+      - { id: town_05_ashenveil_shop_apothecary }
+      - { id: town_05_ashenveil_shop_armor }
+      - { id: town_05_ashenveil_shop_weapon }
       - { id: zone_06_mountain_pass_01, outdoor: true }
       - { id: zone_06_mountain_pass_02, outdoor: true }
       - { id: zone_06_mountain_pass_03, outdoor: true }

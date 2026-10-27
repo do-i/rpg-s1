@@ -11,28 +11,28 @@
  <tileset firstgid="2446" source="../tilesets/wall.tsx"/>
  <tileset firstgid="2626" source="../tilesets/floor.tsx"/>
  <objectgroup id="8" name="portals">
-  <object id="12" name="weapon_shop" x="642.667" y="186" width="27.3333" height="6">
+  <object id="12" name="weapon_shop" x="644" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_shop_weapon"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="13" name="armor_shop" x="1154.33" y="185" width="29.3333" height="6">
+  <object id="13" name="armor_shop" x="1156" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_shop_armor"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="14" name="inn" x="288.667" y="794" width="30.3333" height="5">
+  <object id="14" name="inn" x="292" y="792" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_inn"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="5"/>
    </properties>
   </object>
-  <object id="15" name="magic_core_shop" x="1120" y="824" width="32" height="6">
+  <object id="15" name="magic_core_shop" x="1124" y="824" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_shop_mc"/>
     <property name="target_position_x" type="int" value="7"/>
@@ -46,28 +46,28 @@
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>
-  <object id="19" name="monastery_vaults" x="1440" y="503" width="32" height="6">
+  <object id="19" name="monastery_vaults" x="1444" y="504" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_monastery_vaults"/>
     <property name="target_position_x" type="int" value="11"/>
     <property name="target_position_y" type="int" value="20"/>
    </properties>
   </object>
-  <object id="20" name="storage" x="1760" y="792" width="32" height="6">
+  <object id="20" name="storage" x="1764" y="792" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_storage"/>
     <property name="target_position_x" type="int" value="4"/>
     <property name="target_position_y" type="int" value="8"/>
    </properties>
   </object>
-  <object id="21" name="item_shop" x="1728" y="216" width="32" height="6">
+  <object id="21" name="item_shop" x="1732" y="216" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_shop"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="22" name="apothecary" x="1440" y="192" width="32" height="6">
+  <object id="22" name="apothecary" x="1444" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_ruinwatch_shop_apothecary"/>
     <property name="target_position_x" type="int" value="7"/>

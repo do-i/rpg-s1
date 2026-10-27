@@ -1,0 +1,15 @@
+id: town_05_ashenveil_house_01
+name: Ashenveil Village Home 01
+bgm: town.default
+npcs:
+- id: ashenveil_house_01
+  name: Mara
+  dialogue: ashenveil_house_01
+  position:
+  - 8
+  - 5
+  sprite: media/sprites/npc/village_female_person_elder_matron.tsx
+  default_facing: down
+  animation:
+    mode: step
+    speed: 0.5

@@ -53,8 +53,20 @@ column, the upper two tiles can cover a character while their floor cells
 remain walkable. The bottom tile is drawn below characters and its cell is
 blocked. A character standing below that base then appears in front of it.
 
-Use the upper/base split for tall props and walls. Buildings keep collision
-throughout their roof footprint, including cells whose art is in `foreground`.
+Use the upper/base split for tall props and walls. For buildings, follow the
+owner-corrected `town_05_ashenveil` layout: leave the topmost roof row walkable
+so characters can walk behind it, while the remaining roof and wall footprint
+stays solid. Every lower door tile must be free of collision. Place each
+building entrance portal in a thin strip inside the bottom of the lower door
+tile, spanning both tiles for a double door. In all towns, inset the strip four
+pixels from each side, start it 24 pixels down the tile, and use a height of
+six pixels. Leave a gap above the pavement: runtime portal contact includes
+edges, so extending the trigger to the tile boundary would also catch sideways
+passersby. Verify sideways passage and walking north into every entrance with
+the player's actual foot rectangle.
+This doorway convention applies to Ardel, Millhaven, Harborgate, Ruinwatch,
+Frostholm, and Ashenveil. Keep regional map-edge transitions and interior exits
+at their separately authored positions.
 Set collision independently of the visible art. Fallen logs and other low
 objects belong in `decoration`.
 Keep wall tiles in `architecture` and candles or signs in `decoration`.

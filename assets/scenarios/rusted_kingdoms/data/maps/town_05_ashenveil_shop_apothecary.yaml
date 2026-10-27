@@ -1,0 +1,48 @@
+id: town_05_ashenveil_shop_apothecary
+name: Ashenveil Apothecary
+bgm: town.default
+npcs:
+- id: apothecary
+  name: Marrow
+  dialogue: apothecary_ashenveil
+  position:
+  - 6
+  - 4
+  sprite: media/sprites/npc/female_wiz_01.tsx
+  default_facing: down
+  interaction_range: 2.5
+  animation:
+    mode: step
+    speed: 0.6
+shop:
+  items:
+  - id: hi_potion
+    buy_price: 500
+    unlock_flag: story_act2_started
+  - id: hi_ether
+    buy_price: 600
+    unlock_flag: story_act3_started
+  - id: remedy
+    buy_price: 300
+    unlock_flag: story_act2_started
+  - id: rest_capsule
+    buy_price: 500
+    unlock_flag: story_act3_started
+  - id: warp_stone
+    buy_price: 800
+    unlock_flag: story_act4_started
+  - id: potion
+    buy_price: 100
+    unlock_flag: story_quest_started
+  - id: antidote
+    buy_price: 80
+    unlock_flag: story_quest_started
+  - id: echo_herb
+    buy_price: 80
+    unlock_flag: story_quest_started
+  - id: ether
+    buy_price: 150
+    unlock_flag: story_quest_started
+  - id: revival_herb
+    buy_price: 800
+    unlock_flag: story_act2_started

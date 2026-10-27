@@ -18,21 +18,21 @@
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>
-  <object id="7" name="house_cheif" x="70.1213" y="147.818" width="53.9015" height="9.59847">
+  <object id="7" name="house_cheif" x="68" y="152" width="56" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_house_01"/>
     <property name="target_position_x" type="int" value="10"/>
     <property name="target_position_y" type="int" value="11"/>
    </properties>
   </object>
-  <object id="8" name="house_01" x="480.614" y="119.288" width="30.9091" height="5.57577">
+  <object id="8" name="house_01" x="484" y="120" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shop_01"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="9" name="inn" x="769.792" y="119.928" width="29.375" height="6.04167">
+  <object id="9" name="inn" x="772" y="120" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_inn_01"/>
     <property name="target_position_x" type="int" value="5"/>
@@ -46,35 +46,35 @@
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>
-  <object id="11" name="shrine" x="1663.63" y="149.687" width="31.7974" height="6.2748">
+  <object id="11" name="shrine" x="1668" y="152" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shrine"/>
     <property name="target_position_x" type="int" value="8"/>
     <property name="target_position_y" type="int" value="16"/>
    </properties>
   </object>
-  <object id="12" name="shop_weapon" x="1120.64" y="148.727" width="30.7273" height="5.72727">
+  <object id="12" name="shop_weapon" x="1124" y="152" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shop_weapon"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="14" name="shop_item" x="1154.63" y="407.125" width="27.375" height="4.375">
+  <object id="14" name="shop_item" x="1156" y="408" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shop_item"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="15" name="shop_mc" x="1443.58" y="404.333" width="26.6667" height="9.75">
+  <object id="15" name="shop_mc" x="1444" y="408" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shop_mc"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="16" name="shop_armor" x="1408.42" y="143.5" width="30" height="10">
+  <object id="16" name="shop_armor" x="1412" y="152" width="24" height="6">
    <properties>
     <property name="target_map" value="town_01_ardel_shop_armor"/>
     <property name="target_position_x" type="int" value="7"/>

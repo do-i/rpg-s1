@@ -211,7 +211,7 @@ class PortalValidationTests(unittest.TestCase):
                     validate_destination(maps / f"{props['target_map']}.tmx",
                                          (int(props['target_position_x']), int(props['target_position_y'])))
                 count += 1
-        self.assertEqual(count, 146)
+        self.assertEqual(count, 157)
 
 
 class PortalApiTests(unittest.TestCase):

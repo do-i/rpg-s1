@@ -948,7 +948,7 @@ entries:
         // B1.2's marshal camp: its field standard, the duel, and its two aftermath documents,
         // plus B3.7's three late-town apothecaries, plus the three companion conversations in
         // the staged Ardel epilogue, plus M14.06's nine stationary Zone 1-9 flavor NPCs.
-        assert_eq!(report.documents.len(), 146);
+        assert_eq!(report.documents.len(), 150);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
         assert_eq!(report.documents_with_only_accepted_dead_entries(), 4);

@@ -1,0 +1,15 @@
+id: town_05_ashenveil_house_02
+name: Ashenveil Village Home 02
+bgm: town.default
+npcs:
+- id: ashenveil_house_02
+  name: Tovin
+  dialogue: ashenveil_house_02
+  position:
+  - 4
+  - 3
+  sprite: media/sprites/npc/village_male_person_plain_dark_hair.tsx
+  default_facing: down
+  animation:
+    mode: step
+    speed: 0.5

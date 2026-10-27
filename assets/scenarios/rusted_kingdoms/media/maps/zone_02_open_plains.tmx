@@ -31,7 +31,7 @@
   <object id="9" name="zone_03_marshland" x="82.25" y="632.25" width="61.25" height="7.5">
    <properties>
     <property name="target_map" value="zone_03_marshland"/>
-    <property name="target_position_x" type="int" value="27"/>
+    <property name="target_position_x" type="int" value="40"/>
     <property name="target_position_y" type="int" value="1"/>
    </properties>
   </object>

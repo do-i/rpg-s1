@@ -1,0 +1,15 @@
+id: town_05_ashenveil_chief_house
+name: Ashenveil Chief's House
+bgm: town.default
+npcs:
+- id: ashenveil_chief_house
+  name: Chief Edric
+  dialogue: ashenveil_chief_house
+  position:
+  - 10
+  - 4
+  sprite: media/sprites/npc/village_male_person_older_villager.tsx
+  default_facing: down
+  animation:
+    mode: step
+    speed: 0.5

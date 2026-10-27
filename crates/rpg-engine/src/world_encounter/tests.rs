@@ -608,7 +608,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         RuntimeMapId::try_new("zone_03_marshland").unwrap(),
         // The production arrival tile for the Open Plains -> Marshland portal
         // (`world_transition::tests::marshland_portals_...`).
-        Position::new(27, 1),
+        Position::new(40, 1),
         CardinalDirection::Down,
     );
     app.world_mut()
@@ -665,7 +665,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
     let boss = enemies.iter().find(|enemy| enemy.is_boss()).unwrap();
     assert_eq!(boss.encounter_id(), "zone_03_marshland:boss");
     assert_eq!(boss.formation(), ["ratkin_plague_doctor_black_mask_doctor"]);
-    assert_eq!(boss.tile_position(), Position::new(0, 31));
+    assert_eq!(boss.tile_position(), Position::new(10, 43));
     assert!(enemies.iter().all(|enemy| !enemy.formation().is_empty()));
 
     let boss_position = boss.tile_position();
@@ -709,7 +709,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         .map_mut()
         .move_to(
             RuntimeMapId::try_new("zone_03_marshland").unwrap(),
-            Position::new(21, 37),
+            Position::new(57, 58),
             CardinalDirection::Down,
         );
     for _ in 0..5_000 {

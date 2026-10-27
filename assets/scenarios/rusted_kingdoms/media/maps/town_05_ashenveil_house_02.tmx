@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="10" height="9" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="2">
+ <tileset firstgid="73" source="../tilesets/shop.tsx" />
+ <tileset firstgid="137" source="../tilesets/outdoor.tsx" />
+ <tileset firstgid="811" source="../tilesets/collision.tsx" />
+ <tileset firstgid="812" source="../tilesets/windows.tsx" />
+ <tileset firstgid="832" source="../tilesets/interior.tsx" />
+ <tileset firstgid="1178" source="../tilesets/wall.tsx" />
+ <tileset firstgid="1358" source="../tilesets/floor.tsx" />
+ <objectgroup id="4" name="portals">
+  <object id="1" name="town_05_ashenveil" x="128" y="282" width="32" height="6">
+   <properties>
+    <property name="target_map" value="town_05_ashenveil" />
+    <property name="target_position_x" value="56" type="int" />
+    <property name="target_position_y" value="17" type="int" />
+   </properties>
+  </object>
+ </objectgroup>
+ <layer id="1" name="collision" width="10" height="9" visible="0">
+  <data encoding="csv">
+811,811,811,811,811,811,811,811,811,811,
+811,811,811,811,811,811,811,811,811,811,
+811,811,811,811,811,811,811,811,811,811,
+811,0,811,811,0,0,0,0,0,811,
+811,0,811,0,0,0,0,811,0,811,
+811,0,0,0,0,0,0,0,0,811,
+811,811,811,811,0,811,811,811,811,811,
+811,811,811,811,0,811,811,811,811,811,
+811,811,811,811,0,811,811,811,811,811
+</data>
+ </layer>
+ <layer id="2" name="ground" width="10" height="9">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,
+0,1358,1358,1358,1358,1358,1358,1358,1358,0,
+0,1358,1358,1358,1358,1358,1358,1358,1358,0,
+0,1358,1358,1358,1358,1358,1358,1358,1358,0,
+0,1358,1358,1358,1358,1358,1358,1358,1358,0,
+0,1358,1358,1358,1358,1358,1358,1358,1358,0,
+0,0,0,0,1359,0,0,0,0,0,
+0,0,0,0,1359,0,0,0,0,0,
+0,0,0,0,1359,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="5" name="architecture" width="10" height="9">
+  <data encoding="csv">
+118,110,110,110,110,110,110,110,110,119,
+117,1190,1191,1191,1191,1191,1191,1191,1192,117,
+117,1208,1209,1209,1209,1209,1209,1209,1210,117,
+117,0,0,0,0,0,0,0,0,117,
+117,0,0,0,0,0,0,0,0,117,
+117,0,0,0,0,0,0,0,0,117,
+126,110,110,111,0,109,110,110,110,127,
+1222,1223,1223,1224,0,1222,1223,1223,1223,1224,
+1240,1241,1241,1242,0,1240,1241,1241,1241,1242
+</data>
+ </layer>
+ <layer id="3" name="decoration" width="10" height="9">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,
+0,0,822,0,0,0,0,822,0,0,
+0,0,827,0,0,0,0,827,0,0,
+0,0,843,877,0,0,0,0,0,0,
+0,0,863,0,0,0,873,890,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="6" name="foreground" width="10" height="9">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+</map>

@@ -12,14 +12,14 @@
  <tileset firstgid="2452" source="../tilesets/wall.tsx"/>
  <tileset firstgid="2632" source="../tilesets/floor.tsx"/>
  <objectgroup id="8" name="portals">
-  <object id="14" name="inn" x="288.364" y="797" width="31.4545" height="5">
+  <object id="14" name="inn" x="292" y="792" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_inn"/>
     <property name="target_position_x" type="int" value="5"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="15" name="harbormaster" x="1120.36" y="828" width="32" height="5">
+  <object id="15" name="harbormaster" x="1124" y="824" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_harbormaster"/>
     <property name="target_position_x" type="int" value="10"/>
@@ -29,53 +29,53 @@
   <object id="16" name="zone_03_marshland" x="99.5682" y="-0.55303" width="55.0909" height="10.3636">
    <properties>
     <property name="target_map" value="zone_03_marshland"/>
-    <property name="target_position_x" type="int" value="21"/>
-    <property name="target_position_y" type="int" value="37"/>
+    <property name="target_position_x" type="int" value="57"/>
+    <property name="target_position_y" type="int" value="58"/>
    </properties>
   </object>
-  <object id="19" name="shop_weapon" x="192" y="1178" width="32" height="6">
+  <object id="19" name="shop_weapon" x="196" y="1176" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_shop_weapon"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="20" name="shop_armor" x="480" y="1178" width="32" height="6">
+  <object id="20" name="shop_armor" x="484" y="1176" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_shop_armor"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="21" name="shop_item" x="768" y="1178" width="32" height="6">
+  <object id="21" name="shop_item" x="772" y="1176" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_shop_item"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="22" name="shop_mc" x="1056" y="1178" width="32" height="6">
+  <object id="22" name="shop_mc" x="1060" y="1176" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_shop_mc"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="10"/>
    </properties>
   </object>
-  <object id="23" name="village_house" x="640" y="186" width="32" height="6">
+  <object id="23" name="village_house" x="644" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_shop"/>
     <property name="target_position_x" type="int" value="7"/>
     <property name="target_position_y" type="int" value="9"/>
    </properties>
   </object>
-  <object id="24" name="northeast_house" x="1152" y="186" width="32" height="6">
+  <object id="24" name="northeast_house" x="1156" y="184" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_house_02"/>
     <property name="target_position_x" type="int" value="4"/>
     <property name="target_position_y" type="int" value="7"/>
    </properties>
   </object>
-  <object id="25" name="northwest_storehouse" x="224" y="506" width="32" height="6">
+  <object id="25" name="northwest_storehouse" x="228" y="504" width="24" height="6">
    <properties>
     <property name="target_map" value="town_03_harborgate_storage"/>
     <property name="target_position_x" type="int" value="7"/>
