@@ -608,8 +608,9 @@ fn track_catalog_load(
     catalog.status = CatalogStatus::Ready;
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum InventoryTab {
+    #[default]
     All,
     New,
     Recovery,
@@ -735,7 +736,7 @@ pub(crate) fn inventory_ids<'a>(
     ids
 }
 
-fn item_matches_tab(item: &ItemDefinition, is_new: bool, tab: InventoryTab) -> bool {
+pub(crate) fn item_matches_tab(item: &ItemDefinition, is_new: bool, tab: InventoryTab) -> bool {
     match tab {
         InventoryTab::All => true,
         InventoryTab::New => is_new,

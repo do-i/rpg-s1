@@ -10,17 +10,18 @@ use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use super::{
     PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
-    ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment, owned_exchangeable_cores,
-    pending_max, sell_rows, sellable_tags,
+    ShopFocus, ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment,
+    owned_exchangeable_cores, pending_max, sell_rows,
     sprites::{ServiceKeeper, ServiceSprites},
 };
 use crate::{
     dialogue_portrait::DialoguePortrait,
     field_menu_domain::{
-        FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
+        FieldMenuCatalog, InventoryTab, can_equip, derived_stats, item_description, item_name,
+        preview_stats,
     },
     game_state::GameState,
-    item_images::spawn_item_icon,
+    item_images::{spawn_item_icon, spawn_item_image},
     menu_chrome::{
         ScrollWindow, scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
         spawn_scroll_list, spawn_section_rule, spawn_status_panel, spawn_status_text,
@@ -33,7 +34,7 @@ use crate::{
     scenario_item::ItemDefinition,
     scenario_recipe::RecipeDefinition,
     scenario_root::ScenarioRoot,
-    service_domain::{can_sell, sell_price},
+    service_domain::sell_price,
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
 };
@@ -46,9 +47,6 @@ pub(super) struct ServiceRoot;
 /// Panel width for the plain list and confirmation pages (source `MODAL_W`).
 const PANEL_WIDTH: f32 = 620.0;
 
-/// Panel width once a detail column is beside the list — the source widens the same way for its
-/// equipment preview (`item_shop_renderer.py`).
-const WIDE_PANEL_WIDTH: f32 = 980.0;
 const APOTHECARY_WIDTH: f32 = 1228.0;
 const APOTHECARY_HEIGHT: f32 = 718.0;
 
@@ -61,17 +59,8 @@ const APOTHECARY_HEIGHT: f32 = 718.0;
 /// ceiling is exact here.
 const PANEL_MAX_HEIGHT: f32 = 700.0;
 
-/// Fixed buy-page detail footprint, sized for the title, description, and all five party preview
-/// rows. Consumables omit the equipment preview, but must keep this space reserved so moving the
-/// stock cursor never resizes either column or the containing modal.
-const BUY_DETAIL_HEIGHT: f32 = 500.0;
-
-/// Two lines of 15px description text; the floor the description never shrinks below.
-const BUY_DESCRIPTION_MIN_HEIGHT: f32 = 40.0;
-
-/// Keeps compatible and incompatible party rows the same height. Compatible rows add a stat
-/// delta line; incompatible rows leave that line empty, but the cursor must not reflow the panel.
-const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 46.0;
+/// One line per member leaves room for all five previews and the quantity controls.
+const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 28.0;
 
 /// Keeper face sizes: the inn draws a larger portrait than the counter services.
 const KEEPER_FACE: f32 = 64.0;
@@ -139,17 +128,17 @@ pub(super) fn sync_service_overlay(
                 .spawn((
                     Node {
                         width: px(panel_width(&state)),
-                        height: if is_apothecary(&state) {
+                        height: if is_apothecary(&state) || is_item_shop(&state) {
                             px(APOTHECARY_HEIGHT)
                         } else {
                             Val::Auto
                         },
-                        max_height: px(if is_apothecary(&state) {
+                        max_height: px(if is_apothecary(&state) || is_item_shop(&state) {
                             APOTHECARY_HEIGHT
                         } else {
                             PANEL_MAX_HEIGHT
                         }),
-                        padding: if is_apothecary(&state) {
+                        padding: if is_apothecary(&state) || is_item_shop(&state) {
                             UiRect {
                                 left: px(22),
                                 right: px(22),
@@ -159,18 +148,26 @@ pub(super) fn sync_service_overlay(
                         } else {
                             UiRect::all(px(22))
                         },
-                        border: UiRect::all(px(if is_apothecary(&state) { 1 } else { 2 })),
+                        border: UiRect::all(px(if is_apothecary(&state) || is_item_shop(&state) {
+                            1
+                        } else {
+                            2
+                        })),
                         border_radius: BorderRadius::all(px(8)),
                         flex_direction: FlexDirection::Column,
-                        row_gap: px(if is_apothecary(&state) { 0 } else { 12 }),
+                        row_gap: px(if is_apothecary(&state) || is_item_shop(&state) {
+                            0
+                        } else {
+                            12
+                        }),
                         ..default()
                     },
-                    BackgroundColor(if is_apothecary(&state) {
+                    BackgroundColor(if is_apothecary(&state) || is_item_shop(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
                     } else {
                         Color::srgba(0.025, 0.025, 0.09, 0.97)
                     }),
-                    BorderColor::all(if is_apothecary(&state) {
+                    BorderColor::all(if is_apothecary(&state) || is_item_shop(&state) {
                         status_border()
                     } else {
                         theme.name_entry_border_color
@@ -181,6 +178,12 @@ pub(super) fn sync_service_overlay(
                         apothecary::spawn_header(panel, &font, &game, face);
                         apothecary::spawn_page(panel, &font, &state, &catalog, &game);
                         apothecary::spawn_footer(panel, &font, &state);
+                    } else if is_item_shop(&state) {
+                        spawn_item_shop_header(panel, &font, &state, &game, face);
+                        spawn_service_body(panel, &font, &state, &catalog, &game);
+                        spawn_section_rule(panel);
+                        spawn_status_text(panel, service_hint(&state), &font, 12.0, status_faint());
+                        spawn_toast(panel, &font, &state);
                     } else {
                         spawn_service_header(panel, &font, &state, &game, face);
                         spawn_section_rule(panel);
@@ -208,7 +211,9 @@ pub(super) fn cleanup_service_ui(
 fn panel_width(state: &ServiceUiState) -> f32 {
     match state.page {
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => APOTHECARY_WIDTH,
-        Some(ServicePage::Buy) => WIDE_PANEL_WIDTH,
+        Some(
+            ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip,
+        ) => APOTHECARY_WIDTH,
         _ => PANEL_WIDTH,
     }
 }
@@ -218,6 +223,93 @@ fn is_apothecary(state: &ServiceUiState) -> bool {
         state.page,
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail)
     )
+}
+
+fn is_item_shop(state: &ServiceUiState) -> bool {
+    matches!(
+        state.request,
+        Some(ServiceRequest::Shop(
+            DialogueShopKind::Item | DialogueShopKind::Weapon | DialogueShopKind::Armor
+        ))
+    ) && matches!(
+        state.page,
+        Some(ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip)
+    )
+}
+
+fn spawn_item_shop_header(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &ServiceUiState,
+    game: &GameState,
+    face: Option<DialoguePortrait>,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                height: px(76),
+                flex_shrink: 0.0,
+                align_items: AlignItems::Center,
+                column_gap: px(16),
+                padding: UiRect::bottom(px(15)),
+                margin: UiRect::bottom(px(16)),
+                border: UiRect::bottom(px(1)),
+                ..default()
+            },
+            BorderColor::all(status_border()),
+            Name::new("Item shop header"),
+        ))
+        .with_children(|header| {
+            spawn_keeper_frame(header, font, 60.0, face);
+            header
+                .spawn(Node {
+                    width: px(12),
+                    height: px(42),
+                    flex_shrink: 0.0,
+                    ..default()
+                })
+                .with_children(|bars| spawn_header_bars(bars, 42.0, 0.0));
+            header
+                .spawn(Node {
+                    flex_grow: 1.0,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(3),
+                    ..default()
+                })
+                .with_children(|title| {
+                    spawn_status_text(
+                        title,
+                        service_title(state).to_uppercase(),
+                        font,
+                        30.0,
+                        status_ink(),
+                    );
+                    spawn_status_text(title, "GOODS BOUGHT AND SOLD", font, 11.0, status_muted());
+                });
+            header
+                .spawn((
+                    Node {
+                        padding: UiRect::left(px(28)),
+                        border: UiRect::left(px(1)),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::End,
+                        row_gap: px(3),
+                        ..default()
+                    },
+                    BorderColor::all(status_border()),
+                ))
+                .with_children(|wallet| {
+                    spawn_status_text(wallet, "YOUR COIN", font, 11.0, status_muted());
+                    spawn_status_text(
+                        wallet,
+                        format!("{} GP", game.repository().gp()),
+                        font,
+                        26.0,
+                        status_gold(),
+                    );
+                });
+        });
 }
 
 fn keeper_face(
@@ -330,9 +422,12 @@ fn spawn_service_body(
     game: &GameState,
 ) {
     match state.page {
-        Some(ServicePage::ShopMenu) => spawn_shop_menu(parent, font, state),
         Some(ServicePage::Buy) => spawn_buy_page(parent, font, state, catalog, game),
         Some(ServicePage::Sell) => spawn_sell_page(parent, font, state, catalog, game),
+        Some(ServicePage::ShopConfirm) => {
+            spawn_item_shop(parent, font, state, catalog, game);
+            spawn_shop_confirmation(parent, font, state, catalog, game);
+        }
         Some(ServicePage::MagicCore) => spawn_core_page(parent, font, state, catalog, game),
         Some(ServicePage::Inn) => spawn_inn_page(parent, font, catalog, game),
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
@@ -349,33 +444,6 @@ fn spawn_service_body(
     }
 }
 
-// ── Shop menu ────────────────────────────────────────────────────────────────
-
-fn spawn_shop_menu(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-) {
-    parent
-        .spawn(Node {
-            width: percent(100),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(6),
-            ..default()
-        })
-        .with_children(|list| {
-            for (index, (label, subtitle)) in [
-                ("Buy", "browse the counter's stock"),
-                ("Sell", "turn carried goods into GP"),
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                spawn_choice_row(list, font, label, subtitle, index == state.selected);
-            }
-        });
-}
-
 // ── Buy ──────────────────────────────────────────────────────────────────────
 
 fn spawn_buy_page(
@@ -385,98 +453,542 @@ fn spawn_buy_page(
     catalog: &FieldMenuCatalog,
     game: &GameState,
 ) {
-    let rows = buy_rows(state, catalog, game);
-    spawn_columns(parent, |columns| {
-        spawn_status_panel(columns, list_panel_node(), "STOCK", font, |panel| {
-            if rows.is_empty() {
-                spawn_status_text(
-                    panel,
-                    "No stock is currently unlocked.",
-                    font,
-                    17.0,
-                    status_muted(),
-                );
-                return;
-            }
-            let window =
-                state
-                    .scroll
-                    .window("buy", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
-                for index in window.indices() {
-                    let row = &rows[index];
-                    let price = row.buy_price().get();
-                    let affordable = game.repository().gp() >= price;
-                    let item = catalog.item(row.id());
-                    spawn_list_row(
-                        panel,
-                        font,
-                        ListRow {
-                            item_id: Some(row.id()),
-                            selected: index == state.selected,
-                            accent: item.map_or_else(status_teal, item_accent),
-                            label: item.map_or(row.id(), |item| item_name(item)),
-                            note: format!("owned {}", game.repository().item_count(row.id())),
-                            value: format!("{price} GP"),
-                            value_color: if affordable {
+    spawn_item_shop(parent, font, state, catalog, game);
+}
+
+fn spawn_item_shop(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) {
+    let buying = state
+        .pending
+        .map_or(state.page == Some(ServicePage::Buy), |pending| {
+            pending == PendingTransaction::Buy
+        });
+    let buy = buy_rows(state, catalog, game);
+    let sell = sell_rows(state, catalog, game);
+    let row_count = if buying { buy.len() } else { sell.len() };
+    parent
+        .spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            min_height: px(0),
+            flex_direction: FlexDirection::Column,
+            row_gap: px(10),
+            ..default()
+        })
+        .with_children(|body| {
+            body.spawn(Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: px(8),
+                ..default()
+            })
+            .with_children(|bar| {
+                for (index, label) in ["BUY", "SELL"].into_iter().enumerate() {
+                    let selected = buying == (index == 0);
+                    bar.spawn((
+                        Node {
+                            padding: UiRect::axes(px(18), px(7)),
+                            border: UiRect::all(px(
+                                if selected && state.shop_focus == ShopFocus::Mode {
+                                    2
+                                } else {
+                                    1
+                                },
+                            )),
+                            border_radius: BorderRadius::all(px(15)),
+                            ..default()
+                        },
+                        BackgroundColor(if selected {
+                            Color::srgba_u8(72, 49, 25, 230)
+                        } else {
+                            Color::srgba_u8(15, 15, 20, 220)
+                        }),
+                        BorderColor::all(if selected {
+                            status_border_active()
+                        } else {
+                            status_border()
+                        }),
+                    ))
+                    .with_children(|pill| {
+                        spawn_status_text(
+                            pill,
+                            label,
+                            font,
+                            14.0,
+                            if selected {
                                 status_gold()
                             } else {
-                                status_ember()
+                                status_muted()
                             },
-                            dim: !affordable,
-                        },
-                    );
+                        )
+                    });
+                }
+                spawn_status_text(bar, "LEFT / RIGHT", font, 12.0, status_faint());
+            });
+            body.spawn(Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
+                column_gap: px(7),
+                row_gap: px(5),
+                ..default()
+            })
+            .with_children(|pills| {
+                for tab in InventoryTab::ALL {
+                    let selected = tab == state.shop_category;
+                    pills
+                        .spawn((
+                            Node {
+                                padding: UiRect::axes(px(11), px(5)),
+                                border: UiRect::all(px(
+                                    if selected && state.shop_focus == ShopFocus::Category {
+                                        2
+                                    } else {
+                                        1
+                                    },
+                                )),
+                                border_radius: BorderRadius::all(px(13)),
+                                ..default()
+                            },
+                            BackgroundColor(if selected {
+                                Color::srgba_u8(72, 49, 25, 220)
+                            } else {
+                                Color::srgba_u8(15, 15, 20, 210)
+                            }),
+                            BorderColor::all(if selected {
+                                status_border_active()
+                            } else {
+                                status_border()
+                            }),
+                        ))
+                        .with_children(|pill| {
+                            spawn_status_text(
+                                pill,
+                                tab.label(),
+                                font,
+                                12.0,
+                                if selected {
+                                    status_gold()
+                                } else {
+                                    status_muted()
+                                },
+                            )
+                        });
                 }
             });
-            spawn_window_footer(panel, font, state.selected, window);
-        });
-        spawn_status_panel(columns, buy_detail_panel_node(), "DETAIL", font, |panel| {
-            let Some(item) = rows
-                .get(state.selected)
-                .and_then(|row| catalog.item(row.id()))
-            else {
-                spawn_status_text(panel, "Nothing to inspect.", font, 16.0, status_muted());
-                return;
-            };
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    align_items: AlignItems::Center,
-                    ..default()
-                })
-                .with_children(|heading| {
-                    spawn_item_icon(heading, item.id(), 56.0);
-                    heading
-                        .spawn(Node {
+            if !buying && let Some(tag) = state.sell_tag.as_deref() {
+                spawn_status_text(
+                    body,
+                    format!("TAG FILTER: {tag}  ·  T to change"),
+                    font,
+                    12.0,
+                    status_teal(),
+                );
+            }
+            spawn_columns(body, |columns| {
+                spawn_status_panel(
+                    columns,
+                    Node {
+                        width: px(420),
+                        flex_shrink: 0.0,
+                        height: percent(100),
+                        min_height: px(0),
+                        ..stacked_panel_node()
+                    },
+                    if buying { "STOCK" } else { "CARRIED" },
+                    font,
+                    |panel| {
+                        let window =
+                            state
+                                .scroll
+                                .window("shop-items", state.selected, row_count, 5);
+                        spawn_scroll_list(panel, window, scroll_list_node(6.0), |list| {
+                            if row_count == 0 {
+                                spawn_status_text(
+                                    list,
+                                    if buying {
+                                        "No stock in this category."
+                                    } else {
+                                        "Nothing to sell in this category."
+                                    },
+                                    font,
+                                    17.0,
+                                    status_muted(),
+                                );
+                            }
+                            for index in window.indices() {
+                                if buying {
+                                    let row = buy[index];
+                                    let item = catalog.item(row.id());
+                                    spawn_list_row(
+                                        list,
+                                        font,
+                                        ListRow {
+                                            item_id: Some(row.id()),
+                                            selected: index == state.selected,
+                                            accent: item.map_or_else(status_teal, item_accent),
+                                            label: item.map_or(row.id(), |i| item_name(i)),
+                                            note: format!(
+                                                "owned {}",
+                                                game.repository().item_count(row.id())
+                                            ),
+                                            value: format!("{} GP", row.buy_price().get()),
+                                            value_color: status_gold(),
+                                            dim: false,
+                                        },
+                                    );
+                                } else {
+                                    let item = sell[index];
+                                    spawn_list_row(
+                                        list,
+                                        font,
+                                        ListRow {
+                                            item_id: Some(item.id()),
+                                            selected: index == state.selected,
+                                            accent: item_accent(item),
+                                            label: item_name(item),
+                                            note: format!(
+                                                "x{} owned",
+                                                game.repository().item_count(item.id())
+                                            ),
+                                            value: sell_price(item).map_or_else(
+                                                || "—".to_owned(),
+                                                |v| format!("{v} GP"),
+                                            ),
+                                            value_color: status_gold(),
+                                            dim: false,
+                                        },
+                                    );
+                                }
+                            }
+                        });
+                        spawn_window_footer(panel, font, state.selected, window);
+                    },
+                );
+                spawn_status_panel(
+                    columns,
+                    Node {
+                        flex_basis: px(0),
+                        flex_grow: 1.0,
+                        height: percent(100),
+                        min_height: px(0),
+                        ..stacked_panel_node()
+                    },
+                    "ITEM DETAILS",
+                    font,
+                    |panel| {
+                        let item = if buying {
+                            buy.get(state.selected).and_then(|r| catalog.item(r.id()))
+                        } else {
+                            sell.get(state.selected).copied()
+                        };
+                        let Some(item) = item else {
+                            spawn_status_text(
+                                panel,
+                                "Select an item to see its details.",
+                                font,
+                                18.0,
+                                status_muted(),
+                            );
+                            return;
+                        };
+                        panel
+                            .spawn(Node {
+                                width: percent(100),
+                                height: px(128),
+                                min_height: px(128),
+                                flex_shrink: 0.0,
+                                flex_direction: FlexDirection::Row,
+                                align_items: AlignItems::Center,
+                                column_gap: px(22),
+                                ..default()
+                            })
+                            .with_children(|heading| {
+                                spawn_item_image(heading, item.id());
+                                heading
+                                    .spawn(Node {
+                                        flex_grow: 1.0,
+                                        flex_basis: px(0),
+                                        min_width: px(0),
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: px(10),
+                                        ..default()
+                                    })
+                                    .with_children(|copy| {
+                                        spawn_status_text(
+                                            copy,
+                                            item_name(item),
+                                            font,
+                                            27.0,
+                                            status_gold(),
+                                        );
+                                        spawn_status_text(
+                                            copy,
+                                            item_description(item),
+                                            font,
+                                            17.0,
+                                            status_ink(),
+                                        );
+                                    });
+                            });
+                        spawn_section_rule(panel);
+                        spawn_equipment_preview(panel, font, state, catalog, game, item);
+                        panel.spawn((Node {
+                            width: percent(100),
                             flex_grow: 1.0,
-                            min_width: px(0),
-                            flex_direction: FlexDirection::Column,
-                            row_gap: px(8),
+                            ..default()
+                        },));
+                        panel
+                            .spawn((
+                                Node {
+                                    width: percent(100),
+                                    min_height: px(64),
+                                    flex_shrink: 0.0,
+                                    flex_direction: FlexDirection::Row,
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::SpaceBetween,
+                                    padding: UiRect::horizontal(px(18)),
+                                    border: UiRect::all(px(1)),
+                                    border_radius: BorderRadius::all(px(5)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba_u8(12, 12, 16, 230)),
+                                BorderColor::all(if state.shop_focus == ShopFocus::Detail {
+                                    status_border_active()
+                                } else {
+                                    status_border()
+                                }),
+                            ))
+                            .with_children(|qty| {
+                                qty.spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    align_items: AlignItems::Center,
+                                    row_gap: px(4),
+                                    ..default()
+                                })
+                                .with_children(|controls| {
+                                    spawn_status_text(controls, "+", font, 17.0, status_gold());
+                                    spawn_status_text(controls, "-", font, 17.0, status_gold());
+                                });
+                                spawn_status_text(
+                                    qty,
+                                    format!("{}", state.quantity),
+                                    font,
+                                    31.0,
+                                    status_ink(),
+                                );
+                                let unit = if buying {
+                                    buy.get(state.selected).map_or(0, |r| r.buy_price().get())
+                                } else {
+                                    sell.get(state.selected)
+                                        .and_then(|r| sell_price(r))
+                                        .unwrap_or(0)
+                                };
+                                spawn_status_text(
+                                    qty,
+                                    format!("{} GP total", unit.saturating_mul(state.quantity)),
+                                    font,
+                                    21.0,
+                                    status_gold(),
+                                );
+                                spawn_status_text(
+                                    qty,
+                                    if buying {
+                                        "ENTER  ·  BUY"
+                                    } else {
+                                        "ENTER  ·  SELL"
+                                    },
+                                    font,
+                                    17.0,
+                                    status_ink(),
+                                );
+                            });
+                        let unit = if buying {
+                            buy.get(state.selected).map_or(0, |r| r.buy_price().get())
+                        } else {
+                            sell.get(state.selected)
+                                .and_then(|r| sell_price(r))
+                                .unwrap_or(0)
+                        };
+                        let delta = unit.saturating_mul(state.quantity);
+                        let balance = if buying {
+                            game.repository().gp().saturating_sub(delta)
+                        } else {
+                            game.repository()
+                                .gp()
+                                .saturating_add(delta)
+                                .min(game.repository().gp_cap())
+                        };
+                        spawn_status_text(
+                            panel,
+                            format!("{} GP per item   ·   After transaction: {balance} GP", unit),
+                            font,
+                            14.0,
+                            status_muted(),
+                        );
+                    },
+                );
+            });
+        });
+}
+
+fn spawn_sell_page(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) {
+    spawn_item_shop(parent, font, state, catalog, game);
+}
+
+fn spawn_shop_confirmation(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) {
+    let id = state.pending_id.as_deref().unwrap_or_default();
+    let item = catalog.item(id);
+    let buying = state.pending == Some(PendingTransaction::Buy);
+    let unit = if buying {
+        active_shop(state, catalog, game)
+            .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
+            .map_or(0, |row| row.buy_price().get())
+    } else {
+        item.and_then(sell_price).unwrap_or(0)
+    };
+    let amount = unit.saturating_mul(state.quantity);
+    let balance = if buying {
+        game.repository().gp().saturating_sub(amount)
+    } else {
+        game.repository()
+            .gp()
+            .saturating_add(amount)
+            .min(game.repository().gp_cap())
+    };
+    parent
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(-22),
+                right: px(-22),
+                top: px(-20),
+                bottom: px(-14),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba_u8(5, 5, 8, 190)),
+            ZIndex(2),
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: px(560),
+                        min_height: px(300),
+                        padding: UiRect::all(px(25)),
+                        border: UiRect::all(px(2)),
+                        border_radius: BorderRadius::all(px(8)),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(18),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba_u8(23, 24, 30, 255)),
+                    BorderColor::all(status_border_active()),
+                ))
+                .with_children(|dialog| {
+                    spawn_status_text(dialog, "CONFIRM TRANSACTION", font, 16.0, status_gold());
+                    spawn_status_text(
+                        dialog,
+                        format!(
+                            "{} × {}",
+                            state.quantity,
+                            item.map_or(id, |value| item_name(value))
+                        ),
+                        font,
+                        30.0,
+                        status_ink(),
+                    );
+                    spawn_status_text(dialog, format!("{} GP", amount), font, 28.0, status_gold());
+                    spawn_status_text(
+                        dialog,
+                        format!("Balance after: {balance} GP"),
+                        font,
+                        18.0,
+                        status_ready(),
+                    );
+                    dialog
+                        .spawn(Node {
+                            width: percent(100),
+                            flex_direction: FlexDirection::Row,
+                            justify_content: JustifyContent::Center,
+                            column_gap: px(12),
                             ..default()
                         })
-                        .with_children(|copy| {
-                            spawn_status_text(copy, item_name(item), font, 21.0, status_gold());
-                            copy.spawn(buy_description_node())
-                                .with_children(|description| {
-                                    spawn_status_text(
-                                        description,
-                                        item_description(item),
-                                        font,
-                                        15.0,
-                                        status_ink(),
-                                    );
-                                });
+                        .with_children(|buttons| {
+                            for (label, selected) in [
+                                (
+                                    if buying {
+                                        "BUY  ·  ENTER"
+                                    } else {
+                                        "SELL  ·  ENTER"
+                                    },
+                                    true,
+                                ),
+                                ("CANCEL  ·  ESC", false),
+                            ] {
+                                buttons
+                                    .spawn((
+                                        Node {
+                                            padding: UiRect::axes(px(20), px(11)),
+                                            border: UiRect::all(px(if selected { 2 } else { 1 })),
+                                            border_radius: BorderRadius::all(px(5)),
+                                            ..default()
+                                        },
+                                        BackgroundColor(if selected {
+                                            Color::srgba_u8(86, 61, 31, 255)
+                                        } else {
+                                            Color::srgba_u8(14, 14, 18, 255)
+                                        }),
+                                        BorderColor::all(if selected {
+                                            status_border_active()
+                                        } else {
+                                            status_border()
+                                        }),
+                                    ))
+                                    .with_children(|button| {
+                                        spawn_status_text(
+                                            button,
+                                            label,
+                                            font,
+                                            17.0,
+                                            if selected {
+                                                status_gold()
+                                            } else {
+                                                status_muted()
+                                            },
+                                        )
+                                    });
+                            }
                         });
                 });
-            spawn_equipment_preview(panel, font, state, catalog, game, item);
         });
-    });
 }
 
 /// The bordered party panel Python draws beside an equippable purchase.
 ///
-/// Each member shows what currently fills the slot and the signed change every stat would take,
-/// with the focused row highlighted — Left/Right moves that focus.
+/// Each member shows what currently fills the slot and the signed change every stat would take.
 fn spawn_equipment_preview(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -489,7 +1001,6 @@ fn spawn_equipment_preview(
     if !is_equipment(item) {
         return;
     }
-    spawn_section_rule(parent);
     spawn_status_text(parent, "IF EQUIPPED", font, 13.0, status_gold());
     for (index, member) in game.party().members().enumerate() {
         let focused = index == state.equip_selection;
@@ -550,9 +1061,10 @@ fn spawn_preview_row(
             }),
         ))
         .with_children(|row| {
-            // Name and current gear share a line so five members leave room for the description.
+            // Keep the member, worn gear, and deltas on one line for a full party.
             row.spawn(Node {
-                width: percent(100),
+                width: percent(45),
+                flex_shrink: 0.0,
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Center,
@@ -564,7 +1076,8 @@ fn spawn_preview_row(
                 spawn_status_text(line, subtitle, font, 12.0, status_muted());
             });
             row.spawn(Node {
-                width: percent(100),
+                flex_grow: 1.0,
+                justify_content: JustifyContent::End,
                 flex_direction: FlexDirection::Row,
                 column_gap: px(10),
                 ..default()
@@ -579,8 +1092,10 @@ fn equipment_preview_row_node(focused: bool) -> Node {
         height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
         min_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
         max_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
-        flex_direction: FlexDirection::Column,
-        justify_content: JustifyContent::Center,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        column_gap: px(12),
+        flex_shrink: 0.0,
         padding: UiRect::axes(px(10), px(3)),
         border: UiRect::all(px(if focused { 2 } else { 1 })),
         border_radius: BorderRadius::all(px(4)),
@@ -594,71 +1109,6 @@ fn delta_color(delta: i32) -> Color {
         -1 => status_ember(),
         _ => status_faint(),
     }
-}
-
-// ── Sell ─────────────────────────────────────────────────────────────────────
-
-fn spawn_sell_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    let filter = state.sell_tag.as_deref().unwrap_or("ALL");
-    let tag_count = sellable_tags(catalog, game).len();
-    spawn_status_text(
-        parent,
-        format!(
-            "FILTER  {}   ·   {tag_count} TAGS AVAILABLE",
-            filter.to_uppercase()
-        ),
-        font,
-        13.0,
-        status_teal(),
-    );
-    let rows = sell_rows(state, catalog, game);
-    spawn_status_panel(parent, stacked_panel_node(), "CARRIED", font, |panel| {
-        if rows.is_empty() {
-            spawn_status_text(
-                panel,
-                "There is nothing to sell.",
-                font,
-                17.0,
-                status_muted(),
-            );
-            return;
-        }
-        let window = state
-            .scroll
-            .window("sell", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
-            for index in window.indices() {
-                let item = &rows[index];
-                let sellable = can_sell(game.repository(), item);
-                spawn_list_row(
-                    panel,
-                    font,
-                    ListRow {
-                        item_id: Some(item.id()),
-                        selected: index == state.selected,
-                        accent: item_accent(item),
-                        label: item_name(item),
-                        note: format!("x{}", game.repository().item_count(item.id())),
-                        value: sell_price(item)
-                            .map_or_else(|| "—".to_owned(), |price| format!("{price} GP")),
-                        value_color: if sellable {
-                            status_gold()
-                        } else {
-                            status_faint()
-                        },
-                        dim: !sellable,
-                    },
-                );
-            }
-        });
-        spawn_window_footer(panel, font, state.selected, window);
-    });
 }
 
 // ── Magic core ───────────────────────────────────────────────────────────────
@@ -1005,7 +1455,14 @@ fn spawn_window_footer(
     window: ScrollWindow,
 ) {
     let len = window.len;
-    let position = format!("{:02} OF {len:02}", selected.min(len.saturating_sub(1)) + 1);
+    let position = format!(
+        "{:02} OF {len:02}",
+        if len == 0 {
+            0
+        } else {
+            selected.min(len - 1) + 1
+        }
+    );
     let text = if window.scrolls() {
         let shown = window.indices();
         format!(
@@ -1026,25 +1483,13 @@ fn spawn_columns(
     parent
         .spawn(Node {
             width: percent(100),
+            flex_grow: 1.0,
+            min_height: px(0),
             flex_direction: FlexDirection::Row,
             column_gap: px(14),
             ..default()
         })
         .with_children(columns);
-}
-
-/// The list frame for a page whose list sits *beside* a detail column.
-///
-/// `flex_basis: 0` with `flex_grow` divides the row's width. It must not be used in the column
-/// pages: there the same properties would divide *height* instead, and since the overlay panel
-/// is sized by its content there is no free height to grow into — the frame would collapse to
-/// zero and its rows would spill outside the border. Those pages take [`stacked_panel_node`].
-fn list_panel_node() -> Node {
-    Node {
-        flex_basis: px(0),
-        flex_grow: 1.0,
-        ..stacked_panel_node()
-    }
 }
 
 /// The list frame for a page that stacks its list under the header, sized by its own rows.
@@ -1056,47 +1501,6 @@ fn stacked_panel_node() -> Node {
         padding: UiRect::all(px(14)),
         border: UiRect::all(px(1)),
         border_radius: BorderRadius::all(px(6)),
-        ..default()
-    }
-}
-
-fn detail_panel_node() -> Node {
-    Node {
-        width: px(380),
-        flex_direction: FlexDirection::Column,
-        row_gap: px(8),
-        padding: UiRect::all(px(14)),
-        border: UiRect::all(px(1)),
-        border_radius: BorderRadius::all(px(6)),
-        ..default()
-    }
-}
-
-fn buy_detail_panel_node() -> Node {
-    Node {
-        height: px(BUY_DETAIL_HEIGHT),
-        min_height: px(BUY_DETAIL_HEIGHT),
-        max_height: px(BUY_DETAIL_HEIGHT),
-        // The footprint is reserved, so it has to be honoured in both directions: a long
-        // description plus all five preview rows overruns 500px, and without this the last row
-        // painted outside the panel border and over the column beside it.
-        overflow: Overflow::clip(),
-        ..detail_panel_node()
-    }
-}
-
-/// Holds the item description, and gives up its own height before the preview rows give up theirs.
-///
-/// The preview rows are the fixed contract here (see `EQUIPMENT_PREVIEW_ROW_HEIGHT`) — every party
-/// member must stay visible and the cursor must not reflow the panel — so when a description runs
-/// long it is the description that gets trimmed, not the fifth member. It keeps two lines, though:
-/// at zero it vanished outright whenever a full party filled the preview.
-fn buy_description_node() -> Node {
-    Node {
-        width: percent(100),
-        flex_shrink: 1.0,
-        min_height: px(BUY_DESCRIPTION_MIN_HEIGHT),
-        overflow: Overflow::clip(),
         ..default()
     }
 }
@@ -1143,7 +1547,6 @@ fn service_title(state: &ServiceUiState) -> &'static str {
 
 fn service_subtitle(state: &ServiceUiState) -> &'static str {
     match state.page {
-        Some(ServicePage::ShopMenu) => "COUNTER",
         Some(ServicePage::Buy) => "BUYING",
         Some(ServicePage::Sell) => "SELLING",
         Some(ServicePage::MagicCore) => "EXCHANGE",
@@ -1152,6 +1555,7 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
         Some(ServicePage::RecipeDetail) => "RECIPE DETAIL",
         Some(ServicePage::Quantity) => "QUANTITY",
         Some(ServicePage::CoreConfirm) => "CONFIRM",
+        Some(ServicePage::ShopConfirm) => "REVIEW PURCHASE",
         Some(ServicePage::Equip) => "EQUIP",
         Some(ServicePage::Result) => "RESTED",
         None => "",
@@ -1160,12 +1564,17 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
 
 fn service_hint(state: &ServiceUiState) -> &'static str {
     match state.page {
-        Some(ServicePage::Buy) => {
-            "UP/DOWN  browse    LEFT/RIGHT  preview member    TAB  sell    ENTER  buy    ESC  back"
-        }
-        Some(ServicePage::Sell) => {
-            "UP/DOWN  browse    T  filter by tag    TAB  buy    ENTER  sell    ESC  back"
-        }
+        Some(ServicePage::Buy | ServicePage::Sell) => match state.shop_focus {
+            ShopFocus::Mode => "LEFT/RIGHT  buy or sell    DOWN  item types    ESC  leave shop",
+            ShopFocus::Category => "LEFT/RIGHT  choose type    UP/DOWN  buy or browse items",
+            ShopFocus::Items => {
+                "UP/DOWN  browse    RIGHT  details    ENTER  review 1    T  sell tags    ESC  item types"
+            }
+            ShopFocus::Detail => {
+                "UP/DOWN  quantity ±1    LEFT/RIGHT  quantity ±10    ENTER  review    ESC  item list"
+            }
+        },
+        Some(ServicePage::ShopConfirm) => "ENTER  confirm transaction    ESC  cancel",
         Some(ServicePage::Inn) => "Y/ENTER  rest    N/ESC  leave",
         Some(ServicePage::Quantity) => {
             "LEFT/RIGHT  one    UP/DOWN  coarse step    ENTER  confirm    ESC  back"
@@ -1200,20 +1609,22 @@ mod tests {
     #[test]
     fn the_detail_pages_claim_the_wide_frame_and_the_rest_stay_narrow() {
         let mut state = ServiceUiState::default();
-        state.page = Some(ServicePage::Buy);
-        assert_eq!(panel_width(&state), WIDE_PANEL_WIDTH);
-        for page in [ServicePage::Apothecary, ServicePage::RecipeDetail] {
+        for page in [
+            ServicePage::Buy,
+            ServicePage::Sell,
+            ServicePage::ShopConfirm,
+            ServicePage::Equip,
+            ServicePage::Apothecary,
+            ServicePage::RecipeDetail,
+        ] {
             state.page = Some(page);
             assert_eq!(panel_width(&state), APOTHECARY_WIDTH, "{page:?}");
         }
         for page in [
-            ServicePage::ShopMenu,
-            ServicePage::Sell,
             ServicePage::MagicCore,
             ServicePage::Inn,
             ServicePage::Quantity,
             ServicePage::CoreConfirm,
-            ServicePage::Equip,
             ServicePage::Result,
         ] {
             state.page = Some(page);
@@ -1222,43 +1633,9 @@ mod tests {
     }
 
     #[test]
-    fn the_buy_detail_reserves_the_full_equipment_preview_height() {
-        let node = buy_detail_panel_node();
-
-        assert_eq!(node.height, px(BUY_DETAIL_HEIGHT));
-        assert_eq!(node.min_height, px(BUY_DETAIL_HEIGHT));
-        assert_eq!(node.max_height, px(BUY_DETAIL_HEIGHT));
-        // Five preview rows plus the panel's own chrome leave little slack, so the reserved
-        // footprint has to clip and the description has to be the part that yields.
-        assert_eq!(node.overflow, Overflow::clip());
-        let description = buy_description_node();
-        assert_eq!(description.flex_shrink, 1.0);
-        assert_eq!(description.min_height, px(BUY_DESCRIPTION_MIN_HEIGHT));
-        const {
-            // Padding, the panel title, item name, rule, label, and the 8px gaps between them.
-            const CHROME: f32 = 170.0;
-            assert!(
-                5.0 * EQUIPMENT_PREVIEW_ROW_HEIGHT
-                    + 4.0 * 8.0
-                    + BUY_DESCRIPTION_MIN_HEIGHT
-                    + CHROME
-                    <= BUY_DETAIL_HEIGHT,
-                "a full party's preview must still leave the description its two lines"
-            );
-        }
-        for focused in [false, true] {
-            let row = equipment_preview_row_node(focused);
-            assert_eq!(row.height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
-            assert_eq!(row.min_height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
-            assert_eq!(row.max_height, px(EQUIPMENT_PREVIEW_ROW_HEIGHT));
-        }
-    }
-
-    #[test]
     fn every_page_names_itself_in_the_header_and_the_hint() {
         let mut state = ServiceUiState::default();
         for page in [
-            ServicePage::ShopMenu,
             ServicePage::Buy,
             ServicePage::Sell,
             ServicePage::MagicCore,
@@ -1267,6 +1644,7 @@ mod tests {
             ServicePage::RecipeDetail,
             ServicePage::Quantity,
             ServicePage::CoreConfirm,
+            ServicePage::ShopConfirm,
             ServicePage::Equip,
             ServicePage::Result,
         ] {
@@ -1274,6 +1652,46 @@ mod tests {
             assert!(!service_subtitle(&state).is_empty(), "{page:?}");
             assert!(!service_hint(&state).is_empty(), "{page:?}");
         }
+    }
+
+    #[test]
+    fn transaction_review_stays_above_the_shop_and_displays_the_staged_sale() {
+        use crate::field_menu_domain::tests::{catalog, game};
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let catalog = catalog();
+        let mut game = game([]);
+        let _ = game.repository_mut().add_gp(1_000).unwrap();
+        let state = ServiceUiState {
+            page: Some(ServicePage::ShopConfirm),
+            pending: Some(PendingTransaction::Sell),
+            pending_id: Some("potion".to_owned()),
+            quantity: 3,
+            ..default()
+        };
+        let root = app
+            .world_mut()
+            .commands()
+            .spawn((Node::default(), GlobalZIndex(5_100)))
+            .with_children(|root| {
+                spawn_shop_confirmation(root, &Handle::default(), &state, &catalog, &game);
+            })
+            .id();
+        app.update();
+        let world = app.world_mut();
+        let overlay = world.get::<Children>(root).unwrap()[0];
+        // GlobalZIndex(2) moves the entire dialog behind the service root at 5100.
+        assert!(world.get::<GlobalZIndex>(overlay).is_none());
+        assert!(world.get::<ZIndex>(overlay).is_some_and(|z| z.0 > 0));
+        let text = world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert!(text.contains(&"3 × Potion"));
+        assert!(text.contains(&"150 GP"));
+        assert!(text.contains(&"Balance after: 1150 GP"));
+        assert!(text.contains(&"SELL  ·  ENTER"));
     }
 
     #[test]

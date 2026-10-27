@@ -10,7 +10,9 @@ use crate::{
     app_state::AppState,
     dialogue_portrait::DialoguePortrait,
     engine_settings::EngineSettings,
-    field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name},
+    field_menu_domain::{
+        FieldMenuCatalog, InventoryTab, can_equip, equip_item, item_matches_tab, item_name,
+    },
     game_state::GameState,
     gameplay_canvas::pointer::CanvasPointer,
     scenario_dialogue::{DialogueActions, DialogueShopKind},
@@ -24,6 +26,8 @@ use crate::{
 };
 
 mod apothecary;
+#[cfg(test)]
+mod shop_tests;
 mod sprites;
 mod view;
 
@@ -56,8 +60,8 @@ impl Plugin for ServiceUiPlugin {
 /// Rows a service list shows before it scrolls, matching the source `VISIBLE_ROWS`.
 const SERVICE_VISIBLE_ROWS: usize = 7;
 
-/// Coarse quantity step for the item shop (`item_shop_scene.py:27`).
-const SHOP_QUANTITY_STEP: u32 = 5;
+/// Bulk quantity step for the redesigned shop's detail controls.
+const SHOP_QUANTITY_STEP: u32 = 10;
 
 /// Coarse quantity step for the magic-core exchange (`magic_core_shop_scene.py:25`).
 const CORE_QUANTITY_STEP: u32 = 10;
@@ -87,7 +91,6 @@ impl ServiceRequest {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ServicePage {
-    ShopMenu,
     Buy,
     Sell,
     MagicCore,
@@ -97,6 +100,7 @@ enum ServicePage {
     RecipeDetail,
     Quantity,
     CoreConfirm,
+    ShopConfirm,
     /// The post-purchase party picker offered after buying wearable gear.
     Equip,
     Result,
@@ -107,6 +111,15 @@ enum PendingTransaction {
     Buy,
     Sell,
     Exchange,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum ShopFocus {
+    #[default]
+    Mode,
+    Category,
+    Items,
+    Detail,
 }
 
 impl PendingTransaction {
@@ -161,6 +174,8 @@ pub(crate) struct ServiceUiState {
     pending_equip_id: Option<String>,
     /// Sell-side tag filter; `None` shows every sellable stack.
     sell_tag: Option<String>,
+    shop_focus: ShopFocus,
+    shop_category: InventoryTab,
     /// The apothecary keeps actual catalog indices while filtering its visible rows.
     ready_recipes_only: bool,
     toast: Option<Toast>,
@@ -194,7 +209,7 @@ impl ServiceUiState {
             keeper_portrait,
             page: Some(match request {
                 ServiceRequest::Shop(DialogueShopKind::MagicCore) => ServicePage::MagicCore,
-                ServiceRequest::Shop(_) => ServicePage::ShopMenu,
+                ServiceRequest::Shop(_) => ServicePage::Buy,
                 ServiceRequest::Inn => ServicePage::Inn,
                 ServiceRequest::Apothecary => ServicePage::Apothecary,
             }),
@@ -266,7 +281,7 @@ pub(crate) fn handle_service_input(
         state.toast = None;
     }
     let delta = actions.menu_navigation();
-    if delta.is_some() {
+    if delta.is_some() && !matches!(state.page, Some(ServicePage::Buy | ServicePage::Sell)) {
         menu_sfx.hover();
     }
     let confirm = actions.just_pressed(AppAction::Confirm);
@@ -296,113 +311,204 @@ pub(crate) fn handle_service_input(
     }
 
     match state.page {
-        Some(ServicePage::ShopMenu) => {
+        Some(ServicePage::Buy | ServicePage::Sell) => {
+            let is_buy = state.page == Some(ServicePage::Buy);
+            let horizontal = actions.menu_navigation_horizontal();
             if back {
                 menu_sfx.cancel();
-                state.close();
+                match state.shop_focus {
+                    ShopFocus::Detail => state.shop_focus = ShopFocus::Items,
+                    ShopFocus::Items => state.shop_focus = ShopFocus::Category,
+                    ShopFocus::Category => state.shop_focus = ShopFocus::Mode,
+                    ShopFocus::Mode => state.close(),
+                }
+                state.quantity = 1;
                 return;
             }
-            if let Some(delta) = delta {
-                state.selected = wrapped(state.selected, 2, delta);
-            }
-            if confirm {
-                menu_sfx.confirm();
-                let page = if state.selected == 0 {
-                    ServicePage::Buy
-                } else {
-                    ServicePage::Sell
-                };
-                state.return_to(page);
-                state.sell_tag = None;
-            }
-        }
-        Some(ServicePage::Buy) => {
-            if back {
-                menu_sfx.cancel();
-                state.return_to(ServicePage::ShopMenu);
-                return;
-            }
-            if keys.just_pressed(KeyCode::Tab) {
+            if !is_buy && keys.just_pressed(KeyCode::KeyT) {
+                cycle_sell_tag(&mut state, &catalog, &game);
+                state.quantity = 1;
                 menu_sfx.hover();
-                state.return_to(ServicePage::Sell);
-                state.sell_tag = None;
                 return;
             }
-            let rows = buy_rows(&state, &catalog, &game);
-            if let Some(delta) = delta {
-                state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
-            }
-            let member_count = game.party().members().count();
-            if let Some(step) = horizontal_step(&keys)
-                && selected_buy_item(&state, &catalog, &game).is_some_and(is_equipment)
-            {
-                state.equip_selection = wrapped_or_zero(state.equip_selection, member_count, step);
-                menu_sfx.hover();
-            }
-            if confirm {
-                let Some(row) = rows.get(state.selected) else {
-                    menu_sfx.blocked();
-                    state.announce("No stock is currently unlocked.", ToastTone::Warn);
-                    return;
-                };
-                let room = game
-                    .repository()
-                    .item_quantity_cap()
-                    .saturating_sub(game.repository().item_count(row.id()));
-                let affordable = game.repository().gp() / row.buy_price().get();
-                if room.min(affordable) == 0 {
-                    menu_sfx.blocked();
-                    let refusal = if affordable == 0 {
-                        "Not enough GP."
+            state.quantity = if state.shop_focus == ShopFocus::Detail {
+                state
+                    .quantity
+                    .clamp(1, pending_max_for_selected(&state, is_buy, &catalog, &game))
+            } else {
+                1
+            };
+            match state.shop_focus {
+                ShopFocus::Mode => {
+                    if let Some(step) = horizontal {
+                        state.page = Some(if step < 0 {
+                            ServicePage::Buy
+                        } else {
+                            ServicePage::Sell
+                        });
+                        state.selected = 0;
+                        menu_sfx.hover();
+                    }
+                    if delta == Some(1) {
+                        state.shop_focus = ShopFocus::Category;
+                        menu_sfx.hover();
+                    }
+                }
+                ShopFocus::Category => {
+                    if delta == Some(-1) {
+                        state.shop_focus = ShopFocus::Mode;
+                        menu_sfx.hover();
+                    } else if delta == Some(1) {
+                        state.shop_focus = ShopFocus::Items;
+                        menu_sfx.hover();
+                    }
+                    if let Some(step) = horizontal {
+                        let index = InventoryTab::ALL
+                            .iter()
+                            .position(|tab| *tab == state.shop_category)
+                            .unwrap_or(0);
+                        let next = (index as isize + step)
+                            .rem_euclid(InventoryTab::ALL.len() as isize)
+                            as usize;
+                        state.shop_category = InventoryTab::ALL[next];
+                        state.selected = 0;
+                        menu_sfx.hover();
+                    }
+                }
+                ShopFocus::Items => {
+                    let row_count = if is_buy {
+                        buy_rows(&state, &catalog, &game).len()
                     } else {
-                        "Item quantity cap reached."
+                        sell_rows(&state, &catalog, &game).len()
                     };
-                    state.announce(refusal, ToastTone::Warn);
-                } else {
-                    menu_sfx.confirm();
-                    state.pending_id = Some(row.id().to_owned());
-                    state.pending = Some(PendingTransaction::Buy);
-                    state.page = Some(ServicePage::Quantity);
-                    state.quantity = 1;
+                    if delta == Some(-1) && state.selected == 0 {
+                        state.shop_focus = ShopFocus::Category;
+                        menu_sfx.hover();
+                    } else if let Some(delta) = delta {
+                        state.selected = wrapped_or_zero(state.selected, row_count, delta);
+                        menu_sfx.hover();
+                    }
+                    if horizontal == Some(1) {
+                        state.shop_focus = ShopFocus::Detail;
+                        menu_sfx.hover();
+                    }
+                    if confirm {
+                        let Some(id) = selected_shop_item_id(&state, is_buy, &catalog, &game)
+                        else {
+                            menu_sfx.blocked();
+                            state.announce(
+                                if is_buy {
+                                    "No stock in this category."
+                                } else {
+                                    "Nothing to sell in this category."
+                                },
+                                ToastTone::Warn,
+                            );
+                            return;
+                        };
+                        state.pending_id = Some(id.clone());
+                        state.pending = Some(if is_buy {
+                            PendingTransaction::Buy
+                        } else {
+                            PendingTransaction::Sell
+                        });
+                        state.quantity = 1;
+                        let max = pending_max(&state, &catalog, &game);
+                        if max == 0 {
+                            state.pending_id = None;
+                            state.pending = None;
+                            menu_sfx.blocked();
+                            state.announce(
+                                if is_buy {
+                                    "Not enough GP or item capacity."
+                                } else {
+                                    "That item cannot be sold."
+                                },
+                                ToastTone::Warn,
+                            );
+                        } else {
+                            state.page = Some(ServicePage::ShopConfirm);
+                            menu_sfx.confirm();
+                        }
+                    }
+                }
+                ShopFocus::Detail => {
+                    if delta == Some(-1) {
+                        state.quantity = adjust_quantity(
+                            state.quantity,
+                            1,
+                            pending_max_for_selected(&state, is_buy, &catalog, &game),
+                            false,
+                        );
+                        menu_sfx.hover();
+                    } else if delta == Some(1) {
+                        state.quantity = adjust_quantity(
+                            state.quantity,
+                            -1,
+                            pending_max_for_selected(&state, is_buy, &catalog, &game),
+                            false,
+                        );
+                        menu_sfx.hover();
+                    }
+                    if let Some(step) = horizontal {
+                        state.quantity = adjust_quantity(
+                            state.quantity,
+                            step * SHOP_QUANTITY_STEP as isize,
+                            pending_max_for_selected(&state, is_buy, &catalog, &game),
+                            false,
+                        );
+                        menu_sfx.hover();
+                    }
+                    if confirm
+                        && let Some(id) = selected_shop_item_id(&state, is_buy, &catalog, &game)
+                    {
+                        state.pending_id = Some(id);
+                        state.pending = Some(if is_buy {
+                            PendingTransaction::Buy
+                        } else {
+                            PendingTransaction::Sell
+                        });
+                        let max = pending_max(&state, &catalog, &game);
+                        if max == 0 {
+                            state.pending_id = None;
+                            state.pending = None;
+                            menu_sfx.blocked();
+                            state.announce(
+                                if is_buy {
+                                    "Not enough GP or item capacity."
+                                } else {
+                                    "That item cannot be sold."
+                                },
+                                ToastTone::Warn,
+                            );
+                        } else {
+                            state.quantity = state.quantity.min(max);
+                            state.page = Some(ServicePage::ShopConfirm);
+                            menu_sfx.confirm();
+                        }
+                    }
                 }
             }
         }
-        Some(ServicePage::Sell) => {
+        Some(ServicePage::ShopConfirm) => {
             if back {
                 menu_sfx.cancel();
-                state.return_to(ServicePage::ShopMenu);
+                state.page = Some(
+                    state
+                        .pending
+                        .map_or(ServicePage::Buy, PendingTransaction::origin),
+                );
+                state.pending_id = None;
+                state.pending = None;
+                state.quantity = 1;
                 return;
-            }
-            if keys.just_pressed(KeyCode::Tab) {
-                menu_sfx.hover();
-                state.return_to(ServicePage::Buy);
-                state.sell_tag = None;
-                return;
-            }
-            if keys.just_pressed(KeyCode::KeyT) {
-                cycle_sell_tag(&mut state, &catalog, &game);
-                menu_sfx.hover();
-                return;
-            }
-            let rows = sell_rows(&state, &catalog, &game);
-            if let Some(delta) = delta {
-                state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
             }
             if confirm {
-                let Some(item) = rows.get(state.selected) else {
-                    menu_sfx.blocked();
-                    state.announce("There is nothing to sell.", ToastTone::Warn);
-                    return;
-                };
-                if can_sell(game.repository(), item) {
-                    menu_sfx.confirm();
-                    state.pending_id = Some(item.id().to_owned());
-                    state.pending = Some(PendingTransaction::Sell);
-                    state.page = Some(ServicePage::Quantity);
-                    state.quantity = 1;
+                menu_sfx.confirm();
+                if execute_pending(&mut state, &catalog, &mut game) {
+                    menu_sfx.play(cue::BUY_SELL);
                 } else {
                     menu_sfx.blocked();
-                    state.announce("That item is locked or has no sale value.", ToastTone::Warn);
                 }
             }
         }
@@ -483,7 +589,7 @@ pub(crate) fn handle_service_input(
                 menu_sfx.cancel();
                 let origin = state
                     .pending
-                    .map_or(ServicePage::ShopMenu, |pending| pending.origin());
+                    .map_or(ServicePage::Buy, |pending| pending.origin());
                 state.return_to(origin);
                 return;
             }
@@ -569,14 +675,15 @@ fn any_input(keys: &ButtonInput<KeyCode>, actions: &ActionState) -> bool {
     actions.just_pressed(AppAction::Confirm)
         || actions.just_pressed(AppAction::Back)
         || actions.menu_navigation().is_some()
+        || actions.menu_navigation_horizontal().is_some()
         || horizontal_step(keys).is_some()
         || keys.any_just_pressed([KeyCode::Tab, KeyCode::KeyT, KeyCode::KeyY, KeyCode::KeyN])
 }
 
 /// Left/Right as a single signed step, with Left winning a same-frame tie.
 ///
-/// `ActionState` only binds vertical menu navigation; the shop family is the one place that
-/// needs the horizontal pair, so it reads the keys directly the way `field_menu` does.
+/// The legacy quantity picker reads physical keys; the redesigned shop uses the shared
+/// horizontal actions so rebinding, gamepads, and recorded input work there too.
 fn horizontal_step(keys: &ButtonInput<KeyCode>) -> Option<isize> {
     if keys.just_pressed(KeyCode::ArrowLeft) {
         Some(-1)
@@ -645,6 +752,8 @@ fn is_high_value_core(state: &ServiceUiState, catalog: &FieldMenuCatalog) -> boo
 fn cycle_sell_tag(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) {
     let tags = sellable_tags(catalog, game);
     if tags.is_empty() {
+        state.sell_tag = None;
+        state.selected = 0;
         return;
     }
     let position = state
@@ -682,7 +791,11 @@ fn execute_pending(
     let quantity = state.quantity;
     let result = match state.pending {
         Some(PendingTransaction::Buy) => active_shop(state, catalog, game)
-            .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
+            .and_then(|shop| {
+                visible_stock(shop, game.flags())
+                    .into_iter()
+                    .find(|row| row.id() == id)
+            })
             .ok_or_else(|| "shop item is unavailable".to_owned())
             .and_then(|row| buy(game.repository_mut(), row, quantity).map_err(|e| e.to_string())),
         Some(PendingTransaction::Sell) => catalog
@@ -731,7 +844,7 @@ fn execute_pending(
             true
         }
         Err(error) => {
-            state.page = Some(pending.origin());
+            state.return_to(pending.origin());
             state.announce(error, ToastTone::Warn);
             false
         }
@@ -837,7 +950,20 @@ fn buy_rows<'a>(
     game: &GameState,
 ) -> Vec<&'a crate::scenario_map::ShopItem> {
     active_shop(state, catalog, game)
-        .map(|shop| visible_stock(shop, game.flags()))
+        .map(|shop| {
+            visible_stock(shop, game.flags())
+                .into_iter()
+                .filter(|row| {
+                    catalog.item(row.id()).is_some_and(|item| {
+                        item_matches_tab(
+                            item,
+                            game.repository().is_new_item(row.id()),
+                            state.shop_category,
+                        )
+                    })
+                })
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -857,13 +983,69 @@ fn sell_rows<'a>(
     owned_items(catalog, game)
         .into_iter()
         .filter(|item| {
-            state.sell_tag.as_ref().is_none_or(|tag| {
-                game.repository()
-                    .item_tags(item.id())
-                    .any(|owned| owned == tag)
-            })
+            can_sell(game.repository(), item)
+                && item_matches_tab(
+                    item,
+                    game.repository().is_new_item(item.id()),
+                    state.shop_category,
+                )
+                && state.sell_tag.as_ref().is_none_or(|tag| {
+                    game.repository()
+                        .item_tags(item.id())
+                        .any(|owned| owned == tag)
+                })
         })
         .collect()
+}
+
+fn pending_max_for_selected(
+    state: &ServiceUiState,
+    buying: bool,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) -> u32 {
+    let id = if buying {
+        buy_rows(state, catalog, game)
+            .get(state.selected)
+            .map(|row| row.id())
+    } else {
+        sell_rows(state, catalog, game)
+            .get(state.selected)
+            .map(|item| item.id())
+    };
+    let Some(id) = id else { return 1 };
+    if buying {
+        let room = game
+            .repository()
+            .item_quantity_cap()
+            .saturating_sub(game.repository().item_count(id));
+        room.min(
+            game.repository().gp()
+                / active_shop(state, catalog, game)
+                    .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
+                    .map_or(1, |row| row.buy_price().get()),
+        )
+        .max(1)
+    } else {
+        game.repository().item_count(id).max(1)
+    }
+}
+
+fn selected_shop_item_id(
+    state: &ServiceUiState,
+    buying: bool,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) -> Option<String> {
+    if buying {
+        buy_rows(state, catalog, game)
+            .get(state.selected)
+            .map(|row| row.id().to_owned())
+    } else {
+        sell_rows(state, catalog, game)
+            .get(state.selected)
+            .map(|item| item.id().to_owned())
+    }
 }
 
 fn owned_exchangeable_cores<'a>(
@@ -897,16 +1079,6 @@ fn pending_max(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameSt
         }
         None => 0,
     }
-}
-
-fn selected_buy_item<'a>(
-    state: &ServiceUiState,
-    catalog: &'a FieldMenuCatalog,
-    game: &GameState,
-) -> Option<&'a ItemDefinition> {
-    let shop = active_shop(state, catalog, game)?;
-    let rows = visible_stock(shop, game.flags());
-    catalog.item(rows.get(state.selected)?.id())
 }
 
 fn wrapped(current: usize, count: usize, delta: isize) -> usize {
@@ -1009,7 +1181,7 @@ mod tests {
         }
         assert_eq!(
             adjust_quantity(1, coarse_step(-1, SHOP_QUANTITY_STEP), 80, false),
-            6
+            11
         );
     }
 
