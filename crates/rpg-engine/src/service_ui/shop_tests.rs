@@ -69,7 +69,7 @@ fn normalized_input_reaches_modes_categories_details_and_bulk_review() {
     press(&mut app, NormalizedAction::MenuLeft);
     assert_eq!(
         app.world().resource::<ServiceUiState>().shop_category,
-        InventoryTab::Key
+        InventoryTab::Status
     );
     press(&mut app, NormalizedAction::MenuRight);
     press(&mut app, NormalizedAction::MenuDown);
@@ -215,17 +215,23 @@ fn changed_funds_locks_and_stock_are_revalidated_without_partial_transactions() 
 #[test]
 fn empty_categories_and_unaffordable_items_cannot_enter_review() {
     let mut app = app();
-    press(&mut app, NormalizedAction::MenuDown);
-    press(&mut app, NormalizedAction::MenuLeft);
-    press(&mut app, NormalizedAction::MenuDown);
-    press(&mut app, NormalizedAction::Confirm);
-    assert_eq!(
-        app.world().resource::<ServiceUiState>().page,
-        Some(ServicePage::Buy)
-    );
-    press(&mut app, NormalizedAction::Back);
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .repository_mut()
+        .remove_item("potion", 15)
+        .unwrap();
     press(&mut app, NormalizedAction::MenuRight);
     press(&mut app, NormalizedAction::MenuDown);
+    press(&mut app, NormalizedAction::MenuDown);
+    press(&mut app, NormalizedAction::Confirm);
+    let state = app.world().resource::<ServiceUiState>();
+    assert_eq!(state.page, Some(ServicePage::Sell));
+    assert_eq!(state.shop_focus, ShopFocus::Category);
+    assert!(!state.shop_item_selected());
+    assert_eq!(state.pending, None);
+    press(&mut app, NormalizedAction::MenuUp);
+    press(&mut app, NormalizedAction::MenuLeft);
+    enter_items(&mut app);
     app.world_mut()
         .resource_mut::<GameState>()
         .repository_mut()
@@ -236,7 +242,7 @@ fn empty_categories_and_unaffordable_items_cannot_enter_review() {
         app.world().resource::<ServiceUiState>().page,
         Some(ServicePage::Buy)
     );
-    assert_eq!(repository(&app).item_count("potion"), 15);
+    assert_eq!(repository(&app).item_count("potion"), 0);
 }
 
 #[test]
@@ -280,4 +286,118 @@ fn horizontal_actions_dismiss_toasts_and_sell_tags_remain_accessible() {
     keys.press(KeyCode::KeyT);
     app.update();
     assert_eq!(app.world().resource::<ServiceUiState>().sell_tag, None);
+}
+
+#[test]
+fn stock_selection_and_details_follow_down_and_up_without_losing_the_type() {
+    let mut app = app();
+    let before = repository(&app).clone();
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(!state.shop_stock_visible());
+    assert!(!state.shop_item_selected());
+    press(&mut app, NormalizedAction::MenuDown);
+    let state = app.world().resource::<ServiceUiState>();
+    assert_eq!(state.shop_category, InventoryTab::All);
+    assert!(state.shop_stock_visible());
+    assert!(!state.shop_item_selected());
+    // Categories never purchase the unhighlighted first item.
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().page,
+        Some(ServicePage::Buy)
+    );
+    press(&mut app, NormalizedAction::MenuRight);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::Recovery
+    );
+    press(&mut app, NormalizedAction::MenuDown);
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(state.shop_item_selected());
+    assert_eq!(state.selected, 0);
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(app.world().resource::<ServiceUiState>().selected, 1);
+    press(&mut app, NormalizedAction::MenuUp);
+    assert!(
+        app.world()
+            .resource::<ServiceUiState>()
+            .shop_item_selected()
+    );
+    press(&mut app, NormalizedAction::MenuUp);
+    let state = app.world().resource::<ServiceUiState>();
+    assert_eq!(state.shop_focus, ShopFocus::Category);
+    assert_eq!(state.shop_category, InventoryTab::Recovery);
+    assert!(state.shop_stock_visible());
+    assert!(!state.shop_item_selected());
+    press(&mut app, NormalizedAction::MenuUp);
+    assert!(
+        !app.world()
+            .resource::<ServiceUiState>()
+            .shop_stock_visible()
+    );
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::All
+    );
+    assert_eq!(repository(&app), &before);
+}
+
+#[test]
+fn type_pills_only_offer_available_stock_or_sellable_inventory() {
+    let mut app = app();
+    let types = |app: &App, buying| {
+        shop_categories(
+            app.world().resource(),
+            buying,
+            app.world().resource(),
+            app.world().resource(),
+        )
+    };
+    assert_eq!(
+        types(&app, true),
+        [
+            InventoryTab::All,
+            InventoryTab::Recovery,
+            InventoryTab::Status
+        ]
+    );
+    {
+        let mut game = app.world_mut().resource_mut::<GameState>();
+        for id in ["mc_xs", "phoenix_wing"] {
+            let _ = game.repository_mut().add_item(id, 1).unwrap();
+        }
+    }
+    assert_eq!(
+        types(&app, false),
+        [InventoryTab::All, InventoryTab::Recovery]
+    );
+    press(&mut app, NormalizedAction::MenuDown);
+    press(&mut app, NormalizedAction::MenuLeft);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::Status
+    );
+    press(&mut app, NormalizedAction::MenuUp);
+    press(&mut app, NormalizedAction::MenuRight);
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::All
+    );
+    press(&mut app, NormalizedAction::MenuLeft);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::Recovery
+    );
+    // Removing the only sellable type also clears its stale category selection.
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .repository_mut()
+        .set_locked("potion", true);
+    press(&mut app, NormalizedAction::MenuDown);
+    let state = app.world().resource::<ServiceUiState>();
+    assert_eq!(state.shop_category, InventoryTab::All);
+    assert_eq!(state.shop_focus, ShopFocus::Category);
+    assert_eq!(types(&app, false), [InventoryTab::All]);
 }

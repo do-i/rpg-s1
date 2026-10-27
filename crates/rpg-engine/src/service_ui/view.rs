@@ -11,14 +11,13 @@ use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 use super::{
     PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
     ShopFocus, ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment,
-    owned_exchangeable_cores, pending_max, sell_rows,
+    owned_exchangeable_cores, pending_max, sell_rows, shop_categories,
     sprites::{ServiceKeeper, ServiceSprites},
 };
 use crate::{
     dialogue_portrait::DialoguePortrait,
     field_menu_domain::{
-        FieldMenuCatalog, InventoryTab, can_equip, derived_stats, item_description, item_name,
-        preview_stats,
+        FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
     },
     game_state::GameState,
     item_images::{spawn_item_icon, spawn_item_image},
@@ -494,16 +493,12 @@ fn spawn_item_shop(
                     bar.spawn((
                         Node {
                             padding: UiRect::axes(px(18), px(7)),
-                            border: UiRect::all(px(
-                                if selected && state.shop_focus == ShopFocus::Mode {
-                                    2
-                                } else {
-                                    1
-                                },
-                            )),
+                            border: UiRect::all(px(1)),
                             border_radius: BorderRadius::all(px(15)),
                             ..default()
                         },
+                        shop_focus_outline(selected && state.shop_focus == ShopFocus::Mode),
+                        Name::new(format!("Shop mode: {label}")),
                         BackgroundColor(if selected {
                             Color::srgba_u8(72, 49, 25, 230)
                         } else {
@@ -540,22 +535,18 @@ fn spawn_item_shop(
                 ..default()
             })
             .with_children(|pills| {
-                for tab in InventoryTab::ALL {
-                    let selected = tab == state.shop_category;
+                for tab in shop_categories(state, buying, catalog, game) {
+                    let selected = state.shop_stock_visible() && tab == state.shop_category;
                     pills
                         .spawn((
                             Node {
                                 padding: UiRect::axes(px(11), px(5)),
-                                border: UiRect::all(px(
-                                    if selected && state.shop_focus == ShopFocus::Category {
-                                        2
-                                    } else {
-                                        1
-                                    },
-                                )),
+                                border: UiRect::all(px(1)),
                                 border_radius: BorderRadius::all(px(13)),
                                 ..default()
                             },
+                            shop_focus_outline(selected && state.shop_focus == ShopFocus::Category),
+                            Name::new(format!("Shop category: {}", tab.label())),
                             BackgroundColor(if selected {
                                 Color::srgba_u8(72, 49, 25, 220)
                             } else {
@@ -582,6 +573,9 @@ fn spawn_item_shop(
                         });
                 }
             });
+            if !state.shop_stock_visible() {
+                return;
+            }
             if !buying && let Some(tag) = state.sell_tag.as_deref() {
                 spawn_status_text(
                     body,
@@ -631,7 +625,8 @@ fn spawn_item_shop(
                                         font,
                                         ListRow {
                                             item_id: Some(row.id()),
-                                            selected: index == state.selected,
+                                            selected: state.shop_item_selected()
+                                                && index == state.selected,
                                             accent: item.map_or_else(status_teal, item_accent),
                                             label: item.map_or(row.id(), |i| item_name(i)),
                                             note: format!(
@@ -650,7 +645,8 @@ fn spawn_item_shop(
                                         font,
                                         ListRow {
                                             item_id: Some(item.id()),
-                                            selected: index == state.selected,
+                                            selected: state.shop_item_selected()
+                                                && index == state.selected,
                                             accent: item_accent(item),
                                             label: item_name(item),
                                             note: format!(
@@ -668,9 +664,22 @@ fn spawn_item_shop(
                                 }
                             }
                         });
-                        spawn_window_footer(panel, font, state.selected, window);
+                        if state.shop_item_selected() {
+                            spawn_window_footer(panel, font, state.selected, window);
+                        } else {
+                            spawn_status_text(
+                                panel,
+                                format!("{row_count} items"),
+                                font,
+                                12.0,
+                                status_faint(),
+                            );
+                        }
                     },
                 );
+                if !state.shop_item_selected() || row_count == 0 {
+                    return;
+                }
                 spawn_status_panel(
                     columns,
                     Node {
@@ -1360,6 +1369,19 @@ struct ListRow<'a> {
     dim: bool,
 }
 
+/// An outline marks focus without changing a control's measured size.
+fn shop_focus_outline(focused: bool) -> Outline {
+    Outline {
+        width: px(1),
+        offset: px(0),
+        color: if focused {
+            status_border_active()
+        } else {
+            Color::NONE
+        },
+    }
+}
+
 fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, row: ListRow<'_>) {
     parent
         .spawn((
@@ -1369,11 +1391,13 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
                 padding: UiRect::horizontal(px(9)),
-                border: UiRect::all(px(if row.selected { 2 } else { 1 })),
+                border: UiRect::all(px(1)),
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
             selectable_card_colors(row.selected),
+            shop_focus_outline(row.selected),
+            Name::new(format!("Service item: {}", row.label)),
         ))
         .with_children(|node| {
             if let Some(id) = row.item_id {
@@ -1605,6 +1629,120 @@ fn item_accent(item: &ItemDefinition) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn shop_view(focus: ShopFocus) -> App {
+        use crate::{
+            field_menu_domain::tests::{catalog_with_item_shop, game},
+            runtime_map::RuntimeMapId,
+            scenario_spatial::{CardinalDirection, Position},
+        };
+        let catalog = catalog_with_item_shop();
+        let mut game = game(["story_quest_started"]);
+        game.map_mut().move_to(
+            RuntimeMapId::try_new("town_01_ardel_shop_item").unwrap(),
+            Position::new(6, 6),
+            CardinalDirection::Up,
+        );
+        let mut state = ServiceUiState::default();
+        state.open(ServiceRequest::Shop(DialogueShopKind::Item), None);
+        state.shop_focus = focus;
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_item_shop(root, &Handle::default(), &state, &catalog, &game);
+            });
+        app.update();
+        app
+    }
+
+    #[test]
+    fn shop_landing_categories_and_stock_render_only_the_requested_sections() {
+        for focus in [
+            ShopFocus::Mode,
+            ShopFocus::Category,
+            ShopFocus::Items,
+            ShopFocus::Detail,
+        ] {
+            let mut app = shop_view(focus);
+            let world = app.world_mut();
+            let texts = world
+                .query::<&Text>()
+                .iter(world)
+                .map(|text| text.0.as_str())
+                .collect::<Vec<_>>();
+            assert!(texts.contains(&"BUY"));
+            assert!(texts.contains(&"SELL"));
+            assert!(texts.contains(&"All"));
+            assert!(texts.contains(&"Recovery"));
+            assert!(texts.contains(&"Status"));
+            assert!(!texts.contains(&"Core"));
+            assert!(!texts.contains(&"Key"));
+            assert_eq!(
+                texts.contains(&"STOCK"),
+                focus != ShopFocus::Mode,
+                "{focus:?}"
+            );
+            assert_eq!(
+                texts.contains(&"ITEM DETAILS"),
+                matches!(focus, ShopFocus::Items | ShopFocus::Detail),
+                "{focus:?}"
+            );
+            let selected_rows = world
+                .query::<(&Name, &Outline)>()
+                .iter(world)
+                .filter(|(name, outline)| {
+                    name.as_str().starts_with("Service item:") && outline.color != Color::NONE
+                })
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>();
+            if matches!(focus, ShopFocus::Items | ShopFocus::Detail) {
+                assert_eq!(selected_rows, ["Service item: Potion"]);
+            } else {
+                assert!(selected_rows.is_empty());
+            }
+            let all = world
+                .query::<(&Name, &BackgroundColor)>()
+                .iter(world)
+                .find(|(name, _)| name.as_str() == "Shop category: All")
+                .unwrap()
+                .1
+                .0;
+            assert_eq!(
+                all == Color::srgba_u8(72, 49, 25, 220),
+                focus != ShopFocus::Mode
+            );
+        }
+    }
+
+    #[test]
+    fn shop_focus_changes_never_change_pill_or_stock_row_geometry() {
+        let mut previous = std::collections::BTreeMap::<String, Node>::new();
+        for focus in [
+            ShopFocus::Mode,
+            ShopFocus::Category,
+            ShopFocus::Items,
+            ShopFocus::Detail,
+            ShopFocus::Category,
+        ] {
+            let mut app = shop_view(focus);
+            let world = app.world_mut();
+            for (name, node) in world.query::<(&Name, &Node)>().iter(world) {
+                let name = name.as_str();
+                if name.starts_with("Shop mode:")
+                    || name.starts_with("Shop category:")
+                    || name.starts_with("Service item:")
+                {
+                    if let Some(before) = previous.get(name) {
+                        assert_eq!(node, before, "{name} changes geometry at {focus:?}");
+                    }
+                    previous.insert(name.to_owned(), node.clone());
+                }
+            }
+        }
+    }
 
     #[test]
     fn the_detail_pages_claim_the_wide_frame_and_the_rest_stay_narrow() {

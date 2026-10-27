@@ -219,6 +219,14 @@ impl ServiceUiState {
         };
     }
 
+    fn shop_stock_visible(&self) -> bool {
+        self.shop_focus != ShopFocus::Mode
+    }
+
+    fn shop_item_selected(&self) -> bool {
+        matches!(self.shop_focus, ShopFocus::Items | ShopFocus::Detail)
+    }
+
     fn close(&mut self) {
         *self = Self {
             closed_this_frame: true,
@@ -314,6 +322,12 @@ pub(crate) fn handle_service_input(
         Some(ServicePage::Buy | ServicePage::Sell) => {
             let is_buy = state.page == Some(ServicePage::Buy);
             let horizontal = actions.menu_navigation_horizontal();
+            let categories = shop_categories(&state, is_buy, &catalog, &game);
+            if !categories.contains(&state.shop_category) {
+                state.shop_category = InventoryTab::All;
+                state.selected = 0;
+                state.quantity = 1;
+            }
             if back {
                 menu_sfx.cancel();
                 match state.shop_focus {
@@ -347,9 +361,13 @@ pub(crate) fn handle_service_input(
                             ServicePage::Sell
                         });
                         state.selected = 0;
+                        state.shop_category = InventoryTab::All;
+                        state.sell_tag = None;
                         menu_sfx.hover();
                     }
                     if delta == Some(1) {
+                        state.shop_category = InventoryTab::All;
+                        state.selected = 0;
                         state.shop_focus = ShopFocus::Category;
                         menu_sfx.hover();
                     }
@@ -358,21 +376,25 @@ pub(crate) fn handle_service_input(
                     if delta == Some(-1) {
                         state.shop_focus = ShopFocus::Mode;
                         menu_sfx.hover();
-                    } else if delta == Some(1) {
-                        state.shop_focus = ShopFocus::Items;
-                        menu_sfx.hover();
+                        return;
                     }
                     if let Some(step) = horizontal {
-                        let index = InventoryTab::ALL
+                        let index = categories
                             .iter()
                             .position(|tab| *tab == state.shop_category)
                             .unwrap_or(0);
-                        let next = (index as isize + step)
-                            .rem_euclid(InventoryTab::ALL.len() as isize)
-                            as usize;
-                        state.shop_category = InventoryTab::ALL[next];
+                        state.shop_category = categories[wrapped(index, categories.len(), step)];
                         state.selected = 0;
                         menu_sfx.hover();
+                    }
+                    if delta == Some(1) {
+                        state.selected = 0;
+                        if selected_shop_item_id(&state, is_buy, &catalog, &game).is_some() {
+                            state.shop_focus = ShopFocus::Items;
+                            menu_sfx.hover();
+                        } else {
+                            menu_sfx.blocked();
+                        }
                     }
                 }
                 ShopFocus::Items => {
@@ -384,6 +406,7 @@ pub(crate) fn handle_service_input(
                     if delta == Some(-1) && state.selected == 0 {
                         state.shop_focus = ShopFocus::Category;
                         menu_sfx.hover();
+                        return;
                     } else if let Some(delta) = delta {
                         state.selected = wrapped_or_zero(state.selected, row_count, delta);
                         menu_sfx.hover();
@@ -942,6 +965,39 @@ fn active_shop<'a>(
 
 fn active_inn_cost(catalog: &FieldMenuCatalog, game: &GameState) -> Option<u32> {
     Some(active_map(catalog, game)?.inn.as_ref()?.cost.get())
+}
+
+/// Only offer types represented by unlocked stock or carried sellable items.
+fn shop_categories(
+    state: &ServiceUiState,
+    buying: bool,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+) -> Vec<InventoryTab> {
+    let items = if buying {
+        active_shop(state, catalog, game)
+            .map(|shop| {
+                visible_stock(shop, game.flags())
+                    .into_iter()
+                    .filter_map(|row| catalog.item(row.id()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    } else {
+        owned_items(catalog, game)
+            .into_iter()
+            .filter(|item| can_sell(game.repository(), item))
+            .collect()
+    };
+    InventoryTab::ALL
+        .into_iter()
+        .filter(|&tab| {
+            tab == InventoryTab::All
+                || items.iter().any(|item| {
+                    item_matches_tab(item, game.repository().is_new_item(item.id()), tab)
+                })
+        })
+        .collect()
 }
 
 fn buy_rows<'a>(
