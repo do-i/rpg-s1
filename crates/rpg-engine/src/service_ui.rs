@@ -3,7 +3,7 @@
 //! This module owns the service state machine and its input; [`view`] draws it. The split
 //! matches `field_menu`: the pages are node trees rebuilt from state, not a formatted string.
 
-use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
+use bevy::{ecs::schedule::ApplyDeferred, prelude::*, ui::UiGlobalTransform};
 
 use crate::{
     action_input::{ActionState, AppAction},
@@ -12,6 +12,7 @@ use crate::{
     engine_settings::EngineSettings,
     field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name},
     game_state::GameState,
+    gameplay_canvas::pointer::CanvasPointer,
     scenario_dialogue::{DialogueActions, DialogueShopKind},
     scenario_item::ItemDefinition,
     scenario_map::ShopMetadata,
@@ -22,9 +23,11 @@ use crate::{
     sfx_cue::{MenuSfx, PlaySfx, cue},
 };
 
+mod apothecary;
 mod sprites;
 mod view;
 
+use apothecary::{ApothecaryControl, ApothecaryInput, handle_apothecary_input};
 use sprites::{ServiceSprites, load_service_sprites};
 
 pub(crate) struct ServiceUiPlugin;
@@ -90,7 +93,7 @@ enum ServicePage {
     MagicCore,
     Inn,
     Apothecary,
-    /// The apothecary's second stage: the full recipe before it is committed.
+    /// The apothecary's second stage: explicit confirmation of the visible recipe.
     RecipeDetail,
     Quantity,
     CoreConfirm,
@@ -158,6 +161,8 @@ pub(crate) struct ServiceUiState {
     pending_equip_id: Option<String>,
     /// Sell-side tag filter; `None` shows every sellable stack.
     sell_tag: Option<String>,
+    /// The apothecary keeps actual catalog indices while filtering its visible rows.
+    ready_recipes_only: bool,
     toast: Option<Toast>,
     suppress_confirm: bool,
     /// Set for the rest of the frame a Back press closes the service, so the same press
@@ -242,6 +247,8 @@ pub(crate) fn handle_service_input(
     game: Option<ResMut<GameState>>,
     mut state: ResMut<ServiceUiState>,
     mut menu_sfx: MenuSfx,
+    mut pointer: Option<ResMut<CanvasPointer>>,
+    controls: Query<(&ApothecaryControl, &ComputedNode, &UiGlobalTransform)>,
 ) {
     // The latch belongs to the frame that set it; releasing it here keeps the field menu
     // from reacting to a Back press this service already consumed.
@@ -264,6 +271,29 @@ pub(crate) fn handle_service_input(
     }
     let confirm = actions.just_pressed(AppAction::Confirm);
     let back = actions.just_pressed(AppAction::Back);
+
+    let apothecary_control = if matches!(
+        state.page,
+        Some(ServicePage::Apothecary | ServicePage::RecipeDetail)
+    ) {
+        pointer
+            .as_deref()
+            .filter(|p| p.just_clicked())
+            .and_then(|p| {
+                controls
+                    .iter()
+                    .find(|(_, node, transform)| p.is_over(node, transform))
+                    .map(|(control, _, _)| *control)
+            })
+    } else {
+        None
+    };
+    if apothecary_control.is_some() {
+        state.toast = None;
+        if let Some(pointer) = pointer.as_deref_mut() {
+            pointer.consume();
+        }
+    }
 
     match state.page {
         Some(ServicePage::ShopMenu) => {
@@ -425,62 +455,28 @@ pub(crate) fn handle_service_input(
                 }
             }
         }
-        Some(ServicePage::Apothecary) => {
-            if back {
-                menu_sfx.cancel();
-                state.close();
-                return;
-            }
-            let recipes = catalog.recipes();
-            if let Some(delta) = delta {
-                state.selected = wrapped_or_zero(state.selected, recipes.len(), delta);
-            }
-            if confirm {
-                let Some(recipe) = recipes.get(state.selected) else {
-                    menu_sfx.blocked();
-                    return;
-                };
-                match recipe_availability(recipe, game.flags(), game.repository()) {
-                    RecipeAvailability::Locked => {
-                        menu_sfx.blocked();
-                        state.announce("That recipe is still sealed.", ToastTone::Warn);
-                    }
-                    RecipeAvailability::UniqueOwned => {
-                        menu_sfx.blocked();
-                        state.announce("You already carry that.", ToastTone::Warn);
-                    }
-                    _ => {
-                        menu_sfx.confirm();
-                        state.page = Some(ServicePage::RecipeDetail);
-                    }
-                }
-            }
-        }
-        Some(ServicePage::RecipeDetail) => {
-            if back {
-                menu_sfx.cancel();
-                state.page = Some(ServicePage::Apothecary);
-                return;
-            }
-            if confirm {
-                let Some(recipe) = catalog.recipes().get(state.selected) else {
-                    state.page = Some(ServicePage::Apothecary);
-                    return;
-                };
-                let flags = game.flags().clone();
-                match craft(game.repository_mut(), &flags, recipe) {
-                    Ok(()) => {
-                        menu_sfx.confirm();
-                        let scroll = recipe.scroll_name.clone();
-                        state.page = Some(ServicePage::Apothecary);
-                        state.announce(format!("Crafted {scroll}."), ToastTone::Good);
-                    }
-                    Err(error) => {
-                        menu_sfx.blocked();
-                        state.announce(error.to_string(), ToastTone::Warn);
-                    }
-                }
-            }
+        Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
+            let filter = match apothecary_control {
+                Some(ApothecaryControl::Filter(ready)) => Some(ready),
+                _ if keys.just_pressed(KeyCode::Tab) => Some(!state.ready_recipes_only),
+                _ => actions.menu_navigation_horizontal().map(|step| step > 0),
+            };
+            handle_apothecary_input(
+                &mut state,
+                &catalog,
+                &mut game,
+                &mut menu_sfx,
+                ApothecaryInput {
+                    delta,
+                    filter,
+                    recipe: match apothecary_control {
+                        Some(ApothecaryControl::Recipe(index)) => Some(index),
+                        _ => None,
+                    },
+                    confirm: confirm || apothecary_control == Some(ApothecaryControl::Brew),
+                    back,
+                },
+            );
         }
         Some(ServicePage::Quantity) => {
             if back {

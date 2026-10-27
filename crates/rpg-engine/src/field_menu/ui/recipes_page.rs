@@ -5,6 +5,7 @@
 //! so this page shares that service's availability rules rather than inventing its own.
 
 use super::*;
+use crate::item_images::{ITEM_IMAGE_SIZE, spawn_item_icon, spawn_item_image};
 
 #[expect(
     clippy::too_many_arguments,
@@ -285,6 +286,9 @@ pub(in crate::field_menu) fn spawn_recipe_book_row(
         row.insert(SelectedRecipeBookRow);
     }
     row.with_children(|row| {
+        if !sealed {
+            spawn_item_icon(row, &recipe.output.item, 32.0);
+        }
         row.spawn((
             Node {
                 width: px(6),
@@ -384,34 +388,103 @@ pub(in crate::field_menu) fn spawn_recipe_detail_column(
             };
             let availability = recipe_availability(recipe, game.flags(), game.repository());
             let sealed = availability == RecipeAvailability::Locked;
-            spawn_status_text(
-                panel,
-                recipe_title(recipe, sealed),
-                font,
-                24.0,
-                if sealed {
-                    status_faint()
-                } else {
-                    status_gold()
-                },
-            );
             panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    column_gap: px(12),
-                    ..default()
-                })
-                .with_children(|meta| {
-                    spawn_recipe_state_pill(meta, font, availability);
-                    spawn_status_text(
-                        meta,
-                        recipe_state_hint(availability),
-                        font,
-                        12.0,
-                        status_muted(),
-                    );
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(ITEM_IMAGE_SIZE),
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Start,
+                        column_gap: px(16),
+                        flex_shrink: 0.0,
+                        ..default()
+                    },
+                    Name::new("Recipe formula header"),
+                ))
+                .with_children(|heading| {
+                    if !sealed {
+                        spawn_item_image(heading, &recipe.output.item);
+                    }
+                    heading
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Start,
+                            flex_basis: px(0),
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            height: percent(100),
+                            row_gap: px(12),
+                            ..default()
+                        })
+                        .with_children(|meta| {
+                            meta.spawn(Node {
+                                width: percent(100),
+                                align_items: AlignItems::Center,
+                                column_gap: px(12),
+                                flex_shrink: 0.0,
+                                ..default()
+                            })
+                            .with_children(|title| {
+                                title
+                                    .spawn(Node {
+                                        flex_grow: 1.0,
+                                        flex_basis: px(0),
+                                        min_width: px(0),
+                                        ..default()
+                                    })
+                                    .with_children(|name| {
+                                        spawn_status_text(
+                                            name,
+                                            recipe_title(recipe, sealed),
+                                            font,
+                                            24.0,
+                                            if sealed {
+                                                status_faint()
+                                            } else {
+                                                status_gold()
+                                            },
+                                        );
+                                    });
+                                spawn_recipe_state_pill(title, font, availability);
+                            });
+                            if !sealed {
+                                meta.spawn(Node {
+                                    width: percent(100),
+                                    display: Display::Grid,
+                                    grid_template_columns: RepeatedGridTrack::flex(2, 1.0),
+                                    column_gap: px(16),
+                                    row_gap: px(8),
+                                    flex_shrink: 0.0,
+                                    ..default()
+                                })
+                                .with_children(|values| {
+                                    spawn_quest_meta_row(
+                                        values,
+                                        font,
+                                        "YIELDS",
+                                        &format!(
+                                            "{} x{}",
+                                            loot_item_name(catalog, &recipe.output.item),
+                                            recipe.output.qty
+                                        ),
+                                    );
+                                    spawn_quest_meta_row(
+                                        values,
+                                        font,
+                                        "COST",
+                                        &format!("{} GP", recipe.gp_cost),
+                                    );
+                                    if recipe.unique_output {
+                                        spawn_quest_meta_row(
+                                            values,
+                                            font,
+                                            "LIMIT",
+                                            "one at a time",
+                                        );
+                                    }
+                                });
+                            }
+                        });
                 });
             spawn_section_rule(panel);
             if sealed {
@@ -427,50 +500,63 @@ pub(in crate::field_menu) fn spawn_recipe_detail_column(
                 spawn_recipe_footnote(panel, font);
                 return;
             }
-            spawn_quest_meta_row(
-                panel,
-                font,
-                "YIELDS",
-                &format!(
-                    "{} x{}",
-                    loot_item_name(catalog, &recipe.output.item),
-                    recipe.output.qty
-                ),
-            );
-            spawn_quest_meta_row(panel, font, "COST", &format!("{} GP", recipe.gp_cost));
-            if recipe.unique_output {
-                spawn_quest_meta_row(panel, font, "LIMIT", "one at a time");
-            }
-            spawn_section_rule(panel);
             spawn_status_text(panel, "INGREDIENTS", font, 12.0, status_muted());
             let requirements = recipe_input_requirements(recipe);
             if requirements.is_empty() {
                 spawn_status_text(panel, "Needs nothing but coin.", font, 15.0, status_faint());
             }
-            for (id, required) in requirements {
-                let owned = game.repository().item_count(&id);
-                spawn_recipe_ingredient_row(
-                    panel,
-                    font,
-                    &loot_item_name(catalog, &id),
-                    required,
-                    owned,
-                );
+            if !requirements.is_empty() {
+                panel
+                    .spawn((
+                        Node {
+                            width: percent(100),
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            align_items: AlignItems::Start,
+                            align_content: AlignContent::Start,
+                            column_gap: px(10),
+                            row_gap: px(10),
+                            flex_shrink: 0.0,
+                            ..default()
+                        },
+                        Name::new("Recipe ingredients"),
+                    ))
+                    .with_children(|grid| {
+                        for (id, required) in requirements {
+                            let owned = game.repository().item_count(&id);
+                            spawn_recipe_ingredient_card(
+                                grid,
+                                font,
+                                &id,
+                                &loot_item_name(catalog, &id),
+                                required,
+                                owned,
+                            );
+                        }
+                    });
             }
             panel.spawn(Node {
                 flex_grow: 1.0,
                 ..default()
             });
+            spawn_status_text(
+                panel,
+                recipe_state_hint(availability),
+                font,
+                14.0,
+                recipe_availability_color(availability),
+            );
             spawn_section_rule(panel);
             spawn_recipe_footnote(panel, font);
         },
     );
 }
 
-/// One ingredient: its name, then how many the formula needs against how many are carried.
-fn spawn_recipe_ingredient_row(
+/// A full-size ingredient image with its name and required/carried counts underneath.
+fn spawn_recipe_ingredient_card(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    id: &str,
     name: &str,
     required: u32,
     owned: u32,
@@ -483,28 +569,41 @@ fn spawn_recipe_ingredient_row(
     parent
         .spawn((
             Node {
-                width: percent(100),
-                flex_direction: FlexDirection::Row,
+                width: px(148),
+                flex_shrink: 0.0,
+                flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                column_gap: px(12),
-                padding: UiRect::axes(px(10), px(6)),
+                row_gap: px(5),
+                padding: UiRect::all(px(8)),
                 border: UiRect::all(px(1)),
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },
             BackgroundColor(Color::srgba_u8(10, 10, 14, 148)),
             BorderColor::all(Color::srgba_u8(126, 98, 55, 90)),
+            Name::new(format!("Recipe ingredient: {id}")),
         ))
         .with_children(|row| {
+            spawn_item_image(row, id);
+            spawn_status_text(row, name, font, 14.0, accent);
             row.spawn(Node {
-                flex_grow: 1.0,
+                flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
+                justify_content: JustifyContent::Center,
+                column_gap: px(8),
+                row_gap: px(3),
                 ..default()
             })
-            .with_children(|copy| {
-                spawn_status_text(copy, name, font, 15.0, accent);
+            .with_children(|counts| {
+                spawn_status_text(
+                    counts,
+                    format!("NEED {required}"),
+                    font,
+                    11.0,
+                    status_muted(),
+                );
+                spawn_status_text(counts, format!("HAVE {owned}"), font, 11.0, accent);
             });
-            spawn_status_text(row, format!("NEED {required}"), font, 12.0, status_muted());
-            spawn_status_text(row, format!("HAVE {owned}"), font, 12.0, accent);
         });
 }
 

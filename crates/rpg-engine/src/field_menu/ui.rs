@@ -69,7 +69,8 @@ pub(super) use shell::*;
 pub(super) use spells_page::*;
 pub(super) use status_page::*;
 
-pub(super) const INVENTORY_PAGE_ROWS: usize = 11;
+pub(super) const INVENTORY_PAGE_ROWS: usize = 8;
+pub(super) const ITEM_CARD_HEIGHT: f32 = 56.0;
 pub(super) const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
 pub(super) const SPELLBOOK_VISIBLE_ROWS: usize = 8;
 /// Windowed lists show as many cards as their column fits (see the row-budget test), so a

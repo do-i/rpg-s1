@@ -222,9 +222,11 @@ const fn panel_chrome(padding: usize, border: usize, title: usize, row_gap: usiz
 /// here instead of as content drawn outside a border.
 #[test]
 fn custom_menu_row_budgets_fit_the_baseline_canvas() {
-    // Pouch list: 40px rows over 5px gaps plus a "PAGE nn/nn" footer, in a 14px-padded panel.
-    let items =
-        INVENTORY_PAGE_ROWS * 40 + (INVENTORY_PAGE_ROWS - 1) * 5 + 15 + panel_chrome(14, 1, 17, 5);
+    // Eight taller item cards leave room for 48px thumbnails and the inventory footer.
+    let items = INVENTORY_PAGE_ROWS * ITEM_CARD_HEIGHT as usize
+        + (INVENTORY_PAGE_ROWS - 1) * 5
+        + 15
+        + panel_chrome(14, 1, 17, 5);
     // The shelf is above the split inventory/comparison row; images live outside the list.
     let equipment = EQUIPMENT_PICKER_VISIBLE_ROWS * 52
         + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8

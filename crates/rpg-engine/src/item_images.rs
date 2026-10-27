@@ -40,6 +40,20 @@ pub(crate) fn spawn_item_image(parent: &mut ChildSpawnerCommands<'_>, id: &str) 
     ));
 }
 
+pub(crate) fn spawn_item_icon(parent: &mut ChildSpawnerCommands<'_>, id: &str, size: f32) {
+    parent.spawn((
+        ItemIcon::new(id),
+        Node {
+            width: px(size),
+            height: px(size),
+            flex_shrink: 0.0,
+            margin: UiRect::right(px(8)),
+            ..default()
+        },
+        Name::new(format!("Item image: {id}")),
+    ));
+}
+
 fn resolve_item_icons(
     mut commands: Commands,
     asset_server: Res<AssetServer>,

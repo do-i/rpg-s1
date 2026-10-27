@@ -14,7 +14,10 @@ use super::{
         battle_panel, battle_row, battle_row_border, battle_teal, battle_violet, spawn_battle_text,
     },
 };
-use crate::sfx_cue::{PlaySfx, cue};
+use crate::{
+    item_images::spawn_item_icon,
+    sfx_cue::{PlaySfx, cue},
+};
 
 const MODAL_WIDTH: f32 = 660.0;
 /// Wide enough for a name, the level-up badge, and the EXP label on one line.
@@ -374,18 +377,27 @@ fn spawn_loot_section(
         })
         .with_children(|list| {
             for loot in &rewards.loot {
-                spawn_battle_text(
-                    list,
-                    format!("{}  x{}", loot.name, loot.quantity),
-                    font,
-                    15.0,
-                    if loot.magic_core {
-                        battle_violet()
-                    } else {
-                        battle_ink()
-                    },
-                    Justify::Left,
-                );
+                list.spawn(Node {
+                    width: percent(100),
+                    align_items: AlignItems::Center,
+                    flex_shrink: 0.0,
+                    ..default()
+                })
+                .with_children(|row| {
+                    spawn_item_icon(row, &loot.item_id, 28.0);
+                    spawn_battle_text(
+                        row,
+                        format!("{}  x{}", loot.name, loot.quantity),
+                        font,
+                        15.0,
+                        if loot.magic_core {
+                            battle_violet()
+                        } else {
+                            battle_ink()
+                        },
+                        Justify::Left,
+                    );
+                });
             }
         });
 }

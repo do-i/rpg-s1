@@ -137,11 +137,34 @@ struct DialogueRequest {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct TreasureReveal {
     /// One `name ×qty` line per granted stack, in loot order.
-    rows: Vec<String>,
+    rows: Vec<TreasureRow>,
     /// False for the frame the box is opened, so the Confirm press that opened the box cannot
     /// also dismiss the reveal it produced. Mirrors `suppress_confirm` for dialogue, but lives
     /// on the reveal so it does not depend on which system runs first.
     armed: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TreasureRow {
+    /// Messages about traps and empty boxes carry no item artwork.
+    item_id: Option<String>,
+    text: String,
+}
+
+impl TreasureRow {
+    fn message(text: impl Into<String>) -> Self {
+        Self {
+            item_id: None,
+            text: text.into(),
+        }
+    }
+
+    fn item(id: &str, text: String) -> Self {
+        Self {
+            item_id: Some(id.to_owned()),
+            text,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -419,7 +442,7 @@ struct ItemBoxOutcome {
     /// Shown as world dialogue when the box could not be opened; empty once it was.
     message: String,
     /// The reveal rows, one `name ×qty` per granted stack. Empty when the box did not open.
-    rows: Vec<String>,
+    rows: Vec<TreasureRow>,
     opened: bool,
 }
 
@@ -462,7 +485,7 @@ fn open_item_box(
     // The lid comes off before anything is granted, so a rigged box wounds the party even when
     // it turns out to hold nothing (roadmap B4.2).
     let mut rows = match item_box.trap() {
-        Some(trap) => vec![spring_trap(trap, game, catalog)],
+        Some(trap) => vec![TreasureRow::message(spring_trap(trap, game, catalog))],
         None => Vec::new(),
     };
 
@@ -478,10 +501,9 @@ fn open_item_box(
                 batch.expect("nonempty item-box loot started a batch"),
             )
             .expect("validated item-box loot uses a current batch");
-        grants.push(format!(
-            "{} ×{}",
-            loot_display_name(catalog, &item.id),
-            item.qty
+        grants.push(TreasureRow::item(
+            &item.id,
+            format!("{} ×{}", loot_display_name(catalog, &item.id), item.qty),
         ));
     }
     for core in &item_box.loot().magic_cores {
@@ -501,13 +523,16 @@ fn open_item_box(
                 batch.expect("nonempty item-box loot started a batch"),
             )
             .expect("validated item-box core uses a current batch");
-        grants.push(format!("{} ×{}", loot_display_name(catalog, &id), core.qty));
+        grants.push(TreasureRow::item(
+            &id,
+            format!("{} ×{}", loot_display_name(catalog, &id), core.qty),
+        ));
     }
     game.opened_boxes_mut().record(key);
     if grants.is_empty() {
         // A chest authored with no loot at all. The source still opens its modal and prints one
         // placeholder row rather than a sentence (`item_box_scene.py::_build_lines`).
-        grants.push("(empty)".to_owned());
+        grants.push(TreasureRow::message("(empty)"));
     }
     rows.extend(grants);
     ItemBoxOutcome {
@@ -1378,7 +1403,7 @@ fn sync_treasure_overlay(
     spawn_treasure_overlay(&mut commands, font, &reveal.rows);
 }
 
-fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[String]) {
+fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[TreasureRow]) {
     commands
         .spawn((
             // The scrim covers the whole canvas rather than a fixed size, so the modal stays
@@ -1433,20 +1458,27 @@ fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[S
                         },
                     ));
                     for row in rows {
-                        panel.spawn((
-                            Text::new(row.clone()),
-                            TextFont {
-                                font: font.clone().into(),
-                                font_size: FontSize::Px(20.0),
-                                ..default()
-                            },
-                            TextColor(Color::srgb_u8(220, 220, 180)),
-                            Node {
-                                height: px(TREASURE_ROW_HEIGHT),
+                        panel
+                            .spawn(Node {
+                                min_height: px(TREASURE_ROW_HEIGHT),
+                                align_items: AlignItems::Center,
                                 margin: UiRect::left(px(8)),
                                 ..default()
-                            },
-                        ));
+                            })
+                            .with_children(|line| {
+                                if let Some(id) = row.item_id.as_deref() {
+                                    crate::item_images::spawn_item_icon(line, id, 28.0);
+                                }
+                                line.spawn((
+                                    Text::new(row.text.clone()),
+                                    TextFont {
+                                        font: font.clone().into(),
+                                        font_size: FontSize::Px(20.0),
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb_u8(220, 220, 180)),
+                                ));
+                            });
                     }
                     panel.spawn((
                         Text::new("ENTER  take"),
@@ -2185,9 +2217,21 @@ mod tests {
         assert!(!game.opened_boxes().contains(&other.key()));
 
         assert!(first.opened);
+        assert_eq!(
+            first
+                .rows
+                .iter()
+                .map(|row| row.item_id.as_deref())
+                .collect::<Vec<_>>(),
+            vec![Some("potion"), Some("antidote"), Some("mc_m"), Some("mc_s")]
+        );
         // Display names, not the `potion`/`antidote` ids the player never sees elsewhere.
         assert_eq!(
-            first.rows,
+            first
+                .rows
+                .into_iter()
+                .map(|row| row.text)
+                .collect::<Vec<_>>(),
             vec![
                 "Potion ×2".to_owned(),
                 "Antidote ×1".to_owned(),
@@ -2287,7 +2331,11 @@ mod tests {
 
         assert!(outcome.opened, "a trap does not keep the lid shut");
         assert_eq!(
-            outcome.rows,
+            outcome
+                .rows
+                .into_iter()
+                .map(|row| row.text)
+                .collect::<Vec<_>>(),
             vec![
                 format!(
                     "A trap springs from the lid! The party loses {} health.",
@@ -2315,7 +2363,11 @@ mod tests {
         let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog);
 
         assert_eq!(
-            outcome.rows,
+            outcome
+                .rows
+                .into_iter()
+                .map(|row| row.text)
+                .collect::<Vec<_>>(),
             vec![
                 "Jep spots the trap and disarms it.".to_owned(),
                 "(empty)".to_owned(),
@@ -2358,7 +2410,7 @@ mod tests {
             &catalog,
         );
         assert_eq!(
-            again.rows.first().map(String::as_str),
+            again.rows.first().map(|row| row.text.as_str()),
             Some("A trap springs from the lid, but the party is too battered to bruise.")
         );
     }
@@ -2478,7 +2530,7 @@ mod tests {
         app.world_mut()
             .resource_mut::<WorldInteractionState>()
             .treasure = Some(TreasureReveal {
-            rows: vec!["Potion ×2".to_owned()],
+            rows: vec![TreasureRow::item("potion", "Potion ×2".to_owned())],
             armed: false,
         });
         app.update();

@@ -1,4 +1,5 @@
 use super::*;
+use crate::item_images::{ITEM_IMAGE_SIZE, ItemIcon, spawn_item_icon, spawn_item_image};
 
 #[expect(
     clippy::too_many_arguments,
@@ -303,7 +304,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                     let mut row = panel.spawn((
                         Node {
                             width: percent(100),
-                            min_height: px(40),
+                            min_height: px(ITEM_CARD_HEIGHT),
                             flex_direction: FlexDirection::Row,
                             align_items: AlignItems::Center,
                             padding: UiRect::horizontal(px(9)),
@@ -318,6 +319,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                         row.insert(SelectedItemListRow);
                     }
                     row.with_children(|row| {
+                        spawn_item_icon(row, id, 48.0);
                         row.spawn((
                             Node {
                                 width: px(5),
@@ -395,6 +397,12 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
             let Some(item) = catalog.item(id) else {
                 return;
             };
+            let cost = catalog.shop_buy_price(id);
+            let value = sale_value(item)
+                .map(|value| format!("{value} GP"))
+                .or_else(|| {
+                    matches!(item, ItemDefinition::MagicCore(_)).then(|| "Crafting only".to_owned())
+                });
             panel
                 .spawn(Node {
                     width: percent(100),
@@ -406,12 +414,13 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
                 .with_children(|heading| {
                     heading
                         .spawn((
+                            ItemIcon::new(id),
                             Node {
-                                width: px(56),
-                                height: px(56),
+                                width: px(ITEM_IMAGE_SIZE),
+                                height: px(ITEM_IMAGE_SIZE),
+                                flex_shrink: 0.0,
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
-                                border: UiRect::all(px(2)),
                                 border_radius: BorderRadius::all(px(6)),
                                 ..default()
                             },
@@ -430,45 +439,33 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
                     heading
                         .spawn(Node {
                             flex_direction: FlexDirection::Column,
+                            flex_basis: px(0),
                             flex_grow: 1.0,
+                            min_width: px(0),
+                            row_gap: px(5),
                             ..default()
                         })
                         .with_children(|title| {
                             spawn_status_text(title, item_name(item), font, 23.0, status_gold());
                             spawn_status_text(
                                 title,
-                                format!(
-                                    "{}    QUANTITY  x{}",
-                                    item_kind_label(item),
-                                    game.repository().item_count(id)
-                                ),
+                                format!("QUANTITY  x{}", game.repository().item_count(id)),
                                 font,
                                 13.0,
                                 status_muted(),
                             );
+                            if let Some(value) = value {
+                                spawn_quest_meta_row(title, font, "VALUE", &value);
+                            }
+                            if let Some(cost) = cost {
+                                spawn_quest_meta_row(title, font, "COST", &format!("{cost} GP"));
+                            }
                         });
                 });
             spawn_section_rule(panel);
             spawn_status_text(panel, "DESCRIPTION", font, 13.0, status_gold());
             spawn_status_text(panel, item_description(item), font, 16.0, status_ink());
             spawn_section_rule(panel);
-            let cost = catalog.shop_buy_price(id);
-            // Cores without an exchange rate are kept for crafting; say so rather than leave the
-            // value blank as if it were missing.
-            let value = sale_value(item)
-                .map(|value| format!("{value} GP"))
-                .or_else(|| {
-                    matches!(item, ItemDefinition::MagicCore(_)).then(|| "Crafting only".to_owned())
-                });
-            if cost.is_some() || value.is_some() {
-                if let Some(cost) = cost {
-                    spawn_quest_meta_row(panel, font, "COST", &format!("{cost} GP"));
-                }
-                if let Some(value) = value {
-                    spawn_quest_meta_row(panel, font, "VALUE", &value);
-                }
-                spawn_section_rule(panel);
-            }
             spawn_item_chips(panel, font, game, catalog, id, item);
             if let Some(slot) = equipment_slot(item) {
                 spawn_section_rule(panel);
@@ -573,18 +570,39 @@ pub(in crate::field_menu) fn spawn_item_equip_preview_column(
             let Some(slot) = equipment_slot(item) else {
                 return;
             };
-            spawn_status_text(panel, item_name(item), font, 23.0, status_gold());
-            spawn_status_text(
-                panel,
-                format!(
-                    "{}    {} SLOT",
-                    item_kind_label(item),
-                    slot.as_str().to_uppercase()
-                ),
-                font,
-                13.0,
-                status_muted(),
-            );
+            panel
+                .spawn(Node {
+                    width: percent(100),
+                    align_items: AlignItems::Center,
+                    column_gap: px(12),
+                    flex_shrink: 0.0,
+                    ..default()
+                })
+                .with_children(|heading| {
+                    spawn_item_image(heading, id);
+                    heading
+                        .spawn(Node {
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(8),
+                            ..default()
+                        })
+                        .with_children(|copy| {
+                            spawn_status_text(copy, item_name(item), font, 23.0, status_gold());
+                            spawn_status_text(
+                                copy,
+                                format!(
+                                    "{}    {} SLOT",
+                                    item_kind_label(item),
+                                    slot.as_str().to_uppercase()
+                                ),
+                                font,
+                                13.0,
+                                status_muted(),
+                            );
+                        });
+                });
             spawn_section_rule(panel);
             spawn_status_text(panel, "STATUS CHANGE", font, 13.0, status_gold());
             spawn_status_text(

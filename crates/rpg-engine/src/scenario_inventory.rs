@@ -69,9 +69,6 @@ pub(crate) struct ServiceArt {
     pub(crate) item_shop_keeper: Option<ScenarioRelativePath>,
     pub(crate) weapon_shop_keeper: Option<ScenarioRelativePath>,
     pub(crate) armor_shop_keeper: Option<ScenarioRelativePath>,
-    pub(crate) recipe_locked_icon: Option<ScenarioRelativePath>,
-    pub(crate) recipe_ready_icon: Option<ScenarioRelativePath>,
-    pub(crate) recipe_missing_icon: Option<ScenarioRelativePath>,
 }
 
 impl ScenarioInventory {
@@ -181,9 +178,6 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
             item_shop_keeper: Some(manifest.item_shop.sprite.clone()),
             weapon_shop_keeper: Some(manifest.weapon_shop.sprite.clone()),
             armor_shop_keeper: Some(manifest.armor_shop.sprite.clone()),
-            recipe_locked_icon: Some(manifest.apothecary.icons.locked.clone()),
-            recipe_ready_icon: Some(manifest.apothecary.icons.ready.clone()),
-            recipe_missing_icon: Some(manifest.apothecary.icons.missing.clone()),
         },
         map_directory: Some(manifest.refs.maps.as_relative_path().clone()),
         encounter_directory: Some(manifest.refs.encount.as_relative_path().clone()),

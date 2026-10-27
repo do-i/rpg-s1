@@ -12,7 +12,7 @@ use super::{
     PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
     ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment, owned_exchangeable_cores,
     pending_max, sell_rows, sellable_tags,
-    sprites::{RecipeIcon, ServiceKeeper, ServiceSprites},
+    sprites::{ServiceKeeper, ServiceSprites},
 };
 use crate::{
     dialogue_portrait::DialoguePortrait,
@@ -20,6 +20,7 @@ use crate::{
         FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
     },
     game_state::GameState,
+    item_images::spawn_item_icon,
     menu_chrome::{
         ScrollWindow, scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
         spawn_scroll_list, spawn_section_rule, spawn_status_panel, spawn_status_text,
@@ -32,12 +33,12 @@ use crate::{
     scenario_item::ItemDefinition,
     scenario_recipe::RecipeDefinition,
     scenario_root::ScenarioRoot,
-    service_domain::{
-        RecipeAvailability, can_sell, recipe_availability, recipe_input_requirements, sell_price,
-    },
+    service_domain::{can_sell, sell_price},
     tsx_atlas_asset::TsxAtlasAsset,
     ui_theme::UiTheme,
 };
+
+mod apothecary;
 
 #[derive(Component)]
 pub(super) struct ServiceRoot;
@@ -48,6 +49,8 @@ const PANEL_WIDTH: f32 = 620.0;
 /// Panel width once a detail column is beside the list — the source widens the same way for its
 /// equipment preview (`item_shop_renderer.py`).
 const WIDE_PANEL_WIDTH: f32 = 980.0;
+const APOTHECARY_WIDTH: f32 = 1228.0;
+const APOTHECARY_HEIGHT: f32 = 718.0;
 
 /// Ceiling on the overlay frame, leaving a margin inside the 766px logical canvas.
 ///
@@ -136,24 +139,56 @@ pub(super) fn sync_service_overlay(
                 .spawn((
                     Node {
                         width: px(panel_width(&state)),
-                        max_height: px(PANEL_MAX_HEIGHT),
-                        padding: UiRect::all(px(22)),
-                        border: UiRect::all(px(2)),
+                        height: if is_apothecary(&state) {
+                            px(APOTHECARY_HEIGHT)
+                        } else {
+                            Val::Auto
+                        },
+                        max_height: px(if is_apothecary(&state) {
+                            APOTHECARY_HEIGHT
+                        } else {
+                            PANEL_MAX_HEIGHT
+                        }),
+                        padding: if is_apothecary(&state) {
+                            UiRect {
+                                left: px(22),
+                                right: px(22),
+                                top: px(20),
+                                bottom: px(14),
+                            }
+                        } else {
+                            UiRect::all(px(22))
+                        },
+                        border: UiRect::all(px(if is_apothecary(&state) { 1 } else { 2 })),
                         border_radius: BorderRadius::all(px(8)),
                         flex_direction: FlexDirection::Column,
-                        row_gap: px(12),
+                        row_gap: px(if is_apothecary(&state) { 0 } else { 12 }),
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.025, 0.025, 0.09, 0.97)),
-                    BorderColor::all(theme.name_entry_border_color),
+                    BackgroundColor(if is_apothecary(&state) {
+                        Color::srgba_u8(23, 24, 30, 250)
+                    } else {
+                        Color::srgba(0.025, 0.025, 0.09, 0.97)
+                    }),
+                    BorderColor::all(if is_apothecary(&state) {
+                        status_border()
+                    } else {
+                        theme.name_entry_border_color
+                    }),
                 ))
                 .with_children(|panel| {
-                    spawn_service_header(panel, &font, &state, &game, face);
-                    spawn_section_rule(panel);
-                    spawn_service_body(panel, &font, &state, &catalog, &game, &sprites);
-                    spawn_section_rule(panel);
-                    spawn_status_text(panel, service_hint(&state), &font, 15.0, status_faint());
-                    spawn_toast(panel, &font, &state);
+                    if is_apothecary(&state) {
+                        apothecary::spawn_header(panel, &font, &game, face);
+                        apothecary::spawn_page(panel, &font, &state, &catalog, &game);
+                        apothecary::spawn_footer(panel, &font, &state);
+                    } else {
+                        spawn_service_header(panel, &font, &state, &game, face);
+                        spawn_section_rule(panel);
+                        spawn_service_body(panel, &font, &state, &catalog, &game);
+                        spawn_section_rule(panel);
+                        spawn_status_text(panel, service_hint(&state), &font, 15.0, status_faint());
+                        spawn_toast(panel, &font, &state);
+                    }
                 });
         });
 }
@@ -172,11 +207,17 @@ pub(super) fn cleanup_service_ui(
 /// The pages that put a detail column beside the list need the wider frame.
 fn panel_width(state: &ServiceUiState) -> f32 {
     match state.page {
-        Some(ServicePage::Buy | ServicePage::Apothecary | ServicePage::RecipeDetail) => {
-            WIDE_PANEL_WIDTH
-        }
+        Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => APOTHECARY_WIDTH,
+        Some(ServicePage::Buy) => WIDE_PANEL_WIDTH,
         _ => PANEL_WIDTH,
     }
+}
+
+fn is_apothecary(state: &ServiceUiState) -> bool {
+    matches!(
+        state.page,
+        Some(ServicePage::Apothecary | ServicePage::RecipeDetail)
+    )
 }
 
 fn keeper_face(
@@ -287,7 +328,6 @@ fn spawn_service_body(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
-    sprites: &ServiceSprites,
 ) {
     match state.page {
         Some(ServicePage::ShopMenu) => spawn_shop_menu(parent, font, state),
@@ -296,7 +336,7 @@ fn spawn_service_body(
         Some(ServicePage::MagicCore) => spawn_core_page(parent, font, state, catalog, game),
         Some(ServicePage::Inn) => spawn_inn_page(parent, font, catalog, game),
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
-            spawn_apothecary_page(parent, font, state, catalog, game, sprites);
+            apothecary::spawn_page(parent, font, state, catalog, game);
         }
         Some(ServicePage::Quantity | ServicePage::CoreConfirm) => {
             spawn_quantity_page(parent, font, state, catalog, game);
@@ -372,6 +412,7 @@ fn spawn_buy_page(
                         panel,
                         font,
                         ListRow {
+                            item_id: Some(row.id()),
                             selected: index == state.selected,
                             accent: item.map_or_else(status_teal, item_accent),
                             label: item.map_or(row.id(), |item| item_name(item)),
@@ -397,17 +438,35 @@ fn spawn_buy_page(
                 spawn_status_text(panel, "Nothing to inspect.", font, 16.0, status_muted());
                 return;
             };
-            spawn_status_text(panel, item_name(item), font, 21.0, status_gold());
             panel
-                .spawn(buy_description_node())
-                .with_children(|description| {
-                    spawn_status_text(
-                        description,
-                        item_description(item),
-                        font,
-                        15.0,
-                        status_ink(),
-                    );
+                .spawn(Node {
+                    width: percent(100),
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|heading| {
+                    spawn_item_icon(heading, item.id(), 56.0);
+                    heading
+                        .spawn(Node {
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(8),
+                            ..default()
+                        })
+                        .with_children(|copy| {
+                            spawn_status_text(copy, item_name(item), font, 21.0, status_gold());
+                            copy.spawn(buy_description_node())
+                                .with_children(|description| {
+                                    spawn_status_text(
+                                        description,
+                                        item_description(item),
+                                        font,
+                                        15.0,
+                                        status_ink(),
+                                    );
+                                });
+                        });
                 });
             spawn_equipment_preview(panel, font, state, catalog, game, item);
         });
@@ -581,6 +640,7 @@ fn spawn_sell_page(
                     panel,
                     font,
                     ListRow {
+                        item_id: Some(item.id()),
                         selected: index == state.selected,
                         accent: item_accent(item),
                         label: item_name(item),
@@ -639,6 +699,7 @@ fn spawn_core_page(
                     panel,
                     font,
                     ListRow {
+                        item_id: None,
                         selected: index == state.selected,
                         accent: item_accent(item),
                         label: item_name(item),
@@ -736,220 +797,6 @@ fn spawn_inn_page(
         14.0,
         status_muted(),
     );
-}
-
-// ── Apothecary ───────────────────────────────────────────────────────────────
-
-fn spawn_apothecary_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-    sprites: &ServiceSprites,
-) {
-    let recipes = catalog.recipes();
-    spawn_columns(parent, |columns| {
-        spawn_status_panel(columns, list_panel_node(), "RECIPES", font, |panel| {
-            if recipes.is_empty() {
-                spawn_status_text(panel, "No recipes are known.", font, 17.0, status_muted());
-                return;
-            }
-            let window = state.scroll.window(
-                "recipes",
-                state.selected,
-                recipes.len(),
-                SERVICE_VISIBLE_ROWS,
-            );
-            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
-                for index in window.indices() {
-                    let recipe = &recipes[index];
-                    let availability = recipe_availability(recipe, game.flags(), game.repository());
-                    spawn_recipe_row(
-                        panel,
-                        font,
-                        sprites,
-                        recipe,
-                        catalog,
-                        availability,
-                        index == state.selected,
-                    );
-                }
-            });
-            spawn_window_footer(panel, font, state.selected, window);
-        });
-        spawn_status_panel(columns, detail_panel_node(), "RECIPE", font, |panel| {
-            let Some(recipe) = recipes.get(state.selected) else {
-                spawn_status_text(panel, "Nothing selected.", font, 16.0, status_muted());
-                return;
-            };
-            if state.page == Some(ServicePage::RecipeDetail) {
-                spawn_recipe_detail(panel, font, recipe, catalog, game);
-            } else {
-                spawn_status_text(panel, &recipe.scroll_name, font, 21.0, status_gold());
-                spawn_status_text(
-                    panel,
-                    "ENTER opens the full recipe before anything is spent.",
-                    font,
-                    15.0,
-                    status_muted(),
-                );
-            }
-        });
-    });
-}
-
-fn spawn_recipe_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    sprites: &ServiceSprites,
-    recipe: &RecipeDefinition,
-    catalog: &FieldMenuCatalog,
-    availability: RecipeAvailability,
-    selected: bool,
-) {
-    let icon = RecipeIcon::for_availability(availability);
-    let ready = availability == RecipeAvailability::Ready;
-    let output = catalog
-        .item(&recipe.output.item)
-        .map_or(recipe.output.item.as_str(), |item| item_name(item));
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                min_height: px(40),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                column_gap: px(9),
-                padding: UiRect::horizontal(px(9)),
-                border: UiRect::all(px(if selected { 2 } else { 1 })),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            selectable_card_colors(selected),
-        ))
-        .with_children(|row| {
-            match sprites.recipe_icon(icon) {
-                Some(image) => {
-                    row.spawn((
-                        ImageNode::new(image),
-                        Node {
-                            width: px(22),
-                            height: px(22),
-                            ..default()
-                        },
-                    ));
-                }
-                None => {
-                    row.spawn((
-                        Node {
-                            width: px(5),
-                            height: px(22),
-                            ..default()
-                        },
-                        BackgroundColor(availability_color(availability)),
-                    ));
-                }
-            }
-            row.spawn(Node {
-                flex_grow: 1.0,
-                flex_direction: FlexDirection::Column,
-                ..default()
-            })
-            .with_children(|label| {
-                spawn_status_text(
-                    label,
-                    &recipe.scroll_name,
-                    font,
-                    16.0,
-                    if ready { status_ink() } else { status_muted() },
-                );
-                spawn_status_text(
-                    label,
-                    format!("-> {output} x{}", recipe.output.qty),
-                    font,
-                    12.0,
-                    status_faint(),
-                );
-            });
-            spawn_status_text(
-                row,
-                format!("{} GP", recipe.gp_cost),
-                font,
-                14.0,
-                availability_color(availability),
-            );
-        });
-}
-
-/// The committed-recipe view: output, every ingredient against what the player holds, and cost.
-fn spawn_recipe_detail(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    recipe: &RecipeDefinition,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    let output = catalog
-        .item(&recipe.output.item)
-        .map_or(recipe.output.item.as_str(), |item| item_name(item));
-    spawn_status_text(parent, &recipe.scroll_name, font, 21.0, status_gold());
-    spawn_status_text(
-        parent,
-        format!("Output:  {output} x{}", recipe.output.qty),
-        font,
-        16.0,
-        status_ready(),
-    );
-    spawn_section_rule(parent);
-    spawn_status_text(parent, "Inputs:", font, 14.0, status_ink());
-    for (id, required) in recipe_input_requirements(recipe) {
-        let owned = game.repository().item_count(&id);
-        let name = catalog
-            .item(&id)
-            .map_or_else(|| id.clone(), |item| item_name(item).to_owned());
-        spawn_status_text(
-            parent,
-            format!("  {name}  x{required}  (owned: {owned})"),
-            font,
-            15.0,
-            if owned >= required {
-                status_ink()
-            } else {
-                status_ember()
-            },
-        );
-    }
-    spawn_section_rule(parent);
-    let affordable = game.repository().gp() >= recipe.gp_cost;
-    spawn_status_text(
-        parent,
-        format!("Cost: {} GP", recipe.gp_cost),
-        font,
-        16.0,
-        if affordable {
-            status_gold()
-        } else {
-            status_ember()
-        },
-    );
-    spawn_status_text(
-        parent,
-        format!("Balance: {} GP", game.repository().gp()),
-        font,
-        13.0,
-        status_muted(),
-    );
-}
-
-fn availability_color(availability: RecipeAvailability) -> Color {
-    match availability {
-        RecipeAvailability::Ready => status_ready(),
-        RecipeAvailability::MissingInputs | RecipeAvailability::Unaffordable => status_ember(),
-        RecipeAvailability::Locked
-        | RecipeAvailability::UniqueOwned
-        | RecipeAvailability::OutputCap => status_faint(),
-    }
 }
 
 // ── Quantity, confirmation, equip ────────────────────────────────────────────
@@ -1053,6 +900,7 @@ fn spawn_equip_page(
 // ── Shared row builders ──────────────────────────────────────────────────────
 
 struct ListRow<'a> {
+    item_id: Option<&'a str>,
     selected: bool,
     accent: Color,
     label: &'a str,
@@ -1078,6 +926,9 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
             selectable_card_colors(row.selected),
         ))
         .with_children(|node| {
+            if let Some(id) = row.item_id {
+                spawn_item_icon(node, id, 32.0);
+            }
             node.spawn((
                 Node {
                     width: px(5),
@@ -1349,13 +1200,13 @@ mod tests {
     #[test]
     fn the_detail_pages_claim_the_wide_frame_and_the_rest_stay_narrow() {
         let mut state = ServiceUiState::default();
-        for page in [
-            ServicePage::Buy,
-            ServicePage::Apothecary,
-            ServicePage::RecipeDetail,
-        ] {
+        for page in [ServicePage::Buy] {
             state.page = Some(page);
             assert_eq!(panel_width(&state), WIDE_PANEL_WIDTH, "{page:?}");
+        }
+        for page in [ServicePage::Apothecary, ServicePage::RecipeDetail] {
+            state.page = Some(page);
+            assert_eq!(panel_width(&state), APOTHECARY_WIDTH, "{page:?}");
         }
         for page in [
             ServicePage::ShopMenu,

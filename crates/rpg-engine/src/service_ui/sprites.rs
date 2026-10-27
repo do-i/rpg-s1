@@ -1,10 +1,6 @@
-//! The manifest-declared keeper faces and recipe-status icons the service overlays draw.
+//! Manifest-declared keeper faces for the service overlays.
 //!
-//! `manifest.yaml` has named a sprite for every service since the content was authored, and the
-//! apothecary additionally names three lock-status icons. Nothing consumed them while the
-//! overlays were a text blob. Handles are loaded once at startup rather than when a shop opens,
-//! so the atlas is already resident the first time the player talks to a keeper — an overlay
-//! that only rebuilds on state change would otherwise miss a late-arriving asset.
+//! Faces are preloaded so opening a service can reuse the shared dialogue portrait crop.
 
 use std::collections::BTreeMap;
 
@@ -14,7 +10,6 @@ use crate::{
     dialogue_portrait::{DialoguePortrait, dialogue_portrait_from_atlas},
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
-    service_domain::RecipeAvailability,
     tsx_atlas_asset::TsxAtlasAsset,
 };
 
@@ -28,35 +23,9 @@ pub(crate) enum ServiceKeeper {
     ArmorShop,
 }
 
-/// The three authored recipe-status icons.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub(crate) enum RecipeIcon {
-    Locked,
-    Ready,
-    Missing,
-}
-
-impl RecipeIcon {
-    /// Collapses the six modelled recipe states onto the three authored icons.
-    ///
-    /// The source only distinguishes locked, missing-inputs, and ready. The port models two more
-    /// refusals — a unique output already owned, and a full output stack — and both are states
-    /// the recipe can never be crafted out of by gathering more, so they read as locked.
-    pub(crate) const fn for_availability(availability: RecipeAvailability) -> Self {
-        match availability {
-            RecipeAvailability::Ready => Self::Ready,
-            RecipeAvailability::MissingInputs | RecipeAvailability::Unaffordable => Self::Missing,
-            RecipeAvailability::Locked
-            | RecipeAvailability::UniqueOwned
-            | RecipeAvailability::OutputCap => Self::Locked,
-        }
-    }
-}
-
 #[derive(Debug, Default, Resource)]
 pub(crate) struct ServiceSprites {
     keepers: BTreeMap<ServiceKeeper, Handle<TsxAtlasAsset>>,
-    icons: BTreeMap<RecipeIcon, Handle<Image>>,
 }
 
 impl ServiceSprites {
@@ -68,10 +37,6 @@ impl ServiceSprites {
     ) -> Option<DialoguePortrait> {
         let atlas = atlases.get(self.keepers.get(&keeper)?)?;
         dialogue_portrait_from_atlas(atlas)
-    }
-
-    pub(crate) fn recipe_icon(&self, icon: RecipeIcon) -> Option<Handle<Image>> {
-        self.icons.get(&icon).cloned()
     }
 }
 
@@ -93,36 +58,6 @@ pub(crate) fn load_service_sprites(
             sprites
                 .keepers
                 .insert(keeper, asset_server.load(root.resolve(path)));
-        }
-    }
-    for (icon, path) in [
-        (RecipeIcon::Locked, &art.recipe_locked_icon),
-        (RecipeIcon::Ready, &art.recipe_ready_icon),
-        (RecipeIcon::Missing, &art.recipe_missing_icon),
-    ] {
-        if let Some(path) = path {
-            sprites
-                .icons
-                .insert(icon, asset_server.load(root.resolve(path)));
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn maps_every_recipe_state_onto_an_authored_icon() {
-        for (availability, expected) in [
-            (RecipeAvailability::Ready, RecipeIcon::Ready),
-            (RecipeAvailability::MissingInputs, RecipeIcon::Missing),
-            (RecipeAvailability::Unaffordable, RecipeIcon::Missing),
-            (RecipeAvailability::Locked, RecipeIcon::Locked),
-            (RecipeAvailability::UniqueOwned, RecipeIcon::Locked),
-            (RecipeAvailability::OutputCap, RecipeIcon::Locked),
-        ] {
-            assert_eq!(RecipeIcon::for_availability(availability), expected);
         }
     }
 }
