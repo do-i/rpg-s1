@@ -49,6 +49,19 @@ pub(super) fn spawn_header(
     font: &Handle<Font>,
     game: &GameState,
 ) {
+    parent.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0),
+            top: px(0),
+            bottom: px(0),
+            width: px(7),
+            ..default()
+        },
+        BackgroundColor(status_ember()),
+        Pickable::IGNORE,
+        Name::new("Core frame accent"),
+    ));
     parent
         .spawn((
             Node {
@@ -207,7 +220,7 @@ fn spawn_list(
                                 format!("OWNED {owned} · TOP RANK")
                             } else if sale_value(item).is_none() {
                                 format!(
-                                    "OWNED {owned} · 50 → 1 {}",
+                                    "OWNED {owned} · 50 -> 1 {}",
                                     next_core_id(id).map_or_else(String::new, tier)
                                 )
                             } else {
@@ -318,6 +331,9 @@ fn spawn_detail(
                     identity
                         .spawn(Node {
                             flex_direction: FlexDirection::Column,
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            flex_basis: px(0),
                             row_gap: px(9),
                             ..default()
                         })
@@ -372,7 +388,7 @@ fn spawn_detail(
                     } else {
                         let label = next_core_id(item.id()).map_or_else(
                             || "TOP RANK".to_owned(),
-                            |next| format!("50 {} → 1 {}", tier(item.id()), tier(next)),
+                            |next| format!("50 {} -> 1 {}", tier(item.id()), tier(next)),
                         );
                         spawn_status_text(rate, label, font, 17.0, status_gold());
                     }
@@ -460,7 +476,7 @@ fn spawn_quantity(
             for (label, control, size) in [
                 ("+".to_owned(), CoreControl::Quantity(1), 24.0),
                 (state.quantity.to_string(), CoreControl::Review, 27.0),
-                ("−".to_owned(), CoreControl::Quantity(-1), 24.0),
+                ("-".to_owned(), CoreControl::Quantity(-1), 24.0),
             ] {
                 picker
                     .spawn((
@@ -491,6 +507,20 @@ fn spawn_quantity(
         });
 }
 
+fn spawn_balance(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, value: u32) {
+    parent
+        .spawn(Node {
+            align_items: AlignItems::Baseline,
+            justify_content: JustifyContent::End,
+            column_gap: px(6),
+            ..default()
+        })
+        .with_children(|money| {
+            spawn_status_text(money, format_shop_number(value), font, 19.0, status_teal());
+            spawn_status_text(money, "GP", font, 12.0, status_muted());
+        });
+}
+
 fn spawn_summary(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -508,34 +538,51 @@ fn spawn_summary(
             ..default()
         })
         .with_children(|summary| {
+            if state.core_shop.mode == CoreMode::RankUp && next_core_id(item.id()).is_none() {
+                spawn_status_text(summary, "TOP RANK", font, 12.0, status_muted());
+                spawn_status_text(
+                    summary,
+                    "XL cores have no higher rank.",
+                    font,
+                    17.0,
+                    status_ink(),
+                );
+                return;
+            }
+
             if state.core_shop.mode == CoreMode::Sell {
                 let amount = sale_value(item).unwrap_or(0).saturating_mul(state.quantity);
                 spawn_status_text(summary, "PAYOUT", font, 12.0, status_muted());
                 shop::spawn_money(summary, font, amount, 32.0, status_muted());
                 spawn_status_text(summary, "After exchange", font, 14.0, status_muted());
-                shop::spawn_money(
+                spawn_balance(
                     summary,
                     font,
                     game.repository()
                         .gp()
                         .saturating_add(amount)
                         .min(game.repository().gp_cap()),
-                    19.0,
-                    status_muted(),
                 );
             } else {
                 spawn_status_text(summary, "CONSUME", font, 12.0, status_muted());
-                spawn_status_text(
-                    summary,
-                    format!(
-                        "{} × {}",
-                        state.quantity.saturating_mul(CORE_RANK_UP_COST),
-                        item_name(item)
-                    ),
-                    font,
-                    17.0,
-                    status_ink(),
-                );
+                summary
+                    .spawn(Node {
+                        justify_content: JustifyContent::End,
+                        ..default()
+                    })
+                    .with_children(|value| {
+                        spawn_status_text(
+                            value,
+                            format!(
+                                "{} × {}",
+                                state.quantity.saturating_mul(CORE_RANK_UP_COST),
+                                item_name(item)
+                            ),
+                            font,
+                            17.0,
+                            status_ink(),
+                        );
+                    });
                 spawn_status_text(summary, "YOU RECEIVE", font, 12.0, status_muted());
                 if let Some(output) = next_core_id(item.id()) {
                     summary
@@ -620,7 +667,7 @@ pub(super) fn spawn_review(
                     {
                         let text = if state.pending == Some(PendingTransaction::RankUp) {
                             format!(
-                                "{} × {} → {} × Magic Core ({})",
+                                "{} × {} -> {} × Magic Core ({})",
                                 state.quantity.saturating_mul(CORE_RANK_UP_COST),
                                 item_name(item),
                                 state.quantity,
@@ -628,7 +675,7 @@ pub(super) fn spawn_review(
                             )
                         } else {
                             format!(
-                                "{} × {} → {} GP",
+                                "{} × {} -> {} GP",
                                 state.quantity,
                                 item_name(item),
                                 sale_value(item).unwrap_or(0).saturating_mul(state.quantity)
@@ -795,10 +842,10 @@ mod tests {
             .iter(world)
             .map(|text| text.0.as_str())
             .collect::<Vec<_>>();
-        assert!(texts.contains(&"50 S → 1 M"));
+        assert!(texts.contains(&"50 S -> 1 M"));
         assert!(texts.contains(&"100 × Magic Core (S)"));
         assert!(texts.contains(&"2 × Magic Core (M)"));
-        assert!(texts.contains(&"100 × Magic Core (S) → 2 × Magic Core (M)"));
+        assert!(texts.contains(&"100 × Magic Core (S) -> 2 × Magic Core (M)"));
         let layer = world
             .query::<(&Name, &ZIndex)>()
             .iter(world)
