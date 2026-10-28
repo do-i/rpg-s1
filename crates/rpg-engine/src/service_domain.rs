@@ -11,6 +11,9 @@ use crate::{
     scenario_recipe::{MagicCoreSize, RecipeDefinition},
 };
 
+mod core_exchange;
+pub(crate) use core_exchange::{CORE_RANK_UP_COST, CORE_TIERS, next_core_id, rank_up_magic_core};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum RecipeAvailability {
     Locked,
@@ -177,6 +180,9 @@ pub(crate) fn exchange_magic_core(
     else {
         return Err(ServiceError::WrongCore);
     };
+    if repository.is_locked(id) {
+        return Err(ServiceError::Locked);
+    }
     if repository.item_count(id) < quantity {
         return Err(ServiceError::NotOwned);
     }
