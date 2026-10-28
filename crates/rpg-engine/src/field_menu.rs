@@ -46,7 +46,9 @@ impl Plugin for FieldMenuPlugin {
             .add_systems(
                 Update,
                 (
-                    handle_field_menu_input,
+                    handle_field_menu_input
+                        .after(crate::service_ui::handle_service_input)
+                        .after(crate::world_interaction::drive_dialogue_session),
                     sync_field_menu_overlay_lifecycle,
                     ApplyDeferred,
                     sync_field_menu_generic_text,

@@ -116,24 +116,40 @@ pub(super) fn spawn_header(
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::End,
                     row_gap: px(2),
-                    margin: UiRect::right(px(24)),
                     ..default()
                 })
                 .with_children(|wallet| {
                     spawn_status_text(wallet, "YOUR COIN", font, 10.0, status_muted());
                     spawn_money(wallet, font, game.repository().gp(), 25.0, status_gold());
                 });
-            for (is_buy, label) in [(true, "BUY"), (false, "SELL")] {
-                spawn_pill(
-                    header,
-                    font,
-                    label,
-                    buying(state) == is_buy,
-                    state.shop_focus == ShopFocus::Mode && buying(state) == is_buy,
-                    Some(ShopControl::Mode(is_buy)),
-                    true,
-                );
-            }
+            header
+                .spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: px(0),
+                        top: px(0),
+                        width: percent(100),
+                        height: px(53),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        column_gap: px(16),
+                        ..default()
+                    },
+                    Name::new("Shop centered modes"),
+                ))
+                .with_children(|modes| {
+                    for (is_buy, label) in [(true, "BUY"), (false, "SELL")] {
+                        spawn_pill(
+                            modes,
+                            font,
+                            label,
+                            buying(state) == is_buy,
+                            state.shop_focus == ShopFocus::Mode && buying(state) == is_buy,
+                            Some(ShopControl::Mode(is_buy)),
+                            true,
+                        );
+                    }
+                });
         });
 }
 
@@ -241,8 +257,8 @@ pub(super) fn spawn_page(
                 spawn_status_text(
                     bar,
                     match state.shop_focus {
-                        ShopFocus::Mode => "LEFT / RIGHT MODE   DOWN ITEM TYPES",
-                        ShopFocus::Category => "LEFT / RIGHT TYPE   DOWN BROWSE",
+                        ShopFocus::Mode => "LEFT / RIGHT MODE   ENTER / DOWN ITEM TYPES",
+                        ShopFocus::Category => "LEFT / RIGHT TYPE   ENTER / DOWN BROWSE",
                         ShopFocus::Items => "UP / DOWN BROWSE   ENTER QUANTITY",
                         ShopFocus::Detail => "UP / DOWN QUANTITY   ENTER REVIEW",
                     },

@@ -52,6 +52,7 @@ impl Plugin for WorldInteractionPlugin {
             .register_asset_loader(ScenarioYamlLoader::<DialogueDocument>::new("dialogue"))
             .init_resource::<WorldInteractionState>()
             .add_systems(OnEnter(AppState::World), begin_world_interactions)
+            .add_systems(PreUpdate, reset_interaction_input_lock)
             .add_systems(
                 Update,
                 (
@@ -108,12 +109,11 @@ impl WorldInteractionState {
     #[cfg(test)]
     pub(crate) fn dialogue_open_for_tests() -> Self {
         Self {
-            request: Some(DialogueRequest {
-                id: "test_dialogue".to_owned(),
-                speaker: None,
-                portrait: None,
-                handle: Handle::default(),
-            }),
+            session: Some(DialogueSession::message(
+                "test_dialogue",
+                None,
+                vec!["Welcome to the shop.".to_owned()],
+            )),
             ..default()
         }
     }
@@ -646,7 +646,7 @@ fn resolve_dialogue_request(
     clippy::too_many_arguments,
     reason = "driving a session reads the clock, input, settings, and every catalog it can apply"
 )]
-fn drive_dialogue_session(
+pub(crate) fn drive_dialogue_session(
     mut commands: Commands,
     time: Res<Time>,
     actions: Res<ActionState>,
@@ -664,9 +664,6 @@ fn drive_dialogue_session(
     let Some(mut game) = game else {
         return;
     };
-    // The latch belongs to the frame that set it; releasing it here keeps the field menu
-    // from reacting to a Back press this dialogue already consumed.
-    state.closed_this_frame = false;
     if state.suppress_confirm {
         state.suppress_confirm = false;
         return;
@@ -761,10 +758,15 @@ fn drive_dialogue_session(
     {
         state.session = None;
         state.portrait = None;
+        state.closed_this_frame = true;
     }
     if let Some(request) = take_pending_battle(&mut state) {
         commands.insert_resource(request);
     }
+}
+
+pub(crate) fn reset_interaction_input_lock(mut state: ResMut<WorldInteractionState>) {
+    state.closed_this_frame = false;
 }
 
 fn dialogue_arrival(

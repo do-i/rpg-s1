@@ -28,6 +28,7 @@ fn app() -> App {
         .insert_resource(game)
         .insert_resource(state)
         .add_message::<PlaySfx>()
+        .add_systems(PreUpdate, reset_service_input_lock)
         .add_systems(Update, handle_service_input);
     app.update();
     app
@@ -54,6 +55,59 @@ fn enter_items(app: &mut App) {
 
 fn repository(app: &App) -> &crate::runtime_repository::RuntimeRepository {
     app.world().resource::<GameState>().repository()
+}
+
+#[test]
+fn returning_to_the_world_keeps_back_consumed_for_the_whole_frame() {
+    let mut app = app();
+    app.add_plugins(bevy::state::app::StatesPlugin)
+        .insert_state(AppState::Dialogue)
+        .add_systems(OnEnter(AppState::World), reset_service_ui);
+    app.update();
+    app.world_mut()
+        .resource_mut::<NextState<AppState>>()
+        .set(AppState::World);
+    press(&mut app, NormalizedAction::Back);
+
+    // OnEnter runs after PreUpdate. The service input handler must preserve its close
+    // guard until the next frame, even though there is no longer a service to handle.
+    let state = app.world().resource::<ServiceUiState>();
+    assert!(!state.is_open());
+    assert!(state.input_locked());
+    press(&mut app, NormalizedAction::MenuDown);
+    assert!(!app.world().resource::<ServiceUiState>().input_locked());
+}
+
+#[test]
+fn confirm_advances_one_shop_section_at_a_time_without_spending() {
+    for selling in [false, true] {
+        let mut app = app();
+        if selling {
+            press(&mut app, NormalizedAction::MenuRight);
+        }
+        let before = repository(&app).clone();
+        for focus in [ShopFocus::Category, ShopFocus::Items, ShopFocus::Detail] {
+            press(&mut app, NormalizedAction::Confirm);
+            let state = app.world().resource::<ServiceUiState>();
+            assert_eq!(state.shop_focus, focus);
+            assert_eq!(
+                state.page,
+                Some(if selling {
+                    ServicePage::Sell
+                } else {
+                    ServicePage::Buy
+                })
+            );
+            assert_eq!(state.pending, None);
+            assert_eq!(repository(&app), &before);
+        }
+        press(&mut app, NormalizedAction::Confirm);
+        assert_eq!(
+            app.world().resource::<ServiceUiState>().page,
+            Some(ServicePage::ShopConfirm)
+        );
+        assert_eq!(repository(&app), &before);
+    }
 }
 
 #[test]
@@ -359,6 +413,12 @@ fn stock_selection_and_details_follow_down_and_up_without_losing_the_type() {
         app.world().resource::<ServiceUiState>().page,
         Some(ServicePage::Buy)
     );
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_focus,
+        ShopFocus::Items
+    );
+    assert_eq!(repository(&app), &before);
+    press(&mut app, NormalizedAction::Back);
     press(&mut app, NormalizedAction::MenuRight);
     assert_eq!(
         app.world().resource::<ServiceUiState>().shop_category,

@@ -47,10 +47,11 @@ impl Plugin for ServiceUiPlugin {
             .init_resource::<ServiceSprites>()
             .add_systems(Startup, load_service_sprites)
             .add_systems(OnEnter(AppState::World), reset_service_ui)
+            .add_systems(PreUpdate, reset_service_input_lock)
             .add_systems(
                 Update,
                 (
-                    handle_service_input,
+                    handle_service_input.after(crate::world_interaction::drive_dialogue_session),
                     view::sync_service_overlay,
                     ApplyDeferred,
                 )
@@ -263,6 +264,10 @@ fn reset_service_ui(mut state: ResMut<ServiceUiState>) {
     state.close();
 }
 
+pub(crate) fn reset_service_input_lock(mut state: ResMut<ServiceUiState>) {
+    state.closed_this_frame = false;
+}
+
 #[expect(
     clippy::too_many_lines,
     clippy::too_many_arguments,
@@ -281,10 +286,7 @@ pub(crate) fn handle_service_input(
     shop_controls: Query<(&ShopControl, &ComputedNode, &UiGlobalTransform)>,
     core_controls: Query<(&CoreControl, &ComputedNode, &UiGlobalTransform)>,
 ) {
-    // The latch belongs to the frame that set it; releasing it here keeps the field menu
-    // from reacting to a Back press this service already consumed.
-    state.closed_this_frame = false;
-    if !state.input_locked() {
+    if state.request.is_none() {
         return;
     }
     expire_toast(&mut state, time.delta_secs());
@@ -496,7 +498,7 @@ pub(crate) fn handle_service_input(
                         state.sell_tag = None;
                         menu_sfx.hover();
                     }
-                    if delta == Some(1) {
+                    if delta == Some(1) || confirm {
                         state.shop_category = InventoryTab::All;
                         state.selected = 0;
                         state.shop_focus = ShopFocus::Category;
@@ -518,7 +520,7 @@ pub(crate) fn handle_service_input(
                         state.selected = 0;
                         menu_sfx.hover();
                     }
-                    if delta == Some(1) {
+                    if delta == Some(1) || confirm {
                         state.selected = 0;
                         if selected_shop_item_id(&state, is_buy, &catalog, &game).is_some() {
                             state.shop_focus = ShopFocus::Items;

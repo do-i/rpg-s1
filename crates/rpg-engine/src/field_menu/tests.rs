@@ -2462,70 +2462,124 @@ fn quit_confirmation_is_a_focused_desktop_exit_modal() {
 /// reached the world and popped the field menu, so cancelling any shop, inn, apothecary,
 /// or dialogue left the player staring at the command deck.
 #[test]
-fn a_back_press_that_closes_a_service_never_reaches_the_field_menu() {
+fn a_back_press_that_closes_dialogue_or_a_service_never_reaches_the_field_menu() {
     use crate::{
         action_input::ActionInputPlugin,
-        service_ui::{ServiceRequest, handle_service_input},
+        scenario_balance::BalanceData,
+        scenario_dialogue::DialogueShopKind,
+        scenario_party::PartyCatalog,
+        service_ui::{ServiceRequest, handle_service_input, reset_service_input_lock},
+        world_interaction::{drive_dialogue_session, reset_interaction_input_lock},
     };
 
-    for service_runs_first in [true, false] {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins)
-            .init_resource::<ButtonInput<KeyCode>>()
-            .add_plugins(ActionInputPlugin)
-            .insert_resource(FieldMenuCatalog::default())
-            .insert_resource(WorldInteractionState::default())
-            .init_resource::<EngineSettings>()
-            .insert_resource(WorldTransition::idle_for_test())
-            .insert_resource(fixture_game())
-            .insert_resource(SaveStore::new(
-                std::env::temp_dir().join("rpg-s1-service-back-test-unused"),
-            ))
-            .insert_resource(SaveSlotCatalog::default())
-            .insert_resource(Time::<Real>::default())
-            .init_resource::<ServiceUiState>()
-            .init_resource::<FieldMenuState>()
-            .add_message::<AppExit>()
-            .add_message::<PlaySfx>()
-            .add_message::<KeyboardInput>();
-        if service_runs_first {
-            app.add_systems(
-                Update,
-                (handle_service_input, handle_field_menu_input).chain(),
+    for request in [
+        None,
+        Some(ServiceRequest::Inn),
+        Some(ServiceRequest::Apothecary),
+        Some(ServiceRequest::Shop(DialogueShopKind::Item)),
+        Some(ServiceRequest::Shop(DialogueShopKind::Weapon)),
+        Some(ServiceRequest::Shop(DialogueShopKind::Armor)),
+        Some(ServiceRequest::Shop(DialogueShopKind::MagicCore)),
+    ] {
+        for modal_runs_first in [true, false] {
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins)
+                .init_resource::<ButtonInput<KeyCode>>()
+                .add_plugins(ActionInputPlugin)
+                .insert_resource(FieldMenuCatalog::default())
+                .insert_resource(if request.is_none() {
+                    WorldInteractionState::dialogue_open_for_tests()
+                } else {
+                    WorldInteractionState::default()
+                })
+                .init_resource::<Assets<PartyCatalog>>()
+                .init_resource::<Assets<BalanceData>>()
+                .init_resource::<EngineSettings>()
+                .insert_resource(WorldTransition::idle_for_test())
+                .insert_resource(fixture_game())
+                .insert_resource(SaveStore::new(
+                    std::env::temp_dir().join("rpg-s1-service-back-test-unused"),
+                ))
+                .insert_resource(SaveSlotCatalog::default())
+                .init_resource::<ServiceUiState>()
+                .init_resource::<FieldMenuState>()
+                .add_message::<AppExit>()
+                .add_message::<PlaySfx>()
+                .add_message::<KeyboardInput>()
+                .add_systems(
+                    PreUpdate,
+                    (reset_service_input_lock, reset_interaction_input_lock),
+                );
+            if modal_runs_first {
+                app.add_systems(
+                    Update,
+                    (
+                        drive_dialogue_session,
+                        handle_service_input,
+                        handle_field_menu_input,
+                    )
+                        .chain(),
+                );
+            } else {
+                app.add_systems(
+                    Update,
+                    (
+                        handle_field_menu_input,
+                        handle_service_input,
+                        drive_dialogue_session,
+                    )
+                        .chain(),
+                );
+            }
+            if let Some(request) = request {
+                app.world_mut()
+                    .resource_mut::<ServiceUiState>()
+                    .open(request, None);
+            }
+            app.update();
+            let map = app.world().resource::<GameState>().map().clone();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.update();
+            assert!(
+                !app.world().resource::<FieldMenuState>().open,
+                "Escape opened the field menu after closing {request:?} (modal first: {modal_runs_first})"
             );
-        } else {
-            app.add_systems(
-                Update,
-                (handle_field_menu_input, handle_service_input).chain(),
+            assert!(
+                app.world()
+                    .resource::<WorldInteractionState>()
+                    .session()
+                    .is_none()
             );
+            assert_eq!(app.world().resource::<GameState>().map(), &map);
+
+            // Holding Escape for more frames cannot open the field menu.
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .clear();
+            for _ in 0..3 {
+                app.update();
+                assert!(!app.world().resource::<FieldMenuState>().open);
+            }
+            assert!(!app.world().resource::<ServiceUiState>().input_locked());
+            assert!(
+                !app.world()
+                    .resource::<WorldInteractionState>()
+                    .input_locked()
+            );
+
+            // A separate press from the map can still open the menu normally.
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .release(KeyCode::Escape);
+            app.update();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.update();
+            assert!(app.world().resource::<FieldMenuState>().open);
         }
-        app.world_mut()
-            .resource_mut::<ServiceUiState>()
-            .open(ServiceRequest::Inn, None);
-        app.update();
-
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(KeyCode::Escape);
-        app.update();
-
-        assert!(
-            !app.world().resource::<FieldMenuState>().open,
-            "the Escape that closed the inn also opened the field menu \
-             (service first: {service_runs_first})"
-        );
-
-        // MinimalPlugins carries no input plugin, so the per-frame clear is manual.
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .clear();
-        app.update();
-
-        assert!(
-            !app.world().resource::<ServiceUiState>().input_locked(),
-            "the inn stayed open (service first: {service_runs_first})"
-        );
-        assert!(!app.world().resource::<FieldMenuState>().open);
     }
 }
 

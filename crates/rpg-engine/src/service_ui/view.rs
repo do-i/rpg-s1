@@ -77,7 +77,7 @@ pub(super) fn sync_service_overlay(
     game: Option<Res<GameState>>,
     roots: Query<Entity, With<ServiceRoot>>,
 ) {
-    if !state.input_locked() {
+    if state.request.is_none() {
         for entity in &roots {
             commands.entity(entity).despawn();
         }
@@ -878,8 +878,12 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
 fn service_hint(state: &ServiceUiState) -> &'static str {
     match state.page {
         Some(ServicePage::Buy | ServicePage::Sell) => match state.shop_focus {
-            ShopFocus::Mode => "LEFT/RIGHT  buy or sell    DOWN  item types    ESC  leave shop",
-            ShopFocus::Category => "LEFT/RIGHT  choose type    UP/DOWN  buy or browse items",
+            ShopFocus::Mode => {
+                "LEFT/RIGHT  buy or sell    ENTER / DOWN  item types    ESC  leave shop"
+            }
+            ShopFocus::Category => {
+                "LEFT/RIGHT  choose type    ENTER / DOWN  browse items    UP  buy or sell"
+            }
             ShopFocus::Items => {
                 if state.page == Some(ServicePage::Sell) {
                     "ESC Back    UP / DOWN Browse    ENTER / RIGHT Quantity    T Sell tags"

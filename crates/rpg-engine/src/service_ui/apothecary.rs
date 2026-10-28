@@ -50,6 +50,7 @@ mod tests {
             .insert_resource(game)
             .insert_resource(state)
             .add_message::<PlaySfx>()
+            .add_systems(PreUpdate, super::reset_service_input_lock)
             .add_systems(Update, handle_service_input);
         app.update();
         app
