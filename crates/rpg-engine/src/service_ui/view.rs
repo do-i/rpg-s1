@@ -4,14 +4,11 @@
 //! changes — the same contract the field-menu pages use. Nothing here mutates game state; the
 //! parent module owns every transition.
 
-use std::num::NonZeroU32;
-
 use bevy::{ecs::hierarchy::ChildSpawnerCommands, prelude::*};
 
 use super::{
-    PendingTransaction, SERVICE_VISIBLE_ROWS, ServicePage, ServiceRequest, ServiceUiState,
-    ShopControl, ShopFocus, ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment,
-    owned_exchangeable_cores, pending_max, sell_rows, shop_categories,
+    PendingTransaction, ServicePage, ServiceRequest, ServiceUiState, ShopControl, ShopFocus,
+    ToastTone, active_inn_cost, active_shop, buy_rows, is_equipment, sell_rows, shop_categories,
     sprites::{ServiceKeeper, ServiceSprites},
 };
 use crate::{
@@ -22,7 +19,7 @@ use crate::{
     game_state::GameState,
     item_images::{spawn_item_icon, spawn_item_image},
     menu_chrome::{
-        ScrollWindow, scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
+        scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
         spawn_scroll_list, spawn_section_rule, spawn_status_panel, spawn_status_text,
         status_border, status_border_active, status_ember, status_faint, status_gold, status_ink,
         status_muted, status_ready, status_teal,
@@ -38,6 +35,7 @@ use crate::{
 };
 
 mod apothecary;
+mod core_shop;
 mod shop;
 
 #[derive(Component)]
@@ -129,21 +127,32 @@ pub(super) fn sync_service_overlay(
                 .spawn((
                     Node {
                         width: px(panel_width(&state)),
-                        height: if is_item_shop(&state) {
+                        height: if is_core_shop(&state) {
+                            px(core_shop::HEIGHT)
+                        } else if is_item_shop(&state) {
                             px(shop::HEIGHT)
                         } else if is_apothecary(&state) {
                             px(APOTHECARY_HEIGHT)
                         } else {
                             Val::Auto
                         },
-                        max_height: px(if is_item_shop(&state) {
+                        max_height: px(if is_core_shop(&state) {
+                            core_shop::HEIGHT
+                        } else if is_item_shop(&state) {
                             shop::HEIGHT
                         } else if is_apothecary(&state) {
                             APOTHECARY_HEIGHT
                         } else {
                             PANEL_MAX_HEIGHT
                         }),
-                        padding: if is_item_shop(&state) {
+                        padding: if is_core_shop(&state) {
+                            UiRect {
+                                left: px(26),
+                                right: px(26),
+                                top: px(16),
+                                bottom: px(10),
+                            }
+                        } else if is_item_shop(&state) {
                             UiRect {
                                 left: px(19),
                                 right: px(19),
@@ -160,35 +169,52 @@ pub(super) fn sync_service_overlay(
                         } else {
                             UiRect::all(px(22))
                         },
-                        border: UiRect::all(px(if is_apothecary(&state) || is_item_shop(&state) {
-                            1
-                        } else {
-                            2
-                        })),
+                        border: UiRect::all(px(
+                            if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state)
+                            {
+                                1
+                            } else {
+                                2
+                            },
+                        )),
                         border_radius: BorderRadius::all(px(8)),
                         flex_direction: FlexDirection::Column,
-                        row_gap: px(if is_apothecary(&state) || is_item_shop(&state) {
-                            0
-                        } else {
-                            12
-                        }),
+                        row_gap: px(
+                            if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state)
+                            {
+                                0
+                            } else {
+                                12
+                            },
+                        ),
                         ..default()
                     },
-                    BackgroundColor(if is_item_shop(&state) {
+                    BackgroundColor(if is_core_shop(&state) {
+                        Color::srgb_u8(29, 29, 36)
+                    } else if is_item_shop(&state) {
                         Color::srgb_u8(16, 17, 22)
                     } else if is_apothecary(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
                     } else {
                         Color::srgba(0.025, 0.025, 0.09, 0.97)
                     }),
-                    BorderColor::all(if is_apothecary(&state) || is_item_shop(&state) {
-                        status_border()
-                    } else {
-                        theme.name_entry_border_color
-                    }),
+                    BorderColor::all(
+                        if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state) {
+                            status_border()
+                        } else {
+                            theme.name_entry_border_color
+                        },
+                    ),
                 ))
                 .with_children(|panel| {
-                    if is_apothecary(&state) {
+                    if is_core_shop(&state) {
+                        core_shop::spawn_header(panel, &font, &game);
+                        core_shop::spawn_page(panel, &font, &state, &catalog, &game);
+                        core_shop::spawn_footer(panel, &font, &state);
+                        if state.page == Some(ServicePage::CoreConfirm) {
+                            core_shop::spawn_review(panel, &font, &state, &catalog, &game);
+                        }
+                    } else if is_apothecary(&state) {
                         apothecary::spawn_header(panel, &font, &game, face);
                         apothecary::spawn_page(panel, &font, &state, &catalog, &game);
                         apothecary::spawn_footer(panel, &font, &state);
@@ -225,12 +251,21 @@ pub(super) fn cleanup_service_ui(
 /// The pages that put a detail column beside the list need the wider frame.
 fn panel_width(state: &ServiceUiState) -> f32 {
     match state.page {
+        Some(ServicePage::MagicCore | ServicePage::CoreConfirm) => core_shop::WIDTH,
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => APOTHECARY_WIDTH,
         Some(
             ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip,
         ) => shop::WIDTH,
         _ => PANEL_WIDTH,
     }
+}
+
+fn is_core_shop(state: &ServiceUiState) -> bool {
+    state.request == Some(ServiceRequest::Shop(DialogueShopKind::MagicCore))
+        && matches!(
+            state.page,
+            Some(ServicePage::MagicCore | ServicePage::CoreConfirm)
+        )
 }
 
 fn is_apothecary(state: &ServiceUiState) -> bool {
@@ -370,13 +405,12 @@ fn spawn_service_body(
             shop::spawn_page(parent, font, state, catalog, game, portraits);
             spawn_shop_confirmation(parent, font, state, catalog, game);
         }
-        Some(ServicePage::MagicCore) => spawn_core_page(parent, font, state, catalog, game),
+        Some(ServicePage::MagicCore | ServicePage::CoreConfirm) => {
+            core_shop::spawn_page(parent, font, state, catalog, game)
+        }
         Some(ServicePage::Inn) => spawn_inn_page(parent, font, catalog, game),
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
             apothecary::spawn_page(parent, font, state, catalog, game);
-        }
-        Some(ServicePage::Quantity | ServicePage::CoreConfirm) => {
-            spawn_quantity_page(parent, font, state, catalog, game);
         }
         Some(ServicePage::Equip) => spawn_equip_page(parent, font, state, catalog, game),
         Some(ServicePage::Result) => {
@@ -598,70 +632,6 @@ fn spawn_shop_confirmation(
         });
 }
 
-// ── Magic core ───────────────────────────────────────────────────────────────
-
-fn spawn_core_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    let rows = owned_exchangeable_cores(catalog, game);
-    spawn_status_panel(parent, stacked_panel_node(), "CORES", font, |panel| {
-        if rows.is_empty() {
-            spawn_status_text(
-                panel,
-                "No magic cores to exchange.",
-                font,
-                17.0,
-                status_muted(),
-            );
-            return;
-        }
-        let window =
-            state
-                .scroll
-                .window("exchange", state.selected, rows.len(), SERVICE_VISIBLE_ROWS);
-        spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
-            for index in window.indices() {
-                let item = &rows[index];
-                let ItemDefinition::MagicCore(core) = item else {
-                    continue;
-                };
-                let Some(rate) = core.exchange_rate.map(NonZeroU32::get) else {
-                    continue;
-                };
-                spawn_list_row(
-                    panel,
-                    font,
-                    ListRow {
-                        item_id: None,
-                        selected: index == state.selected,
-                        accent: item_accent(item),
-                        label: item_name(item),
-                        // The owned count is what the player is choosing against, so it stays on
-                        // every row; the confirmation warning is appended, never substituted.
-                        note: {
-                            let owned = game.repository().item_count(item.id());
-                            if rate >= super::HIGH_VALUE_CORE_RATE {
-                                format!("x{owned}   ·   confirms before exchange")
-                            } else {
-                                format!("x{owned}")
-                            }
-                        },
-                        value: format!("{rate} GP"),
-                        unit: None,
-                        value_color: status_gold(),
-                        dim: false,
-                    },
-                );
-            }
-        });
-        spawn_window_footer(panel, font, state.selected, window);
-    });
-}
-
 // ── Inn ──────────────────────────────────────────────────────────────────────
 
 fn spawn_inn_page(
@@ -739,68 +709,6 @@ fn spawn_inn_page(
 
 // ── Quantity, confirmation, equip ────────────────────────────────────────────
 
-fn spawn_quantity_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    let id = state.pending_id.as_deref().unwrap_or_default();
-    let name = catalog
-        .item(id)
-        .map_or(id, |item| item_name(item))
-        .to_owned();
-    let unit = unit_price(state, catalog, game);
-    spawn_status_text(parent, &name, font, 23.0, status_gold());
-    spawn_status_text(
-        parent,
-        format!(
-            "{:02}  /  {}",
-            state.quantity,
-            pending_max(state, catalog, game)
-        ),
-        font,
-        34.0,
-        status_ink(),
-    );
-    spawn_status_text(
-        parent,
-        format!("Total: {} GP", unit.saturating_mul(state.quantity)),
-        font,
-        18.0,
-        status_gold(),
-    );
-    if state.page == Some(ServicePage::CoreConfirm) {
-        spawn_section_rule(parent);
-        spawn_status_text(
-            parent,
-            "Exchange this high-value core stack?",
-            font,
-            17.0,
-            status_ember(),
-        );
-    }
-}
-
-fn unit_price(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> u32 {
-    let Some(id) = state.pending_id.as_deref() else {
-        return 0;
-    };
-    match state.pending {
-        Some(PendingTransaction::Buy) => active_shop(state, catalog, game)
-            .and_then(|shop| shop.items.iter().find(|row| row.id() == id))
-            .map(|row| row.buy_price().get()),
-        Some(PendingTransaction::Sell) => catalog.item(id).and_then(sell_price),
-        Some(PendingTransaction::Exchange) => match catalog.item(id) {
-            Some(ItemDefinition::MagicCore(core)) => core.exchange_rate.map(NonZeroU32::get),
-            _ => None,
-        },
-        None => None,
-    }
-    .unwrap_or(0)
-}
-
 fn spawn_equip_page(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -837,18 +745,6 @@ fn spawn_equip_page(
 
 // ── Shared row builders ──────────────────────────────────────────────────────
 
-struct ListRow<'a> {
-    item_id: Option<&'a str>,
-    selected: bool,
-    accent: Color,
-    label: &'a str,
-    note: String,
-    value: String,
-    unit: Option<&'a str>,
-    value_color: Color,
-    dim: bool,
-}
-
 fn format_shop_number(value: u32) -> String {
     let digits = value.to_string();
     let mut formatted = String::with_capacity(digits.len() + digits.len() / 3);
@@ -872,87 +768,6 @@ fn shop_focus_outline(focused: bool) -> Outline {
             Color::NONE
         },
     }
-}
-
-fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, row: ListRow<'_>) {
-    spawn_sized_list_row(parent, font, row, service_list_row_node(), 32.0, 16.0);
-}
-
-fn service_list_row_node() -> Node {
-    Node {
-        width: percent(100),
-        min_height: px(40),
-        flex_direction: FlexDirection::Row,
-        align_items: AlignItems::Center,
-        padding: UiRect::horizontal(px(9)),
-        border: UiRect::all(px(1)),
-        border_radius: BorderRadius::all(px(4)),
-        ..default()
-    }
-}
-
-fn spawn_sized_list_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    row: ListRow<'_>,
-    node: Node,
-    icon_size: f32,
-    title_size: f32,
-) {
-    parent
-        .spawn((
-            node,
-            selectable_card_colors(row.selected),
-            shop_focus_outline(row.selected),
-            Name::new(format!("Service item: {}", row.label)),
-        ))
-        .with_children(|node| {
-            if let Some(id) = row.item_id {
-                spawn_item_icon(node, id, icon_size);
-            }
-            node.spawn((
-                Node {
-                    width: px(5),
-                    height: px(24),
-                    margin: UiRect::right(px(9)),
-                    ..default()
-                },
-                BackgroundColor(row.accent),
-            ));
-            node.spawn(Node {
-                flex_grow: 1.0,
-                flex_direction: FlexDirection::Column,
-                ..default()
-            })
-            .with_children(|label| {
-                spawn_status_text(
-                    label,
-                    row.label,
-                    font,
-                    title_size,
-                    if row.dim {
-                        status_faint()
-                    } else {
-                        status_ink()
-                    },
-                );
-                spawn_status_text(label, row.note, font, 12.0, status_muted());
-            });
-            if let Some(unit) = row.unit {
-                node.spawn(Node {
-                    flex_shrink: 0.0,
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::End,
-                    ..default()
-                })
-                .with_children(|price| {
-                    spawn_status_text(price, row.value, font, 16.0, row.value_color);
-                    spawn_status_text(price, unit, font, 10.0, status_muted());
-                });
-            } else {
-                spawn_status_text(node, row.value, font, 15.0, row.value_color);
-            }
-        });
 }
 
 fn spawn_choice_row(
@@ -989,35 +804,6 @@ fn spawn_choice_row(
             spawn_status_text(row, label, font, 17.0, status_ink());
             spawn_status_text(row, subtitle, font, 12.0, status_muted());
         });
-}
-
-/// Reports the cursor position, and the visible span too once the list scrolls.
-fn spawn_window_footer(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    selected: usize,
-    window: ScrollWindow,
-) {
-    let len = window.len;
-    let position = format!(
-        "{:02} OF {len:02}",
-        if len == 0 {
-            0
-        } else {
-            selected.min(len - 1) + 1
-        }
-    );
-    let text = if window.scrolls() {
-        let shown = window.indices();
-        format!(
-            "{position}   ·   SHOWING {:02}-{:02}",
-            shown.start + 1,
-            shown.end
-        )
-    } else {
-        position
-    };
-    spawn_status_text(parent, text, font, 12.0, status_faint());
 }
 
 /// The list frame for a page that stacks its list under the header, sized by its own rows.
@@ -1081,7 +867,6 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
         Some(ServicePage::Inn) => "REST",
         Some(ServicePage::Apothecary) => "RECIPES",
         Some(ServicePage::RecipeDetail) => "RECIPE DETAIL",
-        Some(ServicePage::Quantity) => "QUANTITY",
         Some(ServicePage::CoreConfirm) => "CONFIRM",
         Some(ServicePage::ShopConfirm) => "REVIEW PURCHASE",
         Some(ServicePage::Equip) => "EQUIP",
@@ -1112,29 +897,11 @@ fn service_hint(state: &ServiceUiState) -> &'static str {
         },
         Some(ServicePage::ShopConfirm) => "ENTER  confirm transaction    ESC  cancel",
         Some(ServicePage::Inn) => "Y/ENTER  rest    N/ESC  leave",
-        Some(ServicePage::Quantity) => {
-            "LEFT/RIGHT  one    UP/DOWN  coarse step    ENTER  confirm    ESC  back"
-        }
         Some(ServicePage::CoreConfirm) => "Y/ENTER  exchange    N/ESC  cancel",
         Some(ServicePage::RecipeDetail) => "ENTER  craft    ESC  back",
         Some(ServicePage::Equip) => "UP/DOWN  choose    ENTER  equip    ESC  skip",
         Some(ServicePage::Result) => "ENTER / ESC  leave",
         _ => "UP/DOWN  choose    ENTER  confirm    ESC  back",
-    }
-}
-
-/// The category stripe colour a row carries, mirroring the field menu's item accents.
-fn item_accent(item: &ItemDefinition) -> Color {
-    match item {
-        ItemDefinition::Consumable(_) => status_teal(),
-        ItemDefinition::Material(_) => Color::srgb_u8(157, 139, 101),
-        ItemDefinition::Key(_) => status_gold(),
-        ItemDefinition::MagicCore(_) => Color::srgb_u8(126, 101, 204),
-        ItemDefinition::Weapon(_) => status_ember(),
-        ItemDefinition::Shield(_) => Color::srgb_u8(91, 143, 183),
-        ItemDefinition::Helmet(_) => Color::srgb_u8(126, 151, 174),
-        ItemDefinition::Body(_) => Color::srgb_u8(112, 126, 148),
-        ItemDefinition::Accessory(_) => Color::srgb_u8(196, 116, 168),
     }
 }
 
@@ -1457,12 +1224,19 @@ mod tests {
         for page in [
             ServicePage::MagicCore,
             ServicePage::Inn,
-            ServicePage::Quantity,
             ServicePage::CoreConfirm,
             ServicePage::Result,
         ] {
             state.page = Some(page);
-            assert_eq!(panel_width(&state), PANEL_WIDTH, "{page:?}");
+            assert_eq!(
+                panel_width(&state),
+                if matches!(page, ServicePage::MagicCore | ServicePage::CoreConfirm) {
+                    core_shop::WIDTH
+                } else {
+                    PANEL_WIDTH
+                },
+                "{page:?}"
+            );
         }
     }
 
@@ -1476,7 +1250,6 @@ mod tests {
             ServicePage::Inn,
             ServicePage::Apothecary,
             ServicePage::RecipeDetail,
-            ServicePage::Quantity,
             ServicePage::CoreConfirm,
             ServicePage::ShopConfirm,
             ServicePage::Equip,

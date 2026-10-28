@@ -9,7 +9,6 @@ use crate::{
     action_input::{ActionState, AppAction},
     app_state::AppState,
     dialogue_portrait::DialoguePortrait,
-    engine_settings::EngineSettings,
     field_menu_domain::{
         FieldMenuCatalog, InventoryTab, can_equip, equip_item, item_matches_tab, item_name,
     },
@@ -25,13 +24,18 @@ use crate::{
     sfx_cue::{MenuSfx, PlaySfx, cue},
 };
 
+#[cfg(test)]
+use crate::engine_settings::EngineSettings;
+
 mod apothecary;
+mod core_shop;
 #[cfg(test)]
 mod shop_tests;
 mod sprites;
 mod view;
 
 use apothecary::{ApothecaryControl, ApothecaryInput, handle_apothecary_input};
+use core_shop::{CoreControl, CoreShopState};
 use sprites::{ServiceSprites, load_service_sprites};
 
 pub(crate) struct ServiceUiPlugin;
@@ -57,17 +61,8 @@ impl Plugin for ServiceUiPlugin {
     }
 }
 
-/// Rows a service list shows before it scrolls, matching the source `VISIBLE_ROWS`.
-const SERVICE_VISIBLE_ROWS: usize = 7;
-
 /// Bulk quantity step for the redesigned shop's detail controls.
 const SHOP_QUANTITY_STEP: u32 = 10;
-
-/// Coarse quantity step for the magic-core exchange (`magic_core_shop_scene.py:25`).
-const CORE_QUANTITY_STEP: u32 = 10;
-
-/// Exchange rate at or above which a core stack asks for confirmation.
-const HIGH_VALUE_CORE_RATE: u32 = 1_000;
 
 /// Seconds a result toast stays up before it fades on its own.
 const TOAST_SECONDS: f32 = 3.0;
@@ -98,7 +93,6 @@ enum ServicePage {
     Apothecary,
     /// The apothecary's second stage: explicit confirmation of the visible recipe.
     RecipeDetail,
-    Quantity,
     CoreConfirm,
     ShopConfirm,
     /// The post-purchase party picker offered after buying wearable gear.
@@ -111,6 +105,7 @@ enum PendingTransaction {
     Buy,
     Sell,
     Exchange,
+    RankUp,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -136,20 +131,8 @@ impl PendingTransaction {
         match self {
             Self::Buy => ServicePage::Buy,
             Self::Sell => ServicePage::Sell,
-            Self::Exchange => ServicePage::MagicCore,
+            Self::Exchange | Self::RankUp => ServicePage::MagicCore,
         }
-    }
-
-    const fn quantity_step(self) -> u32 {
-        match self {
-            Self::Buy | Self::Sell => SHOP_QUANTITY_STEP,
-            Self::Exchange => CORE_QUANTITY_STEP,
-        }
-    }
-
-    /// The core exchange wraps its quantity cursor; the item shop clamps (`quantity_picker.py`).
-    const fn wraps_quantity(self) -> bool {
-        matches!(self, Self::Exchange)
     }
 }
 
@@ -184,6 +167,7 @@ pub(crate) struct ServiceUiState {
     /// Sell-side tag filter; `None` shows every sellable stack.
     sell_tag: Option<String>,
     shop_focus: ShopFocus,
+    core_shop: CoreShopState,
     shop_category: InventoryTab,
     /// The apothecary keeps actual catalog indices while filtering its visible rows.
     ready_recipes_only: bool,
@@ -289,13 +273,13 @@ pub(crate) fn handle_service_input(
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
     catalog: Res<FieldMenuCatalog>,
-    settings: Res<EngineSettings>,
     game: Option<ResMut<GameState>>,
     mut state: ResMut<ServiceUiState>,
     mut menu_sfx: MenuSfx,
     mut pointer: Option<ResMut<CanvasPointer>>,
     controls: Query<(&ApothecaryControl, &ComputedNode, &UiGlobalTransform)>,
     shop_controls: Query<(&ShopControl, &ComputedNode, &UiGlobalTransform)>,
+    core_controls: Query<(&CoreControl, &ComputedNode, &UiGlobalTransform)>,
 ) {
     // The latch belongs to the frame that set it; releasing it here keeps the field menu
     // from reacting to a Back press this service already consumed.
@@ -313,11 +297,59 @@ pub(crate) fn handle_service_input(
         state.toast = None;
     }
     let delta = actions.menu_navigation();
-    if delta.is_some() && !matches!(state.page, Some(ServicePage::Buy | ServicePage::Sell)) {
+    if delta.is_some()
+        && !matches!(
+            state.page,
+            Some(
+                ServicePage::Buy
+                    | ServicePage::Sell
+                    | ServicePage::MagicCore
+                    | ServicePage::CoreConfirm
+            )
+        )
+    {
         menu_sfx.hover();
     }
     let confirm = actions.just_pressed(AppAction::Confirm);
     let back = actions.just_pressed(AppAction::Back);
+
+    if matches!(
+        state.page,
+        Some(ServicePage::MagicCore | ServicePage::CoreConfirm)
+    ) {
+        let control = pointer
+            .as_deref()
+            .filter(|p| p.just_clicked())
+            .and_then(|p| {
+                core_controls
+                    .iter()
+                    .find(|(control, node, transform)| {
+                        control.in_review() == (state.page == Some(ServicePage::CoreConfirm))
+                            && p.is_over(node, transform)
+                    })
+                    .map(|(control, _, _)| *control)
+            });
+        if control.is_some()
+            && let Some(pointer) = pointer.as_deref_mut()
+        {
+            pointer.consume();
+        }
+        core_shop::handle_input(
+            &mut state,
+            &catalog,
+            &mut game,
+            &mut menu_sfx,
+            core_shop::CoreInput {
+                vertical: delta,
+                horizontal: actions.menu_navigation_horizontal(),
+                confirm,
+                back,
+                toggle: keys.just_pressed(KeyCode::Tab),
+                control,
+            },
+        );
+        return;
+    }
 
     let apothecary_control = if matches!(
         state.page,
@@ -595,29 +627,6 @@ pub(crate) fn handle_service_input(
                 }
             }
         }
-        Some(ServicePage::MagicCore) => {
-            if back {
-                menu_sfx.cancel();
-                state.close();
-                return;
-            }
-            let rows = owned_exchangeable_cores(&catalog, &game);
-            if let Some(delta) = delta {
-                state.selected = wrapped_or_zero(state.selected, rows.len(), delta);
-            }
-            if confirm {
-                let Some(item) = rows.get(state.selected) else {
-                    menu_sfx.blocked();
-                    state.announce("No magic cores to exchange.", ToastTone::Warn);
-                    return;
-                };
-                menu_sfx.confirm();
-                state.pending_id = Some(item.id().to_owned());
-                state.pending = Some(PendingTransaction::Exchange);
-                state.page = Some(ServicePage::Quantity);
-                state.quantity = 1;
-            }
-        }
         Some(ServicePage::Inn) => {
             if back || keys.just_pressed(KeyCode::KeyN) {
                 menu_sfx.cancel();
@@ -667,56 +676,6 @@ pub(crate) fn handle_service_input(
                 },
             );
         }
-        Some(ServicePage::Quantity) => {
-            if back {
-                menu_sfx.cancel();
-                let origin = state
-                    .pending
-                    .map_or(ServicePage::Buy, |pending| pending.origin());
-                state.return_to(origin);
-                return;
-            }
-            let max = pending_max(&state, &catalog, &game).max(1);
-            let step = state.pending.map_or(1, PendingTransaction::quantity_step);
-            let wraps = state
-                .pending
-                .is_some_and(PendingTransaction::wraps_quantity);
-            if let Some(delta) = delta {
-                state.quantity =
-                    adjust_quantity(state.quantity, coarse_step(delta, step), max, wraps);
-            }
-            if let Some(delta) = horizontal_step(&keys) {
-                state.quantity = adjust_quantity(state.quantity, delta, max, wraps);
-                menu_sfx.hover();
-            }
-            if confirm {
-                menu_sfx.confirm();
-                if settings.mc_exchange_confirm_large && is_high_value_core(&state, &catalog) {
-                    state.page = Some(ServicePage::CoreConfirm);
-                } else {
-                    if execute_pending(&mut state, &catalog, &mut game) {
-                        menu_sfx.play(cue::BUY_SELL);
-                    } else {
-                        menu_sfx.blocked();
-                    }
-                }
-            }
-        }
-        Some(ServicePage::CoreConfirm) => {
-            if back || keys.just_pressed(KeyCode::KeyN) {
-                menu_sfx.cancel();
-                state.page = Some(ServicePage::Quantity);
-                return;
-            }
-            if keys.just_pressed(KeyCode::KeyY) || confirm {
-                menu_sfx.confirm();
-                if execute_pending(&mut state, &catalog, &mut game) {
-                    menu_sfx.play(cue::BUY_SELL);
-                } else {
-                    menu_sfx.blocked();
-                }
-            }
-        }
         Some(ServicePage::Equip) => {
             let member_count = game.party().members().count();
             if back {
@@ -736,7 +695,7 @@ pub(crate) fn handle_service_input(
             menu_sfx.cancel();
             state.close();
         }
-        Some(ServicePage::Result) | None => {}
+        Some(ServicePage::MagicCore | ServicePage::CoreConfirm | ServicePage::Result) | None => {}
     }
 }
 
@@ -777,20 +736,6 @@ fn horizontal_step(keys: &ButtonInput<KeyCode>) -> Option<isize> {
     }
 }
 
-/// Turns a menu-navigation delta into a coarse quantity step, with Up raising the count.
-///
-/// `menu_navigation` reports Up as `-1` because it indexes list rows downward, so the sign is
-/// flipped here. The two source scenes disagree on this: the item shop binds Up to
-/// `increase_large` (`item_shop_scene.py:277-282`) while the magic-core shop binds Up to
-/// `decrease_large` (`magic_core_shop_scene.py:130-135`). That contradiction is a source bug —
-/// the same key raises the quantity at one counter and lowers it at the next — so the port
-/// settles it the way `menu_navigation` already settles simultaneous Up/Down: one rule
-/// everywhere, and it is the item shop's, which is both the more-used screen and the reading
-/// that matches "up means more".
-const fn coarse_step(delta: isize, step: u32) -> isize {
-    -delta * step as isize
-}
-
 /// Applies one quantity step, clamping to `1..=max` or wrapping past both ends.
 fn adjust_quantity(current: u32, delta: isize, max: u32, wraps: bool) -> u32 {
     let target = current as isize + delta;
@@ -816,19 +761,6 @@ fn is_equipment(item: &ItemDefinition) -> bool {
             | ItemDefinition::Body(_)
             | ItemDefinition::Accessory(_)
     )
-}
-
-fn is_high_value_core(state: &ServiceUiState, catalog: &FieldMenuCatalog) -> bool {
-    state.pending == Some(PendingTransaction::Exchange)
-        && state
-            .pending_id
-            .as_deref()
-            .and_then(|id| catalog.item(id))
-            .is_some_and(|item| {
-                matches!(item, ItemDefinition::MagicCore(core)
-                    if core.exchange_rate.is_some_and(|rate|
-                        rate.get() >= HIGH_VALUE_CORE_RATE))
-            })
 }
 
 /// Cycles the sell filter through `All → tag → … → All` (`item_shop_scene.py:121-133`).
@@ -887,13 +819,27 @@ fn execute_pending(
             .and_then(|item| {
                 sell(game.repository_mut(), item, quantity).map_err(|e| e.to_string())
             }),
-        Some(PendingTransaction::Exchange) => catalog
-            .item(&id)
-            .ok_or_else(|| "core metadata is unavailable".to_owned())
-            .and_then(|item| {
-                exchange_magic_core(game.repository_mut(), item, quantity)
-                    .map_err(|e| e.to_string())
-            }),
+        Some(PendingTransaction::Exchange | PendingTransaction::RankUp) => {
+            if quantity > pending_max(state, catalog, game) || quantity == 0 {
+                Err("The core quantity or available capacity changed. Review again.".to_owned())
+            } else {
+                catalog
+                    .item(&id)
+                    .ok_or_else(|| "core metadata is unavailable".to_owned())
+                    .and_then(|item| {
+                        if state.pending == Some(PendingTransaction::RankUp) {
+                            crate::service_domain::rank_up_magic_core(
+                                game.repository_mut(),
+                                item,
+                                quantity,
+                            )
+                        } else {
+                            exchange_magic_core(game.repository_mut(), item, quantity)
+                        }
+                        .map_err(|error| error.to_string())
+                    })
+            }
+        }
         None => return false,
     };
     let Some(pending) = state.pending else {
@@ -907,22 +853,24 @@ fn execute_pending(
             let announcement = match pending {
                 PendingTransaction::Buy => format!("Bought {quantity} x {name}"),
                 PendingTransaction::Sell => format!("Sold {quantity} x {name} for {total} GP"),
-                PendingTransaction::Exchange => {
-                    format!("Exchanged {quantity} x {name}    +{total} GP")
-                }
+                PendingTransaction::Exchange => format!("Sold {quantity} × {name} for {total} GP"),
+                PendingTransaction::RankUp => format!(
+                    "Ranked up {} × {name} into {quantity} higher-rank cores",
+                    quantity * crate::service_domain::CORE_RANK_UP_COST
+                ),
             };
+            let selected = state.selected;
             state.return_to(pending.origin());
+            if matches!(
+                pending,
+                PendingTransaction::Exchange | PendingTransaction::RankUp
+            ) {
+                state.selected = selected;
+                state.core_shop.focus = core_shop::CoreFocus::Items;
+            }
             state.announce(announcement, ToastTone::Good);
-            match pending {
-                PendingTransaction::Buy => offer_equip_after_purchase(state, catalog, game, &id),
-                // The source closes the exchange rather than showing an empty list once the
-                // last core is spent (`magic_core_shop_scene.py:96-101`).
-                PendingTransaction::Exchange
-                    if owned_exchangeable_cores(catalog, game).is_empty() =>
-                {
-                    state.close();
-                }
-                _ => {}
+            if pending == PendingTransaction::Buy {
+                offer_equip_after_purchase(state, catalog, game, &id);
             }
             true
         }
@@ -1164,18 +1112,6 @@ fn selected_shop_item_id(
     }
 }
 
-fn owned_exchangeable_cores<'a>(
-    catalog: &'a FieldMenuCatalog,
-    game: &GameState,
-) -> Vec<&'a ItemDefinition> {
-    owned_items(catalog, game)
-        .into_iter()
-        .filter(
-            |item| matches!(item, ItemDefinition::MagicCore(core) if core.exchange_rate.is_some()),
-        )
-        .collect()
-}
-
 fn pending_max(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) -> u32 {
     let Some(id) = state.pending_id.as_deref() else {
         return 0;
@@ -1190,9 +1126,17 @@ fn pending_max(state: &ServiceUiState, catalog: &FieldMenuCatalog, game: &GameSt
                     .min(game.repository().gp() / row.buy_price().get())
             })
             .unwrap_or(0),
-        Some(PendingTransaction::Sell | PendingTransaction::Exchange) => {
-            game.repository().item_count(id)
-        }
+        Some(PendingTransaction::Sell) => game.repository().item_count(id),
+        Some(PendingTransaction::Exchange | PendingTransaction::RankUp) => core_shop::max_quantity(
+            catalog,
+            game,
+            id,
+            if state.pending == Some(PendingTransaction::RankUp) {
+                core_shop::CoreMode::RankUp
+            } else {
+                core_shop::CoreMode::Sell
+            },
+        ),
         None => 0,
     }
 }
@@ -1258,47 +1202,12 @@ mod tests {
     }
 
     #[test]
-    fn shop_quantity_clamps_at_both_ends_while_the_core_exchange_wraps() {
+    fn quantity_controls_clamp_at_both_ends() {
         // Item shop: coarse steps saturate rather than roll over (`quantity_picker.py:_adjust`).
         assert_eq!(adjust_quantity(1, -1, 9, false), 1);
         assert_eq!(adjust_quantity(1, 5, 9, false), 6);
         assert_eq!(adjust_quantity(6, 5, 9, false), 9);
         assert_eq!(adjust_quantity(9, 1, 9, false), 9);
-
-        // Magic core: the same picker constructed with `loop=True`.
-        assert_eq!(adjust_quantity(1, -1, 9, true), 9);
-        assert_eq!(adjust_quantity(9, 1, 9, true), 1);
-        assert_eq!(adjust_quantity(5, 10, 9, true), 1);
-    }
-
-    #[test]
-    fn coarse_steps_match_the_two_source_pickers() {
-        assert_eq!(PendingTransaction::Buy.quantity_step(), SHOP_QUANTITY_STEP);
-        assert_eq!(PendingTransaction::Sell.quantity_step(), SHOP_QUANTITY_STEP);
-        assert_eq!(
-            PendingTransaction::Exchange.quantity_step(),
-            CORE_QUANTITY_STEP
-        );
-        assert!(!PendingTransaction::Buy.wraps_quantity());
-        assert!(PendingTransaction::Exchange.wraps_quantity());
-    }
-
-    #[test]
-    fn up_raises_the_quantity_at_every_counter() {
-        // `menu_navigation` reports Up as -1; the picker must still count upward, and it must
-        // do so identically for the shop and the core exchange.
-        for step in [SHOP_QUANTITY_STEP, CORE_QUANTITY_STEP] {
-            assert_eq!(coarse_step(-1, step), step as isize, "Up adds {step}");
-            assert_eq!(
-                coarse_step(1, step),
-                -(step as isize),
-                "Down removes {step}"
-            );
-        }
-        assert_eq!(
-            adjust_quantity(1, coarse_step(-1, SHOP_QUANTITY_STEP), 80, false),
-            11
-        );
     }
 
     #[test]
@@ -1376,55 +1285,5 @@ mod tests {
         offer_equip_after_purchase(&mut state, &catalog, &game, "potion");
         assert_eq!(state.page, Some(ServicePage::Buy));
         assert_eq!(state.pending_equip_id, None);
-    }
-
-    #[test]
-    fn the_core_exchange_closes_itself_only_once_the_last_core_is_spent() {
-        let catalog = catalog();
-
-        let mut game = game([]);
-        let _ = game.repository_mut().add_item("mc_xs", 2).unwrap();
-        let mut state = ServiceUiState::default();
-        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore), None);
-        state.pending = Some(PendingTransaction::Exchange);
-        state.pending_id = Some("mc_xs".to_owned());
-        state.quantity = 1;
-        let _committed = execute_pending(&mut state, &catalog, &mut game);
-        assert!(state.is_open(), "one core is left, so the list stays up");
-        assert_eq!(state.page, Some(ServicePage::MagicCore));
-
-        execute_pending_last_core(&catalog);
-    }
-
-    #[test]
-    fn core_exchange_lists_only_scenario_authored_gp_tiers() {
-        let catalog = catalog();
-        let mut game = game([]);
-        for id in ["mc_xs", "mc_s", "mc_m", "mc_l", "mc_xl"] {
-            let _outcome = game.repository_mut().add_item(id, 1).unwrap();
-        }
-
-        assert_eq!(
-            owned_exchangeable_cores(&catalog, &game)
-                .into_iter()
-                .map(ItemDefinition::id)
-                .collect::<Vec<_>>(),
-            ["mc_s", "mc_xs"]
-        );
-    }
-
-    fn execute_pending_last_core(catalog: &FieldMenuCatalog) {
-        let mut game = game([]);
-        let _ = game.repository_mut().add_item("mc_xs", 1).unwrap();
-        let mut state = ServiceUiState::default();
-        state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore), None);
-        state.pending = Some(PendingTransaction::Exchange);
-        state.pending_id = Some("mc_xs".to_owned());
-        state.quantity = 1;
-        let _committed = execute_pending(&mut state, catalog, &mut game);
-        assert!(
-            !state.is_open(),
-            "the source closes rather than showing an empty exchange"
-        );
     }
 }

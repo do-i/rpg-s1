@@ -1,4 +1,4 @@
-# B4.6 tier policy: XS/S exchange for GP; M/L/XL are crafting-only.
+# XS/S sell for GP. Fifty XS/S/M/L rank up to one next-tier core; XL is the top rank.
 - id: mc_xl
   name: "Magic Core (XL)"
   type: magic_core

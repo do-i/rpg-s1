@@ -1089,7 +1089,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0167 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/kael_join.yaml` | `609ed2307ce322b9eb10e742c9c34583761cd4a12adff062b17a5ce676737c57` | scenario YAML / kael_join.yaml |
 | ALI-0955 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/marsh_farmer.yaml` | `c14bceae5001e0b90b24075a786d5c2b85ac2ae6e987cf1e3fadd60caedb5635` | scenario YAML / marsh_farmer.yaml |
 | ALI-0956 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/marshland_reedcutter.yaml` | `b96cdd41981bc0ab4470497434a03785402f8b5c1ecdb361df77dcd2978f2450` | scenario YAML / marshland_reedcutter.yaml |
-| ALI-0876 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/mc_shop_intro.yaml` | `46f2e2df21f96f46dbcbe70613b09a8bf663d96d884f1e4b2ebf18e2460feb09` | scenario YAML / mc_shop_intro.yaml |
+| ALI-0876 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/mc_shop_intro.yaml` | `6117aca977beaded4d8df08f2a52373acf41df4013d56574ad9e4d8fd5c2db29` | scenario YAML / mc_shop_intro.yaml |
 | ALI-0168 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_baker.yaml` | `ca416b25359dc208d4fdb777d079bbf174cd94cfd1eb10ba9f6aa7fda9815dbc` | scenario YAML / millhaven_baker.yaml |
 | ALI-0169 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_carter.yaml` | `1212f9c4f94f5a86cec6896e08cb669be4a9c9307c2fee2418a7ac5502107f39` | scenario YAML / millhaven_carter.yaml |
 | ALI-0170 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/millhaven_elder_hint.yaml` | `15bb9fd2957014bc1bf523d293ea7f5318857e3283290ff5306b1aebd35504c2` | scenario YAML / millhaven_elder_hint.yaml |
@@ -1188,7 +1188,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0095 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/field_use.yaml` | `d6459e73510bc82d3e99e62f344056a9161a4eb6de3e26b05b0f5b4eaac6d1b7` | scenario YAML / field_use.yaml |
 | ALI-0096 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/helmets.yaml` | `2a186f5fcec573d4f4c6a8f9df1aa4b3b7ab0843b4b87500c315933bf8153607` | scenario YAML / helmets.yaml |
 | ALI-0097 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/key_items.yaml` | `cf0b9e790c0ff077f0b2ff2b643fdecd7885f1c07751de96173af80344b04cdb` | scenario YAML / key items |
-| ALI-0098 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml` | `3d6eee8482b1a2f51e2004b468733dfa1260d258e9bcd6fb85279c9a973fa409` | scenario YAML / magic cores |
+| ALI-0098 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/magic_cores.yaml` | `3f8db0e2e0e9380f8acd19b78c8a675b6e0a5954a2989c2c1e8970a6a0573823` | scenario YAML / magic cores |
 | ALI-0099 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/materials.yaml` | `073a65ffa611c59cb9e3d98d1a5c7544f816872ad0cb4eba52528b1c3cb9a3cc` | scenario YAML / materials |
 | ALI-0976 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/migration_endgame_drops.yaml` | `bf82c70f08b5cc9da240ff6ebe78a0062ed176bb6360fa13571f3e8806ea1a10` | scenario YAML / migration_endgame_drops.yaml |
 | ALI-0977 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/migration_zone1_drops.yaml` | `c239b2db128f9a14068e456267343dc0809159b43c578b337d08702109160c01` | scenario YAML / migration_zone1_drops.yaml |

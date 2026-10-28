@@ -833,7 +833,7 @@ fn spawn_quantity(
         });
 }
 
-fn spawn_money(
+pub(super) fn spawn_money(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     value: u32,
