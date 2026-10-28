@@ -14,6 +14,7 @@ pub(crate) enum CoreMode {
 pub(super) enum CoreFocus {
     #[default]
     Items,
+    Exchange,
     Quantity,
 }
 
@@ -30,12 +31,18 @@ pub(crate) enum CoreControl {
     Quantity(isize),
     Review,
     Confirm,
-    Cancel,
+    Back,
 }
 
 impl CoreControl {
-    pub(super) fn in_review(self) -> bool {
-        matches!(self, Self::Confirm | Self::Cancel)
+    pub(super) fn active(self, state: &ServiceUiState) -> bool {
+        if state.page == Some(ServicePage::CoreConfirm) {
+            matches!(self, Self::Confirm | Self::Back)
+        } else if state.core_shop.focus == CoreFocus::Quantity {
+            matches!(self, Self::Quantity(_) | Self::Review | Self::Back)
+        } else {
+            matches!(self, Self::Item(_) | Self::Mode(_))
+        }
     }
 }
 
@@ -44,7 +51,6 @@ pub(super) struct CoreInput {
     pub(super) horizontal: Option<isize>,
     pub(super) confirm: bool,
     pub(super) back: bool,
-    pub(super) toggle: bool,
     pub(super) control: Option<CoreControl>,
 }
 
@@ -150,6 +156,7 @@ pub(super) fn unavailable(
 
 fn select(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, index: usize) {
     state.selected = index;
+    state.toast = None;
     state.quantity = 1;
     state.core_shop.focus = CoreFocus::Items;
     if let Some(ItemDefinition::MagicCore(core)) = selected(state, catalog) {
@@ -195,6 +202,22 @@ fn review(
     sfx.confirm();
 }
 
+fn open_quantity(
+    state: &mut ServiceUiState,
+    catalog: &FieldMenuCatalog,
+    game: &GameState,
+    sfx: &mut MenuSfx,
+) {
+    if let Some(reason) = unavailable(state, catalog, game) {
+        state.announce(reason, ToastTone::Warn);
+        sfx.blocked();
+    } else {
+        state.toast = None;
+        state.core_shop.focus = CoreFocus::Quantity;
+        sfx.confirm();
+    }
+}
+
 pub(super) fn handle_input(
     state: &mut ServiceUiState,
     catalog: &FieldMenuCatalog,
@@ -202,13 +225,16 @@ pub(super) fn handle_input(
     sfx: &mut MenuSfx,
     input: CoreInput,
 ) {
+    // Modal stages accept only their own pointer controls, including in headless callers.
+    let control = input.control.filter(|control| control.active(state));
     if state.page == Some(ServicePage::CoreConfirm) {
-        if input.back || input.control == Some(CoreControl::Cancel) {
+        if input.back || control == Some(CoreControl::Back) {
             state.page = Some(ServicePage::MagicCore);
             state.pending = None;
             state.pending_id = None;
+            state.core_shop.focus = CoreFocus::Quantity;
             sfx.cancel();
-        } else if input.confirm || input.control == Some(CoreControl::Confirm) {
+        } else if input.confirm || control == Some(CoreControl::Confirm) {
             // execute_pending checks fresh capacity; the domain commits atomically.
             let selected = state.selected;
             if execute_pending(state, catalog, game) {
@@ -229,39 +255,31 @@ pub(super) fn handle_input(
         return;
     }
     state.selected = state.selected.min(count - 1);
-    if input.back {
-        if state.core_shop.focus == CoreFocus::Quantity {
-            state.core_shop.focus = CoreFocus::Items;
-        } else {
-            state.close();
+    if input.back || control == Some(CoreControl::Back) {
+        match state.core_shop.focus {
+            CoreFocus::Quantity => state.core_shop.focus = CoreFocus::Exchange,
+            CoreFocus::Exchange => state.core_shop.focus = CoreFocus::Items,
+            CoreFocus::Items => state.close(),
         }
         sfx.cancel();
         return;
     }
-    match input.control {
+    match control {
         Some(CoreControl::Item(index)) if index < count => {
             select(state, catalog, index);
             sfx.hover();
             return;
         }
         Some(CoreControl::Mode(mode)) => {
+            if state.core_shop.mode != mode {
+                state.quantity = 1;
+            }
             state.core_shop.mode = mode;
-            state.core_shop.focus = CoreFocus::Quantity;
-            state.quantity = 1;
-            sfx.hover();
-            return;
-        }
-        Some(CoreControl::Quantity(delta)) => {
-            state.core_shop.focus = CoreFocus::Quantity;
-            let max = selected(state, catalog).map_or(0, |item| {
-                max_quantity(catalog, game, item.id(), state.core_shop.mode)
-            });
-            state.quantity = adjust_quantity(state.quantity, delta, max.max(1), false);
-            sfx.hover();
+            state.core_shop.focus = CoreFocus::Exchange;
+            open_quantity(state, catalog, game, sfx);
             return;
         }
         Some(CoreControl::Review) => {
-            state.core_shop.focus = CoreFocus::Quantity;
             review(state, catalog, game, sfx);
             return;
         }
@@ -276,33 +294,40 @@ pub(super) fn handle_input(
                     wrapped_or_zero(state.selected, count, delta),
                 );
                 sfx.hover();
-            }
-            if input.confirm || input.horizontal == Some(1) {
-                state.core_shop.focus = CoreFocus::Quantity;
-                state.quantity = 1;
+            } else if input.confirm || input.horizontal == Some(1) {
+                state.core_shop.focus = CoreFocus::Exchange;
                 sfx.confirm();
             }
         }
-        CoreFocus::Quantity => {
-            if input.toggle || input.horizontal.is_some() {
-                state.core_shop.mode = match input.horizontal {
-                    Some(-1) => CoreMode::Sell,
-                    Some(1) => CoreMode::RankUp,
-                    _ => {
-                        if state.core_shop.mode == CoreMode::Sell {
-                            CoreMode::RankUp
-                        } else {
-                            CoreMode::Sell
-                        }
-                    }
+        CoreFocus::Exchange => {
+            if input.horizontal == Some(-1) {
+                state.core_shop.focus = CoreFocus::Items;
+                sfx.cancel();
+            } else if input.vertical.is_some() {
+                state.core_shop.mode = match state.core_shop.mode {
+                    CoreMode::Sell => CoreMode::RankUp,
+                    CoreMode::RankUp => CoreMode::Sell,
                 };
                 state.quantity = 1;
+                state.toast = None;
                 sfx.hover();
-            } else if let Some(delta) = input.vertical {
+            } else if input.confirm {
+                open_quantity(state, catalog, game, sfx);
+            }
+        }
+        CoreFocus::Quantity => {
+            let delta = match control {
+                Some(CoreControl::Quantity(delta)) => Some(delta),
+                _ => input
+                    .vertical
+                    .map(|delta| -delta)
+                    .or_else(|| input.horizontal.map(|delta| delta * 10)),
+            };
+            if let Some(delta) = delta {
                 let max = selected(state, catalog).map_or(0, |item| {
                     max_quantity(catalog, game, item.id(), state.core_shop.mode)
                 });
-                state.quantity = adjust_quantity(state.quantity, -delta, max.max(1), false);
+                state.quantity = adjust_quantity(state.quantity, delta, max.max(1), false);
                 sfx.hover();
             } else if input.confirm {
                 review(state, catalog, game, sfx);

@@ -326,8 +326,7 @@ pub(crate) fn handle_service_input(
                 core_controls
                     .iter()
                     .find(|(control, node, transform)| {
-                        control.in_review() == (state.page == Some(ServicePage::CoreConfirm))
-                            && p.is_over(node, transform)
+                        control.active(&state) && p.is_over(node, transform)
                     })
                     .map(|(control, _, _)| *control)
             });
@@ -346,7 +345,6 @@ pub(crate) fn handle_service_input(
                 horizontal: actions.menu_navigation_horizontal(),
                 confirm,
                 back,
-                toggle: keys.just_pressed(KeyCode::Tab),
                 control,
             },
         );

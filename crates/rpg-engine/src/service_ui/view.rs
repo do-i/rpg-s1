@@ -189,9 +189,7 @@ pub(super) fn sync_service_overlay(
                         ),
                         ..default()
                     },
-                    BackgroundColor(if is_core_shop(&state) {
-                        Color::srgb_u8(29, 29, 36)
-                    } else if is_item_shop(&state) {
+                    BackgroundColor(if is_core_shop(&state) || is_item_shop(&state) {
                         Color::srgb_u8(16, 17, 22)
                     } else if is_apothecary(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
@@ -213,6 +211,8 @@ pub(super) fn sync_service_overlay(
                         core_shop::spawn_footer(panel, &font, &state);
                         if state.page == Some(ServicePage::CoreConfirm) {
                             core_shop::spawn_review(panel, &font, &state, &catalog, &game);
+                        } else if state.core_shop.focus == super::core_shop::CoreFocus::Quantity {
+                            core_shop::spawn_quantity_dialog(panel, &font, &state, &catalog, &game);
                         }
                     } else if is_apothecary(&state) {
                         apothecary::spawn_header(panel, &font, &game, face);
