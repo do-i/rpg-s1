@@ -27,7 +27,6 @@ use crate::{
         status_border, status_border_active, status_ember, status_faint, status_gold, status_ink,
         status_muted, status_ready, status_teal,
     },
-    runtime_member::RuntimeMember,
     scenario_dialogue::DialogueShopKind,
     scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
@@ -39,15 +38,13 @@ use crate::{
 };
 
 mod apothecary;
+mod shop;
 
 #[derive(Component)]
 pub(super) struct ServiceRoot;
 
 /// Panel width for the plain list and confirmation pages (source `MODAL_W`).
 const PANEL_WIDTH: f32 = 620.0;
-
-const SHOP_VISIBLE_ROWS: usize = 7;
-const SHOP_CARD_HEIGHT: f32 = 56.0;
 
 const APOTHECARY_WIDTH: f32 = 1228.0;
 const APOTHECARY_HEIGHT: f32 = 718.0;
@@ -60,9 +57,6 @@ const APOTHECARY_HEIGHT: f32 = 718.0;
 /// rows drawn outside their own border. The fixed gameplay canvas is 1280x766, so a pixel
 /// ceiling is exact here.
 const PANEL_MAX_HEIGHT: f32 = 700.0;
-
-/// One line per member leaves room for all five previews and the quantity controls.
-const EQUIPMENT_PREVIEW_ROW_HEIGHT: f32 = 28.0;
 
 /// Keeper face sizes: the inn draws a larger portrait than the counter services.
 const KEEPER_FACE: f32 = 64.0;
@@ -108,6 +102,11 @@ pub(super) fn sync_service_overlay(
     };
     let font: Handle<Font> = asset_server.load(root.resolve(font_path));
     let face = keeper_face(&state, &sprites, &atlases);
+    let portraits = if is_item_shop(&state) {
+        shop::Portraits::load(&asset_server, &root, &game)
+    } else {
+        shop::Portraits::default()
+    };
 
     commands
         .spawn((
@@ -130,17 +129,28 @@ pub(super) fn sync_service_overlay(
                 .spawn((
                     Node {
                         width: px(panel_width(&state)),
-                        height: if is_apothecary(&state) || is_item_shop(&state) {
+                        height: if is_item_shop(&state) {
+                            px(shop::HEIGHT)
+                        } else if is_apothecary(&state) {
                             px(APOTHECARY_HEIGHT)
                         } else {
                             Val::Auto
                         },
-                        max_height: px(if is_apothecary(&state) || is_item_shop(&state) {
+                        max_height: px(if is_item_shop(&state) {
+                            shop::HEIGHT
+                        } else if is_apothecary(&state) {
                             APOTHECARY_HEIGHT
                         } else {
                             PANEL_MAX_HEIGHT
                         }),
-                        padding: if is_apothecary(&state) || is_item_shop(&state) {
+                        padding: if is_item_shop(&state) {
+                            UiRect {
+                                left: px(19),
+                                right: px(19),
+                                top: px(14),
+                                bottom: px(10),
+                            }
+                        } else if is_apothecary(&state) {
                             UiRect {
                                 left: px(22),
                                 right: px(22),
@@ -164,7 +174,9 @@ pub(super) fn sync_service_overlay(
                         }),
                         ..default()
                     },
-                    BackgroundColor(if is_apothecary(&state) || is_item_shop(&state) {
+                    BackgroundColor(if is_item_shop(&state) {
+                        Color::srgb_u8(16, 17, 22)
+                    } else if is_apothecary(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
                     } else {
                         Color::srgba(0.025, 0.025, 0.09, 0.97)
@@ -181,27 +193,16 @@ pub(super) fn sync_service_overlay(
                         apothecary::spawn_page(panel, &font, &state, &catalog, &game);
                         apothecary::spawn_footer(panel, &font, &state);
                     } else if is_item_shop(&state) {
-                        spawn_item_shop_header(panel, &font, &state, &game, face);
-                        spawn_service_body(panel, &font, &state, &catalog, &game);
-                        spawn_section_rule(panel);
-                        spawn_status_text(panel, service_hint(&state), &font, 12.0, status_faint());
+                        shop::spawn_header(panel, &font, &state, &game, face);
+                        spawn_service_body(panel, &font, &state, &catalog, &game, &portraits);
+                        shop::spawn_footer(panel, &font, &state);
                         if let Some(error) = state.shop_error.as_deref() {
                             spawn_shop_error(panel, &font, error);
-                        } else if state.toast.is_some() {
-                            panel
-                                .spawn(Node {
-                                    position_type: PositionType::Absolute,
-                                    left: px(22),
-                                    right: px(22),
-                                    bottom: px(40),
-                                    ..default()
-                                })
-                                .with_children(|notice| spawn_toast(notice, &font, &state));
                         }
                     } else {
                         spawn_service_header(panel, &font, &state, &game, face);
                         spawn_section_rule(panel);
-                        spawn_service_body(panel, &font, &state, &catalog, &game);
+                        spawn_service_body(panel, &font, &state, &catalog, &game, &portraits);
                         spawn_section_rule(panel);
                         spawn_status_text(panel, service_hint(&state), &font, 15.0, status_faint());
                         spawn_toast(panel, &font, &state);
@@ -227,7 +228,7 @@ fn panel_width(state: &ServiceUiState) -> f32 {
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => APOTHECARY_WIDTH,
         Some(
             ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip,
-        ) => APOTHECARY_WIDTH,
+        ) => shop::WIDTH,
         _ => PANEL_WIDTH,
     }
 }
@@ -249,81 +250,6 @@ fn is_item_shop(state: &ServiceUiState) -> bool {
         state.page,
         Some(ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip)
     )
-}
-
-fn spawn_item_shop_header(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    game: &GameState,
-    face: Option<DialoguePortrait>,
-) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                height: px(76),
-                flex_shrink: 0.0,
-                align_items: AlignItems::Center,
-                column_gap: px(16),
-                padding: UiRect::bottom(px(15)),
-                margin: UiRect::bottom(px(16)),
-                border: UiRect::bottom(px(1)),
-                ..default()
-            },
-            BorderColor::all(status_border()),
-            Name::new("Item shop header"),
-        ))
-        .with_children(|header| {
-            spawn_keeper_frame(header, font, 60.0, face);
-            header
-                .spawn(Node {
-                    width: px(12),
-                    height: px(42),
-                    flex_shrink: 0.0,
-                    ..default()
-                })
-                .with_children(|bars| spawn_header_bars(bars, 42.0, 0.0));
-            header
-                .spawn(Node {
-                    flex_grow: 1.0,
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(3),
-                    ..default()
-                })
-                .with_children(|title| {
-                    spawn_status_text(
-                        title,
-                        service_title(state).to_uppercase(),
-                        font,
-                        30.0,
-                        status_ink(),
-                    );
-                    spawn_status_text(title, "GOODS BOUGHT AND SOLD", font, 11.0, status_muted());
-                });
-            header
-                .spawn((
-                    Node {
-                        padding: UiRect::left(px(28)),
-                        border: UiRect::left(px(1)),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::End,
-                        row_gap: px(3),
-                        ..default()
-                    },
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|wallet| {
-                    spawn_status_text(wallet, "YOUR COIN", font, 11.0, status_muted());
-                    spawn_status_text(
-                        wallet,
-                        format!("{} GP", format_shop_number(game.repository().gp())),
-                        font,
-                        26.0,
-                        status_gold(),
-                    );
-                });
-        });
 }
 
 fn keeper_face(
@@ -434,12 +360,14 @@ fn spawn_service_body(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    portraits: &shop::Portraits,
 ) {
     match state.page {
-        Some(ServicePage::Buy) => spawn_buy_page(parent, font, state, catalog, game),
-        Some(ServicePage::Sell) => spawn_sell_page(parent, font, state, catalog, game),
+        Some(ServicePage::Buy | ServicePage::Sell) => {
+            shop::spawn_page(parent, font, state, catalog, game, portraits);
+        }
         Some(ServicePage::ShopConfirm) => {
-            spawn_item_shop(parent, font, state, catalog, game);
+            shop::spawn_page(parent, font, state, catalog, game, portraits);
             spawn_shop_confirmation(parent, font, state, catalog, game);
         }
         Some(ServicePage::MagicCore) => spawn_core_page(parent, font, state, catalog, game),
@@ -460,374 +388,15 @@ fn spawn_service_body(
 
 // ── Buy ──────────────────────────────────────────────────────────────────────
 
-fn spawn_buy_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    spawn_item_shop(parent, font, state, catalog, game);
-}
-
-fn spawn_item_shop(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    let buying = state
-        .pending
-        .map_or(state.page == Some(ServicePage::Buy), |pending| {
-            pending == PendingTransaction::Buy
-        });
-    let buy = buy_rows(state, catalog, game);
-    let sell = sell_rows(state, catalog, game);
-    let row_count = if buying { buy.len() } else { sell.len() };
-    parent
-        .spawn(Node {
-            width: percent(100),
-            flex_grow: 1.0,
-            min_height: px(0),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(10),
-            ..default()
-        })
-        .with_children(|body| {
-            body.spawn(Node {
-                width: percent(100),
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                column_gap: px(8),
-                ..default()
-            })
-            .with_children(|bar| {
-                for (index, label) in ["BUY", "SELL"].into_iter().enumerate() {
-                    let selected = buying == (index == 0);
-                    bar.spawn((
-                        Node {
-                            padding: UiRect::axes(px(18), px(7)),
-                            border: UiRect::all(px(1)),
-                            border_radius: BorderRadius::all(px(15)),
-                            ..default()
-                        },
-                        shop_focus_outline(selected && state.shop_focus == ShopFocus::Mode),
-                        Name::new(format!("Shop mode: {label}")),
-                        BackgroundColor(if selected {
-                            Color::srgba_u8(72, 49, 25, 230)
-                        } else {
-                            Color::srgba_u8(15, 15, 20, 220)
-                        }),
-                        BorderColor::all(if selected {
-                            status_border_active()
-                        } else {
-                            status_border()
-                        }),
-                    ))
-                    .with_children(|pill| {
-                        spawn_status_text(
-                            pill,
-                            label,
-                            font,
-                            14.0,
-                            if selected {
-                                status_gold()
-                            } else {
-                                status_muted()
-                            },
-                        )
-                    });
-                }
-                spawn_status_text(bar, "LEFT / RIGHT", font, 12.0, status_faint());
-            });
-            body.spawn(Node {
-                width: percent(100),
-                flex_direction: FlexDirection::Row,
-                flex_wrap: FlexWrap::Wrap,
-                column_gap: px(7),
-                row_gap: px(5),
-                ..default()
-            })
-            .with_children(|pills| {
-                for tab in shop_categories(state, buying, catalog, game) {
-                    let selected = state.shop_stock_visible() && tab == state.shop_category;
-                    pills
-                        .spawn((
-                            Node {
-                                padding: UiRect::axes(px(11), px(5)),
-                                border: UiRect::all(px(1)),
-                                border_radius: BorderRadius::all(px(13)),
-                                ..default()
-                            },
-                            shop_focus_outline(selected && state.shop_focus == ShopFocus::Category),
-                            Name::new(format!("Shop category: {}", tab.label())),
-                            BackgroundColor(if selected {
-                                Color::srgba_u8(72, 49, 25, 220)
-                            } else {
-                                Color::srgba_u8(15, 15, 20, 210)
-                            }),
-                            BorderColor::all(if selected {
-                                status_border_active()
-                            } else {
-                                status_border()
-                            }),
-                        ))
-                        .with_children(|pill| {
-                            spawn_status_text(
-                                pill,
-                                tab.label(),
-                                font,
-                                12.0,
-                                if selected {
-                                    status_gold()
-                                } else {
-                                    status_muted()
-                                },
-                            )
-                        });
-                }
-            });
-            if !state.shop_stock_visible() {
-                return;
-            }
-            if !buying && let Some(tag) = state.sell_tag.as_deref() {
-                spawn_status_text(
-                    body,
-                    format!("TAG FILTER: {tag}  ·  T to change"),
-                    font,
-                    12.0,
-                    status_teal(),
-                );
-            }
-            spawn_columns(body, |columns| {
-                spawn_status_panel(
-                    columns,
-                    Node {
-                        width: px(420),
-                        flex_shrink: 0.0,
-                        height: percent(100),
-                        min_height: px(0),
-                        padding: UiRect::all(px(12)),
-                        row_gap: px(4),
-                        ..stacked_panel_node()
-                    },
-                    if buying { "STOCK" } else { "CARRIED" },
-                    font,
-                    |panel| {
-                        let window = state.scroll.window(
-                            "shop-items",
-                            state.selected,
-                            row_count,
-                            SHOP_VISIBLE_ROWS,
-                        );
-                        spawn_scroll_list(
-                            panel,
-                            window,
-                            Node {
-                                flex_basis: px(0),
-                                flex_grow: 1.0,
-                                flex_shrink: 1.0,
-                                min_height: px(0),
-                                ..scroll_list_node(4.0)
-                            },
-                            |list| {
-                                if row_count == 0 {
-                                    spawn_status_text(
-                                        list,
-                                        if buying {
-                                            "No stock in this category."
-                                        } else {
-                                            "Nothing to sell in this category."
-                                        },
-                                        font,
-                                        17.0,
-                                        status_muted(),
-                                    );
-                                }
-                                for index in window.indices() {
-                                    if buying {
-                                        let row = buy[index];
-                                        let item = catalog.item(row.id());
-                                        spawn_shop_list_row(
-                                            list,
-                                            font,
-                                            ListRow {
-                                                item_id: Some(row.id()),
-                                                selected: state.shop_item_selected()
-                                                    && index == state.selected,
-                                                accent: item.map_or_else(status_teal, item_accent),
-                                                label: item.map_or(row.id(), |i| item_name(i)),
-                                                note: format!(
-                                                    "owned {}",
-                                                    format_shop_number(
-                                                        game.repository().item_count(row.id())
-                                                    )
-                                                ),
-                                                value: format_shop_number(row.buy_price().get()),
-                                                unit: Some("GP"),
-                                                value_color: status_gold(),
-                                                dim: false,
-                                            },
-                                        );
-                                    } else {
-                                        let item = sell[index];
-                                        spawn_shop_list_row(
-                                            list,
-                                            font,
-                                            ListRow {
-                                                item_id: Some(item.id()),
-                                                selected: state.shop_item_selected()
-                                                    && index == state.selected,
-                                                accent: item_accent(item),
-                                                label: item_name(item),
-                                                note: format!(
-                                                    "x{} owned",
-                                                    format_shop_number(
-                                                        game.repository().item_count(item.id())
-                                                    )
-                                                ),
-                                                value: sell_price(item).map_or_else(
-                                                    || "—".to_owned(),
-                                                    format_shop_number,
-                                                ),
-                                                unit: Some("GP"),
-                                                value_color: status_gold(),
-                                                dim: false,
-                                            },
-                                        );
-                                    }
-                                }
-                            },
-                        );
-                        if state.shop_item_selected() {
-                            spawn_window_footer(panel, font, state.selected, window);
-                        } else {
-                            spawn_status_text(
-                                panel,
-                                format!("{row_count} items"),
-                                font,
-                                12.0,
-                                status_faint(),
-                            );
-                        }
-                    },
-                );
-                if !state.shop_item_selected() || row_count == 0 {
-                    return;
-                }
-                spawn_status_panel(
-                    columns,
-                    Node {
-                        flex_basis: px(0),
-                        flex_grow: 1.0,
-                        height: percent(100),
-                        min_height: px(0),
-                        ..stacked_panel_node()
-                    },
-                    "ITEM DETAILS",
-                    font,
-                    |panel| {
-                        let item = if buying {
-                            buy.get(state.selected).and_then(|r| catalog.item(r.id()))
-                        } else {
-                            sell.get(state.selected).copied()
-                        };
-                        let Some(item) = item else {
-                            spawn_status_text(
-                                panel,
-                                "Select an item to see its details.",
-                                font,
-                                18.0,
-                                status_muted(),
-                            );
-                            return;
-                        };
-                        panel
-                            .spawn(Node {
-                                width: percent(100),
-                                height: px(128),
-                                min_height: px(128),
-                                flex_shrink: 0.0,
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: px(22),
-                                ..default()
-                            })
-                            .with_children(|heading| {
-                                spawn_item_image(heading, item.id());
-                                heading
-                                    .spawn(Node {
-                                        flex_grow: 1.0,
-                                        flex_basis: px(0),
-                                        min_width: px(0),
-                                        flex_direction: FlexDirection::Column,
-                                        row_gap: px(10),
-                                        ..default()
-                                    })
-                                    .with_children(|copy| {
-                                        spawn_status_text(
-                                            copy,
-                                            item_name(item),
-                                            font,
-                                            27.0,
-                                            status_gold(),
-                                        );
-                                        spawn_status_text(
-                                            copy,
-                                            item_description(item),
-                                            font,
-                                            17.0,
-                                            status_ink(),
-                                        );
-                                    });
-                            });
-                        spawn_section_rule(panel);
-                        spawn_equipment_preview(panel, font, state, catalog, game, item);
-                        panel.spawn((Node {
-                            width: percent(100),
-                            flex_grow: 1.0,
-                            ..default()
-                        },));
-                        let unit = if buying {
-                            buy.get(state.selected).map_or(0, |r| r.buy_price().get())
-                        } else {
-                            sell.get(state.selected)
-                                .and_then(|r| sell_price(r))
-                                .unwrap_or(0)
-                        };
-                        spawn_shop_quantity(panel, font, state, buying, unit);
-                        let delta = unit.saturating_mul(state.quantity);
-                        let balance = if buying {
-                            game.repository().gp().saturating_sub(delta)
-                        } else {
-                            game.repository()
-                                .gp()
-                                .saturating_add(delta)
-                                .min(game.repository().gp_cap())
-                        };
-                        spawn_status_text(
-                            panel,
-                            format!("After transaction: {} GP", format_shop_number(balance)),
-                            font,
-                            14.0,
-                            status_muted(),
-                        );
-                    },
-                );
-            });
-        });
-}
-
 fn spawn_shop_error(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, error: &str) {
     parent
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: px(-22),
-                right: px(-22),
-                top: px(-20),
-                bottom: px(-14),
+                left: px(-19),
+                right: px(-19),
+                top: px(-14),
+                bottom: px(-10),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -885,151 +454,6 @@ fn spawn_shop_error(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, 
         });
 }
 
-fn spawn_shop_quantity(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    buying: bool,
-    unit: u32,
-) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                min_height: px(64),
-                flex_shrink: 0.0,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::SpaceBetween,
-                column_gap: px(16),
-                padding: UiRect::horizontal(px(18)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(5)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(12, 12, 16, 230)),
-            BorderColor::all(if state.shop_focus == ShopFocus::Detail {
-                status_border_active()
-            } else {
-                status_border()
-            }),
-            Name::new("Shop quantity panel"),
-        ))
-        .with_children(|qty| {
-            qty.spawn(Node {
-                flex_direction: FlexDirection::Column,
-                ..default()
-            })
-            .with_children(|price| {
-                spawn_status_text(
-                    price,
-                    if buying { "UNIT PRICE" } else { "UNIT VALUE" },
-                    font,
-                    10.0,
-                    status_muted(),
-                );
-                spawn_status_text(
-                    price,
-                    format!("{} GP", format_shop_number(unit)),
-                    font,
-                    20.0,
-                    status_gold(),
-                );
-            });
-            qty.spawn(Node {
-                align_items: AlignItems::Center,
-                column_gap: px(16),
-                ..default()
-            })
-            .with_children(|picker| {
-                picker
-                    .spawn(Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(4),
-                        ..default()
-                    })
-                    .with_children(|buttons| {
-                        for (label, step) in [("+", 1), ("-", -1)] {
-                            buttons
-                                .spawn((
-                                    Node {
-                                        width: px(52),
-                                        height: px(28),
-                                        flex_shrink: 0.0,
-                                        justify_content: JustifyContent::Center,
-                                        align_items: AlignItems::Center,
-                                        border: UiRect::all(px(1)),
-                                        border_radius: BorderRadius::all(px(3)),
-                                        ..default()
-                                    },
-                                    ShopControl::Quantity(step),
-                                    BackgroundColor(Color::srgba_u8(72, 49, 25, 255)),
-                                    BorderColor::all(status_border_active()),
-                                    Name::new(format!("Shop quantity {label}")),
-                                ))
-                                .with_children(|button| {
-                                    spawn_status_text(button, label, font, 20.0, status_gold())
-                                });
-                        }
-                    });
-                picker
-                    .spawn(Node {
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    })
-                    .with_children(|count| {
-                        spawn_status_text(
-                            count,
-                            format_shop_number(state.quantity),
-                            font,
-                            29.0,
-                            status_ink(),
-                        );
-                        spawn_status_text(count, "QUANTITY", font, 10.0, status_muted());
-                    });
-            });
-            qty.spawn(Node {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::End,
-                ..default()
-            })
-            .with_children(|total| {
-                spawn_status_text(total, "TOTAL", font, 10.0, status_muted());
-                spawn_status_text(
-                    total,
-                    format!(
-                        "{} GP",
-                        format_shop_number(unit.saturating_mul(state.quantity))
-                    ),
-                    font,
-                    21.0,
-                    status_gold(),
-                );
-            });
-            spawn_status_text(
-                qty,
-                if buying {
-                    "ENTER  ·  BUY"
-                } else {
-                    "ENTER  ·  SELL"
-                },
-                font,
-                17.0,
-                status_ink(),
-            );
-        });
-}
-
-fn spawn_sell_page(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-) {
-    spawn_item_shop(parent, font, state, catalog, game);
-}
-
 fn spawn_shop_confirmation(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -1060,10 +484,10 @@ fn spawn_shop_confirmation(
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: px(-22),
-                right: px(-22),
-                top: px(-20),
-                bottom: px(-14),
+                left: px(-19),
+                right: px(-19),
+                top: px(-14),
+                bottom: px(-10),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -1172,131 +596,6 @@ fn spawn_shop_confirmation(
                         });
                 });
         });
-}
-
-/// The bordered party panel Python draws beside an equippable purchase.
-///
-/// Each member shows what currently fills the slot and the signed change every stat would take.
-fn spawn_equipment_preview(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &ServiceUiState,
-    catalog: &FieldMenuCatalog,
-    game: &GameState,
-    item: &ItemDefinition,
-) {
-    // A consumable has no slot to compare against, so the source shows no party panel at all.
-    if !is_equipment(item) {
-        return;
-    }
-    spawn_status_text(parent, "IF EQUIPPED", font, 13.0, status_gold());
-    for (index, member) in game.party().members().enumerate() {
-        let focused = index == state.equip_selection;
-        match can_equip(member, item, catalog) {
-            Ok(slot) => {
-                let before = derived_stats(member, catalog);
-                let after = preview_stats(member, catalog, slot, Some(item.id()));
-                let current = member
-                    .equipment()
-                    .get(slot)
-                    .and_then(|id| catalog.item(id))
-                    .map_or("empty", |worn| item_name(worn));
-                let worn = format!("Now: {current}");
-                spawn_preview_row(parent, font, member, focused, &worn, |deltas| {
-                    for (label, delta) in [
-                        ("STR", after.strength - before.strength),
-                        ("DEX", after.dexterity - before.dexterity),
-                        ("CON", after.constitution - before.constitution),
-                        ("INT", after.intelligence - before.intelligence),
-                    ] {
-                        spawn_status_text(
-                            deltas,
-                            format!("{label} {delta:+}"),
-                            font,
-                            13.0,
-                            delta_color(delta),
-                        );
-                    }
-                });
-            }
-            Err(_) => {
-                spawn_preview_row(parent, font, member, focused, "cannot equip", |_| {});
-            }
-        }
-    }
-}
-
-fn spawn_preview_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    member: &RuntimeMember,
-    focused: bool,
-    subtitle: &str,
-    deltas: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    parent
-        .spawn((
-            equipment_preview_row_node(focused),
-            BackgroundColor(if focused {
-                Color::srgba_u8(72, 49, 25, 218)
-            } else {
-                Color::srgba_u8(10, 10, 14, 150)
-            }),
-            BorderColor::all(if focused {
-                status_border_active()
-            } else {
-                status_border()
-            }),
-        ))
-        .with_children(|row| {
-            // Keep the member, worn gear, and deltas on one line for a full party.
-            row.spawn(Node {
-                width: percent(45),
-                flex_shrink: 0.0,
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Center,
-                column_gap: px(8),
-                ..default()
-            })
-            .with_children(|line| {
-                spawn_status_text(line, member.name(), font, 16.0, status_ink());
-                spawn_status_text(line, subtitle, font, 12.0, status_muted());
-            });
-            row.spawn(Node {
-                flex_grow: 1.0,
-                justify_content: JustifyContent::End,
-                flex_direction: FlexDirection::Row,
-                column_gap: px(10),
-                ..default()
-            })
-            .with_children(deltas);
-        });
-}
-
-fn equipment_preview_row_node(focused: bool) -> Node {
-    Node {
-        width: percent(100),
-        height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
-        min_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
-        max_height: px(EQUIPMENT_PREVIEW_ROW_HEIGHT),
-        flex_direction: FlexDirection::Row,
-        align_items: AlignItems::Center,
-        column_gap: px(12),
-        flex_shrink: 0.0,
-        padding: UiRect::axes(px(10), px(3)),
-        border: UiRect::all(px(if focused { 2 } else { 1 })),
-        border_radius: BorderRadius::all(px(4)),
-        ..default()
-    }
-}
-
-fn delta_color(delta: i32) -> Color {
-    match delta.signum() {
-        1 => status_ready(),
-        -1 => status_ember(),
-        _ => status_faint(),
-    }
 }
 
 // ── Magic core ───────────────────────────────────────────────────────────────
@@ -1579,28 +878,6 @@ fn spawn_list_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ro
     spawn_sized_list_row(parent, font, row, service_list_row_node(), 32.0, 16.0);
 }
 
-fn spawn_shop_list_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    row: ListRow<'_>,
-) {
-    spawn_sized_list_row(
-        parent,
-        font,
-        row,
-        Node {
-            flex_basis: px(0),
-            flex_grow: 1.0,
-            min_height: px(48),
-            max_height: px(SHOP_CARD_HEIGHT),
-            padding: UiRect::axes(px(9), px(1)),
-            ..service_list_row_node()
-        },
-        44.0,
-        18.0,
-    );
-}
-
 fn service_list_row_node() -> Node {
     Node {
         width: percent(100),
@@ -1743,22 +1020,6 @@ fn spawn_window_footer(
     spawn_status_text(parent, text, font, 12.0, status_faint());
 }
 
-fn spawn_columns(
-    parent: &mut ChildSpawnerCommands<'_>,
-    columns: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    parent
-        .spawn(Node {
-            width: percent(100),
-            flex_grow: 1.0,
-            min_height: px(0),
-            flex_direction: FlexDirection::Row,
-            column_gap: px(14),
-            ..default()
-        })
-        .with_children(columns);
-}
-
 /// The list frame for a page that stacks its list under the header, sized by its own rows.
 fn stacked_panel_node() -> Node {
     Node {
@@ -1835,10 +1096,18 @@ fn service_hint(state: &ServiceUiState) -> &'static str {
             ShopFocus::Mode => "LEFT/RIGHT  buy or sell    DOWN  item types    ESC  leave shop",
             ShopFocus::Category => "LEFT/RIGHT  choose type    UP/DOWN  buy or browse items",
             ShopFocus::Items => {
-                "UP/DOWN  browse    RIGHT  details    ENTER  review 1    T  sell tags    ESC  item types"
+                if state.page == Some(ServicePage::Sell) {
+                    "ESC Back    UP / DOWN Browse    ENTER / RIGHT Quantity    T Sell tags"
+                } else {
+                    "ESC Back    UP / DOWN Browse    ENTER / RIGHT Quantity"
+                }
             }
             ShopFocus::Detail => {
-                "UP/DOWN  quantity ±1    LEFT/RIGHT  quantity ±10    ENTER  review    ESC  item list"
+                if state.page == Some(ServicePage::Sell) {
+                    "ESC Back    UP / DOWN Quantity ±1    LEFT / RIGHT Quantity ±10    ENTER Review sale"
+                } else {
+                    "ESC Back    UP / DOWN Quantity ±1    LEFT / RIGHT Quantity ±10    ENTER Review purchase"
+                }
             }
         },
         Some(ServicePage::ShopConfirm) => "ENTER  confirm transaction    ESC  cancel",
@@ -1912,7 +1181,15 @@ mod tests {
             .commands()
             .spawn(Node::default())
             .with_children(|root| {
-                spawn_item_shop(root, &Handle::default(), &state, &catalog, &game);
+                shop::spawn_header(root, &Handle::default(), &state, &game, None);
+                shop::spawn_page(
+                    root,
+                    &Handle::default(),
+                    &state,
+                    &catalog,
+                    &game,
+                    &shop::Portraits::default(),
+                );
             });
         app.update();
         app
@@ -1941,12 +1218,12 @@ mod tests {
             assert!(!texts.contains(&"Core"));
             assert!(!texts.contains(&"Key"));
             assert_eq!(
-                texts.contains(&"STOCK"),
+                texts.contains(&"BROWSE STOCK"),
                 focus != ShopFocus::Mode,
                 "{focus:?}"
             );
             assert_eq!(
-                texts.contains(&"ITEM DETAILS"),
+                texts.contains(&"THE MERCHANT’S COUNTER"),
                 matches!(focus, ShopFocus::Items | ShopFocus::Detail),
                 "{focus:?}"
             );
@@ -1970,10 +1247,7 @@ mod tests {
                 .unwrap()
                 .1
                 .0;
-            assert_eq!(
-                all == Color::srgba_u8(72, 49, 25, 220),
-                focus != ShopFocus::Mode
-            );
+            assert_eq!(all == Color::srgb_u8(73, 51, 30), focus != ShopFocus::Mode);
         }
     }
 
@@ -2025,7 +1299,7 @@ mod tests {
             assert!(
                 cards
                     .iter()
-                    .all(|(_, node, _)| node.min_height == px(48) && node.max_height == px(56))
+                    .all(|(_, node, _)| node.min_height == px(64) && node.height == px(64))
             );
             let list = world
                 .query::<(&Name, &Node)>()
@@ -2042,7 +1316,7 @@ mod tests {
                     world
                         .query::<&Text>()
                         .iter(world)
-                        .any(|text| text.0.contains("SHOWING 09-15"))
+                        .any(|text| text.0 == "15 / 15")
                 );
             }
         }
@@ -2053,16 +1327,25 @@ mod tests {
         let mut app = shop_view(ShopFocus::Items);
         let world = app.world_mut();
         let controls = world
-            .query::<(&ShopControl, &Node, &BackgroundColor, &BorderColor)>()
+            .query::<(&ShopControl, &Node)>()
             .iter(world)
+            .filter(|(control, _)| matches!(control, ShopControl::Quantity(_)))
             .collect::<Vec<_>>();
         assert_eq!(controls.len(), 2);
-        assert!(controls.iter().all(|(_, node, background, _)| {
-            node.width == px(52)
-                && node.height == px(28)
-                && node.border == UiRect::all(px(1))
-                && background.0 != Color::NONE
-        }));
+        assert!(
+            controls
+                .iter()
+                .all(|(_, node)| node.width == percent(100) && node.height == px(34))
+        );
+        let frame = world
+            .query::<(&Name, &Node)>()
+            .iter(world)
+            .find(|(name, _)| name.as_str() == "Shop quantity control")
+            .unwrap()
+            .1;
+        assert_eq!(frame.width, px(78));
+        assert_eq!(frame.height, px(112));
+        assert_eq!(frame.flex_direction, FlexDirection::Column);
         let text = world
             .query::<&Text>()
             .iter(world)
@@ -2070,7 +1353,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(text.contains(&"QUANTITY"));
         assert!(text.contains(&"1"));
-        assert!(text.contains(&"UNIT PRICE"));
+        assert!(text.contains(&"PRICE"));
         assert!(text.contains(&"TOTAL"));
     }
 
@@ -2086,42 +1369,20 @@ mod tests {
         ] {
             assert_eq!(format_shop_number(value), expected);
         }
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
-        app.world_mut()
-            .commands()
-            .spawn(Node::default())
-            .with_children(|root| {
-                spawn_shop_list_row(
-                    root,
-                    &Handle::default(),
-                    ListRow {
-                        item_id: Some("potion"),
-                        selected: true,
-                        accent: status_teal(),
-                        label: "Potion",
-                        note: "owned 1".to_owned(),
-                        value: format_shop_number(4_500),
-                        unit: Some("GP"),
-                        value_color: status_gold(),
-                        dim: false,
-                    },
-                );
-            });
-        app.update();
+        let mut app = shop_view(ShopFocus::Items);
         let world = app.world_mut();
         let mut texts = world.query::<(&Text, &TextFont, &TextColor)>();
         let (_, font, color) = texts
             .iter(world)
-            .find(|(text, _, _)| text.0 == "4,500")
+            .find(|(text, _, _)| text.0 == "100")
             .unwrap();
-        assert_eq!(font.font_size, FontSize::Px(16.0));
+        assert_eq!(font.font_size, FontSize::Px(17.0));
         assert_eq!(color.0, status_gold());
         let (_, font, color) = texts
             .iter(world)
-            .find(|(text, _, _)| text.0 == "GP")
+            .find(|(text, font, _)| text.0 == "GP" && font.font_size == FontSize::Px(11.0))
             .unwrap();
-        assert_eq!(font.font_size, FontSize::Px(10.0));
+        assert_eq!(font.font_size, FontSize::Px(11.0));
         assert_eq!(color.0, status_muted());
     }
 
@@ -2183,7 +1444,15 @@ mod tests {
             ServicePage::RecipeDetail,
         ] {
             state.page = Some(page);
-            assert_eq!(panel_width(&state), APOTHECARY_WIDTH, "{page:?}");
+            assert_eq!(
+                panel_width(&state),
+                if matches!(page, ServicePage::Apothecary | ServicePage::RecipeDetail) {
+                    APOTHECARY_WIDTH
+                } else {
+                    shop::WIDTH
+                },
+                "{page:?}"
+            );
         }
         for page in [
             ServicePage::MagicCore,

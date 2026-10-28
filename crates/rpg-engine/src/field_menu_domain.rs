@@ -875,6 +875,13 @@ pub(crate) fn preview_stats(
     totals
 }
 
+/// The item's own bonuses, before replacing a particular member's current equipment.
+pub(crate) fn item_stat_bonuses(item: &ItemDefinition) -> DerivedStats {
+    let mut stats = DerivedStats::default();
+    add_item_stats(&mut stats, item);
+    stats
+}
+
 fn add_item_stats(totals: &mut DerivedStats, item: &ItemDefinition) {
     let mut add =
         |strength: Option<i32>, dex: Option<i32>, con: Option<i32>, intelligence: Option<i32>| {

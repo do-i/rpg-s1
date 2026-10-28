@@ -124,6 +124,9 @@ enum ShopFocus {
 
 #[derive(Clone, Copy, Component, Debug)]
 pub(crate) enum ShopControl {
+    Mode(bool),
+    Category(InventoryTab),
+    Item(usize),
     Quantity(isize),
     DismissError,
 }
@@ -333,8 +336,7 @@ pub(crate) fn handle_service_input(
         None
     };
     let shop_control = if state.shop_error.is_some()
-        || (matches!(state.page, Some(ServicePage::Buy | ServicePage::Sell))
-            && state.shop_item_selected())
+        || matches!(state.page, Some(ServicePage::Buy | ServicePage::Sell))
     {
         pointer
             .as_deref()
@@ -375,6 +377,44 @@ pub(crate) fn handle_service_input(
                 state.shop_category = InventoryTab::All;
                 state.selected = 0;
                 state.quantity = 1;
+            }
+            match shop_control {
+                Some(ShopControl::Mode(buying)) => {
+                    state.page = Some(if buying {
+                        ServicePage::Buy
+                    } else {
+                        ServicePage::Sell
+                    });
+                    state.shop_focus = ShopFocus::Category;
+                    state.shop_category = InventoryTab::All;
+                    state.selected = 0;
+                    state.quantity = 1;
+                    menu_sfx.hover();
+                    return;
+                }
+                Some(ShopControl::Category(tab)) if categories.contains(&tab) => {
+                    state.shop_category = tab;
+                    state.shop_focus = ShopFocus::Category;
+                    state.selected = 0;
+                    state.quantity = 1;
+                    menu_sfx.hover();
+                    return;
+                }
+                Some(ShopControl::Item(index)) => {
+                    let count = if is_buy {
+                        buy_rows(&state, &catalog, &game).len()
+                    } else {
+                        sell_rows(&state, &catalog, &game).len()
+                    };
+                    if index < count {
+                        state.selected = index;
+                        state.shop_focus = ShopFocus::Items;
+                        state.quantity = 1;
+                        menu_sfx.hover();
+                    }
+                    return;
+                }
+                _ => {}
             }
             if back {
                 menu_sfx.cancel();
@@ -470,48 +510,9 @@ pub(crate) fn handle_service_input(
                         state.selected = wrapped_or_zero(state.selected, row_count, delta);
                         menu_sfx.hover();
                     }
-                    if horizontal == Some(1) {
+                    if horizontal == Some(1) || confirm {
                         state.shop_focus = ShopFocus::Detail;
-                        menu_sfx.hover();
-                    }
-                    if confirm {
-                        let Some(id) = selected_shop_item_id(&state, is_buy, &catalog, &game)
-                        else {
-                            menu_sfx.blocked();
-                            state.announce(
-                                if is_buy {
-                                    "No stock in this category."
-                                } else {
-                                    "Nothing to sell in this category."
-                                },
-                                ToastTone::Warn,
-                            );
-                            return;
-                        };
-                        state.pending_id = Some(id.clone());
-                        state.pending = Some(if is_buy {
-                            PendingTransaction::Buy
-                        } else {
-                            PendingTransaction::Sell
-                        });
-                        state.quantity = 1;
-                        let max = pending_max(&state, &catalog, &game);
-                        if max == 0 {
-                            state.pending_id = None;
-                            state.pending = None;
-                            menu_sfx.blocked();
-                            state.announce(
-                                if is_buy {
-                                    "Not enough GP or item capacity."
-                                } else {
-                                    "That item cannot be sold."
-                                },
-                                ToastTone::Warn,
-                            );
-                        } else {
-                            state.page = Some(ServicePage::ShopConfirm);
-                            menu_sfx.confirm();
-                        }
+                        menu_sfx.confirm();
                     }
                 }
                 ShopFocus::Detail => {

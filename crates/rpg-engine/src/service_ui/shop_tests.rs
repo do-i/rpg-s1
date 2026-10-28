@@ -57,6 +57,57 @@ fn repository(app: &App) -> &crate::runtime_repository::RuntimeRepository {
 }
 
 #[test]
+fn mouse_modes_categories_and_stock_update_focus_without_spending() {
+    fn click(app: &mut App, control: ShopControl) {
+        app.world_mut()
+            .resource_mut::<ActionState>()
+            .replace_with_normalized(&[]);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        let entity = app
+            .world_mut()
+            .spawn((
+                control,
+                ComputedNode {
+                    size: Vec2::splat(100.0),
+                    ..default()
+                },
+                UiGlobalTransform::default(),
+            ))
+            .id();
+        app.insert_resource(CanvasPointer::at_viewport_position(Vec2::ZERO, true));
+        app.update();
+        app.world_mut().despawn(entity);
+    }
+    let mut app = app();
+    let before = repository(&app).clone();
+    click(&mut app, ShopControl::Mode(false));
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().page,
+        Some(ServicePage::Sell)
+    );
+    click(&mut app, ShopControl::Category(InventoryTab::Recovery));
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_category,
+        InventoryTab::Recovery
+    );
+    click(&mut app, ShopControl::Item(0));
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_focus,
+        ShopFocus::Items
+    );
+    click(&mut app, ShopControl::Quantity(1));
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().shop_focus,
+        ShopFocus::Detail
+    );
+    assert_eq!(app.world().resource::<ServiceUiState>().quantity, 2);
+    assert_eq!(repository(&app), &before);
+    assert_eq!(app.world().resource::<ServiceUiState>().pending, None);
+}
+
+#[test]
 fn normalized_input_reaches_modes_categories_details_and_bulk_review() {
     let mut app = app();
     press(&mut app, NormalizedAction::MenuRight);
@@ -109,6 +160,7 @@ fn leaving_detail_resets_the_visible_quantity_before_quick_review() {
     press(&mut app, NormalizedAction::Back);
     assert_eq!(app.world().resource::<ServiceUiState>().quantity, 1);
     press(&mut app, NormalizedAction::MenuDown);
+    press(&mut app, NormalizedAction::MenuRight);
     press(&mut app, NormalizedAction::Confirm);
     let state = app.world().resource::<ServiceUiState>();
     assert_eq!(state.pending_id.as_deref(), Some("ether"));
@@ -175,6 +227,7 @@ fn changed_funds_locks_and_stock_are_revalidated_without_partial_transactions() 
             press(&mut app, NormalizedAction::MenuRight);
         }
         enter_items(&mut app);
+        press(&mut app, NormalizedAction::MenuRight);
         press(&mut app, NormalizedAction::Confirm);
         assert_eq!(
             app.world().resource::<ServiceUiState>().page,
@@ -468,6 +521,7 @@ fn pointer_quantity_buttons_change_counts_without_bypassing_review() {
 fn insufficient_funds_opens_a_modal_that_consumes_dismissal_input() {
     let mut app = app();
     enter_items(&mut app);
+    press(&mut app, NormalizedAction::MenuRight);
     app.world_mut()
         .resource_mut::<GameState>()
         .repository_mut()
@@ -479,7 +533,7 @@ fn insufficient_funds_opens_a_modal_that_consumes_dismissal_input() {
     assert!(state.shop_error.is_some());
     assert!(state.toast.is_none());
     assert_eq!(state.page, Some(ServicePage::Buy));
-    assert_eq!(state.shop_focus, ShopFocus::Items);
+    assert_eq!(state.shop_focus, ShopFocus::Detail);
     // Navigation and elapsed time leave the modal open and the background selection still.
     press(&mut app, NormalizedAction::MenuDown);
     let state = app.world().resource::<ServiceUiState>();
@@ -507,7 +561,7 @@ fn insufficient_funds_opens_a_modal_that_consumes_dismissal_input() {
     );
     assert_eq!(
         app.world().resource::<ServiceUiState>().shop_focus,
-        ShopFocus::Items
+        ShopFocus::Detail
     );
     assert_eq!(repository(&app), &before);
 }
@@ -544,5 +598,24 @@ fn shop_error_can_be_dismissed_by_its_mouse_button() {
         Some(ServicePage::Buy)
     );
     assert_eq!(app.world().resource::<ServiceUiState>().pending, None);
+    assert_eq!(repository(&app), &before);
+}
+
+#[test]
+fn enter_on_stock_focuses_quantity_without_staging_or_spending() {
+    let mut app = app();
+    enter_items(&mut app);
+    let before = repository(&app).clone();
+    press(&mut app, NormalizedAction::Confirm);
+    let state = app.world().resource::<ServiceUiState>();
+    assert_eq!(state.shop_focus, ShopFocus::Detail);
+    assert_eq!(state.page, Some(ServicePage::Buy));
+    assert_eq!(state.pending, None);
+    assert_eq!(repository(&app), &before);
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<ServiceUiState>().page,
+        Some(ServicePage::ShopConfirm)
+    );
     assert_eq!(repository(&app), &before);
 }
