@@ -966,10 +966,10 @@ fn spawn_party(
                                                 format!("{label} {old} -> {new}"),
                                                 font,
                                                 13.0,
-                                                match (new - old).signum() {
-                                                    1 => Color::srgb_u8(184, 215, 183),
-                                                    -1 => Color::srgb_u8(224, 169, 159),
-                                                    _ => status_muted(),
+                                                if new == old {
+                                                    status_ink()
+                                                } else {
+                                                    stat_color(new - old)
                                                 },
                                             );
                                         }
