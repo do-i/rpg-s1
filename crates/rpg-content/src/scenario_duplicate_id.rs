@@ -583,7 +583,7 @@ mod tests {
                 (CatalogNamespace::Npcs, 122),
                 (CatalogNamespace::ItemBoxes, 59),
                 (CatalogNamespace::Dialogue, 150),
-                (CatalogNamespace::Enemies, 108),
+                (CatalogNamespace::Enemies, 105),
                 (CatalogNamespace::BossMoveSets, 11),
                 (CatalogNamespace::Encounters, 22),
                 (CatalogNamespace::BattleBackgrounds, 14),

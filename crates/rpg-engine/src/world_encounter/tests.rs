@@ -311,8 +311,8 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         "{:?}",
         app.world().resource::<WorldEncounterState>().failure()
     );
-    // 107 before roadmap B1.2 added the Cinder Marshal.
-    assert_eq!(app.world().resource::<EnemyCatalog>().len(), 108);
+    // 107 before roadmap B1.2 added the Cinder Marshal; 105 after three duplicate variants retired.
+    assert_eq!(app.world().resource::<EnemyCatalog>().len(), 105);
     let expected_party_stats = {
         let world = app.world();
         let member = world

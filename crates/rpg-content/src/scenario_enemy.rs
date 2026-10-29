@@ -683,7 +683,7 @@ mod tests {
         }
 
         assert_eq!(rank_files.len(), 8);
-        assert_eq!(enemies.len(), 108);
+        assert_eq!(enemies.len(), 105);
         assert_eq!(move_set_files.len(), 11);
         assert_eq!(enemies.iter().filter(|enemy| enemy.boss).count(), 12);
         assert_eq!(
@@ -705,7 +705,7 @@ mod tests {
                 .iter()
                 .flat_map(|enemy| enemy.drops.mc.iter())
                 .count(),
-            195
+            190
         );
         assert_eq!(
             enemies
@@ -713,7 +713,7 @@ mod tests {
                 .flat_map(|enemy| enemy.drops.loot.iter())
                 .flat_map(|pool| pool.pool.iter())
                 .count(),
-            253
+            246
         );
     }
 }
