@@ -2171,6 +2171,12 @@ fn sync_battle_message(
         return;
     }
     let prompting = is_prompt_phase(state.phase);
+    let enemy_names = state
+        .combatants
+        .iter()
+        .filter(|actor| actor.key.side == BattleSide::Enemy)
+        .map(|actor| actor.name.clone())
+        .collect::<Vec<_>>();
     let mut lines = Vec::new();
     if !prompting && !state.message.is_empty() && state.message != history.last {
         let enemy = state.active_key().map(|key| key.side) == Some(BattleSide::Enemy);
@@ -2178,6 +2184,7 @@ fn sync_battle_message(
             text: state.message.clone(),
             enemy,
             kind: state.message_kind(),
+            enemy_names: enemy_names.clone(),
         });
     }
     history.last.clone_from(&state.message);
@@ -2188,6 +2195,7 @@ fn sync_battle_message(
             text,
             enemy: false,
             kind: LogKind::Reward,
+            enemy_names: Vec::new(),
         }));
     }
     for line in &lines {

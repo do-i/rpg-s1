@@ -5,8 +5,6 @@
 
 use bevy::prelude::*;
 
-use crate::menu_chrome::{status_ember, status_gold, status_muted, status_teal, status_violet};
-
 /// What a logged result was, which decides its colour.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) enum LogKind {
@@ -31,27 +29,30 @@ pub(crate) struct BattleLogLine {
     /// Whether an enemy's turn produced the line.
     pub(crate) enemy: bool,
     pub(crate) kind: LogKind,
+    /// Names of the battle's enemies, so they can be told apart from the party in the text.
+    pub(crate) enemy_names: Vec<String>,
 }
 
 impl BattleLogLine {
     /// The colour of the line's words.
     pub(crate) fn color(&self) -> Color {
         match self.kind {
-            LogKind::Item | LogKind::Reward => status_gold(),
-            LogKind::Ability => status_violet(),
-            LogKind::HitEnemy => status_teal(),
-            LogKind::HitParty => Color::srgb_u8(255, 160, 128),
-            LogKind::Miss => status_muted(),
-            LogKind::Info if self.enemy => status_ember(),
-            LogKind::Info => status_teal(),
+            LogKind::Item => Color::srgb_u8(0x01, 0xf9, 0x09),
+            LogKind::Reward => Color::srgb_u8(0x74, 0xc5, 0x11),
+            LogKind::Ability => Color::srgb_u8(0xa5, 0xab, 0x9b),
+            LogKind::HitEnemy => Color::srgb_u8(0x48, 0x7f, 0x06),
+            LogKind::HitParty => Color::srgb_u8(0xff, 0xa0, 0x80),
+            LogKind::Miss => Color::srgb_u8(0x90, 0x70, 0x09),
+            LogKind::Info if self.enemy => Color::srgb_u8(0xa2, 0x2d, 0x06),
+            LogKind::Info => Color::srgb_u8(0x1d, 0x77, 0x71),
         }
     }
 
     /// The colour of the damage number, so the amount stands out from the sentence.
     fn number_color(&self) -> Color {
         match self.kind {
-            LogKind::HitParty => status_ember(),
-            _ => Color::srgb_u8(96, 160, 240),
+            LogKind::HitParty => Color::srgb_u8(0xca, 0x41, 0x1c),
+            _ => Color::srgb_u8(0x89, 0xfb, 0x8d),
         }
     }
 
@@ -59,6 +60,7 @@ impl BattleLogLine {
     fn segments(&self) -> Vec<(std::ops::Range<usize>, Color)> {
         let base = self.color();
         let mut marks: Vec<(std::ops::Range<usize>, Color)> = party_name_ranges(&self.text);
+        marks.extend(enemy_name_ranges(&self.text, &self.enemy_names));
         if let Some(range) = damage_amount(&self.text) {
             marks.push((range, self.number_color()));
         }
@@ -85,13 +87,48 @@ impl BattleLogLine {
 /// The colour each party member's name is written in.
 pub(crate) fn party_name_color(name: &str) -> Option<Color> {
     Some(match name {
-        "Aric" => Color::srgb_u8(92, 146, 224),
-        "Elise" => Color::srgb_u8(232, 128, 170),
-        "Reiya" => Color::srgb_u8(214, 76, 70),
-        "Jep" => Color::srgb_u8(110, 184, 96),
-        "Kael" => Color::srgb_u8(176, 132, 224),
+        "Aric" => Color::srgb_u8(68, 118, 187),
+        "Elise" => Color::srgb_u8(210, 101, 145),
+        "Reiya" => Color::srgb_u8(134, 41, 168),
+        "Jep" => Color::srgb_u8(46, 161, 23),
+        "Kael" => Color::srgb_u8(230, 111, 0),
         _ => return None,
     })
+}
+
+/// The colour enemy names are written in.
+fn enemy_name_color() -> Color {
+    Color::srgb_u8(217, 196, 140)
+}
+
+/// Byte ranges of `names` in `text`, matched as whole words, longest name first.
+fn enemy_name_ranges(text: &str, names: &[String]) -> Vec<(std::ops::Range<usize>, Color)> {
+    let mut names = names
+        .iter()
+        .filter(|name| !name.is_empty())
+        .collect::<Vec<_>>();
+    names.sort_by_key(|name| std::cmp::Reverse(name.len()));
+    let mut out: Vec<(std::ops::Range<usize>, Color)> = Vec::new();
+    for name in names {
+        for (start, _) in text.match_indices(name.as_str()) {
+            let end = start + name.len();
+            let word_before = text[..start]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_alphanumeric);
+            let word_after = text[end..]
+                .chars()
+                .next()
+                .is_some_and(char::is_alphanumeric);
+            if !word_before
+                && !word_after
+                && out.iter().all(|(r, _)| end <= r.start || start >= r.end)
+            {
+                out.push((start..end, enemy_name_color()));
+            }
+        }
+    }
+    out
 }
 
 /// Byte ranges of party member names in `text`, matched as whole words.
@@ -214,12 +251,16 @@ mod tests {
             text: "Aric attacks Goblin for 14 damage.".to_owned(),
             enemy: false,
             kind: LogKind::HitEnemy,
+            enemy_names: vec!["Goblin".to_owned()],
         };
         let runs = line
             .segments()
             .into_iter()
             .map(|(range, _)| &line.text[range])
             .collect::<Vec<_>>();
-        assert_eq!(runs, ["Aric", " attacks Goblin for ", "14", " damage."]);
+        assert_eq!(
+            runs,
+            ["Aric", " attacks ", "Goblin", " for ", "14", " damage."]
+        );
     }
 }

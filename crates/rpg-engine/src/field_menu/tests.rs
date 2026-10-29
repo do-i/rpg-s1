@@ -1455,6 +1455,7 @@ fn fixture_battle_log(lines: usize) -> LastBattleLog {
             text: format!("Line {}", index + 1),
             enemy: index % 2 == 1,
             kind: crate::battle_log::LogKind::Info,
+            enemy_names: Vec::new(),
         });
     }
     log
