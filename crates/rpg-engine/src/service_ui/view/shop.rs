@@ -1085,16 +1085,10 @@ mod tests {
     fn equipment_bonuses_and_each_members_replacement_preview_are_distinct() {
         let catalog = catalog();
         let mut game = game([]);
-        let party: PartyCatalog = scenario_yaml::from_str(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../assets/scenarios/rusted_kingdoms/data/party.yaml"
-        )))
-        .unwrap();
-        let balance: BalanceData = scenario_yaml::from_str(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../assets/scenarios/rusted_kingdoms/data/balance.yaml"
-        )))
-        .unwrap();
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
         for source in &party.party {
             if !game.party().contains(&source.data().id) {
                 let member = crate::runtime_member::RuntimeMember::try_from_catalog(
