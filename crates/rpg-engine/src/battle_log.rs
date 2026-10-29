@@ -47,13 +47,70 @@ impl BattleLogLine {
         }
     }
 
-    /// The lighter colour of the damage number, so the amount stands out from the sentence.
+    /// The colour of the damage number, so the amount stands out from the sentence.
     fn number_color(&self) -> Color {
         match self.kind {
-            LogKind::HitParty => Color::srgb_u8(255, 160, 128),
-            _ => Color::srgb_u8(160, 232, 224),
+            LogKind::HitParty => status_ember(),
+            _ => Color::srgb_u8(96, 160, 240),
         }
     }
+
+    /// The sentence split into runs of one colour: party names, the damage amount, the rest.
+    fn segments(&self) -> Vec<(std::ops::Range<usize>, Color)> {
+        let base = self.color();
+        let mut marks: Vec<(std::ops::Range<usize>, Color)> = party_name_ranges(&self.text);
+        if let Some(range) = damage_amount(&self.text) {
+            marks.push((range, self.number_color()));
+        }
+        marks.sort_by_key(|(range, _)| range.start);
+        let mut out = Vec::new();
+        let mut at = 0;
+        for (range, color) in marks {
+            if range.start < at {
+                continue;
+            }
+            if range.start > at {
+                out.push((at..range.start, base));
+            }
+            at = range.end;
+            out.push((range, color));
+        }
+        if at < self.text.len() {
+            out.push((at..self.text.len(), base));
+        }
+        out
+    }
+}
+
+/// The colour each party member's name is written in.
+pub(crate) fn party_name_color(name: &str) -> Option<Color> {
+    Some(match name {
+        "Aric" => Color::srgb_u8(92, 146, 224),
+        "Elise" => Color::srgb_u8(232, 128, 170),
+        "Reiya" => Color::srgb_u8(214, 76, 70),
+        "Jep" => Color::srgb_u8(110, 184, 96),
+        "Kael" => Color::srgb_u8(176, 132, 224),
+        _ => return None,
+    })
+}
+
+/// Byte ranges of party member names in `text`, matched as whole words.
+fn party_name_ranges(text: &str) -> Vec<(std::ops::Range<usize>, Color)> {
+    let mut out = Vec::new();
+    let mut start = None;
+    for (i, c) in text.char_indices().chain([(text.len(), ' ')]) {
+        match (c.is_alphanumeric(), start) {
+            (true, None) => start = Some(i),
+            (false, Some(s)) => {
+                start = None;
+                if let Some(color) = party_name_color(&text[s..i]) {
+                    out.push((s..i, color));
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 /// Byte range of the damage amount in `text`, the digits right before " damage".
@@ -65,7 +122,7 @@ fn damage_amount(text: &str) -> Option<std::ops::Range<usize>> {
     (start < end).then_some(start..end)
 }
 
-/// Spawns one log line, with its damage amount in a lighter shade.
+/// Spawns one log line, with party names and the damage amount in their own colours.
 pub(crate) fn spawn_log_line(
     parent: &mut ChildSpawnerCommands<'_>,
     line: &BattleLogLine,
@@ -78,26 +135,25 @@ pub(crate) fn spawn_log_line(
         font_size: FontSize::Px(size),
         ..default()
     };
-    let color = line.color();
-    let amount = damage_amount(&line.text);
-    let head = amount
-        .as_ref()
-        .map_or(line.text.as_str(), |r| &line.text[..r.start]);
-    let mut text = parent.spawn((Text::new(head), text_font.clone(), TextColor(color), layout));
-    if let Some(range) = amount {
-        text.with_children(|text| {
+    let mut segments = line.segments().into_iter();
+    let Some((head, color)) = segments.next() else {
+        return;
+    };
+    let mut text = parent.spawn((
+        Text::new(&line.text[head]),
+        text_font.clone(),
+        TextColor(color),
+        layout,
+    ));
+    text.with_children(|text| {
+        for (range, color) in segments {
             text.spawn((
-                TextSpan::new(&line.text[range.clone()]),
+                TextSpan::new(&line.text[range]),
                 text_font.clone(),
-                TextColor(line.number_color()),
-            ));
-            text.spawn((
-                TextSpan::new(&line.text[range.end..]),
-                text_font,
                 TextColor(color),
             ));
-        });
-    }
+        }
+    });
 }
 
 /// Every line the last battle's log showed. Cleared when the next battle starts.
@@ -150,5 +206,20 @@ mod tests {
         assert_eq!(&text[range], "14");
         assert!(damage_amount("Elise uses Potion!").is_none());
         assert!(damage_amount("Goblin attacks Elise, but misses.").is_none());
+    }
+
+    #[test]
+    fn party_names_and_the_amount_split_the_line_into_colour_runs() {
+        let line = BattleLogLine {
+            text: "Aric attacks Goblin for 14 damage.".to_owned(),
+            enemy: false,
+            kind: LogKind::HitEnemy,
+        };
+        let runs = line
+            .segments()
+            .into_iter()
+            .map(|(range, _)| &line.text[range])
+            .collect::<Vec<_>>();
+        assert_eq!(runs, ["Aric", " attacks Goblin for ", "14", " damage."]);
     }
 }
