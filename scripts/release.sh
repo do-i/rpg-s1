@@ -338,8 +338,9 @@ bump_version() {
         return
     fi
     sed -i "0,/^version = /s|^version = .*|version = \"$version\"|" Cargo.toml
-    # `cargo metadata` rewrites Cargo.lock's package entry without building.
-    cargo metadata --format-version 1 >/dev/null
+    # Refresh workspace versions in Cargo.lock while preserving locked external
+    # dependencies, without fetching dependency sources for every platform.
+    cargo update --workspace
     if [[ "$(cargo_version)" != "$version" ]]; then
         echo "error: Cargo.toml still reads '$(cargo_version)' after the bump." >&2
         exit 1
