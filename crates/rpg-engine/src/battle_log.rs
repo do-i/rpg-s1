@@ -40,7 +40,7 @@ impl BattleLogLine {
             LogKind::Item | LogKind::Reward => status_gold(),
             LogKind::Ability => status_violet(),
             LogKind::HitEnemy => status_teal(),
-            LogKind::HitParty => status_ember(),
+            LogKind::HitParty => Color::srgb_u8(255, 160, 128),
             LogKind::Miss => status_muted(),
             LogKind::Info if self.enemy => status_ember(),
             LogKind::Info => status_teal(),
