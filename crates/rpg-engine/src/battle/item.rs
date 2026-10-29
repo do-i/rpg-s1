@@ -207,7 +207,11 @@ pub(super) fn resolve_item(
         .remove_item(&item.id, 1)
         .map_err(|_| ItemUseError::Unavailable)?;
     state.feedback_events.extend(events.iter().copied());
-    state.announce(LogKind::Item, format!("{source_name} uses {}!", item.name));
+    let summary = state.damage_summary(&events);
+    state.announce(
+        LogKind::Item,
+        format!("{source_name} uses {}!{summary}", item.name),
+    );
     state.transcript.push(format!(
         "ITEM {source_id} {} {:?}:{}",
         item.id, target.side, target.index

@@ -487,6 +487,49 @@ impl BattleState {
         self.message = text;
     }
 
+    /// Describes the damage dealt by `events`, e.g. " Goblin takes 12 damage. KO!".
+    pub(super) fn damage_summary(&self, events: &[super::action::BattleEvent]) -> String {
+        use super::action::BattleEvent as E;
+        let mut out = String::new();
+        for event in events {
+            let (target, amount, knocked_out) = match *event {
+                E::MagicDamage {
+                    target,
+                    amount,
+                    knocked_out,
+                    ..
+                }
+                | E::EnemyAbilityDamage {
+                    target,
+                    amount,
+                    knocked_out,
+                    ..
+                }
+                | E::ItemDamage {
+                    target,
+                    amount,
+                    knocked_out,
+                    ..
+                } => (target, amount, knocked_out),
+                E::Damage {
+                    action,
+                    amount,
+                    knocked_out,
+                    ..
+                } => (action.target(), amount, knocked_out),
+                _ => continue,
+            };
+            let name = self
+                .actor(target)
+                .map_or("target", |actor| actor.name.as_str());
+            out.push_str(&format!(
+                " {name} takes {amount} damage.{}",
+                if knocked_out { " KO!" } else { "" }
+            ));
+        }
+        out
+    }
+
     /// The kind of the current message.
     pub(super) fn message_kind(&self) -> crate::battle_log::LogKind {
         if self.message_tag.1 == self.message {

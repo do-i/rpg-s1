@@ -292,9 +292,14 @@ pub(super) fn resolve_enemy_ability(
         }
     }
     state.feedback_events.extend(events.iter().copied());
+    let summary = state.damage_summary(&events);
     state.announce(
         LogKind::Ability,
-        format!("{} uses {}!", source.name, display_ability_name(ability_id)),
+        format!(
+            "{} uses {}!{summary}",
+            source.name,
+            display_ability_name(ability_id)
+        ),
     );
     state.transcript.push(format!(
         "ENEMY_ABILITY {} {} {}",

@@ -245,9 +245,10 @@ pub(super) fn resolve_ability(
         }
     }
     state.feedback_events.extend(events.iter().copied());
+    let summary = state.damage_summary(&events);
     state.announce(
         LogKind::Ability,
-        format!("{} uses {}!", caster.name, ability.name),
+        format!("{} uses {}!{summary}", caster.name, ability.name),
     );
     state.transcript.push(format!(
         "ABILITY {} {} {}",
