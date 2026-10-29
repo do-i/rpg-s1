@@ -107,7 +107,7 @@ pub(crate) fn party_name_color(name: &str) -> Option<Color> {
 
 /// The colour enemy names are written in.
 fn enemy_name_color() -> Color {
-    Color::srgb_u8(217, 196, 140)
+    Color::srgb_u8(166, 148, 100)
 }
 
 /// Byte ranges of `names` in `text`, matched as whole words, longest name first.
