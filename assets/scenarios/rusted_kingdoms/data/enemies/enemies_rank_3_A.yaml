@@ -509,40 +509,6 @@ targeting:
   default: random_alive
 
 ---
-id: skeleton_archer_greatbow_bones
-name: Greatbow Bones
-type: undead
-rank: A
-size: medium
-sprite_scale: 270
-hp: 178
-atk: 35
-def: 21
-mres: 23
-dex: 23
-exp: 245
-drops:
-  mc:
-    - size: M
-      qty: 2
-  loot:
-    - pool:
-        - item: bone_shard
-          weight: 50
-        - item: arrow_bundle
-          weight: 50
-ai:
-  pattern: random
-  moves:
-    - action: attack
-      weight: 50
-    - action: ability
-      id: piercing_arrow
-      weight: 50
-targeting:
-  default: lowest_hp
-
----
 id: skeleton_archer_hooded_archer
 name: Hooded Archer
 type: undead

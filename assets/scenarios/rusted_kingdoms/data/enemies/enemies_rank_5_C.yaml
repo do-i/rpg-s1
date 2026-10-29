@@ -144,42 +144,6 @@ targeting:
   default: random_alive
 
 ---
-id: zombie_guard_wounded_guard
-name: Wounded Guard
-type: undead
-rank: C
-size: small
-sprite_scale: 250
-hp: 86
-atk: 18
-def: 12
-mres: 13
-dex: 13
-exp: 90
-drops:
-  mc:
-    - size: XS
-      qty: 2
-    - size: S
-      qty: 1
-  loot:
-    - pool:
-        - item: zombie_flesh
-          weight: 55
-        - item: rot_sample
-          weight: 45
-ai:
-  pattern: random
-  moves:
-    - action: attack
-      weight: 60
-    - action: ability
-      id: gnaw
-      weight: 40
-targeting:
-  default: random_alive
-
----
 id: zombie_monster_base
 name: Shambler
 type: undead

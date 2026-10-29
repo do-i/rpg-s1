@@ -898,50 +898,6 @@ targeting:
       target: all_party
 
 ---
-id: lizard_dragon_guard_trident_guard
-name: Trident Guard
-type: beast
-rank: S
-size: small
-sprite_scale: 320
-hp: 295
-atk: 51
-def: 38
-mres: 32
-dex: 32
-exp: 400
-drops:
-  mc:
-    - size: M
-      qty: 2
-    - size: L
-      qty: 1
-  loot:
-    - pool:
-        - item: stone_dragon_scale
-          weight: 50
-        - item: stone_dragon_horn
-          weight: 50
-        - item: magma_core
-          weight: 30
-ai:
-  pattern: random
-  moves:
-    - action: attack
-      weight: 50
-    - action: ability
-      id: stone_breath
-      weight: 30
-    - action: ability
-      id: piercing_arrow
-      weight: 20
-targeting:
-  default: random_alive
-  overrides:
-    - ability: stone_breath
-      target: all_party
-
----
 id: wartotaur_warlord_blackhorn_chief
 name: Blackhorn Chief
 type: beast

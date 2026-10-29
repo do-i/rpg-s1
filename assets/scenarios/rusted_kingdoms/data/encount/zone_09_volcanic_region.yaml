@@ -37,7 +37,7 @@ entries:
   - formation: [lizard_dragon_guard_blue_drake_guard]
     weight: 3
     chase_range: 0
-  - formation: [lizard_dragon_guard_trident_guard]
+  - formation: [lizard_monster_winged_lizard]
     weight: 2
     chase_range: 0
 

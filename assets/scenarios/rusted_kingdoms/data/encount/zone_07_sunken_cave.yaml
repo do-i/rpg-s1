@@ -19,7 +19,7 @@ entries:
   - formation: [pirate_captain_cutlass_raider, pirate_captain_base]
     weight: 12
     chase_range: 0
-  - formation: [skeleton_archer_greatbow_bones]
+  - formation: [skeleton_archer_base]
     weight: 10
     chase_range: 0
   - formation: [skeleton_archer_hooded_archer, skeleton_monster_hooded_bones]

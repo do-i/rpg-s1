@@ -11,7 +11,7 @@ entries:
   - formation: [skeleton_monster_rusted_sword, skeleton_archer_base]
     weight: 15
     chase_range: 4
-  - formation: [zombie_guard_base, zombie_guard_wounded_guard]
+  - formation: [zombie_guard_base, zombie_guard_base]
     weight: 15
     chase_range: 2
   - formation: [zombie_guard_rusted_sentry]
