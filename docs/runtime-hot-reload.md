@@ -53,7 +53,7 @@ sharing asset paths or session state.
 
 ## Disposable acceptance procedure
 
-The canonical owner remains [Scenario and validator acceptance](../../rpg-s1-plans/manual-verification.md#scenario-and-validator-acceptance)
+The canonical owner remains Scenario and validator acceptance (`temp/plans/manual-verification.md`)
 (`RK-DBG-006`–`RK-DBG-016`). Automated loader/ECS tests support that task; they do
 not close its visual/listening or validator-owner acceptance.
 

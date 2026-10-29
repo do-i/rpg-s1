@@ -1,6 +1,6 @@
 # Persistence and replay operator checklist
 
-RF-10 prepares the existing [manual verification entries](../../rpg-s1-plans/manual-verification.md):
+RF-10 prepares the existing manual verification entries (`temp/plans/manual-verification.md`):
 `RK-SVC-001`, `RK-SVC-017`, clean campaign, and `M14.04` / `RK-DBG-001`–`RK-DBG-005`.
 These entries remain pending until the user performs or explicitly accepts the
 visible observations. Headless tests and generated saves do not complete them.
