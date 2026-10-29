@@ -1241,13 +1241,25 @@ mod tests {
                 .iter()
                 .find(|layer| layer.name() == "foreground")
                 .unwrap();
+            let is_roof = |column: u32, row: u32| {
+                foreground
+                    .gid_at(column, row)
+                    .unwrap()
+                    .global_id()
+                    .checked_sub(roof)
+                    .is_some_and(|id| id < 84)
+            };
             let mut roof_count = 0;
             let mut tree_position = None;
             for row in 0..foreground.height() {
                 for column in 0..foreground.width() {
                     let gid = foreground.gid_at(column, row).unwrap().global_id();
-                    if gid.checked_sub(roof).is_some_and(|id| id < 84) {
+                    // A roof's top row is a walk-behind eave: the player may stand there,
+                    // hidden by the ridge. Every row below it is the building itself.
+                    if is_roof(column, row) {
                         roof_count += 1;
+                    }
+                    if is_roof(column, row) && row > 0 && is_roof(column, row - 1) {
                         assert_eq!(
                             occupancy.is_blocked(column as i32, row as i32),
                             Some(true),
@@ -1404,7 +1416,7 @@ mod tests {
             ),
             (
                 "media/maps/zone_08_corrupted_forest.tmx",
-                &[(13_u32, 4_u32, 3_u32, 2_u32, 2_u32)][..],
+                &[(13_u32, 4_u32, 3_u32, 2_u32, 1_u32)][..],
             ),
         ] {
             let mut app = ground_app();
@@ -1445,7 +1457,10 @@ mod tests {
                         assert!(baseline > behind_z && baseline < front_z);
                         assert_eq!(
                             occupancy.is_blocked((column + dx) as i32, (row + dy) as i32),
-                            Some(dy >= first_solid_row || column + dx == 0)
+                            Some(dy >= first_solid_row || column + dx == 0),
+                            "{path} crown at {},{}",
+                            column + dx,
+                            row + dy
                         );
                     }
                 }
