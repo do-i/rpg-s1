@@ -17,8 +17,9 @@ referenced directly from terrain-v7.png.
 
 The project-authored artwork is by Joji Doi / AI agents and was originally
 published under the repository's MIT license. Preserve the root LICENSE.
-The combined floor.png atlas is distributed under CC-BY-SA-3.0, with the MIT
-notice retained for its project-authored components.
+The current floor.png contains project-authored artwork and is distributed
+under the root MIT license. The former mixed-atlas CC-BY-SA-3.0 description
+is historical: all LPC tiles have been removed from this image.
 
 terrain-v7.png was restored by the repository owner to its original image
 on 2026-10-20. Its SHA-256 matches the recorded original LPC source. All
@@ -64,8 +65,7 @@ pieces 85/101 moved to 86/102. Five new AI-generated, author-directed tiles
 (68, 69, 70, 85, 101) close the top and fill both center cells; the original
 four pieces retain their pixels. New artwork was normalized to the original
 palette and binary transparency, with joining strips aligned to the retained
-pieces. The atlas now has 86 visible tiles. Project-authored additions retain
-the existing authored-art MIT notice within the combined atlas distribution.
+pieces. The atlas now has 86 visible tiles. Project-authored additions retain the MIT notice.
 The generation request and layout are recorded in docs/floor-tileset.md.
 
 Rock-object alignment, 2026-10-20: the nine upper tiles moved one row down and
@@ -74,7 +74,7 @@ base tiles 131-133 into one 3x4 object. Only the former top corners 68 and 70
 received pixel edits: AI-generated side strips were fitted to the original
 palette and aligned to the retained vertical sides. The other ten object
 tiles retain their pixels. Existing map placements were remapped without
-changing rendering. The authored-art MIT notice and atlas license remain.
+changing rendering. The project-authored artwork retains the MIT notice.
 
 Rock-object base repair, 2026-10-20: repaired only the upper halves of tiles
 131 and 133 to continue the masonry and outer silhouette of 115 and 117.
@@ -82,7 +82,7 @@ The repair uses AI-generated stone transitions normalized to the existing
 palette, exact matching top-edge rows and binary alpha. Both lower rubble
 halves and all other tiles retain their pixels. The ten existing base-corner
 placements intentionally show the repair; tile IDs and map data are unchanged.
-The existing authored-art MIT notice and combined atlas license remain.
+The project-authored artwork retains the MIT notice.
 
 Unused-tile removal and opacity repair, 2026-10-20: cleared unused tiles 92,
 93 and 176-178 after checking map/template/object/stamp references; removed
@@ -91,7 +91,7 @@ with 81 visible tiles. Filled 936 transparent edge/corner pixels in the 3x3
 block 80-82/96-98/112-114 and 56 transparent mortar pixels in tile 116 using
 AI-generated fills remapped to existing dark border/mortar colors. All ten
 target tiles are fully opaque. All previously opaque pixels and unrelated
-tiles are unchanged. Existing authored-art MIT and atlas notices remain.
+tiles are unchanged. The project-authored artwork retains the MIT notice.
 
 Tile 112 border alignment, 2026-10-20: using its actual placement above tile
 115 in zone_02_open_plains_cave_01, expanded the lighter speckled floor toward
@@ -99,7 +99,7 @@ the left and bottom edges, replacing broad dark strips with a thin outer
 border. Built-in imagegen supplied the extension, normalized to the existing
 palette and pixel grid; the original 27x25 upper-right core was preserved.
 Only tile 112 changed. Alpha remains opaque; IDs, other tiles and map data
-are unchanged. Existing authored-art MIT and atlas notices remain.
+are unchanged. The project-authored artwork retains the MIT notice.
 
 Original rough-border restoration, 2026-10-20: superseded the generated thin
 border on tile 112 with exact source-pixel copies across the whole 3x3 floor
@@ -110,7 +110,7 @@ and the original rough side strip rotated into their bottom three rows,
 with joined corner intersections. No new artwork was generated. Seven
 border tiles changed; tiles 81/97 and every other atlas tile retain their
 pixels. Original palette, full opacity, dimensions, IDs and map data remain.
-Existing authored-art MIT and combined atlas notices remain.
+The project-authored artwork retains the MIT notice.
 
 Top-trim repair, 2026-10-20: only tiles 83-85 received a flat outer top edge,
 four rows of narrow masonry and one row of subtle inner shadow, making the
@@ -118,21 +118,21 @@ top band two pixels thinner than the approximately seven-pixel side borders.
 Raised corner lobes, inset shoulders and gaps were removed. Built-in imagegen
 supplied the strip, fitted to the original palette and logical pixel grid.
 The lower twelve rows, all other tiles, dimensions, IDs and map data retain
-their pixels/values. Existing authored-art MIT and atlas notices remain.
+their pixels/values. The project-authored artwork retains the MIT notice.
 
 Vertical rope bridge, 2026-10-20: nine AI-generated, author-directed tiles
 added at 93-95/109-111/125-127, normalized to the existing bridge palette,
 32x32 tile grid and binary alpha. Built-in imagegen supplied the north-south
 variant; the existing bridge and every other atlas pixel are unchanged.
 The atlas now has 90 visible tiles. Prompt and layout: docs/floor-tileset.md.
-Existing authored-art MIT and combined atlas CC-BY-SA-3.0 notices remain.
+The project-authored artwork retains the MIT notice.
 
 Vertical bridge repeatability repair, 2026-10-20: tiles 109 and 111 now use
 straight AI-assisted rope rails with identical top/bottom RGBA profiles,
 normalized to the original palette and binary alpha. Repeat 109/110/111 to
 extend the bridge. Tile 110, the end rows and every other atlas pixel remain
 unchanged. Prompt and validation are recorded in docs/floor-tileset.md.
-Existing authored-art MIT and combined atlas CC-BY-SA-3.0 notices remain.
+The project-authored artwork retains the MIT notice.
 
 Vertical bridge anchor alignment, 2026-10-20: corrected the wider bottom
 span in 125/127 and aligned repeatable middle rails 109/111 to the accepted
@@ -140,5 +140,25 @@ upper rope exits in 93/95. Built-in imagegen supplied lower side strips,
 fitted to the original palette, exact upper exit pixels and upper post
 footprints. Only these four lower side tiles change; the top row, center
 column and all other atlas pixels are preserved. Short/extended previews
-and exact join checks passed. Prompt: docs/floor-tileset.md. Existing
-authored-art MIT and combined atlas CC-BY-SA-3.0 notices remain.
+and exact join checks passed. Prompt: docs/floor-tileset.md. The project-authored artwork retains the MIT notice.
+
+Provenance correction, 2026-10-29: the repository owner confirmed that tiles
+not inherited from the deleted source sheets were AI-generated; no new
+third-party artwork was downloaded for this atlas. Exact 32x32 RGBA comparison
+against the final tracked versions of 22 deleted sheets and current terrain-v7
+found 27 matches in the project-authored cave/decor sheets, and no matches in
+the retired downloaded sheets or terrain-v7. The other 63 tiles are classified
+from the owner's provenance statement and recorded generation history. An
+exact-match comparison does not independently identify modified source art.
+The atlas has 90 visible tiles; see docs/floor-tileset.md for the audit scope.
+
+Complete upstream comparison, 2026-10-29: checked all 19 PNGs recursively
+under do-i/agentic-rpg/rusted_kingdoms/assets/tilesets at main commit
+08970359d6cb03586948625d29b0d3351dbbf785, resolving every upstream LFS
+pointer and verifying its SHA-256. All 90 current floor tiles were searched
+at every pixel offset, with flips and 90-degree rotations, and exact 2x
+enlargement from 16x16 when applicable. No matches were found, including
+in ground/terrain-v7.png. This comparison does not identify recolored or
+repainted derivatives. Inventory, hashes and results are recorded alongside
+the audit script in temp/2026-10-29-002-floor-upstream-audit/; scope and
+provenance are documented in docs/floor-tileset.md.

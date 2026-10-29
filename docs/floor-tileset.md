@@ -28,6 +28,59 @@ Tile relocations preserve rendering; later pixel repairs are described below.
 Wood order in row 1, expressed as **old IDs → new IDs**:
 `14, 30, 16, 1, 17, 0, 2, 18, 19, 20, 21, 22, 23` → `0–12`.
 
+## Provenance review, 2026-10-29
+
+The current `floor.png` is project-authored artwork under the root MIT license.
+The repository owner confirmed that tiles not migrated from the retired source
+sheets were AI-generated and that no new third-party artwork was downloaded
+for this atlas. The old ledger classification described an earlier mixed atlas:
+its 56 LPC tiles were removed in two passes and maps now reference `terrain-v7`
+directly. The owner clarification, generation history and comparisons below
+are the basis for the corrected `ALI-1109` entry.
+
+Compared all 90 visible floor tiles with the last tracked version before deletion
+of each of 22 PNG sheets found in this branch's tileset deletion history, plus
+current `terrain-v7.png`. Historical PNG bytes were resolved from local Git LFS
+objects and checked against their pointer hashes. Compared exact 32x32 RGBA
+cells on the source grid, normalizing RGB only where alpha is zero.
+
+| Source | Matching current floor IDs | Result |
+| --- | --- | --- |
+| Retired `cave.png`, parent of `2cb1967` | 88, 89, 99, 101, 104, 105, 115, 117, 132 | 9 tiles; former ALI-1025 identifies this source as AI-generated |
+| Retired `decor.png`, parent of `2cb1967` | 39–44, 55–60, 71–76 | 18 tiles; former ALI-1031 identifies this source as AI-generated |
+| Other 20 deleted sheets, including the replaced downloaded sheets | none | No exact cell matches |
+| Current `terrain-v7.png` | none | No exact cell matches |
+| Remaining current floor tiles | 63 tiles | Classified as AI-generated from the owner's statement and recorded generation history |
+
+The comparison checks final source snapshots and exact cells. It does not
+exclude edited, scaled, rotated or offset source fragments and is not, by
+itself, proof of generation provenance. Original migration and later generated
+repairs remain documented below and in Git history. Temporary machine-readable
+results and the comparison script are in `temp/2026-10-29-001-floor-provenance/`.
+
+### Complete upstream folder comparison
+
+The later comparison covered every PNG recursively under
+[`rusted_kingdoms/assets/tilesets` in `do-i/agentic-rpg`](https://github.com/do-i/agentic-rpg/tree/08970359d6cb03586948625d29b0d3351dbbf785/rusted_kingdoms/assets/tilesets),
+pinned to main commit `08970359d6cb03586948625d29b0d3351dbbf785`.
+The upstream inventory contains 19 PNGs: eight Astral Pixels sheets, one Beeler
+sheet, three Schwarnhild sheets, and seven sheets elsewhere, including the
+original `ground/terrain-v7.png`. All 19 PNGs were resolved and verified against
+their upstream LFS pointer SHA-256 hashes; none were skipped.
+
+All 90 visible current floor tiles were searched against every pixel position
+in every upstream PNG, including off-grid positions, horizontal/vertical flips
+and 90-degree rotations. Where a floor tile was an exact nearest-neighbor 2x
+enlargement, its 16x16 source form was also searched. RGB under fully transparent
+pixels was ignored. **No matches were found in any of the 19 upstream PNGs.**
+
+This supersedes the narrower on-grid source comparison above for detecting
+unchanged migrated artwork. It does not rule out recolored, repainted or
+otherwise modified derivatives; project-authored provenance also relies on
+the owner's statement and generation records. The pinned inventory, LFS
+manifest, source PNGs, comparison script and full results are retained in
+`temp/2026-10-29-002-floor-upstream-audit/`.
+
 ## Removed tiles and opaque ground
 
 Unused broken stone edges 92–93 and former terrain review tiles 176–178

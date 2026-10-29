@@ -303,8 +303,9 @@ This project contains third-party assets that are governed by a separate license
 Code is [MIT](LICENSE). Assets keep their own terms. The single source of truth
 for every asset's provenance, license, and release status is
 [`docs/asset-license-inventory.md`](docs/asset-license-inventory.md); required
-notices (OFL, CC BY-SA attributions) ship beside the files they cover. Many
-assets are still blocked, so do not redistribute the asset bundle yet.
+notices (OFL, LPC attributions and creator credits) ship beside the files they
+cover. Current approvals and remaining provenance limits are recorded in that
+inventory and the [LPC/font review](docs/lpc-font-license-review.md).
 
 ### Third-Party Assets
 
