@@ -213,9 +213,10 @@ mod tests {
 
     #[test]
     fn field_rest_restarts_after_walking_and_uses_the_authored_interval() {
-        let mut balance = MpRegenBalance::default();
-        balance.field_seconds_per_tick =
-            rpg_content::scenario_class::PositiveFinite::new(3.0).unwrap();
+        let balance = MpRegenBalance {
+            field_seconds_per_tick: rpg_content::scenario_class::PositiveFinite::new(3.0).unwrap(),
+            ..MpRegenBalance::default()
+        };
         let mut clock = started("field");
         assert_eq!(
             clock.advance("field", Vec2::ZERO, 2.5, Some(false), &balance),
