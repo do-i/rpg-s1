@@ -4,7 +4,7 @@ use bevy::{asset::LoadState, prelude::*};
 use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
-    battle_log::{BattleLogLine, LastBattleLog, spawn_log_line},
+    battle_log::{BattleLogLine, LastBattleLog, LogKind, spawn_log_line},
     battle_tactics::{AutoCommand, TurnPause},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
@@ -258,6 +258,7 @@ struct BattleLogList;
 #[derive(Default)]
 struct BattleLogHistory {
     last: String,
+    rewards_logged: bool,
 }
 
 #[derive(Component)]
@@ -2169,13 +2170,26 @@ fn sync_battle_message(
         return;
     }
     let prompting = is_prompt_phase(state.phase);
+    let mut lines = Vec::new();
     if !prompting && !state.message.is_empty() && state.message != history.last {
         let enemy = state.active_key().map(|key| key.side) == Some(BattleSide::Enemy);
-        let line = BattleLogLine {
+        lines.push(BattleLogLine {
             text: state.message.clone(),
             enemy,
             kind: state.message_kind(),
-        };
+        });
+    }
+    history.last.clone_from(&state.message);
+    // Rewards land the frame they are applied, before the victory skip can leave the battle.
+    if let Some(rewards) = state.rewards.as_ref().filter(|_| !history.rewards_logged) {
+        history.rewards_logged = true;
+        lines.extend(rewards.log_lines().into_iter().map(|text| BattleLogLine {
+            text,
+            enemy: false,
+            kind: LogKind::Reward,
+        }));
+    }
+    for line in &lines {
         if let Some(record) = record.as_deref_mut() {
             record.push(line.clone());
         }
@@ -2183,7 +2197,7 @@ fn sync_battle_message(
             commands.entity(list).with_children(|list| {
                 spawn_log_line(
                     list,
-                    &line,
+                    line,
                     &assets.font,
                     16.0,
                     TextLayout::new(Justify::Left, LineBreak::WordOrCharacter),
@@ -2193,7 +2207,6 @@ fn sync_battle_message(
             scroll.0.y = f32::MAX;
         }
     }
-    history.last.clone_from(&state.message);
     if let Ok(mut text) = messages.single_mut() {
         text.0 = if prompting {
             state.message.clone()
@@ -2822,6 +2835,23 @@ mod tests {
             .map(|line| line.text.as_str())
             .collect();
         assert_eq!(lines, ["Elise attacks.", "Got away safely!"]);
+
+        // The spoils follow the battle's own lines, once, however long the reward screen stays.
+        app.world_mut().resource_mut::<BattleState>().rewards =
+            Some(crate::battle::rewards::BattleRewards {
+                total_experience: 12,
+                gp_gained: 5,
+                members: Vec::new(),
+                loot: Vec::new(),
+                boss_flag: None,
+            });
+        app.update();
+        app.world_mut().resource_mut::<BattleState>().set_changed();
+        app.update();
+        let tail = app.world().resource::<LastBattleLog>().lines()[2..].to_vec();
+        assert_eq!(tail.len(), 1);
+        assert_eq!(tail[0].text, "Won 12 EXP and 5 GP.");
+        assert_eq!(tail[0].kind, LogKind::Reward);
 
         app.world_mut().remove_resource::<BattleState>();
         app.update();

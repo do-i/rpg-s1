@@ -877,4 +877,48 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn the_battle_log_spells_out_the_spoils() {
+        let mut rewards = rewards_with(vec![
+            MemberReward {
+                member_id: "aric".to_owned(),
+                member_name: "Aric".to_owned(),
+                experience_gained: 40,
+                experience_applied: 40,
+                experience_now: 450,
+                experience_next: 1000,
+                level_ups: vec![level_up(1, 2)],
+                learned_abilities: vec!["Power Strike".to_owned()],
+            },
+            MemberReward {
+                member_id: "jep".to_owned(),
+                member_name: "Jep".to_owned(),
+                experience_gained: 90,
+                experience_applied: 30,
+                experience_now: 450,
+                experience_next: 1000,
+                level_ups: Vec::new(),
+                learned_abilities: Vec::new(),
+            },
+        ]);
+        rewards.loot.push(LootReward {
+            item_id: "potion".to_owned(),
+            name: "Potion".to_owned(),
+            quantity: 2,
+            magic_core: false,
+        });
+
+        assert_eq!(
+            rewards.log_lines(),
+            [
+                "Won 120 EXP and 40 GP.",
+                "Aric gains 40 EXP.",
+                "Aric reaches level 2! HP +6, MP +3, STR +2, DEX +1, CON +2.",
+                "Aric learns Power Strike.",
+                "Jep gains 30 EXP (90 earned).",
+                "Found Potion x2.",
+            ]
+        );
+    }
 }

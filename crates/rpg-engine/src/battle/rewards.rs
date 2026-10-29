@@ -288,6 +288,50 @@ pub(super) fn apply_rewards(
 }
 
 impl BattleRewards {
+    /// The spoils as battle-log sentences: totals, each member's share and level-ups, then loot.
+    pub(super) fn log_lines(&self) -> Vec<String> {
+        let mut lines = vec![format!(
+            "Won {} EXP and {} GP.",
+            self.total_experience, self.gp_gained
+        )];
+        for row in self.member_rows() {
+            lines.push(if row.experience_applied == row.experience_gained {
+                format!("{} gains {} EXP.", row.name, row.experience_applied)
+            } else {
+                format!(
+                    "{} gains {} EXP ({} earned).",
+                    row.name, row.experience_applied, row.experience_gained
+                )
+            });
+            if row.leveled() {
+                let stats: Vec<_> = row
+                    .stats
+                    .iter()
+                    .filter(|stat| stat.gained > 0)
+                    .map(|stat| format!("{} +{}", stat.label, stat.gained))
+                    .collect();
+                let mut line = format!("{} reaches level {}!", row.name, row.level_to);
+                if !stats.is_empty() {
+                    line = format!("{line} {}.", stats.join(", "));
+                }
+                lines.push(line);
+            }
+            if !row.learned_abilities.is_empty() {
+                lines.push(format!(
+                    "{} learns {}.",
+                    row.name,
+                    row.learned_abilities.join(", ")
+                ));
+            }
+        }
+        lines.extend(
+            self.loot
+                .iter()
+                .map(|loot| format!("Found {} x{}.", loot.name, loot.quantity)),
+        );
+        lines
+    }
+
     /// Builds the per-member cards the victory modal renders, in party order.
     pub(super) fn member_rows(&self) -> Vec<RewardMemberRow> {
         self.members

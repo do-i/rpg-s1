@@ -20,6 +20,8 @@ pub(crate) enum LogKind {
     /// An enemy hurt the party.
     HitParty,
     Miss,
+    /// Victory spoils: EXP, GP, level-ups, and loot.
+    Reward,
 }
 
 /// One logged result, in the order the battle produced it.
@@ -35,7 +37,7 @@ impl BattleLogLine {
     /// The colour of the line's words.
     pub(crate) fn color(&self) -> Color {
         match self.kind {
-            LogKind::Item => status_gold(),
+            LogKind::Item | LogKind::Reward => status_gold(),
             LogKind::Ability => status_violet(),
             LogKind::HitEnemy => status_teal(),
             LogKind::HitParty => status_ember(),
