@@ -35,10 +35,12 @@ movement:
 
 # Out-of-battle MP regeneration for living members. A tick restores
 # max_percent_per_tick % of max MP (never less than 1 point); a step is one
-# tile of real movement. Maps with encounters tick on steps only; safe maps
-# (no encounter zone: towns, interiors) tick faster on steps and also on time.
+# tile of real movement. Maps with encounters tick on steps while walking and
+# every five seconds while standing; safe maps tick faster on steps and also
+# on time whether standing or walking.
 mp_regen:
   field_steps_per_tick:  8
+  field_seconds_per_tick: 5.0
   safe_steps_per_tick:   4
   safe_seconds_per_tick: 2.0
   max_percent_per_tick:  1

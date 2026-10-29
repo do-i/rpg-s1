@@ -2,10 +2,10 @@
 //!
 //! Rates come from `balance.yaml`'s `mp_regen` group ([`MpRegenBalance`]). A step is one tile of
 //! the player's actual displacement, so walking into a wall earns nothing. A map with wandering
-//! enemies ticks on steps alone; a safe map (no encounter zone: towns and interiors) ticks faster
-//! on steps and also on elapsed time, so standing in town refills MP. Nothing ticks while an
-//! overlay owns the screen, during a map transition, or while the player has paused, and a
-//! knocked-out member never regenerates.
+//! enemies ticks on steps while walking and on a slower elapsed-time rate while standing still; a
+//! safe map (no encounter zone: towns and interiors) ticks faster on steps and also on elapsed
+//! time, so standing in town refills MP. Nothing ticks while an overlay owns the screen, during a
+//! map transition, or while the player has paused, and a knocked-out member never regenerates.
 
 use bevy::prelude::*;
 use rpg_content::scenario_balance::{BalanceData, MpRegenBalance};
@@ -92,6 +92,16 @@ impl MpRegenClock {
                 self.rested_seconds -= seconds_per_tick;
                 ticks += 1;
             }
+        } else if walked == 0.0 {
+            let seconds_per_tick = balance.field_seconds_per_tick.get() as f32;
+            self.rested_seconds += delta_seconds;
+            while self.rested_seconds >= seconds_per_tick {
+                self.rested_seconds -= seconds_per_tick;
+                ticks += 1;
+            }
+        } else {
+            // Walking already earns field MP on tile steps; keep stationary recovery distinct.
+            self.rested_seconds = 0.0;
         }
         ticks
     }
@@ -190,15 +200,40 @@ mod tests {
     }
 
     #[test]
-    fn standing_still_ticks_only_on_a_safe_map() {
+    fn standing_still_ticks_at_field_and_safe_map_rates() {
         let balance = MpRegenBalance::default();
-        for (safe, expected) in [(false, 0), (true, 5)] {
+        for (safe, expected) in [(false, 2), (true, 5)] {
             let mut clock = started("map");
             let ticks: u32 = (0..640)
                 .map(|_| clock.advance("map", Vec2::ZERO, FRAME, Some(safe), &balance))
                 .sum();
             assert_eq!(ticks, expected, "safe = {safe}");
         }
+    }
+
+    #[test]
+    fn field_rest_restarts_after_walking_and_uses_the_authored_interval() {
+        let mut balance = MpRegenBalance::default();
+        balance.field_seconds_per_tick =
+            rpg_content::scenario_class::PositiveFinite::new(3.0).unwrap();
+        let mut clock = started("field");
+        assert_eq!(
+            clock.advance("field", Vec2::ZERO, 2.5, Some(false), &balance),
+            0
+        );
+        let at = Vec2::new(5.0, 0.0);
+        assert_eq!(clock.advance("field", at, 0.5, Some(false), &balance), 0);
+        assert_eq!(clock.advance("field", at, 2.5, Some(false), &balance), 0);
+        assert_eq!(clock.advance("field", at, 0.5, Some(false), &balance), 1);
+        assert_eq!(
+            clock.walked_pixels, 5.0,
+            "rest does not erase walking progress"
+        );
+        clock.advance("house", at, 0.0, Some(false), &balance);
+        assert_eq!(
+            clock.rested_seconds, 0.0,
+            "map changes discard rest progress"
+        );
     }
 
     #[test]
