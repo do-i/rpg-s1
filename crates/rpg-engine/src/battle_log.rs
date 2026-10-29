@@ -66,10 +66,10 @@ impl BattleLogLine {
                 .filter(|(start, _)| *start < range.start)
                 .max_by_key(|(start, _)| *start);
             let color = match victim {
-                Some((_, true)) => Color::srgb_u8(0x89, 0xfb, 0x8d),
-                Some((_, false)) => Color::srgb_u8(0xca, 0x41, 0x1c),
-                None if self.kind == LogKind::HitParty => Color::srgb_u8(0xca, 0x41, 0x1c),
-                None => Color::srgb_u8(0x89, 0xfb, 0x8d),
+                Some((_, true)) => Color::srgb_u8(0xe6, 0xf2, 0x40),
+                Some((_, false)) => Color::srgb_u8(0xff, 0x00, 0x00),
+                None if self.kind == LogKind::HitParty => Color::srgb_u8(0xff, 0x00, 0x00),
+                None => Color::srgb_u8(0xe6, 0xf2, 0x40),
             };
             marks.push((range, color));
         }
@@ -274,8 +274,8 @@ mod tests {
         assert_eq!(
             amounts,
             [
-                Color::srgb_u8(0x89, 0xfb, 0x8d),
-                Color::srgb_u8(0xca, 0x41, 0x1c)
+                Color::srgb_u8(0xe6, 0xf2, 0x40),
+                Color::srgb_u8(0xff, 0x00, 0x00)
             ]
         );
     }
