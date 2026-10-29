@@ -11,7 +11,7 @@ use crate::{
     battle_tactics::{TACTIC_CHOICES, TurnPause},
     engine_settings::EngineSettings,
     field_menu_domain::{
-        FieldMenuCatalog, InventoryTab, inventory_ids, item_name, learned_field_abilities,
+        FieldMenuCatalog, InventoryTab, inventory_ids, item_name, learned_abilities,
     },
     game_state::GameState,
     options_store::{OptionsLoadStatus, OptionsStore, PlayerOptions},
@@ -845,7 +845,7 @@ fn spell_details_follow_spellbook_focus_and_remain_visible_while_targeting() {
         let game = fixture_game_with_recruit();
         let catalog = crate::field_menu_domain::tests::catalog();
         let member = super::member_at(&game, 1).unwrap();
-        let ability = learned_field_abilities(member, &game, &catalog)[0];
+        let ability = learned_abilities(member, &game, &catalog)[0];
         let description = ability.description.clone();
         let pending_id = Some(ability.id.clone());
         let mut app = App::new();
@@ -2603,16 +2603,15 @@ fn the_confirm_that_casts_teleport_does_not_also_answer_the_atlas_it_opens() {
         let mut game = fixture_game();
         game.flags_mut().set("aric_teleport_unlocked");
         let catalog = FieldMenuCatalog::atlas_warp_fixture();
-        let teleport =
-            learned_field_abilities(game.party().member("aric").unwrap(), &game, &catalog)
-                .iter()
-                .position(|ability| {
-                    matches!(
-                        ability.kind,
-                        AbilityKind::Utility(UtilityAbility::Warp { .. })
-                    )
-                })
-                .expect("aric knows Teleport once the flag is set");
+        let teleport = learned_abilities(game.party().member("aric").unwrap(), &game, &catalog)
+            .iter()
+            .position(|ability| {
+                matches!(
+                    ability.kind,
+                    AbilityKind::Utility(UtilityAbility::Warp { .. })
+                )
+            })
+            .expect("aric knows Teleport once the flag is set");
         let domain: TransportDomain = TransportDomain::try_from_catalog(
             crate::scenario_yaml::from_str(include_str!(scenario_file!("data/transport.yaml")))
                 .unwrap(),

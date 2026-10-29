@@ -29,7 +29,7 @@ abilities:
     type: physical
     attack_range: melee
     description: A measured close-range strike.
-    mp_cost: 0
+    mp_cost: 1
     damage_coeff: 1.1
     target: single_enemy
 
@@ -39,7 +39,7 @@ abilities:
     type: physical
     attack_range: melee
     description: Two quick cuts against one foe.
-    mp_cost: 0
+    mp_cost: 1
     hits: 2
     damage_coeff: 0.75
     target: single_enemy
@@ -167,7 +167,7 @@ abilities:
     unlock_level: 2
     type: utility
     description: Attempts to take a carried object from one foe.
-    mp_cost: 0
+    mp_cost: 1
     steal_chance: 0.35
     target: single_enemy
 
@@ -199,7 +199,7 @@ abilities:
     unlock_level: 4
     type: buff
     description: Draws every foe's attention to the caster.
-    mp_cost: 0
+    mp_cost: 1
     effect:
       target: self
       aggro: all
@@ -210,7 +210,7 @@ abilities:
     unlock_level: 5
     type: buff
     description: Redirects harm from one ally to the caster.
-    mp_cost: 0
+    mp_cost: 1
     effect:
       target: single_ally
       redirect_damage_to: self
@@ -221,7 +221,7 @@ abilities:
     unlock_level: 7
     type: buff
     description: Reduces incoming damage but prevents other actions.
-    mp_cost: 0
+    mp_cost: 1
     effect:
       target: self
       damage_reduction: 0.40

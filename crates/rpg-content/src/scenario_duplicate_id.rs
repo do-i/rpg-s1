@@ -576,7 +576,7 @@ mod tests {
             BTreeMap::from([
                 (CatalogNamespace::Party, 5),
                 (CatalogNamespace::Classes, 5),
-                (CatalogNamespace::Abilities, 42),
+                (CatalogNamespace::Abilities, 46),
                 (CatalogNamespace::Items, 210),
                 (CatalogNamespace::FieldUseItems, 14),
                 (CatalogNamespace::Maps, 89),

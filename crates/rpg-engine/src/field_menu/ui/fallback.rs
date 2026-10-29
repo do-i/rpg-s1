@@ -220,7 +220,7 @@ pub(in crate::field_menu) fn render_status(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let abilities = learned_field_abilities(member, game, catalog)
+    let abilities = learned_abilities(member, game, catalog)
         .into_iter()
         .map(|ability| ability.name.as_str())
         .collect::<Vec<_>>()
@@ -474,7 +474,7 @@ pub(in crate::field_menu) fn render_spells(
     let Some(member) = member_at(game, state.member_index) else {
         return "No party members.".to_owned();
     };
-    let abilities = learned_field_abilities(member, game, catalog);
+    let abilities = learned_abilities(member, game, catalog);
     let rows = abilities
         .iter()
         .enumerate()

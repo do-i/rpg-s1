@@ -8,7 +8,10 @@ use super::{
     state::{FieldMenuMode, FieldMenuState, cycle_member, wrapped_or_zero},
 };
 use crate::{
-    field_menu_domain::{FieldMenuCatalog, cast_heal, learned_field_abilities},
+    field_menu_domain::{
+        FieldMenuCatalog, cast_heal, cast_party_heal, field_castable, heals_whole_party,
+        learned_abilities,
+    },
     game_state::GameState,
     runtime_map::RuntimeMapId,
     scenario_class::{Ability, AbilityKind, UtilityAbility},
@@ -43,9 +46,8 @@ pub(super) fn handle_input(
                 state.back();
                 return;
             }
-            let abilities = member_at(game, state.member_index).map_or_else(Vec::new, |member| {
-                learned_field_abilities(member, game, catalog)
-            });
+            let abilities = member_at(game, state.member_index)
+                .map_or_else(Vec::new, |member| learned_abilities(member, game, catalog));
             if let Some(delta) = input.vertical {
                 state.selected = wrapped_or_zero(state.selected, abilities.len(), delta);
             }
@@ -57,11 +59,23 @@ pub(super) fn handle_input(
                 let Some(caster) = member_at(game, state.member_index) else {
                     return;
                 };
+                if !field_castable(&ability) {
+                    state.message = format!("{} can only be cast in battle.", ability.name);
+                    return;
+                }
                 if caster.mana() < ability.mp_cost {
                     state.message = "Not enough MP.".to_owned();
                     return;
                 }
                 match &ability.kind {
+                    // A party-wide heal has no one to pick, so it lands straight from the list.
+                    AbilityKind::Heal(_) if heals_whole_party(&ability) => {
+                        let caster_id = caster.id().to_owned();
+                        state.message = match cast_party_heal(game, &ability, &caster_id) {
+                            Ok(amount) => format!("Restored {amount} HP to the party."),
+                            Err(error) => error.to_string(),
+                        };
+                    }
                     AbilityKind::Heal(_) => {
                         state.pending_id = Some(ability.id.clone());
                         state.leave_list(FieldMenuMode::SpellTarget);
@@ -181,7 +195,7 @@ pub(super) fn ability_by_id<'a>(
     ability_id: &str,
 ) -> Option<&'a Ability> {
     let member = game.party().member(member_id)?;
-    learned_field_abilities(member, game, catalog)
+    learned_abilities(member, game, catalog)
         .into_iter()
         .find(|ability| ability.id == ability_id)
 }

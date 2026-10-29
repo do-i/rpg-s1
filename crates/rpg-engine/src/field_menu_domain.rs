@@ -1057,24 +1057,24 @@ pub(crate) fn unequip_item(
     Ok(Some(removed))
 }
 
-pub(crate) fn learned_field_abilities<'a>(
+/// Everything a member has learned, in class order. The spellbook lists all of it and marks
+/// what [`field_castable`] refuses as battle-only, so attack spells never look forgotten.
+pub(crate) fn learned_abilities<'a>(
     member: &RuntimeMember,
     game: &GameState,
     catalog: &'a FieldMenuCatalog,
 ) -> Vec<&'a Ability> {
-    catalog
-        .unlocked_abilities(member.class_id(), member.level(), game.flags())
-        .into_iter()
-        .filter(|ability| {
-            matches!(
-                &ability.kind,
-                AbilityKind::Heal(_)
-                    | AbilityKind::Buff(_)
-                    | AbilityKind::Utility(UtilityAbility::RemoveStatus { .. })
-                    | AbilityKind::Utility(UtilityAbility::Warp { .. })
-            )
-        })
-        .collect()
+    catalog.unlocked_abilities(member.class_id(), member.level(), game.flags())
+}
+
+/// True when the field menu can cast this ability: heals and travel charms not flagged
+/// `battle_only`. Attacks, buffs, debuffs and the rest only resolve inside a battle.
+pub(crate) fn field_castable(ability: &Ability) -> bool {
+    !ability.battle_only
+        && matches!(
+            &ability.kind,
+            AbilityKind::Heal(_) | AbilityKind::Utility(UtilityAbility::Warp { .. })
+        )
 }
 
 pub(crate) fn cast_heal(
@@ -1086,6 +1086,9 @@ pub(crate) fn cast_heal(
     let AbilityKind::Heal(heal) = &ability.kind else {
         return Err(MenuMutationError::NotFieldHeal);
     };
+    if ability.battle_only {
+        return Err(MenuMutationError::BattleOnly);
+    }
     let caster = game
         .party()
         .member(caster_id)
@@ -1124,6 +1127,73 @@ pub(crate) fn cast_heal(
         .member_mut(target_id)
         .expect("validated")
         .restore_health(amount))
+}
+
+/// True when a field heal lands on the whole party instead of one chosen member.
+pub(crate) fn heals_whole_party(ability: &Ability) -> bool {
+    matches!(&ability.kind, AbilityKind::Heal(heal) if heal.target == AbilityTarget::AllAllies)
+}
+
+/// Casts an `all_allies` heal on every living member, spending MP once.
+///
+/// Like a single-target heal, it refuses (and spends nothing) when nobody alive is hurt.
+/// Field heals scale on the caster's INT, matching [`cast_heal`].
+pub(crate) fn cast_party_heal(
+    game: &mut GameState,
+    ability: &Ability,
+    caster_id: &str,
+) -> Result<u32, MenuMutationError> {
+    let AbilityKind::Heal(heal) = &ability.kind else {
+        return Err(MenuMutationError::NotFieldHeal);
+    };
+    if ability.battle_only {
+        return Err(MenuMutationError::BattleOnly);
+    }
+    if heal.target != AbilityTarget::AllAllies {
+        return Err(MenuMutationError::InvalidTarget);
+    }
+    let HealingMethod::Restore {
+        coefficient,
+        max_hp_percent,
+    } = heal.healing
+    else {
+        return Err(MenuMutationError::InvalidTarget);
+    };
+    let caster = game
+        .party()
+        .member(caster_id)
+        .ok_or_else(|| MenuMutationError::UnknownMember(caster_id.to_owned()))?;
+    if caster.mana() < ability.mp_cost {
+        return Err(MenuMutationError::InsufficientMana);
+    }
+    let from_intelligence = (f64::from(caster.stats().intelligence()) * coefficient.get()) as u32;
+    let hurt = game
+        .party()
+        .members()
+        .filter(|member| !member.is_knocked_out() && member.health() < member.max_health())
+        .map(|member| {
+            let amount = max_hp_percent.map_or(from_intelligence, |pct| {
+                (f64::from(member.max_health()) * pct.get()) as u32
+            });
+            (member.id().to_owned(), amount)
+        })
+        .collect::<Vec<(String, u32)>>();
+    if hurt.is_empty() {
+        return Err(MenuMutationError::InvalidTarget);
+    }
+    game.party_mut()
+        .member_mut(caster_id)
+        .expect("validated")
+        .spend_mana(ability.mp_cost);
+    Ok(hurt
+        .into_iter()
+        .map(|(id, amount)| {
+            game.party_mut()
+                .member_mut(&id)
+                .expect("a member listed a moment ago is still in the party")
+                .restore_health(amount)
+        })
+        .sum())
 }
 
 /// True when an item's field effect covers the whole party instead of one chosen member.
@@ -1287,6 +1357,7 @@ pub(crate) enum MenuMutationError {
     RepositoryFull,
     NotFieldUsable,
     NotFieldHeal,
+    BattleOnly,
     InsufficientMana,
     InvalidTarget,
     Repository(String),
@@ -1310,6 +1381,7 @@ impl fmt::Display for MenuMutationError {
             }
             Self::NotFieldUsable => f.write_str("That item cannot be used in the field."),
             Self::NotFieldHeal => f.write_str("That ability is not a field healing spell."),
+            Self::BattleOnly => f.write_str("That spell can only be cast in battle."),
             Self::InsufficientMana => f.write_str("Not enough MP."),
             Self::InvalidTarget => f.write_str("No valid target or effect."),
             Self::Repository(error) => f.write_str(error),
@@ -1830,7 +1902,7 @@ pub(crate) mod tests {
         let mut game = game(["aric_teleport_unlocked"]);
         let aric = game.party().member("aric").unwrap();
         assert_eq!(
-            learned_field_abilities(aric, &game, &catalog)
+            learned_abilities(aric, &game, &catalog)
                 .iter()
                 .map(|ability| ability.id.as_str())
                 .collect::<Vec<_>>(),
@@ -1838,7 +1910,7 @@ pub(crate) mod tests {
         );
         let elise = game.party().member("elise").unwrap();
         assert_eq!(
-            learned_field_abilities(elise, &game, &catalog)
+            learned_abilities(elise, &game, &catalog)
                 .iter()
                 .map(|ability| ability.id.as_str())
                 .collect::<Vec<_>>(),
@@ -1849,9 +1921,8 @@ pub(crate) mod tests {
             .member_mut("aric")
             .unwrap()
             .apply_damage(10);
-        let heal = learned_field_abilities(game.party().member("elise").unwrap(), &game, &catalog)
-            [0]
-        .clone();
+        let heal =
+            learned_abilities(game.party().member("elise").unwrap(), &game, &catalog)[0].clone();
         assert_eq!(cast_heal(&mut game, &heal, "elise", "aric"), Ok(10));
         assert_eq!(game.party().member("elise").unwrap().mana(), 14);
         assert_eq!(
@@ -1860,7 +1931,8 @@ pub(crate) mod tests {
         );
         assert_eq!(game.party().member("elise").unwrap().mana(), 14);
 
-        let second_wind = catalog
+        // Shipped Second Wind is battle-only; a field-castable copy still pins self-targeting.
+        let mut second_wind = catalog
             .class("hero")
             .unwrap()
             .abilities
@@ -1868,6 +1940,7 @@ pub(crate) mod tests {
             .find(|ability| ability.id == "second_wind")
             .unwrap()
             .clone();
+        second_wind.battle_only = false;
         game.party_mut()
             .member_mut("aric")
             .unwrap()
@@ -1882,13 +1955,110 @@ pub(crate) mod tests {
 
         let without_flag = self::game([]);
         assert!(
-            learned_field_abilities(
+            learned_abilities(
                 without_flag.party().member("aric").unwrap(),
                 &without_flag,
                 &catalog
             )
             .is_empty()
         );
+    }
+
+    #[test]
+    fn the_spellbook_lists_every_learned_ability_and_only_field_magic_is_castable() {
+        let catalog = catalog();
+        let game = game([]);
+        // A level-10 cleric: what learned_abilities returns once Elise has grown.
+        let learned = catalog.unlocked_abilities("cleric", 10, game.flags());
+        // Earth Spike is an attack spell: listed, but only castable in battle.
+        let castable = |id: &str| {
+            learned
+                .iter()
+                .find(|ability| ability.id == id)
+                .map(|ability| field_castable(ability))
+        };
+        assert_eq!(castable("heal"), Some(true));
+        assert_eq!(castable("heal_all"), Some(true));
+        assert_eq!(castable("earth_spike"), Some(false));
+        assert_eq!(castable("barrier"), Some(false));
+        assert_eq!(
+            learned.len(),
+            catalog.class("cleric").unwrap().abilities.len()
+        );
+
+        let reiya_spells = &catalog.class("sorcerer").unwrap().abilities;
+        assert!(reiya_spells.iter().any(|ability| ability.id == "fire_bolt"));
+        assert!(
+            reiya_spells
+                .iter()
+                .all(|ability| ability.mp_cost > 0 && !field_castable(ability))
+        );
+        // Everything in a spellbook spends MP, physical arts included.
+        for class in ["cleric", "hero", "rogue", "sorcerer", "warrior"] {
+            for ability in &catalog.class(class).unwrap().abilities {
+                assert!(ability.mp_cost >= 1, "{class}: {}", ability.id);
+            }
+        }
+    }
+
+    #[test]
+    fn only_the_cleric_heals_in_the_field_and_heal_all_lands_on_everyone_once() {
+        let catalog = catalog();
+        // Every other job's heal is battle-only: listed in the spellbook, refused in the field.
+        let mut field = game([]);
+        field
+            .party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .apply_damage(5);
+        for (class, heal) in [
+            ("hero", "kindred_light"),
+            ("hero", "second_wind"),
+            ("warrior", "warbalm"),
+            ("rogue", "shadow_salve"),
+            ("sorcerer", "aether_weave"),
+        ] {
+            let ability = catalog
+                .class(class)
+                .unwrap()
+                .abilities
+                .iter()
+                .find(|ability| ability.id == heal)
+                .unwrap();
+            assert!(matches!(ability.kind, AbilityKind::Heal(_)), "{heal}");
+            assert!(ability.battle_only, "{heal}");
+            assert_eq!(
+                cast_heal(&mut field, ability, "aric", "aric"),
+                Err(MenuMutationError::BattleOnly),
+                "{heal}"
+            );
+        }
+        let cleric = catalog.class("cleric").unwrap();
+        assert!(cleric.abilities.iter().all(|ability| !ability.battle_only));
+        let heal_all = cleric
+            .abilities
+            .iter()
+            .find(|ability| ability.id == "heal_all")
+            .unwrap()
+            .clone();
+        assert!(heals_whole_party(&heal_all));
+
+        let mut game = game([]);
+        assert_eq!(
+            cast_party_heal(&mut game, &heal_all, "elise"),
+            Err(MenuMutationError::InvalidTarget),
+            "a party at full health is refused"
+        );
+        assert_eq!(game.party().member("elise").unwrap().mana(), 18);
+        for id in ["aric", "elise"] {
+            game.party_mut().member_mut(id).unwrap().apply_damage(3);
+        }
+        assert_eq!(cast_party_heal(&mut game, &heal_all, "elise"), Ok(6));
+        assert_eq!(game.party().member("elise").unwrap().mana(), 6);
+        for id in ["aric", "elise"] {
+            let member = game.party().member(id).unwrap();
+            assert_eq!(member.health(), member.max_health());
+        }
     }
 
     #[test]

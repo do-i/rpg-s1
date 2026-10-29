@@ -98,9 +98,10 @@ const COMMAND_ROW_CHROME: f32 =
     2.0 * (PANEL_BORDER_ACTIVE + PANEL_PADDING + COMMAND_ROW_BORDER + COMMAND_ROW_PADDING_X);
 /// Room reserved for the widest row label the panel ever shows.
 ///
-/// The longest is an ability row, `"{name}  {mp} MP"` — "Fortress Stance  12 MP"
-/// measures 177px in Philosopher-Regular at the 18px row size, so this leaves a
-/// margin for longer authored names and for rasterizer differences.
+/// The longest is an ability row, `"{name}  {mp} MP"`. The reference "Fortress Stance  12 MP"
+/// (a since-renamed 15-letter name) measures 177px in Philosopher-Regular at the 18px row
+/// size; shipped names stay at 15 letters or fewer, and this leaves a margin for rasterizer
+/// differences.
 const COMMAND_LABEL_RESERVE: f32 = 200.0;
 /// Fixed so the panel stops resizing as the log message and row labels change.
 const COMMAND_PANEL_WIDTH: f32 = COMMAND_LABEL_RESERVE + COMMAND_ROW_CHROME;
@@ -2401,7 +2402,7 @@ mod tests {
 
     #[test]
     fn the_command_panel_is_wide_enough_for_its_longest_row_label() {
-        // "Fortress Stance  12 MP" is the widest label the panel ever shows, at
+        // "Fortress Stance  12 MP" (15 letters, the cap for shipped names) measures
         // 177px in Philosopher-Regular 18px. Chrome must not eat into that.
         const WIDEST_MEASURED_LABEL: f32 = 177.0;
         assert_eq!(COMMAND_ROW_CHROME, 62.0);
@@ -2610,7 +2611,7 @@ mod tests {
         assert_eq!(
             labels(CombatantKey::enemy(0), &mut app),
             vec!["ATK-".to_owned(), String::new(), String::new()],
-            "an enemy weakened by Shield Bash wears the badge too, not just the party"
+            "an enemy weakened by Rune Bash wears the badge too, not just the party"
         );
 
         // Filled slots are visible and carry their palette fill; the spare stays hidden.

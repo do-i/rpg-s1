@@ -26,6 +26,18 @@ equipment_slots:
   accessory: [all]
 
 abilities:
+  # ── Restoration ───────────────────────────────────────
+  - id: aether_weave
+    name: Aether Weave
+    unlock_level: 2
+    type: heal
+    description: "Weaves raw aether into one ally's wounds, restoring 25% of their max HP. Battle only."
+    mp_cost: 5
+    battle_only: true
+    heal_coeff: 1.0
+    heal_pct: 0.25
+    target: single_ally
+
   # ── Fire ──────────────────────────────────────────────
   - id: fire_bolt
     name: Fire Bolt

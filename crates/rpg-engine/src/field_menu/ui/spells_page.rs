@@ -97,7 +97,7 @@ pub(in crate::field_menu) fn spawn_spells_page(
                         ..default()
                     });
                 } else if let Some(member) = member_at(game, state.member_index) {
-                    let abilities = learned_field_abilities(member, game, catalog);
+                    let abilities = learned_abilities(member, game, catalog);
                     let selected = selected_spell_index(state, &abilities);
                     spawn_spell_detail(columns, font, member, abilities.get(selected).copied());
                 }
@@ -189,7 +189,7 @@ pub(in crate::field_menu) fn spawn_spellbook_column(
     let Some(member) = member_at(game, state.member_index) else {
         return;
     };
-    let abilities = learned_field_abilities(member, game, catalog);
+    let abilities = learned_abilities(member, game, catalog);
     let selected = selected_spell_index(state, &abilities);
     spawn_focus_panel(
         parent,
@@ -300,7 +300,7 @@ pub(in crate::field_menu) fn spawn_spell_list(
                                 &ability.name,
                                 font,
                                 17.0,
-                                if affordable {
+                                if affordable && field_castable(ability) {
                                     status_ink()
                                 } else {
                                     status_muted()
@@ -308,7 +308,7 @@ pub(in crate::field_menu) fn spawn_spell_list(
                             );
                             spawn_status_text(
                                 copy,
-                                spell_kind_label(ability),
+                                spell_kind_caption(ability),
                                 font,
                                 12.0,
                                 spell_accent(ability),
@@ -370,11 +370,19 @@ pub(in crate::field_menu) fn spawn_spell_detail(
                     "{}    MP {}    {}",
                     spell_kind_label(ability),
                     ability.mp_cost,
-                    if affordable { "READY" } else { "LOW MP" }
+                    if !field_castable(ability) {
+                        "BATTLE ONLY"
+                    } else if affordable {
+                        "READY"
+                    } else {
+                        "LOW MP"
+                    }
                 ),
                 font,
                 13.0,
-                if affordable {
+                if !field_castable(ability) {
+                    status_muted()
+                } else if affordable {
                     status_teal()
                 } else {
                     status_ember()
@@ -562,13 +570,22 @@ pub(in crate::field_menu) fn selected_spell_index(
 
 pub(in crate::field_menu) fn spell_kind_label(ability: &Ability) -> &'static str {
     match &ability.kind {
-        AbilityKind::Physical(_) => "PHYSICAL ART",
+        AbilityKind::Physical(_) => "ENCHANTED STRIKE",
         AbilityKind::Spell(_) => "ELEMENTAL SPELL",
         AbilityKind::Heal(_) => "HEALING RITE",
         AbilityKind::Buff(_) => "WARDING SIGIL",
         AbilityKind::Debuff(_) => "HEX",
         AbilityKind::Utility(UtilityAbility::Warp { .. }) => "TRAVEL CHARM",
-        AbilityKind::Utility(_) => "UTILITY ART",
+        AbilityKind::Utility(_) => "MINOR CHARM",
+    }
+}
+
+/// The spellbook row's caption: the kind, flagged when it can't be cast from the field.
+fn spell_kind_caption(ability: &Ability) -> String {
+    if !field_castable(ability) {
+        format!("{}  /  BATTLE ONLY", spell_kind_label(ability))
+    } else {
+        spell_kind_label(ability).to_owned()
     }
 }
 

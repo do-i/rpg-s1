@@ -7,8 +7,8 @@ use super::{
 use crate::{
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
-        can_equip, derived_stats, equipment_slot, inventory_ids, item_description, item_name,
-        learned_field_abilities, preview_stats,
+        can_equip, derived_stats, equipment_slot, field_castable, inventory_ids, item_description,
+        item_name, learned_abilities, preview_stats,
     },
     game_state::GameState,
     menu_chrome::{

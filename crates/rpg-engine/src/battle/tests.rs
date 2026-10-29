@@ -531,6 +531,7 @@ fn construct_taxonomy_rejects_harmful_debuff_statuses() {
 fn defensive_buffs_reduce_or_redirect_physical_damage() {
     let mut warrior = actor(BattleSide::Party, 0, 20, 100);
     warrior.abilities = vec![ability("cover"), ability("fortress_stance")];
+    warrior.mana = 20;
     let ally = actor(BattleSide::Party, 1, 10, 100);
     let mut enemy = actor(BattleSide::Enemy, 0, 100, 100);
     enemy.attack = 23;
@@ -1240,7 +1241,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
         ),
         (35, 35, 24, 24)
     );
-    assert_eq!(rewards.members[0].learned_abilities, ["Power Strike"]);
+    assert_eq!(rewards.members[0].learned_abilities, ["Radiant Strike"]);
     assert!(game.flags().is_set("boss_zone01_defeated"));
     assert_eq!(game.repository().item_count("mc_xs"), 2);
     assert_eq!(game.repository().item_count("mc_s"), 1);

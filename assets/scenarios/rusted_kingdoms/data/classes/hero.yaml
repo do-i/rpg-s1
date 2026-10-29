@@ -27,20 +27,32 @@ equipment_slots:
 
 abilities:
   - id: power_strike
-    name: Power Strike
+    name: Radiant Strike
     unlock_level: 2
     type: physical
     attack_range: melee
-    description: "A focused blow dealing 150% physical damage to one enemy."
-    mp_cost: 0
+    description: "Floods the blade with holy light, dealing 150% damage to one enemy."
+    mp_cost: 3
     damage_coeff: 1.5
     target: single_enemy
 
+  - id: kindred_light
+    name: Kindred Light
+    unlock_level: 3
+    type: heal
+    element: holy
+    description: "Shares the Hero's resolve with one ally, restoring 20% of their max HP. Battle only."
+    mp_cost: 4
+    battle_only: true
+    heal_coeff: 1.0
+    heal_pct: 0.20
+    target: single_ally
+
   - id: rally
-    name: Rally
+    name: Aegis Hymn
     unlock_level: 4
     type: buff
-    description: "Boosts the entire party's DEF by 20% for 3 turns."
+    description: "A warding hymn that raises the entire party's DEF by 20% for 3 turns."
     mp_cost: 6
     effect:
       target: party
@@ -49,10 +61,10 @@ abilities:
       duration_turns: 3
 
   - id: war_cry
-    name: War Cry
+    name: Sapping Word
     unlock_level: 6
     type: debuff
-    description: "Reduces all enemies' ATK by 15% for 2 turns."
+    description: "A word of power that saps all enemies' ATK by 15% for 2 turns."
     mp_cost: 5
     effect:
       target: all_enemies
@@ -64,19 +76,20 @@ abilities:
     name: Second Wind
     unlock_level: 8
     type: heal
-    description: "Restores 25% of own max HP."
+    description: "Restores 25% of own max HP. Battle only."
     mp_cost: 6
+    battle_only: true
     heal_coeff: 1.0
     heal_pct: 0.25
     target: self
 
   - id: limit_slash
-    name: Limit Slash
+    name: Starfall Slash
     unlock_level: 10
     type: physical
     attack_range: melee
-    description: "A devastating strike dealing 200% physical damage to one enemy."
-    mp_cost: 0
+    description: "Calls starlight down through the blade, dealing 200% damage to one enemy."
+    mp_cost: 10
     damage_coeff: 2.0
     target: single_enemy
 

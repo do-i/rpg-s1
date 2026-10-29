@@ -96,6 +96,8 @@ pub struct Ability {
     pub unlock_flag: Option<String>,
     pub description: String,
     pub mp_cost: u32,
+    /// Hidden from the field menu spellbook; castable only in battle. Missing means `false`.
+    pub battle_only: bool,
     pub kind: AbilityKind,
 }
 
@@ -473,6 +475,8 @@ struct AbilityDocument {
     description: String,
     mp_cost: u32,
     #[serde(default)]
+    battle_only: OptionalField<bool>,
+    #[serde(default)]
     guaranteed_crit: OptionalField<bool>,
     #[serde(default)]
     heal_coeff: OptionalField<PositiveFinite>,
@@ -534,6 +538,7 @@ impl AbilityDocument {
             element,
             description,
             mp_cost,
+            battle_only,
             guaranteed_crit,
             heal_coeff,
             heal_pct,
@@ -566,6 +571,13 @@ impl AbilityDocument {
             target,
             warp,
         };
+        // MP is Mental Points: focus, not just magic. Every ability, physical arts included,
+        // draws on it; a plain Attack is the free action.
+        if mp_cost == 0 {
+            return Err(format!(
+                "ability `{id}`: every ability must have a non-zero `mp_cost`"
+            ));
+        }
         let kind = match ability_type {
             AbilityType::Physical => fields.into_physical()?,
             AbilityType::Spell => fields.into_spell()?,
@@ -582,6 +594,7 @@ impl AbilityDocument {
             unlock_flag,
             description,
             mp_cost,
+            battle_only: battle_only.into_option().unwrap_or(false),
             kind,
         })
     }
@@ -943,7 +956,7 @@ mod tests {
         assert_eq!(steady.unlock_level.get(), 1);
         assert!(steady.unlock_flag.is_none());
         assert_eq!(steady.description, "A measured close-range strike.");
-        assert_eq!(steady.mp_cost, 0);
+        assert_eq!(steady.mp_cost, 1);
         let AbilityKind::Physical(steady) = &steady.kind else {
             panic!("steady_cut should be physical")
         };
@@ -1143,6 +1156,7 @@ mod tests {
             valid.replace("type: spell", "type: true"),
             valid.replace("id: ember_arc", "id: 42"),
             valid.replace("mp_cost: 3", "mp_cost: 3.5"),
+            valid.replace("mp_cost: 3", "mp_cost: 0"),
             valid.replace("spell_coeff: 1.0", "spell_coeff: 1"),
             valid.replace("spell_coeff: 1.0", "spell_coeff: -1.0"),
             valid.replace("target: single_enemy", "target: every_enemy"),
@@ -1271,7 +1285,7 @@ mod tests {
         }
 
         assert_eq!(files.len(), 5);
-        assert_eq!(ability_count, 42);
+        assert_eq!(ability_count, 46);
     }
 
     fn ability<'a>(class: &'a ClassDefinition, id: &str) -> &'a Ability {

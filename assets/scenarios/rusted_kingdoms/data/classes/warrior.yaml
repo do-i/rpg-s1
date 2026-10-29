@@ -4,7 +4,7 @@ name: Warrior
 description: "An iron-willed fighter built to absorb punishment and protect allies. Slow but nearly unbreakable."
 
 base_hp: 28
-base_mp: 0
+base_mp: 10
 
 default_row: front
 
@@ -27,12 +27,12 @@ equipment_slots:
 
 abilities:
   - id: shield_bash
-    name: Shield Bash
+    name: Rune Bash
     unlock_level: 2
     type: physical
     attack_range: melee
-    description: "Slams the enemy with a shield. Deals 80% damage and reduces their ATK by 15% for 2 turns."
-    mp_cost: 0
+    description: "Slams a rune-charged shield into the enemy. Deals 80% damage and reduces their ATK by 15% for 2 turns."
+    mp_cost: 3
     damage_coeff: 0.80
     effect:
       target: single_enemy
@@ -42,45 +42,56 @@ abilities:
     target: single_enemy
 
   - id: taunt
-    name: Taunt
+    name: Lodestone Call
     unlock_level: 4
     type: buff
-    description: "Forces all enemies to target the Warrior for 2 turns."
-    mp_cost: 0
+    description: "A lodestone hex that draws every enemy's attacks to the Warrior for 2 turns."
+    mp_cost: 3
     effect:
       target: self
       aggro: all
       duration_turns: 2
 
   - id: iron_wall
-    name: Iron Wall
+    name: Ironskin
     unlock_level: 6
     type: buff
-    description: "Raises own DEF by 40% for 3 turns."
-    mp_cost: 0
+    description: "Enchants own skin into living iron, raising DEF by 40% for 3 turns."
+    mp_cost: 4
     effect:
       target: self
       stat: def
       modifier: 1.40
       duration_turns: 3
 
+  - id: warbalm
+    name: Warbalm
+    unlock_level: 5
+    type: heal
+    description: "Kindles an inner ember, restoring 15% of own max HP. Battle only."
+    mp_cost: 3
+    battle_only: true
+    heal_coeff: 1.0
+    heal_pct: 0.15
+    target: self
+
   - id: cover
-    name: Cover
+    name: Spirit Tether
     unlock_level: 8
     type: buff
-    description: "Intercepts attacks aimed at one ally this turn, taking the hit instead."
-    mp_cost: 0
+    description: "Binds a spirit tether to one ally, taking the hits aimed at them this turn."
+    mp_cost: 3
     effect:
       target: single_ally
       redirect_damage_to: self
       duration_turns: 1
 
   - id: fortress_stance
-    name: Fortress Stance
+    name: Stoneform
     unlock_level: 10
     type: buff
-    description: "Reduces all damage taken by 50% for 2 turns. Cannot act while active."
-    mp_cost: 0
+    description: "Becomes living stone: all damage taken is reduced by 50% for 2 turns. Cannot act while active."
+    mp_cost: 6
     effect:
       target: self
       damage_reduction: 0.50

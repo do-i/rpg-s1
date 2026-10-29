@@ -620,7 +620,7 @@ pub(in crate::field_menu) fn spawn_profile_column(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let abilities = learned_field_abilities(member, game, catalog)
+    let abilities = learned_abilities(member, game, catalog)
         .into_iter()
         .map(|ability| format!("•  {}", ability.name))
         .collect::<Vec<_>>();
