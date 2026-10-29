@@ -4379,7 +4379,7 @@ dependencies = [
 
 [[package]]
 name = "rpg-s1"
-version = "2026.8.1"
+version = "2026.10.1"
 dependencies = [
  "rpg-engine",
 ]
