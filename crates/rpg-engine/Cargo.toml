@@ -20,4 +20,6 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_path_to_error = "=0.1.20"
 serde_yaml_ng = "=0.10.0"
 sha2 = "=0.10.9"
+# Bevy does not re-export `DeviceType`; pinned to the version Bevy's wgpu already uses.
+wgpu-types = { version = "=29.0.4", default-features = false }
 rpg-content = { path = "../rpg-content" }

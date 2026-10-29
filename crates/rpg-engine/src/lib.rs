@@ -21,6 +21,7 @@ mod encounter_sweep;
 mod engine_settings;
 mod field_menu;
 mod field_menu_domain;
+mod frame_pacing;
 mod frame_timing;
 mod game_over;
 mod game_pause;
@@ -202,6 +203,7 @@ fn run_game(arguments: cli::PlayArguments) {
                 ..default()
             }),
     )
+    .add_plugins(frame_pacing::FramePacingPlugin)
     .insert_resource(ClearColor(UiTheme::default().clear_color))
     // Inserted before the plugins that `init_resource` a theme, so the configured type scale is
     // the one they find rather than being overwritten by the default.
