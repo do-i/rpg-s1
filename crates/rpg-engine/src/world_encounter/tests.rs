@@ -41,6 +41,113 @@ use crate::{
 };
 
 #[test]
+fn snowbound_monster_house_enemies_charge_and_start_an_indoor_battle() {
+    let mut app = headless_title_app_with_asset_base(
+        AppState::NameEntry,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+        ScenarioRoot::default(),
+    );
+    app.add_plugins(ImagePlugin::default_nearest())
+        .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+        .add_plugins(TsxAtlasAssetPlugin)
+        .add_plugins(TmxGroundAssetPlugin)
+        .add_plugins(EncounterAssetPlugin)
+        .add_plugins(FieldMenuDomainPlugin)
+        .add_plugins(WorldAudioPlugin)
+        .init_asset::<SfxIndex>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        .add_plugins(crate::scenario_spatial::world_collision::WorldCollisionPlugin)
+        .add_plugins(WorldEncounterPlugin)
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<ActiveNewGameInputs>().status()
+            == ActiveNewGameInputsStatus::Ready
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<Messages<NameEntryConfirmed>>()
+        .write(NameEntryConfirmed::for_test("Aric"));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().contains_resource::<GameState>() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    let arrival = Position::new(10, 13);
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .map_mut()
+        .move_to(
+            RuntimeMapId::try_new("zone_06_mountain_pass_01_house").unwrap(),
+            arrival,
+            CardinalDirection::Up,
+        );
+    app.world_mut()
+        .resource_mut::<NextState<AppState>>()
+        .set(AppState::World);
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<WorldEncounterState>().status() == WorldEncounterStatus::Spawned
+            && app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready
+            && app
+                .world()
+                .resource::<crate::scenario_spatial::world_collision::WorldCollision>()
+                .occupancy_for("zone_06_mountain_pass_01_house")
+                .is_some()
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        app.world().resource::<WorldEncounterState>().status(),
+        WorldEncounterStatus::Spawned
+    );
+    let target = super::simulation::enemy_top_left(arrival);
+    let before = {
+        let world = app.world_mut();
+        world
+            .query::<(Entity, &WorldEnemy)>()
+            .iter(world)
+            .map(|(entity, enemy)| (entity, enemy.top_left.distance(target)))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(before.len(), 5);
+    for _ in 0..3 {
+        app.update();
+    }
+    for (entity, distance) in before {
+        let enemy = app.world().get::<WorldEnemy>(entity).unwrap();
+        assert!(
+            enemy.top_left.distance(target) < distance,
+            "{} must approach the stationary party from its spawn",
+            enemy.encounter_id()
+        );
+    }
+    // No player input or teleport: contact must come from an enemy charging the arrival.
+    for _ in 0..120 {
+        app.update();
+        if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+            break;
+        }
+    }
+    assert_eq!(
+        app.world().resource::<State<AppState>>().get(),
+        &AppState::Battle
+    );
+    let entry = app.world().resource::<BattleEntry>();
+    assert_eq!(entry.background_id, "zone6-house-bg-1280x468");
+    assert_eq!(entry.bgm_key, "battle.normal");
+}
+
+#[test]
 fn the_enemy_just_defeated_is_restored_hidden_from_its_first_frame() {
     let mut app = headless_title_app_with_asset_base(
         AppState::NameEntry,

@@ -249,14 +249,14 @@ mod tests {
         let catalog: BattleBackgroundCatalog = scenario_yaml::from_str(&document)
             .unwrap_or_else(|error| panic!("{} should load: {error}", path.display()));
 
-        assert_eq!(catalog.0.len(), 13);
+        assert_eq!(catalog.0.len(), 14);
         assert_eq!(
             catalog
                 .0
                 .iter()
                 .filter(|background| background.encoded_canvas_size().is_some())
                 .count(),
-            13
+            14
         );
         assert_eq!(
             catalog
@@ -264,7 +264,7 @@ mod tests {
                 .iter()
                 .filter(|background| background.ground_rect.x > 0)
                 .count(),
-            2
+            3
         );
         assert_eq!(
             catalog
@@ -272,7 +272,7 @@ mod tests {
                 .iter()
                 .filter(|background| background.ground_rect.y > 0)
                 .count(),
-            2
+            3
         );
         assert_eq!(
             catalog
@@ -280,7 +280,7 @@ mod tests {
                 .iter()
                 .filter(|background| background.ground_rect.width != 1280)
                 .count(),
-            2
+            3
         );
         assert_eq!(
             catalog
@@ -288,7 +288,7 @@ mod tests {
                 .iter()
                 .filter(|background| background.ground_rect.height != 468)
                 .count(),
-            2
+            3
         );
         assert!(catalog.0.iter().all(|background| {
             let (width, height) = background.encoded_canvas_size().unwrap();

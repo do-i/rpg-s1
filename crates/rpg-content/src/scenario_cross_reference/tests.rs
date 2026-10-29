@@ -1074,12 +1074,12 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     assert_eq!(report.counts.abilities, 42);
     assert_eq!(report.counts.items, 210);
     assert_eq!(report.counts.field_use_items, 14);
-    assert_eq!(report.counts.maps, 88);
+    assert_eq!(report.counts.maps, 89);
     assert_eq!(report.counts.dialogue_documents, 150);
     assert_eq!(report.counts.enemies, 108);
     assert_eq!(report.counts.boss_move_sets, 11);
-    assert_eq!(report.counts.encounters, 21);
-    assert_eq!(report.counts.battle_backgrounds, 13);
+    assert_eq!(report.counts.encounters, 22);
+    assert_eq!(report.counts.battle_backgrounds, 14);
     assert_eq!(report.counts.recipes, 15);
     assert_eq!(report.counts.quests, 18);
     assert_eq!(report.counts.bgm_keys, 13);

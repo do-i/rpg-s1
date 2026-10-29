@@ -723,6 +723,103 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
     }
 
     #[test]
+    fn snowbound_monster_house_has_walkable_arrivals_and_five_reachable_spawns() {
+        use crate::scenario_spatial::collision_occupancy::CollisionOccupancy;
+        let field = include_str!(scenario_file!("media/maps/zone_06_mountain_pass_01.tmx"));
+        let house = include_str!(scenario_file!(
+            "media/maps/zone_06_mountain_pass_01_house.tmx"
+        ));
+        assert_reversible_link(
+            "zone_06_mountain_pass_01",
+            field,
+            "zone_06_mountain_pass_01_house",
+            house,
+        );
+        for (map_id, xml, arrival, direction, steps) in [
+            (
+                "zone_06_mountain_pass_01",
+                field,
+                Position::new(19, 35),
+                Vec2::new(0.0, -5.0),
+                8,
+            ),
+            (
+                "zone_06_mountain_pass_01_house",
+                house,
+                Position::new(10, 13),
+                Vec2::new(0.0, 5.0),
+                24,
+            ),
+        ] {
+            let owner = ScenarioRelativePath::try_from(format!("media/maps/{map_id}.tmx")).unwrap();
+            let doc = parse_tmx_map_document(xml, &owner).unwrap();
+            let occupancy = CollisionOccupancy::from_tmx_document(&doc).unwrap();
+            let links = runtime_portals(&doc).unwrap();
+            let mut motion = WorldPlayerMotion::from_tile(arrival);
+            let feet = motion.collision_rect();
+            assert!(!occupancy.is_rect_blocked(feet.x, feet.y, feet.width, feet.height));
+            assert!(
+                links.iter().all(|p| !p.bounds().is_triggered_by(feet)),
+                "arrival immediately exits {map_id}"
+            );
+            let mut entered = false;
+            for _ in 0..steps {
+                let feet = motion.collision_rect();
+                assert!(!occupancy.is_rect_blocked(feet.x, feet.y, feet.width, feet.height));
+                if links.iter().any(|p| p.bounds().is_triggered_by(feet)) {
+                    entered = true;
+                    break;
+                }
+                motion.set_top_left(motion.top_left() + direction);
+            }
+            assert!(entered, "cannot walk through {map_id} doorway");
+            if map_id.ends_with("_house") {
+                let mut reached = BTreeSet::from([(10, 13)]);
+                let mut pending = vec![(10, 13)];
+                while let Some((x, y)) = pending.pop() {
+                    for next in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
+                        let feet = WorldPlayerMotion::from_tile(Position::new(next.0, next.1))
+                            .collision_rect();
+                        if !occupancy.is_rect_blocked(feet.x, feet.y, feet.width, feet.height)
+                            && reached.insert(next)
+                        {
+                            pending.push(next);
+                        }
+                    }
+                }
+                let spawn = doc
+                    .tile_layers()
+                    .iter()
+                    .find(|l| l.name() == "spawn_tile")
+                    .unwrap();
+                let positions = spawn
+                    .gids()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, gid)| gid.global_id() != 0)
+                    .map(|(i, _)| {
+                        (
+                            (i as u32 % spawn.width()) as i32,
+                            (i as u32 / spawn.width()) as i32,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(positions.len(), 5);
+                assert!(
+                    positions.iter().all(|p| reached.contains(p)),
+                    "unreachable spawn"
+                );
+                assert!(
+                    positions
+                        .iter()
+                        .all(|&(x, y)| (x - 10).abs() + (y - 13).abs() >= 5),
+                    "spawn too close to arrival"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn ardel_runtime_portals_use_inset_doorway_bounds_and_preserve_destinations() {
         let portals = ardel_portals();
         assert_eq!(portals.len(), 10);

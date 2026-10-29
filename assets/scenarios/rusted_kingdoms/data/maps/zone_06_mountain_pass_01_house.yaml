@@ -1,0 +1,8 @@
+name: Snowbound Monster House
+warp_order: 132
+bgm: zone.alpine
+
+enemy_spawn:
+  init: 5
+  max: 5
+  interval: 22.0

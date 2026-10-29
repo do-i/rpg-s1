@@ -38,6 +38,10 @@
 - id: zone6-bg-1280x468
   ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
 
+# Low-ceiling lodge: align visible enemy feet with the shallow floor at the wall base.
+- id: zone6-house-bg-1280x468
+  ground_rect: { x: 160, y: 340, width: 960, height: 80 }
+
 # Sunken cave: the sandy floor patch is roughly centered and narrower than
 # the frame, with water filling the corners.
 - id: zone7-bg-1280x468

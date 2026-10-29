@@ -101,6 +101,7 @@ regions:
       - { id: town_05_ashenveil_shop_armor }
       - { id: town_05_ashenveil_shop_weapon }
       - { id: zone_06_mountain_pass_01, outdoor: true }
+      - { id: zone_06_mountain_pass_01_house }
       - { id: zone_06_mountain_pass_02, outdoor: true }
       - { id: zone_06_mountain_pass_03, outdoor: true }
   - id: deepwood

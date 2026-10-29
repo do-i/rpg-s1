@@ -3119,7 +3119,7 @@ mod tests {
                 .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
         }
 
-        assert_eq!(files.len(), 88);
+        assert_eq!(files.len(), 89);
     }
 
     #[test]
@@ -3239,8 +3239,8 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 88);
-        assert_eq!(parsed_documents, 88);
+        assert_eq!(files.len(), 89);
+        assert_eq!(parsed_documents, 89);
         // Zero, where the pinned corpus had one. Both that inline tileset and the seventeenth
         // distinct source below belonged to the source's `sample_01.tmx` — a sample rather than a
         // game map, which the port never migrated. Every shipped map references its tilesets
@@ -3250,8 +3250,8 @@ mod tests {
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.
         // 207 since zone_01 gained a terrain-v7 ground layer on 2026-10-11.
-        assert_eq!(reference_count, 564);
-        assert_eq!(distinct_sources.len(), 21);
+        assert_eq!(reference_count, 568);
+        assert_eq!(distinct_sources.len(), 24);
     }
 
     #[test]
@@ -3388,10 +3388,10 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 88);
-        assert_eq!(layer_count, 489);
-        assert_eq!(gid_count, 506598);
-        assert_eq!(flip_combination_counts, [502552, 3793, 2, 0, 0, 238, 7, 6]);
+        assert_eq!(files.len(), 89);
+        assert_eq!(layer_count, 495);
+        assert_eq!(gid_count, 526762);
+        assert_eq!(flip_combination_counts, [522400, 4109, 2, 0, 0, 238, 7, 6]);
     }
 
     #[test]
@@ -3458,16 +3458,16 @@ mod tests {
             }
         }
 
-        assert_eq!(files.len(), 88);
-        assert_eq!(portal_groups, 87);
+        assert_eq!(files.len(), 89);
+        assert_eq!(portal_groups, 88);
         assert_eq!(boss_groups, 11);
         assert_eq!(box_groups, 19);
-        assert_eq!(objects, 254);
+        assert_eq!(objects, 256);
         assert_eq!(zero_sized_objects, 4);
-        assert_eq!(runtime_portals, 173);
-        assert_eq!(properties, 587);
-        assert_eq!(property_strings, 241);
-        assert_eq!(property_integers, 346);
+        assert_eq!(runtime_portals, 175);
+        assert_eq!(properties, 593);
+        assert_eq!(property_strings, 243);
+        assert_eq!(property_integers, 350);
         assert_eq!(property_floats, 0);
         assert_eq!(property_booleans, 0);
     }

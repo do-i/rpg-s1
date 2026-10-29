@@ -1093,13 +1093,13 @@ mod tests {
                     .is_file()
             );
         }
-        assert_eq!(maps.len(), 88);
-        // Distinct tilesets include shrine props, the shared collision marker and harbor docks.
+        assert_eq!(maps.len(), 89);
+        // Distinct tilesets include shrine props, collision, harbor docks and the snowbound lodge.
         // The pinned corpus referenced seventeen: `beeler/grass_water_clif.tsx`
         // was used only by the source's `sample_01.tmx` — a sample, not a game map, so the port never
         // migrated it and the unused tileset was deleted — and on 2026-10-09 the eight Astral Pixels
         // tilesets were replaced by one project-authored `interior/interior.tsx`, because that pack
         // forbids redistribution.
-        assert_eq!(targets.len(), 21);
+        assert_eq!(targets.len(), 24);
     }
 }
