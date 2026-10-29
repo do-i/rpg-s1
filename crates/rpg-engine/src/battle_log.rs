@@ -48,21 +48,30 @@ impl BattleLogLine {
         }
     }
 
-    /// The colour of the damage number, so the amount stands out from the sentence.
-    fn number_color(&self) -> Color {
-        match self.kind {
-            LogKind::HitParty => Color::srgb_u8(0xca, 0x41, 0x1c),
-            _ => Color::srgb_u8(0x89, 0xfb, 0x8d),
-        }
-    }
-
-    /// The sentence split into runs of one colour: party names, the damage amount, the rest.
+    /// The sentence split into runs of one colour: names, damage amounts, the rest.
+    ///
+    /// An amount is blue-green when the last name before it is an enemy (the party hurt it)
+    /// and red when it is a party member (the party was hurt).
     fn segments(&self) -> Vec<(std::ops::Range<usize>, Color)> {
         let base = self.color();
-        let mut marks: Vec<(std::ops::Range<usize>, Color)> = party_name_ranges(&self.text);
-        marks.extend(enemy_name_ranges(&self.text, &self.enemy_names));
-        if let Some(range) = damage_amount(&self.text) {
-            marks.push((range, self.number_color()));
+        let party = party_name_ranges(&self.text);
+        let enemies = enemy_name_ranges(&self.text, &self.enemy_names);
+        let mut marks = party.clone();
+        marks.extend(enemies.iter().cloned());
+        for range in damage_amounts(&self.text) {
+            let victim = party
+                .iter()
+                .map(|(r, _)| (r.start, false))
+                .chain(enemies.iter().map(|(r, _)| (r.start, true)))
+                .filter(|(start, _)| *start < range.start)
+                .max_by_key(|(start, _)| *start);
+            let color = match victim {
+                Some((_, true)) => Color::srgb_u8(0x89, 0xfb, 0x8d),
+                Some((_, false)) => Color::srgb_u8(0xca, 0x41, 0x1c),
+                None if self.kind == LogKind::HitParty => Color::srgb_u8(0xca, 0x41, 0x1c),
+                None => Color::srgb_u8(0x89, 0xfb, 0x8d),
+            };
+            marks.push((range, color));
         }
         marks.sort_by_key(|(range, _)| range.start);
         let mut out = Vec::new();
@@ -150,13 +159,16 @@ fn party_name_ranges(text: &str) -> Vec<(std::ops::Range<usize>, Color)> {
     out
 }
 
-/// Byte range of the damage amount in `text`, the digits right before " damage".
-fn damage_amount(text: &str) -> Option<std::ops::Range<usize>> {
-    let end = text.find(" damage")?;
-    let start = text[..end]
-        .trim_end_matches(|c: char| c.is_ascii_digit())
-        .len();
-    (start < end).then_some(start..end)
+/// Byte ranges of every damage amount in `text`, the digits right before " damage".
+fn damage_amounts(text: &str) -> Vec<std::ops::Range<usize>> {
+    text.match_indices(" damage")
+        .filter_map(|(end, _)| {
+            let start = text[..end]
+                .trim_end_matches(|c: char| c.is_ascii_digit())
+                .len();
+            (start < end).then_some(start..end)
+        })
+        .collect()
 }
 
 /// Spawns one log line, with party names and the damage amount in their own colours.
@@ -239,10 +251,33 @@ mod tests {
     #[test]
     fn the_damage_amount_is_the_number_before_damage() {
         let text = "Elise attacks Goblin 2 for 14 damage. KO!";
-        let range = damage_amount(text).expect("a damage line");
-        assert_eq!(&text[range], "14");
-        assert!(damage_amount("Elise uses Potion!").is_none());
-        assert!(damage_amount("Goblin attacks Elise, but misses.").is_none());
+        let ranges = damage_amounts(text);
+        assert_eq!(&text[ranges[0].clone()], "14");
+        assert!(damage_amounts("Elise uses Potion!").is_empty());
+        assert!(damage_amounts("Goblin attacks Elise, but misses.").is_empty());
+    }
+
+    #[test]
+    fn an_amount_takes_the_colour_of_whoever_it_hurt() {
+        let line = BattleLogLine {
+            text: "Elise uses Fire! Goblin takes 12 damage. Aric takes 3 damage.".to_owned(),
+            enemy: false,
+            kind: LogKind::Ability,
+            enemy_names: vec!["Goblin".to_owned()],
+        };
+        let amounts = line
+            .segments()
+            .into_iter()
+            .filter(|(range, _)| line.text[range.clone()].parse::<u32>().is_ok())
+            .map(|(_, color)| color)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            amounts,
+            [
+                Color::srgb_u8(0x89, 0xfb, 0x8d),
+                Color::srgb_u8(0xca, 0x41, 0x1c)
+            ]
+        );
     }
 
     #[test]
