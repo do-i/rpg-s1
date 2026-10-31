@@ -25,10 +25,11 @@ pub(crate) enum AppAction {
     Left,
     Right,
     Travel,
+    EnemyMap,
 }
 
 impl AppAction {
-    pub(crate) const ALL: [Self; 7] = [
+    pub(crate) const ALL: [Self; 8] = [
         Self::Back,
         Self::Confirm,
         Self::Up,
@@ -36,6 +37,7 @@ impl AppAction {
         Self::Left,
         Self::Right,
         Self::Travel,
+        Self::EnemyMap,
     ];
 
     pub(crate) const fn index(self) -> usize {
@@ -47,6 +49,7 @@ impl AppAction {
             Self::Left => 4,
             Self::Right => 5,
             Self::Travel => 6,
+            Self::EnemyMap => 7,
         }
     }
 
@@ -60,6 +63,7 @@ impl AppAction {
             Self::Left => "left",
             Self::Right => "right",
             Self::Travel => "travel",
+            Self::EnemyMap => "enemy_map",
         }
     }
 
@@ -73,6 +77,7 @@ impl AppAction {
             Self::Left => "Menu Left",
             Self::Right => "Menu Right",
             Self::Travel => "Travel",
+            Self::EnemyMap => "Enemy Map",
         }
     }
 }
@@ -206,9 +211,9 @@ impl UnbindError {
 /// Keyboard and gamepad bindings for every semantic action.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct InputBindings {
-    menu_keys: [Vec<KeyCode>; 7],
+    menu_keys: [Vec<KeyCode>; 8],
     movement_keys: [Vec<KeyCode>; 4],
-    menu_buttons: [Vec<GamepadButton>; 7],
+    menu_buttons: [Vec<GamepadButton>; 8],
     movement_buttons: [Vec<GamepadButton>; 4],
 }
 
@@ -223,6 +228,7 @@ impl Default for InputBindings {
                 vec![KeyCode::ArrowLeft],
                 vec![KeyCode::ArrowRight],
                 vec![KeyCode::KeyT],
+                vec![KeyCode::KeyB],
             ],
             movement_keys: [
                 vec![KeyCode::ArrowUp],
@@ -240,6 +246,7 @@ impl Default for InputBindings {
                 vec![GamepadButton::DPadLeft],
                 vec![GamepadButton::DPadRight],
                 vec![GamepadButton::North],
+                vec![GamepadButton::West],
             ],
             movement_buttons: [
                 vec![GamepadButton::DPadUp],
@@ -440,6 +447,15 @@ mod tests {
     const BACK: BindingTarget = BindingTarget::Menu(AppAction::Back);
     const TRAVEL: BindingTarget = BindingTarget::Menu(AppAction::Travel);
     const WALK_UP: BindingTarget = BindingTarget::Movement(MovementAction::Up);
+
+    #[test]
+    fn enemy_map_defaults_to_b_and_west() {
+        let bindings = InputBindings::default();
+        let target = BindingTarget::Menu(AppAction::EnemyMap);
+
+        assert_eq!(bindings.keys(target), [KeyCode::KeyB]);
+        assert_eq!(bindings.buttons(target), [GamepadButton::West]);
+    }
 
     #[test]
     fn shipped_defaults_place_one_key_on_two_categories() {

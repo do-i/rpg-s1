@@ -39,6 +39,13 @@ pub(crate) struct GamePause {
 }
 
 impl GamePause {
+    #[cfg(test)]
+    pub(crate) const fn paused_for_test() -> Self {
+        Self {
+            paused_at: Some(Duration::ZERO),
+        }
+    }
+
     pub(crate) const fn is_paused(&self) -> bool {
         self.paused_at.is_some()
     }

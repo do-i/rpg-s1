@@ -81,6 +81,7 @@ mod world_audio;
 mod world_debug_overlay;
 mod world_dialogue;
 mod world_encounter;
+mod world_enemy_map;
 mod world_interaction;
 mod world_mp_regen;
 mod world_object;
@@ -143,6 +144,7 @@ use world_actor::WorldActorPlugin;
 use world_audio::WorldAudioPlugin;
 use world_debug_overlay::WorldDebugOverlayPlugin;
 use world_encounter::{BattleEntryPlugin, WorldEncounterPlugin};
+use world_enemy_map::WorldEnemyMapPlugin;
 use world_interaction::WorldInteractionPlugin;
 use world_object::WorldObjectPlugin;
 use world_player::WorldPlayerPlugin;
@@ -259,6 +261,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(WorldPlayerPlugin)
     .add_plugins(world_mp_regen::WorldMpRegenPlugin)
     .add_plugins(WorldDebugOverlayPlugin)
+    .add_plugins(WorldEnemyMapPlugin)
     .add_plugins(FieldMenuPlugin)
     .add_plugins(TransportUiPlugin)
     .add_plugins(BattleEntryPlugin)

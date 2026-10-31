@@ -37,11 +37,11 @@ const MENU_DIRECTIONS: [AppAction; 4] = [
 /// Semantic actions that began during the current input frame.
 #[derive(Resource, Default)]
 pub(crate) struct ActionState {
-    just_pressed: [bool; 7],
+    just_pressed: [bool; 8],
     /// Held menu directions whose auto-repeat fired this frame. Kept apart from `just_pressed` so
     /// that only cursor movement repeats: battle reads a Right press as Confirm, and that must not
     /// fire again and again under a held key.
-    repeated: [bool; 7],
+    repeated: [bool; 8],
     movement_pressed: [bool; 4],
     /// Set whenever a screen reads menu navigation, and cleared by the next input frame. A hold
     /// only repeats while some screen is listening, so walking with an arrow held and then
@@ -52,6 +52,11 @@ pub(crate) struct ActionState {
 impl ActionState {
     pub(crate) fn just_pressed(&self, action: AppAction) -> bool {
         self.just_pressed[action.index()]
+    }
+
+    #[cfg(test)]
+    pub(crate) fn press(&mut self, action: AppAction) {
+        self.just_pressed[action.index()] = true;
     }
 
     /// Drops every press, repeat and held direction read this frame.
@@ -253,7 +258,7 @@ impl StickNavigation {
 /// must not scroll the menu or dialogue that opens under it.
 #[derive(Resource, Default)]
 pub(crate) struct MenuRepeat {
-    held_for: [Option<Duration>; 7],
+    held_for: [Option<Duration>; 8],
 }
 
 impl MenuRepeat {
@@ -324,7 +329,7 @@ fn menu_stick_edge(action: AppAction, began: StickDirection) -> bool {
         AppAction::Down => began.vertical == 1,
         AppAction::Left => began.horizontal == -1,
         AppAction::Right => began.horizontal == 1,
-        AppAction::Back | AppAction::Confirm | AppAction::Travel => false,
+        AppAction::Back | AppAction::Confirm | AppAction::Travel | AppAction::EnemyMap => false,
     }
 }
 
@@ -334,7 +339,7 @@ fn menu_stick_held(action: AppAction, current: StickDirection) -> bool {
         AppAction::Down => current.vertical == 1,
         AppAction::Left => current.horizontal == -1,
         AppAction::Right => current.horizontal == 1,
-        AppAction::Back | AppAction::Confirm | AppAction::Travel => false,
+        AppAction::Back | AppAction::Confirm | AppAction::Travel | AppAction::EnemyMap => false,
     }
 }
 
@@ -414,6 +419,14 @@ mod tests {
 
     fn action_state(app: &App, action: AppAction) -> bool {
         app.world().resource::<ActionState>().just_pressed(action)
+    }
+
+    #[test]
+    fn the_enemy_map_press_never_reaches_the_replay_record() {
+        let mut state = ActionState::default();
+        state.press(AppAction::EnemyMap);
+
+        assert!(state.normalized_actions().is_empty());
     }
 
     #[test]

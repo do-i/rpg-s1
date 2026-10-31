@@ -441,7 +441,7 @@ mod tests {
     fn the_row_list_covers_every_binding_plus_the_value_and_command_rows() {
         let screen = OptionsScreen::default();
 
-        assert_eq!(screen.rows().len(), 14);
+        assert_eq!(screen.rows().len(), 15);
         assert_eq!(
             screen.rows()[CONFIRM_ROW],
             OptionsRow::Binding(BindingTarget::Menu(AppAction::Confirm))
@@ -451,11 +451,11 @@ mod tests {
             OptionsRow::Binding(BindingTarget::Menu(AppAction::Travel))
         );
         assert_eq!(
-            screen.rows()[7],
+            screen.rows()[8],
             OptionsRow::Binding(BindingTarget::Movement(MovementAction::Up))
         );
-        assert_eq!(screen.rows()[11], OptionsRow::TextSpeed);
-        assert_eq!(screen.rows()[13], OptionsRow::Back);
+        assert_eq!(screen.rows()[12], OptionsRow::TextSpeed);
+        assert_eq!(screen.rows()[14], OptionsRow::Back);
     }
 
     #[test]
@@ -463,7 +463,7 @@ mod tests {
         let (mut screen, _) = screen_and_options();
 
         screen.navigate(-1);
-        assert_eq!(screen.selected(), 13);
+        assert_eq!(screen.selected(), 14);
         screen.navigate(1);
         assert_eq!(screen.selected(), 0);
     }
@@ -605,7 +605,7 @@ mod tests {
     #[test]
     fn the_text_speed_row_cycles_through_the_file_default_and_all_three_speeds() {
         let (mut screen, mut options) = screen_and_options();
-        screen.navigate(11);
+        screen.navigate(12);
 
         let mut seen = Vec::new();
         for _ in 0..TEXT_SPEEDS.len() {
@@ -639,7 +639,7 @@ mod tests {
             "it is a toggle, not a list"
         );
 
-        screen.navigate(13);
+        screen.navigate(14);
         assert_eq!(screen.rows()[screen.selected()], OptionsRow::Back);
         assert_eq!(screen.horizontal(1, &mut options), OptionsEffect::None);
         assert_eq!(screen.device(), Device::Keyboard);
@@ -671,7 +671,7 @@ mod tests {
     #[test]
     fn reset_restores_defaults_and_says_so_only_when_something_changed() {
         let (mut screen, mut options) = screen_and_options();
-        screen.navigate(12);
+        screen.navigate(13);
 
         assert_eq!(screen.confirm(&mut options), OptionsEffect::None);
         assert_eq!(screen.status(), "Already at the shipped defaults.");
@@ -689,7 +689,7 @@ mod tests {
     #[test]
     fn the_back_row_leaves_the_screen() {
         let (mut screen, mut options) = screen_and_options();
-        screen.navigate(13);
+        screen.navigate(14);
 
         assert_eq!(screen.confirm(&mut options), OptionsEffect::Leave);
     }
@@ -727,9 +727,9 @@ mod tests {
         let (mut screen, mut options) = screen_and_options();
 
         assert!(screen.hint().contains("Left/Right switches device"));
-        screen.navigate(11);
+        screen.navigate(12);
         assert!(screen.hint().contains("changes the speed"));
-        screen.navigate(-11);
+        screen.navigate(-12);
         screen.confirm(&mut options);
         assert!(screen.hint().contains("Escape cancels"));
     }

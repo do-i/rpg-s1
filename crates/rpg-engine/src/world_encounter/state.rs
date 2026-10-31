@@ -155,9 +155,42 @@ impl WorldEnemy {
         &self.formation
     }
 
-    #[cfg(test)]
     pub(crate) const fn is_boss(&self) -> bool {
         self.boss
+    }
+
+    pub(crate) const fn is_active(&self) -> bool {
+        self.active
+    }
+
+    pub(crate) const fn is_engaged(&self) -> bool {
+        self.engaged
+    }
+
+    /// The centre of the collision rectangle, in source pixels.
+    pub(crate) fn centre_px(&self) -> Vec2 {
+        let rect = self.collision_rect();
+        Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn for_test(tile: Position, boss: bool, active: bool, engaged: bool) -> Self {
+        Self {
+            encounter_id: "test".to_owned(),
+            formation: Vec::new(),
+            origin: tile,
+            position: tile,
+            top_left: super::simulation::enemy_top_left(tile),
+            boss,
+            chase_range: 0,
+            active,
+            engaged,
+            facing: CardinalDirection::Down,
+            frame: 0,
+            frame_elapsed: 0.0,
+            wander_pause: 0.0,
+            wander_target: None,
+        }
     }
 
     pub(super) fn collision_rect(&self) -> CharacterCollisionRect {
