@@ -18,6 +18,8 @@ pub enum AutoCommand {
     /// Heal, revive, use items, cast, attack, or flee as the battle demands.
     #[default]
     Smart,
+    /// Smart support decisions while reserving MP for healing and revival.
+    SaveMp,
 }
 
 impl AutoCommand {
@@ -26,6 +28,7 @@ impl AutoCommand {
             Self::Attack => "Attack",
             Self::Spell => "Spell",
             Self::Smart => "Smart",
+            Self::SaveMp => "Save MP",
         }
     }
 
@@ -39,6 +42,10 @@ impl AutoCommand {
                 "Reads the fight: revives the fallen, heals or uses potions on the wounded, \
                  casts when MP allows, attacks otherwise, and tries to run from a fight it \
                  cannot win. Its choices vary from turn to turn."
+            }
+            Self::SaveMp => {
+                "Attacks normally, saving MP for healing and revival. Uses HP and revival items \
+                 when needed, skips MP potions, and tries to flee hopeless fights."
             }
         }
     }
@@ -90,11 +97,12 @@ impl BattleTactics {
 }
 
 /// The Battle page picker's entries in order: Manual, then Auto with each command.
-pub const TACTIC_CHOICES: [Option<AutoCommand>; 4] = [
+pub const TACTIC_CHOICES: [Option<AutoCommand>; 5] = [
     None,
     Some(AutoCommand::Attack),
     Some(AutoCommand::Spell),
     Some(AutoCommand::Smart),
+    Some(AutoCommand::SaveMp),
 ];
 
 /// A picker entry or a member's current setting, e.g. `Manual` or `Auto - Smart`.
@@ -185,7 +193,7 @@ mod tests {
     fn saved_tactics_round_trip_and_missing_fields_default() {
         let tactics = BattleTactics {
             auto: true,
-            command: AutoCommand::Attack,
+            command: AutoCommand::SaveMp,
         };
         let yaml = serde_yaml_ng::to_string(&tactics).unwrap();
         assert_eq!(

@@ -49,7 +49,9 @@ pub(super) fn plan_auto_action(
     match command {
         AutoCommand::Attack => fallback(),
         AutoCommand::Spell => best_offense(state, me, rng).or_else(fallback),
-        AutoCommand::Smart => smart(state, me, items, rng).or_else(fallback),
+        AutoCommand::Smart | AutoCommand::SaveMp => {
+            smart(state, me, items, command == AutoCommand::SaveMp, rng).or_else(fallback)
+        }
     }
 }
 
@@ -57,6 +59,7 @@ fn smart(
     state: &BattleState,
     me: &BattleCombatant,
     items: &[&ConsumableItem],
+    save_mp: bool,
     rng: &mut GameplayRng,
 ) -> Option<AutoAction> {
     if outmatched(state) && roll_succeeds(rng, 0.7) {
@@ -67,6 +70,9 @@ fn smart(
     }
     if let Some(action) = heal(state, me, items, rng) {
         return Some(action);
+    }
+    if save_mp {
+        return attack_weakest(state).map(AutoAction::Attack);
     }
     if let Some(action) = restore_own_mana(me, items, rng) {
         return Some(action);

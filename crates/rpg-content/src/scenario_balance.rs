@@ -136,8 +136,8 @@ pub struct MovementBalance {
 
 /// Out-of-battle MP regeneration for living party members.
 ///
-/// Each tick restores `max_percent_per_tick` percent of a member's max MP, but never less than one
-/// point, so a small early pool and a large late pool refill over comparable spans. A map with
+/// Each tick restores `max_percent_per_tick` percent of a member's max MP, carrying fractional
+/// points between ticks so all pool sizes refill at the same percentage rate. A map with
 /// ambient encounters ticks on steps while walking and on elapsed World time while standing; a
 /// safe map (no encounter zone, i.e. towns and interiors) ticks faster on steps and on elapsed
 /// World time whether standing or walking.

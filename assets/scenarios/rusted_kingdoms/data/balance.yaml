@@ -34,7 +34,7 @@ movement:
   player_speed: 5
 
 # Out-of-battle MP regeneration for living members. A tick restores
-# max_percent_per_tick % of max MP (never less than 1 point); a step is one
+# max_percent_per_tick % of max MP (fractional MP carries between ticks); a step is one
 # tile of real movement. Maps with encounters tick on steps while walking and
 # every five seconds while standing; safe maps tick faster on steps and also
 # on time whether standing or walking.

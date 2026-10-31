@@ -34,6 +34,9 @@ pub struct RuntimeMember {
     max_health: u32,
     mana: u32,
     max_mana: u32,
+    /// Hundredths of one MP earned by world recovery. Survives battles and map changes;
+    /// not saved, so loading can discard less than one MP.
+    mana_regen_hundredths: u8,
     stats: RuntimeMemberStats,
     row: PartyRow,
     tactics: BattleTactics,
@@ -110,6 +113,7 @@ impl RuntimeMember {
             max_health: data.hp_max,
             mana: data.mp,
             max_mana: data.mp_max,
+            mana_regen_hundredths: 0,
             stats: RuntimeMemberStats::from(&data.stats),
             row: data.row,
             tactics: BattleTactics::default(),
@@ -175,6 +179,7 @@ impl RuntimeMember {
             max_health: parts.max_health,
             mana: parts.mana,
             max_mana: parts.max_mana,
+            mana_regen_hundredths: 0,
             stats: RuntimeMemberStats {
                 strength: parts.stats[0],
                 dexterity: parts.stats[1],
@@ -298,6 +303,7 @@ impl RuntimeMember {
     pub(crate) fn recover_at_inn(&mut self) {
         self.health = self.max_health;
         self.mana = self.max_mana;
+        self.mana_regen_hundredths = 0;
         self.status_effects.clear();
     }
 
@@ -343,12 +349,29 @@ impl RuntimeMember {
     pub fn restore_mana(&mut self, amount: u32) -> u32 {
         let before = self.mana;
         self.mana = self.mana.saturating_add(amount).min(self.max_mana);
+        if self.mana == self.max_mana {
+            self.mana_regen_hundredths = 0;
+        }
         self.mana - before
+    }
+
+    /// Recovers an exact percentage per world tick, carrying fractional MP forward.
+    pub(crate) fn regenerate_mana_percent(&mut self, percent: u32, ticks: u32) {
+        if self.is_knocked_out() {
+            return;
+        }
+        let hundredths = u128::from(self.mana_regen_hundredths)
+            + u128::from(self.max_mana) * u128::from(percent) * u128::from(ticks);
+        self.mana_regen_hundredths = (hundredths % 100) as u8;
+        self.restore_mana(u32::try_from(hundredths / 100).unwrap_or(u32::MAX));
     }
 
     pub(crate) fn sync_battle_pools(&mut self, health: u32, mana: u32) {
         self.health = health.min(self.max_health);
         self.mana = mana.min(self.max_mana);
+        if self.mana == self.max_mana {
+            self.mana_regen_hundredths = 0;
+        }
     }
 
     /// Adds EXP up to the selected scenario cap, without applying level thresholds.
@@ -399,6 +422,7 @@ impl RuntimeMember {
             self.max_mana = self.max_mana.saturating_add(mana);
             self.health = self.max_health;
             self.mana = self.max_mana;
+            self.mana_regen_hundredths = 0;
             level_ups.push(RuntimeLevelUp {
                 old_level,
                 new_level: self.level,

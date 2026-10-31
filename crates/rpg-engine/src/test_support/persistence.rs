@@ -19,7 +19,8 @@ impl FixtureDirectory {
     pub(crate) fn new(label: &str) -> Self {
         use std::sync::atomic::{AtomicU64, Ordering};
         static NEXT: AtomicU64 = AtomicU64::new(0);
-        let parent = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../temp/refactoring");
+        let parent =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../temp/20261029-0825-refactoring");
         fs::create_dir_all(&parent).unwrap();
         let root = parent.join(format!(
             "rf10-{label}-{}-{}",

@@ -107,15 +107,9 @@ impl MpRegenClock {
     }
 }
 
-/// Applies `ticks` to one member: each restores a percentage of max MP, at least one point.
+/// Applies exact percentage recovery; the member retains fractional MP between ticks.
 fn regenerate(member: &mut RuntimeMember, ticks: u32, balance: &MpRegenBalance) {
-    if member.is_knocked_out() {
-        return;
-    }
-    let percent = u64::from(balance.max_percent_per_tick.get());
-    let per_tick = (u64::from(member.max_mana()) * percent / 100).max(1);
-    let amount = per_tick.saturating_mul(u64::from(ticks));
-    member.restore_mana(u32::try_from(amount).unwrap_or(u32::MAX));
+    member.regenerate_mana_percent(balance.max_percent_per_tick.get(), ticks);
 }
 
 fn reset_mp_regen_clock(mut clock: ResMut<MpRegenClock>) {
@@ -290,15 +284,19 @@ mod tests {
     }
 
     #[test]
-    fn a_tick_restores_one_percent_of_max_but_at_least_one_point() {
+    fn ticks_carry_fractional_mp_instead_of_rounding_each_tick() {
         let balance = MpRegenBalance::default();
         let mut small = member(10, 0, 20);
         regenerate(&mut small, 3, &balance);
-        assert_eq!(small.mana(), 3);
+        assert_eq!(small.mana(), 0);
+        regenerate(&mut small, 2, &balance);
+        assert_eq!(small.mana(), 1);
 
         let mut large = member(10, 0, 640);
         regenerate(&mut large, 2, &balance);
         assert_eq!(large.mana(), 12);
+        regenerate(&mut large, 1, &balance);
+        assert_eq!(large.mana(), 19);
 
         let mut nearly_full = member(10, 19, 20);
         regenerate(&mut nearly_full, 5, &balance);
@@ -310,5 +308,107 @@ mod tests {
         let mut fallen = member(0, 0, 20);
         regenerate(&mut fallen, 10, &MpRegenBalance::default());
         assert_eq!(fallen.mana(), 0);
+    }
+
+    #[test]
+    fn every_pool_size_refills_in_exactly_one_hundred_ticks() {
+        let balance = MpRegenBalance::default();
+        for max_mana in [1, 10, 12, 18, 20, 50, 199, 200, 640, 800, u32::MAX] {
+            let mut actor = member(10, 0, max_mana);
+            for tick in 1..=100 {
+                regenerate(&mut actor, 1, &balance);
+                let expected = (u64::from(max_mana) * tick / 100) as u32;
+                assert_eq!(actor.mana(), expected, "max MP {max_mana}, tick {tick}");
+                assert_eq!(actor.mana() == max_mana, tick == 100);
+            }
+        }
+    }
+
+    #[test]
+    fn fractional_mp_survives_map_changes_and_returning_from_battle() {
+        let balance = MpRegenBalance::default();
+        let mut actor = member(10, 0, 50);
+        let mut clock = started("field");
+        let ticks = clock.advance("field", Vec2::ZERO, 5.0, Some(false), &balance);
+        regenerate(&mut actor, ticks, &balance);
+        assert_eq!(actor.mana(), 0);
+
+        clock.advance("cave", Vec2::ZERO, 0.0, Some(false), &balance);
+        // Returning from battle resets the world clock and synchronizes whole MP only.
+        clock = MpRegenClock::default();
+        actor.sync_battle_pools(10, 0);
+        clock.advance("cave", Vec2::ZERO, 0.0, Some(false), &balance);
+        let ticks = clock.advance("cave", Vec2::ZERO, 5.0, Some(false), &balance);
+        regenerate(&mut actor, ticks, &balance);
+        assert_eq!(actor.mana(), 1);
+    }
+
+    #[test]
+    fn members_keep_independent_fractional_progress() {
+        let balance = MpRegenBalance::default();
+        let mut first = member(10, 0, 50);
+        let mut second = member(10, 0, 20);
+        for _ in 0..5 {
+            regenerate(&mut first, 1, &balance);
+            regenerate(&mut second, 1, &balance);
+        }
+        assert_eq!(first.mana(), 2);
+        assert_eq!(second.mana(), 1);
+    }
+
+    #[test]
+    fn custom_percent_and_batched_ticks_preserve_exact_recovery() {
+        let balance = MpRegenBalance {
+            max_percent_per_tick: rpg_content::scenario_balance::PositiveInteger::new(3).unwrap(),
+            ..MpRegenBalance::default()
+        };
+        let mut batched = member(10, 0, 17);
+        let mut separate = batched.clone();
+        regenerate(&mut batched, 17, &balance);
+        for _ in 0..17 {
+            regenerate(&mut separate, 1, &balance);
+        }
+        assert_eq!(batched.mana(), 8);
+        assert_eq!(batched, separate);
+        regenerate(&mut batched, u32::MAX, &balance);
+        assert_eq!(batched.mana(), 17);
+    }
+
+    #[test]
+    fn full_mp_discards_fractional_credit_and_cannot_bank_recovery() {
+        let balance = MpRegenBalance::default();
+        for recovery in [0, 1, 2] {
+            let mut actor = member(10, 0, 50);
+            regenerate(&mut actor, 1, &balance);
+            match recovery {
+                0 => {
+                    actor.restore_mana(50);
+                }
+                1 => actor.recover_at_inn(),
+                _ => actor.sync_battle_pools(10, 50),
+            }
+            regenerate(&mut actor, 7, &balance);
+            actor.spend_mana(50);
+            regenerate(&mut actor, 1, &balance);
+            assert_eq!(actor.mana(), 0);
+            regenerate(&mut actor, 1, &balance);
+            assert_eq!(actor.mana(), 1);
+        }
+    }
+
+    #[test]
+    fn knockout_pauses_fractional_recovery_and_zero_mp_pools_stay_zero() {
+        let balance = MpRegenBalance::default();
+        let mut actor = member(10, 0, 50);
+        regenerate(&mut actor, 1, &balance);
+        actor.apply_damage(10);
+        regenerate(&mut actor, 1, &balance);
+        actor.revive(1.0);
+        regenerate(&mut actor, 1, &balance);
+        assert_eq!(actor.mana(), 1);
+
+        let mut no_mp = member(10, 0, 0);
+        regenerate(&mut no_mp, 100, &balance);
+        assert_eq!(no_mp.mana(), 0);
     }
 }

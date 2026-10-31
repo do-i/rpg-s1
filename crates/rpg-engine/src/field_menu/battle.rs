@@ -293,6 +293,14 @@ mod tests {
             game.party().member(&id).unwrap().tactics().auto_command(),
             None
         );
+        apply_battle_choice(&mut game, None, member, 4);
+        assert_eq!(
+            game.party().member(&id).unwrap().tactics().auto_command(),
+            Some(AutoCommand::SaveMp)
+        );
+        let (choices, current) = battle_row_choices(&game, &PlayerOptions::default(), member);
+        assert_eq!(current, 4);
+        assert_eq!(choices[current].0, "Auto - Save MP");
 
         let party = game.party().len();
         assert_eq!(battle_row(&game, party), BattleRow::EnemyTurns);

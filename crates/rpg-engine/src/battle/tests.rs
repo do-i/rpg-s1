@@ -1981,6 +1981,39 @@ mod party_ai_tests {
             );
         }
     }
+
+    #[test]
+    fn save_mp_attacks_even_with_castable_offense_or_an_mp_potion() {
+        let ether = consumable("ether");
+        for mana in [0, 1, 40] {
+            let state = state_with(vec![
+                cleric(mana),
+                actor(BattleSide::Enemy, 0, 5, 30),
+                actor(BattleSide::Enemy, 1, 5, 4),
+            ]);
+            for plan in plans(&state, AutoCommand::SaveMp, &[&ether]) {
+                assert_eq!(plan, Some(AutoAction::Attack(CombatantKey::enemy(1))));
+            }
+        }
+    }
+
+    #[test]
+    fn save_mp_still_heals_and_revives_allies() {
+        for (health, index) in [(5, 0), (0, 2)] {
+            let mut ally = actor(BattleSide::Party, 1, 5, 100);
+            ally.health = health;
+            let state = state_with(vec![cleric(40), ally, actor(BattleSide::Enemy, 0, 5, 30)]);
+            for plan in plans(&state, AutoCommand::SaveMp, &[]) {
+                assert_eq!(
+                    plan,
+                    Some(AutoAction::Ability {
+                        index,
+                        targets: vec![CombatantKey::party(1)],
+                    })
+                );
+            }
+        }
+    }
 }
 
 mod experience_split_tests {
