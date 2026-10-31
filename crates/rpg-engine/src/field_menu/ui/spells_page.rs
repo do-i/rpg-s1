@@ -1,4 +1,5 @@
 use super::*;
+use crate::{scenario_class::AbilityElement, spell_images::spawn_spell_image};
 
 #[expect(
     clippy::too_many_arguments,
@@ -110,7 +111,7 @@ pub(in crate::field_menu) fn spawn_spells_page(
                 ) {
                     "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
                 } else if state.mode == FieldMenuMode::SpellList {
-                    "UP/DOWN   SELECT SPELL      ENTER   CAST      LEFT / ESC   CASTER"
+                    "ARROWS   SELECT SPELL      ENTER   CAST WHEN READY      LEFT EDGE / ESC   CASTER"
                 } else {
                     "UP/DOWN   CHANGE CASTER      RIGHT / ENTER   SPELLBOOK      ESC   BACK"
                 },
@@ -250,85 +251,231 @@ pub(in crate::field_menu) fn spawn_spell_list(
                 );
                 return;
             }
+            // Scroll whole grid rows so the two columns never trade places.
             let window = state.scroll.window(
                 "spellbook",
-                selected_index,
-                abilities.len(),
+                selected_index / 2,
+                abilities.len().div_ceil(2),
                 SPELLBOOK_VISIBLE_ROWS,
             );
-            spawn_scroll_list(list, window, scroll_list_node(7.0), |list| {
-                for index in window.indices() {
-                    let ability = &abilities[index];
-                    // The cursor shows only once the spellbook, not the casters, has focus.
-                    let selected = focused && index == selected_index;
-                    let affordable = member.mana() >= ability.mp_cost;
-                    let mut row = list.spawn((
-                        Node {
-                            width: percent(100),
-                            min_height: px(58),
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            padding: UiRect::axes(px(10), px(6)),
-                            border: UiRect::all(px(if selected { 2 } else { 1 })),
-                            border_radius: BorderRadius::all(px(4)),
-                            ..default()
-                        },
-                        selectable_card_colors(selected),
-                        SpellbookRow,
-                    ));
-                    if selected {
-                        row.insert(SelectedSpellbookRow);
-                    }
-                    row.with_children(|row| {
-                        row.spawn((
-                            Node {
-                                width: px(6),
-                                height: px(34),
-                                margin: UiRect::right(px(10)),
-                                ..default()
-                            },
-                            BackgroundColor(spell_accent(ability)),
-                        ));
-                        row.spawn(Node {
-                            flex_grow: 1.0,
-                            flex_direction: FlexDirection::Column,
-                            ..default()
-                        })
-                        .with_children(|copy| {
-                            spawn_status_text(
-                                copy,
-                                &ability.name,
-                                font,
-                                17.0,
-                                if affordable && field_castable(ability) {
-                                    status_ink()
-                                } else {
-                                    status_muted()
-                                },
-                            );
-                            spawn_status_text(
-                                copy,
-                                spell_kind_caption(ability),
-                                font,
-                                12.0,
-                                spell_accent(ability),
-                            );
-                        });
-                        spawn_status_text(
-                            row,
-                            format!("MP  {}", ability.mp_cost),
-                            font,
-                            14.0,
-                            if affordable {
-                                status_teal()
+            spawn_scroll_list(list, window, scroll_list_node(8.0), |list| {
+                for grid_row in window.indices() {
+                    list.spawn(Node {
+                        width: percent(100),
+                        height: px(SPELL_CARD_HEIGHT),
+                        flex_shrink: 0.0,
+                        column_gap: px(12),
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        for column in 0..2 {
+                            let index = grid_row * 2 + column;
+                            if let Some(ability) = abilities.get(index) {
+                                spawn_spell_card(
+                                    row,
+                                    font,
+                                    member,
+                                    ability,
+                                    focused && index == selected_index,
+                                );
                             } else {
-                                status_ember()
-                            },
-                        );
+                                row.spawn(Node {
+                                    flex_basis: px(0),
+                                    flex_grow: 1.0,
+                                    ..default()
+                                });
+                            }
+                        }
                     });
                 }
             });
         });
+}
+
+fn spawn_spell_card(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    member: &crate::runtime_member::RuntimeMember,
+    ability: &Ability,
+    selected: bool,
+) {
+    let affordable = member.mana() >= ability.mp_cost;
+    let mut card = parent.spawn((
+        Node {
+            flex_basis: px(0),
+            flex_grow: 1.0,
+            min_width: px(0),
+            height: percent(100),
+            flex_direction: FlexDirection::Column,
+            padding: UiRect::all(px(4)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(4)),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        selectable_card_colors(selected),
+        SpellbookRow,
+        Name::new(format!("Spell card: {}", ability.id)),
+    ));
+    if selected {
+        card.insert((
+            SelectedSpellbookRow,
+            Outline {
+                width: px(1),
+                offset: px(0),
+                color: status_border_active(),
+            },
+        ));
+    }
+    card.with_children(|card| {
+        card.spawn((
+            Text::new(&ability.name),
+            TextFont {
+                font: font.clone().into(),
+                font_size: FontSize::Px(17.0),
+                ..default()
+            },
+            TextColor(status_ink()),
+            TextLayout::new(Justify::Center, LineBreak::WordBoundary),
+            Node {
+                width: percent(100),
+                height: px(24),
+                flex_shrink: 0.0,
+                ..default()
+            },
+        ));
+        // Only the second row is split: artwork 55%, metadata 45%.
+        card.spawn(Node {
+            width: percent(100),
+            flex_grow: 1.0,
+            min_height: px(0),
+            ..default()
+        })
+        .with_children(|body| {
+            body.spawn(Node {
+                width: percent(55),
+                height: percent(100),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            })
+            .with_children(|art| spawn_spell_image(art, &ability.id, 88.0));
+            body.spawn(Node {
+                width: percent(45),
+                height: percent(100),
+                padding: UiRect::right(px(10)),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceEvenly,
+                ..default()
+            })
+            .with_children(|meta| {
+                spawn_centered_spell_text(
+                    meta,
+                    font,
+                    format!("MP {}", ability.mp_cost),
+                    14.0,
+                    if affordable {
+                        status_teal()
+                    } else {
+                        status_ember()
+                    },
+                );
+                spawn_spell_element_pill(meta, font, ability);
+                spawn_centered_spell_text(
+                    meta,
+                    font,
+                    spell_availability(ability, affordable),
+                    11.0,
+                    if field_castable(ability) && affordable {
+                        status_teal()
+                    } else {
+                        status_muted()
+                    },
+                );
+            });
+        });
+    });
+}
+
+fn spawn_centered_spell_text(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    text: impl Into<String>,
+    size: f32,
+    color: Color,
+) {
+    parent.spawn((
+        Text::new(text),
+        TextFont {
+            font: font.clone().into(),
+            font_size: FontSize::Px(size),
+            ..default()
+        },
+        TextColor(color),
+        TextLayout::new(Justify::Center, LineBreak::NoWrap),
+    ));
+}
+
+fn spell_availability(ability: &Ability, affordable: bool) -> &'static str {
+    if !field_castable(ability) {
+        "BATTLE ONLY"
+    } else if affordable {
+        "READY"
+    } else {
+        "LOW MP"
+    }
+}
+
+fn spell_element(ability: &Ability) -> (&'static str, Color, Color) {
+    let element = match &ability.kind {
+        AbilityKind::Spell(value) => Some(value.element),
+        AbilityKind::Heal(value) => value.element,
+        AbilityKind::Buff(value) => value.element,
+        _ => None,
+    };
+    let (label, ink, background) = match element {
+        Some(AbilityElement::Fire) => ("FIRE", (239, 170, 118), (68, 43, 35)),
+        Some(AbilityElement::Water) => ("WATER", (143, 200, 242), (36, 55, 71)),
+        Some(AbilityElement::Wind) => ("WIND", (137, 211, 188), (36, 61, 53)),
+        Some(AbilityElement::Earth) => ("EARTH", (221, 189, 128), (64, 54, 38)),
+        Some(AbilityElement::Holy) => ("HOLY", (239, 220, 158), (65, 57, 35)),
+        None => match ability.kind {
+            AbilityKind::Heal(_) => ("HEAL", (137, 211, 188), (36, 61, 53)),
+            AbilityKind::Utility(UtilityAbility::Warp { .. }) => {
+                ("TRAVEL", (186, 165, 239), (48, 39, 69))
+            }
+            _ => ("UTILITY", (184, 174, 142), (49, 46, 39)),
+        },
+    };
+    (
+        label,
+        Color::srgb_u8(ink.0, ink.1, ink.2),
+        Color::srgb_u8(background.0, background.1, background.2),
+    )
+}
+
+fn spawn_spell_element_pill(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    ability: &Ability,
+) {
+    let (label, ink, background) = spell_element(ability);
+    parent
+        .spawn((
+            Node {
+                width: px(68),
+                max_width: percent(100),
+                height: px(23),
+                flex_shrink: 0.0,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border_radius: BorderRadius::all(px(12)),
+                ..default()
+            },
+            BackgroundColor(background),
+        ))
+        .with_children(|pill| spawn_centered_spell_text(pill, font, label, 11.0, ink));
 }
 
 pub(in crate::field_menu) fn spawn_spell_detail(
@@ -363,31 +510,42 @@ pub(in crate::field_menu) fn spawn_spell_detail(
                 return;
             };
             let affordable = member.mana() >= ability.mp_cost;
-            spawn_status_text(detail, &ability.name, font, 25.0, status_gold());
-            spawn_status_text(
-                detail,
-                format!(
-                    "{}    MP {}    {}",
-                    spell_kind_label(ability),
-                    ability.mp_cost,
-                    if !field_castable(ability) {
-                        "BATTLE ONLY"
-                    } else if affordable {
-                        "READY"
-                    } else {
-                        "LOW MP"
-                    }
-                ),
-                font,
-                13.0,
-                if !field_castable(ability) {
-                    status_muted()
-                } else if affordable {
-                    status_teal()
-                } else {
-                    status_ember()
-                },
-            );
+            detail
+                .spawn(Node {
+                    width: percent(100),
+                    min_height: px(128),
+                    flex_shrink: 0.0,
+                    column_gap: px(12),
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|header| {
+                    spawn_spell_image(header, &ability.id, 128.0);
+                    header
+                        .spawn(Node {
+                            flex_basis: px(0),
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(12),
+                            ..default()
+                        })
+                        .with_children(|copy| {
+                            spawn_status_text(copy, &ability.name, font, 25.0, status_gold());
+                            spawn_spell_element_pill(copy, font, ability);
+                            spawn_status_text(
+                                copy,
+                                format!("MP {}", ability.mp_cost),
+                                font,
+                                17.0,
+                                if affordable {
+                                    status_teal()
+                                } else {
+                                    status_ember()
+                                },
+                            );
+                        });
+                });
             spawn_section_rule(detail);
             spawn_status_text(detail, &ability.description, font, 16.0, status_ink());
             spawn_section_rule(detail);
@@ -400,10 +558,29 @@ pub(in crate::field_menu) fn spawn_spell_detail(
             );
             spawn_status_text(
                 detail,
-                "ENTER  -  CAST",
+                spell_availability(ability, affordable),
                 font,
                 14.0,
-                if affordable {
+                if field_castable(ability) && affordable {
+                    status_teal()
+                } else {
+                    status_muted()
+                },
+            );
+            spawn_status_text(
+                detail,
+                if !field_castable(ability) {
+                    "Cannot cast from the field."
+                } else if !affordable {
+                    "Not enough MP."
+                } else if crate::field_menu_domain::heals_whole_party(ability) {
+                    "ENTER  -  CAST ON PARTY"
+                } else {
+                    "ENTER  -  CHOOSE TARGET"
+                },
+                font,
+                14.0,
+                if field_castable(ability) && affordable {
                     status_teal()
                 } else {
                     status_muted()
@@ -568,27 +745,6 @@ pub(in crate::field_menu) fn selected_spell_index(
         .unwrap_or(0)
 }
 
-pub(in crate::field_menu) fn spell_kind_label(ability: &Ability) -> &'static str {
-    match &ability.kind {
-        AbilityKind::Physical(_) => "ENCHANTED STRIKE",
-        AbilityKind::Spell(_) => "ELEMENTAL SPELL",
-        AbilityKind::Heal(_) => "HEALING RITE",
-        AbilityKind::Buff(_) => "WARDING SIGIL",
-        AbilityKind::Debuff(_) => "HEX",
-        AbilityKind::Utility(UtilityAbility::Warp { .. }) => "TRAVEL CHARM",
-        AbilityKind::Utility(_) => "MINOR CHARM",
-    }
-}
-
-/// The spellbook row's caption: the kind, flagged when it can't be cast from the field.
-fn spell_kind_caption(ability: &Ability) -> String {
-    if !field_castable(ability) {
-        format!("{}  /  BATTLE ONLY", spell_kind_label(ability))
-    } else {
-        spell_kind_label(ability).to_owned()
-    }
-}
-
 pub(in crate::field_menu) fn spell_target_label(ability: &Ability) -> &'static str {
     match &ability.kind {
         AbilityKind::Physical(value) => ability_target_label(value.target),
@@ -614,18 +770,6 @@ pub(in crate::field_menu) fn ability_target_label(
         AbilityTarget::SingleAlly => "TARGET  ONE ALLY",
         AbilityTarget::SelfTarget => "TARGET  SELF",
         AbilityTarget::AllAllies => "TARGET  ALL ALLIES",
-    }
-}
-
-pub(in crate::field_menu) fn spell_accent(ability: &Ability) -> Color {
-    match &ability.kind {
-        AbilityKind::Heal(_) => status_teal(),
-        AbilityKind::Utility(UtilityAbility::Warp { .. }) => status_violet(),
-        AbilityKind::Utility(_) => Color::srgb_u8(91, 143, 183),
-        AbilityKind::Spell(_) => Color::srgb_u8(90, 146, 212),
-        AbilityKind::Buff(_) => Color::srgb_u8(120, 190, 130),
-        AbilityKind::Debuff(_) => status_ember(),
-        AbilityKind::Physical(_) => status_gold(),
     }
 }
 

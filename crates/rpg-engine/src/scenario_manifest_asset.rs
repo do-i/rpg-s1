@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn malformed_manifest_fails_with_relative_context_and_publishes_nothing() {
         let malformed = invented_manifest().replacen(
-            "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
+            "  image: media/images/title_bg/title_lost_flame.webp\n",
             "",
             1,
         );
@@ -281,7 +281,7 @@ mod tests {
         assert_eq!(failure.package_key(), "broken_campaign");
         assert_eq!(failure.scenario_relative_path(), "manifest.yaml");
         assert!(failure.cause().starts_with("manifest YAML is invalid: "));
-        assert!(failure.cause().contains("title.cursor_icon"));
+        assert!(failure.cause().contains("title.image"));
         assert!(failure.cause().contains("line 8 column 3"));
         assert!(
             failure

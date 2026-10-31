@@ -12,8 +12,8 @@ pub(super) fn calculate_turn_order(combatants: &[BattleCombatant]) -> Vec<Combat
         .collect::<Vec<_>>();
     actors.sort_by(|left, right| {
         right
-            .dexterity
-            .cmp(&left.dexterity)
+            .effective_speed()
+            .cmp(&left.effective_speed())
             .then_with(|| side_priority(left.key.side).cmp(&side_priority(right.key.side)))
             .then_with(|| left.key.index.cmp(&right.key.index))
     });

@@ -718,6 +718,12 @@
   description: "A black sword carried by a headless rider. No smith dares reforge it."
 
 # Crafting herbs
+- id: ivory_blossom
+  name: Ivory Blossom
+  type: material
+  sell_price: 80
+  description: "A pale flower gathered from Pumpkin Jack. Its petals restore vitality in revival draughts."
+
 - id: herb_red
   name: Red Herb
   type: material

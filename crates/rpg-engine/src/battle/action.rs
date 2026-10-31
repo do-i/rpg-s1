@@ -89,4 +89,8 @@ pub(super) enum BattleEvent {
         amount: u32,
         knocked_out: bool,
     },
+    StatusHeal {
+        target: CombatantKey,
+        amount: u32,
+    },
 }

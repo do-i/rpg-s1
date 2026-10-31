@@ -144,7 +144,7 @@ mod tests {
                 .get_path(handle.id())
                 .unwrap()
                 .to_string(),
-            scenario_asset!("media/images/items/potion.png")
+            scenario_asset!("media/images/icons/items/potion.png")
         );
 
         let deadline = Instant::now() + Duration::from_secs(5);

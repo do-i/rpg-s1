@@ -1,6 +1,85 @@
 use super::*;
 use crate::item_images::{ITEM_IMAGE_SIZE, ItemIcon, spawn_item_icon, spawn_item_image};
 
+/// Scenario-relative artwork attached after the page's nodes have been spawned.
+#[derive(Component)]
+pub(in crate::field_menu) struct ItemsMenuIcon {
+    path: &'static str,
+    opacity: f32,
+}
+
+pub(in crate::field_menu) fn resolve_items_menu_icons(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    root: Res<ScenarioRoot>,
+    icons: Query<(Entity, &ItemsMenuIcon), Without<ImageNode>>,
+) {
+    for (entity, icon) in &icons {
+        if let Some(image) = load_status_image(&asset_server, &root, icon.path) {
+            commands.entity(entity).insert(ImageNode {
+                color: Color::WHITE.with_alpha(icon.opacity),
+                ..ImageNode::new(image)
+            });
+        }
+    }
+}
+
+pub(in crate::field_menu) fn spawn_items_menu_icon(
+    parent: &mut ChildSpawnerCommands<'_>,
+    path: &'static str,
+    size: f32,
+    gap: f32,
+) {
+    spawn_items_menu_icon_with_opacity(parent, path, size, gap, 1.0);
+}
+
+pub(in crate::field_menu) fn spawn_items_menu_icon_with_opacity(
+    parent: &mut ChildSpawnerCommands<'_>,
+    path: &'static str,
+    size: f32,
+    gap: f32,
+    opacity: f32,
+) {
+    parent.spawn((
+        ItemsMenuIcon { path, opacity },
+        Node {
+            width: px(size),
+            height: px(size),
+            flex_shrink: 0.0,
+            margin: UiRect::right(px(gap)),
+            ..default()
+        },
+        Name::new(format!("Items menu icon: {path}")),
+    ));
+}
+
+fn pouch_icon_path(tab: InventoryTab) -> &'static str {
+    match tab {
+        InventoryTab::All | InventoryTab::New => "media/images/icons/menu/items.png",
+        InventoryTab::Recovery => "media/images/icons/categories/consumable.png",
+        InventoryTab::Status => "media/images/icons/menu/status.png",
+        InventoryTab::Battle => "media/images/icons/slots/weapon.png",
+        InventoryTab::Equipment => "media/images/icons/menu/equipment.png",
+        InventoryTab::Material => "media/images/icons/categories/material.png",
+        InventoryTab::Core => "media/images/icons/categories/magic_core.png",
+        InventoryTab::Key => "media/images/icons/categories/key.png",
+    }
+}
+
+fn item_category_icon_path(item: &ItemDefinition) -> &'static str {
+    match item {
+        ItemDefinition::Consumable(_) => "media/images/icons/categories/consumable.png",
+        ItemDefinition::Material(_) => "media/images/icons/categories/material.png",
+        ItemDefinition::Key(_) => "media/images/icons/categories/key.png",
+        ItemDefinition::MagicCore(_) => "media/images/icons/categories/magic_core.png",
+        ItemDefinition::Weapon(_) => "media/images/icons/slots/weapon.png",
+        ItemDefinition::Shield(_) => "media/images/icons/slots/shield.png",
+        ItemDefinition::Helmet(_) => "media/images/icons/slots/helmet.png",
+        ItemDefinition::Body(_) => "media/images/icons/slots/body.png",
+        ItemDefinition::Accessory(_) => "media/images/icons/slots/accessory.png",
+    }
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "the items page coordinates the shared menu root and live inventory catalog"
@@ -80,6 +159,8 @@ pub(in crate::field_menu) fn spawn_items_page(
             page.spawn(Node {
                 width: percent(100),
                 flex_grow: 1.0,
+                flex_basis: px(0),
+                min_height: px(0),
                 flex_direction: FlexDirection::Row,
                 column_gap: px(ITEMS_COLUMN_GAP),
                 ..default()
@@ -150,7 +231,7 @@ pub(in crate::field_menu) fn spawn_items_header(
             ..default()
         })
         .with_children(|header| {
-            spawn_header_bars(header, 46.0, 15.0);
+            spawn_items_menu_icon(header, "media/images/icons/menu/items.png", 46.0, 15.0);
             header
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,
@@ -167,6 +248,7 @@ pub(in crate::field_menu) fn spawn_items_header(
                         status_muted(),
                     );
                 });
+            spawn_items_menu_icon(header, "media/images/icons/stats/gold.png", 24.0, 7.0);
             spawn_status_text(header, format!("GP  {gp}"), font, 18.0, status_gold());
         });
 }
@@ -214,19 +296,7 @@ pub(in crate::field_menu) fn spawn_pouch_column(
                         ItemPouchRow,
                     ))
                     .with_children(|row| {
-                        row.spawn((
-                            Node {
-                                width: px(5),
-                                height: px(28),
-                                margin: UiRect::right(px(10)),
-                                ..default()
-                            },
-                            BackgroundColor(if selected {
-                                status_ember()
-                            } else {
-                                status_border()
-                            }),
-                        ));
+                        spawn_items_menu_icon(row, pouch_icon_path(tab), 24.0, 10.0);
                         row.spawn(Node {
                             flex_grow: 1.0,
                             ..default()
@@ -269,6 +339,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
         parent,
         Node {
             height: percent(100),
+            min_height: px(0),
             flex_basis: px(0),
             flex_grow: 1.0,
             flex_direction: FlexDirection::Column,
@@ -295,7 +366,19 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 return;
             }
             let window = inventory_window(state, ids.len(), list_index);
-            spawn_scroll_list(panel, window, scroll_list_node(5.0), |panel| {
+            // Eight equal tracks fill the available height and keep short lists the same size.
+            let cards_node = Node {
+                display: Display::Grid,
+                width: percent(100),
+                flex_grow: 1.0,
+                flex_basis: px(0),
+                min_height: px(0),
+                grid_template_rows: RepeatedGridTrack::flex(INVENTORY_PAGE_ROWS as u16, 1.0),
+                grid_template_columns: RepeatedGridTrack::flex(1, 1.0),
+                row_gap: px(5),
+                ..default()
+            };
+            spawn_scroll_list(panel, window, cards_node, |panel| {
                 for index in window.indices() {
                     let id = &ids[index];
                     let item = catalog.item(id).expect("filtered inventory item exists");
@@ -320,15 +403,6 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                     }
                     row.with_children(|row| {
                         spawn_item_icon(row, id, 48.0);
-                        row.spawn((
-                            Node {
-                                width: px(5),
-                                height: px(24),
-                                margin: UiRect::right(px(9)),
-                                ..default()
-                            },
-                            BackgroundColor(item_accent(item)),
-                        ));
                         row.spawn(Node {
                             flex_grow: 1.0,
                             ..default()
@@ -668,12 +742,22 @@ pub(in crate::field_menu) fn spawn_item_chips(
             width: percent(100),
             flex_direction: FlexDirection::Row,
             flex_wrap: FlexWrap::Wrap,
+            align_items: AlignItems::Center,
             column_gap: px(7),
             row_gap: px(7),
             ..default()
         })
         .with_children(|chips| {
-            spawn_item_chip(chips, font, item_kind_label(item), item_accent(item));
+            chips
+                .spawn(Node {
+                    align_items: AlignItems::Center,
+                    column_gap: px(7),
+                    ..default()
+                })
+                .with_children(|category| {
+                    spawn_items_menu_icon(category, item_category_icon_path(item), 24.0, 0.0);
+                    spawn_item_chip(category, font, item_kind_label(item), item_accent(item));
+                });
             if catalog.field_use(id).is_some() {
                 spawn_item_chip(chips, font, "FIELD USE", status_teal());
             }

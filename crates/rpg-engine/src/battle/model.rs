@@ -188,6 +188,14 @@ impl BattleCombatant {
     pub(super) fn apply_resolved_damage(&mut self, amount: u32) -> u32 {
         let actual = amount.min(self.health);
         self.health -= actual;
+        if !self.is_alive() {
+            self.status_effects.retain(|status| {
+                !matches!(
+                    status.effect,
+                    StatusEffect::Haste | StatusEffect::Slow | StatusEffect::Regen
+                )
+            });
+        }
         if actual > 0 {
             self.remove_status(StatusEffect::Sleep);
         }
@@ -233,6 +241,15 @@ impl BattleCombatant {
             && status.effect.is_harmful()
         {
             return false;
+        }
+        match status.effect {
+            StatusEffect::Haste => {
+                self.remove_status(StatusEffect::Slow);
+            }
+            StatusEffect::Slow => {
+                self.remove_status(StatusEffect::Haste);
+            }
+            _ => {}
         }
         if let Some(current) = self
             .status_effects
@@ -329,6 +346,17 @@ impl BattleCombatant {
     }
 
     pub(super) fn tick_statuses(&mut self) -> StatusTick {
+        let healing = self
+            .status_effects
+            .iter()
+            .filter_map(|status| {
+                if let StatusPotency::HealingPercent(percent) = status.potency {
+                    Some(((f64::from(self.max_health) * percent) as u32).max(1))
+                } else {
+                    None
+                }
+            })
+            .fold(0_u32, u32::saturating_add);
         let damage = self
             .status_effects
             .iter()
@@ -339,6 +367,9 @@ impl BattleCombatant {
             .fold(0_u32, u32::saturating_add);
         let before = self.status_effects.len();
         for status in &mut self.status_effects {
+            if matches!(status.effect, StatusEffect::Haste | StatusEffect::Slow) {
+                continue;
+            }
             if let Some(turns) = status.remaining_turns.as_mut() {
                 *turns = turns.saturating_sub(1);
             }
@@ -347,7 +378,42 @@ impl BattleCombatant {
             .retain(|status| status.remaining_turns != Some(0));
         let expired = u32::try_from(before - self.status_effects.len()).unwrap_or(u32::MAX);
         let damage = self.apply_damage(damage);
-        StatusTick { damage, expired }
+        let healing = self.apply_heal(healing);
+        StatusTick {
+            damage,
+            healing,
+            expired,
+        }
+    }
+
+    pub(super) fn effective_speed(&self) -> i64 {
+        let multiplier = self
+            .status_effects
+            .iter()
+            .filter(|status| {
+                !status.starts_next_round
+                    && matches!(status.effect, StatusEffect::Haste | StatusEffect::Slow)
+            })
+            .filter_map(|status| match status.potency {
+                StatusPotency::Multiplier(value) => Some(value),
+                _ => None,
+            })
+            .product::<f64>();
+        ((self.dexterity as f64 * multiplier) as i64).max(0)
+    }
+
+    pub(super) fn begin_next_round(&mut self) {
+        for status in &mut self.status_effects {
+            if matches!(status.effect, StatusEffect::Haste | StatusEffect::Slow) {
+                if status.starts_next_round {
+                    status.starts_next_round = false;
+                } else if let Some(turns) = status.remaining_turns.as_mut() {
+                    *turns = turns.saturating_sub(1);
+                }
+            }
+        }
+        self.status_effects
+            .retain(|status| status.remaining_turns != Some(0));
     }
 }
 
@@ -366,6 +432,7 @@ impl StatusEffect {
                 | Self::DefenseModifier
                 | Self::MagicResistanceModifier
                 | Self::HitChanceModifier
+                | Self::Slow
         )
     }
 }

@@ -2,6 +2,7 @@ use crate::{
     battle_log::LogKind,
     encounter::BattleSide,
     gameplay_rng::GameplayRng,
+    scenario_class::{BuffEffect, EffectTarget, OngoingEffect},
     scenario_enemy::{
         AbilityHitOutcome, AccessoryBlockedTargetOverride, EnemyAiPattern, EnemyBehavior,
         EnemyDefaultTarget, EnemyMove, EnemyMoveCondition, EnemyOverrideTarget,
@@ -231,6 +232,52 @@ pub(super) fn resolve_enemy_ability(
     rng: &mut GameplayRng,
 ) {
     let mut events = Vec::new();
+    let configured_effect = inline_behavior(source).and_then(|(ai, _)| {
+        ai.moves.iter().find_map(|movement| match movement {
+            EnemyMove::Ability {
+                id,
+                effect: Some(effect),
+                ..
+            } if id == ability_id => Some(effect),
+            _ => None,
+        })
+    });
+    if let Some(effect) = configured_effect {
+        let (target_plan, buff) = match effect {
+            OngoingEffect::Modifier(value) => {
+                (value.target, BuffEffect::StatModifier(value.clone()))
+            }
+            OngoingEffect::Regeneration(value) => {
+                (value.target, BuffEffect::Regeneration(value.clone()))
+            }
+        };
+        let allies = matches!(
+            target_plan,
+            EffectTarget::Party | EffectTarget::SelfTarget | EffectTarget::SingleAlly
+        );
+        let eligible = state
+            .combatants
+            .iter()
+            .filter(|actor| actor.is_alive() && (actor.key.side == source.key.side) == allies)
+            .map(|actor| actor.key)
+            .collect::<Vec<_>>();
+        let chosen = match target_plan {
+            EffectTarget::SelfTarget => vec![source.key],
+            EffectTarget::Party | EffectTarget::AllEnemies => eligible,
+            EffectTarget::SingleAlly | EffectTarget::SingleEnemy => targets
+                .iter()
+                .copied()
+                .find(|target| eligible.contains(target))
+                .or_else(|| eligible.first().copied())
+                .into_iter()
+                .collect(),
+        };
+        for target in &chosen {
+            super::ability::apply_buff(state, source.key, *target, &buff, &mut events);
+        }
+        finish_enemy_ability(state, source, ability_id, &chosen, &events);
+        return;
+    }
     for &requested_target in targets {
         let target = state
             .actor(requested_target)
@@ -291,8 +338,18 @@ pub(super) fn resolve_enemy_ability(
             }
         }
     }
+    finish_enemy_ability(state, source, ability_id, targets, &events);
+}
+
+fn finish_enemy_ability(
+    state: &mut BattleState,
+    source: &BattleCombatant,
+    ability_id: &str,
+    targets: &[CombatantKey],
+    events: &[BattleEvent],
+) {
     state.feedback_events.extend(events.iter().copied());
-    let summary = state.damage_summary(&events);
+    let summary = state.damage_summary(events);
     state.announce(
         LogKind::Ability,
         format!(

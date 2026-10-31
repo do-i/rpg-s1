@@ -6,7 +6,7 @@ window_title: "Rusted Kingdoms"
 
 title:
   image: media/images/title_bg/title_lost_flame.webp
-  cursor_icon: media/images/icons/arrow-head-right.webp
+  cursor_icon: test-assets/cursor.webp
 font:
   path: media/fonts/Philosopher-Regular.ttf
 ui:
@@ -15,9 +15,9 @@ ui:
 apothecary:
   sprite: media/sprites/npc/female_wiz_01.tsx
   icons:
-    locked: media/images/icons/lock-locked-red-small.webp
-    ready: media/images/icons/lock-unlocked-green-small.webp
-    missing: media/images/icons/lock-unlocked-yellow-small.webp
+    locked: test-assets/locked.webp
+    ready: test-assets/ready.webp
+    missing: test-assets/missing.webp
 inn:
   sprite: media/sprites/npc/female_blue_01.tsx
 item_shop:

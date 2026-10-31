@@ -314,9 +314,15 @@ drops:
           weight: 55
         - item: silence_dust
           weight: 45
+        - item: ivory_blossom
+          weight: 25
 ai:
   pattern: random
   moves:
+    - action: ability
+      id: slow
+      weight: 20
+      effect: { target: single_enemy, stat: speed, modifier: 0.50, duration_turns: 3 }
     - action: attack
       weight: 50
     - action: ability

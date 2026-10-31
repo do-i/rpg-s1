@@ -145,16 +145,9 @@ fn directory_reference<'a>(
 pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReference<'_>> {
     let mut references = vec![
         file_reference("title.image", &manifest.title.image),
-        file_reference("title.cursor_icon", &manifest.title.cursor_icon),
         file_reference("font.path", &manifest.font.path),
         file_reference("ui.menu_backdrop", &manifest.ui.menu_backdrop),
         file_reference("apothecary.sprite", &manifest.apothecary.sprite),
-        file_reference("apothecary.icons.locked", &manifest.apothecary.icons.locked),
-        file_reference("apothecary.icons.ready", &manifest.apothecary.icons.ready),
-        file_reference(
-            "apothecary.icons.missing",
-            &manifest.apothecary.icons.missing,
-        ),
         file_reference("inn.sprite", &manifest.inn.sprite),
         file_reference("item_shop.sprite", &manifest.item_shop.sprite),
         file_reference("weapon_shop.sprite", &manifest.weapon_shop.sprite),
@@ -176,15 +169,39 @@ pub fn manifest_path_references(manifest: &Manifest) -> Vec<ManifestPathReferenc
         directory_reference("refs.assets", &manifest.refs.assets),
         directory_reference("refs.tmx", &manifest.refs.tmx),
     ];
+    if let Some(cursor) = &manifest.title.cursor_icon {
+        references.insert(1, file_reference("title.cursor_icon", cursor));
+    }
+    if let Some(icons) = &manifest.apothecary.icons {
+        let index = references
+            .iter()
+            .position(|reference| reference.field_path == "inn.sprite")
+            .expect("the inn sprite reference is always present");
+        references.splice(
+            index..index,
+            [
+                file_reference("apothecary.icons.locked", &icons.locked),
+                file_reference("apothecary.icons.ready", &icons.ready),
+                file_reference("apothecary.icons.missing", &icons.missing),
+            ],
+        );
+    }
     if let Some(path) = &manifest.refs.item_boxes {
         references.push(file_reference("refs.item_boxes", path));
     }
     if let Some(transport) = &manifest.refs.transport {
-        references.insert(15, file_reference("refs.transport", transport));
+        let index = references
+            .iter()
+            .position(|reference| reference.field_path == "refs.party")
+            .expect("the party reference is always present");
+        references.insert(index, file_reference("refs.transport", transport));
     }
-    // After the transport insert, whose index counts from the unshifted list.
     if let Some(menu_icons) = &manifest.ui.menu_icons {
-        references.insert(4, file_reference("ui.menu_icons", menu_icons));
+        let index = references
+            .iter()
+            .position(|reference| reference.field_path == "ui.menu_backdrop")
+            .expect("the menu backdrop reference is always present");
+        references.insert(index + 1, file_reference("ui.menu_icons", menu_icons));
     }
     for variant in &manifest.protagonist.sprite_variants {
         references.push(file_reference(
@@ -311,28 +328,16 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 ("title.image", "media/images/title_bg/title_lost_flame.webp"),
-                (
-                    "title.cursor_icon",
-                    "media/images/icons/arrow-head-right.webp"
-                ),
+                ("title.cursor_icon", "test-assets/cursor.webp"),
                 ("font.path", "media/fonts/Philosopher-Regular.ttf"),
                 (
                     "ui.menu_backdrop",
                     "media/images/battle_bg/zone4-sanctum-bg-1280x468.webp"
                 ),
                 ("apothecary.sprite", "media/sprites/npc/female_wiz_01.tsx"),
-                (
-                    "apothecary.icons.locked",
-                    "media/images/icons/lock-locked-red-small.webp"
-                ),
-                (
-                    "apothecary.icons.ready",
-                    "media/images/icons/lock-unlocked-green-small.webp"
-                ),
-                (
-                    "apothecary.icons.missing",
-                    "media/images/icons/lock-unlocked-yellow-small.webp"
-                ),
+                ("apothecary.icons.locked", "test-assets/locked.webp"),
+                ("apothecary.icons.ready", "test-assets/ready.webp"),
+                ("apothecary.icons.missing", "test-assets/missing.webp"),
                 ("inn.sprite", "media/sprites/npc/female_blue_01.tsx"),
                 (
                     "item_shop.sprite",
@@ -381,11 +386,30 @@ mod tests {
     }
 
     #[test]
+    fn omitted_optional_icons_create_no_path_references() {
+        let document = include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
+            .replace("  cursor_icon: test-assets/cursor.webp\n", "")
+            .replace(
+                "  icons:\n    locked: test-assets/locked.webp\n    ready: test-assets/ready.webp\n    missing: test-assets/missing.webp\n",
+                "",
+            );
+        let manifest: Manifest = crate::scenario_yaml::from_str(&document).unwrap();
+        assert!(manifest.title.cursor_icon.is_none());
+        assert!(manifest.apothecary.icons.is_none());
+        let references = manifest_path_references(&manifest);
+        assert_eq!(references.len(), 24);
+        assert!(references.iter().all(|reference| {
+            reference.field_path != "title.cursor_icon"
+                && !reference.field_path.starts_with("apothecary.icons.")
+        }));
+    }
+
+    #[test]
     fn reports_a_missing_file_with_its_owner_and_scenario_relative_path() {
         let manifest = manifest();
         let mut probe = successful_probe(&manifest);
         probe.0.insert(
-            "media/images/icons/arrow-head-right.webp".to_owned(),
+            "test-assets/cursor.webp".to_owned(),
             ScenarioPathProbeResult::Missing,
         );
         let results = validate_manifest_paths(&manifest, &probe);
@@ -397,7 +421,7 @@ mod tests {
         assert_eq!(missing.result, ManifestPathValidationResult::Missing);
         assert_eq!(
             missing.to_string(),
-            "title.cursor_icon: media/images/icons/arrow-head-right.webp: expected file but it is missing"
+            "title.cursor_icon: test-assets/cursor.webp: expected file but it is missing"
         );
     }
 

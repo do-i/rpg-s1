@@ -113,6 +113,7 @@ pub(super) fn target_plan(ability: &Ability) -> AbilityTargetPlan {
 fn buff_target(effect: &BuffEffect) -> EffectTarget {
     match effect {
         BuffEffect::StatModifier(value) => value.target,
+        BuffEffect::Regeneration(value) => value.target,
         BuffEffect::Aggro(value) => value.target,
         BuffEffect::RedirectDamage(value) => value.target,
         BuffEffect::DamageReduction(value) => value.target,
@@ -491,7 +492,7 @@ fn apply_side_effects(
     }
 }
 
-fn apply_buff(
+pub(super) fn apply_buff(
     state: &mut BattleState,
     source: CombatantKey,
     target: CombatantKey,
@@ -500,6 +501,9 @@ fn apply_buff(
 ) {
     let status = match effect {
         BuffEffect::StatModifier(value) => status_from_modifier(value),
+        BuffEffect::Regeneration(value) => {
+            ActiveStatus::regeneration(value.duration_turns.get(), value.regen_hp_pct.get())
+        }
         BuffEffect::Aggro(value) => {
             ActiveStatus::timed(StatusEffect::Taunt, value.duration_turns.get())
         }
@@ -525,6 +529,9 @@ fn apply_modifier(
 
 fn status_from_modifier(effect: &StatModifierEffect) -> ActiveStatus {
     let status = match effect.stat {
+        EffectStat::Speed => {
+            return ActiveStatus::speed(effect.duration_turns.get(), effect.modifier.get());
+        }
         EffectStat::Attack => StatusEffect::AttackModifier,
         EffectStat::Defense => StatusEffect::DefenseModifier,
         EffectStat::MagicResistance => StatusEffect::MagicResistanceModifier,

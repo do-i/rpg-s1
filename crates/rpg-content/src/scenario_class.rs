@@ -228,10 +228,11 @@ pub enum WarpMode {
     Select,
 }
 
-/// The four closed effect mappings accepted by current buff abilities.
+/// The closed effect mappings accepted by buff abilities.
 #[derive(Clone, Debug, PartialEq)]
 pub enum BuffEffect {
     StatModifier(StatModifierEffect),
+    Regeneration(RegenerationEffect),
     Aggro(AggroEffect),
     RedirectDamage(RedirectDamageEffect),
     DamageReduction(DamageReductionEffect),
@@ -242,6 +243,7 @@ pub enum BuffEffect {
 #[serde(untagged)]
 enum AbilityEffectDocument {
     StatModifier(StatModifierEffect),
+    Regeneration(RegenerationEffect),
     RemoveStatus(RemoveStatusEffect),
     Aggro(AggroEffect),
     RedirectDamage(RedirectDamageEffect),
@@ -255,6 +257,36 @@ pub struct StatModifierEffect {
     pub stat: EffectStat,
     pub modifier: PositiveFinite,
     pub duration_turns: NonZeroU32,
+}
+
+/// Shared by player buffs and explicitly authored enemy support moves.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct RegenerationEffect {
+    pub target: EffectTarget,
+    #[serde(deserialize_with = "deserialize_regeneration_percent")]
+    pub regen_hp_pct: UnitInterval,
+    pub duration_turns: NonZeroU32,
+}
+
+fn deserialize_regeneration_percent<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<UnitInterval, D::Error> {
+    let percent = UnitInterval::deserialize(deserializer)?;
+    if percent.get() == 0.0 {
+        return Err(serde::de::Error::custom(
+            "regen_hp_pct must be greater than zero",
+        ));
+    }
+    Ok(percent)
+}
+
+/// Enemy moves may apply these effects without dealing incidental attack damage.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum OngoingEffect {
+    Modifier(StatModifierEffect),
+    Regeneration(RegenerationEffect),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -302,6 +334,7 @@ pub enum EffectTarget {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EffectStat {
+    Speed,
     #[serde(rename = "atk")]
     Attack,
     #[serde(rename = "def")]
@@ -768,6 +801,7 @@ impl AbilityFields {
         )?;
         let effect = match self.effect.required("buff", "effect")? {
             AbilityEffectDocument::StatModifier(effect) => BuffEffect::StatModifier(effect),
+            AbilityEffectDocument::Regeneration(effect) => BuffEffect::Regeneration(effect),
             AbilityEffectDocument::Aggro(effect) => BuffEffect::Aggro(effect),
             AbilityEffectDocument::RedirectDamage(effect) => BuffEffect::RedirectDamage(effect),
             AbilityEffectDocument::DamageReduction(effect) => BuffEffect::DamageReduction(effect),
@@ -1259,6 +1293,35 @@ mod tests {
     }
 
     #[test]
+    fn ongoing_effects_validate_speed_regeneration_and_duration() {
+        for mapping in [
+            "{ target: single_ally, stat: speed, modifier: 1.5, duration_turns: 3 }",
+            "{ target: single_enemy, stat: speed, modifier: 0.5, duration_turns: 3 }",
+            "{ target: party, regen_hp_pct: 0.05, duration_turns: 3 }",
+        ] {
+            assert!(
+                scenario_yaml::from_str::<OngoingEffect>(mapping).is_ok(),
+                "{mapping}"
+            );
+        }
+        for mapping in [
+            "{ target: self, stat: speed, modifier: 0, duration_turns: 3 }",
+            "{ target: self, stat: speed, modifier: -1, duration_turns: 3 }",
+            "{ target: self, stat: speed, modifier: 1.5, duration_turns: 0 }",
+            "{ target: self, regen_hp_pct: 0, duration_turns: 3 }",
+            "{ target: self, regen_hp_pct: 1.1, duration_turns: 3 }",
+            "{ target: self, regen_hp_pct: 0.05, duration_turns: 0 }",
+            "{ target: self, regen_hp_pct: 0.05, duration_turns: 3, typo: true }",
+            "{ target: self, regen_hp_pct: 0.05, stat: speed, modifier: 1.5, duration_turns: 3 }",
+        ] {
+            assert!(
+                scenario_yaml::from_str::<OngoingEffect>(mapping).is_err(),
+                "{mapping}"
+            );
+        }
+    }
+
+    #[test]
     fn audits_the_shipped_class_corpus() {
         let root = scenario_package_dir().join("data/classes");
         let mut files = std::fs::read_dir(root)
@@ -1285,7 +1348,7 @@ mod tests {
         }
 
         assert_eq!(files.len(), 5);
-        assert_eq!(ability_count, 46);
+        assert_eq!(ability_count, 49);
     }
 
     fn ability<'a>(class: &'a ClassDefinition, id: &str) -> &'a Ability {

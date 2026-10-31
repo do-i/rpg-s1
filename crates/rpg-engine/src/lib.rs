@@ -68,6 +68,7 @@ pub mod service_domain;
 mod service_ui;
 mod sfx_cue;
 mod sound_option;
+mod spell_images;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;
@@ -223,6 +224,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(ScenarioNewGameAssetsPlugin)
     .add_plugins(FieldMenuDomainPlugin)
     .add_plugins(item_images::ItemImagesPlugin)
+    .add_plugins(spell_images::SpellImagesPlugin)
     .add_plugins(TransportDomainPlugin)
     .add_plugins(TsxAtlasAssetPlugin)
     .add_plugins(TmxGroundAssetPlugin)

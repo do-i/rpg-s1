@@ -1071,8 +1071,8 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     assert_eq!(report.scenario_version.as_deref(), Some("1.0.0"));
     assert_eq!(report.counts.party_members, 5);
     assert_eq!(report.counts.classes, 5);
-    assert_eq!(report.counts.abilities, 46);
-    assert_eq!(report.counts.items, 210);
+    assert_eq!(report.counts.abilities, 49);
+    assert_eq!(report.counts.items, 211);
     assert_eq!(report.counts.field_use_items, 14);
     assert_eq!(report.counts.maps, 89);
     assert_eq!(report.counts.dialogue_documents, 150);
@@ -1080,7 +1080,7 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     assert_eq!(report.counts.boss_move_sets, 11);
     assert_eq!(report.counts.encounters, 22);
     assert_eq!(report.counts.battle_backgrounds, 14);
-    assert_eq!(report.counts.recipes, 15);
+    assert_eq!(report.counts.recipes, 16);
     assert_eq!(report.counts.quests, 18);
     assert_eq!(report.counts.bgm_keys, 13);
     assert_eq!(report.counts.sfx_keys, 64);

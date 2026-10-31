@@ -1,6 +1,9 @@
 use super::*;
 use crate::item_images::spawn_item_image;
 
+/// Empty-slot artwork opacity: 0.0 is invisible, 1.0 is fully opaque.
+const EQUIPMENT_PLACEHOLDER_OPACITY: f32 = 0.02;
+
 #[expect(
     clippy::too_many_arguments,
     reason = "the equipment page coordinates the shared menu root, portraits, and live inventory catalog"
@@ -269,17 +272,7 @@ fn spawn_equipped_shelf(
                             if let Some(item) = equipped {
                                 spawn_item_image(card, item.id());
                             } else {
-                                card.spawn(Node {
-                                    width: px(128),
-                                    height: px(128),
-                                    flex_shrink: 0.0,
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::Center,
-                                    ..default()
-                                })
-                                .with_children(|empty| {
-                                    spawn_status_text(empty, "EMPTY", font, 15.0, status_faint());
-                                });
+                                spawn_empty_equipment_slot_image(card, slot);
                             }
                             card.spawn((
                                 Text::new(equipped.map_or("Empty slot", item_name)),
@@ -305,6 +298,17 @@ fn spawn_equipped_shelf(
                 });
         },
     );
+}
+
+fn spawn_empty_equipment_slot_image(parent: &mut ChildSpawnerCommands<'_>, slot: EquipmentSlot) {
+    let path = match slot {
+        EquipmentSlot::Weapon => "media/images/icons/slots/weapon.png",
+        EquipmentSlot::Shield => "media/images/icons/slots/shield.png",
+        EquipmentSlot::Helmet => "media/images/icons/slots/helmet.png",
+        EquipmentSlot::Body => "media/images/icons/slots/body.png",
+        EquipmentSlot::Accessory => "media/images/icons/slots/accessory.png",
+    };
+    spawn_items_menu_icon_with_opacity(parent, path, 128.0, 0.0, EQUIPMENT_PLACEHOLDER_OPACITY);
 }
 
 fn spawn_equipment_inventory(

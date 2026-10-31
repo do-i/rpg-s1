@@ -40,16 +40,23 @@ pub(super) fn handle_input(
                 state.mode = FieldMenuMode::SpellList;
             }
         }
-        // Spellbook: Up/Down picks the spell, Enter casts it, Left returns to the casters.
+        // Spellbook: arrows follow the two-column grid; Escape returns to casters.
         FieldMenuMode::SpellList => {
-            if input.horizontal == Some(-1) {
-                state.back();
-                return;
-            }
             let abilities = member_at(game, state.member_index)
                 .map_or_else(Vec::new, |member| learned_abilities(member, game, catalog));
             if let Some(delta) = input.vertical {
-                state.selected = wrapped_or_zero(state.selected, abilities.len(), delta);
+                state.selected = spell_grid_vertical(state.selected, abilities.len(), delta);
+            } else if let Some(delta) = input.horizontal {
+                let column = state.selected % 2;
+                if delta < 0 && column == 0 {
+                    state.back();
+                    return;
+                }
+                if (delta < 0 && column == 1)
+                    || (delta > 0 && column == 0 && state.selected + 1 < abilities.len())
+                {
+                    state.selected = state.selected.saturating_add_signed(delta);
+                }
             }
             if input.confirm {
                 let Some(ability) = abilities.get(state.selected).cloned().cloned() else {
@@ -186,6 +193,14 @@ pub(super) fn handle_input(
         }
         _ => {}
     }
+}
+
+fn spell_grid_vertical(selected: usize, len: usize, delta: isize) -> usize {
+    if len == 0 {
+        return 0;
+    }
+    let row = wrapped_or_zero(selected / 2, len.div_ceil(2), delta);
+    (row * 2 + selected % 2).min(len - 1)
 }
 
 pub(super) fn ability_by_id<'a>(

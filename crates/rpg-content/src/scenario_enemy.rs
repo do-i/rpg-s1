@@ -12,7 +12,7 @@
 
 use bevy::{asset::Asset, reflect::TypePath};
 
-use crate::scenario_class::UnitInterval;
+use crate::scenario_class::{OngoingEffect, UnitInterval};
 use crate::scenario_path::ScenarioRelativePath;
 use crate::scenario_yaml::{self, deserialize_string};
 use serde::{Deserialize, Deserializer};
@@ -287,6 +287,8 @@ pub enum EnemyMove {
         condition: Option<EnemyMoveCondition>,
         #[serde(default)]
         once: bool,
+        #[serde(default, deserialize_with = "deserialize_present_option")]
+        effect: Option<OngoingEffect>,
     },
 }
 
@@ -713,7 +715,7 @@ mod tests {
                 .flat_map(|enemy| enemy.drops.loot.iter())
                 .flat_map(|pool| pool.pool.iter())
                 .count(),
-            246
+            247
         );
     }
 }

@@ -23,9 +23,10 @@ use self::{
     assets::{PartyWalkSheets, load_party_walk_sheets},
     input::handle_field_menu_input,
     ui::{
-        cleanup_field_menu, sync_battle_page, sync_custom_field_menu_content_visibility,
-        sync_equipment_page, sync_field_menu_generic_text, sync_field_menu_overlay_lifecycle,
-        sync_items_page, sync_main_menu_page, sync_quests_page, sync_recipes_page, sync_save_page,
+        cleanup_field_menu, resolve_items_menu_icons, sync_battle_page,
+        sync_custom_field_menu_content_visibility, sync_equipment_page,
+        sync_field_menu_generic_text, sync_field_menu_overlay_lifecycle, sync_items_page,
+        sync_main_menu_page, sync_quests_page, sync_recipes_page, sync_save_page,
         sync_settings_page, sync_spells_page, sync_status_page,
     },
 };
@@ -66,6 +67,10 @@ impl Plugin for FieldMenuPlugin {
                 )
                     .chain()
                     .run_if(in_state(AppState::World)),
+            )
+            .add_systems(
+                PostUpdate,
+                resolve_items_menu_icons.before(bevy::ui::UiSystems::Prepare),
             )
             .add_systems(OnExit(AppState::World), cleanup_field_menu);
     }

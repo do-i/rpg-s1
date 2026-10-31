@@ -143,6 +143,10 @@ drops:
 ai:
   pattern: random
   moves:
+    - action: ability
+      id: regen
+      weight: 20
+      effect: { target: self, regen_hp_pct: 0.05, duration_turns: 3 }
     - action: attack
       weight: 40
     - action: ability
@@ -226,6 +230,10 @@ drops:
 ai:
   pattern: random
   moves:
+    - action: ability
+      id: haste
+      weight: 20
+      effect: { target: self, stat: speed, modifier: 1.50, duration_turns: 3 }
     - action: attack
       weight: 60
     - action: ability

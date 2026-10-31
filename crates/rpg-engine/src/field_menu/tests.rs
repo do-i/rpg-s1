@@ -231,9 +231,10 @@ fn custom_menu_row_budgets_fit_the_baseline_canvas() {
     let equipment = EQUIPMENT_PICKER_VISIBLE_ROWS * 52
         + (EQUIPMENT_PICKER_VISIBLE_ROWS - 1) * 8
         + panel_chrome(14, 1, 17, 8);
-    // Spellbook: 58px rows over 7px gaps in a 16px-padded panel.
-    let spellbook =
-        SPELLBOOK_VISIBLE_ROWS * 58 + (SPELLBOOK_VISIBLE_ROWS - 1) * 7 + panel_chrome(16, 1, 17, 8);
+    // Spellbook: four grid rows of two 122px cards, over 8px gaps.
+    let spellbook = SPELLBOOK_VISIBLE_ROWS * SPELL_CARD_HEIGHT as usize
+        + (SPELLBOOK_VISIBLE_ROWS - 1) * 8
+        + panel_chrome(16, 1, 17, 8);
     // Quest register: 54px rows over 7px gaps plus the "QUEST nn OF nn" footer.
     let quests =
         QUEST_VISIBLE_ROWS * 54 + (QUEST_VISIBLE_ROWS - 1) * 7 + 13 + panel_chrome(16, 1, 17, 7);
@@ -1398,7 +1399,14 @@ fn quest_board_indicators(selected: usize) -> (usize, Vec<crate::menu_chrome::Sc
         catalog: Res<FieldMenuCatalog>,
     ) {
         commands.spawn(Node::default()).with_children(|parent| {
-            spawn_quests_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+            spawn_quests_page(
+                parent,
+                &Handle::<Font>::default(),
+                &state,
+                &game,
+                &catalog,
+                None,
+            );
         });
     }
     let mut app = App::new();

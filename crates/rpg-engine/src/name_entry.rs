@@ -954,7 +954,7 @@ mod tests {
     #[test]
     fn failed_manifest_renders_one_package_relative_error_and_no_default_prompt() {
         let broken = manifest_with_name("Nyra").replacen(
-            "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
+            "  image: media/images/title_bg/title_lost_flame.webp\n",
             "",
             1,
         );

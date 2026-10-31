@@ -247,6 +247,16 @@ impl BattleState {
             .actor_mut(active)
             .map(BattleCombatant::tick_statuses)
             .unwrap_or_default();
+        if tick.healing > 0 {
+            self.feedback_events.push(BattleEvent::StatusHeal {
+                target: active,
+                amount: tick.healing,
+            });
+            self.transcript.push(format!(
+                "REGEN {:?}:{} {}",
+                active.side, active.index, tick.healing
+            ));
+        }
         if tick.damage > 0 {
             let knocked_out = self.actor(active).is_none_or(|actor| !actor.is_alive());
             self.feedback_events.push(BattleEvent::StatusDamage {
@@ -282,10 +292,17 @@ impl BattleState {
     }
 
     fn step_turn(&mut self) {
-        let previous = self.active_turn;
-        self.active_turn = (self.active_turn + 1) % self.turn_order.len();
-        if self.active_turn <= previous {
+        if self.turn_order.is_empty() {
+            return;
+        }
+        self.active_turn += 1;
+        if self.active_turn >= self.turn_order.len() {
             self.turn_count = self.turn_count.saturating_add(1);
+            for actor in &mut self.combatants {
+                actor.begin_next_round();
+            }
+            self.turn_order = calculate_turn_order(&self.combatants);
+            self.active_turn = 0;
         }
     }
 }

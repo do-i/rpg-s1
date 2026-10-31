@@ -72,6 +72,18 @@
   unlock_flag: story_act2_started
 
 # ── Act 3 ─────────────────────────────────────────────
+- id: recipe_ivory_revival
+  scroll_name: "Ivory Revival"
+  output: { item: revival_herb, qty: 2 }
+  inputs:
+    mc:
+      - { size: M, qty: 1 }
+    items:
+      - { id: ivory_blossom, qty: 1 }
+      - { id: rare_herb, qty: 1 }
+  gp_cost: 400
+  unlock_flag: story_act3_started
+
 - id: recipe_holy_water
   scroll_name: "Sacred Mixture"
   output: { item: holy_water, qty: 3 }

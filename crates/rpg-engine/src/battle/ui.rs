@@ -18,6 +18,7 @@ use crate::{
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx, cue},
+    spell_images::SpellIcon,
     tsx_atlas_asset::TsxAtlasAsset,
     world_audio::WorldBgmFadeInRequest,
     world_encounter::{BattleBgmFadeOut, WorldEncounterRestore},
@@ -67,6 +68,7 @@ pub(super) const BATTLE_ROOT_Z: i32 = 200;
 /// Layer of a combatant's badge stack within its own frame, above the portrait and the meters.
 const BADGE_Z: i32 = 15;
 const BADGE_INSET: f32 = 5.0;
+const STATUS_ICON_SIZE: f32 = 24.0;
 
 /// Where a combatant's badge stack sits on its card.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -96,15 +98,15 @@ const PANEL_BORDER_ACTIVE: f32 = 2.0;
 /// Chrome between a command row's text and the panel's outer edge.
 const COMMAND_ROW_CHROME: f32 =
     2.0 * (PANEL_BORDER_ACTIVE + PANEL_PADDING + COMMAND_ROW_BORDER + COMMAND_ROW_PADDING_X);
-/// Room reserved for the widest row label the panel ever shows.
-///
-/// The longest is an ability row, `"{name}  {mp} MP"`. The reference "Fortress Stance  12 MP"
-/// (a since-renamed 15-letter name) measures 177px in Philosopher-Regular at the 18px row
-/// size; shipped names stay at 15 letters or fewer, and this leaves a margin for rasterizer
-/// differences.
+/// Content budget includes a compact icon, the longest current ability name,
+/// and a separate vertical MP label/value. Panel width stays stable across phases.
 const COMMAND_LABEL_RESERVE: f32 = 200.0;
 /// Fixed so the panel stops resizing as the log message and row labels change.
 const COMMAND_PANEL_WIDTH: f32 = COMMAND_LABEL_RESERVE + COMMAND_ROW_CHROME;
+const ABILITY_ICON_SIZE: f32 = 36.0;
+const ABILITY_MP_WIDTH: f32 = 28.0;
+const ABILITY_ROW_GAP: f32 = 8.0;
+const ABILITY_NAME_SIZE: f32 = 16.0;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
     BattleCommand::Spell,
@@ -136,6 +138,7 @@ impl Plugin for BattlePlugin {
                     sync_party_meters,
                     sync_status_badges,
                     sync_battle_commands,
+                    sync_battle_ability_art,
                     sync_battle_message,
                     sync_enemy_cards,
                     sync_enemy_meters,
@@ -233,6 +236,13 @@ struct BattleCommandRow(usize);
 
 #[derive(Component)]
 struct BattleCommandLabel(usize);
+
+#[derive(Component)]
+struct BattleAbilityIcon(usize);
+#[derive(Component)]
+struct BattleAbilityMana(usize);
+#[derive(Component)]
+struct BattleAbilityManaValue(usize);
 
 /// One badge pill on a combatant's frame. Slots are pre-spawned and hidden, so a status landing
 /// mid-battle never has to spawn UI from a sync system.
@@ -873,8 +883,8 @@ fn spawn_party_meter(
 /// Lays out the combatant's status pills where [`BadgeAnchor`] puts them.
 ///
 /// Every slot is spawned up front and hidden; [`sync_status_badges`] only ever toggles and
-/// re-colors them. An empty stack therefore measures zero, so a health-bar row costs the card no
-/// height until something actually lands.
+/// updates their artwork or fallback text. An empty stack therefore measures zero, so a health-bar
+/// row costs the card no height until something actually lands.
 ///
 /// The stack sits inside its own parent, so it is layered with a plain [`ZIndex`] and not a
 /// `GlobalZIndex` — see [`BATTLE_ROOT_Z`] for why the global form would have hidden it behind the
@@ -917,6 +927,10 @@ fn spawn_status_badges(
                             ..default()
                         },
                         BackgroundColor(Color::NONE),
+                        ImageNode {
+                            color: Color::NONE,
+                            ..default()
+                        },
                         BattleStatusBadge { key, slot },
                     ))
                     .with_children(|pill| {
@@ -927,14 +941,30 @@ fn spawn_status_badges(
         });
 }
 
-/// Shows every combatant's active statuses as persistent pills.
+/// Shows active statuses as icons, retaining text for effects without artwork.
 ///
 /// Runs off the same `is_changed` gate as the other sync systems: statuses only move when the
 /// resolver writes them, so there is nothing to recompute on a quiet frame.
 fn sync_status_badges(
     state: Option<Res<BattleState>>,
-    mut pills: Query<(&BattleStatusBadge, &mut Node, &mut BackgroundColor)>,
-    mut labels: Query<(&BattleStatusBadgeLabel, &mut Text, &mut TextColor)>,
+    asset_server: Option<Res<AssetServer>>,
+    root: Option<Res<ScenarioRoot>>,
+    inventory: Option<Res<ScenarioInventory>>,
+    mut pills: Query<(
+        &BattleStatusBadge,
+        &mut Node,
+        &mut BackgroundColor,
+        &mut ImageNode,
+    )>,
+    mut labels: Query<
+        (
+            &BattleStatusBadgeLabel,
+            &mut Text,
+            &mut TextColor,
+            &mut Node,
+        ),
+        Without<BattleStatusBadge>,
+    >,
 ) {
     let Some(state) = state else { return };
     if !state.is_changed() {
@@ -943,25 +973,80 @@ fn sync_status_badges(
     let badges_for = |key: CombatantKey| {
         state
             .actor(key)
-            .filter(|actor| actor.is_alive())
-            .map(|actor| super::badge::badges(&actor.status_effects))
+            .map(|actor| {
+                if actor.is_alive() {
+                    super::badge::badges(&actor.status_effects)
+                } else if key.side == BattleSide::Party {
+                    vec![super::badge::knocked_out_badge()]
+                } else {
+                    Vec::new()
+                }
+            })
             .unwrap_or_default()
     };
-    for (marker, mut node, mut background) in &mut pills {
+    let image_for = |badge: super::badge::StatusBadge| -> Option<Handle<Image>> {
+        let path = inventory.as_ref()?.status_images.get(badge.icon_id()?)?;
+        Some(asset_server.as_ref()?.load(root.as_ref()?.resolve(path)))
+    };
+    for (marker, mut node, mut background, mut image) in &mut pills {
         let badge = badges_for(marker.key).get(marker.slot).copied();
+        let handle = badge.and_then(image_for);
+        let has_image = handle.is_some();
         node.display = if badge.is_some() {
             Display::Flex
         } else {
             Display::None
         };
-        background.0 = badge.map_or(Color::NONE, |badge| badge.fill);
+        node.width = if has_image {
+            px(STATUS_ICON_SIZE)
+        } else {
+            Val::Auto
+        };
+        node.height = if has_image {
+            px(STATUS_ICON_SIZE)
+        } else {
+            Val::Auto
+        };
+        node.flex_shrink = 0.0;
+        node.padding = if has_image {
+            UiRect::ZERO
+        } else {
+            UiRect::axes(px(4), px(1))
+        };
+        image.image = handle.unwrap_or_default();
+        image.color = if has_image { Color::WHITE } else { Color::NONE };
+        background.0 = if has_image {
+            Color::NONE
+        } else {
+            badge.map_or(Color::NONE, |badge| badge.fill)
+        };
     }
-    for (marker, mut text, mut color) in &mut labels {
+    for (marker, mut text, mut color, mut node) in &mut labels {
         let badge = badges_for(marker.key).get(marker.slot).copied();
-        text.0 = badge
-            .map(|badge| badge.label.to_owned())
-            .unwrap_or_default();
-        color.0 = badge.map_or(Color::NONE, |badge| badge.ink);
+        let has_image = badge.and_then(image_for).is_some();
+        text.0 = match badge {
+            Some(badge) if has_image => badge
+                .remaining_turns
+                .map(|turns| turns.to_string())
+                .unwrap_or_default(),
+            Some(badge) => badge
+                .remaining_turns
+                .map(|turns| format!("{} {turns}", badge.label))
+                .unwrap_or_else(|| badge.label.to_owned()),
+            None => String::new(),
+        };
+        node.position_type = if has_image {
+            PositionType::Absolute
+        } else {
+            PositionType::Relative
+        };
+        node.bottom = if has_image { px(-2) } else { Val::Auto };
+        node.right = if has_image { px(-2) } else { Val::Auto };
+        color.0 = if has_image {
+            Color::WHITE
+        } else {
+            badge.map_or(Color::NONE, |badge| badge.ink)
+        };
     }
 }
 
@@ -1005,7 +1090,8 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                         width: percent(100),
                         min_height: px(36),
                         flex_grow: 1.0,
-                        padding: UiRect::axes(px(COMMAND_ROW_PADDING_X), px(6)),
+                        padding: UiRect::axes(px(COMMAND_ROW_PADDING_X), px(4)),
+                        column_gap: px(ABILITY_ROW_GAP),
                         border: UiRect::all(px(1)),
                         border_radius: BorderRadius::all(px(5)),
                         align_items: AlignItems::Center,
@@ -1016,6 +1102,17 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                     BattleCommandRow(index),
                 ))
                 .with_children(|row| {
+                    row.spawn((
+                        Node {
+                            display: Display::None,
+                            width: px(ABILITY_ICON_SIZE),
+                            height: px(ABILITY_ICON_SIZE),
+                            flex_shrink: 0.0,
+                            ..default()
+                        },
+                        SpellIcon::new(""),
+                        BattleAbilityIcon(index),
+                    ));
                     spawn_battle_text(
                         row,
                         command.label(),
@@ -1024,7 +1121,32 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                         battle_ink(),
                         Justify::Left,
                     )
-                    .insert(BattleCommandLabel(index));
+                    .insert((
+                        BattleCommandLabel(index),
+                        Node {
+                            flex_basis: px(0),
+                            flex_grow: 1.0,
+                            min_width: px(0),
+                            ..default()
+                        },
+                    ));
+                    row.spawn((
+                        Node {
+                            display: Display::None,
+                            width: px(ABILITY_MP_WIDTH),
+                            flex_shrink: 0.0,
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            ..default()
+                        },
+                        BattleAbilityMana(index),
+                    ))
+                    .with_children(|mp| {
+                        spawn_battle_text(mp, "MP", font, 10.0, battle_dim(), Justify::Center);
+                        spawn_battle_text(mp, "", font, 13.0, battle_teal(), Justify::Center)
+                            .insert(BattleAbilityManaValue(index));
+                    });
                 });
             }
         });
@@ -2034,7 +2156,15 @@ fn sync_battle_commands(
         &mut Visibility,
     )>,
     mut idle: Query<&mut Visibility, (With<BattleCommandIdle>, Without<BattleCommandRow>)>,
-    mut labels: Query<(&BattleCommandLabel, &mut Text, &mut TextColor), Without<BattlePanelTitle>>,
+    mut labels: Query<
+        (
+            &BattleCommandLabel,
+            &mut Text,
+            &mut TextColor,
+            &mut TextFont,
+        ),
+        Without<BattlePanelTitle>,
+    >,
 ) {
     let Some(state) = state else { return };
     if !state.is_changed() {
@@ -2096,7 +2226,12 @@ fn sync_battle_commands(
             battle_row_border()
         });
     }
-    for (marker, mut text, mut color) in &mut labels {
+    for (marker, mut text, mut color, mut font) in &mut labels {
+        font.font_size = FontSize::Px(if state.phase == BattlePhase::Ability {
+            ABILITY_NAME_SIZE
+        } else {
+            18.0
+        });
         if state.phase == BattlePhase::Ability {
             let ability = ability_choices
                 .get(ability_page + marker.0)
@@ -2109,7 +2244,7 @@ fn sync_battle_commands(
             let affordable = state
                 .active()
                 .is_some_and(|actor| actor.mana >= ability.mp_cost);
-            text.0 = format!("{}  {} MP", ability.name, ability.mp_cost);
+            text.0.clone_from(&ability.name);
             color.0 = if affordable {
                 battle_ink()
             } else {
@@ -2142,6 +2277,61 @@ fn sync_battle_commands(
             battle_ink()
         } else {
             battle_dim()
+        };
+    }
+}
+
+fn sync_battle_ability_art(
+    state: Option<Res<BattleState>>,
+    mut icons: Query<(&BattleAbilityIcon, &mut Node, &mut SpellIcon)>,
+    mut mana: Query<(&BattleAbilityMana, &mut Node), Without<BattleAbilityIcon>>,
+    mut values: Query<(&BattleAbilityManaValue, &mut Text, &mut TextColor)>,
+) {
+    let Some(state) = state else { return };
+    if !state.is_changed() {
+        return;
+    }
+    let choices = state.battle_ability_indices();
+    let page = state.ability_index / COMMANDS.len() * COMMANDS.len();
+    let ability_at = |row: usize| {
+        if state.phase != BattlePhase::Ability {
+            return None;
+        }
+        choices
+            .get(page + row)
+            .and_then(|index| state.active()?.abilities.get(*index))
+    };
+    for (marker, mut node, mut icon) in &mut icons {
+        let ability = ability_at(marker.0);
+        node.display = if ability.is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        if let Some(ability) = ability {
+            icon.set_if_neq(SpellIcon::new(&ability.id));
+        }
+    }
+    for (marker, mut node) in &mut mana {
+        node.display = if ability_at(marker.0).is_some() {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+    for (marker, mut text, mut color) in &mut values {
+        let Some(ability) = ability_at(marker.0) else {
+            text.0.clear();
+            continue;
+        };
+        text.0 = ability.mp_cost.to_string();
+        color.0 = if state
+            .active()
+            .is_some_and(|actor| actor.mana >= ability.mp_cost)
+        {
+            battle_teal()
+        } else {
+            battle_ember()
         };
     }
 }
@@ -2410,15 +2600,17 @@ mod tests {
 
     #[test]
     fn the_command_panel_is_wide_enough_for_its_longest_row_label() {
-        // "Fortress Stance  12 MP" (15 letters, the cap for shipped names) measures
-        // 177px in Philosopher-Regular 18px. Chrome must not eat into that.
-        const WIDEST_MEASURED_LABEL: f32 = 177.0;
-        assert_eq!(COMMAND_ROW_CHROME, 62.0);
+        // Lodestone Call is currently widest (104px in Philosopher at 16px).
+        const WIDEST_MEASURED_NAME: f32 = 104.0;
+        let usable = COMMAND_PANEL_WIDTH
+            - COMMAND_ROW_CHROME
+            - ABILITY_ICON_SIZE
+            - ABILITY_MP_WIDTH
+            - ABILITY_ROW_GAP * 2.0;
         assert_eq!(COMMAND_PANEL_WIDTH, 262.0);
-        let usable = COMMAND_PANEL_WIDTH - COMMAND_ROW_CHROME;
         assert!(
-            usable >= WIDEST_MEASURED_LABEL,
-            "the longest ability row would clip: {usable}px usable"
+            usable >= WIDEST_MEASURED_NAME + 12.0,
+            "the longest ability needs breathing room, got {usable}px"
         );
     }
 
@@ -2613,12 +2805,12 @@ mod tests {
         };
         assert_eq!(
             labels(CombatantKey::party(0), &mut app),
-            vec!["PSN".to_owned(), "SIL".to_owned(), String::new()],
+            vec!["PSN 3".to_owned(), "SIL 2".to_owned(), String::new()],
             "both afflictions show, in the order they landed, and the spare slot stays blank"
         );
         assert_eq!(
             labels(CombatantKey::enemy(0), &mut app),
-            vec!["ATK-".to_owned(), String::new(), String::new()],
+            vec!["ATK- 2".to_owned(), String::new(), String::new()],
             "an enemy weakened by Rune Bash wears the badge too, not just the party"
         );
 
@@ -2771,7 +2963,152 @@ mod tests {
     }
 
     #[test]
-    fn a_defeated_combatant_drops_its_badges() {
+    fn status_art_tracks_modifiers_fallbacks_ko_and_revival() {
+        use crate::battle::status::{ActiveStatus, StatusEffect};
+
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, bevy::asset::AssetPlugin::default()))
+            .init_asset::<Image>()
+            .init_resource::<ScenarioRoot>()
+            .add_systems(Update, sync_status_badges);
+        let mut inventory = ScenarioInventory::default();
+        for id in [
+            "poison",
+            "attack_down",
+            "attack_up",
+            "ko",
+            "haste",
+            "slow",
+            "regen",
+        ] {
+            inventory.status_images.insert(
+                id.to_owned(),
+                format!("media/images/icons/status/{id}.png")
+                    .try_into()
+                    .unwrap(),
+            );
+        }
+        app.insert_resource(inventory);
+        let font = Handle::<Font>::default();
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_status_badges(
+                    root,
+                    CombatantKey::party(0),
+                    BadgeAnchor::FrameCorner,
+                    &font,
+                );
+                spawn_status_badges(
+                    root,
+                    CombatantKey::enemy(0),
+                    BadgeAnchor::HealthBarLine,
+                    &font,
+                );
+            });
+
+        let mut party = crate::battle::tests::actor(BattleSide::Party, 0, 5, 20);
+        party.status_effects = vec![
+            ActiveStatus::persistent(StatusEffect::Poison),
+            ActiveStatus::persistent(StatusEffect::Silence),
+        ];
+        let mut enemy = crate::battle::tests::actor(BattleSide::Enemy, 0, 4, 30);
+        enemy.status_effects = vec![ActiveStatus::modifier(
+            StatusEffect::AttackModifier,
+            2,
+            0.85,
+        )];
+        app.insert_resource(crate::battle::tests::state_with(vec![party, enemy]));
+        app.update();
+
+        let assert_art = |app: &mut App, key, expected: &str| {
+            let world = app.world_mut();
+            let mut query =
+                world.query::<(&BattleStatusBadge, &Node, &ImageNode, &BackgroundColor)>();
+            let (_, node, image, background) = query
+                .iter(world)
+                .find(|(marker, ..)| marker.key == key && marker.slot == 0)
+                .unwrap();
+            assert_eq!(node.display, Display::Flex);
+            assert_eq!((node.width, node.height), (px(24), px(24)));
+            assert_eq!(image.color, Color::WHITE);
+            assert_eq!(background.0, Color::NONE);
+            let path = world
+                .resource::<AssetServer>()
+                .get_path(image.image.id())
+                .unwrap();
+            assert_eq!(
+                path.path().to_string_lossy(),
+                format!("scenarios/rusted_kingdoms/media/images/icons/status/{expected}.png")
+            );
+        };
+        assert_art(&mut app, CombatantKey::party(0), "poison");
+        assert_art(&mut app, CombatantKey::enemy(0), "attack_down");
+        for (marker, text) in app
+            .world_mut()
+            .query::<(&BattleStatusBadgeLabel, &Text)>()
+            .iter(app.world())
+        {
+            assert_eq!(
+                text.0,
+                if marker.key == CombatantKey::party(0) && marker.slot == 1 {
+                    "SIL"
+                } else if marker.key == CombatantKey::enemy(0) && marker.slot == 0 {
+                    "2"
+                } else {
+                    ""
+                }
+            );
+        }
+
+        {
+            let mut state = app.world_mut().resource_mut::<BattleState>();
+            state.combatants[0].health = 0;
+            state.combatants[1].status_effects[0] =
+                ActiveStatus::modifier(StatusEffect::AttackModifier, 2, 1.25);
+        }
+        app.update();
+        assert_art(&mut app, CombatantKey::party(0), "ko");
+        assert_art(&mut app, CombatantKey::enemy(0), "attack_up");
+
+        for (status, expected) in [
+            (ActiveStatus::speed(3, 1.5), "haste"),
+            (ActiveStatus::speed(3, 0.5), "slow"),
+            (ActiveStatus::regeneration(3, 0.05), "regen"),
+        ] {
+            for side in [0, 1] {
+                let mut state = app.world_mut().resource_mut::<BattleState>();
+                state.combatants[side].health = 10;
+                state.combatants[side].status_effects = vec![status];
+            }
+            app.update();
+            assert_art(&mut app, CombatantKey::party(0), expected);
+            assert_art(&mut app, CombatantKey::enemy(0), expected);
+            for (marker, text) in app
+                .world_mut()
+                .query::<(&BattleStatusBadgeLabel, &Text)>()
+                .iter(app.world())
+            {
+                if marker.slot == 0 {
+                    assert_eq!(text.0, "3");
+                }
+            }
+        }
+
+        {
+            let mut state = app.world_mut().resource_mut::<BattleState>();
+            state.combatants[0].health = 10;
+            state.combatants[0].status_effects.clear();
+            state.combatants[1].health = 0;
+        }
+        app.update();
+        assert!(app.world_mut().query::<(&BattleStatusBadge, &Node, &ImageNode)>()
+            .iter(app.world()).all(|(_, node, image)| node.display == Display::None && image.color == Color::NONE));
+    }
+
+    #[test]
+    fn a_defeated_party_member_replaces_afflictions_with_ko() {
         use crate::battle::status::{ActiveStatus, StatusEffect};
 
         let mut app = App::new();
@@ -2802,12 +3139,21 @@ mod tests {
             .insert_resource(crate::battle::tests::state_with(vec![party]));
         app.update();
 
-        assert!(
-            app.world_mut()
-                .query::<(&BattleStatusBadge, &Node)>()
-                .iter(app.world())
-                .all(|(_, node)| node.display == Display::None)
-        );
+        for (marker, node) in app
+            .world_mut()
+            .query::<(&BattleStatusBadge, &Node)>()
+            .iter(app.world())
+        {
+            assert_eq!(node.display == Display::Flex, marker.slot == 0);
+        }
+        let labels = app
+            .world_mut()
+            .query::<(&BattleStatusBadgeLabel, &Text)>()
+            .iter(app.world())
+            .filter(|(marker, _)| marker.slot == 0)
+            .map(|(_, text)| text.0.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(labels, vec!["KO"]);
     }
 
     #[test]
@@ -2883,6 +3229,7 @@ mod tests {
                     sync_party_meters,
                     sync_status_badges,
                     sync_battle_commands,
+                    sync_battle_ability_art,
                     sync_battle_message,
                     sync_enemy_cards,
                     sync_enemy_meters,

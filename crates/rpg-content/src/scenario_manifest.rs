@@ -90,7 +90,8 @@ pub struct ManifestTitleFontUi {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestTitle {
     pub image: ScenarioRelativePath,
-    pub cursor_icon: ScenarioRelativePath,
+    #[serde(default)]
+    pub cursor_icon: Option<ScenarioRelativePath>,
 }
 
 /// The scenario-selected display font.
@@ -128,7 +129,8 @@ pub struct ManifestServiceSprites {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestApothecary {
     pub sprite: ScenarioRelativePath,
-    pub icons: ManifestApothecaryIcons,
+    #[serde(default)]
+    pub icons: Option<ManifestApothecaryIcons>,
 }
 
 /// The three source-authored apothecary icon states.
@@ -442,9 +444,7 @@ mod tests {
                     image: "media/images/title_bg/title_lost_flame.webp"
                         .try_into()
                         .unwrap(),
-                    cursor_icon: "media/images/icons/arrow-head-right.webp"
-                        .try_into()
-                        .unwrap(),
+                    cursor_icon: Some("test-assets/cursor.webp".try_into().unwrap()),
                 },
                 font: ManifestFont {
                     path: "media/fonts/Philosopher-Regular.ttf".try_into().unwrap(),
@@ -471,17 +471,11 @@ mod tests {
             ManifestServiceSprites {
                 apothecary: ManifestApothecary {
                     sprite: "media/sprites/npc/female_wiz_01.tsx".try_into().unwrap(),
-                    icons: ManifestApothecaryIcons {
-                        locked: "media/images/icons/lock-locked-red-small.webp"
-                            .try_into()
-                            .unwrap(),
-                        ready: "media/images/icons/lock-unlocked-green-small.webp"
-                            .try_into()
-                            .unwrap(),
-                        missing: "media/images/icons/lock-unlocked-yellow-small.webp"
-                            .try_into()
-                            .unwrap(),
-                    },
+                    icons: Some(ManifestApothecaryIcons {
+                        locked: "test-assets/locked.webp".try_into().unwrap(),
+                        ready: "test-assets/ready.webp".try_into().unwrap(),
+                        missing: "test-assets/missing.webp".try_into().unwrap(),
+                    }),
                 },
                 inn: ManifestServiceSprite {
                     sprite: "media/sprites/npc/female_blue_01.tsx".try_into().unwrap(),
@@ -622,8 +616,8 @@ mod tests {
 
         assert_eq!(manifest.id, "my_rpg_story");
         assert_eq!(
-            manifest.title.cursor_icon.as_str(),
-            "media/images/icons/arrow-head-right.webp"
+            manifest.title.cursor_icon.as_ref().unwrap().as_str(),
+            "test-assets/cursor.webp"
         );
         assert_eq!(
             manifest.inn.sprite.as_str(),
@@ -677,21 +671,21 @@ mod tests {
         let document =
             include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml")
                 .replacen(
-                    "  cursor_icon: media/images/icons/arrow-head-right.webp\n",
+                    "  image: media/images/title_bg/title_lost_flame.webp\n",
                     "",
                     1,
                 );
         let error = scenario_yaml::from_str::<Manifest>(&document)
-            .expect_err("a complete manifest without title.cursor_icon should fail");
+            .expect_err("a complete manifest without title.image should fail");
 
-        assert_eq!(error.path(), "title.cursor_icon");
+        assert_eq!(error.path(), "title.image");
         let location = error
             .location()
             .expect("Serde YAML should retain the missing field location");
         assert_eq!((location.line(), location.column()), (8, 3));
         assert_eq!(
             error.to_string(),
-            "title.cursor_icon: missing field `cursor_icon` at line 8 column 3"
+            "title.image: missing field `image` at line 8 column 3"
         );
     }
 }

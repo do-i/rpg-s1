@@ -7,7 +7,7 @@ window_title: "Rusted Kingdoms"
 
 title:
   image: media/images/title_bg/title_lost_flame.webp
-  cursor_icon: media/images/icons/arrow-head-right.webp
+  cursor_icon: test-assets/cursor.webp
 font:
   path: media/fonts/Philosopher-Regular.ttf
 ui:

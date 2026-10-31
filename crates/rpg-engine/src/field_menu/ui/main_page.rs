@@ -150,13 +150,32 @@ impl PartyWalkThumbnails {
 
 /// Edge of one square cell in the scenario's command icon sheet.
 const MAIN_COMMAND_ICON_CELL: u32 = 64;
-/// Drawn size inside the 42px badge frame.
-const MAIN_COMMAND_ICON_SIZE: f32 = 32.0;
+const MAIN_COMMAND_ICON_SIZE: f32 = 96.0;
+const MAIN_SYSTEM_ICON_SIZE: f32 = 48.0;
+const MAIN_SYSTEM_CARD_HEIGHT: f32 = 76.0;
+/// Painted main-menu image opacity: 0.0 is invisible, 1.0 is fully opaque.
+const MAIN_COMMAND_IMAGE_OPACITY: f32 = 0.7;
 
-/// The command deck's icon sheet, sliced into one cell per command.
+/// Painted command images in deck order, all from the menu icon directory.
+const MAIN_COMMAND_IMAGES: [&str; MAIN_COMMANDS.len()] = [
+    "media/images/icons/menu/status.png",
+    "media/images/icons/menu/spells.png",
+    "media/images/icons/menu/items.png",
+    "media/images/icons/menu/quit.png",
+    "media/images/icons/menu/save.png",
+    "media/images/icons/menu/equipment.png",
+    "media/images/icons/menu/quests.png",
+    "media/images/icons/menu/party.png",
+    "media/images/icons/menu/recipes.png",
+    "media/images/icons/menu/battle.png",
+    "media/images/icons/menu/options.png",
+];
+
+/// Painted command images, with the scenario's icon sheet as a fallback.
 pub(in crate::field_menu) struct MainCommandIcons {
     image: Handle<Image>,
     layout: Handle<TextureAtlasLayout>,
+    painted: [Option<Handle<Image>>; MAIN_COMMANDS.len()],
 }
 
 impl MainCommandIcons {
@@ -176,11 +195,16 @@ impl MainCommandIcons {
                 None,
                 None,
             )),
+            painted: MAIN_COMMAND_IMAGES.map(|path| load_status_image(asset_server, root, path)),
         }
     }
 
-    /// The icon for `command`, tinted the command's accent; the sheet itself is drawn white.
+    /// Keep painted artwork's original colors; tint only the monochrome sheet fallback.
     fn node(&self, command: &MainCommand, accent: Color) -> ImageNode {
+        if let Some(image) = &self.painted[command.icon] {
+            return ImageNode::new(image.clone())
+                .with_color(Color::WHITE.with_alpha(MAIN_COMMAND_IMAGE_OPACITY));
+        }
         ImageNode::from_atlas_image(
             self.image.clone(),
             TextureAtlas {
@@ -198,6 +222,7 @@ impl MainCommandIcons {
         Self {
             image: Handle::default(),
             layout: Handle::default(),
+            painted: std::array::from_fn(|_| None),
         }
     }
 }
@@ -216,17 +241,25 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
             Node {
                 width: percent(100),
                 height: percent(100),
+                min_height: px(0),
                 flex_direction: FlexDirection::Column,
                 row_gap: px(14),
+                padding: UiRect::all(px(18)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(10)),
                 ..default()
             },
+            BackgroundColor(Color::srgba_u8(17, 19, 26, 230)),
+            BorderColor::all(status_border()),
             FieldMenuMainPage,
-            Name::new("Original-style field menu page"),
+            Name::new("Icon gallery field menu page"),
         ))
         .with_children(|page| {
             spawn_main_menu_header(page, font);
             page.spawn(Node {
                 width: percent(100),
+                min_height: px(0),
+                flex_basis: px(0),
                 flex_grow: 1.0,
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -264,6 +297,7 @@ pub(in crate::field_menu) fn spawn_main_menu_header(
         .spawn(Node {
             width: percent(100),
             height: px(64),
+            flex_shrink: 0.0,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             ..default()
@@ -296,96 +330,106 @@ pub(in crate::field_menu) fn spawn_main_commands_panel(
     icons: Option<&MainCommandIcons>,
     state: &FieldMenuState,
 ) {
-    spawn_status_panel(
-        parent,
-        Node {
-            width: px(MAIN_DECK_WIDTH),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(8),
-            padding: UiRect::all(px(16)),
-            border: UiRect::all(px(2)),
-            border_radius: BorderRadius::all(px(7)),
-            ..default()
-        },
-        "COMMANDS",
-        font,
-        |panel| {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                max_width: px(MAIN_DECK_WIDTH),
+                height: percent(100),
+                min_height: px(0),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(12),
+                ..default()
+            },
+            Name::new("Main command gallery"),
+        ))
+        .with_children(|panel| {
+            spawn_status_text(panel, "ADVENTURE", font, 14.0, status_gold());
             panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_direction: FlexDirection::Row,
-                    column_gap: px(MAIN_DECK_COLUMN_GAP),
-                    align_items: AlignItems::Start,
-                    ..default()
-                })
-                .with_children(|columns| {
-                    for column in 0..main_command_columns() {
-                        spawn_main_command_column(columns, font, icons, state, column);
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        min_height: px(0),
+                        flex_basis: px(0),
+                        flex_grow: 1.0,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(MAIN_DECK_COLUMN_GAP),
+                        ..default()
+                    },
+                    Name::new("Adventure commands"),
+                ))
+                .with_children(|grid| {
+                    for commands in &MAIN_COMMAND_GRID[..2] {
+                        grid.spawn(Node {
+                            width: percent(100),
+                            min_height: px(0),
+                            flex_basis: px(0),
+                            flex_grow: 1.0,
+                            column_gap: px(MAIN_DECK_COLUMN_GAP),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            for &index in *commands {
+                                spawn_main_command_card(row, font, icons, state, index, false);
+                            }
+                        });
                     }
                 });
-        },
-    );
+            spawn_status_text(panel, "JOURNEY & SYSTEM", font, 14.0, status_gold());
+            panel
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        height: px(MAIN_SYSTEM_CARD_HEIGHT),
+                        flex_shrink: 0.0,
+                        column_gap: px(MAIN_DECK_COLUMN_GAP),
+                        ..default()
+                    },
+                    Name::new("Journey & system commands"),
+                ))
+                .with_children(|row| {
+                    for &index in MAIN_COMMAND_GRID[2] {
+                        spawn_main_command_card(row, font, icons, state, index, true);
+                    }
+                });
+        });
 }
 
-pub(in crate::field_menu) fn spawn_main_command_column(
+fn spawn_main_command_card(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     icons: Option<&MainCommandIcons>,
     state: &FieldMenuState,
-    column: usize,
-) {
-    parent
-        .spawn(Node {
-            flex_basis: px(0),
-            flex_grow: 1.0,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(8),
-            ..default()
-        })
-        .with_children(|list| {
-            for (index, command) in MAIN_COMMANDS
-                .iter()
-                .enumerate()
-                .skip(column * MAIN_COMMAND_ROWS)
-                .take(MAIN_COMMAND_ROWS)
-            {
-                spawn_main_command_row(
-                    list,
-                    font,
-                    icons,
-                    command,
-                    index,
-                    index == state.main_command_cursor(),
-                );
-            }
-        });
-}
-
-pub(in crate::field_menu) fn spawn_main_command_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    icons: Option<&MainCommandIcons>,
-    command: &MainCommand,
     index: usize,
-    selected: bool,
+    compact: bool,
 ) {
+    let command = &MAIN_COMMANDS[index];
+    let selected = index == state.main_command_cursor();
     let accent = main_command_accent(index);
     let mut row = parent.spawn((
         Node {
-            width: percent(100),
-            height: px(58),
-            flex_direction: FlexDirection::Row,
+            flex_basis: px(0),
+            flex_grow: 1.0,
+            min_width: px(0),
+            min_height: px(0),
+            flex_direction: if compact {
+                FlexDirection::Row
+            } else {
+                FlexDirection::Column
+            },
             align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
             column_gap: px(12),
-            padding: UiRect::axes(px(10), px(7)),
+            row_gap: px(8),
+            padding: UiRect::all(px(12)),
             border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(4)),
+            border_radius: BorderRadius::all(px(7)),
             ..default()
         },
         BackgroundColor(if selected {
             Color::srgba_u8(83, 55, 31, 238)
         } else {
-            Color::srgba_u8(15, 15, 21, 205)
+            Color::srgba_u8(34, 34, 42, 245)
         }),
         BorderColor::all(if selected {
             status_border_active()
@@ -399,43 +443,84 @@ pub(in crate::field_menu) fn spawn_main_command_row(
         row.insert(SelectedMainCommandRow);
     }
     row.with_children(|row| {
-        row.spawn((
-            Node {
-                width: px(42),
-                height: px(42),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(25, 24, 31, 235)),
-            BorderColor::all(accent),
-        ))
-        .with_children(|badge| match icons {
-            Some(icons) => {
-                badge.spawn((
-                    Node {
-                        width: px(MAIN_COMMAND_ICON_SIZE),
-                        height: px(MAIN_COMMAND_ICON_SIZE),
-                        ..default()
-                    },
-                    icons.node(command, accent),
-                    MainCommandIcon,
-                ));
-            }
-            None => spawn_status_text(badge, command.badge, font, 14.0, accent),
-        });
+        let size = if compact {
+            MAIN_SYSTEM_ICON_SIZE
+        } else {
+            MAIN_COMMAND_ICON_SIZE
+        };
+        spawn_main_command_image(row, font, icons, command, accent, size);
         row.spawn(Node {
+            width: if compact { auto() } else { percent(100) },
+            min_width: px(0),
             flex_direction: FlexDirection::Column,
-            flex_grow: 1.0,
+            flex_grow: if compact { 1.0 } else { 0.0 },
+            row_gap: px(6),
             ..default()
         })
         .with_children(|copy| {
-            spawn_status_text(copy, command.label, font, 19.0, status_ink());
-            spawn_status_text(copy, command.description, font, 12.0, status_muted());
+            for (text, size, color) in [
+                (
+                    command.label,
+                    if compact { 20.0 } else { 23.0 },
+                    if selected {
+                        status_gold()
+                    } else {
+                        status_ink()
+                    },
+                ),
+                (command.description, 12.0, status_muted()),
+            ] {
+                copy.spawn((
+                    Text::new(text),
+                    TextFont {
+                        font: font.clone().into(),
+                        font_size: FontSize::Px(size),
+                        ..default()
+                    },
+                    TextColor(color),
+                    TextLayout::new(
+                        if compact {
+                            Justify::Left
+                        } else {
+                            Justify::Center
+                        },
+                        LineBreak::WordOrCharacter,
+                    ),
+                    Node {
+                        width: percent(100),
+                        ..default()
+                    },
+                ));
+            }
         });
     });
+}
+
+fn spawn_main_command_image(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    icons: Option<&MainCommandIcons>,
+    command: &MainCommand,
+    accent: Color,
+    size: f32,
+) {
+    let node = Node {
+        width: px(size),
+        height: px(size),
+        flex_shrink: 0.0,
+        ..default()
+    };
+    if let Some(icons) = icons {
+        parent.spawn((node, icons.node(command, accent), MainCommandIcon));
+    } else {
+        parent
+            .spawn(Node {
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..node
+            })
+            .with_children(|badge| spawn_status_text(badge, command.badge, font, 28.0, accent));
+    }
 }
 
 pub(in crate::field_menu) fn spawn_field_menu_quit_modal(
@@ -743,6 +828,120 @@ pub(in crate::field_menu) fn main_command_accent(index: usize) -> Color {
 #[cfg(test)]
 mod appearance_tests {
     use super::*;
+
+    #[test]
+    fn gallery_renders_eight_large_icons_and_a_separate_save_settings_quit_group() {
+        let mut app = App::new();
+        app.insert_resource(crate::save_data::tests::fixture_game());
+        app.add_systems(Update, |mut commands: Commands, game: Res<GameState>| {
+            commands.spawn(Node::default()).with_children(|parent| {
+                spawn_main_menu_page(
+                    parent,
+                    &Handle::default(),
+                    Some(&MainCommandIcons::test_stub()),
+                    &FieldMenuState {
+                        selected: 5,
+                        ..default()
+                    },
+                    &game,
+                    &PartyWalkThumbnails::default(),
+                    false,
+                );
+            });
+        });
+        app.update();
+        let world = app.world_mut();
+        let groups = world
+            .query::<(&Name, &Children)>()
+            .iter(world)
+            .filter(|(name, _)| {
+                matches!(
+                    name.as_str(),
+                    "Adventure commands" | "Journey & system commands"
+                )
+            })
+            .map(|(name, children)| (name.to_string(), children.iter().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+        assert_eq!(groups.len(), 2);
+        for (name, children) in groups {
+            if name == "Adventure commands" {
+                let names = children
+                    .into_iter()
+                    .map(|row| {
+                        world
+                            .get::<Children>(row)
+                            .unwrap()
+                            .iter()
+                            .map(|card| world.get::<Name>(card).unwrap().to_string())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(
+                    names,
+                    [
+                        [
+                            "Status command",
+                            "Spells command",
+                            "Items command",
+                            "Equipment command"
+                        ],
+                        [
+                            "Quests command",
+                            "Character command",
+                            "Recipes command",
+                            "Battle command"
+                        ],
+                    ]
+                );
+            } else {
+                assert_eq!(
+                    children
+                        .into_iter()
+                        .map(|card| world.get::<Name>(card).unwrap().to_string())
+                        .collect::<Vec<_>>(),
+                    ["Save command", "Settings command", "Quit command"]
+                );
+            }
+        }
+        let sizes = world
+            .query_filtered::<&Node, With<MainCommandIcon>>()
+            .iter(world)
+            .map(|node| (node.width, node.height))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            sizes
+                .iter()
+                .filter(|&&size| size == (px(96), px(96)))
+                .count(),
+            8
+        );
+        assert_eq!(
+            sizes
+                .iter()
+                .filter(|&&size| size == (px(48), px(48)))
+                .count(),
+            3
+        );
+        let selected = world
+            .query_filtered::<&Name, With<SelectedMainCommandRow>>()
+            .iter(world)
+            .map(|name| name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(selected, ["Equipment command"]);
+    }
+
+    #[test]
+    fn main_menu_images_are_unique_assets_from_the_menu_directory() {
+        let asset_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../assets/scenarios/rusted_kingdoms");
+        let mut paths = std::collections::BTreeSet::new();
+        for path in MAIN_COMMAND_IMAGES {
+            assert!(path.starts_with("media/images/icons/menu/"), "{path}");
+            assert!(paths.insert(path), "duplicate main-menu image: {path}");
+            let bytes = std::fs::read(asset_root.join(path)).expect("main-menu image must exist");
+            assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"), "{path}");
+        }
+    }
 
     #[test]
     fn character_overlay_shows_the_three_sprite_choices_and_controls() {

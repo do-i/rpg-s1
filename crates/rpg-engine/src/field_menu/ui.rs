@@ -72,7 +72,8 @@ pub(super) use status_page::*;
 pub(super) const INVENTORY_PAGE_ROWS: usize = 8;
 pub(super) const ITEM_CARD_HEIGHT: f32 = 56.0;
 pub(super) const EQUIPMENT_PICKER_VISIBLE_ROWS: usize = 4;
-pub(super) const SPELLBOOK_VISIBLE_ROWS: usize = 8;
+pub(super) const SPELLBOOK_VISIBLE_ROWS: usize = 4;
+pub(super) const SPELL_CARD_HEIGHT: f32 = 122.0;
 /// Windowed lists show as many cards as their column fits (see the row-budget test), so a
 /// scrolled list fills its panel and the fade on its edge card is what says more are hidden.
 pub(super) const QUEST_VISIBLE_ROWS: usize = 8;
@@ -112,7 +113,7 @@ pub(super) const ITEMS_COLUMN_GAP: f32 = 18.0;
 /// canvas; the portrait is square, so it scales with this.
 pub(super) const ITEM_EQUIP_CARD_HEIGHT: f32 = 76.0;
 pub(super) const EQUIPMENT_SHELF_HEIGHT: f32 = 264.0;
-pub(super) const MAIN_DECK_WIDTH: f32 = 772.0;
+pub(super) const MAIN_DECK_WIDTH: f32 = 1220.0;
 pub(super) const MAIN_DECK_COLUMN_GAP: f32 = 14.0;
 pub(super) const QUEST_LIST_WIDTH: f32 = 512.0;
 pub(super) const QUEST_COLUMN_GAP: f32 = 18.0;

@@ -501,7 +501,7 @@ const fn attack_for_event(event: &BattleEvent) -> Option<(CombatantKey, AttackKi
         | BattleEvent::ManaRestored { source, .. }
         | BattleEvent::StatusApplied { source, .. }
         | BattleEvent::StatusCured { source, .. } => (source, AttackKind::Spellcast),
-        BattleEvent::StatusDamage { .. } => return None,
+        BattleEvent::StatusDamage { .. } | BattleEvent::StatusHeal { .. } => return None,
     })
 }
 
@@ -535,6 +535,8 @@ const fn item_element_tint(element: ItemElement) -> Color {
 /// The decal colour for a status landing, grouped by what the status does to the player's plan.
 const fn status_tint(effect: StatusEffect) -> Color {
     match effect {
+        StatusEffect::Haste | StatusEffect::Regen => Color::srgb(0.35, 0.90, 0.65),
+        StatusEffect::Slow => Color::srgb(0.60, 0.50, 0.85),
         StatusEffect::Poison => Color::srgb(0.58, 0.85, 0.30),
         StatusEffect::Burn => ability_element_tint(AbilityElement::Fire),
         StatusEffect::Freeze => ability_element_tint(AbilityElement::Water),
@@ -660,6 +662,15 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
             color: FxColor::Miss,
             overlay: None,
             motion: Some(ImpactMotion::Dodge),
+            emphasis: FxEmphasis::Normal,
+            dissolve: false,
+        },
+        BattleEvent::StatusHeal { target, amount } => FxCue {
+            target,
+            label: format!("+{amount} REGEN"),
+            color: FxColor::Recovery,
+            overlay: None,
+            motion: None,
             emphasis: FxEmphasis::Normal,
             dissolve: false,
         },
@@ -814,6 +825,7 @@ fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static s
     let beneficial = match potency {
         StatusPotency::Multiplier(factor) => factor >= 1.0,
         StatusPotency::Reduction(_) => true,
+        StatusPotency::HealingPercent(_) => true,
         StatusPotency::None | StatusPotency::DamagePerTurn(_) | StatusPotency::Redirect(_) => false,
     };
     if !beneficial {
@@ -825,7 +837,8 @@ fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static s
         | StatusEffect::DamageReduction => cue::DEF_BUFF,
         // A hit-chance buff is the closest thing the model has to a haste, and it has its own
         // sample rather than sharing the attack-buff cue.
-        StatusEffect::HitChanceModifier => cue::SPEED_BUFF,
+        StatusEffect::HitChanceModifier | StatusEffect::Haste => cue::SPEED_BUFF,
+        StatusEffect::Regen => cue::HEAL,
         _ => cue::ATK_BUFF,
     }
 }
@@ -896,7 +909,9 @@ fn sfx_cues_for_event(
         BattleEvent::Heal { revived, .. } => {
             cues.push(if revived { cue::REVIVE } else { cue::HEAL });
         }
-        BattleEvent::ManaRestored { .. } | BattleEvent::StatusCured { .. } => {
+        BattleEvent::ManaRestored { .. }
+        | BattleEvent::StatusCured { .. }
+        | BattleEvent::StatusHeal { .. } => {
             cues.push(cue::HEAL);
         }
         BattleEvent::StatusApplied { status, .. } => {
@@ -1230,6 +1245,7 @@ mod tests {
                             effect,
                             remaining_turns: Some(3),
                             potency,
+                            starts_next_round: false,
                         },
                     },
                     None,

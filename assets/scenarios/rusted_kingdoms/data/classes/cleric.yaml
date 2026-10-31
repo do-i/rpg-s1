@@ -88,3 +88,15 @@ abilities:
     mp_cost: 18
     revive_hp_pct: 0.50
     target: single_ally
+
+  - id: regen
+    name: Regen
+    unlock_level: 5
+    type: buff
+    battle_only: true
+    description: "Restores 5% of one ally's maximum HP at the end of each of their next 3 turns. Cannot revive."
+    mp_cost: 5
+    effect:
+      target: single_ally
+      regen_hp_pct: 0.05
+      duration_turns: 3

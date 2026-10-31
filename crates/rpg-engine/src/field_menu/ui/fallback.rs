@@ -664,7 +664,7 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "UP/DOWN caster  RIGHT/ENTER spellbook  ESC back"
         }
         (FieldMenuScreen::Spells, FieldMenuMode::SpellList) => {
-            "UP/DOWN spell  ENTER cast  LEFT/ESC caster"
+            "ARROWS spell  ENTER cast  LEFT EDGE/ESC caster"
         }
         (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
         (FieldMenuScreen::Recipes, _) => "UP/DOWN recipe  ESC back  M close",

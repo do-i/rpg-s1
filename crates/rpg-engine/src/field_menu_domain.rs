@@ -1639,9 +1639,9 @@ pub(crate) mod tests {
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
         // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
-        // less the Mimic Key that B4.2 cut when mimics went formally out of scope.
-        assert_eq!(catalog.items.len(), 207);
-        assert_eq!(catalog.item_order.len(), 207);
+        // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material.
+        assert_eq!(catalog.items.len(), 208);
+        assert_eq!(catalog.item_order.len(), 208);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [
@@ -1654,6 +1654,7 @@ pub(crate) mod tests {
             "goblin_fang",
             "rusty_blade",
             "goblin_shield",
+            "ivory_blossom",
         ] {
             assert!(catalog.item(id).is_some(), "missing {id}");
         }
@@ -2034,7 +2035,21 @@ pub(crate) mod tests {
             );
         }
         let cleric = catalog.class("cleric").unwrap();
-        assert!(cleric.abilities.iter().all(|ability| !ability.battle_only));
+        assert!(
+            cleric
+                .abilities
+                .iter()
+                .filter(|ability| matches!(ability.kind, AbilityKind::Heal(_)))
+                .all(|ability| !ability.battle_only)
+        );
+        assert!(
+            cleric
+                .abilities
+                .iter()
+                .find(|ability| ability.id == "regen")
+                .unwrap()
+                .battle_only
+        );
         let heal_all = cleric
             .abilities
             .iter()

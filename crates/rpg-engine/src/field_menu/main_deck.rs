@@ -11,11 +11,13 @@ use crate::{
     game_state::GameState, save_store::FIRST_PLAYER_SLOT, scenario_inventory::ScenarioInventory,
 };
 
-/// Rows per column on the main command deck; the deck grows a column as commands are added.
-pub(super) const MAIN_COMMAND_ROWS: usize = 4;
 pub(super) const QUIT_COMMAND_INDEX: usize = 3;
 pub(super) const SAVE_COMMAND_INDEX: usize = 4;
 pub(super) const CHARACTER_COMMAND_INDEX: usize = 7;
+
+/// Visual rows of the gallery: two adventure rows, then Save / Settings / Quit.
+/// Command identities stay stable when their presentation order changes.
+pub(super) const MAIN_COMMAND_GRID: [&[usize]; 3] = [&[0, 1, 2, 5], &[6, 7, 8, 9], &[4, 10, 3]];
 
 #[derive(Clone, Copy)]
 pub(super) struct MainCommand {
@@ -226,43 +228,38 @@ pub(super) fn switch_controlled_member(
     };
 }
 
-/// Columns the command deck needs to hold every command at [`MAIN_COMMAND_ROWS`] per column.
-pub(super) const fn main_command_columns() -> usize {
-    MAIN_COMMANDS.len().div_ceil(MAIN_COMMAND_ROWS)
-}
-
-/// Commands in one deck column; the last column is short when the count does not divide evenly.
-pub(super) const fn main_command_column_len(column: usize) -> usize {
-    let remaining = MAIN_COMMANDS
-        .len()
-        .saturating_sub(column * MAIN_COMMAND_ROWS);
-    if remaining < MAIN_COMMAND_ROWS {
-        remaining
-    } else {
-        MAIN_COMMAND_ROWS
-    }
-}
-
-/// Moves the deck cursor across the command grid, wrapping on both axes.
-///
-/// Commands fill each column top to bottom before the next one starts, so the index alone carries
-/// the column. Crossing into a short column clamps the row rather than landing on nothing.
+/// Wrap horizontally within a row, and vertically to the nearest card center in the next row.
+/// The system row has three wider cards, so the middle two adventure columns both lead to Settings.
 pub(super) fn stepped_main_command(
     selected: usize,
     vertical: Option<isize>,
     horizontal: Option<isize>,
 ) -> usize {
-    let selected = selected.min(MAIN_COMMANDS.len() - 1);
-    let mut column = selected / MAIN_COMMAND_ROWS;
-    let mut row = selected % MAIN_COMMAND_ROWS;
+    let (mut row, mut column) = MAIN_COMMAND_GRID
+        .iter()
+        .enumerate()
+        .find_map(|(row, commands)| {
+            commands
+                .iter()
+                .position(|&index| index == selected)
+                .map(|column| (row, column))
+        })
+        .unwrap_or((0, 0));
     if let Some(delta) = horizontal {
-        column = wrapped(column, main_command_columns(), delta);
-        row = row.min(main_command_column_len(column) - 1);
+        column = wrapped(column, MAIN_COMMAND_GRID[row].len(), delta);
     }
     if let Some(delta) = vertical {
-        row = wrapped(row, main_command_column_len(column), delta);
+        let previous_len = MAIN_COMMAND_GRID[row].len();
+        let next_row = wrapped(row, MAIN_COMMAND_GRID.len(), delta);
+        let next_len = MAIN_COMMAND_GRID[next_row].len();
+        column = (0..next_len)
+            .min_by_key(|&candidate| {
+                ((2 * candidate + 1) * previous_len).abs_diff((2 * column + 1) * next_len)
+            })
+            .unwrap_or_default();
+        row = next_row;
     }
-    column * MAIN_COMMAND_ROWS + row
+    MAIN_COMMAND_GRID[row][column]
 }
 
 pub(super) fn main_command_screen(index: usize) -> Option<FieldMenuScreen> {
@@ -326,53 +323,53 @@ mod tests {
     }
 
     #[test]
-    fn deck_navigation_wraps_within_a_column_and_crosses_between_them() {
-        // Column 0 holds Status, Spells, Items, Quit; column 1 holds Save, Equipment, Quests,
-        // Character; column 2 holds Recipes, Battle, and Settings.
-        assert_eq!(stepped_main_command(0, Some(1), None), 1);
-        assert_eq!(stepped_main_command(3, Some(1), None), 0);
-        assert_eq!(stepped_main_command(0, Some(-1), None), 3);
-        assert_eq!(stepped_main_command(4, Some(-1), None), 7);
-
-        assert_eq!(stepped_main_command(1, None, Some(1)), 5);
-        assert_eq!(stepped_main_command(5, None, Some(-1)), 1);
-        // Rightward out of the last column wraps back to the first.
-        assert_eq!(stepped_main_command(8, None, Some(1)), 0);
-        // The short column 2 keeps the row while it can and clamps below its last command.
-        assert_eq!(stepped_main_command(5, None, Some(1)), 9);
-        assert_eq!(stepped_main_command(7, None, Some(1)), 10);
-        // Vertical movement wraps inside the three-command column.
-        assert_eq!(stepped_main_command(8, Some(1), None), 9);
-        assert_eq!(stepped_main_command(9, Some(1), None), 10);
-        assert_eq!(stepped_main_command(10, Some(1), None), 8);
-        assert_eq!(stepped_main_command(8, Some(-1), None), 10);
+    fn gallery_navigation_follows_the_visible_rows_and_wraps_horizontally() {
+        assert_eq!(stepped_main_command(0, None, Some(1)), 1);
+        assert_eq!(stepped_main_command(2, None, Some(1)), 5);
+        assert_eq!(stepped_main_command(5, None, Some(1)), 0);
+        assert_eq!(stepped_main_command(0, None, Some(-1)), 5);
+        assert_eq!(stepped_main_command(6, None, Some(-1)), 9);
+        assert_eq!(stepped_main_command(4, None, Some(1)), 10);
+        assert_eq!(stepped_main_command(10, None, Some(1)), 3);
+        assert_eq!(stepped_main_command(3, None, Some(1)), 4);
+        assert_eq!(stepped_main_command(4, None, Some(-1)), 3);
+        assert_eq!(stepped_main_command(0, Some(1), None), 6);
+        assert_eq!(stepped_main_command(5, Some(1), None), 9);
+        assert_eq!(stepped_main_command(7, Some(-1), None), 1);
     }
 
     #[test]
-    fn crossing_into_the_short_column_clamps_to_its_last_command() {
-        // Recipes opened a third column and Battle joined it, so the clamp is load bearing: every
-        // row below the second has to land on the column's last entry.
-        assert_eq!(main_command_columns(), 3);
-        assert_eq!(main_command_column_len(0), 4);
-        assert_eq!(main_command_column_len(1), 4);
-        assert_eq!(main_command_column_len(2), 3);
+    fn vertical_navigation_uses_the_nearest_card_in_the_wider_system_row() {
+        for (adventure, system) in [(6, 4), (7, 10), (8, 10), (9, 3)] {
+            assert_eq!(stepped_main_command(adventure, Some(1), None), system);
+        }
+        for (system, adventure) in [(4, 6), (10, 7), (3, 9)] {
+            assert_eq!(stepped_main_command(system, Some(-1), None), adventure);
+        }
+        // Vertical wrap crosses between the first adventure row and the system row.
+        assert_eq!(stepped_main_command(0, Some(-1), None), 4);
+        assert_eq!(stepped_main_command(5, Some(-1), None), 3);
+        assert_eq!(stepped_main_command(4, Some(1), None), 0);
+        assert_eq!(stepped_main_command(10, Some(1), None), 1);
+        assert_eq!(stepped_main_command(3, Some(1), None), 5);
+    }
 
-        assert_eq!(stepped_main_command(3, None, Some(1)), 7);
-        for row in 0..MAIN_COMMAND_ROWS {
-            let crossed = stepped_main_command(row, None, Some(1));
-            assert_eq!(
-                crossed % MAIN_COMMAND_ROWS,
-                row.min(main_command_column_len(1) - 1)
-            );
-        }
-        // Crossing from the full middle column into the short one keeps the row or clamps.
-        for row in 0..MAIN_COMMAND_ROWS {
-            assert_eq!(
-                stepped_main_command(MAIN_COMMAND_ROWS + row, None, Some(1)),
-                2 * MAIN_COMMAND_ROWS + row.min(2),
-                "row {row} must land in the short last column"
-            );
-        }
+    #[test]
+    fn gallery_contains_each_existing_command_once_and_keeps_system_actions_together() {
+        let mut commands = MAIN_COMMAND_GRID
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
+        commands.sort_unstable();
+        assert_eq!(commands, (0..MAIN_COMMANDS.len()).collect::<Vec<_>>());
+        assert_eq!(
+            MAIN_COMMAND_GRID[2]
+                .iter()
+                .map(|&index| MAIN_COMMANDS[index].label)
+                .collect::<Vec<_>>(),
+            ["Save", "Settings", "Quit"]
+        );
     }
 
     #[test]

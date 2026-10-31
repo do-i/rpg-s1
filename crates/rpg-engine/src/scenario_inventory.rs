@@ -24,8 +24,14 @@ pub(crate) struct ScenarioInventory {
     pub(crate) menu_backdrop: Option<ScenarioRelativePath>,
     /// The command deck's icon sheet; `None` keeps the letter badges.
     pub(crate) menu_icons: Option<ScenarioRelativePath>,
+    /// Optional artwork used only in the load picker's heading.
+    pub(crate) load_icon: Option<ScenarioRelativePath>,
     /// Optional item artwork, keyed by the catalog id matching each PNG's filename.
     pub(crate) item_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
+    /// Optional spell artwork, keyed by ability id.
+    pub(crate) spell_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
+    /// Optional battle status artwork, keyed by each PNG's filename stem.
+    pub(crate) status_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
@@ -263,7 +269,12 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
         }
     }
     inventory.quests = Some(manifest.refs.quests.clone());
-    let item_images = ScenarioRelativePath::try_from("media/images/items")
+    let load_icon = ScenarioRelativePath::try_from("media/images/icons/menu/load.png")
+        .expect("the load icon is scenario-relative");
+    if package.join(load_icon.as_str()).is_file() {
+        inventory.load_icon = Some(load_icon);
+    }
+    let item_images = ScenarioRelativePath::try_from("media/images/icons/items")
         .expect("the item image directory is scenario-relative");
     if package.join(item_images.as_str()).is_dir() {
         for path in extension_files(&package, &item_images, "png")? {
@@ -273,6 +284,38 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
             {
                 inventory.item_images.insert(id.to_owned(), path);
             }
+        }
+    }
+    let spell_images = ScenarioRelativePath::try_from("media/images/icons/spells")
+        .expect("the spell image directory is scenario-relative");
+    if package.join(spell_images.as_str()).is_dir() {
+        for path in extension_files(&package, &spell_images, "png")? {
+            if let Some(id) = Path::new(path.as_str())
+                .file_stem()
+                .and_then(|id| id.to_str())
+            {
+                inventory.spell_images.insert(id.to_owned(), path);
+            }
+        }
+    }
+    let status_images = ScenarioRelativePath::try_from("media/images/icons/status")
+        .expect("the status image directory is scenario-relative");
+    if package.join(status_images.as_str()).is_dir() {
+        for path in extension_files(&package, &status_images, "png")? {
+            if let Some(id) = Path::new(path.as_str())
+                .file_stem()
+                .and_then(|id| id.to_str())
+            {
+                inventory.status_images.insert(id.to_owned(), path);
+            }
+        }
+    }
+    for id in ["haste", "slow", "regen"] {
+        if let Some(path) = inventory.status_images.get(id) {
+            inventory
+                .spell_images
+                .entry(id.to_owned())
+                .or_insert_with(|| path.clone());
         }
     }
     inventory.party_sprites = party_sprites(&package, &manifest);

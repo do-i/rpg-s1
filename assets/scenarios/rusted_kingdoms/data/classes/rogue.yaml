@@ -96,3 +96,16 @@ abilities:
     instant_kill_chance: 0.20
     instant_kill_blocked_by: [boss]
     target: single_enemy
+
+  - id: haste
+    name: Haste
+    unlock_level: 4
+    type: buff
+    battle_only: true
+    description: "Raises one ally's turn-priority speed by 50% for 3 rounds, starting next round. Replaces Slow."
+    mp_cost: 4
+    effect:
+      target: single_ally
+      stat: speed
+      modifier: 1.50
+      duration_turns: 3

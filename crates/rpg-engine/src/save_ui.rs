@@ -389,6 +389,10 @@ fn sync_title_load_overlay(
         return;
     };
     let font = asset_server.load(root.resolve(font_path));
+    let load_icon = inventory
+        .load_icon
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)));
     commands
         .spawn((
             Node {
@@ -406,7 +410,7 @@ fn sync_title_load_overlay(
             TitleLoadRoot,
         ))
         .with_children(|root| {
-            spawn_load_panel(root, &font, &catalog, &load_menu);
+            spawn_load_panel(root, &font, &catalog, &load_menu, load_icon.as_ref());
         });
 }
 
@@ -415,6 +419,7 @@ fn spawn_load_panel(
     font: &Handle<Font>,
     catalog: &SaveSlotCatalog,
     menu: &TitleLoadMenu,
+    load_icon: Option<&Handle<Image>>,
 ) {
     parent
         .spawn((
@@ -432,7 +437,7 @@ fn spawn_load_panel(
             BorderColor::all(status_border_active()),
         ))
         .with_children(|panel| {
-            spawn_load_header(panel, font, catalog, menu);
+            spawn_load_header(panel, font, catalog, menu, load_icon);
             spawn_section_rule(panel);
             if catalog.ready {
                 let window = menu.scroll.window(
@@ -497,6 +502,7 @@ fn spawn_load_header(
     font: &Handle<Font>,
     catalog: &SaveSlotCatalog,
     menu: &TitleLoadMenu,
+    load_icon: Option<&Handle<Image>>,
 ) {
     let recorded = catalog.slots.iter().filter(|slot| slot.is_valid()).count();
     parent
@@ -508,7 +514,21 @@ fn spawn_load_header(
             ..default()
         })
         .with_children(|header| {
-            spawn_header_bars(header, 44.0, 14.0);
+            if let Some(image) = load_icon {
+                header.spawn((
+                    ImageNode::new(image.clone()),
+                    Node {
+                        width: px(44),
+                        height: px(44),
+                        flex_shrink: 0.0,
+                        margin: UiRect::right(px(14)),
+                        ..default()
+                    },
+                    Name::new("Load modal title icon"),
+                ));
+            } else {
+                spawn_header_bars(header, 44.0, 14.0);
+            }
             header
                 .spawn(Node {
                     flex_direction: FlexDirection::Column,

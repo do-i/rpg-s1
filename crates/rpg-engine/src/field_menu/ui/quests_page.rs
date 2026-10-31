@@ -44,8 +44,9 @@ pub(in crate::field_menu) fn sync_quests_page(
     let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
+    let quest_icon = load_status_image(&asset_server, &root, "media/images/icons/menu/quests.png");
     commands.entity(menu_root).with_children(|parent| {
-        spawn_quests_page(parent, &font, &state, &game, &catalog);
+        spawn_quests_page(parent, &font, &state, &game, &catalog, quest_icon.as_ref());
     });
 }
 
@@ -55,6 +56,7 @@ pub(in crate::field_menu) fn spawn_quests_page(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    quest_icon: Option<&Handle<Image>>,
 ) {
     let quests = catalog.quests();
     let selected = selected_quest_index(state, quests);
@@ -80,8 +82,8 @@ pub(in crate::field_menu) fn spawn_quests_page(
                 ..default()
             })
             .with_children(|columns| {
-                spawn_quest_list_column(columns, font, state, game, quests, selected);
-                spawn_quest_detail_column(columns, font, game, quests.get(selected));
+                spawn_quest_list_column(columns, font, state, game, quests, selected, quest_icon);
+                spawn_quest_detail_column(columns, font, game, quests.get(selected), quest_icon);
             });
             spawn_status_text(
                 page,
@@ -137,8 +139,20 @@ pub(in crate::field_menu) fn spawn_quests_header(
                     ..default()
                 })
                 .with_children(|counters| {
-                    spawn_quest_counter(counters, font, "ACTIVE", tally.active, status_gold());
-                    spawn_quest_counter(counters, font, "CLEARED", tally.completed, status_teal());
+                    spawn_quest_counter(
+                        counters,
+                        font,
+                        "ACTIVE",
+                        tally.active,
+                        quest_status_color(QuestStatus::Active),
+                    );
+                    spawn_quest_counter(
+                        counters,
+                        font,
+                        "CLEARED",
+                        tally.completed,
+                        quest_status_color(QuestStatus::Completed),
+                    );
                     spawn_quest_counter(
                         counters,
                         font,
@@ -176,6 +190,7 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
     game: &GameState,
     quests: &[QuestDefinition],
     selected: usize,
+    quest_icon: Option<&Handle<Image>>,
 ) {
     spawn_status_panel(
         parent,
@@ -225,7 +240,7 @@ pub(in crate::field_menu) fn spawn_quest_list_column(
             spawn_scroll_list(panel, window, cards_node, |cards| {
                 for index in window.indices() {
                     let quest = &quests[index];
-                    spawn_quest_row(cards, font, quest, game, index == selected);
+                    spawn_quest_row(cards, font, quest, game, index == selected, quest_icon);
                 }
             });
             spawn_panel_rule(panel);
@@ -252,6 +267,7 @@ pub(in crate::field_menu) fn spawn_quest_row(
     quest: &QuestDefinition,
     game: &GameState,
     selected: bool,
+    quest_icon: Option<&Handle<Image>>,
 ) {
     let status = quest_status(quest, game.flags());
     let mut row = parent.spawn((
@@ -265,7 +281,7 @@ pub(in crate::field_menu) fn spawn_quest_row(
             max_height: px(REGISTER_CARD_MAX_HEIGHT),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
-            padding: UiRect::axes(px(10), px(6)),
+            padding: UiRect::axes(px(10), px(3)),
             border: UiRect::all(px(if selected { 2 } else { 1 })),
             border_radius: BorderRadius::all(px(4)),
             ..default()
@@ -277,16 +293,10 @@ pub(in crate::field_menu) fn spawn_quest_row(
         row.insert(SelectedQuestBoardRow);
     }
     row.with_children(|row| {
-        row.spawn((
-            Node {
-                width: px(6),
-                height: px(34),
-                margin: UiRect::right(px(10)),
-                ..default()
-            },
-            BackgroundColor(quest_kind_accent(quest.kind)),
-        ));
+        spawn_quest_icon_card(row, quest.kind, quest_icon);
         row.spawn(Node {
+            min_width: px(0),
+            flex_basis: px(0),
             flex_grow: 1.0,
             flex_direction: FlexDirection::Column,
             ..default()
@@ -319,6 +329,45 @@ pub(in crate::field_menu) fn spawn_quest_row(
     });
 }
 
+fn spawn_quest_icon_card(
+    parent: &mut ChildSpawnerCommands<'_>,
+    kind: QuestKind,
+    icon: Option<&Handle<Image>>,
+) {
+    let accent = quest_kind_accent(kind);
+    parent
+        .spawn((
+            Node {
+                width: px(44),
+                height: px(44),
+                flex_shrink: 0.0,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                margin: UiRect::right(px(10)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(accent.with_alpha(0.16)),
+            BorderColor::all(accent),
+            Name::new("Quest icon card"),
+        ))
+        .with_children(|card| {
+            if let Some(icon) = icon {
+                card.spawn((
+                    Node {
+                        width: px(40),
+                        height: px(40),
+                        flex_shrink: 0.0,
+                        ..default()
+                    },
+                    ImageNode::new(icon.clone()),
+                    Name::new("Quest icon"),
+                ));
+            }
+        });
+}
+
 pub(in crate::field_menu) fn spawn_quest_status_pill(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -334,7 +383,7 @@ pub(in crate::field_menu) fn spawn_quest_status_pill(
                 border_radius: BorderRadius::all(px(9)),
                 ..default()
             },
-            BackgroundColor(Color::srgba_u8(10, 10, 14, 170)),
+            BackgroundColor(quest_status_color(status).with_alpha(0.16)),
             BorderColor::all(quest_status_color(status)),
         ))
         .with_children(|pill| {
@@ -353,6 +402,7 @@ pub(in crate::field_menu) fn spawn_quest_detail_column(
     font: &Handle<Font>,
     game: &GameState,
     quest: Option<&QuestDefinition>,
+    quest_icon: Option<&Handle<Image>>,
 ) {
     spawn_status_panel(
         parent,
@@ -382,7 +432,6 @@ pub(in crate::field_menu) fn spawn_quest_detail_column(
                 return;
             };
             let status = quest_status(quest, game.flags());
-            spawn_status_text(panel, &quest.name, font, 24.0, status_gold());
             panel
                 .spawn(Node {
                     width: percent(100),
@@ -391,15 +440,50 @@ pub(in crate::field_menu) fn spawn_quest_detail_column(
                     column_gap: px(12),
                     ..default()
                 })
-                .with_children(|meta| {
-                    spawn_quest_status_pill(meta, font, status);
-                    spawn_status_text(
-                        meta,
-                        quest_kind_label(quest.kind),
-                        font,
-                        12.0,
-                        quest_kind_accent(quest.kind),
-                    );
+                .with_children(|header| {
+                    if let Some(icon) = quest_icon {
+                        header.spawn((
+                            Node {
+                                width: px(128),
+                                height: px(128),
+                                flex_shrink: 0.0,
+                                ..default()
+                            },
+                            ImageNode::new(icon.clone()),
+                            Name::new("Quest detail icon"),
+                        ));
+                    }
+                    header
+                        .spawn(Node {
+                            min_width: px(0),
+                            flex_basis: px(0),
+                            flex_grow: 1.0,
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(10),
+                            ..default()
+                        })
+                        .with_children(|copy| {
+                            spawn_status_text(copy, &quest.name, font, 24.0, status_gold());
+                            copy.spawn(Node {
+                                width: percent(100),
+                                flex_direction: FlexDirection::Row,
+                                flex_wrap: FlexWrap::Wrap,
+                                align_items: AlignItems::Center,
+                                column_gap: px(12),
+                                row_gap: px(6),
+                                ..default()
+                            })
+                            .with_children(|meta| {
+                                spawn_quest_status_pill(meta, font, status);
+                                spawn_status_text(
+                                    meta,
+                                    quest_kind_label(quest.kind),
+                                    font,
+                                    12.0,
+                                    quest_kind_accent(quest.kind),
+                                );
+                            });
+                        });
                 });
             spawn_section_rule(panel);
             spawn_quest_meta_row(panel, font, "WHERE", &quest.location);
@@ -575,8 +659,8 @@ pub(in crate::field_menu) fn quest_kind_label(kind: QuestKind) -> &'static str {
 
 pub(in crate::field_menu) fn quest_kind_accent(kind: QuestKind) -> Color {
     match kind {
-        QuestKind::Main => status_ember(),
-        QuestKind::Sub => Color::srgb_u8(91, 143, 183),
+        QuestKind::Main => Color::srgb_u8(175, 139, 224),
+        QuestKind::Sub => Color::srgb_u8(76, 200, 194),
     }
 }
 
@@ -590,9 +674,9 @@ pub(in crate::field_menu) fn quest_status_label(status: QuestStatus) -> &'static
 
 pub(in crate::field_menu) fn quest_status_color(status: QuestStatus) -> Color {
     match status {
-        QuestStatus::Inactive => status_muted(),
-        QuestStatus::Active => status_gold(),
-        QuestStatus::Completed => status_teal(),
+        QuestStatus::Inactive => Color::srgb_u8(194, 200, 210),
+        QuestStatus::Active => Color::srgb_u8(76, 200, 194),
+        QuestStatus::Completed => Color::srgb_u8(126, 205, 116),
     }
 }
 

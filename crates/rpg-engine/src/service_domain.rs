@@ -539,6 +539,41 @@ mod tests {
     }
 
     #[test]
+    fn ivory_revival_unlocks_and_consumes_its_ingredients() {
+        let recipes: RecipeCatalogFile =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/recipe/all_recipe.yaml")))
+                .unwrap();
+        let recipe = recipes
+            .entries()
+            .iter()
+            .find(|recipe| recipe.id == "recipe_ivory_revival")
+            .unwrap();
+        let mut game = fixture_game();
+        for id in ["ivory_blossom", "rare_herb", "mc_m"] {
+            let _outcome = game.repository_mut().add_item(id, 1).unwrap();
+        }
+        let _outcome = game.repository_mut().add_gp(400).unwrap();
+        assert_eq!(
+            recipe_availability(recipe, game.flags(), game.repository()),
+            RecipeAvailability::Locked
+        );
+        game.flags_mut().set("story_act3_started");
+        let old_gp = game.repository().gp();
+        let old_output = game.repository().item_count("revival_herb");
+        let flags = game.flags().clone();
+        craft(game.repository_mut(), &flags, recipe).unwrap();
+        assert_eq!(game.repository().gp(), old_gp - 400);
+        assert_eq!(game.repository().item_count("revival_herb"), old_output + 2);
+        for id in ["ivory_blossom", "rare_herb", "mc_m"] {
+            assert_eq!(game.repository().item_count(id), 0);
+        }
+        assert_eq!(
+            recipe_availability(recipe, game.flags(), game.repository()),
+            RecipeAvailability::MissingInputs
+        );
+    }
+
+    #[test]
     fn recipe_classification_and_crafting_are_atomic_and_unique_safe() {
         let recipe: RecipeDefinition = scenario_yaml::from_str(
             "id: test\nscroll_name: Test\noutput: { item: remedy, qty: 1 }\nunique_output: true\ninputs:\n  items: [{ id: herb_red, qty: 2 }, { id: herb_red, qty: 1 }]\ngp_cost: 80\nunlock_flag: craft_open\n",

@@ -26,7 +26,6 @@ equipment_slots:
   accessory: [all]
 
 abilities:
-  # ── Restoration ───────────────────────────────────────
   - id: aether_weave
     name: Aether Weave
     unlock_level: 2
@@ -339,3 +338,18 @@ abilities:
         damage_per_turn: "max(1, floor(enemy_atk * 0.10))"
         duration_turns: 3
         timing: end_of_turn
+
+  - id: slow
+    name: Slow
+    unlock_level: 5
+    type: debuff
+    battle_only: true
+    description: "Halves one enemy's turn-priority speed for 3 rounds, starting next round. Replaces Haste."
+    mp_cost: 5
+    effect:
+      target: single_enemy
+      stat: speed
+      modifier: 0.50
+      duration_turns: 3
+
+  # ── Restoration ───────────────────────────────────────

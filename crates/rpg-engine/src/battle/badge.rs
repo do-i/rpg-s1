@@ -33,6 +33,33 @@ pub(super) struct StatusBadge {
     pub(super) label: &'static str,
     pub(super) fill: Color,
     pub(super) ink: Color,
+    pub(super) remaining_turns: Option<u32>,
+}
+
+impl StatusBadge {
+    /// Effects without matching artwork keep their text badge.
+    pub(super) fn icon_id(self) -> Option<&'static str> {
+        match self.label {
+            "PSN" => Some("poison"),
+            "zzz" => Some("sleep"),
+            "STN" => Some("stun"),
+            "TNT" => Some("taunt"),
+            "ATK+" => Some("attack_up"),
+            "ATK-" => Some("attack_down"),
+            "DEF+" => Some("defense_up"),
+            "DEF-" => Some("defense_down"),
+            "GRD" => Some("barrier"),
+            "KO" => Some("ko"),
+            "HST" => Some("haste"),
+            "SLW" => Some("slow"),
+            "REG" => Some("regen"),
+            _ => None,
+        }
+    }
+}
+
+pub(super) fn knocked_out_badge() -> StatusBadge {
+    badge("KO", (90, 46, 46), (240, 180, 180))
 }
 
 const fn badge(label: &'static str, fill: (u8, u8, u8), ink: (u8, u8, u8)) -> StatusBadge {
@@ -40,6 +67,7 @@ const fn badge(label: &'static str, fill: (u8, u8, u8), ink: (u8, u8, u8)) -> St
         label,
         fill: Color::srgb_u8(fill.0, fill.1, fill.2),
         ink: Color::srgb_u8(ink.0, ink.1, ink.2),
+        remaining_turns: None,
     }
 }
 
@@ -57,6 +85,7 @@ fn beneficial(potency: StatusPotency) -> bool {
     match potency {
         StatusPotency::Multiplier(factor) => factor >= 1.0,
         StatusPotency::Reduction(_) => true,
+        StatusPotency::HealingPercent(_) => true,
         StatusPotency::None | StatusPotency::DamagePerTurn(_) | StatusPotency::Redirect(_) => false,
     }
 }
@@ -70,7 +99,10 @@ pub(super) fn badge_for(status: ActiveStatus) -> Option<StatusBadge> {
             badge(down, BANE.0, BANE.1)
         }
     };
-    Some(match status.effect {
+    let mut result = match status.effect {
+        StatusEffect::Haste => badge("HST", BOON.0, BOON.1),
+        StatusEffect::Slow => badge("SLW", BANE.0, BANE.1),
+        StatusEffect::Regen => badge("REG", (35, 95, 65), (170, 255, 195)),
         StatusEffect::Poison => badge("PSN", (51, 102, 51), (170, 255, 170)),
         StatusEffect::Sleep => badge("zzz", (68, 68, 170), (204, 204, 255)),
         StatusEffect::Stun => badge("STN", (120, 90, 20), (255, 220, 100)),
@@ -85,7 +117,9 @@ pub(super) fn badge_for(status: ActiveStatus) -> Option<StatusBadge> {
         StatusEffect::HitChanceModifier => signed("HIT+", "HIT-"),
         StatusEffect::DamageReduction => badge("GRD", BOON.0, BOON.1),
         StatusEffect::RedirectDamage => badge("CVR", (90, 70, 130), (215, 195, 245)),
-    })
+    };
+    result.remaining_turns = status.remaining_turns;
+    Some(result)
 }
 
 /// Every badge a combatant should wear, in application order, capped at [`MAX_BADGES`].
@@ -123,6 +157,9 @@ mod tests {
             StatusEffect::HitChanceModifier,
             StatusEffect::DamageReduction,
             StatusEffect::RedirectDamage,
+            StatusEffect::Haste,
+            StatusEffect::Slow,
+            StatusEffect::Regen,
         ] {
             assert!(
                 badge_for(ActiveStatus::persistent(effect)).is_some(),
@@ -166,7 +203,10 @@ mod tests {
                 3,
                 1.25
             )),
-            Some(badge("DEF+", BOON.0, BOON.1)),
+            Some(StatusBadge {
+                remaining_turns: Some(3),
+                ..badge("DEF+", BOON.0, BOON.1)
+            }),
             "the source's lone modifier entry is DEF_UP, in this teal"
         );
     }
@@ -183,7 +223,10 @@ mod tests {
         // A flat damage reduction always favours its wearer, whatever the number.
         assert_eq!(
             badge_for(ActiveStatus::reduction(2, 0.3)),
-            Some(badge("GRD", BOON.0, BOON.1))
+            Some(StatusBadge {
+                remaining_turns: Some(2),
+                ..badge("GRD", BOON.0, BOON.1)
+            })
         );
     }
 

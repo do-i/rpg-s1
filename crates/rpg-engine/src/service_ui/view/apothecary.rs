@@ -890,7 +890,12 @@ mod tests {
 
     #[test]
     fn sealed_formulae_hide_output_requirements_and_prices_without_lock_art() {
-        let mut world = rendered(game([]), 10);
+        let selected = catalog()
+            .recipes()
+            .iter()
+            .position(|recipe| recipe.id == "recipe_elixir")
+            .unwrap();
+        let mut world = rendered(game([]), selected);
         let text = world
             .query::<&Text>()
             .iter(&world)
@@ -934,7 +939,12 @@ mod tests {
             "story_act3_started",
             "story_act4_started",
         ];
-        let mut world = rendered(game(flags), 10);
+        let selected = catalog()
+            .recipes()
+            .iter()
+            .position(|recipe| recipe.id == "recipe_elixir")
+            .unwrap();
+        let mut world = rendered(game(flags), selected);
         let text = world
             .query::<&Text>()
             .iter(&world)

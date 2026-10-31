@@ -278,9 +278,9 @@ mod tests {
             files[0].file_name().and_then(|name| name.to_str()),
             Some("all_recipe.yaml")
         );
-        assert_eq!(recipe_count, 15);
+        assert_eq!(recipe_count, 16);
         assert_eq!(unique_count, 1);
-        assert_eq!(item_ingredients, 28);
-        assert_eq!(magic_core_ingredients, 12);
+        assert_eq!(item_ingredients, 30);
+        assert_eq!(magic_core_ingredients, 13);
     }
 }

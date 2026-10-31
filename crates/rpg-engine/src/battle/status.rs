@@ -18,6 +18,9 @@ pub(super) enum StatusEffect {
     HitChanceModifier,
     DamageReduction,
     RedirectDamage,
+    Haste,
+    Slow,
+    Regen,
 }
 
 impl From<ItemStatus> for StatusEffect {
@@ -34,6 +37,7 @@ impl From<ItemStatus> for StatusEffect {
 pub(super) enum StatusPotency {
     None,
     DamagePerTurn(u32),
+    HealingPercent(f64),
     Multiplier(f64),
     Reduction(f64),
     Redirect(CombatantKey),
@@ -44,6 +48,8 @@ pub(super) struct ActiveStatus {
     pub(super) effect: StatusEffect,
     pub(super) remaining_turns: Option<u32>,
     pub(super) potency: StatusPotency,
+    /// Speed effects begin at the next round boundary and last full rounds.
+    pub(super) starts_next_round: bool,
 }
 
 impl ActiveStatus {
@@ -52,6 +58,7 @@ impl ActiveStatus {
             effect,
             remaining_turns: Some(turns),
             potency: StatusPotency::None,
+            starts_next_round: false,
         }
     }
 
@@ -60,6 +67,7 @@ impl ActiveStatus {
             effect,
             remaining_turns: None,
             potency: StatusPotency::None,
+            starts_next_round: false,
         }
     }
 
@@ -72,6 +80,7 @@ impl ActiveStatus {
             effect,
             remaining_turns: turns,
             potency: StatusPotency::DamagePerTurn(damage),
+            starts_next_round: false,
         }
     }
 
@@ -80,6 +89,7 @@ impl ActiveStatus {
             effect,
             remaining_turns: Some(turns),
             potency: StatusPotency::Multiplier(multiplier),
+            starts_next_round: false,
         }
     }
 
@@ -88,6 +98,7 @@ impl ActiveStatus {
             effect: StatusEffect::DamageReduction,
             remaining_turns: Some(turns),
             potency: StatusPotency::Reduction(reduction),
+            starts_next_round: false,
         }
     }
 
@@ -96,6 +107,29 @@ impl ActiveStatus {
             effect: StatusEffect::RedirectDamage,
             remaining_turns: Some(turns),
             potency: StatusPotency::Redirect(source),
+            starts_next_round: false,
+        }
+    }
+
+    pub(super) const fn speed(turns: u32, multiplier: f64) -> Self {
+        Self {
+            effect: if multiplier >= 1.0 {
+                StatusEffect::Haste
+            } else {
+                StatusEffect::Slow
+            },
+            remaining_turns: Some(turns),
+            potency: StatusPotency::Multiplier(multiplier),
+            starts_next_round: true,
+        }
+    }
+
+    pub(super) const fn regeneration(turns: u32, percent: f64) -> Self {
+        Self {
+            effect: StatusEffect::Regen,
+            remaining_turns: Some(turns),
+            potency: StatusPotency::HealingPercent(percent),
+            starts_next_round: false,
         }
     }
 }
@@ -103,5 +137,6 @@ impl ActiveStatus {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) struct StatusTick {
     pub(super) damage: u32,
+    pub(super) healing: u32,
     pub(super) expired: u32,
 }

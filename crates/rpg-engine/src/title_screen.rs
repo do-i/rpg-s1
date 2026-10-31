@@ -582,15 +582,7 @@ fn update_menu_colors(
 
 /// Colour is the whole of the title menu's selection feedback.
 ///
-/// The source reserves `_DEFAULT_CURSOR_W` in `engine/title/menu_renderer.py` and lays every
-/// left-aligned label out at `x + cursor_width`, then draws a cursor image into that gutter *only*
-/// when one loaded. For this scenario none ever does: `rusted_kingdoms/manifest.yaml` names
-/// `media/images/icons/arrow-head-red-right-01.webp`, which exists nowhere in the source tree, and
-/// `title_scene.py` guards the load with `if cursor_path.exists()`. `title.cursor_icon` stays in
-/// the manifest schema — the port validates the path it names — but nothing renders it.
-///
-/// The port centres its labels instead of left-aligning them, so it reserves no gutter either: an
-/// empty column inside a centred row only pushes every label off-centre by half its width.
+/// The title menu centres its labels and uses the selected text color as its cursor.
 fn menu_entry_color(theme: &UiTheme, index: usize, selected: usize, has_valid_save: bool) -> Color {
     if index == LOAD_GAME_INDEX && !has_valid_save {
         theme.menu_disabled_color
@@ -780,10 +772,7 @@ mod tests {
     /// The title menu draws no cursor image, reserves no gutter for one, and marks its selection
     /// by colour alone.
     ///
-    /// `rusted_kingdoms/manifest.yaml` names `arrow-head-red-right-01.webp`, which exists nowhere
-    /// in the source tree, and `title_scene.py` only builds a cursor `if cursor_path.exists()`, so
-    /// no label moves as selection travels. Since the port centres its labels, a reserved gutter
-    /// would only shift each one right by half its width; see [`menu_entry_color`].
+    /// No label moves as selection travels; see [`menu_entry_color`].
     #[test]
     fn the_title_menu_centres_its_labels_and_marks_selection_by_colour() {
         let mut app = ready_minimal_demo_title_app();
