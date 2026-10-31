@@ -49,7 +49,8 @@ const BATTLE_IDLE_TILE: u32 = SPELLCAST_ROW * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
 const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
 const ENEMY_GROUND_NUDGE: f32 = 10.0;
-const ENEMY_BAR_RESERVE: f32 = 32.0;
+/// Keep the health bar, badge row, and countdown overhang inside the clipped enemy area.
+const ENEMY_FOOTER_RESERVE: f32 = 32.0 + STATUS_ICON_SIZE + 2.0;
 const BREATH_TOP_FRACTION: f32 = 0.60;
 const BREATH_MAX_SQUASH: f32 = 2.0;
 const BREATH_PERIOD_SECONDS: f32 = 1.4;
@@ -1281,7 +1282,7 @@ fn enemy_card_position(
 
     let center_y = ground_top + ground.height as f32 / 2.0 + ENEMY_GROUND_NUDGE + offset_y;
     let minimum_feet = ground_top;
-    let maximum_feet = (ground_bottom - ENEMY_BAR_RESERVE).max(minimum_feet);
+    let maximum_feet = (ground_bottom - ENEMY_FOOTER_RESERVE).max(minimum_feet);
     let feet = (center_y + sprite_size / 2.0).clamp(minimum_feet, maximum_feet);
 
     (center_x - card_width / 2.0, feet - sprite_size - 2.0)
@@ -2519,6 +2520,52 @@ mod tests {
     use super::*;
 
     #[test]
+    fn enemy_badges_fit_below_health_bars_on_low_ground_backgrounds() {
+        for ground in [
+            full_enemy_ground(),
+            GroundRect {
+                x: 160,
+                y: 340,
+                width: 960,
+                height: 80,
+            },
+            GroundRect {
+                x: 120,
+                y: 310,
+                width: 910,
+                height: 158,
+            },
+            GroundRect {
+                x: 40,
+                y: 351,
+                width: 1200,
+                height: 117,
+            },
+        ] {
+            for sprite_size in [52.0_f32, 160.0, 288.0, 384.0] {
+                for count in 1..=5 {
+                    for index in 0..count {
+                        let (_, top) = enemy_card_position(
+                            ground,
+                            sprite_size,
+                            sprite_size.max(80.0),
+                            count,
+                            index,
+                        );
+                        // Frame includes a 2px border on both sides, followed by the health
+                        // bar's 4px top margin, 22px bar, 24px badges, and 2px countdown overhang.
+                        let bottom = top + sprite_size + 4.0 + 4.0 + 22.0 + STATUS_ICON_SIZE + 2.0;
+                        assert!(
+                            bottom <= ENEMY_AREA_HEIGHT,
+                            "enemy badge clipped: ground={ground:?}, sprite={sprite_size}, count={count}, index={index}, bottom={bottom}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn battle_idle_frame_faces_down() {
         assert_eq!(BATTLE_IDLE_TILE, 18);
     }
@@ -2553,7 +2600,7 @@ mod tests {
         };
         assert_eq!(
             enemy_card_position(cave_ground, 64.0, 80.0, 1, 0),
-            (600.0, 365.0)
+            (600.0, 344.0)
         );
         let courtyard_ground = GroundRect {
             x: 40,
@@ -2563,7 +2610,7 @@ mod tests {
         };
         assert_eq!(
             enemy_card_position(courtyard_ground, 64.0, 80.0, 1, 0),
-            (600.0, 370.0)
+            (600.0, 344.0)
         );
     }
 
