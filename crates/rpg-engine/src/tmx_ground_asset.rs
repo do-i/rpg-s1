@@ -404,19 +404,19 @@ fn apply_tiled_transform(sprite: &mut Sprite, gid: crate::tmx_header::TmxTileGid
         return Quat::IDENTITY;
     }
 
-    // Tiled applies the anti-diagonal reflection before its horizontal and vertical flags.
-    // Square orthogonal tiles can represent all eight combinations with one quarter turn plus
-    // Bevy's two sprite reflections.
+    // Tiled swaps screen x/y before its horizontal and vertical flags. In Bevy's y-up
+    // coordinates this reflects across x = -y. Account for that inverted y axis when
+    // combining a quarter turn with the sprite's local-space reflections.
     match (horizontal, vertical) {
         (false, false) => {
             sprite.flip_y = true;
-            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+            Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)
         }
-        (true, false) => Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
-        (false, true) => Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2),
+        (true, false) => Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2),
+        (false, true) => Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
         (true, true) => {
             sprite.flip_x = true;
-            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+            Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)
         }
     }
 }
@@ -852,6 +852,52 @@ mod tests {
     }
 
     #[test]
+    fn tiled_transforms_place_every_corner_like_tiled_for_all_eight_flag_combinations() {
+        // Tiled swaps screen x/y first, then reflects horizontally and vertically:
+        // https://doc.mapeditor.org/en/stable/reference/global-tile-ids/#tile-flipping
+        for flags in 0..8u32 {
+            let raw_gid = 1 | (flags << 29);
+            let xml = format!(
+                r#"<map orientation="orthogonal" width="1" height="1" tilewidth="32" tileheight="32" infinite="0">
+                <layer id="1" name="ground" width="1" height="1"><data encoding="csv">{raw_gid}</data></layer>
+                </map>"#
+            );
+            let document = parse_tmx_map_document(
+                &xml,
+                &ScenarioRelativePath::try_from("media/maps/transforms.tmx").unwrap(),
+            )
+            .unwrap();
+            let gid = document.tile_layers()[0].gid_at(0, 0).unwrap();
+            let mut sprite = Sprite::default();
+            let rotation = apply_tiled_transform(&mut sprite, gid);
+            for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)] {
+                let (mut expected_x, mut expected_y) = (x, y);
+                if flags & 1 != 0 {
+                    std::mem::swap(&mut expected_x, &mut expected_y);
+                }
+                if flags & 4 != 0 {
+                    expected_x = -expected_x;
+                }
+                if flags & 2 != 0 {
+                    expected_y = -expected_y;
+                }
+                // Bevy reflects in local space, then rotates in its y-up world.
+                let actual = rotation
+                    * Vec3::new(
+                        if sprite.flip_x { -x } else { x },
+                        if sprite.flip_y { y } else { -y },
+                        0.0,
+                    );
+                let expected = Vec3::new(expected_x, -expected_y, 0.0);
+                assert!(
+                    actual.abs_diff_eq(expected, 0.00001),
+                    "flags={flags:03b}, corner=({x}, {y}): {actual:?} != {expected:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn starting_forest_keeps_spawn_markers_semantic_and_out_of_visible_projection() {
         let mut app = ground_app();
         let handle = load_map(&mut app, "media/maps/zone_01_starting_forest.tmx");
@@ -938,7 +984,7 @@ mod tests {
         );
         assert_eq!(
             transformed.transform.rotation,
-            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+            Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)
         );
         assert!(!transformed.sprite.flip_x);
         assert!(!transformed.sprite.flip_y);
