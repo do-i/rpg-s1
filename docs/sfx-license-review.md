@@ -74,7 +74,7 @@ comparison scope of this review.
 
 Official page snapshots, free-download metadata, both ZIPs, extracted source
 WAVs, the comparison script, per-file source/destination hashes and waveform
-results are in `temp/2026-10-29-003-sfx-license-review/`.
+results are in `temp/20261029-0859-sfx-license-review/`.
 
 Archive SHA-256 values:
 

@@ -160,5 +160,5 @@ at every pixel offset, with flips and 90-degree rotations, and exact 2x
 enlargement from 16x16 when applicable. No matches were found, including
 in ground/terrain-v7.png. This comparison does not identify recolored or
 repainted derivatives. Inventory, hashes and results are recorded alongside
-the audit script in temp/2026-10-29-002-floor-upstream-audit/; scope and
+the audit script in temp/20261029-0854-floor-upstream-audit/; scope and
 provenance are documented in docs/floor-tileset.md.

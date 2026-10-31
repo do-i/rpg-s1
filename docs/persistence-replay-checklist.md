@@ -1,6 +1,6 @@
 # Persistence and replay operator checklist
 
-RF-10 prepares the existing manual verification entries (`temp/plans/manual-verification.md`):
+RF-10 prepares the existing manual verification entries (`temp/20261028-2136-plans/manual-verification.md`):
 `RK-SVC-001`, `RK-SVC-017`, clean campaign, and `M14.04` / `RK-DBG-001`–`RK-DBG-005`.
 These entries remain pending until the user performs or explicitly accepts the
 visible observations. Headless tests and generated saves do not complete them.
@@ -13,7 +13,7 @@ existing destination. Use the same release-scoped binary throughout acceptance.
 
 ```bash
 cargo build -j 1
-rf10_run=$(realpath "$(mktemp -d temp/refactoring/rf10-operator.XXXXXX)")
+rf10_run=$(realpath "$(mktemp -d "temp/$(date +%Y%m%d-%H%M)-rf10-operator.XXXXXX")")
 RPG_S1_RF10_EXPORT="$rf10_run/pristine" cargo test -p rpg-engine -j 1 \
   world_interaction::persistence_regressions::authored_rewards_and_campaign_boundaries_survive_fresh_processes \
   -- --exact
@@ -26,7 +26,7 @@ RPG_S1_SAVE_DIR="$rf10_run/saves" XDG_CONFIG_HOME="$rf10_run/config" \
 Keep `rf10_run` in the same shell. If the normal Cargo target is unavailable, set
 `CARGO_TARGET_DIR` to a writable build directory for all Cargo commands and use
 that directory's binary. All fixture saves and run evidence belong under ignored
-`temp/refactoring/`; the profile above isolates both saves and options.
+`temp/YYYYMMDD-HHMM-description/`; the profile above isolates both saves and options.
 
 | Slot | Generated state | Purpose |
 | ---: | --- | --- |
@@ -148,7 +148,7 @@ seed's gameplay state; replays with physical input suppressed; and corrupts two
 hashes after a valid prefix. The first mismatch must report action 1 at frame 3,
 exit unsuccessfully, and preserve both input files. A malformed copy also fails
 decoding. Successful fixtures clean themselves up; failures retain logs/saves
-under `temp/refactoring/rf10-*`.
+under `temp/20261029-0825-refactoring/rf10-*`.
 
 For the visible gate, record a representative battle with the installed binary:
 

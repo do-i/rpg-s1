@@ -56,7 +56,7 @@ The comparison checks final source snapshots and exact cells. It does not
 exclude edited, scaled, rotated or offset source fragments and is not, by
 itself, proof of generation provenance. Original migration and later generated
 repairs remain documented below and in Git history. Temporary machine-readable
-results and the comparison script are in `temp/2026-10-29-001-floor-provenance/`.
+results and the comparison script are in `temp/20261029-0850-floor-provenance/`.
 
 ### Complete upstream folder comparison
 
@@ -79,7 +79,7 @@ unchanged migrated artwork. It does not rule out recolored, repainted or
 otherwise modified derivatives; project-authored provenance also relies on
 the owner's statement and generation records. The pinned inventory, LFS
 manifest, source PNGs, comparison script and full results are retained in
-`temp/2026-10-29-002-floor-upstream-audit/`.
+`temp/20261029-0854-floor-upstream-audit/`.
 
 ## Removed tiles and opaque ground
 

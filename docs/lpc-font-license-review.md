@@ -103,6 +103,6 @@ notice review.
 
 Original party notices, the pinned full LPC credits, upstream generator README,
 generator revision metadata and official Philosopher notice are retained in
-`temp/2026-10-29-004-lpc-font-review/`. The six restored/added notices each
+`temp/20261029-0913-lpc-font-review/`. The six restored/added notices each
 have a current SHA-256 and approved inventory entry. The new files must be
 committed before the tracked-payload selection automatically includes them.

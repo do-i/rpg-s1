@@ -144,6 +144,33 @@ class RefreshTests(UpdaterTestCase):
         self.assertEqual(self.repo.ledger.read_bytes(), refreshed)
         self.assertEqual(self.repo.ledger.stat().st_mtime_ns, 1_000_000_000)
 
+    def test_unstaged_asset_removal_with_removed_ledger_row_does_not_block_build(self):
+        (self.repo.root / "assets/map.tmx").unlink()
+        self.repo.ledger.write_text(
+            "\n".join(line for line in LEDGER.splitlines() if not line.startswith("| ALI-0004 |"))
+            + "\n"
+        )
+        before = self.repo.ledger.read_bytes()
+        for mode in ("--check", "--dry-run", "--write"):
+            code, _, err = self.repo.run(mode)
+            self.assertEqual(code, updater.EXIT_OK, err)
+            self.assertLedgerUnchanged(before)
+
+    def test_missing_asset_with_existing_ledger_row_still_blocks_build(self):
+        (self.repo.root / "assets/map.tmx").unlink()
+        code, _, err = self.repo.run("--check")
+        self.assertEqual(code, updater.EXIT_INVALID)
+        self.assertIn("tracked asset is missing: assets/map.tmx", err)
+
+    def test_present_asset_with_removed_ledger_row_still_blocks_build(self):
+        self.repo.ledger.write_text(
+            "\n".join(line for line in LEDGER.splitlines() if not line.startswith("| ALI-0004 |"))
+            + "\n"
+        )
+        code, _, err = self.repo.run("--check")
+        self.assertEqual(code, updater.EXIT_INVALID)
+        self.assertIn("tracked asset has no ledger entry", err)
+
     def test_refresh_preserves_file_mode(self):
         os.chmod(self.repo.ledger, 0o640)
         self.repo.write("assets/map.tmx", MAP_V2)

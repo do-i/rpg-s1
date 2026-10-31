@@ -161,6 +161,20 @@ def plan_update(repo_root: Path, ledger_path: Path) -> Plan:
     payload, selection_errors = release_asset_paths(repo_root)
     errors = [*parse_errors, *selection_errors]
     by_destination = {entry.destination: entry for entry in entries}
+    # A worktree asset removal can precede staging. Once its provenance row is
+    # removed too, it is no longer part of the local build. Keep missing assets
+    # with ledger entries as errors, and leave release payload validation strict.
+    deleted = subprocess.run(
+        ["git", "ls-files", "--deleted", "-z", "--", "assets"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+    )
+    removed_paths = {path.decode("utf-8") for path in deleted.stdout.split(b"\0") if path}
+    payload = [
+        path for path in payload
+        if path not in removed_paths or path in by_destination
+    ]
     errors.extend(
         f"tracked asset has no ledger entry; record its provenance row first: {path}"
         for path in payload
