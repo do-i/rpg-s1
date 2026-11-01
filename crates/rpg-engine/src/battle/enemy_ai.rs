@@ -66,6 +66,10 @@ pub(super) fn pick_enemy_action(
     state: &BattleState,
     rng: &mut GameplayRng,
 ) -> EnemyAction {
+    // Silence seals every ability, exactly as it locks a party member's Spell command.
+    if enemy.is_silenced() {
+        return EnemyAction::Attack;
+    }
     let Some((ai, _)) = inline_behavior(enemy) else {
         return EnemyAction::Attack;
     };

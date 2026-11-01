@@ -9,7 +9,7 @@ use super::{
     ability::{ElementalAffinity, elemental_damage},
     action::BattleEvent,
     model::{BattleItemChoice, BattlePhase, BattleState, CombatantKey, TargetGroup},
-    status::StatusEffect,
+    status::{ActiveStatus, StatusEffect},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -39,6 +39,7 @@ pub(super) fn battle_item(definition: &ItemDefinition) -> Option<&ConsumableItem
                 | ConsumableEffect::Revive(_)
                 | ConsumableEffect::Cure(_)
                 | ConsumableEffect::Throw(_)
+                | ConsumableEffect::Inflict(_)
         ))
     .then_some(item)
 }
@@ -59,7 +60,7 @@ pub(super) fn auto_items<'a>(
 
 pub(super) fn target_plan(item: &ConsumableItem) -> ItemTargetPlan {
     match item.effect {
-        ConsumableEffect::Throw(_) => ItemTargetPlan {
+        ConsumableEffect::Throw(_) | ConsumableEffect::Inflict(_) => ItemTargetPlan {
             group: TargetGroup::Enemy,
             ko_eligible: false,
         },
@@ -198,6 +199,31 @@ pub(super) fn resolve_item(
                 amount,
                 knocked_out: amount >= defender.health,
             });
+        }
+        ConsumableEffect::Inflict(effect) => {
+            let defender = state.actor(target).cloned().expect("validated item target");
+            let effect_kind = StatusEffect::from(effect.inflict);
+            let turns = effect.duration_turns.get();
+            let status = if effect_kind == StatusEffect::Poison {
+                ActiveStatus::damage_over_time(
+                    effect_kind,
+                    Some(turns),
+                    (defender.max_health / 16).max(1),
+                )
+            } else {
+                ActiveStatus::timed(effect_kind, turns)
+            };
+            if state
+                .actor_mut(target)
+                .expect("validated item target")
+                .add_status(status)
+            {
+                events.push(BattleEvent::StatusApplied {
+                    source,
+                    target,
+                    status,
+                });
+            }
         }
         ConsumableEffect::BypassBarrier(_)
         | ConsumableEffect::Rest(_)

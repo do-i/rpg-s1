@@ -918,6 +918,60 @@ targeting: { default: random_alive }
 }
 
 #[test]
+fn hush_powder_silences_one_enemy_and_a_silenced_enemy_only_attacks() {
+    let mut enemy = actor(BattleSide::Enemy, 0, 10, 100);
+    enemy.behavior = Some(enemy_behavior(
+        r#"
+ai:
+  pattern: random
+  moves:
+    - action: ability
+      id: lunge
+      weight: 1
+targeting: { default: random_alive }
+"#,
+    ));
+    let mut state = state_with(vec![actor(BattleSide::Party, 0, 10, 100), enemy.clone()]);
+    assert_eq!(
+        pick_enemy_action(&enemy, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Ability {
+            id: "lunge".to_owned(),
+            once: false,
+        }
+    );
+    let mut repository = RuntimeRepository::default();
+    let _ = repository.add_item("hush_powder", 1).unwrap();
+
+    let events = resolve_battle_item(
+        &mut state,
+        CombatantKey::party(0),
+        &consumable("hush_powder"),
+        CombatantKey::enemy(0),
+        &mut repository,
+    )
+    .unwrap();
+
+    assert!(matches!(
+        events.as_slice(),
+        [BattleEvent::StatusApplied {
+            status: ActiveStatus {
+                effect: StatusEffect::Silence,
+                remaining_turns: Some(3),
+                ..
+            },
+            ..
+        }]
+    ));
+    assert_eq!(repository.item_count("hush_powder"), 0);
+    let silenced = state.actor(CombatantKey::enemy(0)).unwrap().clone();
+    assert!(silenced.is_silenced());
+    assert_eq!(
+        pick_enemy_action(&silenced, &state, &mut GameplayRng::from_seed(1)),
+        EnemyAction::Attack
+    );
+}
+
+#[test]
 fn weighted_enemy_actions_repeat_and_stay_within_authored_moves() {
     let mut enemy = actor(BattleSide::Enemy, 0, 10, 40);
     enemy.behavior = Some(first_zone_enemy_behavior("goblin"));

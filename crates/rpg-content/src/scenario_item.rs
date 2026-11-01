@@ -222,6 +222,7 @@ pub enum ConsumableEffect {
     RestoreMp(RestoreMpEffect),
     Revive(ReviveEffect),
     Cure(CureEffect),
+    Inflict(InflictEffect),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -282,6 +283,16 @@ pub struct ReviveEffect {
 #[serde(deny_unknown_fields)]
 pub struct CureEffect {
     pub cure: Vec<ItemStatus>,
+}
+
+/// A battle item that puts one status on an enemy, e.g. `{ inflict: silence, duration_turns: 3,
+/// target: single_enemy }`. It always lands; the duration counts the target's own turns.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InflictEffect {
+    pub inflict: ItemStatus,
+    pub duration_turns: NonZeroU32,
+    pub target: ThrowTarget,
 }
 
 /// The two key-item effect shapes in the pinned file.
@@ -1043,7 +1054,7 @@ mod tests {
         let expected_file_counts = [
             ("accessories.yaml", 10),
             ("body.yaml", 9),
-            ("consumables_battle_throw.yaml", 4),
+            ("consumables_battle_throw.yaml", 5),
             ("consumables_field.yaml", 4),
             ("consumables_recovery.yaml", 7),
             ("consumables_status_cure.yaml", 4),
@@ -1063,7 +1074,7 @@ mod tests {
         let mut metadata_count = 0;
         let mut field_use_count = 0;
         let mut item_types = [0_usize; 9];
-        let mut consumable_effects = [0_usize; 9];
+        let mut consumable_effects = [0_usize; 10];
         let mut field_effects = [0_usize; 5];
 
         for path in &files {
@@ -1102,6 +1113,7 @@ mod tests {
                                 ConsumableEffect::RestoreMp(_) => 6,
                                 ConsumableEffect::Revive(_) => 7,
                                 ConsumableEffect::Cure(_) => 8,
+                                ConsumableEffect::Inflict(_) => 9,
                             }] += 1;
                             0
                         }
@@ -1121,10 +1133,10 @@ mod tests {
 
         assert_eq!(files.len(), 15);
         assert_eq!(observed_file_counts, expected_file_counts);
-        assert_eq!(metadata_count, 211);
+        assert_eq!(metadata_count, 212);
         assert_eq!(field_use_count, 14);
-        assert_eq!(item_types, [19, 127, 2, 5, 23, 8, 8, 9, 10]);
-        assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4]);
+        assert_eq!(item_types, [20, 127, 2, 5, 23, 8, 8, 9, 10]);
+        assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4, 1]);
         assert_eq!(field_effects, [2, 2, 3, 4, 3]);
     }
 }

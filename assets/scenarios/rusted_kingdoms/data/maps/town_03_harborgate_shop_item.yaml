@@ -23,6 +23,9 @@ shop:
     - id: echo_herb
       buy_price: 80
       unlock_flag: story_quest_started
+    - id: hush_powder
+      buy_price: 150
+      unlock_flag: story_act2_started
     - id: remedy
       buy_price: 300
       unlock_flag: story_act2_started

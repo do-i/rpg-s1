@@ -71,6 +71,15 @@
   gp_cost: 120
   unlock_flag: story_act2_started
 
+- id: recipe_hush_powder
+  scroll_name: "Quieting Blend"
+  output: { item: hush_powder, qty: 3 }
+  inputs:
+    items:
+      - { id: silence_dust, qty: 2 }
+  gp_cost: 100
+  unlock_flag: story_act2_started
+
 # ── Act 3 ─────────────────────────────────────────────
 - id: recipe_ivory_revival
   scroll_name: "Ivory Revival"

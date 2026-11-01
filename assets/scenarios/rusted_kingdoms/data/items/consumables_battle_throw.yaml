@@ -46,3 +46,15 @@
   buy_price: 200
   sell_price: 100
   description: "Blessed water. Sears undead and demons; harmless to the living."
+
+- id: hush_powder
+  name: Hush Powder
+  type: consumable
+  use_context: [battle]
+  effect:
+    inflict: silence
+    duration_turns: 3
+    target: single_enemy
+  buy_price: 150
+  sell_price: 75
+  description: "A pouch of grey dust. Thrown in a foe's face, it seals every spell and skill for three turns."

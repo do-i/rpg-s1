@@ -749,13 +749,13 @@ pub(crate) fn item_matches_tab(
         InventoryTab::New => repository.is_new_item(item.id()),
         InventoryTab::Full => repository.is_stack_nearly_full(item.id()),
         InventoryTab::Recovery => {
-            matches!(item, ItemDefinition::Consumable(value) if !matches!(value.effect, crate::scenario_item::ConsumableEffect::Cure(_) | crate::scenario_item::ConsumableEffect::Throw(_)))
+            matches!(item, ItemDefinition::Consumable(value) if !matches!(value.effect, crate::scenario_item::ConsumableEffect::Cure(_) | crate::scenario_item::ConsumableEffect::Throw(_) | crate::scenario_item::ConsumableEffect::Inflict(_)))
         }
         InventoryTab::Status => {
             matches!(item, ItemDefinition::Consumable(value) if matches!(value.effect, crate::scenario_item::ConsumableEffect::Cure(_)))
         }
         InventoryTab::Battle => {
-            matches!(item, ItemDefinition::Consumable(value) if matches!(value.effect, crate::scenario_item::ConsumableEffect::Throw(_)))
+            matches!(item, ItemDefinition::Consumable(value) if matches!(value.effect, crate::scenario_item::ConsumableEffect::Throw(_) | crate::scenario_item::ConsumableEffect::Inflict(_)))
         }
         InventoryTab::Equipment => is_equipment(item),
         InventoryTab::Material => matches!(item, ItemDefinition::Material(_)),
@@ -1647,9 +1647,10 @@ pub(crate) mod tests {
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
         // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
-        // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material.
-        assert_eq!(catalog.items.len(), 208);
-        assert_eq!(catalog.item_order.len(), 208);
+        // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material and the
+        // Hush Powder silencing throw.
+        assert_eq!(catalog.items.len(), 209);
+        assert_eq!(catalog.item_order.len(), 209);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [
