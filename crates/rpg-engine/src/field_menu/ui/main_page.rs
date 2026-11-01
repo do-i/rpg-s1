@@ -932,8 +932,7 @@ mod appearance_tests {
 
     #[test]
     fn main_menu_images_are_unique_assets_from_the_menu_directory() {
-        let asset_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../assets/scenarios/rusted_kingdoms");
+        let asset_root = crate::test_support::scenario_package_dir();
         let mut paths = std::collections::BTreeSet::new();
         for path in MAIN_COMMAND_IMAGES {
             assert!(path.starts_with("media/images/icons/menu/"), "{path}");

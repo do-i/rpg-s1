@@ -16,7 +16,7 @@
 # `data/classes/sorcerer.yaml` gates four abilities on flags nothing produces, so they are
 # unobtainable in the pinned Python source too. Parity means they stay unobtainable; inventing
 # unlock points is new game design rather than validator cleanup.
-error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[4].unlock_flag [flag.undefined] flag `story_ultimate_fire` is consumed but never produced
-error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[9].unlock_flag [flag.undefined] flag `story_ultimate_water` is consumed but never produced
-error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[14].unlock_flag [flag.undefined] flag `story_ultimate_wind` is consumed but never produced
-error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[19].unlock_flag [flag.undefined] flag `story_ultimate_earth` is consumed but never produced
+error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[5].unlock_flag [flag.undefined] flag `story_ultimate_fire` is consumed but never produced
+error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[10].unlock_flag [flag.undefined] flag `story_ultimate_water` is consumed but never produced
+error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[15].unlock_flag [flag.undefined] flag `story_ultimate_wind` is consumed but never produced
+error rusted_kingdoms:data/classes/sorcerer.yaml#abilities[20].unlock_flag [flag.undefined] flag `story_ultimate_earth` is consumed but never produced
