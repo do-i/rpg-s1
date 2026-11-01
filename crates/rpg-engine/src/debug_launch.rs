@@ -42,6 +42,8 @@ pub(crate) enum DebugBattleFixture {
     Status,
     EnemyAi,
     Rewards,
+    LayoutThree,
+    LayoutFive,
 }
 
 impl DebugBattleFixture {
@@ -49,7 +51,7 @@ impl DebugBattleFixture {
         match self {
             Self::Feedback => "goblin_warrior",
             Self::Status | Self::EnemyAi => "troll_shaman_base",
-            Self::Rewards => "hearth_effigy_ashen_crown",
+            Self::Rewards | Self::LayoutThree | Self::LayoutFive => "hearth_effigy_ashen_crown",
         }
     }
 }
@@ -299,6 +301,17 @@ fn apply_debug_overrides(
             game.flags_mut().unset(flag);
         }
     }
+    if matches!(
+        config.battle_fixture,
+        Some(DebugBattleFixture::LayoutThree | DebugBattleFixture::LayoutFive)
+    ) {
+        for id in ["potion", "elixir", "revival_herb"] {
+            let _ = game
+                .repository_mut()
+                .add_item(id, 99)
+                .map_err(|error| error.to_string())?;
+        }
+    }
     Ok(())
 }
 
@@ -385,6 +398,32 @@ mod tests {
         assert_eq!(game.map().position(), Position::new(3, 4));
         assert!(game.flags().is_set("debug_enabled"));
         assert!(!game.flags().is_set("story_quest_started"));
+        let original_potions = game.repository().item_count("potion");
+        for fixture in [
+            DebugBattleFixture::LayoutThree,
+            DebugBattleFixture::LayoutFive,
+        ] {
+            let mut review = game.clone();
+            let review_config = DebugLaunchConfig {
+                battle_fixture: Some(fixture),
+                ..config.clone()
+            };
+            apply_debug_overrides(
+                &mut review,
+                &party,
+                &balance,
+                &debug_catalog(),
+                &review_config,
+            )
+            .unwrap();
+            for id in ["potion", "elixir", "revival_herb"] {
+                assert_eq!(
+                    review.repository().item_count(id),
+                    review.repository().item_quantity_cap().min(99)
+                );
+            }
+            assert_eq!(game.repository().item_count("potion"), original_potions);
+        }
     }
 
     #[test]

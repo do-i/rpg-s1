@@ -9,7 +9,7 @@ use crate::{
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, ScenarioRoot},
 };
 
-pub(super) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.";
+pub(super) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.";
 
 pub(super) enum Command {
     Play(PlayArguments),
@@ -372,7 +372,7 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                 index += 1;
                 let value = arguments.get(index).ok_or_else(|| {
                     UsageError(
-                        "--battle-fixture requires feedback|status|enemy-ai|rewards".to_owned(),
+                        "--battle-fixture requires feedback|status|enemy-ai|rewards|layout-three|layout-five".to_owned(),
                     )
                 })?;
                 let fixture = match value.as_str() {
@@ -380,9 +380,11 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                     "status" => DebugBattleFixture::Status,
                     "enemy-ai" => DebugBattleFixture::EnemyAi,
                     "rewards" => DebugBattleFixture::Rewards,
+                    "layout-three" => DebugBattleFixture::LayoutThree,
+                    "layout-five" => DebugBattleFixture::LayoutFive,
                     _ => {
                         return Err(UsageError(
-                            "--battle-fixture requires feedback|status|enemy-ai|rewards".to_owned(),
+                            "--battle-fixture requires feedback|status|enemy-ai|rewards|layout-three|layout-five".to_owned(),
                         ));
                     }
                 };
@@ -432,7 +434,10 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     if let Some(fixture) = battle_fixture {
         let required = match fixture {
             DebugBattleFixture::EnemyAi | DebugBattleFixture::Rewards => DebugPartyPreset::Solo,
-            DebugBattleFixture::Feedback | DebugBattleFixture::Status => DebugPartyPreset::Full,
+            DebugBattleFixture::Feedback
+            | DebugBattleFixture::Status
+            | DebugBattleFixture::LayoutThree
+            | DebugBattleFixture::LayoutFive => DebugPartyPreset::Full,
         };
         match party_preset {
             None => party_preset = Some(required),
@@ -478,6 +483,8 @@ pub(super) const fn battle_fixture_label(fixture: DebugBattleFixture) -> &'stati
         DebugBattleFixture::Status => "status",
         DebugBattleFixture::EnemyAi => "enemy-ai",
         DebugBattleFixture::Rewards => "rewards",
+        DebugBattleFixture::LayoutThree => "layout-three",
+        DebugBattleFixture::LayoutFive => "layout-five",
     }
 }
 

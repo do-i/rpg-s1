@@ -948,6 +948,16 @@ fn battle_fixtures_supply_an_isolated_map_and_required_party_shape() {
         ),
         ("status", DebugBattleFixture::Status, DebugPartyPreset::Full),
         (
+            "layout-three",
+            DebugBattleFixture::LayoutThree,
+            DebugPartyPreset::Full,
+        ),
+        (
+            "layout-five",
+            DebugBattleFixture::LayoutFive,
+            DebugPartyPreset::Full,
+        ),
+        (
             "enemy-ai",
             DebugBattleFixture::EnemyAi,
             DebugPartyPreset::Solo,

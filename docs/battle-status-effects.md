@@ -21,6 +21,9 @@ Regen rounds healing down to whole HP with a minimum of 1 HP, caps at maximum HP
 never revives. Damage-over-time resolves before Regen; a lethal tick prevents healing.
 Recovery appears as a green `+N REGEN` message. Status icons show remaining duration;
 Haste and Slow count full rounds, while Regen counts recipient turns.
+Enemy status cards form a row at the top center inside the sprite tile, above the enemy's
+head, sized to 20% of its width (minimum 16 pixels). Icon cards have a black background
+at 50% opacity; party icons retain their 24-pixel size.
 
 ## Scenario YAML
 
@@ -74,3 +77,19 @@ opponents. Existing enemy moves without an effect mapping retain their previous 
 - Pumpkin Jack can cast Slow on a party member.
 
 The three skills reuse their matching status PNGs in the spellbook and battle ability list.
+
+## Layout review fixtures
+
+Run `target/debug/rpg-s1 play rusted_kingdoms --battle-fixture layout-three` to review
+the currently authored maximum formation count, or use `--battle-fixture layout-five`
+to review the largest renderer placement preset. Both are session-only stress tests:
+they fill the party, use three or five copies of the largest authored enemy tile
+(403px, size index AA), vary HP/MP meters, and fill every actor's three badge slots
+with timed icons. All party abilities and three stocked battle items are available for
+menu inspection. They do not change scenario encounter counts or the placement rules.
+
+Current encounter YAML contains at most three enemies. The renderer defines fixed
+staggered offsets for one through five enemies, then adjusts their positions to the
+battle background's ground rectangle and sprite dimensions. Placement is deterministic;
+it does not use random positions. The existing presets can overlap at large sprite sizes,
+which these fixtures intentionally expose.

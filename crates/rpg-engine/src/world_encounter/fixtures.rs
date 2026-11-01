@@ -53,6 +53,7 @@ pub(super) fn apply_debug_battle_fixture(
             retain_fixture_participants(entry, &["aric", "reiya"]);
             let rally = fixture_ability(catalog, "hero", "rally")?;
             let war_cry = fixture_ability(catalog, "hero", "war_cry")?;
+            let slow = fixture_ability(catalog, "sorcerer", "slow")?;
             let mut boulder_crash = fixture_ability(catalog, "sorcerer", "boulder_crash")?;
             let AbilityKind::Spell(spell) = &mut boulder_crash.kind else {
                 return Err("status fixture expected Boulder Crash to be a spell".to_owned());
@@ -77,7 +78,7 @@ pub(super) fn apply_debug_battle_fixture(
             aric.max_health = 300;
             aric.dexterity = 30;
             let reiya = fixture_participant(entry, "reiya")?;
-            reiya.abilities = vec![boulder_crash];
+            reiya.abilities = vec![boulder_crash, slow];
             reiya.mana = 99;
             reiya.max_mana = 99;
             reiya.health = 250;
@@ -143,6 +144,46 @@ pub(super) fn apply_debug_battle_fixture(
                 .is_none_or(|drops| drops.mc.is_empty() && drops.loot.is_empty())
             {
                 return Err("rewards fixture requires the Ashen Crown's authored loot".to_owned());
+            }
+        }
+        DebugBattleFixture::LayoutThree | DebugBattleFixture::LayoutFive => {
+            let count = if fixture == DebugBattleFixture::LayoutThree {
+                3
+            } else {
+                5
+            };
+            let mut enemy = fixture_enemy(entry)?.clone();
+            enemy.boss = true;
+            enemy.enemy_size = Some(crate::scenario_enemy::EnemySize::Boss);
+            // The largest currently authored battle tile: floor(96 * 420 / 100) = 403px.
+            enemy.sprite_scale_percent = 420;
+            enemy.max_health = 99_999;
+            enemy.dexterity = 1;
+            enemy.behavior = None;
+            enemy.experience_yield = 0;
+            enemy.gold_yield = 0;
+            enemy.drops = None;
+            entry
+                .participants
+                .retain(|actor| actor.side == BattleSide::Party);
+            for (index, actor) in entry.participants.iter_mut().enumerate() {
+                actor.max_health = 9_999;
+                actor.health = actor.max_health * (100 - index as u32 * 15) / 100;
+                actor.max_mana = 999;
+                actor.mana = actor.max_mana * (100 - index as u32 * 15) / 100;
+                actor.dexterity = 100;
+                actor.status_effects.clear();
+                if let Some(class) = catalog.class(&actor.class_id) {
+                    actor.abilities.clone_from(&class.abilities);
+                }
+            }
+            for index in 0..count {
+                let mut actor = enemy.clone();
+                actor.id = format!("layout_enemy_{index}");
+                actor.name = format!("The Ashen Crown {}", index + 1);
+                actor.health = actor.max_health * (90 - index as u32 * 18) / 100;
+                actor.status_effects.clear();
+                entry.participants.push(actor);
             }
         }
     }
@@ -290,6 +331,43 @@ mod tests {
     }
 
     #[test]
+    fn layout_reviews_keep_the_party_and_fill_distinct_largest_enemy_slots() {
+        let catalog = FieldMenuCatalog::production_class_fixture();
+        for (fixture, count) in [
+            (DebugBattleFixture::LayoutThree, 3),
+            (DebugBattleFixture::LayoutFive, 5),
+        ] {
+            let mut entry = fixture_battle_entry("hearth_effigy_ashen_crown");
+            apply_debug_battle_fixture(&mut entry, fixture, &catalog).unwrap();
+            let party = entry
+                .participants
+                .iter()
+                .filter(|actor| actor.side == BattleSide::Party)
+                .collect::<Vec<_>>();
+            assert_eq!(party.len(), 4);
+            assert!(party.iter().all(|actor| actor.health > 0 && actor.mana > 0));
+            assert!(party.iter().all(|actor| !actor.abilities.is_empty()));
+            let enemies = entry
+                .participants
+                .iter()
+                .filter(|actor| actor.side == BattleSide::Enemy)
+                .collect::<Vec<_>>();
+            assert_eq!(enemies.len(), count);
+            for (index, actor) in enemies.iter().enumerate() {
+                assert_eq!(actor.id, format!("layout_enemy_{index}"));
+                assert_eq!(actor.sprite_id, "hearth_effigy_ashen_crown");
+                assert!(actor.boss && actor.health > 0 && actor.health < actor.max_health);
+                assert_eq!(actor.sprite_scale_percent, 420);
+                assert_eq!(
+                    actor.enemy_size,
+                    Some(crate::scenario_enemy::EnemySize::Boss)
+                );
+                assert!(actor.behavior.is_none() && actor.drops.is_none());
+            }
+        }
+    }
+
+    #[test]
     fn manual_battle_fixtures_isolate_the_named_observations() {
         let catalog = FieldMenuCatalog::production_class_fixture();
 
@@ -341,6 +419,7 @@ mod tests {
         let AbilityKind::Spell(spell) = &reiya.abilities[0].kind else {
             unreachable!()
         };
+        assert_eq!(reiya.abilities[1].id, "slow");
         assert!(spell.side_effects.iter().any(|effect| matches!(
             effect,
             AbilitySideEffect::Stun { chance, .. } if chance.get() == 1.0

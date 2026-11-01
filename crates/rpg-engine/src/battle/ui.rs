@@ -6,6 +6,7 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     battle_log::{BattleLogLine, LastBattleLog, LogKind, spawn_log_line},
     battle_tactics::{AutoCommand, TurnPause},
+    debug_launch::{DebugBattleFixture, DebugLaunchConfig},
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
@@ -49,13 +50,12 @@ const BATTLE_IDLE_TILE: u32 = SPELLCAST_ROW * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
 const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
 const ENEMY_GROUND_NUDGE: f32 = 10.0;
-/// Keep the health bar, badge row, and countdown overhang inside the clipped enemy area.
-const ENEMY_FOOTER_RESERVE: f32 = 32.0 + STATUS_ICON_SIZE + 2.0;
+/// Keep the health bar inside the clipped enemy area; status cards overlay the sprite.
+const ENEMY_FOOTER_RESERVE: f32 = 32.0;
 const BREATH_TOP_FRACTION: f32 = 0.60;
 const BREATH_MAX_SQUASH: f32 = 2.0;
 const BREATH_PERIOD_SECONDS: f32 = 1.4;
 const BREATH_PHASE_OFFSET: f32 = 0.6;
-/// Gap between a status pill stack and the corner of the frame it sits in.
 /// Global stacking layer of the battle UI root.
 ///
 /// `bevy_ui::stack` walks each root's children filtered by `Without<GlobalZIndex>`: a descendant
@@ -72,16 +72,13 @@ const BADGE_INSET: f32 = 5.0;
 const STATUS_ICON_SIZE: f32 = 24.0;
 
 /// Where a combatant's badge stack sits on its card.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum BadgeAnchor {
     /// Pinned into the top-right corner of the frame it annotates, stacked downwards — the
     /// source's placement (`battle_party_panel_renderer.py:141-151`).
     FrameCorner,
-    /// A centred row flowing on the combatant's health bar line, laid out after the bar.
-    ///
-    /// An enemy's sprite is the whole of its frame, so a corner stack buried the very thing the
-    /// pills annotate; the bar line is the one strip of the card that is already chrome.
-    HealthBarLine,
+    /// Centered along the sprite tile's top edge, scaled to its displayed width.
+    SpriteTopCenter { sprite_size: f32 },
 }
 const PARTY_PORTRAIT_SIZE: f32 = 100.0;
 const PARTY_CARD_WIDTH: f32 = 108.0;
@@ -251,12 +248,14 @@ struct BattleAbilityManaValue(usize);
 struct BattleStatusBadge {
     key: CombatantKey,
     slot: usize,
+    icon_size: f32,
 }
 
 #[derive(Clone, Copy, Component)]
 struct BattleStatusBadgeLabel {
     key: CombatantKey,
     slot: usize,
+    icon_size: f32,
 }
 
 #[derive(Component)]
@@ -301,6 +300,34 @@ fn battle_enemy_atlas_path(
     ScenarioRelativePath::try_from(format!("media/sprites/enemies/{sprite_id}_battle.tsx").as_str())
 }
 
+/// Fill all badge slots for the session-only layout review without changing normal battles.
+fn apply_layout_review_statuses(state: &mut BattleState, fixture: Option<DebugBattleFixture>) {
+    use super::status::{ActiveStatus, StatusEffect};
+
+    if !matches!(
+        fixture,
+        Some(DebugBattleFixture::LayoutThree | DebugBattleFixture::LayoutFive)
+    ) {
+        return;
+    }
+    for actor in &mut state.combatants {
+        let speed = if actor.key.side == BattleSide::Party {
+            1.5
+        } else {
+            0.5
+        };
+        actor.status_effects = vec![
+            ActiveStatus::speed(99, speed),
+            ActiveStatus::regeneration(99, 0.05),
+            ActiveStatus::modifier(StatusEffect::DefenseModifier, 99, 1.5),
+        ];
+    }
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "battle entry loads scenario UI resources and optional debug review settings"
+)]
 fn enter_battle(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -309,11 +336,16 @@ fn enter_battle(
     catalog: Res<FieldMenuCatalog>,
     game: Res<GameState>,
     entry: Option<Res<BattleEntry>>,
+    debug: Option<Res<DebugLaunchConfig>>,
 ) {
     let Some(entry) = entry else {
         return;
     };
     let mut state = BattleState::from_entry(&entry);
+    apply_layout_review_statuses(
+        &mut state,
+        debug.as_ref().and_then(|debug| debug.battle_fixture),
+    );
     state.item_choices = catalog
         .ordered_items()
         .filter_map(battle_item)
@@ -494,6 +526,12 @@ fn spawn_enemy_area(
                                                 split_fraction,
                                             },
                                         ));
+                                        spawn_status_badges(
+                                            sprite,
+                                            CombatantKey::enemy(index),
+                                            BadgeAnchor::SpriteTopCenter { sprite_size },
+                                            font,
+                                        );
                                     });
                             });
                             card.spawn((
@@ -534,12 +572,6 @@ fn spawn_enemy_area(
                                 )
                                 .insert(BattleEnemyLabel(index));
                             });
-                            spawn_status_badges(
-                                card,
-                                CombatantKey::enemy(index),
-                                BadgeAnchor::HealthBarLine,
-                                font,
-                            );
                         });
                 }
             });
@@ -884,8 +916,7 @@ fn spawn_party_meter(
 /// Lays out the combatant's status pills where [`BadgeAnchor`] puts them.
 ///
 /// Every slot is spawned up front and hidden; [`sync_status_badges`] only ever toggles and
-/// updates their artwork or fallback text. An empty stack therefore measures zero, so a health-bar
-/// row costs the card no height until something actually lands.
+/// updates their artwork or fallback text. The absolute stack never changes the card's layout.
 ///
 /// The stack sits inside its own parent, so it is layered with a plain [`ZIndex`] and not a
 /// `GlobalZIndex` — see [`BATTLE_ROOT_Z`] for why the global form would have hidden it behind the
@@ -896,24 +927,33 @@ fn spawn_status_badges(
     anchor: BadgeAnchor,
     font: &Handle<Font>,
 ) {
-    let node = match anchor {
-        BadgeAnchor::FrameCorner => Node {
-            position_type: PositionType::Absolute,
-            top: px(BADGE_INSET),
-            right: px(BADGE_INSET),
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::FlexEnd,
-            row_gap: px(2),
-            ..default()
-        },
-        BadgeAnchor::HealthBarLine => Node {
-            width: percent(100),
-            flex_direction: FlexDirection::Row,
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            column_gap: px(2),
-            ..default()
-        },
+    let (icon_size, node) = match anchor {
+        BadgeAnchor::FrameCorner => (
+            STATUS_ICON_SIZE,
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(BADGE_INSET),
+                right: px(BADGE_INSET),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexEnd,
+                row_gap: px(2),
+                ..default()
+            },
+        ),
+        BadgeAnchor::SpriteTopCenter { sprite_size } => (
+            (sprite_size * 0.20).floor().max(16.0),
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(0),
+                left: px(0),
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::FlexStart,
+                column_gap: px(1),
+                ..default()
+            },
+        ),
     };
     parent
         .spawn((node, ZIndex(BADGE_Z), Pickable::IGNORE))
@@ -932,11 +972,26 @@ fn spawn_status_badges(
                             color: Color::NONE,
                             ..default()
                         },
-                        BattleStatusBadge { key, slot },
+                        BattleStatusBadge {
+                            key,
+                            slot,
+                            icon_size,
+                        },
                     ))
                     .with_children(|pill| {
-                        spawn_battle_text(pill, "", font, 11.0, battle_ink(), Justify::Center)
-                            .insert(BattleStatusBadgeLabel { key, slot });
+                        spawn_battle_text(
+                            pill,
+                            "",
+                            font,
+                            (icon_size * 0.38).max(11.0),
+                            battle_ink(),
+                            Justify::Center,
+                        )
+                        .insert(BattleStatusBadgeLabel {
+                            key,
+                            slot,
+                            icon_size,
+                        });
                     });
             }
         });
@@ -963,6 +1018,7 @@ fn sync_status_badges(
             &mut Text,
             &mut TextColor,
             &mut Node,
+            &mut TextFont,
         ),
         Without<BattleStatusBadge>,
     >,
@@ -999,12 +1055,12 @@ fn sync_status_badges(
             Display::None
         };
         node.width = if has_image {
-            px(STATUS_ICON_SIZE)
+            px(marker.icon_size)
         } else {
             Val::Auto
         };
         node.height = if has_image {
-            px(STATUS_ICON_SIZE)
+            px(marker.icon_size)
         } else {
             Val::Auto
         };
@@ -1017,14 +1073,20 @@ fn sync_status_badges(
         image.image = handle.unwrap_or_default();
         image.color = if has_image { Color::WHITE } else { Color::NONE };
         background.0 = if has_image {
-            Color::NONE
+            Color::srgba(0.0, 0.0, 0.0, 0.5)
         } else {
             badge.map_or(Color::NONE, |badge| badge.fill)
         };
     }
-    for (marker, mut text, mut color, mut node) in &mut labels {
+    for (marker, mut text, mut color, mut node, mut font) in &mut labels {
         let badge = badges_for(marker.key).get(marker.slot).copied();
         let has_image = badge.and_then(image_for).is_some();
+        font.font_size = if has_image {
+            (marker.icon_size * 0.38).max(11.0)
+        } else {
+            11.0
+        }
+        .into();
         text.0 = match badge {
             Some(badge) if has_image => badge
                 .remaining_turns
@@ -1041,8 +1103,8 @@ fn sync_status_badges(
         } else {
             PositionType::Relative
         };
-        node.bottom = if has_image { px(-2) } else { Val::Auto };
-        node.right = if has_image { px(-2) } else { Val::Auto };
+        node.bottom = if has_image { px(0) } else { Val::Auto };
+        node.right = if has_image { px(2) } else { Val::Auto };
         color.0 = if has_image {
             Color::WHITE
         } else {
@@ -2520,7 +2582,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn enemy_badges_fit_below_health_bars_on_low_ground_backgrounds() {
+    fn layout_reviews_fill_both_sides_badge_slots_without_changing_normal_battles() {
+        let mut state = crate::battle::tests::state_with(vec![
+            crate::battle::tests::actor(BattleSide::Party, 0, 10, 20),
+            crate::battle::tests::actor(BattleSide::Enemy, 0, 10, 20),
+        ]);
+        for fixture in [None, Some(DebugBattleFixture::Status)] {
+            apply_layout_review_statuses(&mut state, fixture);
+            assert!(
+                state
+                    .combatants
+                    .iter()
+                    .all(|actor| actor.status_effects.is_empty())
+            );
+        }
+        for fixture in [
+            DebugBattleFixture::LayoutThree,
+            DebugBattleFixture::LayoutFive,
+        ] {
+            apply_layout_review_statuses(&mut state, Some(fixture));
+            for actor in &state.combatants {
+                let badges = super::super::badge::badges(&actor.status_effects);
+                assert_eq!(badges.len(), super::super::badge::MAX_BADGES);
+                assert!(badges.iter().all(|badge| badge.icon_id().is_some() && badge.remaining_turns == Some(99)));
+            }
+        }
+    }
+
+    #[test]
+    fn enemy_health_bars_fit_on_low_ground_backgrounds() {
         for ground in [
             full_enemy_ground(),
             GroundRect {
@@ -2552,12 +2642,12 @@ mod tests {
                             count,
                             index,
                         );
-                        // Frame includes a 2px border on both sides, followed by the health
-                        // bar's 4px top margin, 22px bar, 24px badges, and 2px countdown overhang.
-                        let bottom = top + sprite_size + 4.0 + 4.0 + 22.0 + STATUS_ICON_SIZE + 2.0;
+                        // Status cards overlay the sprite; only its frame and health bar
+                        // contribute to the bottom edge.
+                        let bottom = top + sprite_size + 4.0 + 4.0 + 22.0;
                         assert!(
                             bottom <= ENEMY_AREA_HEIGHT,
-                            "enemy badge clipped: ground={ground:?}, sprite={sprite_size}, count={count}, index={index}, bottom={bottom}"
+                            "enemy health bar clipped: ground={ground:?}, sprite={sprite_size}, count={count}, index={index}, bottom={bottom}"
                         );
                     }
                 }
@@ -2600,7 +2690,7 @@ mod tests {
         };
         assert_eq!(
             enemy_card_position(cave_ground, 64.0, 80.0, 1, 0),
-            (600.0, 344.0)
+            (600.0, 365.0)
         );
         let courtyard_ground = GroundRect {
             x: 40,
@@ -2610,7 +2700,7 @@ mod tests {
         };
         assert_eq!(
             enemy_card_position(courtyard_ground, 64.0, 80.0, 1, 0),
-            (600.0, 344.0)
+            (600.0, 370.0)
         );
     }
 
@@ -2803,7 +2893,7 @@ mod tests {
                 spawn_status_badges(
                     root,
                     CombatantKey::enemy(0),
-                    BadgeAnchor::HealthBarLine,
+                    BadgeAnchor::SpriteTopCenter { sprite_size: 320.0 },
                     &font,
                 );
             });
@@ -2920,7 +3010,7 @@ mod tests {
                         spawn_status_badges(
                             card,
                             CombatantKey::enemy(0),
-                            BadgeAnchor::HealthBarLine,
+                            BadgeAnchor::SpriteTopCenter { sprite_size: 320.0 },
                             &font,
                         );
                     });
@@ -2953,60 +3043,49 @@ mod tests {
         );
     }
 
-    /// An enemy's frame is nothing but its sprite, so a corner stack sat on top of the creature it
-    /// was describing. The pills belong on the health bar's line instead: in the card's flow, after
-    /// the bar, not absolutely positioned over anything.
     #[test]
-    fn an_enemys_badges_ride_the_health_bar_line_rather_than_its_sprite() {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
+    fn enemy_badges_scale_at_the_top_center_inside_the_sprite_tile() {
+        for sprite_size in [52.0_f32, 160.0, 320.0, 384.0] {
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins);
+            let font = Handle::<Font>::default();
+            let tile = app
+                .world_mut()
+                .commands()
+                .spawn(Node {
+                    width: px(sprite_size),
+                    height: px(sprite_size),
+                    ..default()
+                })
+                .with_children(|tile| {
+                    spawn_status_badges(
+                        tile,
+                        CombatantKey::enemy(0),
+                        BadgeAnchor::SpriteTopCenter { sprite_size },
+                        &font,
+                    );
+                })
+                .id();
+            app.update();
 
-        let font = Handle::<Font>::default();
-        app.world_mut()
-            .commands()
-            .spawn(Node::default())
-            .with_children(|card| {
-                spawn_status_badges(
-                    card,
-                    CombatantKey::enemy(0),
-                    BadgeAnchor::HealthBarLine,
-                    &font,
+            let stack = app.world().get::<Children>(tile).unwrap()[0];
+            let node = app.world().get::<Node>(stack).unwrap();
+            assert_eq!(node.position_type, PositionType::Absolute);
+            assert_eq!(node.flex_direction, FlexDirection::Row);
+            assert_eq!(node.justify_content, JustifyContent::Center);
+            assert_eq!(node.align_items, AlignItems::FlexStart);
+            assert_eq!((node.top, node.left), (px(0), px(0)));
+            assert_eq!((node.width, node.height), (percent(100), Val::Auto));
+            let slots = app.world().get::<Children>(stack).unwrap();
+            assert_eq!(slots.len(), super::super::badge::MAX_BADGES);
+            for slot in slots.iter() {
+                let badge = app.world().get::<BattleStatusBadge>(slot).unwrap();
+                assert_eq!(badge.icon_size, (sprite_size * 0.2).floor().max(16.0));
+                assert!(
+                    badge.icon_size * slots.len() as f32 + (slots.len() - 1) as f32 <= sprite_size
                 );
-                spawn_status_badges(
-                    card,
-                    CombatantKey::party(0),
-                    BadgeAnchor::FrameCorner,
-                    &font,
-                );
-            });
-        app.update();
-
-        let mut stacks = app.world_mut().query::<(&Node, &Children)>();
-        let rows = stacks
-            .iter(app.world())
-            .filter_map(|(node, children)| {
-                let slot = children
-                    .iter()
-                    .find_map(|child| app.world().get::<BattleStatusBadge>(child))?;
-                Some((slot.key.side, node.position_type, node.flex_direction))
-            })
-            .collect::<Vec<_>>();
-        assert!(
-            rows.contains(&(
-                BattleSide::Enemy,
-                PositionType::Relative,
-                FlexDirection::Row
-            )),
-            "the enemy stack flows in the card next to its bar, laid out across it: {rows:?}"
-        );
-        assert!(
-            rows.contains(&(
-                BattleSide::Party,
-                PositionType::Absolute,
-                FlexDirection::Column
-            )),
-            "the party card keeps the source's corner stack: {rows:?}"
-        );
+            }
+        }
     }
 
     #[test]
@@ -3050,7 +3129,7 @@ mod tests {
                 spawn_status_badges(
                     root,
                     CombatantKey::enemy(0),
-                    BadgeAnchor::HealthBarLine,
+                    BadgeAnchor::SpriteTopCenter { sprite_size: 320.0 },
                     &font,
                 );
             });
@@ -3073,21 +3152,32 @@ mod tests {
             let world = app.world_mut();
             let mut query =
                 world.query::<(&BattleStatusBadge, &Node, &ImageNode, &BackgroundColor)>();
-            let (_, node, image, background) = query
+            let (marker, node, image, background) = query
                 .iter(world)
                 .find(|(marker, ..)| marker.key == key && marker.slot == 0)
                 .unwrap();
             assert_eq!(node.display, Display::Flex);
-            assert_eq!((node.width, node.height), (px(24), px(24)));
+            let expected_size = if marker.key.side == BattleSide::Enemy {
+                64.0
+            } else {
+                24.0
+            };
+            assert_eq!(
+                (node.width, node.height),
+                (px(expected_size), px(expected_size))
+            );
             assert_eq!(image.color, Color::WHITE);
-            assert_eq!(background.0, Color::NONE);
+            assert_eq!(background.0, Color::srgba(0.0, 0.0, 0.0, 0.5));
             let path = world
                 .resource::<AssetServer>()
                 .get_path(image.image.id())
                 .unwrap();
             assert_eq!(
                 path.path().to_string_lossy(),
-                format!("scenarios/rusted_kingdoms/media/images/icons/status/{expected}.png")
+                format!(
+                    "{}{expected}.png",
+                    scenario_asset!("media/images/icons/status/")
+                )
             );
         };
         assert_art(&mut app, CombatantKey::party(0), "poison");
