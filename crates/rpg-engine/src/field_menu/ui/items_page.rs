@@ -55,7 +55,9 @@ pub(in crate::field_menu) fn spawn_items_menu_icon_with_opacity(
 
 fn pouch_icon_path(tab: InventoryTab) -> &'static str {
     match tab {
-        InventoryTab::All | InventoryTab::New => "media/images/icons/menu/items.png",
+        InventoryTab::All | InventoryTab::New | InventoryTab::Full => {
+            "media/images/icons/menu/items.png"
+        }
         InventoryTab::Recovery => "media/images/icons/categories/consumable.png",
         InventoryTab::Status => "media/images/icons/menu/status.png",
         InventoryTab::Battle => "media/images/icons/slots/weapon.png",
@@ -413,12 +415,17 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                         if game.repository().is_new_item(id) {
                             spawn_status_text(row, "NEW", font, 11.0, status_ember());
                         }
+                        let count = game.repository().item_count(id);
+                        let flag = stack_fill_flag(count, game.repository().item_quantity_cap());
+                        if let Some((label, color)) = flag {
+                            spawn_status_text(row, label, font, 11.0, color);
+                        }
                         spawn_status_text(
                             row,
-                            format!("  x{}", game.repository().item_count(id)),
+                            format!("  x{count}"),
                             font,
                             14.0,
-                            status_muted(),
+                            flag.map_or_else(status_muted, |(_, color)| color),
                         );
                     });
                 }
@@ -521,12 +528,19 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
                         })
                         .with_children(|title| {
                             spawn_status_text(title, item_name(item), font, 23.0, status_gold());
+                            let count = game.repository().item_count(id);
+                            let flag =
+                                stack_fill_flag(count, game.repository().item_quantity_cap());
+                            let quantity = match flag {
+                                Some((label, _)) => format!("QUANTITY  x{count}  {label}"),
+                                None => format!("QUANTITY  x{count}"),
+                            };
                             spawn_status_text(
                                 title,
-                                format!("QUANTITY  x{}", game.repository().item_count(id)),
+                                quantity,
                                 font,
                                 13.0,
-                                status_muted(),
+                                flag.map_or_else(status_muted, |(_, color)| color),
                             );
                             if let Some(value) = value {
                                 spawn_quest_meta_row(title, font, "VALUE", &value);

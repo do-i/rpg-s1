@@ -1001,9 +1001,9 @@ fn shop_categories(
         .into_iter()
         .filter(|&tab| {
             tab == InventoryTab::All
-                || items.iter().any(|item| {
-                    item_matches_tab(item, game.repository().is_new_item(item.id()), tab)
-                })
+                || items
+                    .iter()
+                    .any(|item| item_matches_tab(item, game.repository(), tab))
         })
         .collect()
 }
@@ -1019,11 +1019,7 @@ fn buy_rows<'a>(
                 .into_iter()
                 .filter(|row| {
                     catalog.item(row.id()).is_some_and(|item| {
-                        item_matches_tab(
-                            item,
-                            game.repository().is_new_item(row.id()),
-                            state.shop_category,
-                        )
+                        item_matches_tab(item, game.repository(), state.shop_category)
                     })
                 })
                 .collect()
@@ -1048,11 +1044,7 @@ fn sell_rows<'a>(
         .into_iter()
         .filter(|item| {
             can_sell(game.repository(), item)
-                && item_matches_tab(
-                    item,
-                    game.repository().is_new_item(item.id()),
-                    state.shop_category,
-                )
+                && item_matches_tab(item, game.repository(), state.shop_category)
                 && state.sell_tag.as_ref().is_none_or(|tag| {
                     game.repository()
                         .item_tags(item.id())

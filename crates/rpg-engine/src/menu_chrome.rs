@@ -152,6 +152,18 @@ pub(crate) fn status_ember() -> Color {
     Color::srgb_u8(203, 82, 47)
 }
 
+/// Flags a stack that is full or within 10% of the per-item cap, with the
+/// label and colour to show beside its quantity.
+pub(crate) fn stack_fill_flag(count: u32, cap: u32) -> Option<(&'static str, Color)> {
+    if !crate::runtime_repository::is_nearly_full(count, cap) {
+        None
+    } else if count >= cap {
+        Some(("FULL", status_ember()))
+    } else {
+        Some(("NEARLY FULL", status_gold()))
+    }
+}
+
 pub(crate) fn status_teal() -> Color {
     Color::srgb_u8(67, 166, 160)
 }
@@ -604,5 +616,19 @@ mod tests {
     fn an_id_with_nothing_left_to_show_falls_back_to_itself() {
         assert_eq!(location_display_name("zone_01"), "zone_01");
         assert_eq!(location_display_name(""), "");
+    }
+}
+
+#[cfg(test)]
+mod stack_fill_tests {
+    use super::stack_fill_flag;
+
+    #[test]
+    fn flags_full_and_nearly_full_stacks_only() {
+        assert_eq!(stack_fill_flag(100, 100).map(|f| f.0), Some("FULL"));
+        assert_eq!(stack_fill_flag(90, 100).map(|f| f.0), Some("NEARLY FULL"));
+        assert!(stack_fill_flag(89, 100).is_none());
+        assert!(stack_fill_flag(0, 100).is_none());
+        assert!(stack_fill_flag(5, 0).is_none());
     }
 }

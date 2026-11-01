@@ -2960,3 +2960,21 @@ fn the_save_panel_keeps_its_rows_when_a_message_or_the_overwrite_modal_appears()
         "opening the overwrite modal must not add or drop a row in the panel behind it"
     );
 }
+
+#[test]
+fn the_full_pouch_lists_only_stacks_at_ninety_percent_of_the_cap() {
+    let mut game = game_with_pouched_vest();
+    let catalog = crate::field_menu_domain::tests::catalog();
+    let cap = game.repository().item_quantity_cap();
+    assert!(inventory_ids(&game, &catalog, InventoryTab::Full).is_empty());
+
+    let _ = game
+        .repository_mut()
+        .add_item("leather_vest", cap - 1)
+        .unwrap();
+    assert_eq!(
+        inventory_ids(&game, &catalog, InventoryTab::Full),
+        vec!["leather_vest"]
+    );
+    assert!(inventory_ids(&game, &catalog, InventoryTab::Equipment).contains(&"leather_vest"));
+}

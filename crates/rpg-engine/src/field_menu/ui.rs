@@ -14,7 +14,7 @@ use crate::{
     menu_chrome::{
         ScrollWindow, location_display_name, scroll_list_node, selectable_card_colors,
         spawn_focus_panel, spawn_header_bars, spawn_meter, spawn_panel_rule, spawn_scroll_list,
-        spawn_section_rule, spawn_status_panel, spawn_status_text, status_border,
+        spawn_section_rule, spawn_status_panel, spawn_status_text, stack_fill_flag, status_border,
         status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
         status_ready, status_teal, status_violet,
     },

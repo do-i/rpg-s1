@@ -216,7 +216,13 @@ fn spawn_list(
                             } else {
                                 format!("OWNED {owned}")
                             };
-                            spawn_status_text(label, note, font, 12.0, status_muted());
+                            let flag =
+                                stack_fill_flag(owned, game.repository().item_quantity_cap());
+                            let (note, tone) = match flag {
+                                Some((tag, color)) => (format!("{note} · {tag}"), color),
+                                None => (note, status_muted()),
+                            };
+                            spawn_status_text(label, note, font, 12.0, tone);
                         });
                         if let Some(value) = sale_value(item) {
                             shop::spawn_money(row, font, value, 19.0, status_muted());

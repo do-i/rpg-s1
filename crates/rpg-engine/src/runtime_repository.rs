@@ -183,6 +183,11 @@ impl RuntimeRepository {
         self.item_loot_batches.get(item_id).copied()
     }
 
+    /// True once a stack holds at least 90% of the per-item cap, full included.
+    pub fn is_stack_nearly_full(&self, item_id: &str) -> bool {
+        is_nearly_full(self.item_count(item_id), self.item_quantity_cap)
+    }
+
     pub fn is_new_item(&self, item_id: &str) -> bool {
         self.latest_loot_batch()
             .is_some_and(|batch| self.item_loot_batch(item_id) == Some(batch))
@@ -431,6 +436,11 @@ fn capped_addition(current: u32, requested: u32, cap: u32) -> AdditionOutcome {
         added,
         remainder: requested - added,
     }
+}
+
+/// A stack within 10% of the cap (or at it) is due to be sold or used.
+pub(crate) fn is_nearly_full(count: u32, cap: u32) -> bool {
+    cap > 0 && count > 0 && u64::from(count) * 10 >= u64::from(cap) * 9
 }
 
 /// Observable result of a source-compatible capped addition.

@@ -613,6 +613,7 @@ pub(crate) enum InventoryTab {
     #[default]
     All,
     New,
+    Full,
     Recovery,
     Status,
     Battle,
@@ -623,9 +624,10 @@ pub(crate) enum InventoryTab {
 }
 
 impl InventoryTab {
-    pub(crate) const ALL: [Self; 9] = [
+    pub(crate) const ALL: [Self; 10] = [
         Self::All,
         Self::New,
+        Self::Full,
         Self::Recovery,
         Self::Status,
         Self::Battle,
@@ -638,6 +640,7 @@ impl InventoryTab {
         match self {
             Self::All => "All",
             Self::New => "New",
+            Self::Full => "Full",
             Self::Recovery => "Recovery",
             Self::Status => "Status",
             Self::Battle => "Battle",
@@ -718,7 +721,7 @@ pub(crate) fn inventory_ids<'a>(
         .filter_map(|(id, _)| {
             catalog
                 .item(id)
-                .filter(|item| item_matches_tab(item, game.repository().is_new_item(id), tab))
+                .filter(|item| item_matches_tab(item, game.repository(), tab))
                 .map(|_| id)
         })
         .collect::<Vec<_>>();
@@ -736,10 +739,15 @@ pub(crate) fn inventory_ids<'a>(
     ids
 }
 
-pub(crate) fn item_matches_tab(item: &ItemDefinition, is_new: bool, tab: InventoryTab) -> bool {
+pub(crate) fn item_matches_tab(
+    item: &ItemDefinition,
+    repository: &crate::runtime_repository::RuntimeRepository,
+    tab: InventoryTab,
+) -> bool {
     match tab {
         InventoryTab::All => true,
-        InventoryTab::New => is_new,
+        InventoryTab::New => repository.is_new_item(item.id()),
+        InventoryTab::Full => repository.is_stack_nearly_full(item.id()),
         InventoryTab::Recovery => {
             matches!(item, ItemDefinition::Consumable(value) if !matches!(value.effect, crate::scenario_item::ConsumableEffect::Cure(_) | crate::scenario_item::ConsumableEffect::Throw(_)))
         }
