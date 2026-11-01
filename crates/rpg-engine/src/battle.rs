@@ -4,6 +4,8 @@ mod ability;
 mod action;
 mod badge;
 mod enemy_ai;
+mod enemy_depth;
+mod enemy_pose;
 mod fx;
 mod item;
 mod model;

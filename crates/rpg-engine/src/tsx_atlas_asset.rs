@@ -305,6 +305,36 @@ mod tests {
         );
     }
 
+    /// The trap the optional enemy battler sheets guard against: a TSX whose PNG is missing still
+    /// loads as an atlas, and only the recursive state reports the failure.
+    #[test]
+    fn a_missing_png_fails_only_the_recursive_load_state() {
+        let mut app = atlas_app();
+        let handle: Handle<TsxAtlasAsset> = app
+            .world()
+            .resource::<AssetServer>()
+            .load("scenarios/invented_atlas/assets/tiles/missing_image.tsx");
+        for _ in 0..1_000 {
+            app.update();
+            let server = app.world().resource::<AssetServer>();
+            if matches!(
+                server.recursive_dependency_load_state(handle.id()),
+                bevy::asset::RecursiveDependencyLoadState::Failed(_)
+            ) {
+                assert!(matches!(server.load_state(handle.id()), LoadState::Loaded));
+                assert!(
+                    app.world()
+                        .resource::<Assets<TsxAtlasAsset>>()
+                        .get(&handle)
+                        .is_some()
+                );
+                return;
+            }
+            std::thread::yield_now();
+        }
+        panic!("the missing PNG never failed the recursive load state");
+    }
+
     #[test]
     fn external_tsx_loads_png_and_spawns_the_expected_atlas_tile_sprite() {
         let mut app = atlas_app();

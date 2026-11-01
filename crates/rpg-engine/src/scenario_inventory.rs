@@ -32,6 +32,9 @@ pub(crate) struct ScenarioInventory {
     pub(crate) spell_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
     /// Optional battle status artwork, keyed by each PNG's filename stem.
     pub(crate) status_images: std::collections::BTreeMap<String, ScenarioRelativePath>,
+    /// The optional v2 enemy battler sheets that exist on disk. Only these are requested, so an
+    /// enemy still on its v1 sheet never asks the asset server for a file it would report missing.
+    pub(crate) enemy_battler_sheets: std::collections::BTreeSet<ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
@@ -310,6 +313,13 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
             }
         }
     }
+    let enemy_battlers = ScenarioRelativePath::try_from("media/sprites/enemies/v2")
+        .expect("the v2 enemy battler directory is scenario-relative");
+    if package.join(enemy_battlers.as_str()).is_dir() {
+        inventory.enemy_battler_sheets = extension_files(&package, &enemy_battlers, "tsx")?
+            .into_iter()
+            .collect();
+    }
     for id in ["haste", "slow", "regen"] {
         if let Some(path) = inventory.status_images.get(id) {
             inventory
@@ -465,6 +475,23 @@ mod tests {
         }
         assert!(!item_ids.is_empty());
         assert_eq!(item_ids, inventory.item_images.keys().cloned().collect());
+    }
+
+    #[test]
+    fn lists_only_the_v2_enemy_battler_sheets_that_exist() {
+        let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let root = ScenarioRoot::default();
+        let inventory = ScenarioInventory::discover(&asset_base, &root);
+        assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
+        let package = asset_base.join(root.logical_root());
+        assert!(!inventory.enemy_battler_sheets.is_empty());
+        for sheet in &inventory.enemy_battler_sheets {
+            assert!(
+                sheet.as_str().starts_with("media/sprites/enemies/v2/"),
+                "{sheet}"
+            );
+            assert!(package.join(sheet.as_str()).is_file(), "{sheet}");
+        }
     }
 
     #[test]

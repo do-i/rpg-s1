@@ -1,5 +1,5 @@
 use bevy::ecs::system::SystemParam;
-use bevy::{asset::LoadState, prelude::*};
+use bevy::{asset::RecursiveDependencyLoadState, prelude::*};
 
 use crate::{
     action_input::{ActionState, AppAction},
@@ -278,6 +278,13 @@ struct BattleTargetText;
 #[derive(Debug, Resource)]
 pub(super) struct BattleAssetState {
     atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
+    /// The optional v2 status sheet per enemy; one that is missing or fails to load is skipped
+    /// and the enemy keeps its v1 sheet.
+    status_atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
+    /// The optional v2 attack sheet per enemy, used only alongside that enemy's status sheet.
+    attack_atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
+    /// Which enemies ship a v2 status sheet; any one switches the battle to the depth layout.
+    v2_enemies: Vec<bool>,
     backgrounds: Handle<BattleBackgroundCatalog>,
     pub(super) font: Handle<Font>,
 }
@@ -288,6 +295,9 @@ impl BattleAssetState {
     pub(super) fn test_stub() -> Self {
         Self {
             atlases: Vec::new(),
+            status_atlases: Vec::new(),
+            attack_atlases: Vec::new(),
+            v2_enemies: Vec::new(),
             backgrounds: Handle::default(),
             font: Handle::default(),
         }
@@ -368,6 +378,37 @@ fn enter_battle(
                 .map(|path| asset_server.load(root.resolve(&path)))
         })
         .collect::<Vec<_>>();
+    let v2_enemies = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Enemy)
+        .map(|participant| {
+            super::enemy_pose::status_sheet_path(&participant.sprite_id)
+                .is_ok_and(|path| inventory.enemy_battler_sheets.contains(&path))
+        })
+        .collect::<Vec<_>>();
+    let status_atlases = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Enemy)
+        .map(|participant| {
+            super::enemy_pose::status_sheet_path(&participant.sprite_id)
+                .ok()
+                .filter(|path| inventory.enemy_battler_sheets.contains(path))
+                .map(|path| asset_server.load(root.resolve(&path)))
+        })
+        .collect::<Vec<_>>();
+    let attack_atlases = entry
+        .participants
+        .iter()
+        .filter(|participant| participant.side == BattleSide::Enemy)
+        .map(|participant| {
+            super::enemy_pose::attack_sheet_path(&participant.sprite_id)
+                .ok()
+                .filter(|path| inventory.enemy_battler_sheets.contains(path))
+                .map(|path| asset_server.load(root.resolve(&path)))
+        })
+        .collect::<Vec<_>>();
     let background = ScenarioRelativePath::try_from(entry.background_asset.as_str())
         .ok()
         .map(|path| asset_server.load(root.resolve(&path)))
@@ -395,11 +436,14 @@ fn enter_battle(
             BattleUi,
         ))
         .with_children(|root_node| {
-            spawn_enemy_area(root_node, &entry, background, &font);
+            spawn_enemy_area(root_node, &entry, &v2_enemies, background, &font);
             spawn_battle_panels(root_node, &entry, &asset_server, &root, &font);
         });
     commands.insert_resource(BattleAssetState {
         atlases,
+        status_atlases,
+        attack_atlases,
+        v2_enemies,
         backgrounds,
         font,
     });
@@ -411,6 +455,7 @@ fn enter_battle(
 fn spawn_enemy_area(
     parent: &mut ChildSpawnerCommands<'_>,
     entry: &BattleEntry,
+    v2_enemies: &[bool],
     background: Handle<Image>,
     font: &Handle<Font>,
 ) {
@@ -441,26 +486,26 @@ fn spawn_enemy_area(
             })
             .with_children(|battlefield| {
                 for (index, participant) in enemies.iter().enumerate() {
-                    let sprite_size = enemy_sprite_size(participant);
-                    let card_width = sprite_size.max(80.0);
-                    let (left, top) = enemy_card_position(
+                    let layout = enemy_card_layout(
                         full_enemy_ground(),
-                        sprite_size,
-                        card_width,
+                        participant,
+                        v2_enemies,
                         enemies.len(),
                         index,
                     );
+                    let sprite_size = layout.sprite_size;
                     battlefield
                         .spawn((
                             Node {
                                 position_type: PositionType::Absolute,
-                                left: px(left),
-                                top: px(top),
-                                width: px(card_width),
+                                left: px(layout.left),
+                                top: px(layout.top),
+                                width: px(layout.card_width),
                                 flex_direction: FlexDirection::Column,
                                 align_items: AlignItems::Center,
                                 ..default()
                             },
+                            ZIndex(layout.z),
                             BattleEnemyCard(index),
                         ))
                         .with_children(|card| {
@@ -537,7 +582,7 @@ fn spawn_enemy_area(
                             card.spawn((
                                 Node {
                                     position_type: PositionType::Relative,
-                                    width: percent(100),
+                                    width: layout.bar_width.map_or(percent(100), px),
                                     height: px(22),
                                     margin: UiRect::top(px(4)),
                                     border: UiRect::all(px(1)),
@@ -1327,12 +1372,35 @@ fn enemy_card_position(
     enemy_count: usize,
     index: usize,
 ) -> (f32, f32) {
-    let ground = if ground.width > 0 && ground.height > 0 {
+    let ground = usable_ground(ground);
+    let (offset_x, offset_y) = enemy_layout_offset(enemy_count, index);
+    let center_y = ground.y as f32 + ground.height as f32 / 2.0 + ENEMY_GROUND_NUDGE + offset_y;
+    place_enemy_card(
+        ground,
+        sprite_size,
+        card_width,
+        ENEMY_CANVAS_WIDTH / 2.0 + offset_x,
+        center_y + sprite_size / 2.0,
+    )
+}
+
+fn usable_ground(ground: GroundRect) -> GroundRect {
+    if ground.width > 0 && ground.height > 0 {
         ground
     } else {
         full_enemy_ground()
-    };
-    let (offset_x, offset_y) = enemy_layout_offset(enemy_count, index);
+    }
+}
+
+/// Clamps a card's sprite center and tile bottom onto the background's ground, keeping the
+/// health bar under the feet inside the enemy area.
+fn place_enemy_card(
+    ground: GroundRect,
+    sprite_size: f32,
+    card_width: f32,
+    center_x: f32,
+    feet: f32,
+) -> (f32, f32) {
     let ground_left = ground.x as f32;
     let ground_top = ground.y as f32;
     let ground_right = ground_left + ground.width as f32;
@@ -1340,14 +1408,72 @@ fn enemy_card_position(
 
     let minimum_x = ground_left + sprite_size / 2.0;
     let maximum_x = (ground_right - sprite_size / 2.0).max(minimum_x);
-    let center_x = (ENEMY_CANVAS_WIDTH / 2.0 + offset_x).clamp(minimum_x, maximum_x);
+    let center_x = center_x.clamp(minimum_x, maximum_x);
 
-    let center_y = ground_top + ground.height as f32 / 2.0 + ENEMY_GROUND_NUDGE + offset_y;
     let minimum_feet = ground_top;
     let maximum_feet = (ground_bottom - ENEMY_FOOTER_RESERVE).max(minimum_feet);
-    let feet = (center_y + sprite_size / 2.0).clamp(minimum_feet, maximum_feet);
+    let feet = feet.clamp(minimum_feet, maximum_feet);
 
     (center_x - card_width / 2.0, feet - sprite_size - 2.0)
+}
+
+/// Where one enemy card sits, how big its sprite is drawn, and how it stacks.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct EnemyCardLayout {
+    sprite_size: f32,
+    card_width: f32,
+    left: f32,
+    top: f32,
+    z: i32,
+    /// A fixed health-bar width; `None` spans the card.
+    bar_width: Option<f32>,
+}
+
+/// The health bar under a v2 battler. Its card is as wide as the 256-300px tile, and a bar that
+/// wide would run into its neighbours'.
+const ENEMY_V2_BAR_WIDTH: f32 = 160.0;
+
+/// Lays out one enemy card. A battle with any v2 enemy uses the depth rows, where v2 enemies take
+/// their row's size and v1 enemies keep their own; otherwise the legacy presets apply unchanged.
+fn enemy_card_layout(
+    ground: GroundRect,
+    participant: &crate::encounter::BattleParticipant,
+    v2_enemies: &[bool],
+    enemy_count: usize,
+    index: usize,
+) -> EnemyCardLayout {
+    let ground = usable_ground(ground);
+    if !v2_enemies.iter().any(|&v2| v2) {
+        let sprite_size = enemy_sprite_size(participant);
+        let card_width = sprite_size.max(80.0);
+        let (left, top) = enemy_card_position(ground, sprite_size, card_width, enemy_count, index);
+        return EnemyCardLayout {
+            sprite_size,
+            card_width,
+            left,
+            top,
+            z: 0,
+            bar_width: None,
+        };
+    }
+    let (center_x, row) = super::enemy_depth::depth_slot(enemy_count, index);
+    let v2 = v2_enemies.get(index).copied().unwrap_or(false);
+    let sprite_size = if v2 {
+        row.sprite_size()
+    } else {
+        enemy_sprite_size(participant)
+    };
+    let card_width = sprite_size.max(80.0);
+    let (left, top) =
+        place_enemy_card(ground, sprite_size, card_width, center_x, row.tile_bottom());
+    EnemyCardLayout {
+        sprite_size,
+        card_width,
+        left,
+        top,
+        z: row.z(),
+        bar_width: v2.then_some(ENEMY_V2_BAR_WIDTH.min(card_width)),
+    }
 }
 
 fn breath_squash(elapsed_seconds: f32, index: usize) -> f32 {
@@ -1477,28 +1603,85 @@ fn enemy_sprite_tile(animation: Option<(AttackKind, f32)>) -> u32 {
     row * LPC_COLUMNS + frame
 }
 
+enum Sheet<'a> {
+    Absent,
+    Pending,
+    Ready(&'a TsxAtlasAsset),
+}
+
+/// Where one enemy sheet stands. A sheet is ready only once its PNG has loaded too: a TSX whose
+/// image is missing would otherwise count as loaded and draw an invisible body.
+fn sheet_state<'a>(
+    asset_server: &AssetServer,
+    atlases: &'a Assets<TsxAtlasAsset>,
+    handle: Option<&Option<Handle<TsxAtlasAsset>>>,
+) -> Sheet<'a> {
+    let Some(Some(handle)) = handle else {
+        return Sheet::Absent;
+    };
+    match asset_server.recursive_dependency_load_state(handle.id()) {
+        RecursiveDependencyLoadState::Failed(_) => Sheet::Absent,
+        RecursiveDependencyLoadState::Loaded => {
+            atlases.get(handle).map_or(Sheet::Pending, Sheet::Ready)
+        }
+        RecursiveDependencyLoadState::NotLoaded | RecursiveDependencyLoadState::Loading => {
+            Sheet::Pending
+        }
+    }
+}
+
 fn drive_battle_assets(
     asset_server: Res<AssetServer>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     assets: Option<Res<BattleAssetState>>,
+    state: Option<Res<BattleState>>,
     attacks: Option<Res<super::fx::BattleAttackAnimations>>,
     mut images: Query<(&BattleEnemyImage, &mut ImageNode)>,
 ) {
     let Some(assets) = assets else { return };
     for (marker, mut image) in &mut images {
-        let Some(Some(handle)) = assets.atlases.get(marker.index) else {
-            continue;
-        };
-        if matches!(asset_server.load_state(handle.id()), LoadState::Failed(_)) {
-            continue;
-        }
-        let Some(atlas) = atlases.get(handle) else {
-            continue;
-        };
         let animation = attacks
             .as_deref()
             .and_then(|attacks| attacks.progress(marker.index));
-        if let Ok(sprite) = atlas.sprite_for_tile(enemy_sprite_tile(animation)) {
+        let sheet = |handles: &[Option<Handle<TsxAtlasAsset>>]| {
+            sheet_state(&asset_server, &atlases, handles.get(marker.index))
+        };
+        let actor = state
+            .as_deref()
+            .and_then(|state| state.actor(CombatantKey::enemy(marker.index)));
+        // A v2 status sheet owns the body; the v1 sheet covers only enemies without one. While
+        // the v2 sheet is still loading nothing is drawn, so v1 never flashes up first. A swing
+        // shows the attack sheet when there is one and otherwise holds the status pose.
+        let (atlas, tile) = match (sheet(&assets.status_atlases), actor) {
+            (Sheet::Pending, _) => continue,
+            (Sheet::Ready(status), Some(actor)) => {
+                let alive = actor.is_alive();
+                let swing = animation.filter(|_| alive).and_then(|(kind, _)| {
+                    match sheet(&assets.attack_atlases) {
+                        Sheet::Ready(attack) => {
+                            Some((attack, super::enemy_pose::attack_tile(kind)))
+                        }
+                        Sheet::Absent | Sheet::Pending => None,
+                    }
+                });
+                swing.unwrap_or_else(|| {
+                    (
+                        status,
+                        super::enemy_pose::status_tile(alive, &actor.status_effects),
+                    )
+                })
+            }
+            (Sheet::Ready(_) | Sheet::Absent, _) => match sheet(&assets.atlases) {
+                Sheet::Ready(atlas) => (atlas, enemy_sprite_tile(animation)),
+                Sheet::Absent | Sheet::Pending => continue,
+            },
+        };
+        // A sheet with fewer tiles than the table expects shows its first pose rather than
+        // freezing on whatever the body last drew.
+        let sprite = atlas
+            .sprite_for_tile(tile)
+            .or_else(|_| atlas.sprite_for_tile(0));
+        if let Ok(sprite) = sprite {
             image.image = sprite.image;
             image.texture_atlas = sprite.texture_atlas;
             let source_width = atlas.metadata().tile_width() as f32;
@@ -1541,16 +1724,15 @@ fn position_enemy_cards(
         let Some(participant) = enemies.get(marker.0) else {
             continue;
         };
-        let sprite_size = enemy_sprite_size(participant);
-        let (left, top) = enemy_card_position(
+        let layout = enemy_card_layout(
             ground,
-            sprite_size,
-            sprite_size.max(80.0),
+            participant,
+            &assets.v2_enemies,
             enemies.len(),
             marker.0,
         );
-        node.left = px(left);
-        node.top = px(top);
+        node.left = px(layout.left);
+        node.top = px(layout.top);
     }
 }
 
@@ -2650,6 +2832,139 @@ mod tests {
                             "enemy health bar clipped: ground={ground:?}, sprite={sprite_size}, count={count}, index={index}, bottom={bottom}"
                         );
                     }
+                }
+            }
+        }
+    }
+
+    fn layout_participant(size: EnemySize, scale: u32) -> crate::encounter::BattleParticipant {
+        crate::encounter::BattleParticipant {
+            side: BattleSide::Enemy,
+            id: "orc".into(),
+            name: "Orc".into(),
+            class_id: String::new(),
+            health: 1,
+            max_health: 1,
+            mana: 0,
+            max_mana: 0,
+            attack: 0,
+            defense: 0,
+            magic_resistance: 0,
+            dexterity: 0,
+            abilities: Vec::new(),
+            status_effects: Vec::new(),
+            accessory: None,
+            wields_sword: false,
+            row: crate::scenario_party::PartyRow::Front,
+            boss: false,
+            enemy_type: None,
+            immunities: Vec::new(),
+            behavior: None,
+            experience_yield: 0,
+            gold_yield: 0,
+            enemy_size: Some(size),
+            sprite_id: "orc".into(),
+            sprite_scale_percent: scale,
+            drops: None,
+        }
+    }
+
+    #[test]
+    fn a_v1_only_battle_keeps_the_legacy_layout() {
+        let orc = layout_participant(EnemySize::Small, 270);
+        for count in 1..=5 {
+            for index in 0..count {
+                let layout =
+                    enemy_card_layout(full_enemy_ground(), &orc, &vec![false; count], count, index);
+                let (left, top) =
+                    enemy_card_position(full_enemy_ground(), 140.0, 140.0, count, index);
+                assert_eq!(
+                    layout,
+                    EnemyCardLayout {
+                        sprite_size: 140.0,
+                        card_width: 140.0,
+                        left,
+                        top,
+                        z: 0,
+                        bar_width: None,
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn five_v2_enemies_take_the_approved_rows_on_the_mountain_pass() {
+        let orc = layout_participant(EnemySize::Small, 270);
+        let layouts = (0..5)
+            .map(|index| enemy_card_layout(full_enemy_ground(), &orc, &[true; 5], 5, index))
+            .map(|layout| {
+                (
+                    layout.left + layout.card_width / 2.0,
+                    layout.top + layout.sprite_size + 2.0,
+                    layout.sprite_size,
+                    layout.z,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            layouts,
+            vec![
+                (330.0, 352.0, 256.0, 0),
+                (450.0, 436.0, 300.0, 2),
+                (640.0, 385.0, 273.0, 1),
+                (830.0, 436.0, 300.0, 2),
+                (950.0, 352.0, 256.0, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_mixed_battle_seats_v1_enemies_in_depth_rows_at_their_own_size() {
+        let bruiser = layout_participant(EnemySize::Medium, 100);
+        let layout = enemy_card_layout(full_enemy_ground(), &bruiser, &[false, true], 2, 0);
+        assert_eq!(layout.sprite_size, 64.0);
+        assert_eq!(layout.bar_width, None);
+        assert_eq!(layout.left + layout.card_width / 2.0, 450.0);
+        assert_eq!(layout.z, 2);
+    }
+
+    #[test]
+    fn depth_layout_health_bars_fit_on_low_ground_backgrounds() {
+        let orc = layout_participant(EnemySize::Small, 270);
+        for ground in [
+            full_enemy_ground(),
+            GroundRect {
+                x: 160,
+                y: 340,
+                width: 960,
+                height: 80,
+            },
+            GroundRect {
+                x: 120,
+                y: 310,
+                width: 910,
+                height: 158,
+            },
+            GroundRect {
+                x: 40,
+                y: 351,
+                width: 1200,
+                height: 117,
+            },
+        ] {
+            for count in 1..=5 {
+                for index in 0..count {
+                    let layout = enemy_card_layout(ground, &orc, &vec![true; count], count, index);
+                    let bottom = layout.top + layout.sprite_size + 4.0 + 4.0 + 22.0;
+                    assert!(
+                        bottom <= ENEMY_AREA_HEIGHT,
+                        "v2 health bar clipped: ground={ground:?}, count={count}, index={index}, bottom={bottom}"
+                    );
+                    assert!(
+                        layout.top >= 0.0,
+                        "v2 head clipped: {ground:?} {count}/{index}"
+                    );
                 }
             }
         }
