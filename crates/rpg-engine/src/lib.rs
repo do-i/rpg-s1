@@ -180,6 +180,11 @@ fn run_game(arguments: cli::PlayArguments) {
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
+            .set(bevy::log::LogPlugin {
+                // symphonia warns about every unsupported ID3 frame (e.g. GEOB) in our music tags.
+                filter: "wgpu=error,naga=warn,symphonia_metadata=warn".into(),
+                ..default()
+            })
             .set(AudioPlugin {
                 global_volume: GlobalVolume::new(
                     if std::env::var_os("RPG_S1_MUTE_AUDIO").is_some() {
