@@ -7,6 +7,7 @@ mod action_input;
 pub mod app_state;
 mod atomic_file;
 mod autosave;
+// TEMPORARY: v2 enemy pose review switch.
 mod battle;
 mod battle_log;
 pub mod battle_tactics;
@@ -69,6 +70,7 @@ mod service_ui;
 mod sfx_cue;
 mod sound_option;
 mod spell_images;
+mod status_test_mode;
 mod tile_coordinates;
 mod title_screen;
 mod tmx_ground_asset;

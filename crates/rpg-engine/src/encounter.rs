@@ -430,7 +430,7 @@ pub(crate) fn build_battle_entry(
                 magic_resistance: i64::from(stats.intelligence),
                 dexterity: i64::from(stats.dexterity),
                 abilities: item_catalog
-                    .unlocked_abilities(member.class_id(), member.level(), flags)
+                    .battle_abilities(member.class_id(), member.level(), flags)
                     .into_iter()
                     .cloned()
                     .collect(),

@@ -145,6 +145,24 @@ impl FieldMenuCatalog {
             .collect()
     }
 
+    /// The abilities a member brings into battle. Normally the unlocked set; the temporary
+    /// status-pose test switch hands over the whole class list instead.
+    pub(crate) fn battle_abilities(
+        &self,
+        class_id: &str,
+        level: u32,
+        flags: &crate::runtime_flags::RuntimeFlags,
+    ) -> Vec<&Ability> {
+        if crate::status_test_mode::enabled() {
+            return self
+                .class(class_id)
+                .into_iter()
+                .flat_map(|class| &class.abilities)
+                .collect();
+        }
+        self.unlocked_abilities(class_id, level, flags)
+    }
+
     /// Builds the battle-facing subset of the production catalog for the encounter sweep.
     /// Battle construction reads item equipment stats and class abilities, but does not need
     /// field-use, warp, recipe, quest, or map services.
