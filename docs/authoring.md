@@ -228,6 +228,9 @@ tile 18). Each v2 tile is 256×256. Poses share one scale, set by the widest pos
 feet sit 4 pixels above the bottom of the cell. Sheets are transparent, with no labels
 or grid lines.
 
+Work on sheets under `temp/`, which git ignores. Copy approved sheets into `v2/`, and give
+every copied PNG and TSX a row in the [asset ledger](asset-license-inventory.md).
+
 **Status sheet:** 1024×1024, 4 columns, 16 tiles. `index = row * 4 + col`.
 
 | Index | Pose | Engine value |
