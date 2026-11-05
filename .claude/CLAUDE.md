@@ -5,6 +5,11 @@
 - Remove code only after checking production callers, tests, Bevy plugin and system registration, CLI paths, and serialized compatibility. Asset removal needs separate owner approval.
 - Keep a performance change only with a reproducible before/after comparison showing a gain beyond run-to-run variation.
 
+# Documentation
+
+- Do not add files to `docs/`; CI fails on anything outside the allowlist in `scripts/check_docs_allowlist.py`. Do not extend that allowlist unless the repository owner explicitly asks.
+- Put short-lived plans, notes, and reports in `temp/YYYYMMDD-HHMM-description/` (gitignored), lasting reference in an existing document, and follow-up work in a GitHub issue. See `docs/DO_NOT_ADD_FILES_HERE.md`.
+
 # Git and release workflow
 
 - `dev` is the integration branch. Land and validate changes on `dev`.

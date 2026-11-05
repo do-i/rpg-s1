@@ -24,6 +24,10 @@ jobs:
         with:
           lfs: true
           persist-credentials: false
+      - name: Check docs/ contains only allowlisted files
+        run: |
+          python3 -m unittest -v scripts/test_check_docs_allowlist.py
+          python3 scripts/check_docs_allowlist.py
       # Read-only: an asset edited without committing its refreshed home-grown ledger hash fails
       # here, before any Cargo step, and the message points at ./scripts/build.sh.
       - name: Check home-grown asset hashes are current
