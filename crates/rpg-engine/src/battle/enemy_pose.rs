@@ -2,7 +2,7 @@
 //!
 //! The sheet lives beside the v1 battler at `media/sprites/enemies/v2/{id}-status.tsx`. An enemy
 //! without one keeps drawing from its v1 sheet exactly as before, so migration is per enemy.
-//! The tile table is documented in `docs/enemy-battler-tiles.md`.
+//! The tile table is documented in `docs/authoring.md`.
 
 use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 

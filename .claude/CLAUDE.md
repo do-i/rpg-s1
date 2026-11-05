@@ -1,3 +1,10 @@
+# Changing code
+
+- Preserve save and options formats, scenario boundaries, deterministic RNG ordering, and existing diagnostics unless the task explicitly requires a reviewed change.
+- Keep bug fixes and structural moves in separate commits. Add focused tests for identified failures.
+- Remove code only after checking production callers, tests, Bevy plugin and system registration, CLI paths, and serialized compatibility. Asset removal needs separate owner approval.
+- Keep a performance change only with a reproducible before/after comparison showing a gain beyond run-to-run variation.
+
 # Git and release workflow
 
 - `dev` is the integration branch. Land and validate changes on `dev`.

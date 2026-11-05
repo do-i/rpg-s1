@@ -62,7 +62,7 @@ For Leohpaz SFX, the owner also explicitly accepts the remaining public-source-
 repository ambiguity for the 35 RPG Essentials Free sounds and approves the
 release with the creator credit retained and original pack ZIPs untracked.
 This owner decision and the 27 Minifantasy Dungeon mappings are detailed in
-`docs/sfx-license-review.md`; no additional publisher permission is claimed.
+`docs/asset-license-reviews.md`; no additional publisher permission is claimed.
 
 ## How to add an entry
 
@@ -283,7 +283,7 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Asset kind | license text |
 | Title/name | Philosopher SIL Open Font License notice |
 | Creator/rightsholder | not-applicable; this is the copyright and license notice supplied for the companion font. |
-| Source/evidence | Original companion notice plus the official Google Fonts Philosopher OFL notice reviewed 2026-10-29; both local notice copies match the official text after whitespace normalization; see `docs/lpc-font-license-review.md`. |
+| Source/evidence | Original companion notice plus the official Google Fonts Philosopher OFL notice reviewed 2026-10-29; both local notice copies match the official text after whitespace normalization; see `docs/asset-license-reviews.md`. |
 | License identifier/name | SIL Open Font License 1.1 (`OFL-1.1`) |
 | License text/notice location | This destination file is the complete local notice. |
 | Required attribution | Preserve the file with the companion font. |
@@ -319,7 +319,7 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Review status | `approved` |
 | Reviewer/date | Codex evidence audit, 2026-08-10 |
 | Related port task/wave | M5.26 |
-| Notes/blocker | This notice preserves the voluntary creator credit. Official free-pack terms and the 62 shipped sound mappings were reviewed on 2026-10-29; see docs/sfx-license-review.md. |
+| Notes/blocker | This notice preserves the voluntary creator credit. Official free-pack terms and the 62 shipped sound mappings were reviewed on 2026-10-29; see docs/asset-license-reviews.md. |
 
 ### Asset entry: `ALI-0031` — `013_Confirm_03.mp3`
 
@@ -333,9 +333,9 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Asset kind | audio |
 | Title/name | `013_Confirm_03.mp3` |
 | Creator/rightsholder | Leohpaz, as identified by the official RPG Essentials Free pack page and the preserved creator credit. |
-| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash and per-file evidence in `docs/sfx-license-review.md` and its referenced comparison report. |
+| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash in `docs/asset-license-reviews.md`. |
 | License identifier/name | Leohpaz custom RPG Essentials Free project-use terms; no SPDX identifier. This file is covered by the free archive mapping, so a paid-pack purchase is not required. |
-| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/sfx-license-review.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
+| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/asset-license-reviews.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
 | Required attribution | Optional under the official pack terms; retain the existing voluntary Leohpaz credit. |
 | Modification status/details | Unmodified during the port from the pinned source repository. The imported MP3 is an encoding of the corresponding official WAV, supported by filename, duration and waveform comparison; the original encoding command is not recorded. |
 | Redistribution permission | yes, conditional on game-project use under the publisher terms; do not redistribute or sell the sound pack itself. |
@@ -358,9 +358,9 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Asset kind | audio |
 | Title/name | `029_Decline_09.mp3` |
 | Creator/rightsholder | Leohpaz, as identified by the official RPG Essentials Free pack page and the preserved creator credit. |
-| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash and per-file evidence in `docs/sfx-license-review.md` and its referenced comparison report. |
+| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash in `docs/asset-license-reviews.md`. |
 | License identifier/name | Leohpaz custom RPG Essentials Free project-use terms; no SPDX identifier. This file is covered by the free archive mapping, so a paid-pack purchase is not required. |
-| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/sfx-license-review.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
+| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/asset-license-reviews.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
 | Required attribution | Optional under the official pack terms; retain the existing voluntary Leohpaz credit. |
 | Modification status/details | Unmodified during the port from the pinned source repository. The imported MP3 is an encoding of the corresponding official WAV, supported by filename, duration and waveform comparison; the original encoding command is not recorded. |
 | Redistribution permission | yes, conditional on game-project use under the publisher terms; do not redistribute or sell the sound pack itself. |
@@ -383,9 +383,9 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Asset kind | audio |
 | Title/name | `033_Denied_03.mp3` |
 | Creator/rightsholder | Leohpaz, as identified by the official RPG Essentials Free pack page and the preserved creator credit. |
-| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash and per-file evidence in `docs/sfx-license-review.md` and its referenced comparison report. |
+| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash in `docs/asset-license-reviews.md`. |
 | License identifier/name | Leohpaz custom RPG Essentials Free project-use terms; no SPDX identifier. This file is covered by the free archive mapping, so a paid-pack purchase is not required. |
-| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/sfx-license-review.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
+| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/asset-license-reviews.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
 | Required attribution | Optional under the official pack terms; retain the existing voluntary Leohpaz credit. |
 | Modification status/details | Unmodified during the port from the pinned source repository. The imported MP3 is an encoding of the corresponding official WAV, supported by filename, duration and waveform comparison; the original encoding command is not recorded. |
 | Redistribution permission | yes, conditional on game-project use under the publisher terms; do not redistribute or sell the sound pack itself. |
@@ -408,9 +408,9 @@ Their TSX metadata is home-grown and listed in the home-grown table.
 | Asset kind | audio |
 | Title/name | `051_use_item_01.mp3` |
 | Creator/rightsholder | Leohpaz, as identified by the official RPG Essentials Free pack page and the preserved creator credit. |
-| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash and per-file evidence in `docs/sfx-license-review.md` and its referenced comparison report. |
+| Source/evidence | Official [RPG Essentials SFX - Free!](https://leohpaz.itch.io/rpg-essentials-sfx-free), downloaded and reviewed 2026-10-29; corresponding WAV filename, decoded duration and waveform compared against this MP3; pack hash in `docs/asset-license-reviews.md`. |
 | License identifier/name | Leohpaz custom RPG Essentials Free project-use terms; no SPDX identifier. This file is covered by the free archive mapping, so a paid-pack purchase is not required. |
-| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/sfx-license-review.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
+| License text/notice location | [Official RPG Essentials Free licensing section](https://leohpaz.itch.io/rpg-essentials-sfx-free); review in `docs/asset-license-reviews.md`; voluntary creator notice at `assets/scenarios/rusted_kingdoms/media/audio/sfx/CREDIT`. |
 | Required attribution | Optional under the official pack terms; retain the existing voluntary Leohpaz credit. |
 | Modification status/details | Unmodified during the port from the pinned source repository. The imported MP3 is an encoding of the corresponding official WAV, supported by filename, duration and waveform comparison; the original encoding command is not recorded. |
 | Redistribution permission | yes, conditional on game-project use under the publisher terms; do not redistribute or sell the sound pack itself. |
@@ -629,7 +629,7 @@ Shared fields for every row:
   credits and recovered party notices; exact historical per-sprite layer
   mappings were not retained for every file;
 - source/evidence: original imported sprites plus the official generator's
-  licensing guidance reviewed 2026-10-29; see `docs/lpc-font-license-review.md`;
+  licensing guidance reviewed 2026-10-29; see `docs/asset-license-reviews.md`;
 - license: the applicable per-layer open licenses, including CC BY-SA and OGA-BY;
   preserve their attribution and ShareAlike requirements where applicable;
   no blanket MIT relicensing or single license choice for every sprite is claimed;
@@ -898,7 +898,7 @@ Shared fields for every row:
 
 - creator/rightsholder: Leohpaz (https://leohpaz.itch.io), per `media/audio/sfx/CREDIT`;
 - source/evidence: official free archives downloaded and audio compared on
-  2026-10-29; see `docs/sfx-license-review.md` for pack mapping, hashes and scope;
+  2026-10-29; see `docs/asset-license-reviews.md` for pack mapping, hashes and scope;
 - license: custom publisher terms at [RPG Essentials Free](https://leohpaz.itch.io/rpg-essentials-sfx-free)
   for `atk_magic`, `battle`, `buffs_heals`, `player_movement` and `ui_menu`;
   [Minifantasy Dungeon](https://leohpaz.itch.io/minifantasy-dungeon-sfx-pack) for `dungeon`;
@@ -1728,8 +1728,8 @@ Everything not listed above. Shared fields for every row:
 | ALI-1106 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_storage.tmx` | `6704157f1e2689b815566d4c4eec6452868101a1a55acbafbf8c3a92ccb3cc75` | TMX / Ruinwatch shops and southeast storehouse |
 | ALI-1107 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/town_03_ruinwatch_shop_apothecary.yaml` | `2668721c50ad73f21ed64179a6a6b6ad5b5df9109167d1922b5ed4ca3e384b2c` | Ruinwatch dedicated apothecary |
 | ALI-1108 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/maps/town_03_ruinwatch_shop_apothecary.tmx` | `f98320a562cffe714d86082ab4248862c3f6f6e301dd88eb7b179a12d45e34df` | Ruinwatch dedicated apothecary |
-| ALI-1110 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/tilesets/floor.tsx` | `6a094959a8ed57216b4765231857266e97aa0957504c000b05cef61e4f5b227f` | tileset XML / floor.tsx; 16 columns, 192 slots, 81 visible tiles; tile 6 moved to outdoor tile 117; all 56 exact terrain duplicates cleared in two passes without shifting other IDs; associated tile metadata removed and all 48 Wang rules remapped to terrain-v7.tsx; all remaining tiles subsequently reordered into wood, stone, marks/bridge, cave and replacement-review groups; properties and IDs remapped to preserve appearance; former tiles 14/30 now 0/1 and former tiles 3/4/5/15 now 176-179; five generated rock-building tile properties added; unused IDs 92/93/176-178 subsequently cleared and their properties removed; sandy tile moved to 22, rubble to 131-133, and subsequent complete 3x4 object selection at 83-85/99-101/115-117/131-133, with top-corner alignment repaired and map placements remapped; layout documented in docs/floor-tileset.md, 2026-10-20 |
-| ALI-1111 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-floor.txt` | `b852356ff3669a6f93f64f8fd67dc44f2130ef354237af4ccfcb66969784d0e4` | text / floor atlas source, license and modification notice; supplements unchanged CREDITS-terrain.txt, 2026-10-19 |
+| ALI-1110 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/tilesets/floor.tsx` | `6a094959a8ed57216b4765231857266e97aa0957504c000b05cef61e4f5b227f` | tileset XML / floor.tsx; 16 columns, 192 slots, 81 visible tiles; tile 6 moved to outdoor tile 117; all 56 exact terrain duplicates cleared in two passes without shifting other IDs; associated tile metadata removed and all 48 Wang rules remapped to terrain-v7.tsx; all remaining tiles subsequently reordered into wood, stone, marks/bridge, cave and replacement-review groups; properties and IDs remapped to preserve appearance; former tiles 14/30 now 0/1 and former tiles 3/4/5/15 now 176-179; five generated rock-building tile properties added; unused IDs 92/93/176-178 subsequently cleared and their properties removed; sandy tile moved to 22, rubble to 131-133, and subsequent complete 3x4 object selection at 83-85/99-101/115-117/131-133, with top-corner alignment repaired and map placements remapped; layout documented in docs/authoring.md, 2026-10-20 |
+| ALI-1111 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/CREDITS-floor.txt` | `a2f784a01538f16d29c9c688b0361cb9f1934914f7e18cde112a7acca1baab7d` | text / floor atlas source, license and modification notice; supplements unchanged CREDITS-terrain.txt, 2026-10-19 |
 | ALI-1112 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/tilesets/roof.png` | `974f2e4c2e2c62bb2b36f6eaf289deaf660686aaed66d3f8d51a4cec2ea9a36a` | image / roof.png; 67 roof tiles in nine designs moved losslessly from town.png; complete moss/slate/terracotta roofs and snow, wood, tile and thatch strips grouped together; 384x224 atlas, 2026-10-19 |
 | ALI-1113 | author (Tiled) | `assets/scenarios/rusted_kingdoms/media/tilesets/roof.tsx` | `633f900b1e8aa021e856282431f36fb7dfd4a7066eef876e61c8b963c52c5ea4` | tileset XML / roof.tsx; 12 columns, 84 slots; descriptions for all 67 roof tiles; map and stamp references remapped, 2026-10-19 |
 | ALI-1114 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/tilesets/door.png` | `de4cf07db56b6d935ec8e24fb1748f8d6aa795382bd51e9d2c8f762c053dc2a8` | image / door.png; 18 door tiles; nine rope-bridge tiles moved losslessly to floor.png; empty bottom row removed; obsolete lintel tile 18 cleared and removed from maps/stamps; blue door enlarged with imagegen and normalized to exactly one dark pixel around all sides; rectangular door top and bottom gaps filled by extending their existing textures; short lower panel extended with imagegen and original wood texture; existing opaque pixels and arched silhouettes preserved, 256x128, 2026-10-19; red door tiles 6/14 stretched from 30 to 32 pixels wide and iron-banded door tiles 16/24 from 31 to 32 pixels wide with nearest-neighbor scaling to fill right-side transparency; round-window door tiles 7/15 framed in warm wood with imagegen, normalized to 32x64, original center pixels retained and all near-black outer trim replaced; plain wooden door tiles 0/8 framed in warm wood with imagegen, original planks and iron hardware retained and near-black outer trim replaced; arched door tiles 2/10 evenly expanded from 31x63 to 32x64 with nearest-neighbor scaling to fill right and bottom gaps; obsolete counter panels 17/25 cleared to transparent and their map/stamp uses retired in favor of shop counter tiles 48/49/50; surviving door IDs and pixels preserved |
@@ -2006,7 +2006,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-1385 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/tilesets/snowbound_lodge_wall.tsx` | `79c0664c92508f9567a0f5103a0408961ac97d1767ed921d8bc531e3c5360f22` | Tiled tileset / snow-capped masonry |
 | ALI-1386 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone6-house-bg-1280x468.webp` | `d9a9a77a83e8df3f17b43d75a2d3532a8acb8d2da19f20174112c1b6a82b02e1` | battle backdrop / Snowbound Monster House low-wall trial; ceiling fills upper half, rear wall about one rendered orc tall; built-in imagegen edit; 1280x468; original wide variant retained as ALI-1387; prompt and original in temp/20261028-2159-house-low-wall |
 | ALI-1387 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone6-house-wide-bg-1280x468.webp` | `0f7abc240eea3772b0d7c48b1dff0dc64e2e70444396142229122da5eaab81e9` | battle backdrop / preserved wide snowbound lodge; original liked by owner, retained for future miniature-scale encounters; byte-identical copy of original ALI-1386 artwork |
-| ALI-1109 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/tilesets/floor.png` | `8ac2279eb1a0472b426c17d8dc67346e9223bd5ce837ab229031ba7098315140` | image / 90 visible floor tiles; project-authored source atlases and AI-generated additions; all 56 former LPC tiles removed; owner provenance clarification; no exact matches against all 19 upstream tileset PNGs at 0897035, including off-grid, flipped and rotated matches, 2026-10-29; see docs/floor-tileset.md and media/tilesets/CREDITS-floor.txt |
+| ALI-1109 | AI-generated, author-directed | `assets/scenarios/rusted_kingdoms/media/tilesets/floor.png` | `8ac2279eb1a0472b426c17d8dc67346e9223bd5ce837ab229031ba7098315140` | image / 90 visible floor tiles; project-authored source atlases and AI-generated additions; all 56 former LPC tiles removed; owner provenance clarification; no exact matches against all 19 upstream tileset PNGs at 0897035, including off-grid, flipped and rotated matches, 2026-10-29; see docs/asset-license-reviews.md and media/tilesets/CREDITS-floor.txt |
 | ALI-1485 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/minotaur_brute_base-status.png` | `38eacaed080ab190718fd423d526eb09bc8fa45825940b41e413def1c6d5fd43` | enemy battler sheet / minotaur_brute_base v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles; painted with the grok enemy-battler-art skill; working files in temp/20261101-1310-minotaur_brute_base |
 | ALI-1486 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/minotaur_brute_base-status.tsx` | `a082c9d4d60f6a9349824ed89105e24104966284b852f1e90672c5c3f9e595fe` | Tiled tileset / minotaur_brute_base v2 status sheet |
 | ALI-1487 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/minotaur_brute_base-attack.png` | `a3484f0d77425992d6c9cf05d492a0d1bcdb04c11b13b18d461f463d1d749758` | enemy battler sheet / minotaur_brute_base v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px; painted with the grok enemy-battler-art skill; working files in temp/20261101-1310-minotaur_brute_base |
@@ -2056,7 +2056,7 @@ Shared fields for every row:
 - creator/rightsholder: LPC contributors identified by each preserved notice;
 - source/evidence: four original party notices restored byte-for-byte from
   do-i/agentic-rpg at 0897035, plus the generator's complete attribution CSV
-  at the revision recorded in each row; see `docs/lpc-font-license-review.md`;
+  at the revision recorded in each row; see `docs/asset-license-reviews.md`;
 - license and attribution: preserve the original author, source and per-layer
   license records; these notices accompany the associated LPC artwork and
   do not relicense it as MIT;

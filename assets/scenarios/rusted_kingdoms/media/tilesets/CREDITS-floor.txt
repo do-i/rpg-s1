@@ -56,7 +56,7 @@ marks and the rope bridge begin on row 3; cave ground and stone details are
 grouped below. Former tiles 3, 4, 5 and 15 moved to last-row IDs 176-179 for
 replacement review. Map/stamp references and tile properties were remapped,
 including tile flips; all 50 affected maps and both bridge stamp previews
-remain pixel-identical. See docs/floor-tileset.md for the layout and usage.
+remain pixel-identical. See docs/authoring.md for the layout and usage.
 
 Rock-building extension and floor moves, 2026-10-20: retained sandy tile 179
 moved losslessly to 22; rubble tiles 108-110 moved to 131-133. The rock object
@@ -66,7 +66,7 @@ pieces 85/101 moved to 86/102. Five new AI-generated, author-directed tiles
 four pieces retain their pixels. New artwork was normalized to the original
 palette and binary transparency, with joining strips aligned to the retained
 pieces. The atlas now has 86 visible tiles. Project-authored additions retain the MIT notice.
-The generation request and layout are recorded in docs/floor-tileset.md.
+The layout is in docs/authoring.md.
 
 Rock-object alignment, 2026-10-20: the nine upper tiles moved one row down and
 one column left (68-70 -> 83-85, 84-86 -> 99-101, 100-102 -> 115-117), joining
@@ -124,14 +124,14 @@ Vertical rope bridge, 2026-10-20: nine AI-generated, author-directed tiles
 added at 93-95/109-111/125-127, normalized to the existing bridge palette,
 32x32 tile grid and binary alpha. Built-in imagegen supplied the north-south
 variant; the existing bridge and every other atlas pixel are unchanged.
-The atlas now has 90 visible tiles. Prompt and layout: docs/floor-tileset.md.
+The atlas now has 90 visible tiles. The layout is in docs/authoring.md.
 The project-authored artwork retains the MIT notice.
 
 Vertical bridge repeatability repair, 2026-10-20: tiles 109 and 111 now use
 straight AI-assisted rope rails with identical top/bottom RGBA profiles,
 normalized to the original palette and binary alpha. Repeat 109/110/111 to
 extend the bridge. Tile 110, the end rows and every other atlas pixel remain
-unchanged. Prompt and validation are recorded in docs/floor-tileset.md.
+unchanged.
 The project-authored artwork retains the MIT notice.
 
 Vertical bridge anchor alignment, 2026-10-20: corrected the wider bottom
@@ -140,7 +140,7 @@ upper rope exits in 93/95. Built-in imagegen supplied lower side strips,
 fitted to the original palette, exact upper exit pixels and upper post
 footprints. Only these four lower side tiles change; the top row, center
 column and all other atlas pixels are preserved. Short/extended previews
-and exact join checks passed. Prompt: docs/floor-tileset.md. The project-authored artwork retains the MIT notice.
+and exact join checks passed. The project-authored artwork retains the MIT notice.
 
 Provenance correction, 2026-10-29: the repository owner confirmed that tiles
 not inherited from the deleted source sheets were AI-generated; no new
@@ -150,15 +150,4 @@ found 27 matches in the project-authored cave/decor sheets, and no matches in
 the retired downloaded sheets or terrain-v7. The other 63 tiles are classified
 from the owner's provenance statement and recorded generation history. An
 exact-match comparison does not independently identify modified source art.
-The atlas has 90 visible tiles; see docs/floor-tileset.md for the audit scope.
-
-Complete upstream comparison, 2026-10-29: checked all 19 PNGs recursively
-under do-i/agentic-rpg/rusted_kingdoms/assets/tilesets at main commit
-08970359d6cb03586948625d29b0d3351dbbf785, resolving every upstream LFS
-pointer and verifying its SHA-256. All 90 current floor tiles were searched
-at every pixel offset, with flips and 90-degree rotations, and exact 2x
-enlargement from 16x16 when applicable. No matches were found, including
-in ground/terrain-v7.png. This comparison does not identify recolored or
-repainted derivatives. Inventory, hashes and results are recorded alongside
-the audit script in temp/20261029-0854-floor-upstream-audit/; scope and
-provenance are documented in docs/floor-tileset.md.
+The atlas has 90 visible tiles; see docs/asset-license-reviews.md.

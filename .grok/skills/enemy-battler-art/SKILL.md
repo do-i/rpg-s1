@@ -32,7 +32,7 @@ This pass is the ready pose only. Do not paint a strike, a hurt pose, or status 
 ## Sizes
 
 - **Cutout: 1024×1024.** Generate every pose at 1:1 and check it with `magick identify`. If a render is not 1024×1024, resize the source image to `1024x1024!` before cutting. `cutout.py`'s thresholds assume that size. Keep `motion-ready.png` at 1024×1024: no crop, trim, or resize.
-- **Game sheets: 256×256 tiles.** Shipped v2 battlers live in `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/`. `<sprite_id>-status.png` is 4×4 tiles (1024×1024), and `<sprite_id>-attack.png` is 2×1 tiles (512×256). The pose order is in `docs/enemy-battler-tiles.md`. Each pose is downscaled from its 1024 cutout into one 256 tile. This skill does not build those sheets; it only produces the 1024 cutout they are made from.
+- **Game sheets: 256×256 tiles.** Shipped v2 battlers live in `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/`. `<sprite_id>-status.png` is 4×4 tiles (1024×1024), and `<sprite_id>-attack.png` is 2×1 tiles (512×256). The pose order is in `docs/authoring.md`. Each pose is downscaled from its 1024 cutout into one 256 tile. This skill does not build those sheets; it only produces the 1024 cutout they are made from.
 - **Review sheet: 640×780.** See *Cut out and assemble* below.
 
 ## Resolve the enemy

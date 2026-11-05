@@ -3,14 +3,10 @@
 `rpg-s1` is the native Rust and [Bevy](https://bevy.org/) port of **Chronicles
 of the Lost Flame**. It loads story, maps, dialogue, encounters, art, and audio
 directly from a selected scenario package. Normal gameplay and save conversion
-are implemented in Rust and do not invoke Python; the formal packaged-runtime
-proof required by M14.12 remains open.
+are implemented in Rust and do not invoke Python.
 
-The port is in final parity validation, not ready for public distribution. The
-normal campaign route has live acceptance through Harborgate (W12.3), while
-Ancient Ruins/Ruinwatch and the later campaign waves still need their recorded
-playthrough checks. The bundled parity assets also include unresolved
-redistribution-rights blockers described under [Licensing and credits](#licensing-and-credits).
+The game is still in development and campaign acceptance is not finished. Asset
+rights are tracked as described under [Credits](#credits).
 
 ## Screenshots
 
@@ -43,8 +39,7 @@ path/to/rpg-s1-<version>-x86_64-linux/rpg-s1 play rusted_kingdoms --seed 1
 ```
 
 No Rust toolchain, Python interpreter, Python package, or source checkout is
-needed by a packaged game. A self-contained Milestone 14 release candidate has
-not yet completed clean-profile acceptance.
+needed by a packaged game.
 
 ### From this repository
 
@@ -109,15 +104,15 @@ record/replay, debug-map launches, the map editor, and release utilities. Use
 | Intro and dialogue | Enter or Space advances; Escape follows the supported intro-skip/back path. |
 | World | Hold Arrow keys to move in four or eight directions; Enter or Space interacts with the facing NPC, sign, box, or service. |
 | Field menu | `M` or Escape opens it; `M` closes it; Arrow keys navigate; Enter or Space confirms; Escape backs out. |
-| Field shortcuts | `I` opens Items, `S` opens Status, and `Q` opens Quests. |
+| Field shortcuts | `I` opens Items, `S` opens Status, `Q` opens Quests, and `T` opens Travel. |
 | Battle | Up/Down selects a command, ability, item, or target; Enter or Space confirms; Escape cancels a nested choice or attempts to flee from the command menu. |
 | Confirmations | `Y` or any confirm key accepts save-overwrite and quit prompts; `N` declines. |
 | Gamepad | South confirms, East backs out, the D-pad navigates and walks, North travels, and the left stick both walks and steps menus. |
 | Mouse | On the title and options screens, hovering highlights a row and clicking activates it. Clicks in the letterbox bars are ignored. |
 | Options | Choose Options on the title screen. Up/Down picks a row, Left/Right switches between the keyboard and gamepad column, Confirm starts a rebind, Delete removes a binding, and Escape cancels a rebind or leaves. |
 
-The field menu contains Status, Spells, Items, Equipment, Quests, Save, and
-Quit. Opening any full-screen overlay pauses world movement, encounters, NPC
+The field menu contains Status, Spells, Items, Equipment, Quests, Character,
+Recipes, Battle, Save, Settings, and Quit. Opening any full-screen overlay pauses world movement, encounters, NPC
 wandering, interaction, and transitions until the overlay closes.
 
 ## Options
@@ -255,6 +250,10 @@ repeat the same inputs at seed 17 to compare later choices. `rewards` ends in
 one hit and awards exactly 1,000 EXP plus deterministic authored loot, taking
 Aric from level 1 to 3.
 
+Two more fixtures stress the battle layout: `layout-three` shows the largest
+authored formation and `layout-five` the largest renderer placement preset. Both
+fill the party, use the largest enemy tile, and fill every badge slot.
+
 Record normalized actions to a fresh path, then replay them without physical
 input:
 
@@ -270,6 +269,7 @@ and exits unsuccessfully at the first divergence. Use
 the web map editor (`scripts/map-editor.sh web`); review the TMX diff and run the
 validation, sweep, debug-map, and replay commands above after every authored
 change. The editor lives in `tools/map_editor` and needs no external checkout.
+Map and content rules are in the [authoring guide](docs/authoring.md).
 
 ## Current game coverage
 
@@ -286,10 +286,7 @@ The Rust runtime currently includes:
 - manifest-selected scenario packages, deterministic seeds, record/replay,
   validation reports, production sweeps, and map-authoring integrations.
 
-This list describes implemented systems, not final campaign acceptance. Active
-acceptance evidence and blockers are maintained locally under the ignored
-`plans/` directory.
-
+This list describes implemented systems, not final campaign acceptance.
 
 ## License
 
@@ -305,7 +302,7 @@ for every asset's provenance, license, and release status is
 [`docs/asset-license-inventory.md`](docs/asset-license-inventory.md); required
 notices (OFL, LPC attributions and creator credits) ship beside the files they
 cover. Current approvals and remaining provenance limits are recorded in that
-inventory and the [LPC/font review](docs/lpc-font-license-review.md).
+inventory and the [license reviews](docs/asset-license-reviews.md).
 
 ### Third-Party Assets
 
@@ -318,7 +315,7 @@ Code](https://claude.com/claude-code) (Anthropic) acting as a pair programmer,
 under human direction and review. This note is the project's single record of
 that; individual commits carry no `Co-Authored-By` or session trailers, so
 `git log` stays readable. Commit messages here are a subject line only — put
-the reasoning in `plans/`, `docs/`, or the pull request instead.
+the reasoning in a GitHub issue, `docs/`, or the pull request instead.
 
 ## Maintainer release flow
 
@@ -334,5 +331,5 @@ scripts/release.sh --dry-run cut
 `scripts/release.sh cut` bumps `Cargo.toml` and `Cargo.lock`, waits for the
 matching CI run, fast-forwards `main`, and pushes the branch and tag. A tag
 starts `.github/workflows/release.yml`, which builds the locked Linux x86-64
-binary and bundles it beside `assets/`. Do not publish a release while the
-Milestone 14 parity and asset-rights blockers above remain open.
+binary and bundles it beside `assets/`. The release gate refuses assets that
+`scripts/check_asset_rights.py` does not approve.
