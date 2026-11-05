@@ -220,13 +220,8 @@ pub(in crate::field_menu) fn render_status(
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let abilities = learned_abilities(member, game, catalog)
-        .into_iter()
-        .map(|ability| ability.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
     format!(
-        "Member {}/{}  {} — {}  Lv {}  {}\nHP {}/{}    MP {}/{}    EXP {}\n\nBase     STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\nDerived  STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\n\nEquipment\n{}\n\nField abilities: {}\nStatus effects: {}",
+        "Member {}/{}  {} — {}  Lv {}  {}\nHP {}/{}    MP {}/{}    EXP {}\n\nBase     STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\nDerived  STR {:>3}  DEX {:>3}  CON {:>3}  INT {:>3}\n\nEquipment\n{}\n\nStatus effects: {}",
         state.member_index + 1,
         game.party().len(),
         member.name(),
@@ -247,11 +242,6 @@ pub(in crate::field_menu) fn render_status(
         stats.constitution,
         stats.intelligence,
         equipment,
-        if abilities.is_empty() {
-            "None"
-        } else {
-            &abilities
-        },
         if statuses.is_empty() {
             "None"
         } else {
@@ -625,13 +615,7 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
             "Y/ENTER exit to desktop  N/ESC cancel"
         }
         (FieldMenuScreen::Main, _) => "UP/DOWN choose  ENTER open  M/ESC close",
-        (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Roster => {
-            "UP/DOWN member  ENTER stats  ESC back  M close"
-        }
-        (FieldMenuScreen::Status, _) if state.status_page == StatusPage::Position => {
-            "UP/DOWN row  ENTER set  ESC back  M close"
-        }
-        (FieldMenuScreen::Status, _) => "UP/DOWN action  ENTER open  ESC portrait  M close",
+        (FieldMenuScreen::Status, _) => status_hint(state),
         (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
             "UP/DOWN pouch  RIGHT/ENTER items  H show/hide  ESC back"
         }

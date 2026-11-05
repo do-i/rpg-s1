@@ -165,7 +165,9 @@ pub(super) fn handle_field_menu_input(
             inventory.as_deref(),
             &mut exit,
         ),
-        FieldMenuScreen::Status => status::handle_input(&mut state, &mut game, &input),
+        FieldMenuScreen::Status => {
+            status::handle_input(&mut state, &mut game, &input, inventory.as_deref());
+        }
         FieldMenuScreen::Items => inventory::handle_input(
             &mut state,
             &mut game,

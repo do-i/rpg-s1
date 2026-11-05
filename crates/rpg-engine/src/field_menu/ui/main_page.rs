@@ -124,7 +124,7 @@ impl PartyWalkThumbnails {
         thumbnails
     }
 
-    fn variant_frame(&self, index: usize) -> Option<ImageNode> {
+    pub(in crate::field_menu) fn variant_frame(&self, index: usize) -> Option<ImageNode> {
         let (_, frame) = self.variants.get(index)?;
         let (image, layout) = frame.as_ref()?;
         Some(ImageNode::from_atlas_image(
@@ -136,7 +136,7 @@ impl PartyWalkThumbnails {
         ))
     }
 
-    fn frame(&self, member_id: &str) -> Option<ImageNode> {
+    pub(in crate::field_menu) fn frame(&self, member_id: &str) -> Option<ImageNode> {
         let (image, layout) = self.frames.get(member_id)?;
         Some(ImageNode::from_atlas_image(
             image.clone(),

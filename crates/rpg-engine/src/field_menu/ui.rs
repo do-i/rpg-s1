@@ -13,7 +13,7 @@ use crate::{
     game_state::GameState,
     menu_chrome::{
         ScrollWindow, location_display_name, scroll_list_node, selectable_card_colors,
-        spawn_focus_panel, spawn_header_bars, spawn_meter, spawn_panel_rule, spawn_scroll_list,
+        spawn_focus_panel, spawn_header_bars, spawn_panel_rule, spawn_scroll_list,
         spawn_section_rule, spawn_status_panel, spawn_status_text, stack_fill_flag, status_border,
         status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
         status_ready, status_teal, status_violet,
@@ -53,6 +53,7 @@ mod settings_page;
 mod shared;
 mod shell;
 mod spells_page;
+mod status_details;
 mod status_page;
 
 pub(super) use battle_page::*;
@@ -67,6 +68,7 @@ pub(super) use settings_page::*;
 pub(super) use shared::*;
 pub(super) use shell::*;
 pub(super) use spells_page::*;
+use status_details::*;
 pub(super) use status_page::*;
 
 pub(super) const INVENTORY_PAGE_ROWS: usize = 8;
@@ -100,7 +102,6 @@ pub(super) const ITEM_MANAGE_VISIBLE_ROWS: usize = 8;
 pub(super) const TAG_EDITOR_VISIBLE_ROWS: usize = 9;
 
 pub(super) const STATUS_PARTY_WIDTH: f32 = 316.0;
-pub(super) const STATUS_DETAIL_WIDTH: f32 = 404.0;
 pub(super) const STATUS_COLUMN_GAP: f32 = 18.0;
 /// Party card height bounds. Five cards at the minimum fill the column; fewer members grow up to
 /// the maximum so their portraits read larger.

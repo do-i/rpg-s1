@@ -4,7 +4,6 @@ use bevy::prelude::*;
 
 use super::{
     equipment::state_slot_index, inventory::ITEM_ACTION_TAGS, main_deck::CHARACTER_COMMAND_INDEX,
-    status::STATUS_POSITION_CATEGORY,
 };
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -74,9 +73,10 @@ pub(super) enum FieldMenuMode {
 pub(super) enum StatusPage {
     #[default]
     Roster,
-    Details,
-    /// Front/back row picker, reached from the Position category.
+    /// Front/back row selection in the combined status frame.
     Position,
+    /// Draft map appearance and the Use on Map action.
+    Sprite,
 }
 
 #[derive(Debug, Default, Resource)]
@@ -86,7 +86,7 @@ pub(crate) struct FieldMenuState {
     pub(super) mode: FieldMenuMode,
     pub(super) selected: usize,
     pub(super) member_index: usize,
-    /// Draft appearance in the Character overlay; committed only by Confirm.
+    /// Draft appearance in Character or Status; committed only by Confirm.
     pub(super) sprite_choice: usize,
     pub(super) status_page: StatusPage,
     pub(super) tab_index: usize,
@@ -173,15 +173,9 @@ impl FieldMenuState {
         if self.screen == FieldMenuScreen::Status {
             match self.status_page {
                 StatusPage::Roster => {}
-                StatusPage::Details => {
+                StatusPage::Position | StatusPage::Sprite => {
                     self.status_page = StatusPage::Roster;
                     self.selected = 0;
-                    self.message.clear();
-                    return;
-                }
-                StatusPage::Position => {
-                    self.status_page = StatusPage::Details;
-                    self.selected = STATUS_POSITION_CATEGORY;
                     self.message.clear();
                     return;
                 }
@@ -310,10 +304,10 @@ mod tests {
     }
 
     #[test]
-    fn status_back_returns_from_details_before_leaving_status() {
+    fn status_back_returns_from_controls_before_leaving_status() {
         let mut state = FieldMenuState::default();
         state.open(FieldMenuScreen::Status);
-        state.status_page = StatusPage::Details;
+        state.status_page = StatusPage::Sprite;
         state.selected = 1;
 
         state.back();
@@ -328,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn status_back_steps_out_of_the_position_picker_one_page_at_a_time() {
+    fn status_back_returns_from_position_to_the_chooser() {
         let mut state = FieldMenuState::default();
         state.open(FieldMenuScreen::Status);
         state.status_page = StatusPage::Position;
@@ -336,11 +330,8 @@ mod tests {
 
         state.back();
 
-        assert_eq!(state.status_page, StatusPage::Details);
-        assert_eq!(state.selected, STATUS_POSITION_CATEGORY);
-
-        state.back();
         assert_eq!(state.status_page, StatusPage::Roster);
+        assert_eq!(state.selected, 0);
     }
 
     #[test]

@@ -80,7 +80,11 @@ fn spawn_fixture_status_page(
             &state,
             &game,
             &catalog,
-            &StatusPortraitAssets::default(),
+            &StatusPageArt {
+                portraits: &StatusPortraitAssets::default(),
+                thumbnails: &PartyWalkThumbnails::default(),
+                inventory: None,
+            },
         );
     });
 }
@@ -1061,14 +1065,14 @@ fn save_window_indexes_player_slots_and_ends_on_the_last_one() {
 }
 
 #[test]
-fn status_details_replace_portrait_with_stats_and_categories() {
+fn status_keeps_portrait_and_combined_stats_visible_with_no_spells() {
     let mut app = App::new();
     app.insert_resource(fixture_game())
         .insert_resource(FieldMenuCatalog::default())
         .insert_resource(FieldMenuState {
             open: true,
             screen: FieldMenuScreen::Status,
-            status_page: StatusPage::Details,
+            status_page: StatusPage::Sprite,
             ..default()
         })
         .add_systems(Update, spawn_fixture_status_page);
@@ -1083,13 +1087,14 @@ fn status_details_replace_portrait_with_stats_and_categories() {
         .collect::<Vec<_>>();
     assert!(labels.iter().any(|label| label == "EXP"));
     assert!(labels.iter().any(|label| label == "HP"));
-    assert!(labels.iter().any(|label| label == "Spells"));
-    assert!(labels.iter().any(|label| label == "Position"));
+    assert!(!labels.iter().any(|label| label == "Spells"));
+    assert!(labels.iter().any(|label| label == "POSITION"));
+    assert!(labels.iter().any(|label| label == "FIELD SPRITE"));
     assert!(
         world
             .query::<&Name>()
             .iter(world)
-            .all(|name| name.as_str() != "Full status portrait")
+            .any(|name| name.as_str() == "Full status portrait")
     );
 }
 
@@ -1116,8 +1121,7 @@ fn the_position_page_lists_both_rows_and_tags_the_current_one() {
         .collect::<Vec<_>>();
     assert!(labels.iter().any(|label| label == "Front"));
     assert!(labels.iter().any(|label| label == "Back"));
-    assert!(labels.iter().any(|label| label == "CURRENT"));
-    // The profile column yields to the picker while Position is open.
+    // The row controls stay inline while the portrait and equipment remain visible.
     assert!(!labels.iter().any(|label| label == "FIELD ARTS"));
 }
 
@@ -2376,7 +2380,7 @@ fn the_spellbook_cursor_follows_the_list_until_a_modal_takes_it() {
 }
 
 #[test]
-fn status_arrows_step_between_the_roster_and_a_members_details() {
+fn status_horizontal_chooser_and_tab_focus_keep_the_member_selected() {
     let mut app = menu_input_app(
         fixture_game_with_recruit(),
         FieldMenuState {
@@ -2385,18 +2389,110 @@ fn status_arrows_step_between_the_roster_and_a_members_details() {
             ..default()
         },
     );
-    let page = |app: &App| app.world().resource::<FieldMenuState>().status_page;
-
-    assert_eq!(tap(&mut app, KeyCode::ArrowDown).2, 1);
-    assert_eq!(page(&app), StatusPage::Roster);
     tap(&mut app, KeyCode::ArrowRight);
-    assert_eq!(page(&app), StatusPage::Details);
+    assert_eq!(app.world().resource::<FieldMenuState>().member_index, 1);
+    tap(&mut app, KeyCode::Tab);
+    assert_eq!(
+        app.world().resource::<FieldMenuState>().status_page,
+        StatusPage::Position
+    );
+    tap(&mut app, KeyCode::Tab);
+    assert_eq!(
+        app.world().resource::<FieldMenuState>().status_page,
+        StatusPage::Sprite
+    );
+    tap(&mut app, KeyCode::Escape);
+    assert_eq!(
+        app.world().resource::<FieldMenuState>().status_page,
+        StatusPage::Roster
+    );
+    assert_eq!(app.world().resource::<FieldMenuState>().member_index, 1);
+    tap(&mut app, KeyCode::KeyQ);
+    assert_eq!(app.world().resource::<FieldMenuState>().member_index, 0);
+    tap(&mut app, KeyCode::KeyE);
+    assert_eq!(app.world().resource::<FieldMenuState>().member_index, 1);
+}
+
+#[test]
+fn status_row_and_sprite_drafts_only_apply_on_confirmation() {
+    let inventory = crate::scenario_inventory::ScenarioInventory::discover(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets"),
+        &crate::scenario_root::ScenarioRoot::default(),
+    );
+    let mut app = menu_input_app(
+        fixture_game_with_recruit(),
+        FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Status,
+            ..default()
+        },
+    );
+    app.insert_resource(inventory);
+    // Row browsing and cancel leave the party unchanged.
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::ArrowRight);
+    assert_eq!(
+        app.world().resource::<GameState>().party().row_of("aric"),
+        Some(crate::scenario_party::PartyRow::Front)
+    );
+    tap(&mut app, KeyCode::Escape);
+    tap(&mut app, KeyCode::Tab);
+    assert_eq!(app.world().resource::<FieldMenuState>().selected, 0);
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world().resource::<GameState>().party().row_of("aric"),
+        Some(crate::scenario_party::PartyRow::Back)
+    );
+
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::ArrowRight);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        None
+    );
+    tap(&mut app, KeyCode::Escape);
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::Tab);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 0);
     tap(&mut app, KeyCode::ArrowLeft);
-    assert_eq!(page(&app), StatusPage::Roster);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        Some("traveler")
+    );
     assert_eq!(
         app.world().resource::<FieldMenuState>().screen,
         FieldMenuScreen::Status
     );
+    // Reopening starts on the saved variant. Selecting the default clears the override.
+    tap(&mut app, KeyCode::Escape);
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::Tab);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 2);
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    assert_eq!(
+        app.world()
+            .resource::<GameState>()
+            .protagonist_sprite_variant(),
+        None
+    );
+    tap(&mut app, KeyCode::ArrowRight);
+    tap(&mut app, KeyCode::Enter);
+    tap(&mut app, KeyCode::KeyE);
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::Tab);
+    tap(&mut app, KeyCode::ArrowLeft);
+    assert_eq!(app.world().resource::<FieldMenuState>().sprite_choice, 0);
+    tap(&mut app, KeyCode::Enter);
+    let game = app.world().resource::<GameState>();
+    assert_eq!(game.controlled_member_id(), "elise");
+    assert_eq!(game.protagonist_sprite_variant(), Some("classic"));
 }
 
 #[test]

@@ -1,8 +1,14 @@
 use super::*;
 
+pub(in crate::field_menu) struct StatusPageArt<'a> {
+    pub portraits: &'a StatusPortraitAssets,
+    pub thumbnails: &'a PartyWalkThumbnails,
+    pub inventory: Option<&'a ScenarioInventory>,
+}
+
 #[expect(
     clippy::too_many_arguments,
-    reason = "the status page coordinates the shared menu root, loaded scenario data, and UI assets"
+    reason = "status coordinates live menu, portraits, and walk-sheet assets"
 )]
 pub(in crate::field_menu) fn sync_status_page(
     mut commands: Commands,
@@ -12,42 +18,57 @@ pub(in crate::field_menu) fn sync_status_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    walk_sheets: Res<PartyWalkSheets>,
+    atlases: Res<Assets<TsxAtlasAsset>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuStatusPage>>,
 ) {
-    let show_status = state.open
+    let show = state.open
         && state.screen == FieldMenuScreen::Status
         && catalog.status() == CatalogStatus::Ready
         && game.is_some();
-
-    if !show_status {
+    if !show {
         for entity in &pages {
             commands.entity(entity).despawn();
         }
         return;
     }
-
     let Ok(menu_root) = menu_roots.single() else {
         return;
     };
     let Some(game) = game else {
         return;
     };
-    let rebuild =
-        pages.is_empty() || state.is_changed() || catalog.is_changed() || game.is_changed();
-    if !rebuild {
+    if !pages.is_empty()
+        && !state.is_changed()
+        && !catalog.is_changed()
+        && !game.is_changed()
+        && !atlases.is_changed()
+        && !inventory.is_changed()
+    {
         return;
     }
     for entity in &pages {
         commands.entity(entity).despawn();
     }
-
     let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
+    let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game, &inventory);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_status_page(parent, &font, &state, &game, &catalog, &portraits);
+        spawn_status_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &catalog,
+            &StatusPageArt {
+                portraits: &portraits,
+                thumbnails: &thumbnails,
+                inventory: Some(&inventory),
+            },
+        );
     });
 }
 
@@ -57,15 +78,16 @@ pub(in crate::field_menu) fn spawn_status_page(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
-    portraits: &StatusPortraitAssets,
+    art: &StatusPageArt<'_>,
 ) {
     parent
         .spawn((
             Node {
                 width: percent(100),
                 height: percent(100),
+                min_height: px(0),
                 flex_direction: FlexDirection::Column,
-                row_gap: px(14),
+                row_gap: px(8),
                 ..default()
             },
             FieldMenuStatusPage,
@@ -73,48 +95,43 @@ pub(in crate::field_menu) fn spawn_status_page(
         ))
         .with_children(|page| {
             spawn_status_header(page, font, state.member_index, game.party().len());
-
             page.spawn(Node {
                 width: percent(100),
+                min_height: px(0),
                 flex_grow: 1.0,
-                flex_direction: FlexDirection::Row,
-                column_gap: px(STATUS_COLUMN_GAP),
+                column_gap: px(14),
                 ..default()
             })
             .with_children(|columns| {
-                spawn_party_column(
-                    columns,
-                    font,
-                    state,
-                    game,
-                    catalog,
-                    portraits,
-                    state.status_page == StatusPage::Roster,
-                );
-                spawn_member_column(columns, font, state, game, catalog, portraits);
-                if state.status_page == StatusPage::Position {
-                    spawn_position_column(columns, font, state, game);
-                } else {
-                    spawn_profile_column(columns, font, state, game, catalog);
-                }
+                columns
+                    .spawn(Node {
+                        flex_basis: px(0),
+                        min_width: px(0),
+                        flex_grow: 1.0,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(14),
+                        ..default()
+                    })
+                    .with_children(|left| {
+                        spawn_status_chooser(left, font, state, game, art.portraits);
+                        spawn_status_dossier(left, font, state, game, catalog, art);
+                    });
+                spawn_status_portrait(columns, font, state, game, catalog, art.portraits);
             });
-
             spawn_status_text(
                 page,
-                match state.status_page {
-                    StatusPage::Roster => {
-                        "UP/DOWN   SELECT MEMBER      RIGHT / ENTER   STATS      ESC   BACK"
-                    }
-                    StatusPage::Details => {
-                        "UP/DOWN   SELECT ACTION      ENTER   OPEN      LEFT / ESC   PARTY"
-                    }
-                    StatusPage::Position => {
-                        "UP/DOWN   SELECT ROW      ENTER   SET      LEFT / ESC   BACK"
-                    }
+                if state.message.is_empty() {
+                    status_hint(state)
+                } else {
+                    &state.message
                 },
                 font,
-                15.0,
-                status_muted(),
+                13.0,
+                if state.message.is_empty() {
+                    status_muted()
+                } else {
+                    status_teal()
+                },
             );
         });
 }
@@ -128,34 +145,139 @@ pub(in crate::field_menu) fn spawn_status_header(
     parent
         .spawn(Node {
             width: percent(100),
-            height: px(64),
-            flex_direction: FlexDirection::Row,
+            height: px(48),
+            flex_shrink: 0.0,
             align_items: AlignItems::Center,
+            column_gap: px(12),
             ..default()
         })
         .with_children(|header| {
-            spawn_header_bars(header, 46.0, 15.0);
+            spawn_items_menu_icon(header, "media/images/icons/menu/status.png", 42.0, 0.0);
             header
                 .spawn(Node {
-                    flex_direction: FlexDirection::Column,
                     flex_grow: 1.0,
+                    flex_direction: FlexDirection::Column,
                     ..default()
                 })
                 .with_children(|title| {
-                    spawn_status_text(title, "STATUS", font, 31.0, status_ink());
-                    spawn_status_text(title, "PARTY ROSTER AND GROWTH", font, 14.0, status_muted());
+                    spawn_status_text(title, "STATUS", font, 28.0, status_ink());
+                    spawn_status_text(title, "PARTY ROSTER AND GROWTH", font, 12.0, status_muted());
                 });
             spawn_status_text(
                 header,
                 format!(
-                    "{:02}  /  {:02}",
-                    member_index.saturating_add(1).min(party_len.max(1)),
+                    "{:02} / {:02}",
+                    member_index.saturating_add(1).min(party_len),
                     party_len
                 ),
                 font,
-                16.0,
+                15.0,
                 status_gold(),
             );
+        });
+}
+
+fn spawn_status_chooser(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    state: &FieldMenuState,
+    game: &GameState,
+    portraits: &StatusPortraitAssets,
+) {
+    parent
+        .spawn((
+            Node {
+                height: px(116),
+                flex_shrink: 0.0,
+                flex_direction: FlexDirection::Column,
+                row_gap: px(8),
+                padding: UiRect::all(px(12)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(6)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb_u8(22, 22, 28)),
+            BorderColor::all(status_border()),
+            Name::new("Status character chooser"),
+        ))
+        .with_children(|chooser| {
+            chooser
+                .spawn(Node {
+                    justify_content: JustifyContent::SpaceBetween,
+                    ..default()
+                })
+                .with_children(|header| {
+                    spawn_status_text(header, "CHARACTERS", font, 12.0, status_gold());
+                    spawn_status_text(header, "<  Q / E  >", font, 12.0, status_muted());
+                });
+            chooser
+                .spawn(Node {
+                    flex_grow: 1.0,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|cards| {
+                    for (index, member) in game.party().members().enumerate() {
+                        let selected = index == state.member_index;
+                        let mut card = cards.spawn((
+                            Node {
+                                flex_basis: px(0),
+                                flex_grow: 1.0,
+                                min_width: px(0),
+                                align_items: AlignItems::Center,
+                                column_gap: px(10),
+                                padding: UiRect::all(px(6)),
+                                border: UiRect::all(px(1)),
+                                border_radius: BorderRadius::all(px(4)),
+                                ..default()
+                            },
+                            BackgroundColor(if selected {
+                                Color::srgb_u8(58, 46, 37)
+                            } else {
+                                Color::srgb_u8(32, 32, 39)
+                            }),
+                            BorderColor::all(if selected {
+                                status_border_active()
+                            } else {
+                                status_border()
+                            }),
+                            StatusMemberCard,
+                            Name::new(format!("Status character: {}", member.name())),
+                        ));
+                        if selected {
+                            card.insert(SelectedStatusMemberCard);
+                        }
+                        card.with_children(|card| {
+                            if let Some(portrait) = portraits.profile(member.id()) {
+                                card.spawn((
+                                    ImageNode::new(portrait),
+                                    Node {
+                                        width: px(52),
+                                        height: px(52),
+                                        flex_shrink: 0.0,
+                                        ..default()
+                                    },
+                                ));
+                            }
+                            card.spawn(Node {
+                                flex_direction: FlexDirection::Column,
+                                min_width: px(0),
+                                row_gap: px(3),
+                                ..default()
+                            })
+                            .with_children(|summary| {
+                                spawn_status_text(summary, member.name(), font, 18.0, status_ink());
+                                spawn_status_text(
+                                    summary,
+                                    format!("LV {}", member.level()),
+                                    font,
+                                    12.0,
+                                    status_muted(),
+                                );
+                            });
+                        });
+                    }
+                });
         });
 }
 
@@ -316,483 +438,6 @@ fn spawn_member_experience(
                 ));
             });
         });
-}
-
-pub(in crate::field_menu) fn spawn_member_column(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &FieldMenuState,
-    game: &GameState,
-    catalog: &FieldMenuCatalog,
-    portraits: &StatusPortraitAssets,
-) {
-    if state.status_page == StatusPage::Roster {
-        spawn_full_portrait_column(parent, font, state, game, portraits);
-    } else {
-        spawn_member_details_column(parent, font, state, game, catalog);
-    }
-}
-
-pub(in crate::field_menu) fn spawn_full_portrait_column(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &FieldMenuState,
-    game: &GameState,
-    portraits: &StatusPortraitAssets,
-) {
-    let Some(member) = member_at(game, state.member_index) else {
-        return;
-    };
-    parent
-        .spawn((
-            Node {
-                width: px(STATUS_DETAIL_WIDTH),
-                height: percent(100),
-                flex_shrink: 0.0,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                padding: UiRect::all(px(5)),
-                border: UiRect::all(px(2)),
-                border_radius: BorderRadius::all(px(6)),
-                overflow: Overflow::clip(),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(8, 8, 12, 210)),
-            BorderColor::all(status_border_active()),
-            Name::new("Full status portrait"),
-        ))
-        .with_children(|portrait_panel| {
-            if let Some(portrait) = portraits.large(member.id()) {
-                portrait_panel.spawn((
-                    ImageNode::new(portrait).with_mode(NodeImageMode::Stretch),
-                    Node {
-                        height: percent(100),
-                        aspect_ratio: Some(418.0 / 570.0),
-                        max_width: percent(100),
-                        ..default()
-                    },
-                ));
-            } else {
-                spawn_status_text(
-                    portrait_panel,
-                    member_emblem(member.name()),
-                    font,
-                    42.0,
-                    status_gold(),
-                );
-            }
-        });
-}
-
-pub(in crate::field_menu) fn spawn_member_details_column(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &FieldMenuState,
-    game: &GameState,
-    catalog: &FieldMenuCatalog,
-) {
-    let Some(member) = member_at(game, state.member_index) else {
-        return;
-    };
-    let stats = derived_stats(member, catalog);
-    let equipment = EquipmentSlot::ALL
-        .into_iter()
-        .map(|slot| {
-            let name = member
-                .equipment()
-                .get(slot)
-                .and_then(|id| catalog.item(id))
-                .map_or("—", item_name);
-            format!("{:<5}  {name}", status_slot_label(slot))
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    spawn_focus_panel(
-        parent,
-        Node {
-            width: px(STATUS_DETAIL_WIDTH),
-            height: percent(100),
-            flex_shrink: 0.0,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(8),
-            padding: UiRect::all(px(16)),
-            border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(6)),
-            ..default()
-        },
-        member.name(),
-        font,
-        state.status_page == StatusPage::Details,
-        |panel| {
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::SpaceBetween,
-                    ..default()
-                })
-                .with_children(|level| {
-                    spawn_status_text(
-                        level,
-                        format!("LV {}", member.level()),
-                        font,
-                        16.0,
-                        status_ink(),
-                    );
-                    spawn_status_text(
-                        level,
-                        format!("EXP {} / {}", member.experience(), member.experience_next()),
-                        font,
-                        14.0,
-                        status_muted(),
-                    );
-                });
-
-            spawn_meter(
-                panel,
-                "EXP",
-                member.experience(),
-                member.experience_next(),
-                font,
-                status_violet(),
-            );
-            spawn_meter(
-                panel,
-                "HP",
-                member.health(),
-                member.max_health(),
-                font,
-                if member.health().saturating_mul(4) < member.max_health() {
-                    status_ember()
-                } else {
-                    Color::srgb_u8(132, 196, 111)
-                },
-            );
-            spawn_meter(
-                panel,
-                "MP",
-                member.mana(),
-                member.max_mana(),
-                font,
-                status_teal(),
-            );
-
-            panel
-                .spawn(Node {
-                    width: percent(100),
-                    flex_direction: FlexDirection::Row,
-                    flex_wrap: FlexWrap::Wrap,
-                    row_gap: px(4),
-                    ..default()
-                })
-                .with_children(|grid| {
-                    for (label, value) in [
-                        ("STR", stats.strength),
-                        ("DEX", stats.dexterity),
-                        ("CON", stats.constitution),
-                        ("INT", stats.intelligence),
-                    ] {
-                        grid.spawn(Node {
-                            width: percent(50),
-                            flex_direction: FlexDirection::Row,
-                            column_gap: px(14),
-                            ..default()
-                        })
-                        .with_children(|attribute| {
-                            spawn_status_text(attribute, label, font, 14.0, status_muted());
-                            spawn_status_text(
-                                attribute,
-                                format!("{value:03}"),
-                                font,
-                                16.0,
-                                status_ink(),
-                            );
-                        });
-                    }
-                });
-
-            spawn_status_text(panel, equipment, font, 14.0, status_ink());
-
-            panel.spawn(Node {
-                flex_grow: 1.0,
-                ..default()
-            });
-            spawn_section_rule(panel);
-            // On the Position page `state.selected` indexes rows, so the category list pins its
-            // highlight to the category that opened it.
-            let category_cursor = if state.status_page == StatusPage::Position {
-                STATUS_POSITION_CATEGORY
-            } else {
-                state.selected
-            };
-            for (index, label) in STATUS_CATEGORIES.into_iter().enumerate() {
-                let selected = index == category_cursor;
-                panel
-                    .spawn((
-                        Node {
-                            width: percent(100),
-                            height: px(52),
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            column_gap: px(12),
-                            padding: UiRect::axes(px(10), px(7)),
-                            border: UiRect::all(px(if selected { 2 } else { 1 })),
-                            border_radius: BorderRadius::all(px(5)),
-                            ..default()
-                        },
-                        BackgroundColor(if selected {
-                            Color::srgba_u8(79, 51, 38, 214)
-                        } else {
-                            Color::srgba_u8(30, 30, 38, 164)
-                        }),
-                        BorderColor::all(if selected {
-                            status_border_active()
-                        } else {
-                            status_border()
-                        }),
-                    ))
-                    .with_children(|category| {
-                        category
-                            .spawn((
-                                Node {
-                                    width: px(34),
-                                    height: px(34),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    border: UiRect::all(px(1)),
-                                    border_radius: BorderRadius::all(percent(50)),
-                                    ..default()
-                                },
-                                BackgroundColor(if index == 0 {
-                                    status_violet()
-                                } else {
-                                    Color::srgb_u8(100, 180, 95)
-                                }),
-                                BorderColor::all(status_ink()),
-                            ))
-                            .with_children(|icon| {
-                                spawn_status_text(icon, "C", font, 15.0, Color::BLACK);
-                            });
-                        spawn_status_text(category, label, font, 18.0, status_ink());
-                        category.spawn(Node {
-                            flex_grow: 1.0,
-                            ..default()
-                        });
-                        if index == STATUS_POSITION_CATEGORY {
-                            spawn_status_text(
-                                category,
-                                row_label(member.row()),
-                                font,
-                                14.0,
-                                status_muted(),
-                            );
-                        }
-                    });
-            }
-        },
-    );
-}
-
-pub(in crate::field_menu) fn spawn_profile_column(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &FieldMenuState,
-    game: &GameState,
-    catalog: &FieldMenuCatalog,
-) {
-    let Some(member) = member_at(game, state.member_index) else {
-        return;
-    };
-    let description = catalog
-        .class(member.class_id())
-        .map_or("No class profile is available.", |class| {
-            class.description.as_str()
-        });
-    let equipment = EquipmentSlot::ALL
-        .into_iter()
-        .map(|slot| {
-            let name = member
-                .equipment()
-                .get(slot)
-                .and_then(|id| catalog.item(id))
-                .map_or("—", item_name);
-            format!("{:<10}  {name}", slot.as_str().to_uppercase())
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    let abilities = learned_abilities(member, game, catalog)
-        .into_iter()
-        .map(|ability| format!("•  {}", ability.name))
-        .collect::<Vec<_>>();
-    let statuses = member
-        .status_effects()
-        .map(|effect| format!("{effect:?}"))
-        .collect::<Vec<_>>();
-
-    spawn_status_panel(
-        parent,
-        Node {
-            height: percent(100),
-            flex_basis: px(0),
-            flex_grow: 0.92,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(10),
-            padding: UiRect::all(px(16)),
-            border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(6)),
-            ..default()
-        },
-        "PROFILE & LOADOUT",
-        font,
-        |panel| {
-            spawn_status_text(panel, "PROFILE", font, 14.0, status_gold());
-            spawn_status_text(panel, description, font, 16.0, status_ink());
-
-            spawn_section_rule(panel);
-            spawn_status_text(panel, "EQUIPMENT", font, 14.0, status_gold());
-            panel
-                .spawn((
-                    Node {
-                        width: percent(100),
-                        padding: UiRect::all(px(10)),
-                        border: UiRect::all(px(1)),
-                        border_radius: BorderRadius::all(px(4)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba_u8(10, 10, 14, 150)),
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|box_node| {
-                    spawn_status_text(box_node, &equipment, font, 14.0, status_ink());
-                });
-
-            spawn_section_rule(panel);
-            spawn_status_text(panel, "FIELD ARTS", font, 14.0, status_gold());
-            spawn_status_text(
-                panel,
-                if abilities.is_empty() {
-                    "None learned".to_owned()
-                } else {
-                    abilities.join("\n")
-                },
-                font,
-                15.0,
-                status_teal(),
-            );
-            spawn_status_text(
-                panel,
-                format!(
-                    "STATUS    {}",
-                    if statuses.is_empty() {
-                        "CLEAR".to_owned()
-                    } else {
-                        statuses.join(", ").to_uppercase()
-                    }
-                ),
-                font,
-                14.0,
-                if statuses.is_empty() {
-                    Color::srgb_u8(132, 196, 111)
-                } else {
-                    status_ember()
-                },
-            );
-        },
-    );
-}
-
-/// Front/back row picker, standing in for the profile column while `Position` is open.
-///
-/// Ports `status_renderer._render_position`: two rows, the member's current one tagged `CURRENT`,
-/// with the tactical consequence spelled out because the back row halves damage both ways.
-pub(in crate::field_menu) fn spawn_position_column(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    state: &FieldMenuState,
-    game: &GameState,
-) {
-    let Some(member) = member_at(game, state.member_index) else {
-        return;
-    };
-    let current = member.row();
-    spawn_focus_panel(
-        parent,
-        Node {
-            height: percent(100),
-            flex_basis: px(0),
-            flex_grow: 0.92,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(10),
-            padding: UiRect::all(px(16)),
-            border: UiRect::all(px(1)),
-            border_radius: BorderRadius::all(px(6)),
-            ..default()
-        },
-        "BATTLE POSITION",
-        font,
-        true,
-        |panel| {
-            spawn_status_text(
-                panel,
-                format!("SET {}'S ROW", member.name().to_uppercase()),
-                font,
-                14.0,
-                status_gold(),
-            );
-            for (index, row) in STATUS_ROWS.into_iter().enumerate() {
-                let selected = index == state.selected;
-                let is_current = row == current;
-                panel
-                    .spawn((
-                        Node {
-                            width: percent(100),
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            column_gap: px(12),
-                            padding: UiRect::axes(px(12), px(10)),
-                            border: UiRect::all(px(if selected { 2 } else { 1 })),
-                            border_radius: BorderRadius::all(px(5)),
-                            ..default()
-                        },
-                        BackgroundColor(if selected {
-                            Color::srgba_u8(79, 51, 38, 214)
-                        } else {
-                            Color::srgba_u8(30, 30, 38, 164)
-                        }),
-                        BorderColor::all(if selected {
-                            status_border_active()
-                        } else {
-                            status_border()
-                        }),
-                    ))
-                    .with_children(|entry| {
-                        spawn_status_text(entry, row_label(row), font, 18.0, status_ink());
-                        entry.spawn(Node {
-                            flex_grow: 1.0,
-                            ..default()
-                        });
-                        if is_current {
-                            spawn_status_text(entry, "CURRENT", font, 13.0, status_gold());
-                        }
-                    });
-            }
-            spawn_section_rule(panel);
-            spawn_status_text(
-                panel,
-                "Back-row fighters deal and take half melee damage.",
-                font,
-                14.0,
-                status_muted(),
-            );
-            panel.spawn(Node {
-                flex_grow: 1.0,
-                ..default()
-            });
-            if !state.message.is_empty() {
-                spawn_status_text(panel, state.message.as_str(), font, 14.0, status_teal());
-            }
-        },
-    );
 }
 
 pub(in crate::field_menu) fn spawn_portrait_frame(

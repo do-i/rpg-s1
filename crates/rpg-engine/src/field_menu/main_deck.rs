@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::{
     input::MenuInput,
-    member_at, member_id_at,
+    member_at,
     state::{FieldMenuMode, FieldMenuScreen, FieldMenuState, wrapped, wrapped_or_zero},
 };
 use crate::{
@@ -196,16 +196,29 @@ pub(super) fn switch_controlled_member(
     state: &mut FieldMenuState,
     inventory: Option<&ScenarioInventory>,
 ) {
-    let Some(member_id) = member_id_at(game, state.selected).map(ToOwned::to_owned) else {
-        return;
-    };
-    let name = member_at(game, state.selected)
-        .map_or_else(|| member_id.clone(), |member| member.name().to_owned());
-    if character_has_sprite_choices(game, state, inventory)
+    match apply_character_choice(game, state.selected, state.sprite_choice, inventory) {
+        Ok(name) => {
+            state.mode = FieldMenuMode::Browse;
+            state.selected = CHARACTER_COMMAND_INDEX;
+            state.message = format!("Now controlling {name}.");
+        }
+        Err(message) => state.message = message.to_owned(),
+    }
+}
+
+/// Shared by the main menu and status page; browsing either screen never calls this.
+pub(super) fn apply_character_choice(
+    game: &mut GameState,
+    member_index: usize,
+    sprite_choice: usize,
+    inventory: Option<&ScenarioInventory>,
+) -> Result<String, &'static str> {
+    let member = member_at(game, member_index).ok_or("That party member cannot be controlled.")?;
+    let member_id = member.id().to_owned();
+    let name = member.name().to_owned();
+    if member.is_protagonist()
         && let Some(inventory) = inventory
-        && let Some(variant) = inventory
-            .protagonist_sprite_variants
-            .get(state.sprite_choice)
+        && let Some(variant) = inventory.protagonist_sprite_variants.get(sprite_choice)
     {
         let is_default = inventory
             .party_sprites
@@ -215,17 +228,12 @@ pub(super) fn switch_controlled_member(
             .set_protagonist_sprite_variant((!is_default).then(|| variant.id.clone()))
             .is_err()
         {
-            state.message = "That sprite cannot be selected.".to_owned();
-            return;
+            return Err("That sprite cannot be selected.");
         }
     }
-    state.mode = FieldMenuMode::Browse;
-    state.selected = CHARACTER_COMMAND_INDEX;
-    state.message = if game.set_controlled_member(member_id).is_ok() {
-        format!("Now controlling {name}.")
-    } else {
-        "That party member cannot be controlled.".to_owned()
-    };
+    game.set_controlled_member(member_id)
+        .map_err(|_| "That party member cannot be controlled.")?;
+    Ok(name)
 }
 
 /// Wrap horizontally within a row, and vertically to the nearest card center in the next row.

@@ -116,13 +116,3 @@ pub(in crate::field_menu) fn class_name<'a>(
         .class(class_id)
         .map_or(class_id, |class| class.name.as_str())
 }
-
-pub(in crate::field_menu) fn status_slot_label(slot: EquipmentSlot) -> &'static str {
-    match slot {
-        EquipmentSlot::Weapon => "WPN",
-        EquipmentSlot::Shield => "SHLD",
-        EquipmentSlot::Helmet => "HELM",
-        EquipmentSlot::Body => "BODY",
-        EquipmentSlot::Accessory => "ACC",
-    }
-}
