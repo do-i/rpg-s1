@@ -2,7 +2,8 @@
 
 use super::*;
 use crate::{
-    battle::rewards::RewardStatDelta, scenario_class::AbilityKind, spell_images::spawn_spell_image,
+    battle::rewards::RewardStatDelta, scenario_class::AbilityKind,
+    spell_images::spawn_spell_image_with_fallback,
 };
 
 pub(super) const WIDTH: f32 = 660.0;
@@ -140,7 +141,10 @@ pub(super) fn spawn_level_up_modal(
                         .with_children(|progress| {
                             label(
                                 progress,
-                                format!("{ordinal} / {leveled} members"),
+                                format!(
+                                    "{ordinal} / {leveled} {}",
+                                    if leveled == 1 { "member" } else { "members" }
+                                ),
                                 font,
                                 15.0,
                                 Color::srgb_u8(221, 190, 131),
@@ -174,16 +178,43 @@ pub(super) fn spawn_level_up_modal(
                     );
                     body.spawn(Node {
                         width: percent(100),
-                        height: px(204),
-                        flex_shrink: 0.0,
-                        column_gap: px(12),
+                        flex_grow: 1.0,
+                        flex_basis: px(0),
+                        min_height: px(0),
+                        column_gap: px(16),
                         ..default()
                     })
-                    .with_children(|growth| {
-                        spawn_stat_group(growth, "HP & MP", &row.stats[..2], 190.0, 1, font);
-                        spawn_stat_group(growth, "ATTRIBUTES", &row.stats[2..], 406.0, 2, font);
+                    .with_children(|columns| {
+                        columns
+                            .spawn(Node {
+                                width: px(336),
+                                flex_shrink: 0.0,
+                                flex_direction: FlexDirection::Column,
+                                row_gap: px(14),
+                                ..default()
+                            })
+                            .with_children(|stats| {
+                                spawn_stat_group(
+                                    stats,
+                                    "HP & MP",
+                                    &row.stats[..2],
+                                    336.0,
+                                    112.0,
+                                    2,
+                                    font,
+                                );
+                                spawn_stat_group(
+                                    stats,
+                                    "ATTRIBUTES",
+                                    &row.stats[2..],
+                                    336.0,
+                                    184.0,
+                                    2,
+                                    font,
+                                );
+                            });
+                        spawn_abilities(columns, row, details, art.ability_fallback.as_ref(), font);
                     });
-                    spawn_abilities(body, row, details, font);
                 });
             let next = rewards
                 .members
@@ -284,13 +315,28 @@ fn spawn_identity(
             ))
             .with_children(|tile| {
                 label(tile, "LEVEL UP", font, 10.0, Color::srgb_u8(225, 191, 128));
-                label(
-                    tile,
-                    format!("{} > {}", row.level_from, row.level_to),
-                    font,
-                    32.0,
-                    Color::srgb_u8(244, 204, 120),
-                );
+                tile.spawn(Node {
+                    align_items: AlignItems::Center,
+                    column_gap: px(8),
+                    ..default()
+                })
+                .with_children(|range| {
+                    number(
+                        range,
+                        row.level_from.to_string(),
+                        font,
+                        24.0,
+                        Color::srgb_u8(197, 179, 148),
+                    );
+                    spawn_arrow(range, 18.0);
+                    number(
+                        range,
+                        row.level_to.to_string(),
+                        font,
+                        32.0,
+                        Color::srgb_u8(244, 204, 120),
+                    );
+                });
             });
         });
 }
@@ -314,6 +360,7 @@ fn spawn_stat_group(
     title: &str,
     stats: &[RewardStatDelta],
     width: f32,
+    height: f32,
     columns: u16,
     font: &Handle<Font>,
 ) {
@@ -321,6 +368,7 @@ fn spawn_stat_group(
         .spawn((
             Node {
                 width: px(width),
+                height: px(height),
                 ..group_style()
             },
             BackgroundColor(Color::srgb_u8(25, 32, 49)),
@@ -337,7 +385,14 @@ fn spawn_stat_group(
                     min_height: px(0),
                     display: Display::Grid,
                     grid_template_columns: RepeatedGridTrack::flex(columns, 1.0),
-                    grid_template_rows: RepeatedGridTrack::flex(2, 1.0),
+                    grid_template_rows: RepeatedGridTrack::flex(
+                        if stats.len() > usize::from(columns) {
+                            2
+                        } else {
+                            1
+                        },
+                        1.0,
+                    ),
                     row_gap: px(8),
                     column_gap: px(8),
                     ..default()
@@ -386,8 +441,8 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
                 min_width: px(0),
                 min_height: px(0),
                 flex_direction: FlexDirection::Column,
-                padding: UiRect::axes(px(10), px(9)),
-                row_gap: px(8),
+                padding: UiRect::axes(px(8), px(6)),
+                row_gap: px(5),
                 border: UiRect::all(px(1)),
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
@@ -397,16 +452,16 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
             Name::new(format!("Level stat: {}", stat.label)),
         ))
         .with_children(|card| {
-            number(card, title, font, 12.0, Color::srgb_u8(183, 185, 189));
+            number(card, title, font, 11.0, Color::srgb_u8(183, 185, 189));
             card.spawn(Node {
                 width: percent(100),
                 align_items: AlignItems::Center,
-                column_gap: px(if long { 3.0 } else { 7.0 }),
+                column_gap: px(if long { 2.0 } else { 4.0 }),
                 ..default()
             })
             .with_children(|values| {
-                let old_size = if long { 13.0 } else { 17.0 };
-                let new_size = if long { 20.0 } else { 26.0 };
+                let old_size = if long { 12.0 } else { 15.0 };
+                let new_size = if long { 18.0 } else { 23.0 };
                 number(
                     values,
                     previous.to_string(),
@@ -414,7 +469,7 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
                     old_size,
                     Color::srgb_u8(150, 159, 170),
                 );
-                number(values, ">", font, 13.0, Color::srgb_u8(146, 137, 120));
+                spawn_arrow(values, if long { 10.0 } else { 12.0 });
                 number(
                     values,
                     stat.total.to_string(),
@@ -432,7 +487,7 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
                     .spawn((
                         Node {
                             flex_shrink: 0.0,
-                            padding: UiRect::axes(px(if long { 5.0 } else { 7.0 }), px(5)),
+                            padding: UiRect::axes(px(5), px(4)),
                             border: UiRect::all(px(1)),
                             border_radius: BorderRadius::all(px(999)),
                             ..default()
@@ -453,7 +508,7 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
                             pill,
                             format!("+{}", stat.gained),
                             font,
-                            if long { 11.0 } else { 13.0 },
+                            if long { 10.0 } else { 11.0 },
                             if positive {
                                 Color::srgb_u8(160, 219, 189)
                             } else {
@@ -465,21 +520,86 @@ fn spawn_stat(parent: &mut ChildSpawnerCommands<'_>, stat: &RewardStatDelta, fon
         });
 }
 
+fn spawn_arrow(parent: &mut ChildSpawnerCommands<'_>, size: f32) {
+    let color = Color::srgb_u8(198, 166, 108);
+    parent
+        .spawn((
+            Node {
+                width: px(size),
+                height: px(size),
+                flex_shrink: 0.0,
+                align_self: AlignSelf::Center,
+                ..default()
+            },
+            Name::new("Level change arrow"),
+        ))
+        .with_children(|arrow| {
+            arrow.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(size * 0.08),
+                    top: px(size * 0.5 - 0.5),
+                    width: px(size * 0.8),
+                    height: px(1),
+                    ..default()
+                },
+                BackgroundColor(color),
+            ));
+            arrow.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(size * 0.45),
+                    top: px(size * 0.3),
+                    width: px(size * 0.4),
+                    height: px(size * 0.4),
+                    border: UiRect {
+                        top: px(1),
+                        right: px(1),
+                        ..default()
+                    },
+                    ..default()
+                },
+                UiTransform::from_rotation(Rot2::degrees(45.0)),
+                BorderColor::all(color),
+            ));
+        });
+}
+
+const ABILITIES_PER_PAGE: usize = 4;
+
+#[derive(Component)]
+pub(in crate::battle) struct AbilityPager {
+    page: usize,
+    pages: usize,
+}
+#[derive(Component)]
+pub(in crate::battle) struct AbilityCardPage(usize);
+#[derive(Component)]
+pub(in crate::battle) struct AbilityPageButton(i32);
+#[derive(Component)]
+pub(in crate::battle) struct AbilityPageLabel;
+
 fn spawn_abilities(
     parent: &mut ChildSpawnerCommands<'_>,
     row: &RewardMemberRow,
     details: Option<&LevelMemberArt>,
+    fallback: Option<&Handle<Image>>,
     font: &Handle<Font>,
 ) {
+    let pages = row
+        .learned_abilities
+        .len()
+        .div_ceil(ABILITIES_PER_PAGE)
+        .max(1);
     parent
         .spawn((
             Node {
-                width: percent(100),
-                height: px(124),
+                width: px(256),
                 ..group_style()
             },
             BackgroundColor(Color::srgb_u8(29, 32, 50)),
             BorderColor::all(Color::srgb_u8(97, 81, 114)),
+            AbilityPager { page: 0, pages },
             Name::new("Level group: abilities"),
         ))
         .with_children(|group| {
@@ -490,80 +610,158 @@ fn spawn_abilities(
                 11.0,
                 Color::srgb_u8(201, 182, 223),
             );
-            scroll::spawn_reward_scroll_plain(group, 76.0, |viewport| {
-                if row.learned_abilities.is_empty() {
-                    label(
-                        viewport,
-                        "No new abilities this level.",
-                        font,
-                        14.0,
-                        reward_muted(),
-                    );
-                    return;
-                }
-                viewport
-                    .spawn(Node {
-                        width: percent(100),
-                        flex_shrink: 0.0,
-                        flex_wrap: FlexWrap::Wrap,
-                        align_items: AlignItems::Start,
-                        column_gap: px(7),
-                        row_gap: px(7),
-                        ..default()
-                    })
-                    .with_children(|cards| {
-                        for name in &row.learned_abilities {
-                            let ability = details.and_then(|details| details.abilities.get(name));
-                            cards
-                                .spawn((
-                                    Node {
-                                        min_width: px(0),
-                                        max_width: percent(100),
-                                        min_height: px(54),
-                                        align_items: AlignItems::Center,
-                                        padding: UiRect::axes(px(6), px(5)),
-                                        column_gap: px(9),
-                                        border: UiRect::all(px(1)),
-                                        border_radius: BorderRadius::all(px(5)),
-                                        ..default()
+            group
+                .spawn(Node {
+                    width: percent(100),
+                    height: px(260),
+                    flex_shrink: 0.0,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(8),
+                    ..default()
+                })
+                .with_children(|cards| {
+                    if row.learned_abilities.is_empty() {
+                        label(
+                            cards,
+                            "No new abilities this level.",
+                            font,
+                            14.0,
+                            reward_muted(),
+                        );
+                    }
+                    for (index, name) in row.learned_abilities.iter().enumerate() {
+                        let ability = details.and_then(|details| details.abilities.get(name));
+                        cards
+                            .spawn((
+                                Node {
+                                    display: if index < ABILITIES_PER_PAGE {
+                                        Display::Flex
+                                    } else {
+                                        Display::None
                                     },
-                                    BackgroundColor(Color::srgb_u8(43, 41, 63)),
-                                    BorderColor::all(Color::srgb_u8(102, 85, 120)),
-                                ))
-                                .with_children(|card| {
+                                    width: percent(100),
+                                    height: px(58),
+                                    flex_shrink: 0.0,
+                                    align_items: AlignItems::Center,
+                                    padding: UiRect::axes(px(6), px(5)),
+                                    column_gap: px(9),
+                                    border: UiRect::all(px(1)),
+                                    border_radius: BorderRadius::all(px(5)),
+                                    ..default()
+                                },
+                                AbilityCardPage(index / ABILITIES_PER_PAGE),
+                                BackgroundColor(Color::srgb_u8(43, 41, 63)),
+                                BorderColor::all(Color::srgb_u8(102, 85, 120)),
+                                Name::new(format!("Level ability: {name}")),
+                            ))
+                            .with_children(|card| {
+                                spawn_spell_image_with_fallback(
+                                    card,
+                                    ability.map_or("", |ability| ability.id.as_str()),
+                                    40.0,
+                                    fallback,
+                                );
+                                card.spawn(Node {
+                                    flex_direction: FlexDirection::Column,
+                                    flex_grow: 1.0,
+                                    flex_basis: px(0),
+                                    min_width: px(0),
+                                    row_gap: px(5),
+                                    ..default()
+                                })
+                                .with_children(|text| {
+                                    label(text, name, font, 16.0, Color::srgb_u8(224, 207, 238));
                                     if let Some(ability) = ability {
-                                        spawn_spell_image(card, &ability.id, 40.0);
-                                    }
-                                    card.spawn(Node {
-                                        flex_direction: FlexDirection::Column,
-                                        flex_grow: 1.0,
-                                        min_width: px(0),
-                                        row_gap: px(5),
-                                        ..default()
-                                    })
-                                    .with_children(|text| {
                                         label(
                                             text,
-                                            name,
+                                            &ability.subtitle,
                                             font,
-                                            16.0,
-                                            Color::srgb_u8(224, 207, 238),
+                                            11.0,
+                                            Color::srgb_u8(170, 155, 185),
                                         );
-                                        if let Some(ability) = ability {
-                                            label(
-                                                text,
-                                                &ability.subtitle,
-                                                font,
-                                                11.0,
-                                                Color::srgb_u8(170, 155, 185),
-                                            );
-                                        }
-                                    });
+                                    }
+                                });
+                            });
+                    }
+                });
+            if pages > 1 {
+                group
+                    .spawn(Node {
+                        width: percent(100),
+                        height: px(24),
+                        flex_shrink: 0.0,
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    })
+                    .with_children(|pager| {
+                        for (direction, text) in [(-1, "Previous"), (1, "Next")] {
+                            if direction == 1 {
+                                label(pager, format!("1 / {pages}"), font, 11.0, reward_muted())
+                                    .insert(AbilityPageLabel);
+                            }
+                            pager
+                                .spawn((
+                                    AbilityPageButton(direction),
+                                    Node {
+                                        height: px(24),
+                                        padding: UiRect::axes(px(7), px(0)),
+                                        align_items: AlignItems::Center,
+                                        border: UiRect::all(px(1)),
+                                        border_radius: BorderRadius::all(px(3)),
+                                        ..default()
+                                    },
+                                    BorderColor::all(reward_border()),
+                                    BackgroundColor(reward_card()),
+                                ))
+                                .with_children(|button| {
+                                    label(button, text, font, 11.0, Color::srgb_u8(218, 188, 133));
                                 });
                         }
                     });
-            });
+            }
         });
+}
+
+pub(in crate::battle) fn handle_ability_pages(
+    actions: Res<crate::action_input::ActionState>,
+    pointer: Option<Res<crate::gameplay_canvas::pointer::CanvasPointer>>,
+    mut pager: Query<&mut AbilityPager>,
+    buttons: Query<(&AbilityPageButton, &ComputedNode, &UiGlobalTransform)>,
+    mut cards: Query<(&AbilityCardPage, &mut Node)>,
+    mut labels: Query<&mut Text, With<AbilityPageLabel>>,
+) {
+    use crate::action_input::AppAction;
+    let Ok(mut pager) = pager.single_mut() else {
+        return;
+    };
+    let mut step = i32::from(actions.just_pressed(AppAction::Right))
+        - i32::from(actions.just_pressed(AppAction::Left));
+    if let Some(pointer) = pointer.filter(|pointer| pointer.just_clicked()) {
+        for (button, node, transform) in &buttons {
+            if pointer.is_over(node, transform) {
+                step += button.0;
+            }
+        }
+    }
+    let next = pager
+        .page
+        .saturating_add_signed(step as isize)
+        .min(pager.pages - 1);
+    if next == pager.page {
+        return;
+    }
+    pager.page = next;
+    for (page, mut node) in &mut cards {
+        node.display = if page.0 == next {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+    for mut label in &mut labels {
+        label.0 = format!("{} / {}", next + 1, pager.pages);
+    }
 }
 
 fn spawn_footer(parent: &mut ChildSpawnerCommands<'_>, next: Option<&str>, font: &Handle<Font>) {

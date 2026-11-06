@@ -39,42 +39,20 @@ pub(super) fn spawn_reward_scroll(
     height: f32,
     content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
 ) {
-    spawn_scroll_frame(parent, height, false, content);
-}
-
-pub(super) fn spawn_reward_scroll_plain(
-    parent: &mut ChildSpawnerCommands<'_>,
-    height: f32,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    spawn_scroll_frame(parent, height, true, content);
-}
-
-fn spawn_scroll_frame(
-    parent: &mut ChildSpawnerCommands<'_>,
-    height: f32,
-    plain: bool,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    let inset = if plain { 0.0 } else { 8.0 };
     let mut frame = parent.spawn((
         RewardScrollFrame,
         Node {
             width: percent(100),
             height: px(height),
             flex_shrink: 0.0,
-            padding: UiRect::all(px(inset)),
-            border: UiRect::all(px(if plain { 0.0 } else { 1.0 })),
+            padding: UiRect::all(px(8)),
+            border: UiRect::all(px(1)),
             border_radius: BorderRadius::all(px(7)),
             column_gap: px(6),
             ..default()
         },
         BorderColor::all(reward_border()),
-        BackgroundColor(if plain {
-            Color::NONE
-        } else {
-            Color::srgb_u8(17, 23, 39)
-        }),
+        BackgroundColor(Color::srgb_u8(17, 23, 39)),
     ));
     let frame_id = frame.id();
     frame.with_children(|frame| {
@@ -125,10 +103,10 @@ fn spawn_scroll_frame(
                 RewardScrollEdge { list, top },
                 Node {
                     position_type: PositionType::Absolute,
-                    left: px(inset),
-                    right: px(inset + 15.0),
-                    top: if top { px(inset) } else { Val::Auto },
-                    bottom: if top { Val::Auto } else { px(inset) },
+                    left: px(8),
+                    right: px(23),
+                    top: if top { px(8) } else { Val::Auto },
+                    bottom: if top { Val::Auto } else { px(8) },
                     height: px(8),
                     display: Display::None,
                     border: if top {

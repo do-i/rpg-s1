@@ -321,7 +321,8 @@ fn loot_and_level_up_screens_show_their_own_reward_details() {
     for expected in [
         "LEVEL UP!",
         "Aric",
-        "1 > 2",
+        "1",
+        "2",
         "Max HP",
         "+6",
         "28",
@@ -390,7 +391,7 @@ fn layout_app() -> (App, Handle<Font>) {
     ))
     .init_asset::<TextureAtlasLayout>()
     .init_resource::<crate::action_input::ActionState>()
-    .add_systems(Update, handle_reward_scroll)
+    .add_systems(Update, (handle_reward_scroll, handle_ability_pages))
     .add_systems(
         PostUpdate,
         update_reward_scroll_chrome.after(bevy::ui::UiSystems::Layout),
@@ -515,7 +516,17 @@ fn assert_layout_fits(app: &mut App) -> (Rect, Vec2) {
         panel_rect.min.y >= 0.0 && panel_rect.max.y <= 766.0,
         "{panel_rect:?}"
     );
-    for entity in content {
+    'content: for entity in content {
+        let mut candidate = Some(entity);
+        while let Some(node) = candidate {
+            if world
+                .get::<Node>(node)
+                .is_some_and(|node| node.display == Display::None)
+            {
+                continue 'content;
+            }
+            candidate = world.get::<ChildOf>(node).map(ChildOf::parent);
+        }
         let bounds = rect(entity);
         let mut ancestor = world.get::<ChildOf>(entity).unwrap().parent();
         loop {
@@ -893,8 +904,12 @@ fn level_up_frame_groups_and_continue_stay_fixed_for_zero_one_or_many_abilities(
     let mut rewards = full_reward_fixture();
     rewards.members[1].learned_abilities.truncate(1);
     rewards.members[2].learned_abilities.clear();
-    rewards.members[3].learned_abilities = (0..12)
-        .map(|i| format!("An exceptionally long learned ability name {i}"))
+    rewards.members[3].learned_abilities = FieldMenuCatalog::production_class_fixture()
+        .class("sorcerer")
+        .unwrap()
+        .abilities
+        .iter()
+        .map(|ability| ability.name.clone())
         .collect();
     let mut baseline = None;
     for index in 0..5 {
@@ -907,7 +922,7 @@ fn level_up_frame_groups_and_continue_stay_fixed_for_zero_one_or_many_abilities(
         );
         let geometry = assert_layout_fits(&mut app);
         assert_eq!(geometry.0.size(), Vec2::new(level::WIDTH, level::HEIGHT));
-        let groups = app
+        let mut groups = app
             .world_mut()
             .query::<(&Name, &ComputedNode, &UiGlobalTransform)>()
             .iter(app.world())
@@ -916,6 +931,7 @@ fn level_up_frame_groups_and_continue_stay_fixed_for_zero_one_or_many_abilities(
                 (name.as_str().to_owned(), node.size(), transform.translation)
             })
             .collect::<Vec<_>>();
+        groups.sort_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(groups.len(), 3);
         let current = (geometry, groups);
         if let Some(baseline) = &baseline {
@@ -923,15 +939,25 @@ fn level_up_frame_groups_and_continue_stay_fixed_for_zero_one_or_many_abilities(
         } else {
             baseline = Some(current);
         }
-        let list_node = app
-            .world_mut()
-            .query_filtered::<&ComputedNode, With<scroll::RewardScrollList>>()
-            .single(app.world())
-            .unwrap();
+        assert_eq!(
+            app.world_mut()
+                .query::<&scroll::RewardScrollList>()
+                .iter(app.world())
+                .count(),
+            0
+        );
         if index == 3 {
-            assert!(scroll::max_scroll(list_node) > 0.0);
-        } else {
-            assert_eq!(scroll::max_scroll(list_node), 0.0);
+            let count = rewards.members[index].learned_abilities.len().div_ceil(4);
+            for _ in 1..count {
+                app.world_mut()
+                    .resource_mut::<crate::action_input::ActionState>()
+                    .press(crate::action_input::AppAction::Right);
+                app.update();
+                assert_eq!(assert_layout_fits(&mut app), geometry);
+                app.world_mut()
+                    .resource_mut::<crate::action_input::ActionState>()
+                    .clear();
+            }
         }
     }
 }
@@ -965,4 +991,75 @@ fn learned_ability_art_uses_the_members_class_and_stable_ability_id() {
     assert_eq!(hero.abilities["Radiant Strike"].id, "power_strike");
     assert_eq!(hero.abilities["Kindred Light"].id, "kindred_light");
     assert_eq!(hero.abilities["Kindred Light"].subtitle, "Healing / 4 MP");
+}
+
+#[test]
+fn level_up_uses_arrow_icons_and_gives_every_ability_an_icon_slot() {
+    let rewards = full_reward_fixture();
+    let (mut app, font) = layout_app();
+    spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::LevelUp(0));
+    let world = app.world_mut();
+    assert_eq!(
+        world
+            .query::<&Name>()
+            .iter(world)
+            .filter(|name| name.as_str() == "Level change arrow")
+            .count(),
+        7
+    );
+    assert!(
+        !world
+            .query::<&Text>()
+            .iter(world)
+            .any(|text| text.0.contains('>'))
+    );
+    assert_eq!(
+        world
+            .query::<&crate::spell_images::SpellIcon>()
+            .iter(world)
+            .count(),
+        rewards.members[0].learned_abilities.len()
+    );
+    assert!(
+        !world
+            .query::<&Node>()
+            .iter(world)
+            .any(|node| node.overflow.x == OverflowAxis::Scroll
+                || node.overflow.y == OverflowAxis::Scroll)
+    );
+}
+
+#[test]
+fn ability_page_buttons_change_cards_without_moving_the_frame_or_advancing_the_member() {
+    use crate::gameplay_canvas::pointer::CanvasPointer;
+    let mut rewards = full_reward_fixture();
+    rewards.members[0].learned_abilities = FieldMenuCatalog::production_class_fixture()
+        .class("sorcerer")
+        .unwrap()
+        .abilities
+        .iter()
+        .map(|ability| ability.name.clone())
+        .collect();
+    let (mut app, font) = layout_app();
+    spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::LevelUp(0));
+    let before = assert_layout_fits(&mut app);
+    let center = app
+        .world_mut()
+        .query_filtered::<&UiGlobalTransform, With<level::AbilityPageButton>>()
+        .iter(app.world())
+        .max_by(|a, b| a.translation.x.total_cmp(&b.translation.x))
+        .unwrap()
+        .translation;
+    app.insert_resource(CanvasPointer::at_viewport_position(center, true));
+    app.update();
+    assert_eq!(assert_layout_fits(&mut app), before);
+    let world = app.world_mut();
+    let text: Vec<_> = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.clone())
+        .collect();
+    assert!(text.contains(&"2 / 6".to_owned()));
+    assert!(text.contains(&"Aric".to_owned()));
+    assert!(text.contains(&"Up next Elise".to_owned()));
 }

@@ -142,6 +142,7 @@ impl Plugin for BattlePlugin {
                     sync_enemy_meters,
                     super::reward_modal::sync_reward_modal,
                     super::reward_modal::handle_reward_scroll,
+                    super::reward_modal::handle_ability_pages,
                 )
                     .chain()
                     .run_if(in_state(AppState::Battle)),

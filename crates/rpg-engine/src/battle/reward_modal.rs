@@ -6,6 +6,7 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 
 mod level;
 mod scroll;
+pub(super) use level::handle_ability_pages;
 use level::spawn_level_up_modal;
 pub(super) use scroll::{handle_reward_scroll, update_reward_scroll_chrome};
 
@@ -47,6 +48,7 @@ pub(super) struct RewardPortrait;
 #[derive(Default)]
 struct RewardModalArt {
     gold: Option<Handle<Image>>,
+    ability_fallback: Option<Handle<Image>>,
     portraits: BTreeMap<String, Handle<Image>>,
     members: BTreeMap<String, level::LevelMemberArt>,
 }
@@ -68,6 +70,7 @@ impl RewardModalArt {
         Self {
             members: BTreeMap::new(),
             gold: load("media/images/icons/stats/gold.png"),
+            ability_fallback: load("media/images/icons/menu/spells.png"),
             portraits: rewards
                 .members
                 .iter()
