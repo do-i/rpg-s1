@@ -45,8 +45,8 @@ Read that entry's `id`, `name`, `type`, `rank`, `size`, `sprite_scale`, and move
 
 Seed the canonical image with item icons, as image references:
 
-- Always `assets/scenarios/rusted_kingdoms/media/images/icons/items/iron_sword.png` (dark contour, brushed metal).
-- Always `.../icons/items/potion.png` (saturated color, soft highlight).
+- Always `assets/scenarios/rusted_kingdoms/media/images/icons/items/equipment/iron_sword.png` (dark contour, brushed metal).
+- Always `.../icons/items/non_equipment/potion.png` (saturated color, soft highlight).
 - One more item icon whose material matches this enemy and its zone. Use `flamebrand.png` for fire or volcanic enemies. Do not use it for a cold or marsh enemy.
 
 Do not use `icons/spells`, `icons/menu`, `icons/status`, `icons/stats`, `icons/categories`, or `icons/slots`. Do not pass the Minotaur sheet, or any existing enemy sprite, as a generation reference. That copies the bull.

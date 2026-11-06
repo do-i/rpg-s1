@@ -280,14 +280,7 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
     let item_images = ScenarioRelativePath::try_from("media/images/icons/items")
         .expect("the item image directory is scenario-relative");
     if package.join(item_images.as_str()).is_dir() {
-        for path in extension_files(&package, &item_images, "png")? {
-            if let Some(id) = Path::new(path.as_str())
-                .file_stem()
-                .and_then(|id| id.to_str())
-            {
-                inventory.item_images.insert(id.to_owned(), path);
-            }
-        }
+        inventory.item_images = discover_item_images(&package, &item_images)?;
     }
     let spell_images = ScenarioRelativePath::try_from("media/images/icons/spells")
         .expect("the spell image directory is scenario-relative");
@@ -415,6 +408,37 @@ fn extension_files(
     Ok(files)
 }
 
+/// Maps each item id to its icon. The folders below `directory` only organize the art, so an
+/// icon is found by file name alone and names must be unique.
+fn discover_item_images(
+    package: &Path,
+    directory: &ScenarioRelativePath,
+) -> Result<std::collections::BTreeMap<String, ScenarioRelativePath>, InventoryError> {
+    let mut paths = Vec::new();
+    collect_recursive(
+        package,
+        &package.join(directory.as_str()),
+        "png",
+        &mut paths,
+    )?;
+    paths.sort_by(|left, right| left.as_str().cmp(right.as_str()));
+    let mut images = std::collections::BTreeMap::new();
+    for path in paths {
+        if let Some(id) = Path::new(path.as_str())
+            .file_stem()
+            .and_then(|id| id.to_str())
+            && let Some(previous) = images.insert(id.to_owned(), path.clone())
+        {
+            return Err(InventoryError(format!(
+                "item image `{id}` exists twice: {} and {}",
+                previous.as_str(),
+                path.as_str()
+            )));
+        }
+    }
+    Ok(images)
+}
+
 fn collect_recursive(
     package: &Path,
     directory: &Path,
@@ -475,6 +499,30 @@ mod tests {
         }
         assert!(!item_ids.is_empty());
         assert_eq!(item_ids, inventory.item_images.keys().cloned().collect());
+    }
+
+    #[test]
+    fn item_images_are_found_below_subfolders_and_must_have_unique_names() {
+        let package = std::env::temp_dir().join(format!(
+            "rpg-item-images-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let icons = package.join("icons");
+        fs::create_dir_all(icons.join("equipment/female")).unwrap();
+        fs::create_dir_all(icons.join("non_equipment")).unwrap();
+        fs::write(icons.join("equipment/female/gown.png"), "").unwrap();
+        fs::write(icons.join("non_equipment/pelt.png"), "").unwrap();
+        let directory = ScenarioRelativePath::try_from("icons").unwrap();
+
+        let images = discover_item_images(&package, &directory).unwrap();
+        assert_eq!(images["gown"].as_str(), "icons/equipment/female/gown.png");
+        assert_eq!(images["pelt"].as_str(), "icons/non_equipment/pelt.png");
+
+        fs::write(icons.join("non_equipment/gown.png"), "").unwrap();
+        let error = discover_item_images(&package, &directory).unwrap_err();
+        assert!(error.0.contains("`gown` exists twice"), "{}", error.0);
+        fs::remove_dir_all(&package).unwrap();
     }
 
     #[test]
