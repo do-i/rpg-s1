@@ -21,6 +21,7 @@ use crate::{
         HelmetStats, ItemCatalogFile, ItemDefinition, ShieldStats, WeaponStats,
     },
     scenario_map::MapMetadata,
+    scenario_party::{PartyCatalog, PartyMemberGender},
     scenario_quest::{QuestCatalogFile, QuestDefinition},
     scenario_recipe::{RecipeCatalogFile, RecipeDefinition},
     scenario_root::ScenarioRoot,
@@ -38,11 +39,13 @@ pub(crate) struct FieldMenuDomainPlugin;
 impl Plugin for FieldMenuDomainPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<ItemCatalogFile>()
+            .init_asset::<PartyCatalog>()
             .init_asset::<FieldUseCatalogFile>()
             .init_asset::<ClassDefinition>()
             .init_asset::<RecipeCatalogFile>()
             .init_asset::<QuestCatalogFile>()
             .register_asset_loader(ScenarioYamlLoader::<ItemCatalogFile>::new("item catalog"))
+            .register_asset_loader(ScenarioYamlLoader::<PartyCatalog>::new("party catalog"))
             .register_asset_loader(ScenarioYamlLoader::<FieldUseCatalogFile>::new(
                 "field-use catalog",
             ))
@@ -79,6 +82,8 @@ pub(crate) struct FieldMenuCatalog {
     items: BTreeMap<String, ItemDefinition>,
     field_uses: BTreeMap<String, FieldUseDefinition>,
     classes: BTreeMap<String, ClassDefinition>,
+    /// Authored in the party catalog, not saved: a member's gender never changes in play.
+    member_genders: BTreeMap<String, PartyMemberGender>,
     item_order: Vec<String>,
     warp_destinations: Vec<WarpDestination>,
     maps: BTreeMap<String, MapMetadata>,
@@ -369,6 +374,7 @@ pub(crate) struct FieldMenuCatalogLoad {
     service_maps: Vec<(String, Handle<MapMetadata>)>,
     recipes: Vec<(String, Handle<RecipeCatalogFile>)>,
     quests: Option<Handle<QuestCatalogFile>>,
+    party: Option<Handle<PartyCatalog>>,
 }
 
 pub(crate) fn begin_catalog_load(
@@ -450,6 +456,10 @@ pub(crate) fn begin_catalog_load(
         .quests
         .as_ref()
         .map(|path| asset_server.load(root.resolve(path)));
+    load.party = inventory
+        .party
+        .as_ref()
+        .map(|path| asset_server.load(root.resolve(path)));
 }
 
 #[expect(
@@ -465,6 +475,7 @@ fn track_catalog_load(
     tmx_assets: Res<Assets<TmxGroundAsset>>,
     recipe_assets: Res<Assets<RecipeCatalogFile>>,
     quest_assets: Res<Assets<QuestCatalogFile>>,
+    party_assets: Res<Assets<PartyCatalog>>,
     load: Res<FieldMenuCatalogLoad>,
     mut catalog: ResMut<FieldMenuCatalog>,
 ) {
@@ -524,6 +535,13 @@ fn track_catalog_load(
         catalog.failure = Some(format!("quest catalog: {error}"));
         return;
     }
+    if let Some(party_handle) = &load.party
+        && let LoadState::Failed(error) = asset_server.load_state(party_handle.id())
+    {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some(format!("party catalog: {error}"));
+        return;
+    }
     if load
         .items
         .iter()
@@ -545,6 +563,10 @@ fn track_catalog_load(
             .iter()
             .any(|(_, handle)| recipe_assets.get(handle).is_none())
         || quest_assets.get(quest_handle).is_none()
+        || load
+            .party
+            .as_ref()
+            .is_some_and(|handle| party_assets.get(handle).is_none())
     {
         return;
     }
@@ -603,6 +625,18 @@ fn track_catalog_load(
     catalog.item_order = item_order;
     catalog.field_uses = field_uses;
     catalog.classes = classes;
+    catalog.member_genders = load
+        .party
+        .as_ref()
+        .and_then(|handle| party_assets.get(handle))
+        .map(|party| {
+            party
+                .party
+                .iter()
+                .map(|member| (member.data().id.clone(), member.data().gender))
+                .collect()
+        })
+        .unwrap_or_default();
     catalog.warp_destinations = warp_destinations;
     catalog.maps = maps;
     catalog.recipes = load
@@ -1010,6 +1044,15 @@ pub(crate) fn can_equip(
     if !slot_allowed(&class.equipment_slots, slot, category) {
         return Err(MenuMutationError::SlotRestricted);
     }
+    if let ItemDefinition::Body(value) = item
+        && let Some(required) = value.gender
+        && catalog
+            .member_genders
+            .get(member.id())
+            .is_some_and(|gender| *gender != required)
+    {
+        return Err(MenuMutationError::GenderRestricted(required));
+    }
     Ok(slot)
 }
 
@@ -1380,6 +1423,7 @@ pub(crate) enum MenuMutationError {
     NotEquipment,
     ClassRestricted,
     SlotRestricted,
+    GenderRestricted(PartyMemberGender),
     RepositoryFull,
     NotFieldUsable,
     NotFieldHeal,
@@ -1402,6 +1446,9 @@ impl fmt::Display for MenuMutationError {
             Self::SlotRestricted => {
                 f.write_str("That equipment category is not allowed in this slot.")
             }
+            Self::GenderRestricted(required) => {
+                write!(f, "That item is {} only.", gender_label(*required))
+            }
             Self::RepositoryFull => {
                 f.write_str("The displaced item would exceed the repository cap.")
             }
@@ -1415,6 +1462,14 @@ impl fmt::Display for MenuMutationError {
     }
 }
 impl Error for MenuMutationError {}
+
+/// The word the UI uses for a body-armor restriction.
+pub(crate) const fn gender_label(gender: PartyMemberGender) -> &'static str {
+    match gender {
+        PartyMemberGender::Male => "male",
+        PartyMemberGender::Female => "female",
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod tests {
@@ -1464,9 +1519,9 @@ pub(crate) mod tests {
         assert_eq!(member.level(), 1);
         assert_eq!(member.stats().constitution(), 28);
 
-        // Shipped starting kit: buckler 1 + leather_hat 1 + leather_vest 2, innate 28 / 10.
+        // Shipped starting kit: buckler 1 + leather_hat 1 + light_armor 3, innate 28 / 10.
         let starting = battle_defense(member, &catalog, divisor);
-        assert_eq!(starting, 6);
+        assert_eq!(starting, 7);
 
         member.equip(EquipmentSlot::Body, "chainmail").unwrap();
         let upgraded = battle_defense(member, &catalog, divisor);
@@ -1474,7 +1529,7 @@ pub(crate) mod tests {
 
         // A Goblin (zone 1, ATK 9) against each kit. The source floored both at 1.
         let goblin_attack: i64 = 9;
-        assert_eq!((goblin_attack - i64::from(starting)).max(1), 3);
+        assert_eq!((goblin_attack - i64::from(starting)).max(1), 2);
         assert_eq!((goblin_attack - i64::from(upgraded)).max(1), 1);
 
         // The rule the port replaced: raw CON, which already exceeds the strongest enemy in the
@@ -1605,6 +1660,121 @@ pub(crate) mod tests {
             failure: None,
             ..default()
         }
+    }
+
+    /// [`catalog`] plus the shipped party's genders, which enforce gendered body armor.
+    pub(crate) fn catalog_with_party_genders() -> FieldMenuCatalog {
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        FieldMenuCatalog {
+            member_genders: party
+                .party
+                .iter()
+                .map(|member| (member.data().id.clone(), member.data().gender))
+                .collect(),
+            ..catalog()
+        }
+    }
+
+    #[test]
+    fn gendered_body_armor_only_fits_the_matching_member() {
+        let mut catalog = catalog_with_party_genders();
+        let mut game = game([]);
+        let aric = game.party().member("aric").unwrap();
+        let fits = |member, id, catalog: &FieldMenuCatalog| {
+            can_equip(member, catalog.item(id).unwrap(), catalog)
+        };
+
+        assert_eq!(
+            fits(aric, "hiiroikane_mail", &catalog),
+            Err(MenuMutationError::GenderRestricted(
+                PartyMemberGender::Female
+            ))
+        );
+        assert_eq!(
+            fits(aric, "adamantite_mail", &catalog),
+            Ok(EquipmentSlot::Body)
+        );
+        assert_eq!(fits(aric, "chainmail", &catalog), Ok(EquipmentSlot::Body));
+
+        // A class refusal outranks gender: Elise's cleric never wears mail, for either reason.
+        let elise = game.party().member("elise").unwrap();
+        assert_eq!(
+            fits(elise, "adamantite_mail", &catalog),
+            Err(MenuMutationError::SlotRestricted)
+        );
+        assert_eq!(
+            fits(elise, "astral_robe", &catalog),
+            Ok(EquipmentSlot::Body)
+        );
+
+        catalog
+            .member_genders
+            .insert("aric".to_owned(), PartyMemberGender::Female);
+        let aric = game.party().member("aric").unwrap();
+        assert_eq!(
+            fits(aric, "adamantite_mail", &catalog),
+            Err(MenuMutationError::GenderRestricted(PartyMemberGender::Male))
+        );
+        assert_eq!(
+            fits(aric, "hiiroikane_mail", &catalog),
+            Ok(EquipmentSlot::Body)
+        );
+
+        // A refused equip moves nothing, and the item stays in the repository.
+        catalog
+            .member_genders
+            .insert("aric".to_owned(), PartyMemberGender::Male);
+        let _ = game.repository_mut().add_item("astral_robe", 1).unwrap();
+        let worn = game
+            .party()
+            .member("aric")
+            .unwrap()
+            .equipment()
+            .get(EquipmentSlot::Body)
+            .map(str::to_owned);
+        assert_eq!(
+            equip_item(&mut game, &catalog, "aric", "astral_robe"),
+            Err(MenuMutationError::GenderRestricted(
+                PartyMemberGender::Female
+            ))
+        );
+        assert_eq!(game.repository().item_count("astral_robe"), 1);
+        assert_eq!(
+            game.party()
+                .member("aric")
+                .unwrap()
+                .equipment()
+                .get(EquipmentSlot::Body)
+                .map(str::to_owned),
+            worn
+        );
+    }
+
+    #[test]
+    fn armor_already_worn_from_an_old_save_stays_until_it_is_taken_off() {
+        let catalog = catalog_with_party_genders();
+        let mut game = game([]);
+        // Loading a save restores equipment without consulting `can_equip`.
+        let _ = game
+            .party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .equip(EquipmentSlot::Body, "leather_vest")
+            .unwrap();
+        let aric = game.party().member("aric").unwrap();
+        assert_eq!(
+            aric.equipment().get(EquipmentSlot::Body),
+            Some("leather_vest")
+        );
+
+        unequip_item(&mut game, "aric", EquipmentSlot::Body).unwrap();
+        assert_eq!(
+            equip_item(&mut game, &catalog, "aric", "leather_vest"),
+            Err(MenuMutationError::GenderRestricted(
+                PartyMemberGender::Female
+            ))
+        );
     }
 
     /// [`catalog`] plus the Ardel item shop, so shop-price lookups have real stock to read.
@@ -1877,6 +2047,13 @@ pub(crate) mod tests {
         let mut game = game([]);
         let _outcome = game.repository_mut().add_item("steel_axe", 1).unwrap();
         let _outcome = game.repository_mut().add_item("dagger", 1).unwrap();
+        // The source totals below were pinned with the vest on; this catalog sets no genders.
+        let _displaced = game
+            .party_mut()
+            .member_mut("aric")
+            .unwrap()
+            .equip(EquipmentSlot::Body, "leather_vest")
+            .unwrap();
         let aric = game.party().member("aric").unwrap();
         let before = derived_stats(aric, &catalog);
         assert_eq!(

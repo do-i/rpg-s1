@@ -220,6 +220,25 @@ Place the rock object and rope bridges as complete blocks, and author their coll
 separately. Repeat the row `109 110 111` to extend the vertical bridge. The stamps
 `stamps/bridge_short.stamp` and `stamps/bridge_long.stamp` place the horizontal bridge.
 
+## Item icons and gendered body armor
+
+Item icons live under `media/images/icons/items/`, named `{item id}.png`:
+
+| Folder | Holds |
+| --- | --- |
+| `equipment/` | Weapons, shields, helmets, accessories, and co-ed body armor |
+| `equipment/male/`, `equipment/female/` | Body armor only that gender can wear |
+| `non_equipment/` | Everything else |
+
+The folder decides the gender, so moving an icon is the whole change. `scripts/build.sh`
+and `scripts/run.sh` then run `scripts/sync_item_icons.py --write`, which sets `gender:` in
+the item's YAML, repoints its [ledger](asset-license-inventory.md) row, and stages the moved
+icon. Do not edit `gender:` by hand; CI runs `--check` and fails if it disagrees with the
+folder. Gender folders accept body armor only.
+
+Armor already worn in an older save stays on until taken off. A party member may not start
+in `party.yaml` wearing armor for another gender; `validate-scenario` reports that.
+
 ## Enemy battler sheets
 
 Optional v2 sheets live at `media/sprites/enemies/v2/{id}-status.tsx` and

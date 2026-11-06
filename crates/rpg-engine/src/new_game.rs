@@ -519,7 +519,7 @@ mod tests {
         );
         assert_eq!(
             protagonist.equipment().get(EquipmentSlot::Body),
-            Some("leather_vest")
+            Some("light_armor")
         );
         assert_eq!(protagonist.equipment().get(EquipmentSlot::Accessory), None);
         assert_eq!(

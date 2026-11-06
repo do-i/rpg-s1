@@ -34,6 +34,11 @@ jobs:
         run: |
           python3 -m unittest -v scripts/test_update_asset_hashes.py scripts/test_build_wrappers.py
           python3 scripts/update_asset_hashes.py --check
+      # Read-only: an item icon moved without running the sync leaves YAML or the ledger behind.
+      - name: Check item icon folders match item data
+        run: |
+          python3 -m unittest -v scripts/test_sync_item_icons.py
+          python3 scripts/sync_item_icons.py --check
       - name: Install native build dependencies
         run: |
           sudo apt-get update

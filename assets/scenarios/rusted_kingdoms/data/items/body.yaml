@@ -13,6 +13,7 @@
   name: Leather Vest
   type: body
   slot_category: leather
+  gender: female
   stats:
     con: 2
   buy_price: 150
@@ -60,6 +61,7 @@
   name: Shadowweave Vest
   type: body
   slot_category: leather
+  gender: female
   stats:
     con: 6
     dex: 2
@@ -71,6 +73,7 @@
   name: Adamantite Mail
   type: body
   slot_category: heavy_armor
+  gender: male
   stats:
     con: 8
     dex: -2
@@ -82,6 +85,7 @@
   name: Astral Robe
   type: body
   slot_category: robe
+  gender: female
   stats:
     con: 7
     int: 6
@@ -93,6 +97,7 @@
   name: Hiiroikane Mail
   type: body
   slot_category: heavy_armor
+  gender: female
   stats:
     con: 12
     dex: -3

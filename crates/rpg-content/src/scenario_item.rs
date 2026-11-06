@@ -11,6 +11,7 @@
 //! inventory, equipment, shop, and effect behavior belongs to later milestones.
 
 use crate::scenario_class::UnitInterval;
+use crate::scenario_party::PartyMemberGender;
 use crate::scenario_yaml::{deserialize_string, deserialize_strings};
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -182,6 +183,10 @@ pub struct BodyItem {
     pub name: String,
     #[serde(deserialize_with = "deserialize_string")]
     pub slot_category: String,
+    /// The only gender that can wear this; absent means co-ed. `scripts/sync_item_icons.py`
+    /// generates it from the icon's folder, so move the icon rather than editing this.
+    #[serde(default)]
+    pub gender: Option<PartyMemberGender>,
     pub stats: BodyStats,
     #[serde(deserialize_with = "deserialize_required_nullable")]
     pub buy_price: Option<u32>,
@@ -869,6 +874,32 @@ mod tests {
             effects
                 .iter()
                 .any(|effect| matches!(effect, ConsumableEffect::Cure(_)))
+        );
+    }
+
+    #[test]
+    fn body_gender_is_optional_and_limited_to_known_values() {
+        let body = |extra: &str| {
+            format!(
+                "- id: tunic\n  name: Tunic\n  type: body\n  slot_category: leather\n{extra}  stats: {{ con: 1 }}\n  buy_price: 1\n  sell_price: 1\n  description: A tunic.\n"
+            )
+        };
+        let gender = |extra: &str| {
+            let catalog: ItemCatalogFile = scenario_yaml::from_str(&body(extra)).unwrap();
+            let ItemDefinition::Body(item) = &catalog.0[0] else {
+                panic!("the fixture is body armor")
+            };
+            item.gender
+        };
+        assert_eq!(gender(""), None);
+        assert_eq!(
+            gender("  gender: female\n"),
+            Some(PartyMemberGender::Female)
+        );
+        assert_eq!(gender("  gender: male\n"), Some(PartyMemberGender::Male));
+        assert!(
+            scenario_yaml::from_str::<ItemCatalogFile>(&body("  gender: coed\n")).is_err(),
+            "co-ed is written by leaving the field out"
         );
     }
 

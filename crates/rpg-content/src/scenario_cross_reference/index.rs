@@ -12,6 +12,7 @@ use crate::{
     scenario_duplicate_id::{CatalogId, CatalogIdLocation, CatalogNamespace},
     scenario_enemy::{EnemyAi, EnemyBehavior, EnemyMove},
     scenario_item::ItemDefinition,
+    scenario_party::PartyMemberGender,
     scenario_path::ScenarioRelativePath,
 };
 
@@ -27,6 +28,7 @@ pub(super) struct ReferenceIndex {
     pub(super) shields: BTreeSet<String>,
     pub(super) helmets: BTreeSet<String>,
     pub(super) bodies: BTreeSet<String>,
+    pub(super) body_genders: BTreeMap<String, PartyMemberGender>,
     pub(super) accessories: BTreeSet<String>,
     pub(super) armor_equipment: BTreeSet<String>,
     pub(super) maps: BTreeSet<String>,
@@ -121,6 +123,9 @@ impl ReferenceIndex {
                     }
                     ItemDefinition::Body(item) => {
                         index.bodies.insert(item.id.clone());
+                        if let Some(gender) = item.gender {
+                            index.body_genders.insert(item.id.clone(), gender);
+                        }
                         index.armor_equipment.insert(item.id.clone());
                     }
                     ItemDefinition::Accessory(item) => {

@@ -119,7 +119,7 @@ pub enum PartyRow {
     Back,
 }
 
-/// Cosmetic gender values exercised by the pinned party corpus.
+/// A party member's gender; gendered body armor can only be worn by the matching member.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum PartyMemberGender {

@@ -1133,3 +1133,48 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
         ])
     );
 }
+
+#[test]
+fn a_member_cannot_start_in_body_armor_of_the_other_gender() {
+    let fixture = InventedScenario::new();
+    fixture.write(
+        "data/items/body.yaml",
+        r#"- id: mantle
+  name: Mantle
+  type: body
+  slot_category: robe
+  gender: male
+  stats: {con: 1}
+  buy_price: 1
+  sell_price: 1
+  description: An invented mantle.
+
+- id: shawl
+  name: Shawl
+  type: body
+  slot_category: robe
+  stats: {con: 1}
+  buy_price: 1
+  sell_price: 1
+  description: An invented co-ed shawl.
+"#,
+    );
+    let party = fs::read_to_string(fixture.0.join("data/party.yaml")).unwrap();
+    let wearing = |body: &str| {
+        // The fixture's first member, Maker, is female; the second, Scout, starts empty.
+        party.replacen(r#"body: """#, &format!("body: {body}"), 1)
+    };
+    let gender_errors = |fixture: &InventedScenario| {
+        validate_scenario_directory(&ScenarioRoot::default(), &fixture.0)
+            .errors()
+            .filter(|finding| finding.code == "party.gender_restricted_body")
+            .map(|finding| finding.location.field_path.clone())
+            .collect::<Vec<_>>()
+    };
+
+    fixture.write("data/party.yaml", &wearing("mantle"));
+    assert_eq!(gender_errors(&fixture), ["party[0].equipped.body"]);
+
+    fixture.write("data/party.yaml", &wearing("shawl"));
+    assert!(gender_errors(&fixture).is_empty());
+}

@@ -1027,6 +1027,10 @@ fn watcher_rebuilds_item_catalog_and_rolls_back_late_catalog_validation_failure(
         "data/quests.yaml",
         include_bytes!(scenario_file!("data/quests.yaml")),
     );
+    fixture.write(
+        "data/party.yaml",
+        include_bytes!(scenario_file!("data/party.yaml")),
+    );
     let mut app = fixture.app();
     app.add_plugins(FieldMenuDomainPlugin);
     app.add_plugins(super::super::hot_reload::ScenarioHotReloadPlugin::new(

@@ -59,6 +59,19 @@ impl<'a> Validator<'a> {
                     format!("{base}.equipped.{slot}"),
                 );
             }
+            if let Some(required) = index.body_genders.get(&data.equipped.body)
+                && *required != data.gender
+            {
+                self.error(
+                    "party.gender_restricted_body",
+                    &file.path,
+                    format!("{base}.equipped.body"),
+                    format!(
+                        "{:?} body armor `{}` cannot start on {:?} member `{}`",
+                        required, data.equipped.body, data.gender, data.id
+                    ),
+                );
+            }
             let no_abilities = BTreeSet::new();
             let class_abilities = index
                 .class_abilities

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Project build: refreshes stale home-grown asset hashes in the ledger, then runs `cargo build`.
+# Project build: syncs item icon folders into YAML and the ledger, refreshes stale home-grown
+# asset hashes, then runs `cargo build`.
 #
 # Editing a map in Tiled and building is enough to keep its `ALI-` row current; there is no
 # separate hashing step. Every argument goes to Cargo unchanged, e.g.
@@ -15,6 +16,7 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly project_root="$(cd -- "$script_dir/.." && pwd)"
 
+python3 "$project_root/scripts/sync_item_icons.py" --write --repo-root "$project_root"
 python3 "$project_root/scripts/update_asset_hashes.py" --write --repo-root "$project_root"
 cd -- "$project_root"
 exec cargo build "$@"

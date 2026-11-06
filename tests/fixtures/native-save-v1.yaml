@@ -33,7 +33,7 @@ payload:
       weapon: iron_sword
       shield: buckler
       helmet: leather_hat
-      body: leather_vest
+      body: light_armor
       accessory: null
     status_effects:
     - poison

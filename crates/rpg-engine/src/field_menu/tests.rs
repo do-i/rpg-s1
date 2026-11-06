@@ -2892,7 +2892,10 @@ fn equip_from_the_pouch_refuses_the_wrong_class_then_equips_the_chosen_member() 
     tap(&mut app, KeyCode::Enter);
     let (mode, selected, message) = state(&app);
     assert_eq!((mode, selected), (ItemList, vest));
-    assert!(message.ends_with("equipped Leather Vest."), "{message}");
+    assert!(
+        message.ends_with("equipped Leather Vest; Light Armor returned to the pouch."),
+        "{message}"
+    );
     let game = app.world().resource::<GameState>();
     assert_eq!(
         game.party()

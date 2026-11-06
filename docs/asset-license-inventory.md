@@ -1184,7 +1184,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0110 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `db08fd9880ca69551f75a88f5548535d4d8fd1544b9b8e5818c350e84ad3e2d6` | scenario YAML / enemies_rank_7_E.yaml |
 | ALI-0111 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `09d277f1d69e1cde6dfc27d693bf729fccc063087b2c902f588e42be4b65c483` | scenario YAML / rank F enemies |
 | ALI-0089 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/accessories.yaml` | `e58a37d3baa1e068bcb57655281f5696efa00a63531452233fb0403707283525` | scenario YAML / accessories.yaml |
-| ALI-0090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/body.yaml` | `46992bd5a810771265312c032f3b18e5242e94ab25b9a17ba657f6c56497c166` | scenario YAML / body.yaml |
+| ALI-0090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/body.yaml` | `02557cc207c547f3a30a5ddb972e5e2d7201ba51e7bcdc880a09c9e3cfb1d0c8` | scenario YAML / body.yaml |
 | ALI-0091 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml` | `826653fe830c7fb6c739aae5088aee80dcd5b1942daa577916d4370fd43d577d` | scenario YAML / battle consumables |
 | ALI-0092 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_field.yaml` | `c559775d03ce8139e0747b6505e82d531b165a3ddc23c3bc188c04d3cfa94461` | scenario YAML / field consumables |
 | ALI-0093 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml` | `d4599ecf0f21e871812b94af9b6b881a875dac7857c1509fe9497ed3808d5668` | scenario YAML / consumables_recovery.yaml |
@@ -1256,7 +1256,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0990 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_04.yaml` | `9d1b002cd0baee5ae533ab4980e6b02d0ccf2eed29dfdb876bfb2b58c242b5a8` | scenario YAML / zone_10_hearth_descent_04.yaml |
 | ALI-0991 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_05.yaml` | `9d42689ebd17f008905bf1bdac6028911f9e95fc2d1940fab243874d015e3377` | scenario YAML / zone_10_hearth_descent_05.yaml |
 | ALI-0992 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/maps/zone_10_hearth_descent_06.yaml` | `3b2916f3179baacd3299ecb5e37c37c15bdea3a87f7727204c179bd6e44eb6b0` | scenario YAML / zone_10_hearth_descent_06.yaml |
-| ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `52aaeb79ebdb55ff8d8d3a9a2fe89be02f42443423a944428ac98af51023d954` | scenario YAML / Rusted Kingdoms party catalog |
+| ALI-0020 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/party.yaml` | `264c670986e945b582b7f2d8fe8656eac5b534dcebe8c3cced11e2bae3600645` | scenario YAML / Rusted Kingdoms party catalog |
 | ALI-0909 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/quests.yaml` | `12a28d4d065ab346e639aa5e8d3ce6d1f3518403205f0a56151a01fd3d3308e7` | scenario YAML / quests.yaml |
 | ALI-0910 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/recipe/all_recipe.yaml` | `737170050ed10eb26746828fcc83e985409ce7ec579de06b6d949c6e2ad1ecf1` | scenario YAML / all_recipe.yaml |
 | ALI-0993 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/transport.yaml` | `2d017647e29d46cea3dcf26da0118dbb79cff453daf9b05497fc821cfabc1f22` | scenario YAML / transport.yaml |

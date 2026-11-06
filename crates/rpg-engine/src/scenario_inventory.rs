@@ -408,8 +408,8 @@ fn extension_files(
     Ok(files)
 }
 
-/// Maps each item id to its icon. The folders below `directory` only organize the art, so an
-/// icon is found by file name alone and names must be unique.
+/// Maps each item id to its icon. The folders below `directory` are authoring metadata
+/// (`scripts/sync_item_icons.py`), so an icon is found by file name alone and names must be unique.
 fn discover_item_images(
     package: &Path,
     directory: &ScenarioRelativePath,

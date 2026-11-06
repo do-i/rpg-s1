@@ -9,7 +9,10 @@ use super::{
     ui,
 };
 use crate::{
-    field_menu_domain::{FieldMenuCatalog, can_equip, equip_item, item_name, unequip_item},
+    field_menu_domain::{
+        FieldMenuCatalog, MenuMutationError, can_equip, equip_item, gender_label, item_name,
+        unequip_item,
+    },
     game_state::GameState,
     runtime_member::EquipmentSlot,
     scenario_item::ItemDefinition,
@@ -164,7 +167,15 @@ pub(super) fn equip_refusal(
     catalog: &FieldMenuCatalog,
 ) -> Option<String> {
     let item = catalog.item(item_id)?;
-    can_equip(member, item, catalog).err().map(|_| {
+    can_equip(member, item, catalog).err().map(|error| {
+        if let MenuMutationError::GenderRestricted(required) = error {
+            return format!(
+                "{} can't equip {} ({} only).",
+                member.name(),
+                item_name(item),
+                gender_label(required)
+            );
+        }
         format!(
             "{} ({}) can't equip {}.",
             member.name(),
@@ -212,5 +223,17 @@ mod tests {
         assert_eq!(equip_refusal(elise, "cloth_robe", &catalog), None);
         let aric = game.party().member("aric").unwrap();
         assert_eq!(equip_refusal(aric, "leather_vest", &catalog), None);
+    }
+
+    #[test]
+    fn body_armor_for_another_gender_names_the_restriction() {
+        let game = fixture_game_with_recruit();
+        let catalog = crate::field_menu_domain::tests::catalog_with_party_genders();
+        let aric = game.party().member("aric").unwrap();
+        assert_eq!(
+            equip_refusal(aric, "leather_vest", &catalog).as_deref(),
+            Some("Golden Aric can't equip Leather Vest (female only).")
+        );
+        assert_eq!(equip_refusal(aric, "adamantite_mail", &catalog), None);
     }
 }

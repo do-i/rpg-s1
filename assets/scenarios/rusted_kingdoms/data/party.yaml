@@ -15,7 +15,8 @@
 #   stats: { str, dex, con, int }
 #   equipped: { weapon, shield, helmet, body, accessory }
 #   abilities_unlocked, status_effects
-#   age, gender                                # cosmetic, unused by engine
+#   age                                        # cosmetic, unused by engine
+#   gender                                     # male | female; limits gendered body armor
 
 party:
   - id: aric
@@ -42,7 +43,7 @@ party:
       weapon: iron_sword
       shield: buckler
       helmet: leather_hat
-      body: leather_vest
+      body: light_armor
       accessory: ""
     abilities_unlocked: []
     status_effects: []
@@ -141,7 +142,7 @@ party:
       weapon: dagger
       shield: buckler
       helmet: cloth_hood
-      body: leather_vest
+      body: light_armor
       accessory: ""
     abilities_unlocked: []
     status_effects: []

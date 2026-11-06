@@ -11,6 +11,7 @@ SCRIPTS = Path(__file__).resolve().parent
 WRAPPED = (
     "build.sh",
     "run.sh",
+    "sync_item_icons.py",
     "update_asset_hashes.py",
     "check_asset_rights.py",
     "release_assets.py",
