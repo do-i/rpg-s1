@@ -1072,7 +1072,7 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     assert_eq!(report.counts.party_members, 5);
     assert_eq!(report.counts.classes, 5);
     assert_eq!(report.counts.abilities, 49);
-    assert_eq!(report.counts.items, 212);
+    assert_eq!(report.counts.items, 216);
     assert_eq!(report.counts.field_use_items, 14);
     assert_eq!(report.counts.maps, 89);
     assert_eq!(report.counts.dialogue_documents, 150);

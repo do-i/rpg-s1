@@ -1752,6 +1752,117 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn jep_joins_wearing_the_stealth_cloak_his_class_allows() {
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let source = party
+            .party
+            .iter()
+            .find(|member| member.data().id == "jep")
+            .unwrap();
+        let jep = RuntimeMember::try_from_catalog(
+            source,
+            &crate::runtime_member::test_class_of(source),
+            &balance.progression,
+        )
+        .unwrap();
+        assert_eq!(
+            jep.equipment().get(EquipmentSlot::Accessory),
+            Some("stealth_cloak")
+        );
+        let catalog = catalog_with_party_genders();
+        for (id, slot) in [
+            ("stealth_cloak", EquipmentSlot::Accessory),
+            ("light_armor", EquipmentSlot::Body),
+        ] {
+            assert_eq!(
+                can_equip(&jep, catalog.item(id).unwrap(), &catalog),
+                Ok(slot)
+            );
+        }
+    }
+
+    #[test]
+    fn elise_and_reiya_wear_only_the_armor_opened_to_them() {
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let catalog = catalog_with_party_genders();
+        let member = |id: &str| {
+            let source = party.party.iter().find(|m| m.data().id == id).unwrap();
+            RuntimeMember::try_from_catalog(
+                source,
+                &crate::runtime_member::test_class_of(source),
+                &balance.progression,
+            )
+            .unwrap()
+        };
+        let fits = |member: &RuntimeMember, id: &str| {
+            can_equip(member, catalog.item(id).unwrap(), &catalog)
+        };
+        let reiya = member("reiya");
+        for id in ["leather_vest", "shadowweave_vest", "hiiroikane_mail"] {
+            assert_eq!(fits(&reiya, id), Ok(EquipmentSlot::Body), "{id}");
+        }
+        let elise = member("elise");
+        assert_eq!(fits(&elise, "hiiroikane_mail"), Ok(EquipmentSlot::Body));
+        for id in ["leather_vest", "shadowweave_vest", "chainmail"] {
+            assert_eq!(
+                fits(&elise, id),
+                Err(MenuMutationError::SlotRestricted),
+                "{id}"
+            );
+        }
+        assert_eq!(
+            fits(&reiya, "chainmail"),
+            Err(MenuMutationError::SlotRestricted)
+        );
+        assert_eq!(
+            fits(&member("kael"), "hiiroikane_mail"),
+            Err(MenuMutationError::GenderRestricted(
+                PartyMemberGender::Female
+            ))
+        );
+    }
+
+    #[test]
+    fn jeps_leather_armor_is_male_only_and_sold_from_his_join_act() {
+        let party: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let catalog = catalog_with_party_genders();
+        let member = |id: &str| {
+            let source = party.party.iter().find(|m| m.data().id == id).unwrap();
+            RuntimeMember::try_from_catalog(
+                source,
+                &crate::runtime_member::test_class_of(source),
+                &balance.progression,
+            )
+            .unwrap()
+        };
+        for id in [
+            "cutpurse_jerkin",
+            "duskrunner_coat",
+            "hollowstep_harness",
+            "gravewalk_brigandine",
+        ] {
+            let item = catalog.item(id).unwrap();
+            assert_eq!(
+                can_equip(&member("jep"), item, &catalog),
+                Ok(EquipmentSlot::Body)
+            );
+            assert_eq!(
+                can_equip(&member("reiya"), item, &catalog),
+                Err(MenuMutationError::GenderRestricted(PartyMemberGender::Male))
+            );
+        }
+    }
+
+    #[test]
     fn armor_already_worn_from_an_old_save_stays_until_it_is_taken_off() {
         let catalog = catalog_with_party_genders();
         let mut game = game([]);
@@ -1836,9 +1947,9 @@ pub(crate) mod tests {
         let catalog = catalog();
         // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
         // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material and the
-        // Hush Powder silencing throw.
-        assert_eq!(catalog.items.len(), 209);
-        assert_eq!(catalog.item_order.len(), 209);
+        // Hush Powder silencing throw, plus Jep's four leather armors.
+        assert_eq!(catalog.items.len(), 213);
+        assert_eq!(catalog.item_order.len(), 213);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [

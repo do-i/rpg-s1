@@ -96,7 +96,7 @@
 - id: hiiroikane_mail
   name: Hiiroikane Mail
   type: body
-  slot_category: heavy_armor
+  slot_category: fine_mail
   gender: female
   stats:
     con: 12
@@ -104,3 +104,51 @@
   buy_price: 3200
   sell_price: 1600
   description: "Scarlet metal from the old kingdom. The flame that made it is the one you hunt."
+
+- id: cutpurse_jerkin
+  name: Cutpurse Jerkin
+  type: body
+  slot_category: leather
+  gender: male
+  stats:
+    con: 4
+    dex: 1
+  buy_price: 500
+  sell_price: 250
+  description: "Patched leather with more pockets than honest work requires."
+
+- id: duskrunner_coat
+  name: Duskrunner Coat
+  type: body
+  slot_category: leather
+  gender: male
+  stats:
+    con: 5
+    dex: 1
+  buy_price: 800
+  sell_price: 400
+  description: "A long grey coat split for running. Hard to catch, harder to see."
+
+- id: hollowstep_harness
+  name: Hollowstep Harness
+  type: body
+  slot_category: leather
+  gender: male
+  stats:
+    con: 7
+    dex: 2
+  buy_price: 1700
+  sell_price: 850
+  description: "Dark straps over quilted cloth, every buckle wrapped to stay silent."
+
+- id: gravewalk_brigandine
+  name: Gravewalk Brigandine
+  type: body
+  slot_category: leather
+  gender: male
+  stats:
+    con: 8
+    dex: 3
+  buy_price: 2000
+  sell_price: 1000
+  description: "Riveted plates hidden under near-black hide. Quiet as the name suggests."

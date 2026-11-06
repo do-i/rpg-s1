@@ -61,6 +61,12 @@ armor_shop:
   - id: astral_robe
     buy_price: 2800
     unlock_flag: story_act4_started
+  - id: hollowstep_harness
+    buy_price: 1700
+    unlock_flag: story_act4_started
+  - id: gravewalk_brigandine
+    buy_price: 2000
+    unlock_flag: story_act4_started
   - id: dragonscale_shield
     buy_price: 3000
     unlock_flag: story_act4_started

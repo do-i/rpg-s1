@@ -22,7 +22,7 @@ equipment_slots:
   weapon: [staff, wand, rod]
   shield: []
   helmet: [hat, circlet]
-  body: [robe]
+  body: [robe, leather, fine_mail]
   accessory: [all]
 
 abilities:
