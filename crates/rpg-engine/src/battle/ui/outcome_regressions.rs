@@ -206,3 +206,186 @@ fn persistence_cancelled_item_and_ability_targets_do_not_spend_resources() {
         assert_eq!(payload(&app), before);
     }
 }
+
+#[test]
+fn level_up_confirm_advances_from_loot_before_restoring_the_world() {
+    let mut app = fixture(BattlePhase::Victory);
+    app.world_mut()
+        .resource_mut::<BattleState>()
+        .combatants
+        .iter_mut()
+        .find(|actor| actor.key.side == BattleSide::Enemy)
+        .unwrap()
+        .experience_yield = 1_000;
+    press(&mut app, NormalizedAction::Confirm);
+    assert!(
+        app.world()
+            .resource::<BattleState>()
+            .rewards
+            .as_ref()
+            .unwrap()
+            .members
+            .iter()
+            .any(|member| !member.level_ups.is_empty())
+    );
+    let banked = payload(&app);
+    assert_eq!(
+        *app.world()
+            .resource::<super::super::reward_modal::BattleRewardScreen>(),
+        super::super::reward_modal::BattleRewardScreen::Loot
+    );
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        *app.world()
+            .resource::<super::super::reward_modal::BattleRewardScreen>(),
+        super::super::reward_modal::BattleRewardScreen::LevelUp(0)
+    );
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::Battle
+    );
+    assert_eq!(
+        payload(&app),
+        banked,
+        "advancing reward screens must not award anything twice"
+    );
+    press(&mut app, NormalizedAction::Confirm);
+    app.world_mut().resource_mut::<ActionState>().clear();
+    app.update();
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::World
+    );
+    assert_eq!(payload(&app).repository, banked.repository);
+}
+
+#[test]
+fn reward_continue_button_uses_the_same_two_step_flow_as_confirm() {
+    use crate::gameplay_canvas::pointer::CanvasPointer;
+    let mut app = fixture(BattlePhase::Victory);
+    app.world_mut()
+        .resource_mut::<BattleState>()
+        .combatants
+        .iter_mut()
+        .find(|actor| actor.key.side == BattleSide::Enemy)
+        .unwrap()
+        .experience_yield = 1_000;
+    press(&mut app, NormalizedAction::Confirm);
+    let banked = payload(&app);
+    app.world_mut().resource_mut::<ActionState>().clear();
+    app.world_mut().spawn((
+        super::super::reward_modal::BattleRewardContinue,
+        ComputedNode {
+            size: Vec2::new(160.0, 48.0),
+            ..default()
+        },
+        UiGlobalTransform::from_xy(640.0, 500.0),
+    ));
+    app.insert_resource(CanvasPointer::at_viewport_position(
+        Vec2::new(640.0, 500.0),
+        true,
+    ));
+    app.update();
+    assert_eq!(
+        *app.world()
+            .resource::<super::super::reward_modal::BattleRewardScreen>(),
+        super::super::reward_modal::BattleRewardScreen::LevelUp(0)
+    );
+    assert_eq!(payload(&app), banked);
+    app.insert_resource(CanvasPointer::at_viewport_position(
+        Vec2::new(640.0, 500.0),
+        false,
+    ));
+    app.update();
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::Battle
+    );
+    app.insert_resource(CanvasPointer::at_viewport_position(
+        Vec2::new(640.0, 500.0),
+        true,
+    ));
+    app.update();
+    app.insert_resource(CanvasPointer::at_viewport_position(
+        Vec2::new(640.0, 500.0),
+        false,
+    ));
+    app.update();
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::World
+    );
+    assert_eq!(payload(&app).repository, banked.repository);
+}
+
+#[test]
+fn sequential_level_ups_require_a_fresh_confirm_per_member_and_never_rebank_rewards() {
+    use crate::battle::reward_modal::BattleRewardScreen;
+    let mut app = fixture(BattlePhase::Victory);
+    app.world_mut()
+        .resource_mut::<BattleState>()
+        .combatants
+        .iter_mut()
+        .find(|actor| actor.key.side == BattleSide::Enemy)
+        .unwrap()
+        .experience_yield = 1_000;
+    press(&mut app, NormalizedAction::Confirm);
+    let banked = payload(&app);
+    // Only the presentation rows change; the already-banked game is deliberately retained.
+    let template = app
+        .world()
+        .resource::<BattleState>()
+        .rewards
+        .as_ref()
+        .unwrap()
+        .members[0]
+        .clone();
+    let members = ["Aric", "Elise", "Reiya", "Jep", "Kael"]
+        .into_iter()
+        .enumerate()
+        .map(|(index, name)| {
+            let mut member = template.clone();
+            member.member_id = name.to_lowercase();
+            member.member_name = name.to_owned();
+            if [1, 4].contains(&index) {
+                member.level_ups.clear();
+            }
+            member
+        })
+        .collect();
+    app.world_mut()
+        .resource_mut::<BattleState>()
+        .rewards
+        .as_mut()
+        .unwrap()
+        .members = members;
+    for index in [0, 2, 3] {
+        app.world_mut().resource_mut::<ActionState>().clear();
+        app.update();
+        press(&mut app, NormalizedAction::Confirm);
+        assert_eq!(
+            *app.world().resource::<BattleRewardScreen>(),
+            BattleRewardScreen::LevelUp(index)
+        );
+        assert_eq!(
+            *app.world().resource::<State<AppState>>().get(),
+            AppState::Battle
+        );
+        assert_eq!(payload(&app), banked);
+        app.world_mut().resource_mut::<ActionState>().clear();
+        app.update();
+        app.update();
+        assert_eq!(
+            *app.world().resource::<BattleRewardScreen>(),
+            BattleRewardScreen::LevelUp(index)
+        );
+    }
+    press(&mut app, NormalizedAction::Confirm);
+    app.world_mut().resource_mut::<ActionState>().clear();
+    app.update();
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::World
+    );
+    assert_eq!(payload(&app).repository, banked.repository);
+}

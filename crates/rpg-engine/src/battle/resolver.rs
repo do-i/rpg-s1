@@ -218,7 +218,7 @@ impl BattleState {
         self.tick_active_statuses();
         if self.all_defeated(BattleSide::Enemy) {
             self.phase = BattlePhase::Victory;
-            self.message = "Victory! Press Enter to return to the world.".to_owned();
+            self.message = "Victory! Press Enter to view rewards.".to_owned();
             self.transcript.push("VICTORY".to_owned());
         } else if self.all_defeated(BattleSide::Party) {
             self.phase = BattlePhase::Defeat;

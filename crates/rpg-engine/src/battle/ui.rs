@@ -141,8 +141,18 @@ impl Plugin for BattlePlugin {
                     sync_enemy_cards,
                     sync_enemy_meters,
                     super::reward_modal::sync_reward_modal,
+                    super::reward_modal::handle_reward_scroll,
                 )
                     .chain()
+                    .run_if(in_state(AppState::Battle)),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    super::reward_modal::update_reward_scroll_chrome,
+                    super::reward_modal::sync_reward_portraits,
+                )
+                    .after(bevy::ui::UiSystems::Layout)
                     .run_if(in_state(AppState::Battle)),
             )
             .add_systems(OnExit(AppState::Battle), cleanup_battle);
@@ -1758,12 +1768,20 @@ fn animate_enemy_breathing(
 }
 
 #[derive(SystemParam)]
-struct BattleInputContext<'w> {
+struct BattleInputContext<'w, 's> {
     balances: Res<'w, Assets<BalanceData>>,
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<ResMut<'w, GameState>>,
     entry: Option<Res<'w, BattleEntry>>,
     reward_prelude: Option<Res<'w, super::reward_modal::BattleRewardPrelude>>,
+    reward_screen: Option<ResMut<'w, super::reward_modal::BattleRewardScreen>>,
+    pointer: Option<Res<'w, crate::gameplay_canvas::pointer::CanvasPointer>>,
+    reward_buttons: Query<
+        'w,
+        's,
+        (&'static ComputedNode, &'static UiGlobalTransform),
+        With<super::reward_modal::BattleRewardContinue>,
+    >,
     time: Res<'w, Time>,
     options: Option<Res<'w, PlayerOptions>>,
 }
@@ -1993,14 +2011,29 @@ fn handle_battle_input(
                         transitions.write(AppStateTransitionRequest::new(AppState::World));
                     } else {
                         state.phase = BattlePhase::Rewards;
+                        commands.insert_resource(super::reward_modal::BattleRewardScreen::Loot);
                     }
                 }
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
             }
         }
         BattlePhase::Rewards
-            if context.reward_prelude.is_none() && actions.just_pressed(AppAction::Confirm) =>
+            if context.reward_prelude.is_none()
+                && (actions.just_pressed(AppAction::Confirm)
+                    || context.pointer.as_ref().is_some_and(|pointer| {
+                        pointer.just_clicked()
+                            && context
+                                .reward_buttons
+                                .iter()
+                                .any(|(node, transform)| pointer.is_over(node, transform))
+                    })) =>
         {
+            if let (Some(screen), Some(rewards)) =
+                (context.reward_screen.as_deref_mut(), state.rewards.as_ref())
+                && screen.advance(rewards)
+            {
+                return;
+            }
             restore_world(&mut commands, &mut game, entry);
             transitions.write(AppStateTransitionRequest::new(AppState::World));
         }
@@ -2751,6 +2784,7 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
     commands.remove_resource::<BattleState>();
     commands.remove_resource::<BattleAssetState>();
     commands.remove_resource::<super::reward_modal::BattleRewardPrelude>();
+    commands.remove_resource::<super::reward_modal::BattleRewardScreen>();
     commands.remove_resource::<super::fx::BattleFxRouter>();
     commands.remove_resource::<super::fx::BattleAttackAnimations>();
 }
