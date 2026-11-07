@@ -28,6 +28,8 @@ entries:
           qty: 2
         - id: wardens_mail_hauberk_m
           qty: 1
+        - id: wardens_mail_f
+          qty: 1
 
   # Started, not relayed
   - condition:

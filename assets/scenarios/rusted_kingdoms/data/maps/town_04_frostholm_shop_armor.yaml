@@ -21,10 +21,10 @@ armor_shop:
     - id: kite_shield
       buy_price: 400
       unlock_flag: story_act2_started
-    - id: tower_shield
-      buy_price: 650
+    - id: chainmail_elbow_sleeve_m
+      buy_price: 700
       unlock_flag: story_act3_started
-    - id: chainmail_full_sleeve_m
+    - id: chainmail_f
       buy_price: 700
       unlock_flag: story_act3_started
     - id: shadow_hood
@@ -36,20 +36,11 @@ armor_shop:
     - id: arcane_robe
       buy_price: 1200
       unlock_flag: story_act3_started
-    - id: adamantite_helm
-      buy_price: 1300
-      unlock_flag: story_act3_started
     - id: blessed_shield
       buy_price: 1400
       unlock_flag: story_act3_started
     - id: shadowweave_vest_f
       buy_price: 1400
-      unlock_flag: story_act3_started
-    - id: mythril_shield
-      buy_price: 1500
-      unlock_flag: story_act3_started
-    - id: adamantite_mail_m
-      buy_price: 1600
       unlock_flag: story_act3_started
     - id: silver_ring
       buy_price: 900
@@ -66,17 +57,11 @@ armor_shop:
     - id: scale_hauberk_f
       buy_price: 1000
       unlock_flag: story_act3_started
-    - id: vestments_of_light_f
-      buy_price: 1900
-      unlock_flag: story_act3_started
-    - id: sanctum_habit_m
-      buy_price: 1900
-      unlock_flag: story_act3_started
     - id: rimeguard_coat_m
       buy_price: 1500
       unlock_flag: story_act3_started
-    - id: great_helm
-      buy_price: 900
+    - id: rimeguard_coat_f
+      buy_price: 1500
       unlock_flag: story_act3_started
     - id: frostbark_shield
       buy_price: 1500

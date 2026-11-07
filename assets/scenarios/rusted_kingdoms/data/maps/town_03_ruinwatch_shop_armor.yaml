@@ -25,7 +25,10 @@ armor_shop:
     - id: kite_shield
       buy_price: 400
       unlock_flag: story_act2_started
-    - id: chainmail_full_sleeve_m
+    - id: chainmail_short_sleeve_m
+      buy_price: 700
+      unlock_flag: story_act3_started
+    - id: chainmail_f
       buy_price: 700
       unlock_flag: story_act3_started
     - id: cutpurse_jerkin_m

@@ -38,6 +38,9 @@ armor_shop:
     - id: studded_leather_jerkin_m
       buy_price: 450
       unlock_flag: story_act2_started
+    - id: studded_leather_f
+      buy_price: 450
+      unlock_flag: story_act2_started
     - id: wizard_hat
       buy_price: 400
       unlock_flag: story_act2_started

@@ -52,21 +52,9 @@ weapon_shop:
   - id: long_bow
     buy_price: 1800
     unlock_flag: story_act4_started
-  - id: flamebrand
-    buy_price: 2800
-    unlock_flag: story_act4_started
-  - id: arcane_rod
-    buy_price: 3000
-    unlock_flag: story_act4_started
-  - id: dragonbone_hammer
-    buy_price: 3000
-    unlock_flag: story_act4_started
   - id: battle_axe
     buy_price: 1000
     unlock_flag: story_act3_started
   - id: sage_scepter
     buy_price: 2200
     unlock_flag: story_act4_started
-  - id: cinder_wand
-    buy_price: 1500
-    unlock_flag: story_act3_started
