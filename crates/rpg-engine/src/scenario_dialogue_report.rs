@@ -238,6 +238,7 @@ pub(crate) struct EffectsSummary {
     pub(crate) open_shop: Option<&'static str>,
     pub(crate) open_inn: bool,
     pub(crate) open_apothecary: bool,
+    pub(crate) open_forge: bool,
 }
 
 impl EffectsSummary {
@@ -250,6 +251,7 @@ impl EffectsSummary {
             && self.open_shop.is_none()
             && !self.open_inn
             && !self.open_apothecary
+            && !self.open_forge
     }
 }
 
@@ -298,6 +300,7 @@ fn effects_summary(actions: &DialogueActions) -> EffectsSummary {
         }),
         open_inn: actions.open_inn.is_some(),
         open_apothecary: actions.open_apothecary.is_some(),
+        open_forge: actions.open_forge.is_some(),
         unlock_flags: Vec::new(),
     };
     summary.unlock_flags = summary
@@ -947,8 +950,9 @@ entries:
         // 101 before roadmap B1.3, plus the two sign boards and six zone NPCs it authored, plus
         // B1.2's marshal camp: its field standard, the duel, and its two aftermath documents,
         // plus B3.7's three late-town apothecaries, plus the three companion conversations in
-        // the staged Ardel epilogue, plus M14.06's nine stationary Zone 1-9 flavor NPCs.
-        assert_eq!(report.documents.len(), 150);
+        // the staged Ardel epilogue, plus M14.06's nine stationary Zone 1-9 flavor NPCs, plus the
+        // Ruinwatch smith's forge conversation.
+        assert_eq!(report.documents.len(), 151);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
         assert_eq!(report.documents_with_only_accepted_dead_entries(), 4);

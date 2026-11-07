@@ -81,3 +81,76 @@
   buy_price: 2600
   sell_price: 1300
   description: "Carved from a skull that took three men to lift."
+
+# --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
+# Elemental names are flavor only; stats are plain until the engine grows element fields.
+
+- id: coif
+  name: "Mail Coif"
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 2
+  buy_price: 150
+  sell_price: 75
+  description: "A mail hood that covers the neck and the worry."
+
+- id: great_helm
+  name: "Great Helm"
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 5
+  buy_price: 900
+  sell_price: 450
+  description: "A flat-topped helm with a single slit. You see little and are seen less."
+
+- id: feathered_cap
+  name: "Feathered Cap"
+  type: helmet
+  slot_category: hat
+  stats:
+    con: 1
+  buy_price: 120
+  sell_price: 60
+  description: "A soft cap with a pheasant feather. Style, mostly."
+
+- id: wizard_hat
+  name: "Wizard Hat"
+  type: helmet
+  slot_category: hat
+  stats:
+    int: 3
+  buy_price: 400
+  sell_price: 200
+  description: "Wide-brimmed and pointed, and absolutely sincere about it."
+
+- id: sage_diadem
+  name: "Sage's Diadem"
+  type: helmet
+  slot_category: circlet
+  stats:
+    int: 5
+  buy_price: 1800
+  sell_price: 900
+  description: "A silver band set with a pale stone. It cools the thoughts it rests on."
+
+- id: veil_of_dusk
+  name: "Veil of Dusk"
+  type: helmet
+  slot_category: hood
+  stats:
+    con: 3
+  buy_price: null
+  sell_price: 750
+  description: "A hood cut from shadow-pelt. The face beneath it is hard to remember."
+
+- id: pyre_crown
+  name: "Pyre Crown"
+  type: helmet
+  slot_category: helm
+  stats:
+    con: 4
+  buy_price: null
+  sell_price: 1000
+  description: "A helm shaped like a crown of flame, forged in a furnace that never cooled."

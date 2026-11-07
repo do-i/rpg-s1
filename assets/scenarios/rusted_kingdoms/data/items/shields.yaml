@@ -87,3 +87,46 @@
   buy_price: 3000
   sell_price: 1500
   description: "Overlapping plates from something that outlived its own age."
+
+# --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
+# Elemental names are flavor only; stats are plain until the engine grows element fields.
+
+- id: round_shield
+  name: "Round Shield"
+  type: shield
+  slot_category: small_shield
+  stats:
+    con: 2
+  buy_price: 200
+  sell_price: 100
+  description: "A plain lime-wood boss shield. It has seen a thousand village disputes."
+
+- id: heater_shield
+  name: "Heater Shield"
+  type: shield
+  slot_category: kite_shield
+  stats:
+    con: 4
+  buy_price: 550
+  sell_price: 275
+  description: "A knight's steel-banded shield with a shallow curve."
+
+- id: ward_buckler
+  name: "Ward Buckler"
+  type: shield
+  slot_category: buckler
+  stats:
+    con: 3
+  buy_price: null
+  sell_price: 650
+  description: "A small buckler rimmed with pale ectoplasmic glass. It turns blows the wielder never saw."
+
+- id: frostbark_shield
+  name: "Frostbark Shield"
+  type: shield
+  slot_category: small_shield
+  stats:
+    con: 4
+  buy_price: 1500
+  sell_price: 750
+  description: "A shield cut from frozen birch. It is harder than it has any right to be."

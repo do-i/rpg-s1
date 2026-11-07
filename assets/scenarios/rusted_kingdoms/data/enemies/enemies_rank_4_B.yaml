@@ -61,6 +61,8 @@ drops:
           weight: 50
         - item: fire_gland
           weight: 30
+        - item: emberedge
+          weight: 6
 ai:
   pattern: random
   moves:
@@ -239,6 +241,8 @@ drops:
           weight: 55
         - item: iron_plate
           weight: 45
+        - item: stoneheart_plate
+          weight: 5
 ai:
   pattern: random
   moves:
@@ -313,6 +317,8 @@ drops:
           weight: 50
         - item: fire_crystal
           weight: 50
+        - item: ghostlight_lantern_charm
+          weight: 6
 ai:
   pattern: random
   moves:

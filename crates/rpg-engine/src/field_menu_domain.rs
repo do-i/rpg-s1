@@ -183,6 +183,7 @@ impl FieldMenuCatalog {
                 items.insert(item.id().to_owned(), item.clone());
             }
         }
+        crate::forge::expand_catalog(&mut items, &mut item_order);
         let classes = class_files
             .into_iter()
             .map(|class| (class.class_id.clone(), class))
@@ -579,6 +580,7 @@ fn track_catalog_load(
             items.insert(item.id().to_owned(), item.clone());
         }
     }
+    crate::forge::expand_catalog(&mut items, &mut item_order);
     let field_uses = field_assets
         .get(field_handle)
         .expect("checked")
@@ -1629,6 +1631,7 @@ pub(crate) mod tests {
                 assert!(items.insert(item.id().to_owned(), item).is_none());
             }
         }
+        crate::forge::expand_catalog(&mut items, &mut item_order);
         let field_use: FieldUseCatalogFile =
             scenario_yaml::from_str(include_str!(scenario_file!("data/items/field_use.yaml")))
                 .unwrap();
@@ -1948,8 +1951,13 @@ pub(crate) mod tests {
         // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
         // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material and the
         // Hush Powder silencing throw, plus Jep's four leather armors.
-        assert_eq!(catalog.items.len(), 213);
-        assert_eq!(catalog.item_order.len(), 213);
+        // The forge's generated `+N` variants are not authored items.
+        let authored = |ids: &mut dyn Iterator<Item = &String>| {
+            ids.filter(|id| crate::forge::parse_id(id).is_none())
+                .count()
+        };
+        assert_eq!(authored(&mut catalog.items.keys()), 275);
+        assert_eq!(authored(&mut catalog.item_order.iter()), 275);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [

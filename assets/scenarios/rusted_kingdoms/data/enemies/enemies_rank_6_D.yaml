@@ -227,6 +227,8 @@ drops:
           weight: 40
         - item: venom_sac
           weight: 30
+        - item: venomtongue_dagger
+          weight: 6
 ai:
   pattern: random
   moves:

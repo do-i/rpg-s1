@@ -23,7 +23,8 @@ pub(crate) struct ItemIcon(String);
 
 impl ItemIcon {
     pub(crate) fn new(id: &str) -> Self {
-        Self(id.to_owned())
+        // A tempered `+N` piece wears its base item's art.
+        Self(crate::forge::base_id(id).to_owned())
     }
 }
 

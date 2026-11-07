@@ -152,3 +152,174 @@
   buy_price: 2000
   sell_price: 1000
   description: "Riveted plates hidden under near-black hide. Quiet as the name suggests."
+
+# --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
+# Elemental names are flavor only; stats are plain until the engine grows element fields.
+
+- id: padded_jerkin
+  name: "Padded Jerkin"
+  type: body
+  slot_category: light_armor
+  gender: male
+  stats:
+    con: 2
+  buy_price: 180
+  sell_price: 90
+  description: "Quilted cloth over a canvas shell. Cheap, warm, and better than nothing."
+
+- id: quilted_dress
+  name: "Quilted Dress"
+  type: body
+  slot_category: light_armor
+  gender: female
+  stats:
+    con: 2
+    int: 1
+  buy_price: 180
+  sell_price: 90
+  description: "A padded travelling dress, sewn for the road and not for the ballroom."
+
+- id: brigandine
+  name: "Brigandine"
+  type: body
+  slot_category: heavy_armor
+  gender: male
+  stats:
+    con: 6
+    dex: -2
+  buy_price: 1100
+  sell_price: 550
+  description: "Small plates riveted between layers of canvas. Stiff, but it stops a spear."
+
+- id: scale_hauberk
+  name: "Scale Hauberk"
+  type: body
+  slot_category: heavy_armor
+  gender: female
+  stats:
+    con: 5
+    dex: -1
+  buy_price: 1000
+  sell_price: 500
+  description: "Overlapping iron scales on a leather backing. It chimes when you walk."
+
+- id: plate_cuirass
+  name: "Plate Cuirass"
+  type: body
+  slot_category: heavy_armor
+  stats:
+    con: 8
+    dex: -3
+  buy_price: 1800
+  sell_price: 900
+  description: "A hammered steel breastplate. It turns most things and slows you for the rest."
+
+- id: studded_leather
+  name: "Studded Leather"
+  type: body
+  slot_category: leather
+  stats:
+    con: 3
+    dex: 1
+  buy_price: 450
+  sell_price: 225
+  description: "Boiled leather with iron studs set in rows."
+
+- id: wool_cassock
+  name: "Wool Cassock"
+  type: body
+  slot_category: robe
+  stats:
+    con: 2
+    int: 2
+  buy_price: 350
+  sell_price: 175
+  description: "Thick grey wool, cut for long vigils in cold chapels."
+
+- id: vestments_of_light
+  name: "Vestments of Light"
+  type: body
+  slot_category: robe
+  gender: female
+  stats:
+    con: 4
+    int: 4
+  buy_price: 1900
+  sell_price: 950
+  description: "White vestments stitched with gold thread. They seem to catch light that is not there."
+
+- id: sanctum_habit
+  name: "Sanctum Habit"
+  type: body
+  slot_category: robe
+  gender: male
+  stats:
+    con: 5
+    int: 3
+  buy_price: 1900
+  sell_price: 950
+  description: "A hooded habit woven in the sanctum workshops. The wards in the hem are older than the order."
+
+- id: ghostweave_tunic
+  name: "Ghostweave Tunic"
+  type: body
+  slot_category: leather
+  stats:
+    con: 4
+    dex: 3
+  buy_price: null
+  sell_price: 850
+  description: "Spun from a phantom's shed veil. It is there, mostly."
+
+- id: wardens_mail
+  name: "Warden's Mail"
+  type: body
+  slot_category: fine_mail
+  stats:
+    con: 6
+    int: 2
+  buy_price: null
+  sell_price: 1100
+  description: "Fine mail issued to the keepers of the wall. The links are etched with a warden's oath."
+
+- id: ember_scale_vest
+  name: "Ember-Scale Vest"
+  type: body
+  slot_category: light_armor
+  stats:
+    con: 5
+  buy_price: null
+  sell_price: 800
+  description: "Lava-scale plates sewn over a light vest. Warm to the touch, even in Frostholm."
+
+- id: rimeguard_coat
+  name: "Rimeguard Coat"
+  type: body
+  slot_category: leather
+  stats:
+    con: 5
+  buy_price: 1500
+  sell_price: 750
+  description: "A fur-lined greatcoat treated with rime-oil. It sheds sleet and bad news."
+
+- id: galeweave_robe
+  name: "Galeweave Robe"
+  type: body
+  slot_category: robe
+  stats:
+    con: 3
+    int: 4
+  buy_price: null
+  sell_price: 850
+  description: "A robe woven with harpy down. It lifts at the hem when no wind is blowing."
+
+- id: stoneheart_plate
+  name: "Stoneheart Plate"
+  type: body
+  slot_category: heavy_armor
+  stats:
+    con: 9
+    dex: -3
+  buy_price: null
+  sell_price: 1400
+  description: "Plate built around a splinter of golem core. Heavy as a hillside and about as easy to move."

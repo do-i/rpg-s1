@@ -101,6 +101,7 @@ entries:
       - "He steps out of the gap in the wall and gestures at the road behind him, almost politely."
       - "\"Go down and end it kindly. I would come with you, but I have graves here that no one else knows the names of, and I find I would rather finish those.\""
       - "\"Whatever waits at the bottom -- it will try to make you feel chosen. Don't let it.\""
+      - "He unbuckles his sword and holds it out, hilt first. \"It kept my oath for forty years. Keep yours.\""
     end: true
     on_complete:
       set_flag:
@@ -109,6 +110,8 @@ entries:
       give_items:
         - id: holy_water
           qty: 3
+        - id: oathkeeper
+          qty: 1
 
   - node: refuses
     lines:

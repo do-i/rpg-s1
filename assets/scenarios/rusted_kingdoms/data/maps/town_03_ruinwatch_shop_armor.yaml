@@ -40,3 +40,9 @@ armor_shop:
     - id: silver_ring
       buy_price: 900
       unlock_flag: story_act2_started
+    - id: heater_shield
+      buy_price: 550
+      unlock_flag: story_act2_started
+    - id: iron_gauntlets
+      buy_price: 500
+      unlock_flag: story_act2_started

@@ -29,6 +29,7 @@ use crate::engine_settings::EngineSettings;
 
 mod apothecary;
 mod core_shop;
+mod forge;
 #[cfg(test)]
 mod shop_tests;
 mod sprites;
@@ -73,6 +74,7 @@ pub(crate) enum ServiceRequest {
     Shop(DialogueShopKind),
     Inn,
     Apothecary,
+    Forge,
 }
 
 impl ServiceRequest {
@@ -82,6 +84,7 @@ impl ServiceRequest {
             .map(Self::Shop)
             .or(actions.open_inn.map(|_| Self::Inn))
             .or(actions.open_apothecary.map(|_| Self::Apothecary))
+            .or(actions.open_forge.map(|_| Self::Forge))
     }
 }
 
@@ -94,6 +97,10 @@ enum ServicePage {
     Apothecary,
     /// The apothecary's second stage: explicit confirmation of the visible recipe.
     RecipeDetail,
+    /// The smith's list of pieces that can still be tempered or mended.
+    Forge,
+    /// The forge's second stage: the quote and odds for the selected piece.
+    ForgeConfirm,
     CoreConfirm,
     ShopConfirm,
     /// The post-purchase party picker offered after buying wearable gear.
@@ -170,6 +177,10 @@ pub(crate) struct ServiceUiState {
     shop_focus: ShopFocus,
     core_shop: CoreShopState,
     shop_category: InventoryTab,
+    /// The forge's left-column equipment type, as an index into `ForgeType::ALL`.
+    forge_type: usize,
+    /// Whether the forge cursor is in the piece list rather than the type column.
+    forge_in_list: bool,
     /// The apothecary keeps actual catalog indices while filtering its visible rows.
     ready_recipes_only: bool,
     toast: Option<Toast>,
@@ -207,6 +218,7 @@ impl ServiceUiState {
                 ServiceRequest::Shop(_) => ServicePage::Buy,
                 ServiceRequest::Inn => ServicePage::Inn,
                 ServiceRequest::Apothecary => ServicePage::Apothecary,
+                ServiceRequest::Forge => ServicePage::Forge,
             }),
             quantity: 1,
             suppress_confirm: true,
@@ -672,6 +684,20 @@ pub(crate) fn handle_service_input(
                         _ => None,
                     },
                     confirm: confirm || apothecary_control == Some(ApothecaryControl::Brew),
+                    back,
+                },
+            );
+        }
+        Some(ServicePage::Forge | ServicePage::ForgeConfirm) => {
+            forge::handle_input(
+                &mut state,
+                &catalog,
+                &mut game,
+                &mut menu_sfx,
+                forge::ForgeInput {
+                    vertical: delta,
+                    horizontal: actions.menu_navigation_horizontal(),
+                    confirm,
                     back,
                 },
             );

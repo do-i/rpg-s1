@@ -26,6 +26,8 @@ entries:
       give_items:
         - id: hi_ether
           qty: 2
+        - id: phoenix_feather_pin
+          qty: 1
 
   # Started, not relayed
   - condition:

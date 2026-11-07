@@ -88,3 +88,12 @@ armor_shop:
   - id: archmage_seal
     buy_price: 2600
     unlock_flag: story_act4_started
+  - id: plate_cuirass
+    buy_price: 1800
+    unlock_flag: story_act3_started
+  - id: sage_diadem
+    buy_price: 1800
+    unlock_flag: story_act3_started
+  - id: ember_ring
+    buy_price: 900
+    unlock_flag: story_act3_started

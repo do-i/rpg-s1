@@ -48,3 +48,12 @@ weapon_shop:
     - id: great_axe
       buy_price: 1800
       unlock_flag: story_act3_started
+    - id: bastard_sword
+      buy_price: 1300
+      unlock_flag: story_act3_started
+    - id: halo_mace
+      buy_price: 2000
+      unlock_flag: story_act3_started
+    - id: frostfang_axe
+      buy_price: 2000
+      unlock_flag: story_act3_started

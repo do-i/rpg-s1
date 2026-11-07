@@ -26,3 +26,5 @@ entries:
       give_items:
         - id: hi_potion
           qty: 2
+        - id: pilgrim_staff
+          qty: 1

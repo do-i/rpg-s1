@@ -34,3 +34,15 @@ armor_shop:
     - id: light_armor
       buy_price: 300
       unlock_flag: story_act2_started
+    - id: padded_jerkin
+      buy_price: 180
+      unlock_flag: story_quest_started
+    - id: quilted_dress
+      buy_price: 180
+      unlock_flag: story_quest_started
+    - id: feathered_cap
+      buy_price: 120
+      unlock_flag: story_quest_started
+    - id: round_shield
+      buy_price: 200
+      unlock_flag: story_quest_started

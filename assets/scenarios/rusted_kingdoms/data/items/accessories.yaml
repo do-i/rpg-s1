@@ -102,3 +102,86 @@
   buy_price: 2600
   sell_price: 1300
   description: "The sigil of an order that burned. The authority in it did not."
+
+# --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
+# Elemental names are flavor only; stats are plain until the engine grows element fields.
+
+- id: iron_gauntlets
+  name: "Iron Gauntlets"
+  type: accessory
+  equippable: [all]
+  stats:
+    str: 2
+  buy_price: 500
+  sell_price: 250
+  description: "Riveted iron gloves. Grips stay grips."
+
+- id: scout_boots
+  name: "Scout's Boots"
+  type: accessory
+  equippable: [all]
+  stats:
+    dex: 2
+  buy_price: 450
+  sell_price: 225
+  description: "Soft-soled boots for a quiet walk."
+
+- id: prayer_beads
+  name: "Prayer Beads"
+  type: accessory
+  equippable: [all]
+  stats:
+    int: 2
+  buy_price: 1000
+  sell_price: 500
+  description: "Worn smooth by a thousand repetitions."
+
+- id: ghostlight_lantern_charm
+  name: "Ghostlight Charm"
+  type: accessory
+  equippable: [all]
+  stats:
+    int: 3
+  buy_price: null
+  sell_price: 900
+  description: "A tiny lantern charm that burns with a pale, patient flame."
+
+- id: phoenix_feather_pin
+  name: "Phoenix Feather Pin"
+  type: accessory
+  equippable: [all]
+  stats:
+    con: 3
+  buy_price: null
+  sell_price: 1600
+  description: "A red-gold feather mounted on a brooch pin. It never quite stops smoldering."
+
+- id: ember_ring
+  name: "Ember Ring"
+  type: accessory
+  equippable: [all]
+  stats:
+    str: 2
+  buy_price: 900
+  sell_price: 450
+  description: "A ring of dark iron with a coal-bright stone."
+
+- id: tidal_pearl
+  name: "Tidal Pearl"
+  type: accessory
+  equippable: [all]
+  stats:
+    int: 2
+  buy_price: null
+  sell_price: 450
+  description: "A grey pearl that rolls toward water."
+
+- id: zephyr_anklet
+  name: "Zephyr Anklet"
+  type: accessory
+  equippable: [all]
+  stats:
+    dex: 3
+  buy_price: null
+  sell_price: 550
+  description: "A silver chain strung with tiny wind chimes."

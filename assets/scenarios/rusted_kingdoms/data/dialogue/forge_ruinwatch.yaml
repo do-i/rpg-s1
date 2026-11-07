@@ -1,0 +1,15 @@
+# data/dialogue/forge_ruinwatch.yaml
+#
+# Brannoch, the smith at the back of Garrick's shop. He tempers owned gear into "+N" variants
+# for GP and a material (see crates/rpg-engine/src/forge.rs).
+id: forge_ruinwatch
+type: npc
+entries:
+  - condition:
+      requires: [story_act2_started]
+    lines:
+      - "Bring me the steel you trust and a plate or core to feed it. Sometimes the metal takes, sometimes it does not."
+    on_complete:
+      open_forge: true
+  - lines:
+      - "The forge is cold until the road north opens. Come back then."

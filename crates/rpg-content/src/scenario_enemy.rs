@@ -715,7 +715,7 @@ mod tests {
                 .flat_map(|enemy| enemy.drops.loot.iter())
                 .flat_map(|pool| pool.pool.iter())
                 .count(),
-            247
+            267
         );
     }
 }

@@ -32,3 +32,9 @@ weapon_shop:
     - id: iron_sword
       buy_price: 350
       unlock_flag: story_act2_started
+    - id: pike
+      buy_price: 800
+      unlock_flag: story_act2_started
+    - id: rapier
+      buy_price: 900
+      unlock_flag: story_act2_started

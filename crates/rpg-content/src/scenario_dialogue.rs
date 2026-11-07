@@ -157,6 +157,9 @@ pub struct DialogueActions {
     pub open_inn: Option<ActionTrigger>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub open_apothecary: Option<ActionTrigger>,
+    /// The smith's forge, where owned gear is tempered into `Name +N` variants.
+    #[serde(default, deserialize_with = "deserialize_present_option")]
+    pub open_forge: Option<ActionTrigger>,
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub open_transport: Option<DialogueTransportMode>,
     /// A scripted battle against one named enemy, fought as soon as the branch closes.
@@ -669,8 +672,8 @@ entries:
             }
         }
 
-        assert_eq!(files.len(), 150);
-        assert_eq!((cutscenes, entry_documents, line_pools), (1, 148, 1));
+        assert_eq!(files.len(), 151);
+        assert_eq!((cutscenes, entry_documents, line_pools), (1, 149, 1));
         assert_eq!(idless, 2);
     }
 }

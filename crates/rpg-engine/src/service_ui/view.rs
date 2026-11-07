@@ -36,6 +36,7 @@ use crate::{
 
 mod apothecary;
 mod core_shop;
+mod forge;
 mod shop;
 
 #[derive(Component)]
@@ -131,7 +132,7 @@ pub(super) fn sync_service_overlay(
                             px(core_shop::HEIGHT)
                         } else if is_item_shop(&state) {
                             px(shop::HEIGHT)
-                        } else if is_apothecary(&state) {
+                        } else if is_workshop(&state) {
                             px(APOTHECARY_HEIGHT)
                         } else {
                             Val::Auto
@@ -140,7 +141,7 @@ pub(super) fn sync_service_overlay(
                             core_shop::HEIGHT
                         } else if is_item_shop(&state) {
                             shop::HEIGHT
-                        } else if is_apothecary(&state) {
+                        } else if is_workshop(&state) {
                             APOTHECARY_HEIGHT
                         } else {
                             PANEL_MAX_HEIGHT
@@ -159,7 +160,7 @@ pub(super) fn sync_service_overlay(
                                 top: px(14),
                                 bottom: px(10),
                             }
-                        } else if is_apothecary(&state) {
+                        } else if is_workshop(&state) {
                             UiRect {
                                 left: px(22),
                                 right: px(22),
@@ -170,8 +171,7 @@ pub(super) fn sync_service_overlay(
                             UiRect::all(px(22))
                         },
                         border: UiRect::all(px(
-                            if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state)
-                            {
+                            if is_workshop(&state) || is_item_shop(&state) || is_core_shop(&state) {
                                 1
                             } else {
                                 2
@@ -180,8 +180,7 @@ pub(super) fn sync_service_overlay(
                         border_radius: BorderRadius::all(px(8)),
                         flex_direction: FlexDirection::Column,
                         row_gap: px(
-                            if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state)
-                            {
+                            if is_workshop(&state) || is_item_shop(&state) || is_core_shop(&state) {
                                 0
                             } else {
                                 12
@@ -191,13 +190,13 @@ pub(super) fn sync_service_overlay(
                     },
                     BackgroundColor(if is_core_shop(&state) || is_item_shop(&state) {
                         Color::srgb_u8(16, 17, 22)
-                    } else if is_apothecary(&state) {
+                    } else if is_workshop(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
                     } else {
                         Color::srgba(0.025, 0.025, 0.09, 0.97)
                     }),
                     BorderColor::all(
-                        if is_apothecary(&state) || is_item_shop(&state) || is_core_shop(&state) {
+                        if is_workshop(&state) || is_item_shop(&state) || is_core_shop(&state) {
                             status_border()
                         } else {
                             theme.name_entry_border_color
@@ -214,6 +213,10 @@ pub(super) fn sync_service_overlay(
                         } else if state.core_shop.focus == super::core_shop::CoreFocus::Quantity {
                             core_shop::spawn_quantity_dialog(panel, &font, &state, &catalog, &game);
                         }
+                    } else if is_forge(&state) {
+                        forge::spawn_header(panel, &font, &game, face);
+                        forge::spawn_page(panel, &font, &state, &catalog, &game);
+                        forge::spawn_footer(panel, &font, &state);
                     } else if is_apothecary(&state) {
                         apothecary::spawn_header(panel, &font, &game, face);
                         apothecary::spawn_page(panel, &font, &state, &catalog, &game);
@@ -252,7 +255,12 @@ pub(super) fn cleanup_service_ui(
 fn panel_width(state: &ServiceUiState) -> f32 {
     match state.page {
         Some(ServicePage::MagicCore | ServicePage::CoreConfirm) => core_shop::WIDTH,
-        Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => APOTHECARY_WIDTH,
+        Some(
+            ServicePage::Apothecary
+            | ServicePage::RecipeDetail
+            | ServicePage::Forge
+            | ServicePage::ForgeConfirm,
+        ) => APOTHECARY_WIDTH,
         Some(
             ServicePage::Buy | ServicePage::Sell | ServicePage::ShopConfirm | ServicePage::Equip,
         ) => shop::WIDTH,
@@ -273,6 +281,18 @@ fn is_apothecary(state: &ServiceUiState) -> bool {
         state.page,
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail)
     )
+}
+
+fn is_forge(state: &ServiceUiState) -> bool {
+    matches!(
+        state.page,
+        Some(ServicePage::Forge | ServicePage::ForgeConfirm)
+    )
+}
+
+/// The apothecary and the forge share one frame: same size, padding, and dark panel.
+fn is_workshop(state: &ServiceUiState) -> bool {
+    is_apothecary(state) || is_forge(state)
 }
 
 fn is_item_shop(state: &ServiceUiState) -> bool {
@@ -303,6 +323,7 @@ fn keeper_face(
         ServiceRequest::Shop(DialogueShopKind::Armor) => ServiceKeeper::ArmorShop,
         ServiceRequest::Inn => ServiceKeeper::Inn,
         ServiceRequest::Apothecary => ServiceKeeper::Apothecary,
+        ServiceRequest::Forge => ServiceKeeper::WeaponShop,
     };
     sprites.keeper_face(keeper, atlases)
 }
@@ -411,6 +432,9 @@ fn spawn_service_body(
         Some(ServicePage::Inn) => spawn_inn_page(parent, font, catalog, game),
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
             apothecary::spawn_page(parent, font, state, catalog, game);
+        }
+        Some(ServicePage::Forge | ServicePage::ForgeConfirm) => {
+            forge::spawn_page(parent, font, state, catalog, game);
         }
         Some(ServicePage::Equip) => spawn_equip_page(parent, font, state, catalog, game),
         Some(ServicePage::Result) => {
@@ -855,6 +879,7 @@ fn service_title(state: &ServiceUiState) -> &'static str {
         Some(ServiceRequest::Shop(DialogueShopKind::MagicCore)) => "Magic Core Exchange",
         Some(ServiceRequest::Inn) => "Inn",
         Some(ServiceRequest::Apothecary) => "Apothecary",
+        Some(ServiceRequest::Forge) => "Forge",
         None => "Service",
     }
 }
@@ -867,6 +892,8 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
         Some(ServicePage::Inn) => "REST",
         Some(ServicePage::Apothecary) => "RECIPES",
         Some(ServicePage::RecipeDetail) => "RECIPE DETAIL",
+        Some(ServicePage::Forge) => "TEMPERING",
+        Some(ServicePage::ForgeConfirm) => "REVIEW QUOTE",
         Some(ServicePage::CoreConfirm) => "CONFIRM",
         Some(ServicePage::ShopConfirm) => "REVIEW PURCHASE",
         Some(ServicePage::Equip) => "EQUIP",
@@ -903,6 +930,8 @@ fn service_hint(state: &ServiceUiState) -> &'static str {
         Some(ServicePage::Inn) => "Y/ENTER  rest    N/ESC  leave",
         Some(ServicePage::CoreConfirm) => "Y/ENTER  exchange    N/ESC  cancel",
         Some(ServicePage::RecipeDetail) => "ENTER  craft    ESC  back",
+        Some(ServicePage::Forge) => "UP/DOWN  choose    ENTER  review    ESC  leave",
+        Some(ServicePage::ForgeConfirm) => "ENTER  strike    ESC  back",
         Some(ServicePage::Equip) => "UP/DOWN  choose    ENTER  equip    ESC  skip",
         Some(ServicePage::Result) => "ENTER / ESC  leave",
         _ => "UP/DOWN  choose    ENTER  confirm    ESC  back",

@@ -240,3 +240,300 @@
   buy_price: 3000
   sell_price: 1500
   description: "A femur, capped in iron. Slow, and it only needs to land once."
+
+# --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
+# Elemental names are flavor only; stats are plain until the engine grows element fields.
+
+- id: bronze_sword
+  name: "Bronze Sword"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 3
+  buy_price: 220
+  sell_price: 110
+  description: "Soft metal, honest edge. Good enough for the first road."
+
+- id: falchion
+  name: "Falchion"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 6
+  buy_price: 600
+  sell_price: 300
+  description: "A single-edged blade that chops harder than it cuts."
+
+- id: bastard_sword
+  name: "Bastard Sword"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 8
+    dex: -1
+  buy_price: 1300
+  sell_price: 650
+  description: "Too long for one hand, too light for two. Heavy in the swing."
+
+- id: hand_axe
+  name: "Hand Axe"
+  type: weapon
+  slot_category: axe
+  stats:
+    str: 3
+  buy_price: 200
+  sell_price: 100
+  description: "A woodcutter's axe with the handle shortened."
+
+- id: battle_axe
+  name: "Battle Axe"
+  type: weapon
+  slot_category: axe
+  stats:
+    str: 7
+  buy_price: 1000
+  sell_price: 500
+  description: "A broad double-bit head made to split shields."
+
+- id: maul
+  name: "Maul"
+  type: weapon
+  slot_category: hammer
+  stats:
+    str: 9
+    dex: -2
+  buy_price: null
+  sell_price: 400
+  description: "A raider's iron-capped maul. Ugly, slow, and final."
+
+- id: pike
+  name: "Pike"
+  type: weapon
+  slot_category: spear
+  stats:
+    str: 6
+  buy_price: 800
+  sell_price: 400
+  description: "A long ash shaft with a leaf-shaped head. Keeps things at arm's length."
+
+- id: stiletto
+  name: "Stiletto"
+  type: weapon
+  slot_category: dagger
+  stats:
+    str: 2
+    dex: 4
+  buy_price: 650
+  sell_price: 325
+  description: "A needle of a blade that finds the gaps in armor."
+
+- id: rapier
+  name: "Rapier"
+  type: weapon
+  slot_category: short_sword
+  stats:
+    str: 3
+    dex: 4
+  buy_price: 900
+  sell_price: 450
+  description: "A duelist's thrusting blade, quick on the recovery."
+
+- id: hunting_bow
+  name: "Hunting Bow"
+  type: weapon
+  slot_category: bow
+  stats:
+    str: 4
+    dex: 2
+  buy_price: 700
+  sell_price: 350
+  description: "A stout yew bow, strung for deer and worse."
+
+- id: composite_bow
+  name: "Composite Bow"
+  type: weapon
+  slot_category: bow
+  stats:
+    str: 6
+    dex: 3
+  buy_price: null
+  sell_price: 750
+  description: "Horn and sinew laminated over wood. It stores a great deal of draw."
+
+- id: yew_staff
+  name: "Yew Staff"
+  type: weapon
+  slot_category: staff
+  stats:
+    int: 3
+  buy_price: 450
+  sell_price: 225
+  description: "Dark yew, oiled smooth by long use. Thought pools in the grain."
+
+- id: flanged_mace
+  name: "Flanged Mace"
+  type: weapon
+  slot_category: mace
+  stats:
+    str: 5
+    int: 1
+  buy_price: 700
+  sell_price: 350
+  description: "Seven iron flanges around a blessed core."
+
+- id: willow_wand
+  name: "Willow Wand"
+  type: weapon
+  slot_category: wand
+  stats:
+    int: 3
+  buy_price: 350
+  sell_price: 175
+  description: "A peeled willow switch. It hums faintly near running water."
+
+- id: moonsilver_blade
+  name: "Moonsilver Blade"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 9
+    int: 2
+  buy_price: null
+  sell_price: 1100
+  description: "Silvered steel that stays cold in sunlight. It remembers the dead."
+
+- id: soulreaper_dirk
+  name: "Soulreaper Dirk"
+  type: weapon
+  slot_category: dagger
+  stats:
+    str: 3
+    dex: 5
+    int: 1
+  buy_price: null
+  sell_price: 1200
+  description: "A black-bladed dirk. The wounds it makes close slowly, and not kindly."
+
+- id: sage_scepter
+  name: "Sage's Scepter"
+  type: weapon
+  slot_category: rod
+  stats:
+    int: 8
+  buy_price: 2200
+  sell_price: 1100
+  description: "A rod of pale wood capped with a clouded crystal. The old ones used it to teach."
+
+- id: pilgrim_staff
+  name: "Pilgrim's Staff"
+  type: weapon
+  slot_category: staff
+  stats:
+    int: 5
+  buy_price: null
+  sell_price: 750
+  description: "A road-worn staff carved with the names of shrines. Every notch is a prayer."
+
+- id: halo_mace
+  name: "Halo Mace"
+  type: weapon
+  slot_category: mace
+  stats:
+    str: 6
+    int: 4
+  buy_price: 2000
+  sell_price: 1000
+  description: "A silver-ringed mace. The ring hangs a hand's breadth from the head and never touches it."
+
+- id: starfall_bow
+  name: "Starfall Bow"
+  type: weapon
+  slot_category: bow
+  stats:
+    str: 6
+    dex: 6
+  buy_price: null
+  sell_price: 1300
+  description: "A bow of dark horn flecked with points of light. Arrows loosed from it fall like stars."
+
+- id: oathkeeper
+  name: "Oathkeeper"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 12
+  buy_price: null
+  sell_price: 1600
+  description: "A plain soldier's sword, worn bright. It has kept one promise for forty years."
+
+- id: emberedge
+  name: "Emberedge"
+  type: weapon
+  slot_category: sword
+  stats:
+    str: 8
+  buy_price: null
+  sell_price: 950
+  description: "The edge glows like a banked coal. It is warm to hold and warmer to be struck by."
+
+- id: frostfang_axe
+  name: "Frostfang Axe"
+  type: weapon
+  slot_category: axe
+  stats:
+    str: 9
+  buy_price: 2000
+  sell_price: 1000
+  description: "A white-steel axe rimed with frost that never melts."
+
+- id: stormcaller_spear
+  name: "Stormcaller Spear"
+  type: weapon
+  slot_category: spear
+  stats:
+    str: 8
+    dex: 2
+  buy_price: null
+  sell_price: 1050
+  description: "Feathers are bound below the head. In wind, the shaft sings."
+
+- id: tidebreaker_hammer
+  name: "Tidebreaker Hammer"
+  type: weapon
+  slot_category: hammer
+  stats:
+    str: 10
+  buy_price: null
+  sell_price: 1150
+  description: "A hammer of salt-pitted bronze. Each blow lands like a wave on a seawall."
+
+- id: cinder_wand
+  name: "Cinder Wand"
+  type: weapon
+  slot_category: wand
+  stats:
+    int: 6
+  buy_price: 1500
+  sell_price: 750
+  description: "A charred twig that glows when it is angry."
+
+- id: glacier_rod
+  name: "Glacier Rod"
+  type: weapon
+  slot_category: rod
+  stats:
+    int: 7
+  buy_price: null
+  sell_price: 1150
+  description: "A rod of blue ice that does not melt in the hand. Breath fogs around it."
+
+- id: venomtongue_dagger
+  name: "Venomtongue Dagger"
+  type: weapon
+  slot_category: dagger
+  stats:
+    str: 2
+    dex: 4
+  buy_price: null
+  sell_price: 700
+  description: "Its green blade is grooved to carry a poison it never seems to run out of."

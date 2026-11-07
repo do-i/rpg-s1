@@ -898,8 +898,8 @@ mod tests {
         let armor = millhaven_interior_metadata("town_02_millhaven_shop_armor");
         let magic = millhaven_interior_metadata("town_02_millhaven_shop_mc");
         assert_eq!(shop.shop.as_ref().unwrap().items.len(), 5);
-        assert_eq!(weapon.weapon_shop.as_ref().unwrap().items.len(), 6);
-        assert_eq!(armor.armor_shop.as_ref().unwrap().items.len(), 6);
+        assert_eq!(weapon.weapon_shop.as_ref().unwrap().items.len(), 10);
+        assert_eq!(armor.armor_shop.as_ref().unwrap().items.len(), 9);
         assert!(shop.weapon_shop.is_none() && shop.armor_shop.is_none());
         let keepers = [
             (
@@ -1259,10 +1259,12 @@ mod tests {
                 ),
             ] {
                 let metadata = ruinwatch_metadata(map);
-                assert_eq!(
-                    observed_npcs(&metadata, &flags),
-                    [(keeper, position, dialogue)]
-                );
+                let mut expected = vec![(keeper, position, dialogue)];
+                if map == "town_03_ruinwatch_shop_weapon" {
+                    // The forge's smith works the back of the weapon shop.
+                    expected.push(("smith", Position::new(11, 4), "forge_ruinwatch"));
+                }
+                assert_eq!(observed_npcs(&metadata, &flags), expected);
             }
         }
     }

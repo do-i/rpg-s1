@@ -150,6 +150,8 @@ drops:
           weight: 50
         - item: phantom_veil
           weight: 30
+        - item: ghostweave_tunic
+          weight: 6
 ai:
   pattern: random
   moves:
@@ -228,6 +230,8 @@ drops:
           weight: 50
         - item: spirit_orb
           weight: 50
+        - item: soulreaper_dirk
+          weight: 5
 ai:
   pattern: random
   moves:
@@ -634,6 +638,8 @@ drops:
           weight: 50
         - item: royal_claw
           weight: 30
+        - item: veil_of_dusk
+          weight: 6
 ai:
   pattern: random
   moves:
@@ -836,6 +842,8 @@ drops:
           weight: 45
         - item: magma_core
           weight: 30
+        - item: ember_scale_vest
+          weight: 6
 ai:
   pattern: random
   moves:
@@ -880,6 +888,8 @@ drops:
           weight: 50
         - item: magma_core
           weight: 30
+        - item: pyre_crown
+          weight: 5
 ai:
   pattern: random
   moves:

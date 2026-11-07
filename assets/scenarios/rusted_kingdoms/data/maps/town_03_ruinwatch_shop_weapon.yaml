@@ -14,6 +14,17 @@ npcs:
       mode: step
       speed: 0.7
 
+  - id: smith
+    name: Brannoch
+    dialogue: forge_ruinwatch
+    position: [11, 4]
+    sprite: media/sprites/npc/male_old_02.tsx
+    default_facing: down
+    interaction_range: 2.5
+    animation:
+      mode: step
+      speed: 0.5
+
 weapon_shop:
   items:
     - id: silver_wand
@@ -28,3 +39,9 @@ weapon_shop:
     - id: steel_axe
       buy_price: 400
       unlock_flag: story_act3_started
+    - id: stiletto
+      buy_price: 650
+      unlock_flag: story_act2_started
+    - id: flanged_mace
+      buy_price: 700
+      unlock_flag: story_act2_started

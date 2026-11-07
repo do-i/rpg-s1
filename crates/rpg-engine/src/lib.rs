@@ -22,6 +22,7 @@ mod encounter_sweep;
 mod engine_settings;
 mod field_menu;
 mod field_menu_domain;
+mod forge;
 mod frame_pacing;
 mod frame_timing;
 mod game_over;

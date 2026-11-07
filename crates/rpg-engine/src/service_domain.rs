@@ -48,6 +48,8 @@ pub(crate) enum ServiceError {
     NotSellable,
     WrongCore,
     NotExchangeable,
+    NotEnhanceable,
+    MissingMaterial,
     Recipe(RecipeAvailability),
     Repository(String),
 }
@@ -64,6 +66,8 @@ impl fmt::Display for ServiceError {
             Self::NotSellable => formatter.write_str("That cannot be sold."),
             Self::WrongCore => formatter.write_str("That is not a magic core."),
             Self::NotExchangeable => formatter.write_str("That core is reserved for crafting."),
+            Self::NotEnhanceable => formatter.write_str("The smith can do no more for that."),
+            Self::MissingMaterial => formatter.write_str("You lack the material."),
             Self::Recipe(state) => fmt::Display::fmt(state, formatter),
             Self::Repository(error) => formatter.write_str(error),
         }
@@ -343,7 +347,7 @@ fn require_quantity(quantity: u32) -> Result<(), ServiceError> {
         .ok_or(ServiceError::ZeroQuantity)
 }
 
-fn repository_error(error: impl ToString) -> ServiceError {
+pub(crate) fn repository_error(error: impl ToString) -> ServiceError {
     ServiceError::Repository(error.to_string())
 }
 

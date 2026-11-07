@@ -1083,14 +1083,14 @@ mod tests {
         files.sort();
 
         let expected_file_counts = [
-            ("accessories.yaml", 10),
-            ("body.yaml", 13),
+            ("accessories.yaml", 18),
+            ("body.yaml", 28),
             ("consumables_battle_throw.yaml", 5),
             ("consumables_field.yaml", 4),
             ("consumables_recovery.yaml", 7),
             ("consumables_status_cure.yaml", 4),
             ("field_use.yaml", 14),
-            ("helmets.yaml", 8),
+            ("helmets.yaml", 15),
             ("key_items.yaml", 2),
             ("magic_cores.yaml", 5),
             ("materials.yaml", 120),
@@ -1098,8 +1098,8 @@ mod tests {
             // dangling enemy-drop ids the source shipped pointing at nothing.
             ("migration_endgame_drops.yaml", 3),
             ("migration_zone1_drops.yaml", 4),
-            ("shields.yaml", 8),
-            ("weapons.yaml", 23),
+            ("shields.yaml", 12),
+            ("weapons.yaml", 51),
         ];
         let mut observed_file_counts = Vec::new();
         let mut metadata_count = 0;
@@ -1164,9 +1164,9 @@ mod tests {
 
         assert_eq!(files.len(), 15);
         assert_eq!(observed_file_counts, expected_file_counts);
-        assert_eq!(metadata_count, 216);
+        assert_eq!(metadata_count, 278);
         assert_eq!(field_use_count, 14);
-        assert_eq!(item_types, [20, 127, 2, 5, 23, 8, 8, 13, 10]);
+        assert_eq!(item_types, [20, 127, 2, 5, 51, 12, 15, 28, 18]);
         assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4, 1]);
         assert_eq!(field_effects, [2, 2, 3, 4, 3]);
     }

@@ -684,6 +684,9 @@ fn write_dialogue_entry(output: &mut impl Write, entry: &DialogueReportEntry) ->
         if effects.open_apothecary {
             parts.push("open_apothecary".to_owned());
         }
+        if effects.open_forge {
+            parts.push("open_forge".to_owned());
+        }
         writeln!(output, "      effects: {}", parts.join("; "))?;
     }
     Ok(())

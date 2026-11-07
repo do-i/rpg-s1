@@ -32,3 +32,15 @@ weapon_shop:
     - id: silver_wand
       buy_price: 300
       unlock_flag: story_act2_started
+    - id: falchion
+      buy_price: 600
+      unlock_flag: story_act2_started
+    - id: hunting_bow
+      buy_price: 700
+      unlock_flag: story_act2_started
+    - id: yew_staff
+      buy_price: 450
+      unlock_flag: story_act2_started
+    - id: willow_wand
+      buy_price: 350
+      unlock_flag: story_quest_started

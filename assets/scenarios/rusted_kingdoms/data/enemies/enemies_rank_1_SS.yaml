@@ -111,6 +111,8 @@ drops:
           weight: 45
         - item: wraith_cloth
           weight: 30
+        - item: moonsilver_blade
+          weight: 5
 ai:
   pattern: random
   moves:
@@ -199,6 +201,8 @@ drops:
           weight: 50
         - item: wraith_cloth
           weight: 30
+        - item: starfall_bow
+          weight: 5
 ai:
   pattern: random
   moves:

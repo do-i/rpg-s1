@@ -170,6 +170,8 @@ drops:
           weight: 30
         - item: ectoplasm
           weight: 30
+        - item: ward_buckler
+          weight: 8
 ai:
   pattern: random
   moves:
