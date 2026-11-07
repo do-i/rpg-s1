@@ -321,12 +321,12 @@ fn loot_and_level_up_screens_show_their_own_reward_details() {
     for expected in [
         "LEVEL UP!",
         "Aric",
-        "1",
-        "2",
+        "Lv1",
+        "Lv2",
         "Max HP",
         "+6",
         "28",
-        "Intelligence",
+        "Intelligence (INT)",
         "+0",
         "5",
         "Power Strike",
@@ -1014,13 +1014,12 @@ fn level_up_uses_arrow_icons_and_gives_every_ability_an_icon_slot() {
             .count(),
         rewards.members[0].learned_abilities.len()
     );
-    assert!(
-        !world
-            .query::<&Node>()
-            .iter(world)
-            .any(|node| node.overflow.x == OverflowAxis::Scroll
-                || node.overflow.y == OverflowAxis::Scroll)
-    );
+    // Abilities sit in the standard reward scroll frame; a short list fits without scrolling.
+    let node = world
+        .query_filtered::<&ComputedNode, With<scroll::RewardScrollList>>()
+        .single(world)
+        .unwrap();
+    assert_eq!(scroll::max_scroll(node), 0.0);
 }
 
 #[test]
