@@ -194,7 +194,7 @@
 - id: scale_hauberk
   name: "Scale Hauberk"
   type: body
-  slot_category: heavy_armor
+  slot_category: fine_mail
   gender: female
   stats:
     con: 5

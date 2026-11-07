@@ -1185,7 +1185,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0110 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_7_E.yaml` | `db08fd9880ca69551f75a88f5548535d4d8fd1544b9b8e5818c350e84ad3e2d6` | scenario YAML / enemies_rank_7_E.yaml |
 | ALI-0111 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/enemies/enemies_rank_8_F.yaml` | `09d277f1d69e1cde6dfc27d693bf729fccc063087b2c902f588e42be4b65c483` | scenario YAML / rank F enemies |
 | ALI-0089 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/accessories.yaml` | `cd790c29eb64df3308e55296ec64b342b415c2f52932b121af770ae3973b9b8f` | scenario YAML / accessories.yaml |
-| ALI-0090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/body.yaml` | `0f69c7791cc829d9c843ee7a19221aeadd9c775a831ad30ba399693a9993580f` | scenario YAML / body.yaml |
+| ALI-0090 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/body.yaml` | `4d3b88113622887b680453315a032998a7ab7e87954c8d36d0422c46d7678e09` | scenario YAML / body.yaml |
 | ALI-0091 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_battle_throw.yaml` | `826653fe830c7fb6c739aae5088aee80dcd5b1942daa577916d4370fd43d577d` | scenario YAML / battle consumables |
 | ALI-0092 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_field.yaml` | `c559775d03ce8139e0747b6505e82d531b165a3ddc23c3bc188c04d3cfa94461` | scenario YAML / field consumables |
 | ALI-0093 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/items/consumables_recovery.yaml` | `d4599ecf0f21e871812b94af9b6b881a875dac7857c1509fe9497ed3808d5668` | scenario YAML / consumables_recovery.yaml |

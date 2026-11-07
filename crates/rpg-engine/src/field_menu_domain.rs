@@ -1680,6 +1680,39 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn every_authored_equipment_piece_fits_at_least_one_party_member() {
+        let catalog = catalog_with_party_genders();
+        let party_source: PartyCatalog =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/party.yaml"))).unwrap();
+        let balance: BalanceData =
+            scenario_yaml::from_str(include_str!(scenario_file!("data/balance.yaml"))).unwrap();
+        let members: Vec<RuntimeMember> = party_source
+            .party
+            .iter()
+            .map(|source| {
+                RuntimeMember::try_from_catalog(
+                    source,
+                    &crate::runtime_member::test_class_of(source),
+                    &balance.progression,
+                )
+                .unwrap()
+            })
+            .collect();
+        assert_eq!(members.len(), 5);
+        let orphans: Vec<&str> = catalog
+            .ordered_items()
+            .filter(|item| is_equipment(item) && crate::forge::parse_id(item.id()).is_none())
+            .filter(|item| {
+                !members
+                    .iter()
+                    .any(|member| can_equip(member, item, &catalog).is_ok())
+            })
+            .map(ItemDefinition::id)
+            .collect();
+        assert!(orphans.is_empty(), "no party member can wear {orphans:?}");
+    }
+
+    #[test]
     fn gendered_body_armor_only_fits_the_matching_member() {
         let mut catalog = catalog_with_party_genders();
         let mut game = game([]);
