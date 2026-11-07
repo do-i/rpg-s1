@@ -106,6 +106,11 @@ pub(super) fn sync_service_overlay(
     } else {
         shop::Portraits::default()
     };
+    let slot_icons = if is_forge(&state) {
+        forge::SlotIcons::load(&asset_server, &root)
+    } else {
+        forge::SlotIcons::default()
+    };
 
     commands
         .spawn((
@@ -215,7 +220,7 @@ pub(super) fn sync_service_overlay(
                         }
                     } else if is_forge(&state) {
                         forge::spawn_header(panel, &font, &game, face);
-                        forge::spawn_page(panel, &font, &state, &catalog, &game);
+                        forge::spawn_page(panel, &font, &state, &catalog, &game, &slot_icons);
                         forge::spawn_footer(panel, &font, &state);
                     } else if is_apothecary(&state) {
                         apothecary::spawn_header(panel, &font, &game, face);
@@ -434,7 +439,14 @@ fn spawn_service_body(
             apothecary::spawn_page(parent, font, state, catalog, game);
         }
         Some(ServicePage::Forge | ServicePage::ForgeConfirm) => {
-            forge::spawn_page(parent, font, state, catalog, game);
+            forge::spawn_page(
+                parent,
+                font,
+                state,
+                catalog,
+                game,
+                &forge::SlotIcons::default(),
+            );
         }
         Some(ServicePage::Equip) => spawn_equip_page(parent, font, state, catalog, game),
         Some(ServicePage::Result) => {

@@ -1,7 +1,8 @@
 //! The forge workspace: equipment types, the pieces of that type, and the selected quote.
 //!
 //! Three columns in the field menu's item-page arrangement. The right column is the piece at
-//! full icon size over two stacked frames: what the strike costs, and what it buys.
+//! full icon size over a conversion: what goes into the strike, an arrow, and what comes out.
+//! It stays empty until the piece list holds focus.
 
 use super::*;
 use crate::{
@@ -9,13 +10,41 @@ use crate::{
         ForgeKind, ForgeQuote, ForgeType, forgeable_of, parse_id, primary_stat, quote, tempering,
     },
     item_images::{ITEM_IMAGE_SIZE, ItemIcon},
+    scenario_path::ScenarioRelativePath,
     service_ui::forge::rows,
 };
 
-const TYPE_WIDTH: f32 = 250.0;
-const DETAIL_WIDTH: f32 = 440.0;
-const VISIBLE_ROWS: usize = 8;
-const CARD_HEIGHT: f32 = 58.0;
+const TYPE_WIDTH: f32 = 180.0;
+const DETAIL_WIDTH: f32 = 600.0;
+const VISIBLE_ROWS: usize = 5;
+const CARD_HEIGHT: f32 = 80.0;
+const SLOT_ICON_SIZE: f32 = 44.0;
+
+/// The equipment-slot artwork drawn on each type card, in [`ForgeType::ALL`] order.
+#[derive(Default)]
+pub(super) struct SlotIcons(Vec<Option<Handle<Image>>>);
+
+impl SlotIcons {
+    pub(super) fn load(server: &AssetServer, root: &ScenarioRoot) -> Self {
+        Self(
+            ForgeType::ALL
+                .into_iter()
+                .map(|kind| {
+                    let path = ScenarioRelativePath::try_from(format!(
+                        "media/images/icons/slots/{}.png",
+                        kind.label().to_lowercase()
+                    ))
+                    .ok()?;
+                    Some(server.load(root.resolve(&path)))
+                })
+                .collect(),
+        )
+    }
+
+    fn get(&self, index: usize) -> Option<&Handle<Image>> {
+        self.0.get(index).and_then(Option::as_ref)
+    }
+}
 
 /// The price of a strike is a loss, so it never wears the gold of a reward.
 fn cost_color() -> Color {
@@ -99,6 +128,7 @@ pub(super) fn spawn_page(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    icons: &SlotIcons,
 ) {
     let listed = rows(state, catalog, game);
     let selected = state.selected.min(listed.len().saturating_sub(1));
@@ -115,11 +145,18 @@ pub(super) fn spawn_page(
             Name::new("Forge workspace"),
         ))
         .with_children(|columns| {
-            spawn_types(columns, font, state, catalog, game, !in_list);
+            spawn_types(columns, font, state, catalog, game, icons, !in_list);
             spawn_pieces(
                 columns, font, state, catalog, game, &listed, selected, in_list,
             );
-            spawn_detail(columns, font, state, catalog, game, listed.get(selected));
+            spawn_detail(
+                columns,
+                font,
+                state,
+                catalog,
+                game,
+                listed.get(selected).filter(|_| in_list),
+            );
         });
 }
 
@@ -191,6 +228,7 @@ fn spawn_types(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    icons: &SlotIcons,
     focused: bool,
 ) {
     spawn_panel(
@@ -205,11 +243,14 @@ fn spawn_types(
         font,
         focused,
         |panel| {
+            // The five types always fit, so the cards share the column's full height.
             panel
                 .spawn(Node {
                     width: percent(100),
+                    flex_grow: 1.0,
+                    min_height: px(0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(7),
+                    row_gap: px(8),
                     ..default()
                 })
                 .with_children(|list| {
@@ -219,18 +260,25 @@ fn spawn_types(
                         list.spawn((
                             Node {
                                 width: percent(100),
-                                height: px(48),
+                                flex_grow: 1.0,
+                                flex_basis: px(0),
+                                min_height: px(0),
                                 align_items: AlignItems::Center,
+                                column_gap: px(8),
                                 padding: UiRect::horizontal(px(12)),
                                 border: UiRect::all(px(if current { 2 } else { 1 })),
                                 border_radius: BorderRadius::all(px(4)),
                                 ..default()
                             },
                             selectable_card_colors(current),
+                            Name::new(format!("Forge type: {}", kind.label())),
                         ))
                         .with_children(|row| {
                             row.spawn(Node {
                                 flex_grow: 1.0,
+                                min_width: px(0),
+                                flex_direction: FlexDirection::Column,
+                                row_gap: px(5),
                                 ..default()
                             })
                             .with_children(|label| {
@@ -238,15 +286,41 @@ fn spawn_types(
                                     label,
                                     kind.label(),
                                     font,
-                                    17.0,
+                                    18.0,
                                     if count == 0 {
                                         status_faint()
                                     } else {
                                         status_ink()
                                     },
                                 );
+                                spawn_status_text(
+                                    label,
+                                    format!("x{count}"),
+                                    font,
+                                    17.0,
+                                    if count == 0 {
+                                        status_faint()
+                                    } else {
+                                        status_muted()
+                                    },
+                                );
                             });
-                            spawn_status_text(row, count.to_string(), font, 14.0, status_muted());
+                            let mut icon = row.spawn(Node {
+                                width: px(SLOT_ICON_SIZE),
+                                height: px(SLOT_ICON_SIZE),
+                                flex_shrink: 0.0,
+                                ..default()
+                            });
+                            if let Some(image) = icons.get(index) {
+                                icon.insert(ImageNode {
+                                    color: Color::WHITE.with_alpha(if count == 0 {
+                                        0.35
+                                    } else {
+                                        0.9
+                                    }),
+                                    ..ImageNode::new(image.clone())
+                                });
+                            }
                         });
                     }
                 });
@@ -309,7 +383,7 @@ fn spawn_pieces(
                     flex_direction: FlexDirection::Column,
                     flex_grow: 1.0,
                     min_height: px(0),
-                    row_gap: px(6),
+                    row_gap: px(8),
                     ..default()
                 },
                 |cards| {
@@ -326,7 +400,8 @@ fn spawn_pieces(
                                     height: px(CARD_HEIGHT),
                                     flex_shrink: 0.0,
                                     align_items: AlignItems::Center,
-                                    padding: UiRect::horizontal(px(9)),
+                                    column_gap: px(12),
+                                    padding: UiRect::horizontal(px(10)),
                                     border: UiRect::all(px(if current { 2 } else { 1 })),
                                     border_radius: BorderRadius::all(px(4)),
                                     ..default()
@@ -334,42 +409,49 @@ fn spawn_pieces(
                                 selectable_card_colors(current),
                             ))
                             .with_children(|row| {
-                                spawn_gear_icon(row, font, id, 44.0, 11.0);
+                                spawn_gear_icon(row, font, id, 56.0, 13.0);
                                 row.spawn(Node {
                                     flex_grow: 1.0,
-                                    margin: UiRect::left(px(10)),
+                                    min_width: px(0),
+                                    flex_direction: FlexDirection::Column,
+                                    row_gap: px(6),
                                     ..default()
                                 })
-                                .with_children(|name| {
+                                .with_children(|text| {
                                     spawn_status_text(
-                                        name,
+                                        text,
                                         item_name(item),
                                         font,
-                                        16.0,
+                                        17.0,
                                         status_ink(),
                                     );
-                                });
-                                if let Some((level, top)) = tempering(catalog, id) {
-                                    let (label, color) = if level >= top {
-                                        ("MAX".to_owned(), status_ready())
-                                    } else {
-                                        (format!("+{level}/{top}"), status_faint())
-                                    };
-                                    row.spawn(Node {
-                                        margin: UiRect::right(px(10)),
+                                    text.spawn(Node {
+                                        align_items: AlignItems::Baseline,
+                                        column_gap: px(14),
                                         ..default()
                                     })
-                                    .with_children(|cap| {
-                                        spawn_status_text(cap, label, font, 12.0, color);
-                                    });
-                                }
-                                spawn_status_text(
-                                    row,
-                                    format!("x{}", game.repository().item_count(id)),
-                                    font,
-                                    14.0,
-                                    status_muted(),
-                                );
+                                    .with_children(
+                                        |numbers| {
+                                            spawn_status_text(
+                                                numbers,
+                                                format!("x{}", game.repository().item_count(id)),
+                                                font,
+                                                17.0,
+                                                status_muted(),
+                                            );
+                                            if let Some((level, top)) = tempering(catalog, id) {
+                                                let (label, color) = if level >= top {
+                                                    ("MAX".to_owned(), status_ready())
+                                                } else {
+                                                    (format!("+{level} / +{top}"), status_faint())
+                                                };
+                                                spawn_status_text(
+                                                    numbers, label, font, 16.0, color,
+                                                );
+                                            }
+                                        },
+                                    );
+                                });
                             });
                     }
                 },
@@ -522,76 +604,77 @@ fn spawn_detail(
                 }
                 return;
             };
-            spawn_cost(panel, font, catalog, game, &quote);
-            spawn_benefit(panel, font, catalog, item, &quote);
+            panel
+                .spawn((
+                    Node {
+                        width: percent(100),
+                        flex_grow: 1.0,
+                        min_height: px(0),
+                        column_gap: px(10),
+                        ..default()
+                    },
+                    Name::new("Forge conversion"),
+                ))
+                .with_children(|row| {
+                    spawn_offering(row, font, catalog, game, &quote);
+                    spawn_conversion_arrow(row);
+                    spawn_result(row, font, catalog, item, &quote);
+                });
+            let note = match (quote.kind, quote.odds) {
+                (ForgeKind::Enhance, Some(odds)) => format!(
+                    "Great {}%    Tempered {}%    Fizzle {}%    Crack {}%",
+                    odds.great, odds.success, odds.fizzle, odds.backfire
+                ),
+                _ => "A mend always holds.".to_owned(),
+            };
+            spawn_status_text(panel, note, font, 14.0, status_muted());
         },
     );
 }
 
+/// One side of the conversion: half the row, full height.
 fn frame_node() -> Node {
     Node {
-        width: percent(100),
         flex_grow: 1.0,
         flex_basis: px(0),
-        min_height: px(0),
+        min_width: px(0),
         flex_direction: FlexDirection::Column,
-        row_gap: px(7),
-        padding: UiRect::all(px(12)),
+        row_gap: px(10),
+        padding: UiRect::all(px(14)),
         border: UiRect::all(px(1)),
         border_radius: BorderRadius::all(px(5)),
         ..default()
     }
 }
 
-fn spawn_cost(
+/// What goes into the strike: the smith's fee and the material.
+fn spawn_offering(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     catalog: &FieldMenuCatalog,
     game: &GameState,
     quote: &ForgeQuote,
 ) {
-    let gp = game.repository().gp();
-    let short = gp < quote.gp;
-    spawn_status_panel(parent, frame_node(), "COST", font, |panel| {
-        panel
-            .spawn(Node {
-                align_items: AlignItems::Baseline,
-                column_gap: px(8),
-                ..default()
-            })
-            .with_children(|row| {
-                spawn_status_text(
-                    row,
-                    format!("{} GP", format_shop_number(quote.gp)),
-                    font,
-                    26.0,
-                    if short {
-                        shortfall_color()
-                    } else {
-                        cost_color()
-                    },
-                );
-                spawn_status_text(
-                    row,
-                    if short {
-                        "NOT ENOUGH GP".to_owned()
-                    } else {
-                        format!("you hold {}", format_shop_number(gp))
-                    },
-                    font,
-                    12.0,
-                    if short {
-                        shortfall_color()
-                    } else {
-                        status_muted()
-                    },
-                );
-            });
+    let short = game.repository().gp() < quote.gp;
+    spawn_status_panel(parent, frame_node(), "YOU GIVE", font, |panel| {
+        spawn_status_text(
+            panel,
+            format!("{} GP", format_shop_number(quote.gp)),
+            font,
+            26.0,
+            if short {
+                shortfall_color()
+            } else {
+                cost_color()
+            },
+        );
+        if short {
+            spawn_status_text(panel, "NOT ENOUGH GP", font, 12.0, shortfall_color());
+        }
         match quote.material {
             Some((material, count)) => {
                 let have = game.repository().item_count(material);
                 let name = catalog.item(material).map_or(material, item_name);
-                let enough = have >= count;
                 panel
                     .spawn(Node {
                         align_items: AlignItems::Center,
@@ -599,30 +682,80 @@ fn spawn_cost(
                         ..default()
                     })
                     .with_children(|row| {
-                        spawn_gear_icon(row, font, material, 40.0, 11.0);
-                        spawn_status_text(
-                            row,
-                            format!("{name}  x{count}"),
-                            font,
-                            17.0,
-                            status_ink(),
-                        );
-                        spawn_status_text(
-                            row,
-                            format!("have {have}"),
-                            font,
-                            13.0,
-                            if enough {
-                                status_muted()
-                            } else {
-                                shortfall_color()
-                            },
-                        );
+                        spawn_gear_icon(row, font, material, 44.0, 11.0);
+                        row.spawn(Node {
+                            min_width: px(0),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(4),
+                            ..default()
+                        })
+                        .with_children(|text| {
+                            spawn_status_text(
+                                text,
+                                format!("{name}  x{count}"),
+                                font,
+                                17.0,
+                                status_ink(),
+                            );
+                            spawn_status_text(
+                                text,
+                                format!("have {have}"),
+                                font,
+                                14.0,
+                                if have >= count {
+                                    status_muted()
+                                } else {
+                                    shortfall_color()
+                                },
+                            );
+                        });
                     });
             }
-            None => spawn_status_text(panel, "No material needed.", font, 14.0, status_muted()),
+            None => spawn_status_text(panel, "No material needed.", font, 15.0, status_muted()),
         }
     });
+}
+
+/// A right-pointing arrow between the two frames: what goes in becomes what comes out.
+fn spawn_conversion_arrow(parent: &mut ChildSpawnerCommands<'_>) {
+    let color = status_gold();
+    parent
+        .spawn((
+            Node {
+                width: px(40),
+                flex_shrink: 0.0,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            Name::new("Forge conversion arrow"),
+        ))
+        .with_children(|slot| {
+            slot.spawn((
+                Node {
+                    width: px(32),
+                    height: px(4),
+                    ..default()
+                },
+                BackgroundColor(color),
+            ))
+            .with_children(|shaft| {
+                for (offset, rotation) in [(-5.0, 45.0), (5.0, -45.0)] {
+                    shaft.spawn((
+                        Node {
+                            position_type: PositionType::Absolute,
+                            right: px(-2),
+                            top: px(offset),
+                            width: px(16),
+                            height: px(4),
+                            ..default()
+                        },
+                        BackgroundColor(color),
+                        UiTransform::from_rotation(Rot2::degrees(rotation)),
+                    ));
+                }
+            });
+        });
 }
 
 /// `from  >  to`, the old value small and dim and the new one large and bright.
@@ -641,13 +774,14 @@ fn spawn_diff(
             ..default()
         })
         .with_children(|row| {
-            spawn_status_text(row, from, font, 14.0, status_muted());
-            spawn_status_text(row, ">", font, 14.0, status_faint());
+            spawn_status_text(row, from, font, 15.0, status_muted());
+            spawn_status_text(row, ">", font, 15.0, status_faint());
             spawn_status_text(row, to, font, to_size, status_ready());
         });
 }
 
-fn spawn_benefit(
+/// What comes out: the tempered (or mended) piece and the stat it raises.
+fn spawn_result(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     catalog: &FieldMenuCatalog,
@@ -655,42 +789,42 @@ fn spawn_benefit(
     quote: &ForgeQuote,
 ) {
     let to = catalog.item(&quote.target_id);
-    spawn_status_panel(parent, frame_node(), "BENEFIT", font, |panel| {
-        if let Some(to) = to {
-            spawn_diff(panel, font, item_name(from), item_name(to), 20.0);
-            if let (Some((label, now)), Some((_, next))) = (primary_stat(from), primary_stat(to)) {
-                spawn_diff(
-                    panel,
-                    font,
-                    &format!("{label} {now}"),
-                    &format!("{label} {next}"),
-                    26.0,
-                );
-            }
+    spawn_status_panel(parent, frame_node(), "YOU GET", font, |panel| {
+        let Some(to) = to else { return };
+        panel
+            .spawn(Node {
+                align_items: AlignItems::Center,
+                column_gap: px(10),
+                ..default()
+            })
+            .with_children(|row| {
+                spawn_gear_icon(row, font, &quote.target_id, 44.0, 11.0);
+                row.spawn(Node {
+                    min_width: px(0),
+                    flex_grow: 1.0,
+                    ..default()
+                })
+                .with_children(|name| {
+                    spawn_status_text(name, item_name(to), font, 18.0, status_ready());
+                });
+            });
+        if let (Some((label, now)), Some((_, next))) = (primary_stat(from), primary_stat(to)) {
+            spawn_diff(
+                panel,
+                font,
+                &format!("{label} {now}"),
+                &format!("{label} {next}"),
+                28.0,
+            );
         }
-        match (quote.kind, quote.odds) {
-            (ForgeKind::Mend, _) => {
-                spawn_status_text(
-                    panel,
-                    "Seals the crack and restores the stat.",
-                    font,
-                    13.0,
-                    status_muted(),
-                );
-            }
-            (ForgeKind::Enhance, Some(odds)) => {
-                spawn_status_text(
-                    panel,
-                    format!(
-                        "Great {}%  Tempered {}%  Fizzle {}%  Crack {}%",
-                        odds.great, odds.success, odds.fizzle, odds.backfire
-                    ),
-                    font,
-                    12.0,
-                    status_muted(),
-                );
-            }
-            _ => {}
+        if quote.kind == ForgeKind::Mend {
+            spawn_status_text(
+                panel,
+                "Seals the crack and restores the stat.",
+                font,
+                14.0,
+                status_muted(),
+            );
         }
     });
 }
@@ -718,4 +852,57 @@ pub(super) fn spawn_footer(
         })
         .with_children(|footer| spawn_status_text(footer, hint, font, 12.0, status_muted()));
     spawn_toast(parent, font, state);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field_menu_domain::tests::{catalog, game};
+
+    fn texts(in_list: bool) -> Vec<String> {
+        let catalog = catalog();
+        let mut game = game([]);
+        let repo = game.repository_mut();
+        let _ = repo.add_gp(2_000).unwrap();
+        let _ = repo.add_item("iron_sword", 1).unwrap();
+        let _ = repo.add_item("iron_plate", 1).unwrap();
+        let mut state = ServiceUiState::default();
+        state.open(ServiceRequest::Forge, None);
+        state.forge_in_list = in_list;
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_page(
+                    root,
+                    &Handle::default(),
+                    &state,
+                    &catalog,
+                    &game,
+                    &SlotIcons::default(),
+                );
+            });
+        app.update();
+        let world = app.world_mut();
+        world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect()
+    }
+
+    #[test]
+    fn the_detail_waits_for_the_piece_list_then_shows_give_and_get() {
+        let browsing = texts(false);
+        assert!(browsing.iter().any(|t| t == "Weapon"));
+        assert!(!browsing.iter().any(|t| t == "YOU GIVE" || t == "YOU GET"));
+
+        let picking = texts(true);
+        for label in ["YOU GIVE", "YOU GET", "87 GP", "Iron Sword +1", "+0 / +5"] {
+            assert!(picking.iter().any(|t| t == label), "{label}: {picking:?}");
+        }
+        assert!(!picking.iter().any(|t| t.starts_with("you hold")));
+    }
 }
