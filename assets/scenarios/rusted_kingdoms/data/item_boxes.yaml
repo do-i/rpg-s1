@@ -17,6 +17,8 @@ item_boxes:
       items:
         - id: potion
           qty: 2
+        - id: iron_plate
+          qty: 1
   forest_chest_03:
     loot:
       items:
@@ -70,6 +72,8 @@ item_boxes:
     loot:
       items:
         - id: antidote
+          qty: 2
+        - id: iron_plate
           qty: 2
       magic_cores:
         - size: s

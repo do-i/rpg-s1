@@ -25,6 +25,8 @@ drops:
           weight: 55
         - item: rusty_blade
           weight: 45
+        - item: iron_plate
+          weight: 20
 ai:
   pattern: random
   moves:

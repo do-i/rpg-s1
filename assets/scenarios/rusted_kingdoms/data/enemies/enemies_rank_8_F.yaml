@@ -60,6 +60,8 @@ drops:
           weight: 60
         - item: goblin_shield
           weight: 40
+        - item: iron_plate
+          weight: 15
 ai:
   pattern: random
   moves:

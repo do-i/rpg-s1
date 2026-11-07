@@ -101,6 +101,8 @@ drops:
           weight: 55
         - item: soft_fur
           weight: 45
+        - item: iron_plate
+          weight: 20
 ai:
   pattern: random
   moves:
