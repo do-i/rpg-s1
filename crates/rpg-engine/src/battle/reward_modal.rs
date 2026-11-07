@@ -6,7 +6,6 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 
 mod level;
 mod scroll;
-pub(super) use level::handle_ability_pages;
 use level::spawn_level_up_modal;
 pub(super) use scroll::{handle_reward_scroll, update_reward_scroll_chrome};
 
@@ -28,8 +27,9 @@ use crate::{
 };
 
 const LOOT_MODAL_WIDTH: f32 = 1020.0;
-const LOOT_ICON_SIZE: f32 = 104.0;
-const LOOT_CARD_HEIGHT: f32 = 122.0;
+const LOOT_ICON_SIZE: f32 = 54.0;
+// Five cards and four 8px gaps fit the viewport's 362px inner height.
+const LOOT_CARD_HEIGHT: f32 = 66.0;
 const LOOT_VIEW_HEIGHT: f32 = 380.0;
 const PARTY_COLUMN_WIDTH: f32 = 340.0;
 const MODAL_Z: i32 = 300;
@@ -655,12 +655,12 @@ fn spawn_loot_section(
                     height: px(LOOT_CARD_HEIGHT),
                     flex_shrink: 0.0,
                     align_items: AlignItems::Center,
-                    column_gap: px(18),
+                    column_gap: px(12),
                     padding: UiRect {
                         left: px(8),
-                        right: px(16),
-                        top: px(8),
-                        bottom: px(8),
+                        right: px(12),
+                        top: px(5),
+                        bottom: px(5),
                     },
                     border: UiRect::all(px(1)),
                     border_radius: BorderRadius::all(px(6)),
@@ -685,7 +685,7 @@ fn spawn_loot_section(
                     flex_basis: px(0),
                     min_width: px(0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(9),
+                    row_gap: px(3),
                     ..default()
                 })
                 .with_children(|info| {
@@ -717,7 +717,7 @@ fn spawn_loot_section(
                 card.spawn((
                     Node {
                         min_width: px(52),
-                        padding: UiRect::all(px(9)),
+                        padding: UiRect::all(px(6)),
                         border: UiRect::all(px(1)),
                         border_radius: BorderRadius::all(px(5)),
                         justify_content: JustifyContent::Center,
@@ -731,7 +731,7 @@ fn spawn_loot_section(
                         qty,
                         format!("x{}", loot.quantity),
                         font,
-                        25.0,
+                        22.0,
                         battle_gold(),
                         Justify::Center,
                     );

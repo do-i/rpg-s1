@@ -142,7 +142,6 @@ impl Plugin for BattlePlugin {
                     sync_enemy_meters,
                     super::reward_modal::sync_reward_modal,
                     super::reward_modal::handle_reward_scroll,
-                    super::reward_modal::handle_ability_pages,
                 )
                     .chain()
                     .run_if(in_state(AppState::Battle)),
@@ -2670,6 +2669,10 @@ fn sync_battle_message(
     for line in &lines {
         if let Some(record) = record.as_deref_mut() {
             record.push(line.clone());
+        }
+        // Let the reward modals reveal the spoils; retain the details for the field Battle Log.
+        if line.kind == LogKind::Reward {
+            continue;
         }
         if let (Ok((list, mut scroll)), Some(assets)) = (lists.single_mut(), assets.as_deref()) {
             commands.entity(list).with_children(|list| {

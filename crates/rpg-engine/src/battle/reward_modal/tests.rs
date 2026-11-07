@@ -391,7 +391,7 @@ fn layout_app() -> (App, Handle<Font>) {
     ))
     .init_asset::<TextureAtlasLayout>()
     .init_resource::<crate::action_input::ActionState>()
-    .add_systems(Update, (handle_reward_scroll, handle_ability_pages))
+    .add_systems(Update, handle_reward_scroll)
     .add_systems(
         PostUpdate,
         update_reward_scroll_chrome.after(bevy::ui::UiSystems::Layout),
@@ -557,17 +557,13 @@ fn assert_layout_fits(app: &mut App) -> (Rect, Vec2) {
 #[test]
 fn loot_scroll_clamps_highlights_overflow_and_keeps_party_and_continue_fixed() {
     let (mut app, font) = layout_app();
-    spawn_layout(
-        &mut app,
-        &font,
-        &full_reward_fixture(),
-        BattleRewardScreen::Loot,
-    );
-    let list = app
+    let mut rewards = full_reward_fixture();
+    rewards.loot.push(rewards.loot[0].clone());
+    spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::Loot);
+    let mut lists = app
         .world_mut()
-        .query_filtered::<Entity, With<scroll::RewardScrollList>>()
-        .single(app.world())
-        .unwrap();
+        .query_filtered::<Entity, With<scroll::RewardScrollList>>();
+    let list = lists.single(app.world()).unwrap();
     let maximum = scroll::max_scroll(app.world().get::<ComputedNode>(list).unwrap());
     assert!(maximum > 0.0);
     let fixed_positions = |world: &mut World| {
@@ -632,6 +628,23 @@ fn loot_scroll_clamps_highlights_overflow_and_keeps_party_and_continue_fixed() {
         .unwrap()
         .translation;
     assert!(center.y + node.size().y * 0.5 <= viewport_center.y + viewport.size().y * 0.5 + 0.5);
+}
+
+#[test]
+fn five_loot_cards_fit_without_scrolling() {
+    let (mut app, font) = layout_app();
+    spawn_layout(
+        &mut app,
+        &font,
+        &full_reward_fixture(),
+        BattleRewardScreen::Loot,
+    );
+    let node = app
+        .world_mut()
+        .query_filtered::<&ComputedNode, With<scroll::RewardScrollList>>()
+        .single(app.world())
+        .unwrap();
+    assert_eq!(scroll::max_scroll(node), 0.0);
 }
 
 #[test]
@@ -760,12 +773,9 @@ fn wheel_scroll_is_limited_to_the_reward_viewport() {
     use crate::gameplay_canvas::pointer::CanvasPointer;
     use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
     let (mut app, font) = layout_app();
-    spawn_layout(
-        &mut app,
-        &font,
-        &full_reward_fixture(),
-        BattleRewardScreen::Loot,
-    );
+    let mut rewards = full_reward_fixture();
+    rewards.loot.push(rewards.loot[0].clone());
+    spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::Loot);
     let list = app
         .world_mut()
         .query_filtered::<Entity, With<scroll::RewardScrollList>>()
@@ -802,12 +812,9 @@ fn wheel_scroll_is_limited_to_the_reward_viewport() {
 fn dragging_the_reward_scrollbar_reaches_both_ends_and_stops_on_release() {
     use crate::gameplay_canvas::pointer::CanvasPointer;
     let (mut app, font) = layout_app();
-    spawn_layout(
-        &mut app,
-        &font,
-        &full_reward_fixture(),
-        BattleRewardScreen::Loot,
-    );
+    let mut rewards = full_reward_fixture();
+    rewards.loot.push(rewards.loot[0].clone());
+    spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::Loot);
     let list = app
         .world_mut()
         .query_filtered::<Entity, With<scroll::RewardScrollList>>()
@@ -884,14 +891,14 @@ fn sequence_skips_members_without_growth_and_reports_the_filtered_count() {
     assert!(screen.advance(&rewards));
     assert_eq!(screen, BattleRewardScreen::LevelUp(1));
     let first = rendered_screen_text(&rewards, screen);
-    assert!(first.contains(&"1 / 2 members".to_owned()));
-    assert!(first.contains(&"2 of 5 leveled up".to_owned()));
-    assert!(first.contains(&"Up next Jep".to_owned()));
+    assert!(!first.iter().any(|text| text.contains("members")));
+    assert!(!first.iter().any(|text| text.contains("leveled up")));
+    assert!(!first.iter().any(|text| text.contains("Up next")));
     assert!(screen.advance(&rewards));
     assert_eq!(screen, BattleRewardScreen::LevelUp(3));
     let last = rendered_screen_text(&rewards, screen);
-    assert!(last.contains(&"2 / 2 members".to_owned()));
-    assert!(last.contains(&"Return to the field".to_owned()));
+    assert!(!last.iter().any(|text| text.contains("members")));
+    assert!(!last.iter().any(|text| text.contains("Return to the field")));
     assert!(!screen.advance(&rewards));
     for member in &mut rewards.members {
         member.level_ups.clear();
@@ -944,21 +951,8 @@ fn level_up_frame_groups_and_continue_stay_fixed_for_zero_one_or_many_abilities(
                 .query::<&scroll::RewardScrollList>()
                 .iter(app.world())
                 .count(),
-            0
+            1
         );
-        if index == 3 {
-            let count = rewards.members[index].learned_abilities.len().div_ceil(4);
-            for _ in 1..count {
-                app.world_mut()
-                    .resource_mut::<crate::action_input::ActionState>()
-                    .press(crate::action_input::AppAction::Right);
-                app.update();
-                assert_eq!(assert_layout_fits(&mut app), geometry);
-                app.world_mut()
-                    .resource_mut::<crate::action_input::ActionState>()
-                    .clear();
-            }
-        }
     }
 }
 
@@ -1030,8 +1024,7 @@ fn level_up_uses_arrow_icons_and_gives_every_ability_an_icon_slot() {
 }
 
 #[test]
-fn ability_page_buttons_change_cards_without_moving_the_frame_or_advancing_the_member() {
-    use crate::gameplay_canvas::pointer::CanvasPointer;
+fn overflowing_abilities_use_the_standard_scroll_frame_and_menu_navigation() {
     let mut rewards = full_reward_fixture();
     rewards.members[0].learned_abilities = FieldMenuCatalog::production_class_fixture()
         .class("sorcerer")
@@ -1042,24 +1035,28 @@ fn ability_page_buttons_change_cards_without_moving_the_frame_or_advancing_the_m
         .collect();
     let (mut app, font) = layout_app();
     spawn_layout(&mut app, &font, &rewards, BattleRewardScreen::LevelUp(0));
-    let before = assert_layout_fits(&mut app);
-    let center = app
+    assert_layout_fits(&mut app);
+    let list = app
         .world_mut()
-        .query_filtered::<&UiGlobalTransform, With<level::AbilityPageButton>>()
-        .iter(app.world())
-        .max_by(|a, b| a.translation.x.total_cmp(&b.translation.x))
-        .unwrap()
-        .translation;
-    app.insert_resource(CanvasPointer::at_viewport_position(center, true));
+        .query_filtered::<Entity, With<scroll::RewardScrollList>>()
+        .single(app.world())
+        .unwrap();
+    let maximum = scroll::max_scroll(app.world().get::<ComputedNode>(list).unwrap());
+    assert!(maximum > 0.5);
+    app.world_mut()
+        .resource_mut::<crate::action_input::ActionState>()
+        .press(crate::action_input::AppAction::Down);
     app.update();
-    assert_eq!(assert_layout_fits(&mut app), before);
+    assert!(app.world().get::<ScrollPosition>(list).unwrap().y > 0.0);
     let world = app.world_mut();
     let text: Vec<_> = world
         .query::<&Text>()
         .iter(world)
         .map(|text| text.0.clone())
         .collect();
-    assert!(text.contains(&"2 / 6".to_owned()));
+    assert!(text.contains(&"Lv1".to_owned()));
     assert!(text.contains(&"Aric".to_owned()));
-    assert!(text.contains(&"Up next Elise".to_owned()));
+    assert!(!text.iter().any(|text| text.contains("Previous")));
+    assert!(!text.iter().any(|text| text.contains("Next")));
+    assert!(!text.iter().any(|text| text.contains("Up next")));
 }
