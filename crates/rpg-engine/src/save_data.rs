@@ -733,6 +733,40 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn forge_variant_ids_round_trip_in_the_pack_and_on_a_member() {
+        let mut game = fixture_game();
+        let _ = game.repository_mut().add_item("iron_sword+2!", 1).unwrap();
+        let member = game.party().members().next().unwrap().id().to_owned();
+        let _ = game
+            .party_mut()
+            .member_mut(&member)
+            .unwrap()
+            .equip(crate::runtime_member::EquipmentSlot::Weapon, "iron_sword+3")
+            .unwrap();
+        let encoded = NativeSaveEnvelope::from_game_state(
+            &game,
+            "my_rpg_story",
+            "1.0.0",
+            1_700_000_000,
+            "Ruinwatch",
+        )
+        .unwrap()
+        .encode()
+        .unwrap();
+        let (_, restored) =
+            NativeSaveEnvelope::decode(&encoded, "my_rpg_story", "1.0.0", &fixture_balance())
+                .unwrap();
+        assert_eq!(restored.repository().item_count("iron_sword+2!"), 1);
+        let restored_member = restored.party().members().next().unwrap();
+        assert_eq!(
+            restored_member
+                .equipment()
+                .get(crate::runtime_member::EquipmentSlot::Weapon),
+            Some("iron_sword+3")
+        );
+    }
+
+    #[test]
     fn ember_atlas_unlocks_crystal_claim_and_visited_destinations_need_no_save_schema_change() {
         let mut game = fixture_game();
         for flag in [

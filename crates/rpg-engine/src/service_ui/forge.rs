@@ -1,7 +1,7 @@
 //! The smith's flow: pick an equipment type, pick a piece, review the quote, then strike.
 
 use super::*;
-use crate::forge::{ForgeOutcome, ForgeType, forge, forgeable_of};
+use crate::forge::{ForgeKind, ForgeOutcome, ForgeType, check, forge, forgeable_of};
 
 #[derive(Clone, Copy)]
 pub(super) struct ForgeInput {
@@ -93,9 +93,12 @@ pub(super) fn handle_input(
         state.page = Some(ServicePage::ForgeConfirm);
         return;
     }
-    // Only an enhancement consumes the draw, but taking it up front keeps one code path; a
-    // mend or a refused attempt simply wastes a number, which is not observable.
-    let draw = game.rng_mut().next_u64();
+    // The gameplay RNG is saved and shared with battle, so only a strike that will actually roll
+    // may advance it: a mend or a refused attempt leaves the stream untouched.
+    let draw = match check(game.repository(), catalog, id) {
+        Ok(quote) if quote.kind == ForgeKind::Enhance => game.rng_mut().next_u64(),
+        _ => 0,
+    };
     state.page = Some(ServicePage::Forge);
     match forge(game.repository_mut(), catalog, id, draw) {
         Ok(outcome) => {
@@ -207,6 +210,23 @@ mod tests {
             .sum();
         assert_eq!(tempered, 1);
         assert!(app.world().resource::<ServiceUiState>().toast.is_some());
+    }
+
+    #[test]
+    fn a_refused_strike_leaves_the_saved_rng_untouched() {
+        let mut app = app();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .repository_mut()
+            .remove_item("iron_plate", 5)
+            .unwrap();
+        let before = app.world().resource::<GameState>().rng().clone();
+        press(&mut app, NormalizedAction::Confirm);
+        press(&mut app, NormalizedAction::Confirm);
+        press(&mut app, NormalizedAction::Confirm);
+        let game = app.world().resource::<GameState>();
+        assert_eq!(game.repository().item_count("iron_sword"), 1);
+        assert_eq!(*game.rng(), before);
     }
 
     #[test]

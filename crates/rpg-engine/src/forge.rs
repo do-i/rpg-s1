@@ -436,12 +436,13 @@ pub(crate) enum Roll {
 
 /// Runs one forge transaction on an unlocked, owned piece. `draw` is consumed only by an
 /// enhancement; every failed check leaves the repository untouched.
-pub(crate) fn forge(
-    repository: &mut RuntimeRepository,
+/// Every precondition of a strike, without touching the repository. Callers use it to decide
+/// whether a strike will roll before they take a draw from the saved gameplay RNG.
+pub(crate) fn check(
+    repository: &RuntimeRepository,
     catalog: &FieldMenuCatalog,
     item_id: &str,
-    draw: u64,
-) -> Result<ForgeOutcome, ServiceError> {
+) -> Result<ForgeQuote, ServiceError> {
     let quote = quote(catalog, item_id).ok_or(ServiceError::NotEnhanceable)?;
     if repository.item_count(item_id) == 0 {
         return Err(ServiceError::NotOwned);
@@ -457,6 +458,16 @@ pub(crate) fn forge(
     {
         return Err(ServiceError::MissingMaterial);
     }
+    Ok(quote)
+}
+
+pub(crate) fn forge(
+    repository: &mut RuntimeRepository,
+    catalog: &FieldMenuCatalog,
+    item_id: &str,
+    draw: u64,
+) -> Result<ForgeOutcome, ServiceError> {
+    let quote = check(repository, catalog, item_id)?;
 
     let parsed = parse_id(item_id).unwrap_or(EnhancedId {
         base: item_id,
