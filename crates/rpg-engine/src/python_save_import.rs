@@ -18,7 +18,7 @@ use crate::{
     save_data::{
         ImportProvenance, NATIVE_SAVE_FORMAT_VERSION, NativeSaveEnvelope, SaveEquipment, SaveMap,
         SaveMember, SaveMetadata, SaveOpenedBox, SavePayload, SaveRepository, SaveRepositoryItem,
-        SaveStats, migrate_legacy_harborgate_map_id,
+        SaveStats, migrate_legacy_gendered_item_id, migrate_legacy_harborgate_map_id,
     },
     save_store::{SaveStore, SaveStoreError},
     scenario_balance::BalanceData,
@@ -26,7 +26,7 @@ use crate::{
     scenario_item::{ItemCatalogFile, ItemDefinition},
     scenario_manifest::Manifest,
     scenario_map::MapMetadata,
-    scenario_party::{PartyCatalog, PartyRow},
+    scenario_party::{PartyCatalog, PartyMemberGender, PartyRow},
     scenario_spatial::{CardinalDirection, Position},
     scenario_yaml,
 };
@@ -610,6 +610,8 @@ impl PythonSave {
         hasher.update(normalized.as_bytes());
         let digest = hasher.finalize();
         let rng_state = u64::from_be_bytes(digest[..8].try_into().expect("SHA-256 prefix"));
+        // The seed hashes the source's own ids; renamed gear is migrated only afterwards.
+        let (party, repository) = migrate_gendered_ids(party, repository, catalog);
         Ok(SavePayload {
             flags: flags.into_iter().collect(),
             party,
@@ -649,6 +651,7 @@ impl PythonMember {
             PythonImportError::Content(format!("class `{}` is unavailable", self.class_id))
         })?;
         let row = self.row.unwrap_or(class.default_row);
+        let female = source.data().gender == PartyMemberGender::Female;
         let equipment = SaveEquipment {
             weapon: equipment_value(&self.equipped, "weapon")?,
             shield: equipment_value(&self.equipped, "shield")?,
@@ -672,7 +675,12 @@ impl PythonMember {
             (EquipmentSlot::Accessory, equipment.accessory.as_deref()),
         ] {
             if let Some(id) = id {
-                validate_equipment(id, slot, class, catalog)?;
+                validate_equipment(
+                    &migrate_legacy_gendered_item_id(id, female),
+                    slot,
+                    class,
+                    catalog,
+                )?;
             }
         }
         let experience_next = self.exp_next.unwrap_or_else(|| {
@@ -752,7 +760,10 @@ impl PythonRepository {
         let mut seen = BTreeSet::new();
         let mut items = Vec::new();
         for item in self.items {
-            if !catalog.items.contains_key(&item.id) {
+            if !catalog
+                .items
+                .contains_key(&migrate_legacy_gendered_item_id(&item.id, false))
+            {
                 return Err(PythonImportError::Content(format!(
                     "repository item `{}` is unavailable",
                     item.id
@@ -810,6 +821,37 @@ impl PythonRepository {
         .map_err(|error| PythonImportError::Content(error.to_string()))?;
         Ok(SaveRepository { gp: self.gp, items })
     }
+}
+
+fn migrate_gendered_ids(
+    mut party: Vec<SaveMember>,
+    mut repository: SaveRepository,
+    catalog: &PythonImportCatalog,
+) -> (Vec<SaveMember>, SaveRepository) {
+    for member in &mut party {
+        let female = catalog.party.party.iter().any(|candidate| {
+            candidate.data().id == member.id && candidate.data().gender == PartyMemberGender::Female
+        });
+        for slot in [
+            &mut member.equipment.weapon,
+            &mut member.equipment.shield,
+            &mut member.equipment.helmet,
+            &mut member.equipment.body,
+            &mut member.equipment.accessory,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            *slot = migrate_legacy_gendered_item_id(slot, female);
+        }
+    }
+    for item in &mut repository.items {
+        item.id = migrate_legacy_gendered_item_id(&item.id, false);
+    }
+    repository
+        .items
+        .sort_by(|left, right| left.id.cmp(&right.id));
+    (party, repository)
 }
 
 fn equipment_value(

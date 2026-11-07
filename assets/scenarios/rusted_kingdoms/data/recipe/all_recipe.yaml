@@ -182,7 +182,7 @@
 
 - id: recipe_astral_robe
   scroll_name: "Skyweave Pattern"
-  output: { item: astral_robe, qty: 1 }
+  output: { item: astral_robe_f, qty: 1 }
   inputs:
     mc:
       - { size: XL, qty: 1 }

@@ -206,6 +206,7 @@ impl NativeSaveEnvelope {
         }
         if envelope.scenario_id == "my_rpg_story" {
             envelope.migrate_legacy_harborgate_map_ids();
+            envelope.migrate_legacy_gendered_item_ids();
         }
         let game = envelope.payload.clone().into_game_state(balance)?;
         envelope.validate_metadata(&game)?;
@@ -246,6 +247,77 @@ impl NativeSaveEnvelope {
             opened_box.map_id = migrate_legacy_harborgate_map_id(&opened_box.map_id);
         }
         self.metadata.location = migrate_legacy_harborgate_map_id(&self.metadata.location);
+    }
+
+    /// Gendered body armor gained `_f`/`_m` ids. A worn piece follows its wearer; a carried one
+    /// becomes the variant the shops and drops hand out. Forge levels and cracks carry over.
+    fn migrate_legacy_gendered_item_ids(&mut self) {
+        for member in &mut self.payload.party {
+            let female = matches!(member.id.as_str(), "elise" | "reiya");
+            for slot in [
+                &mut member.equipment.weapon,
+                &mut member.equipment.shield,
+                &mut member.equipment.helmet,
+                &mut member.equipment.body,
+                &mut member.equipment.accessory,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                *slot = migrate_legacy_gendered_item_id(slot, female);
+            }
+        }
+        let mut merged: Vec<SaveRepositoryItem> =
+            Vec::with_capacity(self.payload.repository.items.len());
+        for mut item in self.payload.repository.items.drain(..) {
+            item.id = migrate_legacy_gendered_item_id(&item.id, false);
+            match merged.iter_mut().find(|kept| kept.id == item.id) {
+                Some(kept) => kept.quantity = kept.quantity.saturating_add(item.quantity),
+                None => merged.push(item),
+            }
+        }
+        self.payload.repository.items = merged;
+    }
+}
+
+pub(crate) fn migrate_legacy_gendered_item_id(id: &str, female: bool) -> String {
+    let parsed = crate::forge::parse_id(id);
+    let base = parsed.as_ref().map_or(id, |parsed| parsed.base);
+    let renamed = match (base, female) {
+        ("chainmail", false) => "chainmail_full_sleeve_m",
+        ("chainmail", true) => "chainmail_f",
+        ("studded_leather", false) => "studded_leather_jerkin_m",
+        ("studded_leather", true) => "studded_leather_f",
+        ("ghostweave_tunic", false) => "ghostweave_battle_tunic_m",
+        ("ghostweave_tunic", true) => "ghostweave_tunic_f",
+        ("wardens_mail", false) => "wardens_mail_hauberk_m",
+        ("wardens_mail", true) => "wardens_mail_f",
+        ("ember_scale_vest", false) => "ember_scale_hauberk_m",
+        ("ember_scale_vest", true) => "ember_scale_vest_f",
+        ("rimeguard_coat", false) => "rimeguard_coat_m",
+        ("rimeguard_coat", true) => "rimeguard_coat_f",
+        ("galeweave_robe", false) => "galeweave_battle_coat_m",
+        ("galeweave_robe", true) => "galeweave_robe_f",
+        ("astral_robe", _) => "astral_robe_f",
+        ("hiiroikane_mail", _) => "hiiroikane_mail_f",
+        ("leather_vest", _) => "leather_vest_f",
+        ("quilted_dress", _) => "quilted_dress_f",
+        ("scale_hauberk", _) => "scale_hauberk_f",
+        ("shadowweave_vest", _) => "shadowweave_vest_f",
+        ("vestments_of_light", _) => "vestments_of_light_f",
+        ("adamantite_mail", _) => "adamantite_mail_m",
+        ("brigandine", _) => "brigandine_m",
+        ("cutpurse_jerkin", _) => "cutpurse_jerkin_m",
+        ("duskrunner_coat", _) => "duskrunner_coat_m",
+        ("gravewalk_brigandine", _) => "gravewalk_brigandine_m",
+        ("hollowstep_harness", _) => "hollowstep_harness_m",
+        ("padded_jerkin", _) => "padded_jerkin_m",
+        ("sanctum_habit", _) => "sanctum_habit_m",
+        _ => return id.to_owned(),
+    };
+    match parsed {
+        Some(parsed) => crate::forge::variant_id(renamed, parsed.level, parsed.cracked),
+        None => renamed.to_owned(),
     }
 }
 
@@ -730,6 +802,64 @@ pub(crate) mod tests {
                 .unwrap();
 
         assert_eq!(restored.party().row_of("aric"), Some(PartyRow::Back));
+    }
+
+    #[test]
+    fn legacy_gendered_item_ids_follow_the_wearer_and_keep_forge_marks() {
+        let migrate = migrate_legacy_gendered_item_id;
+        assert_eq!(migrate("galeweave_robe", true), "galeweave_robe_f");
+        assert_eq!(migrate("galeweave_robe", false), "galeweave_battle_coat_m");
+        assert_eq!(migrate("chainmail+2!", false), "chainmail_full_sleeve_m+2!");
+        assert_eq!(migrate("brigandine+3", true), "brigandine_m+3");
+        assert_eq!(migrate("leather_vest", false), "leather_vest_f");
+        assert_eq!(
+            migrate("gravewalk_brigandine", false),
+            "gravewalk_brigandine_m"
+        );
+        assert_eq!(migrate("iron_sword+2", false), "iron_sword+2");
+        assert_eq!(migrate("galeweave_robe_f", false), "galeweave_robe_f");
+
+        let mut envelope = fixture_envelope();
+        let worn = envelope.payload.party[0].id.clone();
+        envelope.payload.party[0].equipment.body = Some("chainmail+1".to_owned());
+        let template = envelope.payload.repository.items[0].clone();
+        envelope.payload.repository.items.clear();
+        for (id, quantity) in [
+            ("chainmail", 1),
+            ("chainmail_full_sleeve_m", 2),
+            ("quilted_dress+2!", 1),
+        ] {
+            envelope.payload.repository.items.push(SaveRepositoryItem {
+                id: id.to_owned(),
+                quantity,
+                ..template.clone()
+            });
+        }
+        let (_, restored) = NativeSaveEnvelope::decode(
+            &envelope.encode().unwrap(),
+            "my_rpg_story",
+            "1.0.0",
+            &fixture_balance(),
+        )
+        .unwrap();
+        assert_eq!(
+            restored.repository().item_count("chainmail_full_sleeve_m"),
+            3
+        );
+        assert_eq!(restored.repository().item_count("chainmail"), 0);
+        assert_eq!(restored.repository().item_count("quilted_dress_f+2!"), 1);
+        let member = restored.party().member(&worn).unwrap();
+        let expected = if matches!(worn.as_str(), "elise" | "reiya") {
+            "chainmail_f+1"
+        } else {
+            "chainmail_full_sleeve_m+1"
+        };
+        assert_eq!(
+            member
+                .equipment()
+                .get(crate::runtime_member::EquipmentSlot::Body),
+            Some(expected)
+        );
     }
 
     #[test]

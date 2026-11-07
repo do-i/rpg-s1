@@ -150,7 +150,7 @@ drops:
           weight: 50
         - item: phantom_veil
           weight: 30
-        - item: ghostweave_tunic
+        - item: ghostweave_battle_tunic_m
           weight: 6
 ai:
   pattern: random
@@ -842,7 +842,7 @@ drops:
           weight: 45
         - item: magma_core
           weight: 30
-        - item: ember_scale_vest
+        - item: ember_scale_hauberk_m
           weight: 6
 ai:
   pattern: random

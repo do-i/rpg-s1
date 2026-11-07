@@ -9,7 +9,7 @@
   sell_price: 35
   description: "A plain woven robe. Light, unrestricting."
 
-- id: leather_vest
+- id: leather_vest_f
   name: Leather Vest
   type: body
   slot_category: leather
@@ -31,10 +31,44 @@
   sell_price: 150
   description: "Layered leather over cloth. A fieldworker's harness."
 
-- id: chainmail
+- id: chainmail_f
   name: Chainmail
   type: body
+  slot_category: fine_mail
+  gender: female
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 700
+  sell_price: 350
+  description: "Interlocking iron rings. Heavy, but it shrugs off steel."
+- id: chainmail_short_sleeve_m
+  name: "Short-Sleeve Chainmail"
+  type: body
   slot_category: heavy_armor
+  gender: male
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 700
+  sell_price: 350
+  description: "Interlocking iron rings. Heavy, but it shrugs off steel."
+- id: chainmail_elbow_sleeve_m
+  name: "Elbow-Sleeve Chainmail"
+  type: body
+  slot_category: heavy_armor
+  gender: male
+  stats:
+    con: 5
+    dex: -2
+  buy_price: 700
+  sell_price: 350
+  description: "Interlocking iron rings. Heavy, but it shrugs off steel."
+- id: chainmail_full_sleeve_m
+  name: "Full-Sleeve Chainmail"
+  type: body
+  slot_category: heavy_armor
+  gender: male
   stats:
     con: 5
     dex: -2
@@ -57,7 +91,7 @@
   sell_price: 600
   description: "Sigil-stitched wool. The wards hold a little more than the wool does."
 
-- id: shadowweave_vest
+- id: shadowweave_vest_f
   name: Shadowweave Vest
   type: body
   slot_category: leather
@@ -69,7 +103,7 @@
   sell_price: 700
   description: "Oiled hide sewn with night-thread. Moves quieter than it has any right to."
 
-- id: adamantite_mail
+- id: adamantite_mail_m
   name: Adamantite Mail
   type: body
   slot_category: heavy_armor
@@ -81,7 +115,7 @@
   sell_price: 800
   description: "Ore that never took to the forge fire. It took to the hammer instead."
 
-- id: astral_robe
+- id: astral_robe_f
   name: Astral Robe
   type: body
   slot_category: robe
@@ -93,7 +127,7 @@
   sell_price: 1400
   description: "Woven from a sky that no longer exists. Cold to the touch, always."
 
-- id: hiiroikane_mail
+- id: hiiroikane_mail_f
   name: Hiiroikane Mail
   type: body
   slot_category: fine_mail
@@ -105,7 +139,7 @@
   sell_price: 1600
   description: "Scarlet metal from the old kingdom. The flame that made it is the one you hunt."
 
-- id: cutpurse_jerkin
+- id: cutpurse_jerkin_m
   name: Cutpurse Jerkin
   type: body
   slot_category: leather
@@ -117,7 +151,7 @@
   sell_price: 250
   description: "Patched leather with more pockets than honest work requires."
 
-- id: duskrunner_coat
+- id: duskrunner_coat_m
   name: Duskrunner Coat
   type: body
   slot_category: leather
@@ -129,7 +163,7 @@
   sell_price: 400
   description: "A long grey coat split for running. Hard to catch, harder to see."
 
-- id: hollowstep_harness
+- id: hollowstep_harness_m
   name: Hollowstep Harness
   type: body
   slot_category: leather
@@ -141,7 +175,7 @@
   sell_price: 850
   description: "Dark straps over quilted cloth, every buckle wrapped to stay silent."
 
-- id: gravewalk_brigandine
+- id: gravewalk_brigandine_m
   name: Gravewalk Brigandine
   type: body
   slot_category: leather
@@ -156,7 +190,7 @@
 # --- Equipment expansion: traditional, magical, and elemental gear (temper-able at the forge).
 # Elemental names are flavor only; stats are plain until the engine grows element fields.
 
-- id: padded_jerkin
+- id: padded_jerkin_m
   name: "Padded Jerkin"
   type: body
   slot_category: light_armor
@@ -167,7 +201,7 @@
   sell_price: 90
   description: "Quilted cloth over a canvas shell. Cheap, warm, and better than nothing."
 
-- id: quilted_dress
+- id: quilted_dress_f
   name: "Quilted Dress"
   type: body
   slot_category: light_armor
@@ -179,7 +213,7 @@
   sell_price: 90
   description: "A padded travelling dress, sewn for the road and not for the ballroom."
 
-- id: brigandine
+- id: brigandine_m
   name: "Brigandine"
   type: body
   slot_category: heavy_armor
@@ -191,7 +225,7 @@
   sell_price: 550
   description: "Small plates riveted between layers of canvas. Stiff, but it stops a spear."
 
-- id: scale_hauberk
+- id: scale_hauberk_f
   name: "Scale Hauberk"
   type: body
   slot_category: fine_mail
@@ -214,10 +248,22 @@
   sell_price: 900
   description: "A hammered steel breastplate. It turns most things and slows you for the rest."
 
-- id: studded_leather
+- id: studded_leather_f
   name: "Studded Leather"
   type: body
   slot_category: leather
+  gender: female
+  stats:
+    con: 3
+    dex: 1
+  buy_price: 450
+  sell_price: 225
+  description: "Boiled leather with iron studs set in rows."
+- id: studded_leather_jerkin_m
+  name: "Studded Leather Jerkin"
+  type: body
+  slot_category: leather
+  gender: male
   stats:
     con: 3
     dex: 1
@@ -236,7 +282,7 @@
   sell_price: 175
   description: "Thick grey wool, cut for long vigils in cold chapels."
 
-- id: vestments_of_light
+- id: vestments_of_light_f
   name: "Vestments of Light"
   type: body
   slot_category: robe
@@ -248,7 +294,7 @@
   sell_price: 950
   description: "White vestments stitched with gold thread. They seem to catch light that is not there."
 
-- id: sanctum_habit
+- id: sanctum_habit_m
   name: "Sanctum Habit"
   type: body
   slot_category: robe
@@ -260,10 +306,22 @@
   sell_price: 950
   description: "A hooded habit woven in the sanctum workshops. The wards in the hem are older than the order."
 
-- id: ghostweave_tunic
+- id: ghostweave_tunic_f
   name: "Ghostweave Tunic"
   type: body
   slot_category: leather
+  gender: female
+  stats:
+    con: 4
+    dex: 3
+  buy_price: null
+  sell_price: 850
+  description: "Spun from a phantom's shed veil. It is there, mostly."
+- id: ghostweave_battle_tunic_m
+  name: "Ghostweave Battle Tunic"
+  type: body
+  slot_category: leather
+  gender: male
   stats:
     con: 4
     dex: 3
@@ -271,10 +329,22 @@
   sell_price: 850
   description: "Spun from a phantom's shed veil. It is there, mostly."
 
-- id: wardens_mail
+- id: wardens_mail_f
   name: "Warden's Mail"
   type: body
   slot_category: fine_mail
+  gender: female
+  stats:
+    con: 6
+    int: 2
+  buy_price: null
+  sell_price: 1100
+  description: "Fine mail issued to the keepers of the wall. The links are etched with a warden's oath."
+- id: wardens_mail_hauberk_m
+  name: "Warden's Mail Hauberk"
+  type: body
+  slot_category: fine_mail
+  gender: male
   stats:
     con: 6
     int: 2
@@ -282,30 +352,64 @@
   sell_price: 1100
   description: "Fine mail issued to the keepers of the wall. The links are etched with a warden's oath."
 
-- id: ember_scale_vest
+- id: ember_scale_vest_f
   name: "Ember-Scale Vest"
   type: body
   slot_category: light_armor
+  gender: female
+  stats:
+    con: 5
+  buy_price: null
+  sell_price: 800
+  description: "Lava-scale plates sewn over a light vest. Warm to the touch, even in Frostholm."
+- id: ember_scale_hauberk_m
+  name: "Ember-Scale Hauberk"
+  type: body
+  slot_category: light_armor
+  gender: male
   stats:
     con: 5
   buy_price: null
   sell_price: 800
   description: "Lava-scale plates sewn over a light vest. Warm to the touch, even in Frostholm."
 
-- id: rimeguard_coat
+- id: rimeguard_coat_f
   name: "Rimeguard Coat"
   type: body
   slot_category: leather
+  gender: female
+  stats:
+    con: 5
+  buy_price: 1500
+  sell_price: 750
+  description: "A fur-lined greatcoat treated with rime-oil. It sheds sleet and bad news."
+- id: rimeguard_coat_m
+  name: "Rimeguard Field Coat"
+  type: body
+  slot_category: leather
+  gender: male
   stats:
     con: 5
   buy_price: 1500
   sell_price: 750
   description: "A fur-lined greatcoat treated with rime-oil. It sheds sleet and bad news."
 
-- id: galeweave_robe
+- id: galeweave_robe_f
   name: "Galeweave Robe"
   type: body
   slot_category: robe
+  gender: female
+  stats:
+    con: 3
+    int: 4
+  buy_price: null
+  sell_price: 850
+  description: "A robe woven with harpy down. It lifts at the hem when no wind is blowing."
+- id: galeweave_battle_coat_m
+  name: "Galeweave Battle Coat"
+  type: body
+  slot_category: robe
+  gender: male
   stats:
     con: 3
     int: 4

@@ -217,12 +217,12 @@ mod tests {
         let catalog = crate::field_menu_domain::tests::catalog();
         let elise = game.party().member("elise").unwrap();
         assert_eq!(
-            equip_refusal(elise, "leather_vest", &catalog).as_deref(),
+            equip_refusal(elise, "leather_vest_f", &catalog).as_deref(),
             Some("Elise (Cleric) can't equip Leather Vest.")
         );
         assert_eq!(equip_refusal(elise, "cloth_robe", &catalog), None);
         let aric = game.party().member("aric").unwrap();
-        assert_eq!(equip_refusal(aric, "leather_vest", &catalog), None);
+        assert_eq!(equip_refusal(aric, "leather_vest_f", &catalog), None);
     }
 
     #[test]
@@ -231,9 +231,9 @@ mod tests {
         let catalog = crate::field_menu_domain::tests::catalog_with_party_genders();
         let aric = game.party().member("aric").unwrap();
         assert_eq!(
-            equip_refusal(aric, "leather_vest", &catalog).as_deref(),
+            equip_refusal(aric, "leather_vest_f", &catalog).as_deref(),
             Some("Golden Aric can't equip Leather Vest (female only).")
         );
-        assert_eq!(equip_refusal(aric, "adamantite_mail", &catalog), None);
+        assert_eq!(equip_refusal(aric, "adamantite_mail_m", &catalog), None);
     }
 }

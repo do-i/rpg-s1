@@ -26,7 +26,7 @@ entries:
       give_items:
         - id: remedy
           qty: 2
-        - id: wardens_mail
+        - id: wardens_mail_hauberk_m
           qty: 1
 
   # Started, not relayed

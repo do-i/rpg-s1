@@ -1525,7 +1525,9 @@ pub(crate) mod tests {
         let starting = battle_defense(member, &catalog, divisor);
         assert_eq!(starting, 7);
 
-        member.equip(EquipmentSlot::Body, "chainmail").unwrap();
+        member
+            .equip(EquipmentSlot::Body, "chainmail_full_sleeve_m")
+            .unwrap();
         let upgraded = battle_defense(member, &catalog, divisor);
         assert_eq!(upgraded, 9);
 
@@ -1722,25 +1724,28 @@ pub(crate) mod tests {
         };
 
         assert_eq!(
-            fits(aric, "hiiroikane_mail", &catalog),
+            fits(aric, "hiiroikane_mail_f", &catalog),
             Err(MenuMutationError::GenderRestricted(
                 PartyMemberGender::Female
             ))
         );
         assert_eq!(
-            fits(aric, "adamantite_mail", &catalog),
+            fits(aric, "adamantite_mail_m", &catalog),
             Ok(EquipmentSlot::Body)
         );
-        assert_eq!(fits(aric, "chainmail", &catalog), Ok(EquipmentSlot::Body));
+        assert_eq!(
+            fits(aric, "chainmail_full_sleeve_m", &catalog),
+            Ok(EquipmentSlot::Body)
+        );
 
         // A class refusal outranks gender: Elise's cleric never wears mail, for either reason.
         let elise = game.party().member("elise").unwrap();
         assert_eq!(
-            fits(elise, "adamantite_mail", &catalog),
+            fits(elise, "adamantite_mail_m", &catalog),
             Err(MenuMutationError::SlotRestricted)
         );
         assert_eq!(
-            fits(elise, "astral_robe", &catalog),
+            fits(elise, "astral_robe_f", &catalog),
             Ok(EquipmentSlot::Body)
         );
 
@@ -1749,11 +1754,11 @@ pub(crate) mod tests {
             .insert("aric".to_owned(), PartyMemberGender::Female);
         let aric = game.party().member("aric").unwrap();
         assert_eq!(
-            fits(aric, "adamantite_mail", &catalog),
+            fits(aric, "adamantite_mail_m", &catalog),
             Err(MenuMutationError::GenderRestricted(PartyMemberGender::Male))
         );
         assert_eq!(
-            fits(aric, "hiiroikane_mail", &catalog),
+            fits(aric, "hiiroikane_mail_f", &catalog),
             Ok(EquipmentSlot::Body)
         );
 
@@ -1761,7 +1766,7 @@ pub(crate) mod tests {
         catalog
             .member_genders
             .insert("aric".to_owned(), PartyMemberGender::Male);
-        let _ = game.repository_mut().add_item("astral_robe", 1).unwrap();
+        let _ = game.repository_mut().add_item("astral_robe_f", 1).unwrap();
         let worn = game
             .party()
             .member("aric")
@@ -1770,12 +1775,12 @@ pub(crate) mod tests {
             .get(EquipmentSlot::Body)
             .map(str::to_owned);
         assert_eq!(
-            equip_item(&mut game, &catalog, "aric", "astral_robe"),
+            equip_item(&mut game, &catalog, "aric", "astral_robe_f"),
             Err(MenuMutationError::GenderRestricted(
                 PartyMemberGender::Female
             ))
         );
-        assert_eq!(game.repository().item_count("astral_robe"), 1);
+        assert_eq!(game.repository().item_count("astral_robe_f"), 1);
         assert_eq!(
             game.party()
                 .member("aric")
@@ -1840,12 +1845,16 @@ pub(crate) mod tests {
             can_equip(member, catalog.item(id).unwrap(), &catalog)
         };
         let reiya = member("reiya");
-        for id in ["leather_vest", "shadowweave_vest", "hiiroikane_mail"] {
+        for id in ["leather_vest_f", "shadowweave_vest_f", "hiiroikane_mail_f"] {
             assert_eq!(fits(&reiya, id), Ok(EquipmentSlot::Body), "{id}");
         }
         let elise = member("elise");
-        assert_eq!(fits(&elise, "hiiroikane_mail"), Ok(EquipmentSlot::Body));
-        for id in ["leather_vest", "shadowweave_vest", "chainmail"] {
+        assert_eq!(fits(&elise, "hiiroikane_mail_f"), Ok(EquipmentSlot::Body));
+        for id in [
+            "leather_vest_f",
+            "shadowweave_vest_f",
+            "chainmail_full_sleeve_m",
+        ] {
             assert_eq!(
                 fits(&elise, id),
                 Err(MenuMutationError::SlotRestricted),
@@ -1853,11 +1862,11 @@ pub(crate) mod tests {
             );
         }
         assert_eq!(
-            fits(&reiya, "chainmail"),
+            fits(&reiya, "chainmail_full_sleeve_m"),
             Err(MenuMutationError::SlotRestricted)
         );
         assert_eq!(
-            fits(&member("kael"), "hiiroikane_mail"),
+            fits(&member("kael"), "hiiroikane_mail_f"),
             Err(MenuMutationError::GenderRestricted(
                 PartyMemberGender::Female
             ))
@@ -1881,10 +1890,10 @@ pub(crate) mod tests {
             .unwrap()
         };
         for id in [
-            "cutpurse_jerkin",
-            "duskrunner_coat",
-            "hollowstep_harness",
-            "gravewalk_brigandine",
+            "cutpurse_jerkin_m",
+            "duskrunner_coat_m",
+            "hollowstep_harness_m",
+            "gravewalk_brigandine_m",
         ] {
             let item = catalog.item(id).unwrap();
             assert_eq!(
@@ -1907,17 +1916,17 @@ pub(crate) mod tests {
             .party_mut()
             .member_mut("aric")
             .unwrap()
-            .equip(EquipmentSlot::Body, "leather_vest")
+            .equip(EquipmentSlot::Body, "leather_vest_f")
             .unwrap();
         let aric = game.party().member("aric").unwrap();
         assert_eq!(
             aric.equipment().get(EquipmentSlot::Body),
-            Some("leather_vest")
+            Some("leather_vest_f")
         );
 
         unequip_item(&mut game, "aric", EquipmentSlot::Body).unwrap();
         assert_eq!(
-            equip_item(&mut game, &catalog, "aric", "leather_vest"),
+            equip_item(&mut game, &catalog, "aric", "leather_vest_f"),
             Err(MenuMutationError::GenderRestricted(
                 PartyMemberGender::Female
             ))
@@ -1989,8 +1998,8 @@ pub(crate) mod tests {
             ids.filter(|id| crate::forge::parse_id(id).is_none())
                 .count()
         };
-        assert_eq!(authored(&mut catalog.items.keys()), 275);
-        assert_eq!(authored(&mut catalog.item_order.iter()), 275);
+        assert_eq!(authored(&mut catalog.items.keys()), 284);
+        assert_eq!(authored(&mut catalog.item_order.iter()), 284);
         assert_eq!(catalog.classes.len(), 5);
         assert_eq!(catalog.field_uses.len(), 14);
         for id in [
@@ -2204,7 +2213,7 @@ pub(crate) mod tests {
             .party_mut()
             .member_mut("aric")
             .unwrap()
-            .equip(EquipmentSlot::Body, "leather_vest")
+            .equip(EquipmentSlot::Body, "leather_vest_f")
             .unwrap();
         let aric = game.party().member("aric").unwrap();
         let before = derived_stats(aric, &catalog);

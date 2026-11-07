@@ -136,7 +136,7 @@ drops:
           weight: 35
         - item: wind_crystal
           weight: 30
-        - item: galeweave_robe
+        - item: galeweave_battle_coat_m
           weight: 6
         - item: zephyr_anklet
           weight: 8

@@ -22,7 +22,7 @@ armor_shop:
   - id: tower_shield
     buy_price: 650
     unlock_flag: story_act3_started
-  - id: chainmail
+  - id: chainmail_full_sleeve_m
     buy_price: 700
     unlock_flag: story_act3_started
   - id: lure_charm
@@ -43,13 +43,13 @@ armor_shop:
   - id: blessed_shield
     buy_price: 1400
     unlock_flag: story_act3_started
-  - id: shadowweave_vest
+  - id: shadowweave_vest_f
     buy_price: 1400
     unlock_flag: story_act3_started
   - id: mythril_shield
     buy_price: 1500
     unlock_flag: story_act3_started
-  - id: adamantite_mail
+  - id: adamantite_mail_m
     buy_price: 1600
     unlock_flag: story_act3_started
   - id: astral_circlet
@@ -58,19 +58,19 @@ armor_shop:
   - id: dragonbone_helm
     buy_price: 2600
     unlock_flag: story_act4_started
-  - id: astral_robe
+  - id: astral_robe_f
     buy_price: 2800
     unlock_flag: story_act4_started
-  - id: hollowstep_harness
+  - id: hollowstep_harness_m
     buy_price: 1700
     unlock_flag: story_act4_started
-  - id: gravewalk_brigandine
+  - id: gravewalk_brigandine_m
     buy_price: 2000
     unlock_flag: story_act4_started
   - id: dragonscale_shield
     buy_price: 3000
     unlock_flag: story_act4_started
-  - id: hiiroikane_mail
+  - id: hiiroikane_mail_f
     buy_price: 3200
     unlock_flag: story_act4_started
   - id: swift_anklet

@@ -1084,7 +1084,7 @@ mod tests {
 
         let expected_file_counts = [
             ("accessories.yaml", 18),
-            ("body.yaml", 28),
+            ("body.yaml", 37),
             ("consumables_battle_throw.yaml", 5),
             ("consumables_field.yaml", 4),
             ("consumables_recovery.yaml", 7),
@@ -1164,9 +1164,9 @@ mod tests {
 
         assert_eq!(files.len(), 15);
         assert_eq!(observed_file_counts, expected_file_counts);
-        assert_eq!(metadata_count, 278);
+        assert_eq!(metadata_count, 287);
         assert_eq!(field_use_count, 14);
-        assert_eq!(item_types, [20, 127, 2, 5, 51, 12, 15, 28, 18]);
+        assert_eq!(item_types, [20, 127, 2, 5, 51, 12, 15, 37, 18]);
         assert_eq!(consumable_effects, [4, 1, 2, 1, 1, 2, 2, 2, 4, 1]);
         assert_eq!(field_effects, [2, 2, 3, 4, 3]);
     }

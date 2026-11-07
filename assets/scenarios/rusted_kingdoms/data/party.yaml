@@ -175,7 +175,7 @@ party:
       weapon: iron_sword
       shield: kite_shield
       helmet: iron_helm
-      body: chainmail
+      body: chainmail_full_sleeve_m
       accessory: ""
     abilities_unlocked: [shield_bash, taunt]
     status_effects: []

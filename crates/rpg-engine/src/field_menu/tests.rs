@@ -744,7 +744,7 @@ fn equipment_shelf_keeps_all_five_images_at_native_size_and_leaves_inventory_uns
         "iron_sword",
         "buckler",
         "leather_hat",
-        "leather_vest",
+        "leather_vest_f",
         "silver_ring",
     ]) {
         game.party_mut()
@@ -2226,7 +2226,7 @@ fn equipment_unequip_is_last_and_cancel_preserves_the_slot_and_item_count() {
 #[test]
 fn equipment_restricted_and_empty_choices_cannot_reach_the_commit_button() {
     let mut game = fixture_game_with_recruit();
-    let _ = game.repository_mut().add_item("leather_vest", 1).unwrap();
+    let _ = game.repository_mut().add_item("leather_vest_f", 1).unwrap();
     let mut app = menu_input_app(
         game,
         FieldMenuState {
@@ -2253,7 +2253,7 @@ fn equipment_restricted_and_empty_choices_cannot_reach_the_commit_button() {
         app.world()
             .resource::<GameState>()
             .repository()
-            .item_count("leather_vest"),
+            .item_count("leather_vest_f"),
         1
     );
     *app.world_mut().resource_mut::<FieldMenuState>() = FieldMenuState {
@@ -2820,8 +2820,8 @@ fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
 /// A pouch holding one visible Leather Vest, which Aric can wear and Elise cannot.
 fn game_with_pouched_vest() -> GameState {
     let mut game = fixture_game_with_recruit();
-    let _outcome = game.repository_mut().add_item("leather_vest", 1).unwrap();
-    game.repository_mut().set_hidden("leather_vest", false);
+    let _outcome = game.repository_mut().add_item("leather_vest_f", 1).unwrap();
+    game.repository_mut().set_hidden("leather_vest_f", false);
     game
 }
 
@@ -2837,7 +2837,7 @@ fn the_equipment_pouch_lists_only_gear() {
     let game = game_with_pouched_vest();
     let catalog = crate::field_menu_domain::tests::catalog();
     let ids = inventory_ids(&game, &catalog, InventoryTab::Equipment);
-    assert!(ids.contains(&"leather_vest"));
+    assert!(ids.contains(&"leather_vest_f"));
     assert!(
         ids.iter()
             .all(|id| crate::field_menu_domain::is_equipment(catalog.item(id).unwrap()))
@@ -2852,7 +2852,7 @@ fn equip_from_the_pouch_refuses_the_wrong_class_then_equips_the_chosen_member() 
     let tab_index = equipment_tab_index();
     let vest = inventory_ids(&game, &catalog, InventoryTab::Equipment)
         .iter()
-        .position(|id| *id == "leather_vest")
+        .position(|id| *id == "leather_vest_f")
         .unwrap();
     let mut app = menu_input_app(
         game,
@@ -2903,7 +2903,7 @@ fn equip_from_the_pouch_refuses_the_wrong_class_then_equips_the_chosen_member() 
             .unwrap()
             .equipment()
             .get(EquipmentSlot::Body),
-        Some("leather_vest")
+        Some("leather_vest_f")
     );
 }
 
@@ -2918,7 +2918,7 @@ fn the_equip_picker_shows_party_cards_and_previews_the_highlighted_member() {
                 screen: FieldMenuScreen::Items,
                 mode: FieldMenuMode::ItemEquipTarget,
                 tab_index: equipment_tab_index(),
-                pending_id: Some("leather_vest".to_owned()),
+                pending_id: Some("leather_vest_f".to_owned()),
                 selected,
                 ..default()
             })
@@ -2968,7 +2968,7 @@ fn equipment_detail_names_who_can_equip_it() {
             screen: FieldMenuScreen::Items,
             mode: FieldMenuMode::ItemActions,
             tab_index: equipment_tab_index(),
-            pending_id: Some("leather_vest".to_owned()),
+            pending_id: Some("leather_vest_f".to_owned()),
             ..default()
         })
         .add_systems(Update, spawn_fixture_items_page);
@@ -3069,11 +3069,11 @@ fn the_full_pouch_lists_only_stacks_at_ninety_percent_of_the_cap() {
 
     let _ = game
         .repository_mut()
-        .add_item("leather_vest", cap - 1)
+        .add_item("leather_vest_f", cap - 1)
         .unwrap();
     assert_eq!(
         inventory_ids(&game, &catalog, InventoryTab::Full),
-        vec!["leather_vest"]
+        vec!["leather_vest_f"]
     );
-    assert!(inventory_ids(&game, &catalog, InventoryTab::Equipment).contains(&"leather_vest"));
+    assert!(inventory_ids(&game, &catalog, InventoryTab::Equipment).contains(&"leather_vest_f"));
 }

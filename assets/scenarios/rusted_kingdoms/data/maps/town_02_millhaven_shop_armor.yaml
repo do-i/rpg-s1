@@ -20,7 +20,7 @@ armor_shop:
     - id: buckler
       buy_price: 90
       unlock_flag: story_quest_started
-    - id: leather_vest
+    - id: leather_vest_f
       buy_price: 150
       unlock_flag: story_quest_started
     - id: small_shield

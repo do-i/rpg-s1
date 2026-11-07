@@ -35,7 +35,7 @@ payload:
       weapon: iron_sword
       shield: buckler
       helmet: leather_hat
-      body: leather_vest
+      body: leather_vest_f
       accessory: null
     status_effects: []
   - id: elise
