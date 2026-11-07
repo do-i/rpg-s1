@@ -5,7 +5,9 @@
 
 use super::*;
 use crate::{
-    forge::{ForgeKind, ForgeQuote, ForgeType, forgeable_of, parse_id, primary_stat, quote},
+    forge::{
+        ForgeKind, ForgeQuote, ForgeType, forgeable_of, parse_id, primary_stat, quote, tempering,
+    },
     item_images::{ITEM_IMAGE_SIZE, ItemIcon},
     service_ui::forge::rows,
 };
@@ -347,6 +349,20 @@ fn spawn_pieces(
                                         status_ink(),
                                     );
                                 });
+                                if let Some((level, top)) = tempering(catalog, id) {
+                                    let (label, color) = if level >= top {
+                                        ("MAX".to_owned(), status_ready())
+                                    } else {
+                                        (format!("+{level}/{top}"), status_faint())
+                                    };
+                                    row.spawn(Node {
+                                        margin: UiRect::right(px(10)),
+                                        ..default()
+                                    })
+                                    .with_children(|cap| {
+                                        spawn_status_text(cap, label, font, 12.0, color);
+                                    });
+                                }
                                 spawn_status_text(
                                     row,
                                     format!("x{}", game.repository().item_count(id)),
@@ -484,7 +500,26 @@ fn spawn_detail(
                             );
                         });
                 });
+            let cap = tempering(catalog, id);
+            if let Some((level, top)) = cap {
+                spawn_status_text(
+                    panel,
+                    format!("Tempered +{level} of +{top}"),
+                    font,
+                    13.0,
+                    status_muted(),
+                );
+            }
             let Some(quote) = quote(catalog, id) else {
+                if let Some((_, top)) = cap {
+                    spawn_status_text(
+                        panel,
+                        format!("Fully tempered. +{top} is the most this piece can take."),
+                        font,
+                        15.0,
+                        status_ready(),
+                    );
+                }
                 return;
             };
             spawn_cost(panel, font, catalog, game, &quote);

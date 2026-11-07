@@ -411,6 +411,14 @@ pub(crate) fn quote(catalog: &FieldMenuCatalog, item_id: &str) -> Option<ForgeQu
     })
 }
 
+/// A forgeable piece's current tempering level and the most it can take, or `None` for gear
+/// the smith will not touch.
+pub(crate) fn tempering(catalog: &FieldMenuCatalog, item_id: &str) -> Option<(u32, u32)> {
+    let level = parse_id(item_id).map_or(0, |parsed| parsed.level);
+    let top = max_level(catalog.item(base_id(item_id))?);
+    (top > 0).then_some((level, top))
+}
+
 /// Picks the outcome of one attempt from a single RNG draw.
 pub(crate) fn roll(draw: u64, target_level: u32) -> Roll {
     let odds = odds(target_level);
@@ -568,6 +576,16 @@ mod tests {
         assert!(catalog.item("iron_sword+6").is_none());
         assert!(catalog.item("flamebrand+3").is_some());
         assert!(catalog.item("flamebrand+4").is_none());
+    }
+
+    #[test]
+    fn tempering_reports_level_and_cap_for_every_variant() {
+        let catalog = catalog();
+        assert_eq!(tempering(&catalog, "iron_sword"), Some((0, 5)));
+        assert_eq!(tempering(&catalog, "iron_sword+3"), Some((3, 5)));
+        assert_eq!(tempering(&catalog, "iron_sword+2!"), Some((2, 5)));
+        assert_eq!(tempering(&catalog, "flamebrand+3"), Some((3, 3)));
+        assert_eq!(tempering(&catalog, "potion"), None);
     }
 
     #[test]
