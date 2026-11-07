@@ -72,7 +72,8 @@ fn value(item: &ItemDefinition) -> Option<u32> {
         .filter(|price| *price > 0)
 }
 
-/// Highest tempering level: cheap gear takes more, endgame gear less, unique gear least.
+/// Highest tempering level: cheap gear takes more, endgame gear less, unique gear least, though
+/// late uniques (worth 2000+) take one more so they keep pace with the best shop pieces.
 pub(crate) fn max_level(item: &ItemDefinition) -> u32 {
     let unique = match item {
         ItemDefinition::Weapon(v) => v.buy_price.is_none(),
@@ -87,6 +88,7 @@ pub(crate) fn max_level(item: &ItemDefinition) -> u32 {
         return 0;
     }
     match price {
+        2000.. if unique => 3,
         _ if unique => 2,
         0..=499 => 5,
         500..=1499 => 4,
@@ -568,6 +570,9 @@ mod tests {
             ("iron_sword", 5),
             ("steel_sword", 4),
             ("flamebrand", 3),
+            // Loot-only: priced at twice the sell value.
+            ("oathkeeper", 3),
+            ("venomtongue_dagger", 2),
             ("potion", 0),
         ] {
             assert_eq!(max_level(catalog.item(id).unwrap()), cap, "{id}");
