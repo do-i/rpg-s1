@@ -838,7 +838,21 @@ pub(in crate::field_menu) fn spawn_stat_change_grid(
                     ))
                     .with_children(|stat| {
                         spawn_status_text(stat, label, font, 11.0, status_muted());
-                        spawn_status_text(stat, format!("{old} -> {new}"), font, 14.0, color);
+                        stat.spawn(Node {
+                            align_items: AlignItems::Center,
+                            column_gap: px(5),
+                            ..default()
+                        })
+                        .with_children(|reading| {
+                            spawn_trend_arrow(reading, new.cmp(&old), color);
+                            spawn_status_text(
+                                reading,
+                                format!("{old} -> {new}"),
+                                font,
+                                14.0,
+                                color,
+                            );
+                        });
                     });
             }
         });
@@ -873,4 +887,46 @@ pub(in crate::field_menu) fn stat_change_color(old: i32, new: i32) -> Color {
     } else {
         status_muted()
     }
+}
+
+/// A small stepped triangle: green pointing up for a gain, red pointing down for a loss, nothing
+/// for no change. Built from nodes so it never depends on the font carrying arrow glyphs.
+fn spawn_trend_arrow(
+    parent: &mut ChildSpawnerCommands<'_>,
+    change: std::cmp::Ordering,
+    color: Color,
+) {
+    const STEPS: [f32; 4] = [2.0, 5.0, 8.0, 11.0];
+    let steps: Vec<f32> = match change {
+        std::cmp::Ordering::Greater => STEPS.to_vec(),
+        std::cmp::Ordering::Less => STEPS.iter().rev().copied().collect(),
+        std::cmp::Ordering::Equal => return,
+    };
+    parent
+        .spawn((
+            Node {
+                width: px(11),
+                flex_shrink: 0.0,
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            Name::new(if change.is_gt() {
+                "Stat up arrow"
+            } else {
+                "Stat down arrow"
+            }),
+        ))
+        .with_children(|arrow| {
+            for width in steps {
+                arrow.spawn((
+                    Node {
+                        width: px(width),
+                        height: px(3),
+                        ..default()
+                    },
+                    BackgroundColor(color),
+                ));
+            }
+        });
 }
