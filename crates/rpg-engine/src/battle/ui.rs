@@ -3688,6 +3688,7 @@ mod tests {
                 gp_gained: 5,
                 members: Vec::new(),
                 loot: Vec::new(),
+                shattered_cores: 0,
                 boss_flag: None,
             });
         app.update();

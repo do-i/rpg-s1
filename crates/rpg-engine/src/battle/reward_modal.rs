@@ -647,6 +647,20 @@ fn spawn_loot_section(
     if rewards.loot.is_empty() {
         spawn_battle_text(parent, "No loot", font, 20.0, reward_muted(), Justify::Left);
     }
+    if rewards.shattered_cores > 0 {
+        spawn_battle_text(
+            parent,
+            if rewards.shattered_cores == 1 {
+                "Core shattered".to_owned()
+            } else {
+                format!("{} cores shattered", rewards.shattered_cores)
+            },
+            font,
+            16.0,
+            Color::srgb_u8(195, 172, 216),
+            Justify::Left,
+        );
+    }
     for loot in &rewards.loot {
         parent
             .spawn((

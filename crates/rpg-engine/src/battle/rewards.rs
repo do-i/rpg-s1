@@ -7,7 +7,7 @@ use crate::{
     gameplay_rng::GameplayRng,
     runtime_member::RuntimeLevelUp,
     runtime_repository::RepositoryError,
-    scenario_balance::BalanceData,
+    scenario_balance::{BalanceData, BattleBalance},
     scenario_enemy::{EnemyLootEntry, MagicCoreSize},
 };
 
@@ -19,6 +19,8 @@ pub(super) struct BattleRewards {
     pub(super) gp_gained: u32,
     pub(super) members: Vec<MemberReward>,
     pub(super) loot: Vec<LootReward>,
+    /// Defeated enemies whose magic core shattered and dropped nothing.
+    pub(super) shattered_cores: u32,
     pub(super) boss_flag: Option<String>,
 }
 
@@ -102,6 +104,7 @@ fn experience_weights(living: &[(CombatantKey, &str)], levels: &BTreeMap<String,
 pub(super) fn calculate_rewards(
     state: &BattleState,
     levels: &BTreeMap<String, u32>,
+    battle_balance: &BattleBalance,
     rng: &mut GameplayRng,
 ) -> BattleRewards {
     let total_experience = state
@@ -118,6 +121,7 @@ pub(super) fn calculate_rewards(
         .filter(|actor| actor.key.side == BattleSide::Enemy)
         .map(|actor| actor.gold_yield)
         .fold(0_u32, u32::saturating_add);
+    let (loot, shattered_cores) = calculate_loot(state, battle_balance, rng);
     let party = state
         .combatants
         .iter()
@@ -181,7 +185,8 @@ pub(super) fn calculate_rewards(
         total_experience,
         gp_gained,
         members,
-        loot: calculate_loot(state, rng),
+        loot,
+        shattered_cores,
         boss_flag: None,
     }
 }
@@ -203,7 +208,7 @@ pub(super) fn apply_rewards(
         .members()
         .map(|member| (member.id().to_owned(), member.level()))
         .collect::<BTreeMap<_, _>>();
-    let mut rewards = calculate_rewards(state, &levels, staged.rng_mut());
+    let mut rewards = calculate_rewards(state, &levels, &balance.battle, staged.rng_mut());
     let flags = staged.flags().clone();
     for result in &mut rewards.members {
         let battle_actor = state
@@ -396,7 +401,12 @@ impl BattleRewards {
     }
 }
 
-fn calculate_loot(state: &BattleState, rng: &mut GameplayRng) -> Vec<LootReward> {
+fn calculate_loot(
+    state: &BattleState,
+    battle_balance: &BattleBalance,
+    rng: &mut GameplayRng,
+) -> (Vec<LootReward>, u32) {
+    let mut shattered_cores = 0_u32;
     let mut totals = BTreeMap::<String, (u32, bool)>::new();
     for enemy in state
         .combatants
@@ -404,7 +414,22 @@ fn calculate_loot(state: &BattleState, rng: &mut GameplayRng) -> Vec<LootReward>
         .filter(|actor| actor.key.side == BattleSide::Enemy)
     {
         let Some(drops) = &enemy.drops else { continue };
-        for core in &drops.mc {
+        // Each monster owns one core. A non-boss core may shatter; the roll is skipped for
+        // bosses and for zero odds so those paths leave the RNG stream untouched.
+        let break_percent = if enemy.boss {
+            0
+        } else if enemy.rough_kill {
+            battle_balance.mc_break_rough_percent
+        } else {
+            battle_balance.mc_break_percent
+        };
+        let shattered = !drops.mc.is_empty()
+            && break_percent > 0
+            && rng.next_u64() % 100 < u64::from(break_percent.min(100));
+        if shattered {
+            shattered_cores += 1;
+        }
+        for core in drops.mc.iter().filter(|_| !shattered) {
             let id = magic_core_id(core.size).to_owned();
             let entry = totals.entry(id).or_insert((0, true));
             entry.0 = entry.0.saturating_add(core.qty.get());
@@ -416,7 +441,7 @@ fn calculate_loot(state: &BattleState, rng: &mut GameplayRng) -> Vec<LootReward>
             }
         }
     }
-    totals
+    let loot = totals
         .into_iter()
         .map(|(item_id, (quantity, magic_core))| LootReward {
             name: if magic_core {
@@ -428,7 +453,8 @@ fn calculate_loot(state: &BattleState, rng: &mut GameplayRng) -> Vec<LootReward>
             quantity,
             magic_core,
         })
-        .collect()
+        .collect();
+    (loot, shattered_cores)
 }
 
 fn pick_loot<'a>(pool: &'a [EnemyLootEntry], rng: &mut GameplayRng) -> Option<&'a EnemyLootEntry> {

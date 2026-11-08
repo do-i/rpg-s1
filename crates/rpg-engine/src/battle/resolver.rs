@@ -190,6 +190,9 @@ impl BattleState {
                     .map(|target| target.apply_resolved_damage(amount))
                     .unwrap_or(0);
                 debug_assert_eq!(actual, amount);
+                if critical && let Some(target) = self.actor_mut(target_key) {
+                    target.mark_rough_kill();
+                }
                 self.announce(
                     if target_key.side == BattleSide::Party {
                         LogKind::HitParty

@@ -29,6 +29,7 @@ fn rewards_with(members: Vec<MemberReward>) -> BattleRewards {
         gp_gained: 40,
         members,
         loot: Vec::new(),
+        shattered_cores: 0,
         boss_flag: None,
     }
 }

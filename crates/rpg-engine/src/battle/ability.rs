@@ -290,6 +290,9 @@ fn resolve_spell(
         .actor_mut(target)
         .expect("validated target")
         .apply_resolved_damage(amount);
+    if let Some(actor) = state.actor_mut(target) {
+        actor.mark_rough_kill();
+    }
     events.push(BattleEvent::MagicDamage {
         source,
         target,
@@ -401,6 +404,9 @@ fn resolve_physical_ability(
             .actor_mut(target)
             .expect("validated target")
             .apply_resolved_damage(amount);
+        if critical && let Some(actor) = state.actor_mut(target) {
+            actor.mark_rough_kill();
+        }
         events.push(BattleEvent::Damage {
             action: BattleAction::Physical {
                 attacker: caster,

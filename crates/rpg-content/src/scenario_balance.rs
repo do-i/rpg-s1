@@ -45,6 +45,8 @@ impl Default for BalanceData {
                 flee_rogue_dex_bonus: UnitInterval::new(0.02).expect("constant is a unit interval"),
                 party_defense_con_divisor: default_party_defense_con_divisor(),
                 gp_per_exp_percent: default_gp_per_exp_percent(),
+                mc_break_percent: default_mc_break_percent(),
+                mc_break_rough_percent: default_mc_break_rough_percent(),
             },
             spawner: SpawnerBalance {
                 rogue_chase_reduction: 2,
@@ -101,6 +103,20 @@ pub struct BattleBalance {
     /// faucet meaningful early, where money is tight, and negligible late, where cores dominate.
     #[serde(default = "default_gp_per_exp_percent")]
     pub gp_per_exp_percent: PositiveInteger,
+    /// Percent chance a defeated non-boss enemy's magic core shatters and drops nothing.
+    #[serde(default = "default_mc_break_percent")]
+    pub mc_break_percent: u32,
+    /// The same chance when the killing blow was a critical hit, a spell or an item attack.
+    #[serde(default = "default_mc_break_rough_percent")]
+    pub mc_break_rough_percent: u32,
+}
+
+fn default_mc_break_percent() -> u32 {
+    20
+}
+
+fn default_mc_break_rough_percent() -> u32 {
+    30
 }
 
 fn default_gp_per_exp_percent() -> PositiveInteger {

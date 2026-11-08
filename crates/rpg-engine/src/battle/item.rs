@@ -192,6 +192,9 @@ pub(super) fn resolve_item(
                 .actor_mut(target)
                 .expect("validated item target")
                 .apply_resolved_damage(amount);
+            if let Some(actor) = state.actor_mut(target) {
+                actor.mark_rough_kill();
+            }
             events.push(BattleEvent::ItemDamage {
                 source,
                 target,

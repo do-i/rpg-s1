@@ -117,6 +117,8 @@ pub(super) struct BattleCombatant {
     pub(super) experience_yield: u32,
     pub(super) gold_yield: u32,
     pub(super) drops: Option<crate::scenario_enemy::EnemyDrops>,
+    /// Set when a critical, spell or item attack defeated this combatant; raises core break odds.
+    pub(super) rough_kill: bool,
 }
 
 impl BattleCombatant {
@@ -155,6 +157,13 @@ impl BattleCombatant {
             experience_yield: participant.experience_yield,
             gold_yield: participant.gold_yield,
             drops: participant.drops.clone(),
+            rough_kill: false,
+        }
+    }
+
+    pub(super) fn mark_rough_kill(&mut self) {
+        if !self.is_alive() {
+            self.rough_kill = true;
         }
     }
 

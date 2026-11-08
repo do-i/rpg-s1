@@ -29,7 +29,7 @@ use crate::{
     gameplay_rng::GameplayRng,
     new_game::{NewGameScenario, build_new_game_state},
     runtime_repository::RuntimeRepository,
-    scenario_balance::BalanceData,
+    scenario_balance::{BalanceData, BattleBalance},
     scenario_class::{Ability, ClassDefinition},
     scenario_enemy::{
         BossMoveSet, EnemyBehavior, EnemyCatalogFile, EnemyDrops, EnemyMove, EnemyType,
@@ -111,6 +111,15 @@ fn reward_game() -> (GameState, BalanceData) {
     (game, balance)
 }
 
+/// Core-break odds zeroed, so tests that pin cores don't depend on the break roll.
+fn no_break() -> BattleBalance {
+    BattleBalance {
+        mc_break_percent: 0,
+        mc_break_rough_percent: 0,
+        ..BalanceData::default().battle
+    }
+}
+
 fn reward_enemy(id: &str, index: usize) -> BattleCombatant {
     let definition = EnemyCatalogFile::from_yaml_stream(include_str!(scenario_file!(
         "data/enemies/enemies_rank_8_F.yaml"
@@ -166,6 +175,7 @@ pub(super) fn actor(side: BattleSide, index: usize, dex: i64, health: u32) -> Ba
         experience_yield: 0,
         gold_yield: 0,
         drops: None,
+        rough_kill: false,
     }
 }
 
@@ -1202,7 +1212,12 @@ fn rewards_split_all_exp_only_across_living_members_with_seeded_remainder() {
     enemy_b.health = 0;
     let state = state_with(vec![first, second, ko, enemy_a, enemy_b]);
 
-    let rewards = calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(17));
+    let rewards = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &no_break(),
+        &mut GameplayRng::from_seed(17),
+    );
     assert_eq!(rewards.total_experience, 7);
     assert_eq!(
         rewards
@@ -1223,7 +1238,12 @@ fn rewards_split_all_exp_only_across_living_members_with_seeded_remainder() {
     );
     assert_eq!(
         rewards,
-        calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(17))
+        calculate_rewards(
+            &state,
+            &BTreeMap::new(),
+            &no_break(),
+            &mut GameplayRng::from_seed(17)
+        )
     );
 }
 
@@ -1234,7 +1254,12 @@ fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
         reward_enemy("goblin", 0),
         reward_enemy("grik_the_grin", 1),
     ]);
-    let rewards = calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(31));
+    let rewards = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &no_break(),
+        &mut GameplayRng::from_seed(31),
+    );
     let quantity = |id: &str| {
         rewards
             .loot
@@ -1255,7 +1280,12 @@ fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
     );
     assert_eq!(
         rewards,
-        calculate_rewards(&state, &BTreeMap::new(), &mut GameplayRng::from_seed(31))
+        calculate_rewards(
+            &state,
+            &BTreeMap::new(),
+            &no_break(),
+            &mut GameplayRng::from_seed(31)
+        )
     );
 }
 
@@ -1470,6 +1500,7 @@ fn full_battle_parity_transcript() -> Vec<String> {
     let rewards = calculate_rewards(
         &reward_state,
         &BTreeMap::new(),
+        &no_break(),
         &mut GameplayRng::from_seed(17),
     );
     let mut awards = rewards
@@ -2094,11 +2125,16 @@ mod experience_split_tests {
             .enumerate()
             .map(|(index, (level, _))| (format!("{:?}-{index}", BattleSide::Party), *level))
             .collect::<BTreeMap<_, _>>();
-        calculate_rewards(&state, &level_map, &mut GameplayRng::from_seed(3))
-            .members
-            .iter()
-            .map(|member| member.experience_gained)
-            .collect()
+        calculate_rewards(
+            &state,
+            &level_map,
+            &no_break(),
+            &mut GameplayRng::from_seed(3),
+        )
+        .members
+        .iter()
+        .map(|member| member.experience_gained)
+        .collect()
     }
 
     #[test]
@@ -2132,4 +2168,59 @@ mod experience_split_tests {
         let shares = split(&[(9, true), (4, true), (2, true)], 1001);
         assert_eq!(shares.iter().sum::<u32>(), 1001);
     }
+}
+
+#[test]
+fn magic_core_break_is_certain_at_full_odds_and_never_for_bosses() {
+    let always = BattleBalance {
+        mc_break_percent: 100,
+        mc_break_rough_percent: 100,
+        ..BalanceData::default().battle
+    };
+    let mut boss = reward_enemy("grik_the_grin", 1);
+    boss.boss = true;
+    let state = state_with(vec![
+        actor(BattleSide::Party, 0, 10, 100),
+        reward_enemy("goblin", 0),
+        boss,
+    ]);
+    let rewards = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &always,
+        &mut GameplayRng::from_seed(5),
+    );
+    assert_eq!(rewards.shattered_cores, 1);
+    let cores = rewards.loot.iter().filter(|loot| loot.magic_core);
+    assert_eq!(cores.map(|loot| loot.quantity).sum::<u32>(), 1);
+    let none = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &no_break(),
+        &mut GameplayRng::from_seed(5),
+    );
+    assert_eq!(none.shattered_cores, 0);
+}
+
+#[test]
+fn rough_kills_use_the_higher_break_chance() {
+    let balance = BattleBalance {
+        mc_break_percent: 0,
+        mc_break_rough_percent: 100,
+        ..BalanceData::default().battle
+    };
+    let mut rough = reward_enemy("goblin", 0);
+    rough.rough_kill = true;
+    let state = state_with(vec![
+        actor(BattleSide::Party, 0, 10, 100),
+        rough,
+        reward_enemy("goblin", 1),
+    ]);
+    let rewards = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &balance,
+        &mut GameplayRng::from_seed(9),
+    );
+    assert_eq!(rewards.shattered_cores, 1);
 }
