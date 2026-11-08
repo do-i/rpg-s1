@@ -16,8 +16,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: rusty_blade
@@ -54,8 +52,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: goblin_shield
@@ -90,8 +86,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: rusty_blade
@@ -126,8 +120,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: arrow_bundle
@@ -170,8 +162,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: arrow_bundle
@@ -210,8 +200,6 @@ drops:
   mc:
     - size: M
       qty: 1
-    - size: S
-      qty: 2
   loot:
     - pool:
         - item: arrow_bundle
@@ -247,7 +235,7 @@ exp: 200
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: rare_herb
@@ -284,7 +272,7 @@ exp: 208
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: bone_shard
@@ -327,8 +315,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: ancient_plague_sample
@@ -353,7 +339,7 @@ exp: 220
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: serpent_scale
@@ -391,7 +377,7 @@ exp: 228
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: serpent_scale
@@ -429,7 +415,7 @@ exp: 240
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: wyvern_wing
@@ -470,7 +456,7 @@ gp: 235
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: cursed_blade
@@ -505,7 +491,7 @@ gp: 248
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: cursed_blade
@@ -542,7 +528,7 @@ exp: 238
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: bone_shard
@@ -579,7 +565,7 @@ exp: 240
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: bone_shard
@@ -615,8 +601,6 @@ dex: 18
 exp: 252
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -654,8 +638,6 @@ exp: 615
 gp: 615
 drops:
   mc:
-    - size: L
-      qty: 2
     - size: XL
       qty: 1
   loot:

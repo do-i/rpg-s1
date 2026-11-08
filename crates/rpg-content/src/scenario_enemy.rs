@@ -707,7 +707,13 @@ mod tests {
                 .iter()
                 .flat_map(|enemy| enemy.drops.mc.iter())
                 .count(),
-            190
+            105
+        );
+        // World rule: every monster owns exactly one magic core.
+        assert!(
+            enemies
+                .iter()
+                .all(|enemy| enemy.drops.mc.len() == 1 && enemy.drops.mc[0].qty.get() == 1)
         );
         assert_eq!(
             enemies

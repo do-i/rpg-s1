@@ -14,8 +14,6 @@ dex: 14
 exp: 95
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -50,8 +48,6 @@ dex: 13
 exp: 100
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -88,8 +84,6 @@ dex: 13
 exp: 98
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -124,8 +118,6 @@ dex: 12
 exp: 102
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -162,8 +154,6 @@ dex: 12
 exp: 92
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -202,8 +192,6 @@ dex: 12
 exp: 100
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -238,8 +226,6 @@ dex: 12
 exp: 88
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -274,8 +260,6 @@ dex: 16
 exp: 105
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -310,10 +294,8 @@ dex: 18
 exp: 112
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: wisp_flame
@@ -357,8 +339,6 @@ dex: 20
 exp: 130
 drops:
   mc:
-    - size: S
-      qty: 2
     - size: M
       qty: 1
   loot:
@@ -401,8 +381,6 @@ dex: 14
 exp: 295
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:

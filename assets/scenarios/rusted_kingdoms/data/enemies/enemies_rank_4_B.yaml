@@ -15,7 +15,7 @@ exp: 138
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: ember_core
@@ -52,7 +52,7 @@ exp: 145
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: ember_core
@@ -96,7 +96,7 @@ exp: 140
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: stone_chunk
@@ -130,7 +130,7 @@ exp: 142
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: arrow_bundle
@@ -164,7 +164,7 @@ exp: 152
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: arrow_bundle
@@ -198,7 +198,7 @@ exp: 138
 drops:
   mc:
     - size: S
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: rusty_blade
@@ -231,8 +231,6 @@ dex: 14
 exp: 150
 drops:
   mc:
-    - size: S
-      qty: 2
     - size: M
       qty: 1
   loot:
@@ -269,8 +267,6 @@ dex: 14
 exp: 158
 drops:
   mc:
-    - size: S
-      qty: 2
     - size: M
       qty: 1
   loot:
@@ -307,8 +303,6 @@ dex: 22
 exp: 168
 drops:
   mc:
-    - size: S
-      qty: 2
     - size: M
       qty: 1
   loot:
@@ -350,8 +344,6 @@ dex: 18
 exp: 380
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:

@@ -16,8 +16,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: dark_armor_shard
@@ -60,8 +58,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: dark_armor_shard
@@ -101,8 +97,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: blood_vial
@@ -147,8 +141,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: blood_vial
@@ -190,8 +182,6 @@ exp: 465
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -234,8 +224,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: bat_wing
@@ -278,8 +266,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: bat_wing
@@ -318,8 +304,6 @@ exp: 470
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -363,8 +347,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: stone_chunk
@@ -404,8 +386,6 @@ exp: 478
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -449,8 +429,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: beast_core
@@ -490,8 +468,6 @@ exp: 490
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -530,8 +506,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: angel_feather
@@ -569,8 +543,6 @@ drops:
   mc:
     - size: L
       qty: 1
-    - size: M
-      qty: 2
   loot:
     - pool:
         - item: angel_feather
@@ -610,8 +582,6 @@ exp: 482
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -649,8 +619,6 @@ exp: 488
 drops:
   mc:
     - size: L
-      qty: 2
-    - size: M
       qty: 1
   loot:
     - pool:
@@ -690,8 +658,6 @@ dex: 41
 exp: 505
 drops:
   mc:
-    - size: L
-      qty: 2
     - size: XL
       qty: 1
   loot:
@@ -735,9 +701,7 @@ exp: 1250
 drops:
   mc:
     - size: XL
-      qty: 2
-    - size: L
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: dullahan_helm
@@ -767,9 +731,7 @@ exp: 2600
 drops:
   mc:
     - size: XL
-      qty: 3
-    - size: L
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: void_core
@@ -806,8 +768,6 @@ drops:
   mc:
     - size: XL
       qty: 1
-    - size: L
-      qty: 2
   loot:
     - pool:
         - item: angel_feather

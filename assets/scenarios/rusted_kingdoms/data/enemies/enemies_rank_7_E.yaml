@@ -15,8 +15,6 @@ exp: 40
 gp: 40
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -54,8 +52,6 @@ exp: 42
 gp: 42
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -91,8 +87,6 @@ exp: 48
 gp: 48
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -130,8 +124,6 @@ exp: 44
 gp: 44
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -167,8 +159,6 @@ exp: 46
 gp: 46
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -203,8 +193,6 @@ dex: 13
 exp: 52
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -239,8 +227,6 @@ dex: 12
 exp: 56
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
@@ -280,8 +266,6 @@ dex: 18
 exp: 180
 drops:
   mc:
-    - size: S
-      qty: 2
     - size: M
       qty: 1
   loot:

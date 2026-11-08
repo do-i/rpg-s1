@@ -2225,7 +2225,7 @@ mod tests {
                 .iter()
                 .map(|row| row.item_id.as_deref())
                 .collect::<Vec<_>>(),
-            vec![Some("potion"), Some("antidote"), Some("mc_m"), Some("mc_s")]
+            vec![Some("potion"), Some("antidote")]
         );
         // Display names, not the `potion`/`antidote` ids the player never sees elsewhere.
         assert_eq!(
@@ -2234,12 +2234,7 @@ mod tests {
                 .into_iter()
                 .map(|row| row.text)
                 .collect::<Vec<_>>(),
-            vec![
-                "Potion ×2".to_owned(),
-                "Antidote ×1".to_owned(),
-                "Magic Core (M) ×3".to_owned(),
-                "Magic Core (S) ×10".to_owned(),
-            ]
+            vec!["Potion ×2".to_owned(), "Antidote ×1".to_owned(),]
         );
         assert_eq!(
             second,
@@ -2251,8 +2246,6 @@ mod tests {
         );
         assert_eq!(game.repository().item_count("potion"), 2);
         assert_eq!(game.repository().item_count("antidote"), 1);
-        assert_eq!(game.repository().item_count("mc_m"), 3);
-        assert_eq!(game.repository().item_count("mc_s"), 10);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
         assert!(open_item_box(&other, &mut game, &catalog).opened);

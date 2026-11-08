@@ -15,7 +15,7 @@ exp: 285
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: dark_crystal
@@ -53,8 +53,6 @@ dex: 30
 exp: 295
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -94,8 +92,6 @@ dex: 32
 exp: 298
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -138,8 +134,6 @@ dex: 28
 exp: 312
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -184,7 +178,7 @@ exp: 278
 drops:
   mc:
     - size: M
-      qty: 2
+      qty: 1
   loot:
     - pool:
         - item: cursed_relic
@@ -222,8 +216,6 @@ dex: 25
 exp: 290
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -263,8 +255,6 @@ dex: 26
 exp: 302
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -305,8 +295,6 @@ dex: 24
 exp: 300
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -347,8 +335,6 @@ dex: 24
 exp: 305
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -389,8 +375,6 @@ dex: 25
 exp: 318
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -435,8 +419,6 @@ dex: 28
 exp: 760
 drops:
   mc:
-    - size: L
-      qty: 2
     - size: XL
       qty: 1
   loot:
@@ -464,8 +446,6 @@ dex: 30
 exp: 340
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -508,8 +488,6 @@ dex: 28
 exp: 350
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -549,8 +527,6 @@ dex: 28
 exp: 365
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -587,8 +563,6 @@ dex: 30
 exp: 358
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -628,8 +602,6 @@ dex: 31
 exp: 368
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -671,8 +643,6 @@ dex: 30
 exp: 380
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -712,8 +682,6 @@ dex: 28
 exp: 332
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -750,8 +718,6 @@ dex: 28
 exp: 345
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -791,8 +757,6 @@ dex: 30
 exp: 358
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -832,8 +796,6 @@ dex: 30
 exp: 380
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -880,8 +842,6 @@ dex: 31
 exp: 388
 drops:
   mc:
-    - size: M
-      qty: 2
     - size: L
       qty: 1
   loot:
@@ -928,8 +888,6 @@ dex: 30
 exp: 920
 drops:
   mc:
-    - size: L
-      qty: 2
     - size: XL
       qty: 1
   loot:

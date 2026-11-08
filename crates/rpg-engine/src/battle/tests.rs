@@ -1242,7 +1242,7 @@ fn multi_enemy_loot_aggregates_guaranteed_cores_and_seeded_pool_rolls() {
             .find(|loot| loot.item_id == id)
             .map_or(0, |loot| loot.quantity)
     };
-    assert_eq!(quantity("mc_xs"), 5);
+    assert_eq!(quantity("mc_xs"), 1);
     assert_eq!(quantity("mc_s"), 1);
     assert_eq!(
         rewards
@@ -1298,11 +1298,11 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     );
     assert_eq!(rewards.members[0].learned_abilities, ["Radiant Strike"]);
     assert!(game.flags().is_set("boss_zone01_defeated"));
-    assert_eq!(game.repository().item_count("mc_xs"), 2);
+    assert_eq!(game.repository().item_count("mc_xs"), 0);
     assert_eq!(game.repository().item_count("mc_s"), 1);
-    assert!(game.repository().is_loot("mc_xs"));
+    assert!(game.repository().is_loot("mc_s"));
     assert_eq!(
-        game.repository().item_tags("mc_xs").collect::<Vec<_>>(),
+        game.repository().item_tags("mc_s").collect::<Vec<_>>(),
         ["magic_core"]
     );
     // B3.2: combat now pays gold. This enemy has no authored `gp`, so it yields the
@@ -1317,7 +1317,6 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
         .iter()
         .map(|loot| (loot.name.as_str(), loot.quantity))
         .collect::<Vec<_>>();
-    assert!(loot.contains(&("Magic Core (XS)", 2)));
     assert!(loot.contains(&("Magic Core (S)", 1)));
     let row = &rewards.member_rows()[0];
     assert_eq!((row.level_from, row.level_to), (1, 2));

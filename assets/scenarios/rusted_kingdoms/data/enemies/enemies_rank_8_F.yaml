@@ -15,7 +15,7 @@ exp: 24
 drops:
   mc:
     - size: XS
-      qty: 3
+      qty: 1
   loot:
     - pool:
         - item: goblin_fang
@@ -50,8 +50,6 @@ dex: 10
 exp: 34
 drops:
   mc:
-    - size: XS
-      qty: 3
     - size: S
       qty: 1
   loot:
@@ -89,7 +87,7 @@ exp: 26
 drops:
   mc:
     - size: XS
-      qty: 3
+      qty: 1
   loot:
     - pool:
         - item: goblin_fang
@@ -123,7 +121,7 @@ exp: 28
 drops:
   mc:
     - size: XS
-      qty: 3
+      qty: 1
   loot:
     - pool:
         - item: goblin_fang
@@ -156,8 +154,6 @@ dex: 12
 exp: 30
 drops:
   mc:
-    - size: XS
-      qty: 3
     - size: S
       qty: 1
   loot:
@@ -197,8 +193,6 @@ dex: 14
 exp: 36
 drops:
   mc:
-    - size: XS
-      qty: 2
     - size: S
       qty: 1
   loot:
