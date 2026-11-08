@@ -1773,7 +1773,7 @@ struct BattleInputContext<'w, 's> {
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<ResMut<'w, GameState>>,
     entry: Option<Res<'w, BattleEntry>>,
-    reward_prelude: Option<Res<'w, super::reward_modal::BattleRewardPrelude>>,
+    reward_prelude: Option<ResMut<'w, super::reward_modal::BattleRewardPrelude>>,
     reward_screen: Option<ResMut<'w, super::reward_modal::BattleRewardScreen>>,
     pointer: Option<Res<'w, crate::gameplay_canvas::pointer::CanvasPointer>>,
     reward_buttons: Query<
@@ -2015,6 +2015,20 @@ fn handle_battle_input(
                     }
                 }
                 Err(error) => state.message = format!("Could not apply rewards: {error}"),
+            }
+        }
+        // Confirm or a click during the victory sting reveals the loot now. The modal's own
+        // Continue needs a fresh press, so this one press cannot also dismiss it.
+        BattlePhase::Rewards
+            if context.reward_prelude.is_some()
+                && (actions.just_pressed(AppAction::Confirm)
+                    || context
+                        .pointer
+                        .as_ref()
+                        .is_some_and(|pointer| pointer.just_clicked())) =>
+        {
+            if let Some(prelude) = context.reward_prelude.as_deref_mut() {
+                prelude.skip();
             }
         }
         BattlePhase::Rewards

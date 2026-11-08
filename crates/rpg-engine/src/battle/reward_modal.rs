@@ -21,9 +21,11 @@ use crate::{
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
     item_images::ItemIcon,
+    options_store::PlayerOptions,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     sfx_cue::{PlaySfx, cue},
+    sound_option::channel_gain,
 };
 
 const LOOT_MODAL_WIDTH: f32 = 1020.0;
@@ -127,17 +129,31 @@ impl BattleRewardScreen {
     }
 }
 
-/// Locks dismissal until the victory sting finishes and the loot is revealed.
+/// Locks dismissal until the victory sting finishes and the loot is revealed. Confirm cuts it
+/// short, and it is never inserted while sound effects are muted, since there is no sting to wait
+/// for.
 #[derive(Resource)]
 pub(super) struct BattleRewardPrelude {
     timer: Timer,
+    skipped: bool,
 }
 
 impl BattleRewardPrelude {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             timer: Timer::from_seconds(VICTORY_PRELUDE_SECONDS, TimerMode::Once),
+            skipped: false,
         }
+    }
+
+    /// Reveals the loot on the next modal sync instead of waiting out the sting.
+    pub(super) fn skip(&mut self) {
+        self.skipped = true;
+    }
+
+    #[cfg(test)]
+    pub(super) const fn is_skipped(&self) -> bool {
+        self.skipped
     }
 }
 
@@ -152,6 +168,7 @@ pub(super) struct RewardModalContext<'w> {
     root: Option<Res<'w, ScenarioRoot>>,
     game: Option<Res<'w, GameState>>,
     catalog: Option<Res<'w, FieldMenuCatalog>>,
+    options: Option<Res<'w, PlayerOptions>>,
 }
 
 /// Spawns the modal once rewards are applied and tears it down if the phase
@@ -184,13 +201,17 @@ pub(super) fn sync_reward_modal(
     if context.screen.is_none() {
         commands.insert_resource(screen);
     }
-    if spawned.is_none() && context.prelude.is_none() {
+    let sfx_muted = context
+        .options
+        .as_deref()
+        .is_some_and(|options| channel_gain(options, false, false) == 0.0);
+    if spawned.is_none() && context.prelude.is_none() && !sfx_muted {
         commands.insert_resource(BattleRewardPrelude::new());
         sfx.write(PlaySfx::boosted(cue::VICTORY, 220));
         return;
     }
     if let Some(prelude) = context.prelude.as_deref_mut() {
-        if !prelude.timer.tick(context.time.delta()).just_finished() {
+        if !prelude.skipped && !prelude.timer.tick(context.time.delta()).just_finished() {
             return;
         }
         commands.remove_resource::<BattleRewardPrelude>();

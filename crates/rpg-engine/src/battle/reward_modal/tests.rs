@@ -1060,3 +1060,58 @@ fn overflowing_abilities_use_the_standard_scroll_frame_and_menu_navigation() {
     assert!(!text.iter().any(|text| text.contains("Next")));
     assert!(!text.iter().any(|text| text.contains("Up next")));
 }
+
+fn plain_rewards() -> BattleRewards {
+    rewards_with(vec![MemberReward {
+        member_id: "aric".to_owned(),
+        member_name: "Aric".to_owned(),
+        experience_gained: 20,
+        experience_applied: 20,
+        experience_now: 450,
+        experience_next: 1000,
+        level_ups: Vec::new(),
+        learned_abilities: Vec::new(),
+    }])
+}
+
+fn modal_count(app: &mut App) -> usize {
+    app.world_mut()
+        .query::<&BattleRewardModal>()
+        .iter(app.world())
+        .count()
+}
+
+#[test]
+fn muted_sound_effects_reveal_the_loot_without_a_sting() {
+    let mut app = reward_reveal_app(plain_rewards());
+    app.insert_resource(PlayerOptions {
+        sound_enabled: false,
+        ..PlayerOptions::default()
+    });
+
+    app.update();
+
+    assert!(!app.world().contains_resource::<BattleRewardPrelude>());
+    assert_eq!(modal_count(&mut app), 1);
+    assert!(
+        app.world()
+            .resource::<Messages<PlaySfx>>()
+            .get_cursor()
+            .read(app.world().resource::<Messages<PlaySfx>>())
+            .next()
+            .is_none()
+    );
+}
+
+#[test]
+fn skipping_the_prelude_reveals_the_loot_on_the_next_sync() {
+    let mut app = reward_reveal_app(plain_rewards());
+    app.update();
+    assert_eq!(modal_count(&mut app), 0);
+
+    app.world_mut().resource_mut::<BattleRewardPrelude>().skip();
+    app.update();
+
+    assert!(!app.world().contains_resource::<BattleRewardPrelude>());
+    assert_eq!(modal_count(&mut app), 1);
+}

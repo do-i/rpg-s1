@@ -389,3 +389,23 @@ fn sequential_level_ups_require_a_fresh_confirm_per_member_and_never_rebank_rewa
     );
     assert_eq!(payload(&app).repository, banked.repository);
 }
+
+#[test]
+fn confirm_during_the_victory_sting_skips_it_without_dismissing_the_loot() {
+    use crate::battle::reward_modal::BattleRewardPrelude;
+    let mut app = fixture(BattlePhase::Victory);
+    press(&mut app, NormalizedAction::Confirm);
+    app.insert_resource(BattleRewardPrelude::new());
+
+    press(&mut app, NormalizedAction::Confirm);
+
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Rewards
+    );
+    assert!(app.world().resource::<BattleRewardPrelude>().is_skipped());
+    assert_eq!(
+        *app.world().resource::<State<AppState>>().get(),
+        AppState::Battle
+    );
+}
