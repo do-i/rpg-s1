@@ -2159,6 +2159,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1644 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-status.tsx` | `f0528d9d35e6e03e280709ae2492828dfcf033441e63046d92e9bc6d745d1c5b` | Tiled tileset / goblin_scout_hooded_goblin v2 status sheet |
 | ALI-1645 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-attack.png` | `99da550ee6af785fce3a336a387298524dc4e393db5658419c53c63d6df10346` | enemy battler sheet / goblin_scout_hooded_goblin v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1646 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-attack.tsx` | `023774ea1c066e2f3f6252a6e5d1e4f655b810f0b5f71031594448c17b36546c` | Tiled tileset / goblin_scout_hooded_goblin v2 attack sheet |
+| ALI-1647 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-status.png` | `68b2319bae5a4f8cba18f44292037b2085e6173f089014335141ac9c700952a1` | enemy battler sheet / goblin_scout_sling_scout v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1648 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-status.tsx` | `09901125644f1d1e29d5675c80e02b7dc4c17dea0b289b2a779c7095e317fb25` | Tiled tileset / goblin_scout_sling_scout v2 status sheet |
+| ALI-1649 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-attack.png` | `1e6732496a00c4dbac1edf12cd0e3ec9bf40fbc9dc646e4e42e2d24e90c69875` | enemy battler sheet / goblin_scout_sling_scout v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1650 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-attack.tsx` | `b8c29aa56edfcef082ec069103561b3c291b64fed3126a9c4c9119a4a026e1bf` | Tiled tileset / goblin_scout_sling_scout v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
