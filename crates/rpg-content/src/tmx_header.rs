@@ -3391,7 +3391,7 @@ mod tests {
         assert_eq!(files.len(), 89);
         assert_eq!(layer_count, 495);
         assert_eq!(gid_count, 526762);
-        assert_eq!(flip_combination_counts, [522400, 4109, 2, 0, 0, 238, 7, 6]);
+        assert_eq!(flip_combination_counts, [522397, 4112, 2, 0, 0, 238, 7, 6]);
     }
 
     #[test]

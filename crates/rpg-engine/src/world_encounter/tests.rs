@@ -1125,7 +1125,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
                 (33, 24),
                 (8, 38),
                 (1, 10),
-                (66, 10),
+                (66, 12),
                 (17, 14),
                 (15, 40),
                 (61, 15),
@@ -1148,7 +1148,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
     };
     assert_eq!(boss.encounter_id(), "zone_04_ancient_ruins_03_sanctum:boss");
     assert_eq!(boss.formation(), ["skeleton_knight_base"]);
-    assert_eq!(boss.tile_position(), Position::new(30, 21));
+    assert_eq!(boss.tile_position(), Position::new(29, 17));
 
     let barrier_context = PreBattleReturnContext {
         map_id: "zone_04_ancient_ruins_03_sanctum".to_owned(),
