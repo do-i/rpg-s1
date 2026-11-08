@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Enemy v2 battler art in three steps.
+#   scripts/imggen ENEMY_ID 1   generate: poses from the image generator   -> STAGE/ID/
+#   scripts/imggen ENEMY_ID 2   cutout + 256px sheets (review the result)  -> STAGE/ID/export/
+#   scripts/imggen ENEMY_ID 3   promote sheets into v2/ + ledger rows (no commit)
+# Settings come from ~/.imggen.env (or the environment):
+#   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
+#   ENEMY_GEN_CMD  generator, called as: $ENEMY_GEN_CMD ID DIR   (needs DIR/ready.jpg + DIR/ID-NN-<pose>.jpg)
+# Output of every step is also appended to STAGE/ID/ID.log.
+set -uo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+# config file supplies defaults; variables already set in the environment win
+_stage=${IMGGEN_STAGE:-}; _gen=${ENEMY_GEN_CMD:-}
+[ -f "$HOME/.imggen.env" ] && . "$HOME/.imggen.env"
+[ -n "$_stage" ] && IMGGEN_STAGE=$_stage
+[ -n "$_gen" ] && ENEMY_GEN_CMD=$_gen
+id=${1:-}; step=${2:-}
+case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3}   (1 generate, 2 cutout+sheets, 3 promote)" >&2; exit 2;; esac
+[ -n "$id" ] || { echo "missing ENEMY_ID" >&2; exit 2; }
+: "${IMGGEN_STAGE:?set IMGGEN_STAGE in ~/.imggen.env}"
+dir="$IMGGEN_STAGE/$id"
+mkdir -p "$IMGGEN_STAGE"
+
+step1() {
+  : "${ENEMY_GEN_CMD:?set ENEMY_GEN_CMD in ~/.imggen.env}"
+  if compgen -G "$dir/$id-*.jpg" >/dev/null; then
+    echo "already generated: $dir (delete that folder to generate again)" >&2; return 1
+  fi
+  echo "== 1 generate $id"
+  $ENEMY_GEN_CMD "$id" "$dir" || return 1
+  [ -s "$dir/ready.jpg" ] || { echo "generator left no ready.jpg" >&2; return 1; }
+  echo "next: review the images in $dir, then: scripts/imggen $id 2"
+}
+
+step2() {
+  [ -d "$dir" ] || { echo "nothing to cut out; run: scripts/imggen $id 1" >&2; return 1; }
+  echo "== 2 cutout $id"
+  rm -rf "$dir/cutouts" "$dir/export"; mkdir -p "$dir/cutouts"
+  local ok=0 bad=() f n
+  for f in "$dir"/$id-*.jpg; do
+    [ -e "$f" ] || continue
+    n=$(basename "${f%.*}")
+    if python3 -I "$root/scripts/cutout.py" "$f" "$dir/cutouts/$n.png" > "$dir/cutouts/$n.report.txt" 2>&1; then
+      ok=$((ok+1)); else bad+=("$n"); fi
+  done
+  echo "cutout: $ok ok, ${#bad[@]} failed"
+  if [ ${#bad[@]} -gt 0 ]; then
+    for n in "${bad[@]}"; do echo "  FAIL $n  ($dir/cutouts/$n.report.txt)"; done
+    echo "no sheets built. This is a cutout.py issue, not a reason to regenerate." >&2; return 1
+  fi
+  magick montage "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
+  echo "== 2 sheets $id"
+  python3 -I "$root/scripts/pack_enemy_sheets.py" "$id" "$dir" --ready "$dir/ready.jpg" || return 1
+  echo "review: $dir/cutouts/check-green.png and $dir/export/$id/  then: scripts/imggen $id 3"
+}
+
+step3() {
+  [ -d "$dir/export/$id" ] || { echo "no sheets to promote; run: scripts/imggen $id 2" >&2; return 1; }
+  echo "== 3 promote $id"
+  python3 -I "$root/scripts/promote_enemy_sheets.py" "$id" "$dir/export" || return 1
+  echo "promoted; review git diff and commit"
+}
+
+if [ "$step" = 1 ]; then mkdir -p "$dir"; elif [ ! -d "$dir" ]; then echo "no work folder $dir; run: scripts/imggen $id 1" >&2; exit 1; fi
+step$step 2>&1 | tee -a "$dir/$id.log"
+exit "${PIPESTATUS[0]}"

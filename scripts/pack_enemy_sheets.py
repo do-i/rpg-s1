@@ -3,7 +3,7 @@
 
     python3 -I scripts/pack_enemy_sheets.py ID POSES_DIR --ready READY.jpg [--out DIR] [--tile 256]
 
-POSES_DIR is the folder scripts/cutout.sh wrote: POSES_DIR/cutouts/*-NN-<pose>.png
+POSES_DIR holds ID-NN-<pose>.jpg; scripts/imggen step 2 cuts them out into POSES_DIR/cutouts/ and calls this
 READY is the canonical image (jpg is cut out first; a transparent png is used as is).
 
 Writes OUT/ID/ (default OUT = POSES_DIR/export):
