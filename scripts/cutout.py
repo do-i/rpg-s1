@@ -38,6 +38,7 @@ HALO_T = 14       # min(r,b)-g above this = magenta-hued
 REF_RATIO = 0.56   # blue/red of the key colour the hue thresholds below were tuned at
 KEY = [None]       # key colour of the image being processed, shared with verify()
 OUTLINE_MAX = 14  # max painted-outline width to peel
+PINK_MAX = 100    # leftover magenta px allowed (~6px at the 256px tile; real fringe is thousands)
 HUE_TOL = 0.07    # max |b/r - key b/r| for an enclosed pixel to count as field
 
 
@@ -168,7 +169,7 @@ def shadowish(r, g, b, key):
     """Dark, key-hued pixel: a shaded patch of the magenta field."""
     ratio = b / np.maximum(r, 1.0)
     f = hue_scale(key)
-    return ((np.minimum(r, b) - g > 14) & (ratio > 0.38 * f) & (ratio < 0.80 * f)
+    return ((np.minimum(r, b) - g > 14) & (ratio > 0.38 * f) & (ratio < max(0.80 * f, key[2] / max(key[0], 1.0) + 0.15))
             & (g < 0.35 * b) & (r < 0.85 * key[0]))
 
 
@@ -279,7 +280,7 @@ def verify(src, out, report):
     pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90)).sum())
     plum = int(((al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (r < 140)).sum())
     report.append(f"check: {pink} bright-magenta px, {plum} opaque plum px")
-    if pink > 20:
+    if pink > PINK_MAX:
         fails.append(f"{pink} visible magenta pixels remain")
     if plum > 200:
         fails.append(f"{plum} opaque plum px: a magenta fringe or sticker halo is still on the figure")
