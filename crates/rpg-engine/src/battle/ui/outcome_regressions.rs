@@ -53,6 +53,7 @@ fn fixture(phase: BattlePhase) -> App {
         .insert_resource(balances)
         .insert_resource(FieldMenuCatalog::production_class_fixture())
         .insert_resource(ActionState::default())
+        .insert_resource(deck::BattleDeck::default())
         .insert_resource(game)
         .insert_resource(entry)
         .insert_resource(battle)
@@ -407,5 +408,109 @@ fn confirm_during_the_victory_sting_skips_it_without_dismissing_the_loot() {
     assert_eq!(
         *app.world().resource::<State<AppState>>().get(),
         AppState::Battle
+    );
+}
+
+#[test]
+fn grouped_spell_input_skips_empty_schools_and_preserves_target_cancellation() {
+    let mut app = fixture(BattlePhase::Command);
+    let catalog = app.world().resource::<FieldMenuCatalog>();
+    let fire = catalog
+        .class("sorcerer")
+        .unwrap()
+        .abilities
+        .iter()
+        .find(|ability| ability.id == "fire_bolt")
+        .unwrap()
+        .clone();
+    let water = catalog
+        .class("sorcerer")
+        .unwrap()
+        .abilities
+        .iter()
+        .find(|ability| ability.id == "aqua_shot")
+        .unwrap()
+        .clone();
+    let heal = catalog
+        .class("cleric")
+        .unwrap()
+        .abilities
+        .iter()
+        .find(|ability| ability.id == "heal")
+        .unwrap()
+        .clone();
+    {
+        let mut state = app.world_mut().resource_mut::<BattleState>();
+        state.command_index = 1;
+        state.combatants[0].abilities = vec![fire, water, heal];
+        state.combatants[0].mana = 20;
+        state.combatants[1].health = 100;
+    }
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Ability
+    );
+    assert_eq!(
+        app.world().resource::<deck::BattleDeck>().group,
+        deck::SpellGroup::Fire
+    );
+    assert!(!app.world().resource::<deck::BattleDeck>().list_focused);
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(
+        app.world().resource::<deck::BattleDeck>().group,
+        deck::SpellGroup::Water
+    );
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(
+        app.world().resource::<deck::BattleDeck>().group,
+        deck::SpellGroup::Heal
+    );
+    press(&mut app, NormalizedAction::MenuDown);
+    assert_eq!(
+        app.world().resource::<deck::BattleDeck>().group,
+        deck::SpellGroup::Fire
+    );
+    press(&mut app, NormalizedAction::MenuRight);
+    assert!(app.world().resource::<deck::BattleDeck>().list_focused);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Ability
+    );
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Target
+    );
+    assert_eq!(app.world().resource::<BattleState>().combatants[0].mana, 20);
+    press(&mut app, NormalizedAction::Back);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Ability
+    );
+    assert!(app.world().resource::<deck::BattleDeck>().list_focused);
+    press(&mut app, NormalizedAction::MenuLeft);
+    assert!(!app.world().resource::<deck::BattleDeck>().list_focused);
+    press(&mut app, NormalizedAction::Back);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Command
+    );
+    app.world_mut().resource_mut::<BattleState>().command_index = 0;
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Target
+    );
+    assert!(
+        app.world()
+            .resource::<BattleState>()
+            .pending_ability
+            .is_none()
+    );
+    press(&mut app, NormalizedAction::Back);
+    assert_eq!(
+        app.world().resource::<BattleState>().phase,
+        BattlePhase::Command
     );
 }

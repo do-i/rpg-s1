@@ -358,3 +358,24 @@ map transitions have finished, so close menus to pick up an edit.
 
 Hot reload checks only what the runtime needs. Run `validate-scenario` for the full
 cross-reference check.
+
+## Battle spell deck
+
+The fixed battle canvas keeps its 468px battlefield. Below it, the five party
+cards and command row share the remaining height with a 190px group frame and
+280px spell/item list. Spell groups follow Fire, Water, Wind, Earth, Holy, Heal,
+Utility; healing, revival, status recovery, and regeneration go under Heal before
+checking an element. Battle-ineligible abilities do not enable a group.
+
+Choosing Spell resets to the first enabled group. Up/Down follows the staggered
+groups and skips disabled ones; Right or Enter enters the spell list. Left returns
+to groups, then Escape returns to commands. Commands also accept Left/Right.
+The spell and item lists reuse the shared menu scroll arrows and scrollbar.
+
+`L` cycles the borderless log overlay through left, right, and hidden without
+losing history. `LOG_OVERLAY_OPACITY` in `battle/ui/deck.rs` calibrates its 60%
+background opacity; `DIAMOND_OPACITY` calibrates the neutral 50% diamond fills.
+
+For a session-only full-party UI review with all learned-class spells and Reiya
+acting first, run `scripts/run.sh -- play --seed 23 --battle-fixture spell-groups`.
+This fixture does not change saves or the authored ability catalog.

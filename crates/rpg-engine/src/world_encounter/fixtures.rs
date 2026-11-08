@@ -146,6 +146,32 @@ pub(super) fn apply_debug_battle_fixture(
                 return Err("rewards fixture requires the Ashen Crown's authored loot".to_owned());
             }
         }
+        DebugBattleFixture::SpellGroups => {
+            for actor in entry
+                .participants
+                .iter_mut()
+                .filter(|actor| actor.side == BattleSide::Party)
+            {
+                actor.status_effects.clear();
+                actor.dexterity = if actor.id == "reiya" { 100 } else { 50 };
+                actor.max_mana = actor.max_mana.max(68);
+                actor.mana = if actor.id == "reiya" {
+                    26
+                } else {
+                    actor.max_mana
+                };
+                if let Some(class) = catalog.class(&actor.class_id) {
+                    actor.abilities.clone_from(&class.abilities);
+                }
+            }
+            let enemy = fixture_enemy(entry)?;
+            enemy.health = 99_999;
+            enemy.max_health = 99_999;
+            enemy.attack = 1;
+            enemy.dexterity = 1;
+            enemy.behavior = None;
+            enemy.status_effects.clear();
+        }
         DebugBattleFixture::LayoutThree | DebugBattleFixture::LayoutFive => {
             let count = if fixture == DebugBattleFixture::LayoutThree {
                 3

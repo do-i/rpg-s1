@@ -948,6 +948,11 @@ fn battle_fixtures_supply_an_isolated_map_and_required_party_shape() {
         ),
         ("status", DebugBattleFixture::Status, DebugPartyPreset::Full),
         (
+            "spell-groups",
+            DebugBattleFixture::SpellGroups,
+            DebugPartyPreset::Full,
+        ),
+        (
             "layout-three",
             DebugBattleFixture::LayoutThree,
             DebugPartyPreset::Full,

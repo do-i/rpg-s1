@@ -83,3 +83,19 @@ The game code does not need to adopt OFL.
 The repository owner confirmed on 2026-10-29 that its tiles were AI-generated at the author's
 direction and that no third-party artwork was downloaded for it. The layout is in the
 [authoring guide](authoring.md#floor-tileset).
+
+## Battle spell-group background — 2026-11-08
+
+`ALI-1634`: generated at the repository owner's direction with the built-in OpenAI imagegen tool on 2026-11-08. The owner explicitly approved the final frame design and instructed Codex to apply it to the code and create a commit. Home-grown AI-generated artwork follows this repository's MIT policy; no third-party image was used as an input.
+
+Destination: `assets/scenarios/rusted_kingdoms/media/images/ui/battle_spell_groups.png`. The 1030×1527 opaque PNG is copied unmodified from the accepted generator output.
+
+Generation prompt:
+
+Use case: stylized-concept
+Asset type: one background illustration for a narrow vertical fantasy RPG spell-group selection frame, displayed at 190 x 282 pixels.
+Primary request: a single coherent dark fantasy elemental tapestry representing seven disciplines: Fire, Water, Wind, Earth, Holy, Heal, and Utility. This is backdrop art behind translucent UI buttons, not a screenshot or a diagram.
+Composition: portrait 2:3 aspect ratio, edge-to-edge continuous painted composition. Seven softly interwoven elemental motifs arranged loosely downward in a subtle zigzag: upper-left tiny ember and curling flame (Fire), upper-right swirling cool water (Water), left airy wind ribbons (Wind), middle-right ancient rock and roots (Earth), lower-left soft sacred golden light (Holy), lower-right jade healing aura around a small botanical sprout (Heal), bottom-left violet arcane wisps (Utility). The motifs should be legible at very small size without looking like seven separate icons. Blend them organically into one continuous scene.
+Style: polished painterly fantasy game art, restrained texture, elegant atmospheric forms, dark charcoal and midnight slate foundation with muted elemental accents. Match an understated gold-trimmed dark RPG menu.
+Lighting: dark, low contrast and low saturation throughout, sparse soft highlights at the edges of the motifs. The center band stays quiet so overlaid cream spell-group labels remain readable.
+Constraints: one background only; no letters, no text, no labels, no runes resembling text, no buttons, no UI, no diamonds, no borders, no gold frame, no panels, no characters, no watermark. Opaque background. Keep all seven themes visible within the portrait crop.

@@ -44,6 +44,7 @@ pub(crate) enum DebugBattleFixture {
     Rewards,
     LayoutThree,
     LayoutFive,
+    SpellGroups,
 }
 
 impl DebugBattleFixture {
@@ -51,7 +52,9 @@ impl DebugBattleFixture {
         match self {
             Self::Feedback => "goblin_warrior",
             Self::Status | Self::EnemyAi => "troll_shaman_base",
-            Self::Rewards | Self::LayoutThree | Self::LayoutFive => "hearth_effigy_ashen_crown",
+            Self::Rewards | Self::LayoutThree | Self::LayoutFive | Self::SpellGroups => {
+                "hearth_effigy_ashen_crown"
+            }
         }
     }
 }
@@ -303,7 +306,11 @@ fn apply_debug_overrides(
     }
     if matches!(
         config.battle_fixture,
-        Some(DebugBattleFixture::LayoutThree | DebugBattleFixture::LayoutFive)
+        Some(
+            DebugBattleFixture::LayoutThree
+                | DebugBattleFixture::LayoutFive
+                | DebugBattleFixture::SpellGroups
+        )
     ) {
         for id in ["potion", "elixir", "revival_herb"] {
             let _ = game

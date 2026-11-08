@@ -38,6 +38,8 @@ use super::{
     rules::{flee_chance, phase_after_flee_confirmation, roll_flee, wrap_index},
 };
 
+mod deck;
+
 const LPC_COLUMNS: u32 = 9;
 /// LPC row layout, shared by every authored `*_battle.tsx` sheet: row 2 is spellcast-facing-down
 /// over 7 frames, row 6 is thrust-facing-down over 8 (`battle_enemy_area_renderer.py:44-49`). The
@@ -80,31 +82,16 @@ enum BadgeAnchor {
     /// Centered along the sprite tile's top edge, scaled to its displayed width.
     SpriteTopCenter { sprite_size: f32 },
 }
-const PARTY_PORTRAIT_SIZE: f32 = 100.0;
-const PARTY_CARD_WIDTH: f32 = 108.0;
-const PARTY_CARD_HEIGHT: f32 = 202.0;
+const PARTY_PORTRAIT_SIZE: f32 = 137.6;
+const PARTY_CARD_WIDTH: f32 = 147.6;
+const PARTY_CARD_HEIGHT: f32 = 240.0;
 const PARTY_CARD_GAP: f32 = 10.0;
 /// Every slot the party can ever fill, drawn whether or not it is occupied.
 ///
 /// Read from [`RuntimeParty::MAX_MEMBERS`] rather than restated, so a party that grew past what
 /// this panel can seat is impossible by construction instead of merely unlikely.
 const PARTY_SLOT_COUNT: usize = RuntimeParty::MAX_MEMBERS;
-const PANEL_PADDING: f32 = 16.0;
-const COMMAND_ROW_BORDER: f32 = 1.0;
-const COMMAND_ROW_PADDING_X: f32 = 12.0;
-const PANEL_BORDER_ACTIVE: f32 = 2.0;
-/// Chrome between a command row's text and the panel's outer edge.
-const COMMAND_ROW_CHROME: f32 =
-    2.0 * (PANEL_BORDER_ACTIVE + PANEL_PADDING + COMMAND_ROW_BORDER + COMMAND_ROW_PADDING_X);
-/// Content budget includes a compact icon, the longest current ability name,
-/// and a separate vertical MP label/value. Panel width stays stable across phases.
-const COMMAND_LABEL_RESERVE: f32 = 200.0;
-/// Fixed so the panel stops resizing as the log message and row labels change.
-const COMMAND_PANEL_WIDTH: f32 = COMMAND_LABEL_RESERVE + COMMAND_ROW_CHROME;
 const ABILITY_ICON_SIZE: f32 = 36.0;
-const ABILITY_MP_WIDTH: f32 = 28.0;
-const ABILITY_ROW_GAP: f32 = 8.0;
-const ABILITY_NAME_SIZE: f32 = 16.0;
 const COMMANDS: [BattleCommand; 4] = [
     BattleCommand::Attack,
     BattleCommand::Spell,
@@ -126,6 +113,7 @@ impl Plugin for BattlePlugin {
                     drive_battle_assets,
                     position_enemy_cards,
                     animate_enemy_breathing,
+                    deck::handle_pointer,
                     handle_battle_input,
                     request_battle_bgm_fade,
                     super::fx::route_battle_fx,
@@ -136,7 +124,13 @@ impl Plugin for BattlePlugin {
                     sync_party_meters,
                     sync_status_badges,
                     sync_battle_commands,
-                    sync_battle_ability_art,
+                    (
+                        deck::sync_picker,
+                        deck::sync_groups,
+                        deck::sync_progress,
+                        deck::sync_log_overlay,
+                    )
+                        .chain(),
                     sync_battle_message,
                     sync_enemy_cards,
                     sync_enemy_meters,
@@ -225,16 +219,6 @@ struct BattlePartyMeterFill(BattlePartyMeter);
 #[derive(Component)]
 struct BattlePartyMeterText(BattlePartyMeter);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum BattlePanelKind {
-    Party,
-    Command,
-    Log,
-}
-
-#[derive(Component)]
-struct BattlePanelTitle(BattlePanelKind);
-
 /// The note the command panel shows in place of its cards once the battle is won.
 #[derive(Component)]
 struct BattleCommandIdle;
@@ -244,13 +228,6 @@ struct BattleCommandRow(usize);
 
 #[derive(Component)]
 struct BattleCommandLabel(usize);
-
-#[derive(Component)]
-struct BattleAbilityIcon(usize);
-#[derive(Component)]
-struct BattleAbilityMana(usize);
-#[derive(Component)]
-struct BattleAbilityManaValue(usize);
 
 /// One badge pill on a combatant's frame. Slots are pre-spawned and hidden, so a status landing
 /// mid-battle never has to spawn UI from a sync system.
@@ -357,6 +334,7 @@ fn enter_battle(
     game: Res<GameState>,
     entry: Option<Res<BattleEntry>>,
     debug: Option<Res<DebugLaunchConfig>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
     let Some(entry) = entry else {
         return;
@@ -447,7 +425,17 @@ fn enter_battle(
         ))
         .with_children(|root_node| {
             spawn_enemy_area(root_node, &entry, &v2_enemies, background, &font);
-            spawn_battle_panels(root_node, &entry, &asset_server, &root, &font);
+            deck::spawn_log_overlay(root_node, &font);
+            deck::spawn_panels(
+                root_node,
+                &entry,
+                &game,
+                &catalog,
+                &asset_server,
+                &root,
+                &font,
+                &mut images,
+            );
         });
     commands.insert_resource(BattleAssetState {
         atlases,
@@ -459,6 +447,7 @@ fn enter_battle(
     });
     commands.insert_resource(super::fx::BattleFxRouter::default());
     commands.insert_resource(super::fx::BattleAttackAnimations::default());
+    commands.insert_resource(deck::BattleDeck::default());
     commands.insert_resource(state);
 }
 
@@ -633,126 +622,11 @@ fn spawn_enemy_area(
         });
 }
 
-fn spawn_battle_panels(
-    parent: &mut ChildSpawnerCommands<'_>,
-    entry: &BattleEntry,
-    asset_server: &AssetServer,
-    root: &ScenarioRoot,
-    font: &Handle<Font>,
-) {
-    let party = entry
-        .participants
-        .iter()
-        .filter(|participant| participant.side == BattleSide::Party)
-        .collect::<Vec<_>>();
-    parent
-        .spawn(Node {
-            width: percent(100),
-            flex_grow: 1.0,
-            min_height: px(260),
-            padding: UiRect::all(px(8)),
-            column_gap: px(8),
-            ..default()
-        })
-        .with_children(|panels| {
-            spawn_battle_panel(
-                panels,
-                Node {
-                    width: px(party_panel_width()),
-                    height: percent(100),
-                    flex_shrink: 0.0,
-                    ..default()
-                },
-                "Party",
-                BattlePanelKind::Party,
-                false,
-                font,
-                |panel| spawn_party_cards(panel, &party, asset_server, root, font),
-            );
-            panels
-                .spawn(Node {
-                    height: percent(100),
-                    flex_grow: 1.0,
-                    column_gap: px(8),
-                    ..default()
-                })
-                .with_children(|right| {
-                    spawn_battle_panel(
-                        right,
-                        Node {
-                            width: px(COMMAND_PANEL_WIDTH),
-                            height: percent(100),
-                            flex_grow: 0.0,
-                            flex_shrink: 0.0,
-                            ..default()
-                        },
-                        "Command",
-                        BattlePanelKind::Command,
-                        true,
-                        font,
-                        |panel| spawn_command_rows(panel, font),
-                    );
-                    spawn_battle_panel(
-                        right,
-                        Node {
-                            height: percent(100),
-                            flex_grow: 1.0,
-                            min_width: px(0),
-                            ..default()
-                        },
-                        "Log",
-                        BattlePanelKind::Log,
-                        false,
-                        font,
-                        |panel| spawn_message_log(panel, font),
-                    );
-                });
-        });
-}
-
-fn spawn_battle_panel(
-    parent: &mut ChildSpawnerCommands<'_>,
-    mut node: Node,
-    title: &str,
-    kind: BattlePanelKind,
-    active: bool,
-    font: &Handle<Font>,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    node.flex_direction = FlexDirection::Column;
-    node.padding = UiRect::all(px(PANEL_PADDING));
-    node.row_gap = px(8);
-    node.border = UiRect::all(px(if active { PANEL_BORDER_ACTIVE } else { 1.0 }));
-    node.border_radius = BorderRadius::all(px(6));
-    parent
-        .spawn((
-            node,
-            BackgroundColor(battle_panel()),
-            BorderColor::all(if active {
-                battle_border_active()
-            } else {
-                battle_border()
-            }),
-        ))
-        .with_children(|panel| {
-            spawn_battle_text(panel, title, font, 18.0, battle_gold(), Justify::Left)
-                .insert(BattlePanelTitle(kind));
-            panel.spawn((
-                Node {
-                    width: percent(100),
-                    height: px(1),
-                    flex_shrink: 0.0,
-                    ..default()
-                },
-                BackgroundColor(Color::srgba_u8(126, 98, 55, 150)),
-            ));
-            content(panel);
-        });
-}
-
 fn spawn_party_cards(
     parent: &mut ChildSpawnerCommands<'_>,
     party: &[&crate::encounter::BattleParticipant],
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
     asset_server: &AssetServer,
     root: &ScenarioRoot,
     font: &Handle<Font>,
@@ -760,7 +634,7 @@ fn spawn_party_cards(
     parent
         .spawn(Node {
             width: percent(100),
-            flex_grow: 1.0,
+            height: percent(100),
             column_gap: px(PARTY_CARD_GAP),
             align_items: AlignItems::Center,
             ..default()
@@ -771,7 +645,16 @@ fn spawn_party_cards(
             for index in 0..PARTY_SLOT_COUNT {
                 match party.get(index) {
                     Some(participant) => {
-                        spawn_party_card(row, index, participant, asset_server, root, font);
+                        spawn_party_card(
+                            row,
+                            index,
+                            participant,
+                            game,
+                            catalog,
+                            asset_server,
+                            root,
+                            font,
+                        );
                     }
                     None => spawn_empty_party_slot(row, font),
                 }
@@ -790,7 +673,7 @@ fn party_card_node(filled: bool) -> Node {
         border: UiRect::all(px(1)),
         border_radius: BorderRadius::all(px(5)),
         justify_content: if filled {
-            JustifyContent::FlexStart
+            JustifyContent::SpaceBetween
         } else {
             JustifyContent::Center
         },
@@ -798,10 +681,16 @@ fn party_card_node(filled: bool) -> Node {
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "party cards combine portrait and battle data with persistent level and EXP"
+)]
 fn spawn_party_card(
     row: &mut ChildSpawnerCommands<'_>,
     index: usize,
     participant: &crate::encounter::BattleParticipant,
+    game: &GameState,
+    catalog: &FieldMenuCatalog,
     asset_server: &AssetServer,
     root: &ScenarioRoot,
     font: &Handle<Font>,
@@ -831,15 +720,37 @@ fn spawn_party_card(
             BackgroundColor(Color::srgb_u8(24, 24, 31)),
             BattlePartyPortrait(index),
         ));
-        spawn_battle_text(
-            card,
-            participant.name.clone(),
-            font,
-            17.0,
-            battle_ink(),
-            Justify::Center,
-        )
-        .insert(BattlePartyName(index));
+        card.spawn(Node {
+            width: percent(100),
+            height: px(22),
+            justify_content: JustifyContent::SpaceBetween,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|name| {
+            spawn_battle_text(
+                name,
+                &participant.name,
+                font,
+                17.0,
+                battle_ink(),
+                Justify::Left,
+            )
+            .insert(BattlePartyName(index));
+            let level = game
+                .party()
+                .member(&participant.id)
+                .map_or(1, |member| member.level());
+            spawn_battle_text(
+                name,
+                format!("Lv {level}"),
+                font,
+                13.0,
+                Color::srgb_u8(191, 178, 155),
+                Justify::Right,
+            )
+            .insert(deck::PartyLevel(index));
+        });
         spawn_party_meter(
             card,
             index,
@@ -858,6 +769,7 @@ fn spawn_party_card(
                 font,
             );
         }
+        deck::spawn_experience(card, index, &participant.id, game, catalog, font);
         spawn_status_badges(
             card,
             CombatantKey::party(index),
@@ -934,7 +846,7 @@ fn spawn_party_meter(
             Node {
                 position_type: PositionType::Relative,
                 width: percent(100),
-                height: px(18),
+                height: px(22),
                 flex_shrink: 0.0,
                 overflow: Overflow::clip(),
                 justify_content: JustifyContent::Center,
@@ -960,7 +872,7 @@ fn spawn_party_meter(
                 bar,
                 meter_label(kind, value, maximum),
                 font,
-                12.0,
+                13.0,
                 battle_ink(),
                 Justify::Center,
             )
@@ -1172,14 +1084,12 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
     parent
         .spawn(Node {
             width: percent(100),
-            flex_grow: 1.0,
-            flex_direction: FlexDirection::Column,
-            row_gap: px(6),
-            justify_content: JustifyContent::Center,
+            height: px(34),
+            column_gap: px(8),
+            position_type: PositionType::Relative,
             ..default()
         })
         .with_children(|list| {
-            // Overlays the cards rather than joining the column, so showing it never reflows.
             list.spawn((
                 Node {
                     position_type: PositionType::Absolute,
@@ -1197,22 +1107,21 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                     note,
                     "Battle won",
                     font,
-                    20.0,
-                    battle_dim(),
+                    17.0,
+                    battle_gold(),
                     Justify::Center,
                 );
             });
             for (index, command) in COMMANDS.iter().enumerate() {
                 list.spawn((
                     Node {
-                        width: percent(100),
-                        min_height: px(36),
+                        flex_basis: px(0),
                         flex_grow: 1.0,
-                        padding: UiRect::axes(px(COMMAND_ROW_PADDING_X), px(4)),
-                        column_gap: px(ABILITY_ROW_GAP),
+                        height: percent(100),
                         border: UiRect::all(px(1)),
-                        border_radius: BorderRadius::all(px(5)),
+                        border_radius: BorderRadius::all(px(4)),
                         align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
                         ..default()
                     },
                     BackgroundColor(battle_row()),
@@ -1220,51 +1129,15 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
                     BattleCommandRow(index),
                 ))
                 .with_children(|row| {
-                    row.spawn((
-                        Node {
-                            display: Display::None,
-                            width: px(ABILITY_ICON_SIZE),
-                            height: px(ABILITY_ICON_SIZE),
-                            flex_shrink: 0.0,
-                            ..default()
-                        },
-                        SpellIcon::new(""),
-                        BattleAbilityIcon(index),
-                    ));
                     spawn_battle_text(
                         row,
                         command.label(),
                         font,
-                        18.0,
+                        17.0,
                         battle_ink(),
-                        Justify::Left,
+                        Justify::Center,
                     )
-                    .insert((
-                        BattleCommandLabel(index),
-                        Node {
-                            flex_basis: px(0),
-                            flex_grow: 1.0,
-                            min_width: px(0),
-                            ..default()
-                        },
-                    ));
-                    row.spawn((
-                        Node {
-                            display: Display::None,
-                            width: px(ABILITY_MP_WIDTH),
-                            flex_shrink: 0.0,
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            ..default()
-                        },
-                        BattleAbilityMana(index),
-                    ))
-                    .with_children(|mp| {
-                        spawn_battle_text(mp, "MP", font, 10.0, battle_dim(), Justify::Center);
-                        spawn_battle_text(mp, "", font, 13.0, battle_teal(), Justify::Center)
-                            .insert(BattleAbilityManaValue(index));
-                    });
+                    .insert(BattleCommandLabel(index));
                 });
             }
         });
@@ -1272,7 +1145,7 @@ fn spawn_command_rows(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>
 
 /// The log keeps every result of the battle in a scrolling list, newest at the bottom, with the
 /// current prompt beneath it. Prompts ("choose an action") are not history and are never kept.
-fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>) {
     parent
         .spawn(Node {
             width: percent(100),
@@ -1297,10 +1170,6 @@ fn spawn_message_log(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>)
                 ScrollPosition::default(),
                 BattleLogList,
             ));
-            spawn_battle_text(log, "", font, 17.0, battle_ink(), Justify::Left)
-                .insert(BattleMessageText);
-            spawn_battle_text(log, "", font, 15.0, battle_violet(), Justify::Left)
-                .insert(BattleTargetText);
         });
 }
 
@@ -1327,7 +1196,7 @@ pub(super) fn spawn_battle_text<'a>(
 /// Fixed to [`PARTY_SLOT_COUNT`], so recruiting a companion never reflows the panel.
 fn party_panel_width() -> f32 {
     let count = PARTY_SLOT_COUNT as f32;
-    count * PARTY_CARD_WIDTH + (count - 1.0) * PARTY_CARD_GAP + PANEL_PADDING * 2.0
+    count * PARTY_CARD_WIDTH + (count - 1.0) * PARTY_CARD_GAP
 }
 
 fn enemy_sprite_size(participant: &crate::encounter::BattleParticipant) -> f32 {
@@ -1772,6 +1641,7 @@ struct BattleInputContext<'w, 's> {
     balances: Res<'w, Assets<BalanceData>>,
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<ResMut<'w, GameState>>,
+    deck: Option<ResMut<'w, deck::BattleDeck>>,
     entry: Option<Res<'w, BattleEntry>>,
     reward_prelude: Option<ResMut<'w, super::reward_modal::BattleRewardPrelude>>,
     reward_screen: Option<ResMut<'w, super::reward_modal::BattleRewardScreen>>,
@@ -1807,6 +1677,21 @@ fn handle_battle_input(
     let Some(mut state) = state else {
         return;
     };
+    let mut deck = context.deck.take();
+    // Navigation changes the view; idle frames must not rebuild its entities.
+    let view_input = actions.menu_navigation().is_some()
+        || actions.menu_navigation_horizontal().is_some()
+        || actions.just_pressed(AppAction::Confirm)
+        || actions.just_pressed(AppAction::Back);
+    if view_input && let Some(deck) = deck.as_mut() {
+        deck.set_changed();
+    }
+    let mut fallback_deck = deck::BattleDeck::default();
+    let deck = deck
+        .as_mut()
+        .map(|deck| deck.bypass_change_detection())
+        .unwrap_or(&mut fallback_deck);
+    let pointer_confirm = deck.take_pointer_confirm();
     let balances: &Assets<BalanceData> = &context.balances;
     let catalog: &FieldMenuCatalog = &context.catalog;
     let now = context.time.elapsed();
@@ -1859,11 +1744,14 @@ fn handle_battle_input(
                 attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
                 return;
             }
-            if let Some(movement) = actions.menu_navigation() {
+            if let Some(movement) = actions
+                .menu_navigation_horizontal()
+                .or_else(|| actions.menu_navigation())
+            {
                 state.command_index = wrap_index(state.command_index, movement, COMMANDS.len());
                 menu_sfx.hover();
             }
-            if confirm_pressed(&actions) {
+            if actions.just_pressed(AppAction::Confirm) || pointer_confirm {
                 let command = COMMANDS[state.command_index];
                 if !state.command_available(command) {
                     state.message = match command {
@@ -1876,6 +1764,9 @@ fn handle_battle_input(
                     return;
                 }
                 menu_sfx.confirm();
+                // A new command must not inherit the previous spell/item's target return path.
+                state.pending_ability = None;
+                state.pending_item = None;
                 match command {
                     BattleCommand::Attack => {
                         state.target =
@@ -1895,7 +1786,8 @@ fn handle_battle_input(
                         state.ability_index = 0;
                         state.pending_ability = None;
                         state.phase = BattlePhase::Ability;
-                        state.message = "Choose an ability. ESC cancels.".to_owned();
+                        deck.open(&mut state);
+                        state.message = "UP/DOWN group · RIGHT spells · ESC commands".to_owned();
                     }
                     BattleCommand::Item => {
                         state.item_index = 0;
@@ -1907,16 +1799,32 @@ fn handle_battle_input(
             }
         }
         BattlePhase::Ability => {
-            let choices = state.battle_ability_indices();
             if cancel_pressed(&actions) {
-                state.phase = BattlePhase::Command;
-                state.message = "Action cancelled.".to_owned();
-            } else {
-                if let Some(movement) = actions.menu_navigation() {
-                    state.ability_index = wrap_index(state.ability_index, movement, choices.len());
+                if deck.list_focused {
+                    deck.list_focused = false;
+                    state.message = "UP/DOWN group · RIGHT spells · ESC commands".to_owned();
+                } else {
+                    state.phase = BattlePhase::Command;
+                    state.message = "Action cancelled.".to_owned();
                 }
-                if confirm_pressed(&actions)
-                    && let Some(&ability_index) = choices.get(state.ability_index)
+            } else if !deck.list_focused {
+                if let Some(delta) = actions.menu_navigation() {
+                    deck.move_group(&mut state, delta);
+                    menu_sfx.hover();
+                }
+                if confirm_pressed(&actions) {
+                    deck.list_focused = true;
+                    state.message = "UP/DOWN spell · ENTER cast · LEFT groups".to_owned();
+                    menu_sfx.confirm();
+                }
+            } else {
+                if let Some(delta) = actions.menu_navigation() {
+                    deck.move_spell(&mut state, delta);
+                    menu_sfx.hover();
+                }
+                if (actions.just_pressed(AppAction::Confirm) || pointer_confirm)
+                    && let Some(&ability_index) =
+                        state.battle_ability_indices().get(state.ability_index)
                 {
                     begin_ability_targeting(&mut state, ability_index, game.rng_mut());
                 }
@@ -1931,7 +1839,7 @@ fn handle_battle_input(
                     state.item_index =
                         wrap_index(state.item_index, movement, state.item_choices.len());
                 }
-                if confirm_pressed(&actions)
+                if (confirm_pressed(&actions) || pointer_confirm)
                     && let Some(choice) = state.item_choices.get(state.item_index).cloned()
                 {
                     begin_item_targeting(&mut state, &choice.id, catalog);
@@ -2369,11 +2277,7 @@ fn sync_party_cards(
             continue;
         };
         let is_active = active == Some(key) && actor.is_alive();
-        background.0 = if is_active {
-            battle_row_active()
-        } else {
-            battle_row()
-        };
+        background.0 = Color::srgb_u8(30, 30, 38);
         // A heal or a revive picks its target from these cards, so the reticle has to land on the
         // member the way it lands on an enemy sprite (`battle_party_panel_renderer.py:80-82`).
         border.set_all(if selected_target == Some(key) {
@@ -2440,7 +2344,6 @@ fn sync_party_meters(
 
 fn sync_battle_commands(
     state: Option<Res<BattleState>>,
-    mut titles: Query<(&BattlePanelTitle, &mut Text), Without<BattleCommandLabel>>,
     mut rows: Query<(
         &BattleCommandRow,
         &mut BackgroundColor,
@@ -2448,65 +2351,27 @@ fn sync_battle_commands(
         &mut Visibility,
     )>,
     mut idle: Query<&mut Visibility, (With<BattleCommandIdle>, Without<BattleCommandRow>)>,
-    mut labels: Query<
-        (
-            &BattleCommandLabel,
-            &mut Text,
-            &mut TextColor,
-            &mut TextFont,
-        ),
-        Without<BattlePanelTitle>,
-    >,
+    mut labels: Query<(&BattleCommandLabel, &mut TextColor)>,
 ) {
     let Some(state) = state else { return };
     if !state.is_changed() {
         return;
     }
-    for (marker, mut text) in &mut titles {
-        if marker.0 == BattlePanelKind::Command {
-            text.0 = if state.phase == BattlePhase::Ability {
-                state.active().map_or_else(
-                    || "Abilities".to_owned(),
-                    |actor| format!("{}'s Abilities", actor.name),
-                )
-            } else if state.phase == BattlePhase::Item {
-                "Battle Items".to_owned()
-            } else if matches!(state.phase, BattlePhase::Victory | BattlePhase::Rewards) {
-                // The reward modal owns the haul; the panel only marks the win.
-                "Victory".to_owned()
-            } else {
-                state
-                    .active_key()
-                    .and_then(|key| state.actor(key))
-                    .map_or_else(
-                        || "Command".to_owned(),
-                        |actor| format!("{}'s Turn", actor.name),
-                    )
-            };
-        }
-    }
-    let ability_choices = state.battle_ability_indices();
-    let ability_page = state.ability_index / COMMANDS.len() * COMMANDS.len();
-    let item_page = state.item_index / COMMANDS.len() * COMMANDS.len();
-    // Once the battle is won there is nothing to command. The panel keeps its place, so no section
-    // moves, but its cards give way to a short note.
     let finished = matches!(state.phase, BattlePhase::Victory | BattlePhase::Rewards);
-    let shown = |visible: bool| {
-        if visible {
+    for mut visibility in &mut idle {
+        *visibility = if finished {
             Visibility::Inherited
         } else {
             Visibility::Hidden
-        }
-    };
-    for mut visibility in &mut idle {
-        *visibility = shown(finished);
+        };
     }
     for (marker, mut background, mut border, mut visibility) in &mut rows {
-        *visibility = shown(!finished);
-        let selected = (state.phase == BattlePhase::Command && marker.0 == state.command_index)
-            || (state.phase == BattlePhase::Ability
-                && ability_page + marker.0 == state.ability_index)
-            || (state.phase == BattlePhase::Item && item_page + marker.0 == state.item_index);
+        *visibility = if finished {
+            Visibility::Hidden
+        } else {
+            Visibility::Inherited
+        };
+        let selected = marker.0 == state.command_index;
         background.0 = if selected {
             battle_row_active()
         } else {
@@ -2518,112 +2383,11 @@ fn sync_battle_commands(
             battle_row_border()
         });
     }
-    for (marker, mut text, mut color, mut font) in &mut labels {
-        font.font_size = FontSize::Px(if state.phase == BattlePhase::Ability {
-            ABILITY_NAME_SIZE
-        } else {
-            18.0
-        });
-        if state.phase == BattlePhase::Ability {
-            let ability = ability_choices
-                .get(ability_page + marker.0)
-                .and_then(|index| state.active()?.abilities.get(*index));
-            let Some(ability) = ability else {
-                text.0.clear();
-                color.0 = battle_dim();
-                continue;
-            };
-            let affordable = state
-                .active()
-                .is_some_and(|actor| actor.mana >= ability.mp_cost);
-            text.0.clone_from(&ability.name);
-            color.0 = if affordable {
-                battle_ink()
-            } else {
-                battle_dim()
-            };
-            continue;
-        }
-        if state.phase == BattlePhase::Item {
-            let Some(item) = state.item_choices.get(item_page + marker.0) else {
-                text.0.clear();
-                color.0 = battle_dim();
-                continue;
-            };
-            text.0 = format!("{}  x{}", item.name, item.quantity);
-            color.0 = battle_ink();
-            continue;
-        }
-        if state.phase == BattlePhase::Rewards {
-            text.0.clear();
-            continue;
-        }
-        let command = COMMANDS[marker.0];
-        let available = state.command_available(command);
-        text.0 = if available {
-            command.label().to_owned()
-        } else {
-            format!("{}  --", command.label())
-        };
-        color.0 = if available {
+    for (marker, mut color) in &mut labels {
+        color.0 = if state.command_available(COMMANDS[marker.0]) {
             battle_ink()
         } else {
             battle_dim()
-        };
-    }
-}
-
-fn sync_battle_ability_art(
-    state: Option<Res<BattleState>>,
-    mut icons: Query<(&BattleAbilityIcon, &mut Node, &mut SpellIcon)>,
-    mut mana: Query<(&BattleAbilityMana, &mut Node), Without<BattleAbilityIcon>>,
-    mut values: Query<(&BattleAbilityManaValue, &mut Text, &mut TextColor)>,
-) {
-    let Some(state) = state else { return };
-    if !state.is_changed() {
-        return;
-    }
-    let choices = state.battle_ability_indices();
-    let page = state.ability_index / COMMANDS.len() * COMMANDS.len();
-    let ability_at = |row: usize| {
-        if state.phase != BattlePhase::Ability {
-            return None;
-        }
-        choices
-            .get(page + row)
-            .and_then(|index| state.active()?.abilities.get(*index))
-    };
-    for (marker, mut node, mut icon) in &mut icons {
-        let ability = ability_at(marker.0);
-        node.display = if ability.is_some() {
-            Display::Flex
-        } else {
-            Display::None
-        };
-        if let Some(ability) = ability {
-            icon.set_if_neq(SpellIcon::new(&ability.id));
-        }
-    }
-    for (marker, mut node) in &mut mana {
-        node.display = if ability_at(marker.0).is_some() {
-            Display::Flex
-        } else {
-            Display::None
-        };
-    }
-    for (marker, mut text, mut color) in &mut values {
-        let Some(ability) = ability_at(marker.0) else {
-            text.0.clear();
-            continue;
-        };
-        text.0 = ability.mp_cost.to_string();
-        color.0 = if state
-            .active()
-            .is_some_and(|actor| actor.mana >= ability.mp_cost)
-        {
-            battle_teal()
-        } else {
-            battle_ember()
         };
     }
 }
@@ -2800,6 +2564,7 @@ fn cleanup_battle(mut commands: Commands, entities: Query<Entity, With<BattleUi>
         commands.entity(entity).despawn();
     }
     commands.remove_resource::<BattleState>();
+    commands.remove_resource::<deck::BattleDeck>();
     commands.remove_resource::<BattleAssetState>();
     commands.remove_resource::<super::reward_modal::BattleRewardPrelude>();
     commands.remove_resource::<super::reward_modal::BattleRewardScreen>();
@@ -3082,12 +2847,11 @@ mod tests {
     #[test]
     fn the_party_panel_reserves_every_slot_regardless_of_party_size() {
         // Fixed width: recruiting a companion fills a slot, it never reflows the panel.
-        assert_eq!(party_panel_width(), 612.0);
+        assert_eq!(party_panel_width(), 778.0);
         assert_eq!(
             party_panel_width(),
             PARTY_SLOT_COUNT as f32 * PARTY_CARD_WIDTH
                 + (PARTY_SLOT_COUNT - 1) as f32 * PARTY_CARD_GAP
-                + PANEL_PADDING * 2.0
         );
     }
 
@@ -3095,27 +2859,16 @@ mod tests {
     fn the_bottom_row_seats_every_panel_at_its_reserved_width() {
         // Panel row padding is 8 per side, with an 8px gap between each column.
         let available = crate::gameplay_canvas::LOGICAL_CANVAS_WIDTH as f32 - 8.0 * 2.0;
-        let log = available - party_panel_width() - 8.0 - COMMAND_PANEL_WIDTH - 8.0;
-        assert!(
-            log >= 240.0,
-            "a full party and a fixed command panel must still leave the log room, got {log}"
-        );
+        let list = available - party_panel_width() - 8.0 - deck::GROUP_FRAME_WIDTH - 8.0;
+        assert_eq!(list, deck::SPELL_FRAME_WIDTH);
     }
 
     #[test]
-    fn the_command_panel_is_wide_enough_for_its_longest_row_label() {
-        // Lodestone Call is currently widest (104px in Philosopher at 16px).
-        const WIDEST_MEASURED_NAME: f32 = 104.0;
-        let usable = COMMAND_PANEL_WIDTH
-            - COMMAND_ROW_CHROME
-            - ABILITY_ICON_SIZE
-            - ABILITY_MP_WIDTH
-            - ABILITY_ROW_GAP * 2.0;
-        assert_eq!(COMMAND_PANEL_WIDTH, 262.0);
-        assert!(
-            usable >= WIDEST_MEASURED_NAME + 12.0,
-            "the longest ability needs breathing room, got {usable}px"
-        );
+    fn the_spell_list_fits_the_longest_current_name_and_larger_mp_text() {
+        // Lodestone Call is ~117px at the locked design's 18px name size.
+        let usable =
+            deck::SPELL_FRAME_WIDTH - 2.0 - 16.0 - 10.0 - 10.0 - ABILITY_ICON_SIZE - 12.0 - 50.0;
+        assert!(usable >= 117.0 + 12.0);
     }
 
     #[test]
@@ -3727,6 +3480,8 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
             .add_message::<PlaySfx>()
+            .add_message::<bevy::input::mouse::MouseWheel>()
+            .init_resource::<FieldMenuCatalog>()
             .add_systems(
                 Update,
                 (
@@ -3734,7 +3489,11 @@ mod tests {
                     sync_party_meters,
                     sync_status_badges,
                     sync_battle_commands,
-                    sync_battle_ability_art,
+                    deck::handle_pointer,
+                    deck::sync_picker,
+                    deck::sync_groups,
+                    deck::sync_progress,
+                    deck::sync_log_overlay,
                     sync_battle_message,
                     sync_enemy_cards,
                     sync_enemy_meters,
