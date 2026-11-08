@@ -35,6 +35,7 @@ import numpy as np
 
 BAND = 3          # px edge band that gets soft alpha (at ~1024px source)
 HALO_T = 14       # min(r,b)-g above this = magenta-hued
+REF_RATIO = 0.56   # blue/red of the key colour the hue thresholds below were tuned at
 KEY = [None]       # key colour of the image being processed, shared with verify()
 OUTLINE_MAX = 14  # max painted-outline width to peel
 HUE_TOL = 0.07    # max |b/r - key b/r| for an enclosed pixel to count as field
@@ -157,10 +158,17 @@ def peel_outline(src, bg, report):
     return bg
 
 
+def hue_scale(key):
+    """Scale for the blue/red thresholds: the model's magenta varies from run to run (b/r 0.48 to 0.58).
+    Only ever relaxes them (redder keys); keys at or above the reference keep the original thresholds."""
+    return min(1.0, (key[2] / max(key[0], 1.0)) / REF_RATIO)
+
+
 def shadowish(r, g, b, key):
     """Dark, key-hued pixel: a shaded patch of the magenta field."""
     ratio = b / np.maximum(r, 1.0)
-    return ((np.minimum(r, b) - g > 14) & (ratio > 0.38) & (ratio < 0.80)
+    f = hue_scale(key)
+    return ((np.minimum(r, b) - g > 14) & (ratio > 0.38 * f) & (ratio < 0.80 * f)
             & (g < 0.35 * b) & (r < 0.85 * key[0]))
 
 
@@ -178,8 +186,9 @@ def cutout(src, report):
 
     dkey = np.linalg.norm(src - key, axis=-1)
     halo = (np.minimum(r, b) - g > HALO_T) & (b >= 0.4 * r)
-    plum = (b - g > 18) & (r - g > 30) & (b >= 0.55 * r)
-    plum_loose = (b - g > 12) & (r - g > 25) & (b >= 0.5 * r)
+    f = hue_scale(key)
+    plum = (b - g > 18) & (r - g > 30) & (b >= 0.55 * f * r)
+    plum_loose = (b - g > 12) & (r - g > 25) & (b >= 0.5 * f * r)
     shadow = shadowish(r, g, b, key)
     body = ~plum_loose & ~shadow & (src.sum(-1) > 30)
     # Hue guard: enclosed pixels only count as field if their blue/red ratio matches the key's.
@@ -268,7 +277,7 @@ def verify(src, out, report):
         fails.append(f"REGENERATE: {edge_px} opaque px on the image border "
                      "(figure clipped, vignette, or scenery; the field must be flat to every edge)")
     pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90)).sum())
-    plum = int(((al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * r) & (r < 140)).sum())
+    plum = int(((al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (r < 140)).sum())
     report.append(f"check: {pink} bright-magenta px, {plum} opaque plum px")
     if pink > 20:
         fails.append(f"{pink} visible magenta pixels remain")
@@ -280,7 +289,7 @@ def verify(src, out, report):
         fails.append(f"{shade} opaque shadow-hued px: a contact shadow of the field is still on the figure")
     clear = al < 128
     sr, sg, sb = src[..., 0], src[..., 1], src[..., 2]
-    body = (~((sb - sg > 12) & (sr - sg > 25) & (sb >= 0.5 * sr)) & (src.sum(-1) > 30)
+    body = (~((sb - sg > 12) & (sr - sg > 25) & (sb >= 0.5 * hue_scale(KEY[0]) * sr)) & (src.sum(-1) > 30)
             & ~shadowish(sr, sg, sb, KEY[0]))
     holes = int((clear & ~outside(clear) & body).sum())
     report.append(f"check: {holes} enclosed body-colour holes")
