@@ -2155,6 +2155,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1640 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin-status.tsx` | `754f87528887ca48f761f1bfb8d10019f953886bf2c6f77ac45ffcaf09bfe4b3` | Tiled tileset / goblin v2 status sheet |
 | ALI-1641 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin-attack.png` | `d64b4048ec052a4728ca37f0026544c7be39bff0e56dcc41342592ca6f3a1222` | enemy battler sheet / goblin v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1642 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin-attack.tsx` | `e2ba6a4af49d060b60be1c5e334795d47739c92456f5fb5ff1b2407ff9d9f19f` | Tiled tileset / goblin v2 attack sheet |
+| ALI-1643 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-status.png` | `3f9a93fdaf2967568b7f48199ee48343d7924c381aedbb2ef848e7b34368a539` | enemy battler sheet / goblin_scout_hooded_goblin v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1644 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-status.tsx` | `f0528d9d35e6e03e280709ae2492828dfcf033441e63046d92e9bc6d745d1c5b` | Tiled tileset / goblin_scout_hooded_goblin v2 status sheet |
+| ALI-1645 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-attack.png` | `99da550ee6af785fce3a336a387298524dc4e393db5658419c53c63d6df10346` | enemy battler sheet / goblin_scout_hooded_goblin v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1646 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_hooded_goblin-attack.tsx` | `023774ea1c066e2f3f6252a6e5d1e4f655b810f0b5f71031594448c17b36546c` | Tiled tileset / goblin_scout_hooded_goblin v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
