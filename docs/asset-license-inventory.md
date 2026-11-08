@@ -2163,6 +2163,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1648 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-status.tsx` | `09901125644f1d1e29d5675c80e02b7dc4c17dea0b289b2a779c7095e317fb25` | Tiled tileset / goblin_scout_sling_scout v2 status sheet |
 | ALI-1649 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-attack.png` | `1e6732496a00c4dbac1edf12cd0e3ec9bf40fbc9dc646e4e42e2d24e90c69875` | enemy battler sheet / goblin_scout_sling_scout v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1650 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_scout_sling_scout-attack.tsx` | `b8c29aa56edfcef082ec069103561b3c291b64fed3126a9c4c9119a4a026e1bf` | Tiled tileset / goblin_scout_sling_scout v2 attack sheet |
+| ALI-1651 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_warrior-status.png` | `e8df6c3ac245bae8f42cf8ce3ee802c7b70404aa71e1722fa90ac23684b31657` | enemy battler sheet / goblin_warrior v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1652 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_warrior-status.tsx` | `353b6eaaaca22567ac544289f81b4544b209e475c794eb118ea03eb8d693e317` | Tiled tileset / goblin_warrior v2 status sheet |
+| ALI-1653 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_warrior-attack.png` | `47c3fffbb9ff74268c705e88985609ee1cfa6ef1f429bd3d54424a1d3469825b` | enemy battler sheet / goblin_warrior v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1654 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/goblin_warrior-attack.tsx` | `830804a8338a1b990f34f31284c887095caa99abc7498d7e1927ddc34435cbce` | Tiled tileset / goblin_warrior v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
