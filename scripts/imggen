@@ -19,11 +19,12 @@
 #                  scoped to the call: GEN_MODEL GEN_RESOLUTION GEN_ASPECT GEN_QUALITY (may be empty).
 #                  It must write a JPEG to OUT and exit non-zero on failure. Credentials are its own business.
 #   ENEMY_GEN_MODEL model name handed to the generator as GEN_MODEL
+#   ENEMY_GEN_DELAY seconds to wait after each generator call (requests run one at a time, for rate limits)
 # Output of every step is also appended to STAGE/ID/ID.log.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 # config file supplies defaults; variables already set in the environment win
-_env=(); for _v in IMGGEN_STAGE ENEMY_GEN_CMD ENEMY_GEN_MODEL ENEMY_CONCEPTS; do [ -n "${!_v:-}" ] && _env+=("$_v=${!_v}"); done
+_env=(); for _v in IMGGEN_STAGE ENEMY_GEN_CMD ENEMY_GEN_MODEL ENEMY_GEN_DELAY ENEMY_CONCEPTS; do [ -n "${!_v:-}" ] && _env+=("$_v=${!_v}"); done
 [ -f "$HOME/.imggen.env" ] && . "$HOME/.imggen.env"
 for _v in "${_env[@]}"; do declare "$_v"; done
 id=${1:-}; step=${2:-}
@@ -84,17 +85,22 @@ pose_file() { local i; i=$(pose_index "$1") || return 1; printf '%s/%s-%02d-%s.j
 # concept FIELD -> that field of this enemy's ENEMY_CONCEPTS row (2 = canonical design, 3 = keep-list)
 concept() { awk -F'|' -v id="$id" -v f="$1" '$1 == id { print $f; exit }' "$ENEMY_CONCEPTS"; }
 
-# gen_one OUT PROMPT_FILE [REF]: one image from the generator, two tries; QUALITY= passes through
+# gen_one OUT PROMPT_FILE [REF]: one image from the generator, two tries; QUALITY= passes through.
+# Calls run one at a time and every call is followed by ENEMY_GEN_DELAY seconds of sleep (rate limits),
+# except that the first call of a run does not wait for a previous one.
+gen_calls=0
 gen_one() {
   local try
   for try in 1 2; do
+    [ $gen_calls -eq 0 ] || sleep "$ENEMY_GEN_DELAY"
+    gen_calls=$((gen_calls+1))
     GEN_MODEL=$ENEMY_GEN_MODEL GEN_RESOLUTION=$GEN_SIZE GEN_ASPECT=$GEN_ASPECT_RATIO GEN_QUALITY=${QUALITY:-} \
       $ENEMY_GEN_CMD "$@" && usable_jpg "$1" && return 0
   done
   rm -f "$1"; return 1
 }
 
-# generate [POSE...]: ready.jpg (unless re-rolling poses with one present), then the poses in parallel,
+# generate [POSE...]: ready.jpg (unless re-rolling poses with one present), then the poses one by one,
 # each an edit seeded from ready.jpg. Prompts are kept in DIR/prompts/.
 generate() {
   local name canon keep p i
@@ -103,15 +109,16 @@ generate() {
   mkdir -p "$dir/prompts"
   if [ $# -eq 0 ] || [ ! -s "$dir/ready.jpg" ]; then
     printf '%s' "A hand-painted full-body battle sprite of the $name, $canon. Exactly two arms and two legs. Paint it in a hand-painted item-icon style: dark contour, saturated color, brushed material highlights. $FRAME. $FIELD" > "$dir/prompts/ready.txt"
+    echo "ready"
     QUALITY=low gen_one "$dir/ready.jpg" "$dir/prompts/ready.txt" || { echo "canonical generation failed" >&2; return 1; }
   fi
   local want=("$@"); [ $# -gt 0 ] || want=("${POSES[@]}")
   for p in "${want[@]}"; do
     i=$(pose_index "$p")
     printf '%s' "Keep this exact $name and the same hand-painted battler: $keep. Same proportions and paint. Change only the pose: ${POSE_PROMPTS[$i]}. Exactly two arms and two legs. $FRAME and the held item. $FIELD" > "$dir/prompts/$p.txt"
-    gen_one "$(pose_file "$p")" "$dir/prompts/$p.txt" "$dir/ready.jpg" &
+    echo "$p"
+    gen_one "$(pose_file "$p")" "$dir/prompts/$p.txt" "$dir/ready.jpg" || echo "  $p failed" >&2
   done
-  wait
   echo "generated $(compgen -G "$dir/$id-*.jpg" | wc -l)/16 poses + ready.jpg in $dir"
 }
 
@@ -139,6 +146,8 @@ cut_one() {
 
 step1() {
   : "${ENEMY_GEN_CMD:?set ENEMY_GEN_CMD in ~/.imggen.env}" "${ENEMY_GEN_MODEL:?set ENEMY_GEN_MODEL in ~/.imggen.env}" "${ENEMY_CONCEPTS:?set ENEMY_CONCEPTS in ~/.imggen.env}"
+  : "${ENEMY_GEN_DELAY:?set ENEMY_GEN_DELAY (seconds between generator calls) in ~/.imggen.env}"
+  [[ $ENEMY_GEN_DELAY =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "ENEMY_GEN_DELAY must be a number of seconds, got '$ENEMY_GEN_DELAY'" >&2; return 1; }
   if [ $# -gt 0 ]; then
     check_poses "$@" || return 1
     [ -s "$dir/ready.jpg" ] || { echo "no $dir/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
