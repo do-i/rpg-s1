@@ -39,6 +39,9 @@ REF_RATIO = 0.56   # blue/red of the key colour the hue thresholds below were tu
 KEY = [None]       # key colour of the image being processed, shared with verify()
 OUTLINE_MAX = 14  # max painted-outline width to peel
 PINK_MAX = 100    # leftover magenta px allowed (~6px at the 256px tile; real fringe is thousands)
+PLUM_MAX = 400     # opaque plum px at the rim allowed (real fringe is thousands; ember and membrane edges give a few hundred)
+EDGE_BAND = 6     # px from transparency where verify() looks for fringe / shadow leftovers
+POCKET_REACH = 14  # px a pure-field seed spreads through an enclosed pocket before the rest counts as art
 HUE_TOL = 0.07    # max |b/r - key b/r| for an enclosed pixel to count as field
 
 
@@ -165,6 +168,12 @@ def hue_scale(key):
     return min(1.0, (key[2] / max(key[0], 1.0)) / REF_RATIO)
 
 
+def hue_cap(key):
+    """Upper blue/red ratio of anything that can be field, halo or fringe. Violet and indigo art
+    (night-fiend wings, mages) has b/r well above 1; fringe is magenta-to-maroon, b/r below the key's + margin."""
+    return key[2] / max(key[0], 1.0) + 0.15
+
+
 def shadowish(r, g, b, key):
     """Dark, key-hued pixel: a shaded patch of the magenta field."""
     ratio = b / np.maximum(r, 1.0)
@@ -186,10 +195,11 @@ def cutout(src, report):
     report.append(f"key colour: {key.astype(int).tolist()}")
 
     dkey = np.linalg.norm(src - key, axis=-1)
-    halo = (np.minimum(r, b) - g > HALO_T) & (b >= 0.4 * r)
+    cap = hue_cap(key)
+    halo = (np.minimum(r, b) - g > HALO_T) & (b >= 0.4 * r) & (b < cap * r)
     f = hue_scale(key)
-    plum = (b - g > 18) & (r - g > 30) & (b >= 0.55 * f * r)
-    plum_loose = (b - g > 12) & (r - g > 25) & (b >= 0.5 * f * r)
+    plum = (b - g > 18) & (r - g > 30) & (b >= 0.55 * f * r) & (b < cap * r)
+    plum_loose = (b - g > 12) & (r - g > 25) & (b >= 0.5 * f * r) & (b < cap * r)
     shadow = shadowish(r, g, b, key)
     body = ~plum_loose & ~shadow & (src.sum(-1) > 30)
     # Hue guard: enclosed pixels only count as field if their blue/red ratio matches the key's.
@@ -221,6 +231,13 @@ def cutout(src, report):
     # 4. restore body pixels: enclosed holes, then edge notches
     enclosed = bg & ~outside(bg)
     holes = enclosed & body & ((dkey >= 45) | ~keyish)
+    # An enclosed pocket is a real gap only if pure field colour sits inside it (or within a halo's
+    # width of it). Mauve membrane or ember pixels that were cleared by hue alone have none: restore them.
+    reach = enclosed & (dkey < 25)
+    for _ in range(POCKET_REACH):
+        reach |= dilate(reach, 1) & enclosed
+    orphan = enclosed & ~reach & (dkey >= 45) & (src.sum(-1) > 30)
+    holes |= orphan
     bg &= ~holes
     notches = 0
     for _ in range(12):
@@ -277,20 +294,24 @@ def verify(src, out, report):
     if edge_px:
         fails.append(f"REGENERATE: {edge_px} opaque px on the image border "
                      "(figure clipped, vignette, or scenery; the field must be flat to every edge)")
-    pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90)).sum())
-    plum = int(((al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (r < 140)).sum())
+    cap = hue_cap(KEY[0])
+    # Fringe and halo only exist at the silhouette: mauve tongues, violet membranes and dark-red
+    # embers inside the figure are art, so only count pixels within EDGE_BAND of transparency.
+    rim = dilate(al < 128, EDGE_BAND)
+    pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90) & (b < cap * r)).sum())
+    plum = int((rim & (al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (b < cap * r) & (r < 140)).sum())
     report.append(f"check: {pink} bright-magenta px, {plum} opaque plum px")
     if pink > PINK_MAX:
         fails.append(f"{pink} visible magenta pixels remain")
-    if plum > 200:
+    if plum > PLUM_MAX:
         fails.append(f"{plum} opaque plum px: a magenta fringe or sticker halo is still on the figure")
-    shade = int(((al > 128) & shadowish(r, g, b, KEY[0])).sum()) if KEY else 0
+    shade = int((rim & (al > 128) & shadowish(r, g, b, KEY[0])).sum()) if KEY else 0
     report.append(f"check: {shade} opaque shadow-hued px")
     if shade > 200:
         fails.append(f"{shade} opaque shadow-hued px: a contact shadow of the field is still on the figure")
     clear = al < 128
     sr, sg, sb = src[..., 0], src[..., 1], src[..., 2]
-    body = (~((sb - sg > 12) & (sr - sg > 25) & (sb >= 0.5 * hue_scale(KEY[0]) * sr)) & (src.sum(-1) > 30)
+    body = (~((sb - sg > 12) & (sr - sg > 25) & (sb >= 0.5 * hue_scale(KEY[0]) * sr) & (sb < cap * sr)) & (src.sum(-1) > 30)
             & ~shadowish(sr, sg, sb, KEY[0]))
     holes = int((clear & ~outside(clear) & body).sum())
     report.append(f"check: {holes} enclosed body-colour holes")
