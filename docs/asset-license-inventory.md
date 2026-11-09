@@ -2175,6 +2175,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1660 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/bat_demon_night_fiend-status.tsx` | `678072f501003e998c441b246ea1cde672d78fd9120b51e9e5d64faf3f30f1ae` | Tiled tileset / bat_demon_night_fiend v2 status sheet |
 | ALI-1661 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/bat_demon_night_fiend-attack.png` | `9c14425efc43beb289860786f7d991816ea25093ced76dbeb8cad0ab14101c23` | enemy battler sheet / bat_demon_night_fiend v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1662 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/bat_demon_night_fiend-attack.tsx` | `afd4d2e5820247d3b538a9d423196485f9b9c385db950187a4981cb1b7818b53` | Tiled tileset / bat_demon_night_fiend v2 attack sheet |
+| ALI-1663 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/mouse_thief_mouse_archer-status.png` | `5b19792d09449186d78caad15d0306d4322ebd2cc8ea8821fc0bbf91a6b84580` | enemy battler sheet / mouse_thief_mouse_archer v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1664 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/mouse_thief_mouse_archer-status.tsx` | `1df989b647cbcdeb328de22c812f03bca5869354bf423f671913f2118b31c215` | Tiled tileset / mouse_thief_mouse_archer v2 status sheet |
+| ALI-1665 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/mouse_thief_mouse_archer-attack.png` | `9872e2d628b5246084fba3fa186d789422310bd17ba1ce89db1855140875e71a` | enemy battler sheet / mouse_thief_mouse_archer v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1666 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/mouse_thief_mouse_archer-attack.tsx` | `055df0b87ae955d92f08f04a7f8351a63b162f4ebe06374d54af0824f710aa61` | Tiled tileset / mouse_thief_mouse_archer v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
