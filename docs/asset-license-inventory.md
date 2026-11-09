@@ -2183,6 +2183,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1668 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_monster_rusted_sword-status.tsx` | `21b659d38a72cd69305ae7a87160f12024adfb6cd8466c44000a11c7a8f6c226` | Tiled tileset / skeleton_monster_rusted_sword v2 status sheet |
 | ALI-1669 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_monster_rusted_sword-attack.png` | `e1bcd867b834abff5f9f4eec76a64930eb16096bd081aef0b3a442c8d0049880` | enemy battler sheet / skeleton_monster_rusted_sword v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1670 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_monster_rusted_sword-attack.tsx` | `675c3a9f5c15abe16d9ee59370a6343b4df33956c8751ad76afa6b0771540387` | Tiled tileset / skeleton_monster_rusted_sword v2 attack sheet |
+| ALI-1671 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-status.png` | `d359c27cd382a00f2f959a4e36714aa228dc34451dc6cd36151312a3310612aa` | enemy battler sheet / skeleton_knight_base v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1672 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-status.tsx` | `7efe2c94b169406fb7a187eada708a154a168d7afc9015f68061c6df34542b1a` | Tiled tileset / skeleton_knight_base v2 status sheet |
+| ALI-1673 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-attack.png` | `be0a0d636a513f70ef171ce90616fd148cda72351c0bc05456bf4ab7c161bad9` | enemy battler sheet / skeleton_knight_base v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1674 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-attack.tsx` | `d01d9b6303bab06d82ef4c5850139cc3fbd795fd4a480c11dc37d3f3c1f2a336` | Tiled tileset / skeleton_knight_base v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
