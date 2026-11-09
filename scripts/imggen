@@ -37,14 +37,18 @@ check_poses() {
   done
 }
 
-# usable_jpg FILE: exists, non-empty, decodes to the end (a truncated download still has a header)
-usable_jpg() { [ -s "$1" ] && magick "$1" -format '' info: 2>/dev/null && magick "$1" null: 2>/dev/null; }
+# usable_jpg FILE: exists, readable header, and ends in the JPEG end-of-image marker FF D9.
+# ImageMagick decodes a truncated download with exit 0 (grey fill), even with -regard-warnings,
+# so the end marker is the only reliable truncation test.
+usable_jpg() {
+  [ -s "$1" ] && [ "$(tail -c2 "$1" | od -An -tx1 | tr -d ' \n')" = ffd9 ] && magick identify "$1" >/dev/null 2>&1
+}
 
-# cut_one JPG: one cutout, run by xargs; prints "ok NAME" or "FAIL NAME"
+# cut_one JPG: one cutout, run by xargs; the report's last line is OK or a FAIL
 cut_one() {
   local n; n=$(basename "${1%.*}")
-  if python3 -I "$root/scripts/cutout.py" "$1" "$dir/cutouts/$n.png" > "$dir/cutouts/$n.report.txt" 2>&1; then
-    echo "ok $n"; else echo "FAIL $n"; fi
+  python3 -I "$root/scripts/cutout.py" "$1" "$dir/cutouts/$n.png" > "$dir/cutouts/$n.report.txt" 2>&1
+  return 0
 }
 
 step1() {
@@ -53,10 +57,17 @@ step1() {
     check_poses "$@" || return 1
     [ -s "$dir/ready.jpg" ] || { echo "no $dir/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
     echo "== 1 re-roll $id: $*"
-    local p; for p in "$@"; do rm -f "$(pose_file "$p")"; done
-    $ENEMY_GEN_CMD "$id" "$dir" "$@" || return 1
-    local bad=(); for p in "$@"; do usable_jpg "$(pose_file "$p")" || bad+=("$p"); done
-    [ ${#bad[@]} -eq 0 ] || { echo "still missing or unreadable: ${bad[*]}  (retry: scripts/imggen $id 1 ${bad[*]})" >&2; return 1; }
+    # set the current images aside (not .jpg, so the generator's count ignores them); a failed
+    # request must not cost the image already paid for
+    local p f; for p in "$@"; do f=$(pose_file "$p"); [ -e "$f" ] && mv -f "$f" "$f.prev"; done
+    $ENEMY_GEN_CMD "$id" "$dir" "$@"
+    local bad=()
+    for p in "$@"; do
+      f=$(pose_file "$p")
+      if usable_jpg "$f"; then rm -f "$f.prev"
+      else bad+=("$p"); [ -e "$f.prev" ] && mv -f "$f.prev" "$f"; fi
+    done
+    [ ${#bad[@]} -eq 0 ] || { echo "re-roll failed for: ${bad[*]} (previous image kept); retry: scripts/imggen $id 1 ${bad[*]}" >&2; return 1; }
     echo "next: review, then: scripts/imggen $id 2 $*"
     return
   fi
@@ -92,22 +103,24 @@ step2() {
   # cutouts are independent and ~1 core each; cap the fan-out so numpy's working set stays small
   local jobs; jobs=$(nproc 2>/dev/null || echo 2); [ "$jobs" -le 4 ] || jobs=4
   export -f cut_one; export root dir
-  printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"' | sort -k2 > "$dir/cutouts/.results"
-  # judge every pose, including ones cut in an earlier run: a pose is good if its report ends in OK
-  local ok=0 bad=() regen=() n
+  printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"'
+  # judge every pose, including ones cut in an earlier run: good = report ends in OK and the
+  # jpg is not newer than the report (a re-rolled pose needs a fresh cut)
+  local ok=0 bad=() stale=() regen=() n rep
   for p in "${POSES[@]}"; do
-    n=$(basename "$(pose_file "$p")" .jpg)
-    if [ -s "$dir/cutouts/$n.report.txt" ] && [ "$(tail -n1 "$dir/cutouts/$n.report.txt")" = OK ]; then ok=$((ok+1))
+    f=$(pose_file "$p"); n=$(basename "$f" .jpg); rep="$dir/cutouts/$n.report.txt"
+    if [ -s "$rep" ] && [ "$f" -nt "$rep" ]; then stale+=("$p"); bad+=("$p")
+    elif [ -s "$rep" ] && [ "$(tail -n1 "$rep")" = OK ]; then ok=$((ok+1))
     else
-      bad+=("$p"); grep -q '^FAIL: REGENERATE' "$dir/cutouts/$n.report.txt" 2>/dev/null && regen+=("$p")
+      bad+=("$p"); grep -q '^FAIL: REGENERATE' "$rep" 2>/dev/null && regen+=("$p")
     fi
   done
-  rm -f "$dir/cutouts/.results"
   echo "cutout: $ok ok, ${#bad[@]} failed"
   if [ ${#bad[@]} -gt 0 ]; then
     for p in "${bad[@]}"; do n=$(basename "$(pose_file "$p")" .jpg); echo "  FAIL $p  ($dir/cutouts/$n.report.txt)"; done
+    if [ ${#stale[@]} -gt 0 ]; then echo "  re-rolled since the last cut: ${stale[*]}" >&2; fi
     if [ ${#regen[@]} -gt 0 ]; then echo "  render unusable (clipped or scenic), re-roll: scripts/imggen $id 1 ${regen[*]}" >&2; fi
-    echo "no sheets built. After fixing scripts/cutout.py, re-cut only these: scripts/imggen $id 2 ${bad[*]}" >&2; return 1
+    echo "no sheets built. Re-cut only these: scripts/imggen $id 2 ${bad[*]}" >&2; return 1
   fi
   magick montage "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
   echo "== 2 sheets $id"

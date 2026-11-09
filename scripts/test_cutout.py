@@ -49,14 +49,18 @@ class CutoutTests(unittest.TestCase):
         self.assertEqual(a[20, 20], 0)        # field
 
     def test_enclosed_violet_pocket_is_restored(self):
-        """A mauve pocket with no pure field colour in it is art, even though its hue is near the key's."""
+        """A mauve pocket with no pure field colour in it is art, even though its hue matches the key's.
+
+        b/r 0.64 sits inside the key's hue band (key 0.60, cap 0.75) and the pocket is within 80px of
+        the silhouette, so the hue rules clear it as a magenta pocket; only the pure-field-seed test
+        (POCKET_REACH) puts it back."""
         src, dst = f"{self.tmp}/b.jpg", f"{self.tmp}/b.png"
         render(src,
                "-fill", "rgb(50,45,120)", "-draw", "ellipse 512,512 300,380 0,360",
-               "-fill", "rgb(140,50,110)", "-draw", "ellipse 480,480 25,25 0,360")
+               "-fill", "rgb(140,45,90)", "-draw", "ellipse 262,512 22,22 0,360")
         res = run(src, dst)
         self.assertEqual(res.returncode, 0, res.stdout)
-        self.assertEqual(self.alpha(dst)[480, 480], 255)
+        self.assertEqual(self.alpha(dst)[512, 262], 255)
 
     def test_figure_touching_the_edge_asks_for_regeneration(self):
         src, dst = f"{self.tmp}/c.jpg", f"{self.tmp}/c.png"
