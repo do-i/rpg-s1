@@ -2191,6 +2191,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1676 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-status.tsx` | `62e55f61085a5eb9076b1f843934b1d2d5bbd4f712db01989aa6a5d6ecf8352c` | Tiled tileset / alien_invader_night_alien v2 status sheet |
 | ALI-1677 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-attack.png` | `fb4defacf0dce9772f3459945e11145d7dae30e73e3843edc33d922e67ab57f8` | enemy battler sheet / alien_invader_night_alien v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1678 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-attack.tsx` | `e02b5b1be76e4f95dfc951a29a6de483c16cbdd22ebc54467ad7e7d1ff481495` | Tiled tileset / alien_invader_night_alien v2 attack sheet |
+| ALI-1679 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/rabbit_bandit_knife_bandit-status.png` | `7a9cc4f340db90bfe664897a708c9ec3651fd1696127b076598358ff258e56ff` | enemy battler sheet / rabbit_bandit_knife_bandit v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1680 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/rabbit_bandit_knife_bandit-status.tsx` | `bc978553f8d748d91e3893137a572498f7a79199dafadc5277a8cb207e169633` | Tiled tileset / rabbit_bandit_knife_bandit v2 status sheet |
+| ALI-1681 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/rabbit_bandit_knife_bandit-attack.png` | `115c077610c721781664c765d0783e1bd88ec4cf4fcd402245be43811c8f9b79` | enemy battler sheet / rabbit_bandit_knife_bandit v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1682 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/rabbit_bandit_knife_bandit-attack.tsx` | `497feec168fc3cea34642690be2aee17a8b83d4a6392d43f50ab5fdb20a1de48` | Tiled tileset / rabbit_bandit_knife_bandit v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
