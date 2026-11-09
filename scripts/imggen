@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Enemy v2 battler art in three steps.
+#   scripts/imggen                       list concept ids (ENEMY_CONCEPTS) that have no v2 art yet
 #   scripts/imggen ENEMY_ID 1 [POSE...]  generate poses from the image generator -> STAGE/ID/
 #                                        with POSE names: re-roll just those poses
 #   scripts/imggen ENEMY_ID 2 [--force] [POSE...]
@@ -12,17 +13,36 @@
 #   scripts/imggen ENEMY_ID 3            promote sheets into v2/ + ledger rows (no commit)
 # Settings come from ~/.imggen.env (or the environment):
 #   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
+#   ENEMY_CONCEPTS concepts file (ID|description|keep-list|item per line); with no arguments, imggen lists its ids not yet in v2/
 #   ENEMY_GEN_CMD  generator, called as: $ENEMY_GEN_CMD ID DIR   (needs DIR/ready.jpg + DIR/ID-NN-<pose>.jpg)
 # Output of every step is also appended to STAGE/ID/ID.log.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 # config file supplies defaults; variables already set in the environment win
-_stage=${IMGGEN_STAGE:-}; _gen=${ENEMY_GEN_CMD:-}
+_stage=${IMGGEN_STAGE:-}; _gen=${ENEMY_GEN_CMD:-}; _concepts=${ENEMY_CONCEPTS:-}
 [ -f "$HOME/.imggen.env" ] && . "$HOME/.imggen.env"
 [ -n "$_stage" ] && IMGGEN_STAGE=$_stage
 [ -n "$_gen" ] && ENEMY_GEN_CMD=$_gen
+[ -n "$_concepts" ] && ENEMY_CONCEPTS=$_concepts
 id=${1:-}; step=${2:-}
-case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3} [POSE...]   (1 generate, 2 cutout+sheets, 3 promote)" >&2; exit 2;; esac
+v2dir="$root/assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2"
+# no ID and no step: list the concept ids that have no v2 art yet
+if [ $# -eq 0 ]; then
+  concepts=${ENEMY_CONCEPTS:?set ENEMY_CONCEPTS in ~/.imggen.env}
+  [ -f "$concepts" ] || { echo "no concepts file $concepts" >&2; exit 1; }
+  todo=0; total=0
+  while IFS='|' read -r cid _ || [ -n "$cid" ]; do
+    case "$cid" in ''|'#'*) continue;; esac
+    total=$((total+1))
+    [ -e "$v2dir/$cid-status.png" ] || [ -e "$v2dir/$cid-attack.png" ] && continue
+    todo=$((todo+1))
+    note=; [ -n "${IMGGEN_STAGE:-}" ] && [ -d "$IMGGEN_STAGE/$cid" ] && note="  (in progress: $IMGGEN_STAGE/$cid)"
+    echo "$cid$note"
+  done < "$concepts"
+  echo "-- $todo of $total concepts not yet in v2; start one: scripts/imggen ENEMY_ID 1" >&2
+  exit 0
+fi
+case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3} [POSE...]   (1 generate, 2 cutout+sheets, 3 promote; no arguments: list ids still to do)" >&2; exit 2;; esac
 [ -n "$id" ] || { echo "missing ENEMY_ID" >&2; exit 2; }
 shift 2
 : "${IMGGEN_STAGE:?set IMGGEN_STAGE in ~/.imggen.env}"
@@ -185,6 +205,12 @@ step3() {
   echo "promoted; review git diff and commit"
 }
 
-if [ "$step" = 1 ]; then mkdir -p "$dir"; elif [ ! -d "$dir" ]; then echo "no work folder $dir; run: scripts/imggen $id 1" >&2; exit 1; fi
+if [ "$step" = 1 ]; then
+  # an enemy that already has shipped v2 sheets is never generated again (no generator call, no work folder)
+  if [ -e "$v2dir/$id-status.png" ] || [ -e "$v2dir/$id-attack.png" ]; then
+    echo "$id already has v2 art in $v2dir; nothing to generate" >&2; exit 1
+  fi
+  mkdir -p "$dir"
+elif [ ! -d "$dir" ]; then echo "no work folder $dir; run: scripts/imggen $id 1" >&2; exit 1; fi
 step$step "$@" 2>&1 | tee -a "$dir/$id.log"
 exit "${PIPESTATUS[0]}"
