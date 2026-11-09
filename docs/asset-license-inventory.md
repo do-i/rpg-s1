@@ -2187,6 +2187,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1672 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-status.tsx` | `7efe2c94b169406fb7a187eada708a154a168d7afc9015f68061c6df34542b1a` | Tiled tileset / skeleton_knight_base v2 status sheet |
 | ALI-1673 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-attack.png` | `be0a0d636a513f70ef171ce90616fd148cda72351c0bc05456bf4ab7c161bad9` | enemy battler sheet / skeleton_knight_base v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1674 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/skeleton_knight_base-attack.tsx` | `d01d9b6303bab06d82ef4c5850139cc3fbd795fd4a480c11dc37d3f3c1f2a336` | Tiled tileset / skeleton_knight_base v2 attack sheet |
+| ALI-1675 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-status.png` | `3ec723e26166d8722eeb7241ff17f8c3cd3045f75c5faff5b50f3cff1b5d8abc` | enemy battler sheet / alien_invader_night_alien v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1676 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-status.tsx` | `62e55f61085a5eb9076b1f843934b1d2d5bbd4f712db01989aa6a5d6ecf8352c` | Tiled tileset / alien_invader_night_alien v2 status sheet |
+| ALI-1677 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-attack.png` | `fb4defacf0dce9772f3459945e11145d7dae30e73e3843edc33d922e67ab57f8` | enemy battler sheet / alien_invader_night_alien v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1678 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/alien_invader_night_alien-attack.tsx` | `e02b5b1be76e4f95dfc951a29a6de483c16cbdd22ebc54467ad7e7d1ff481495` | Tiled tileset / alien_invader_night_alien v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
