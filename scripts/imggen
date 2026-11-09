@@ -2,8 +2,13 @@
 # Enemy v2 battler art in three steps.
 #   scripts/imggen ENEMY_ID 1 [POSE...]  generate poses from the image generator -> STAGE/ID/
 #                                        with POSE names: re-roll just those poses
-#   scripts/imggen ENEMY_ID 2 [POSE...]  cutout + 256px sheets (review the result) -> STAGE/ID/export/
-#                                        with POSE names: re-cut just those, reuse the other cutouts
+#   scripts/imggen ENEMY_ID 2 [--force] [POSE...]
+#                                        cutout + 256px sheets (review the result) -> STAGE/ID/export/
+#                                        with POSE names (or ready): re-cut just those, reuse the other cutouts
+#   scripts/imggen ENEMY_ID 2 pack       sheets only, from the existing 1k cutouts; nothing is re-cut
+# Touch-ups: edit the 1k cutouts in STAGE/ID/cutouts/ (ready.png, ID-NN-<pose>.png), then run step 2 pack.
+# A cutout saved after its report is "touched up": step 2 accepts it even if its cut had failed,
+# and never re-cuts it unless --force is given (a re-rolled jpg still marks it stale).
 #   scripts/imggen ENEMY_ID 3            promote sheets into v2/ + ledger rows (no commit)
 # Settings come from ~/.imggen.env (or the environment):
 #   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
@@ -82,50 +87,90 @@ step1() {
   echo "next: review the images in $dir, then: scripts/imggen $id 2"
 }
 
+# item_jpg ITEM -> source jpg of a pose or of ready
+item_jpg() { if [ "$1" = ready ]; then printf '%s/ready.jpg' "$dir"; else pose_file "$1"; fi; }
+
+# item_state ITEM -> ok | touched | stale | regen | fail | missing  (of its 1k cutout)
+item_state() {
+  local f n png rep
+  f=$(item_jpg "$1"); n=$(basename "$f" .jpg); png="$dir/cutouts/$n.png"; rep="$dir/cutouts/$n.report.txt"
+  if [ ! -s "$png" ]; then echo missing
+  elif [ "$f" -nt "$png" ]; then echo stale                          # source re-rolled after the cut / touch-up
+  elif [ ! -s "$rep" ] || [ "$png" -nt "$rep" ]; then echo touched   # edited by hand after the cut
+  elif [ "$(tail -n1 "$rep")" = OK ]; then echo ok
+  elif grep -q '^FAIL: REGENERATE' "$rep"; then echo regen
+  else echo fail; fi
+}
+
 step2() {
   [ -d "$dir" ] || { echo "nothing to cut out; run: scripts/imggen $id 1" >&2; return 1; }
-  local want=("$@") p f
-  [ ${#want[@]} -gt 0 ] || want=("${POSES[@]}")
-  check_poses "${want[@]}" || return 1
-  echo "== 2 cutout $id${*:+: $*}"
-  # inputs first: a missing or truncated jpg is a generation problem, say so before cutting anything
-  local gone=()
-  usable_jpg "$dir/ready.jpg" || gone+=(ready)
-  for p in "${want[@]}"; do usable_jpg "$(pose_file "$p")" || gone+=("$p"); done
-  if [ ${#gone[@]} -gt 0 ]; then
-    echo "missing or unreadable images: ${gone[*]}" >&2
-    echo "re-roll them: scripts/imggen $id 1 ${gone[*]}" >&2; return 1
-  fi
-  if [ $# -eq 0 ]; then rm -rf "$dir/cutouts" "$dir/export"; else rm -rf "$dir/export"; fi
-  mkdir -p "$dir/cutouts"
-  local files=()
-  for p in "${want[@]}"; do f=$(pose_file "$p"); rm -f "$dir/cutouts/$(basename "${f%.*}")".*; files+=("$f"); done
-  # cutouts are independent and ~1 core each; cap the fan-out so numpy's working set stays small
-  local jobs; jobs=$(nproc 2>/dev/null || echo 2); [ "$jobs" -le 4 ] || jobs=4
-  export -f cut_one; export root dir
-  printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"'
-  # judge every pose, including ones cut in an earlier run: good = report ends in OK and the
-  # jpg is not newer than the report (a re-rolled pose needs a fresh cut)
-  local ok=0 bad=() stale=() regen=() n rep
-  for p in "${POSES[@]}"; do
-    f=$(pose_file "$p"); n=$(basename "$f" .jpg); rep="$dir/cutouts/$n.report.txt"
-    if [ -s "$rep" ] && [ "$f" -nt "$rep" ]; then stale+=("$p"); bad+=("$p")
-    elif [ -s "$rep" ] && [ "$(tail -n1 "$rep")" = OK ]; then ok=$((ok+1))
-    else
-      bad+=("$p"); grep -q '^FAIL: REGENERATE' "$rep" 2>/dev/null && regen+=("$p")
-    fi
+  local pack=0 force=0 want=() p f n
+  for p in "$@"; do
+    case "$p" in
+      pack) pack=1 ;;
+      --force) force=1 ;;
+      ready) want+=(ready) ;;
+      *) pose_file "$p" >/dev/null || { echo "unknown pose '$p'; step 2 takes: ready ${POSES[*]}, pack, --force" >&2; return 1; }; want+=("$p") ;;
+    esac
   done
-  echo "cutout: $ok ok, ${#bad[@]} failed"
-  if [ ${#bad[@]} -gt 0 ]; then
-    for p in "${bad[@]}"; do n=$(basename "$(pose_file "$p")" .jpg); echo "  FAIL $p  ($dir/cutouts/$n.report.txt)"; done
-    if [ ${#stale[@]} -gt 0 ]; then echo "  re-rolled since the last cut: ${stale[*]}" >&2; fi
-    if [ ${#regen[@]} -gt 0 ]; then echo "  render unusable (clipped or scenic), re-roll: scripts/imggen $id 1 ${regen[*]}" >&2; fi
-    echo "no sheets built. Re-cut only these: scripts/imggen $id 2 ${bad[*]}" >&2; return 1
+  if [ $pack = 1 ] && { [ ${#want[@]} -gt 0 ] || [ $force = 1 ]; }; then
+    echo "step 2 pack takes no poses or --force; it only rebuilds sheets from $dir/cutouts" >&2; return 1
   fi
-  magick montage "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
+  local items=(ready "${POSES[@]}")
+  rm -rf "$dir/export"
+  mkdir -p "$dir/cutouts"
+  if [ $pack = 1 ]; then
+    echo "== 2 pack $id (from existing cutouts)"
+  else
+    [ ${#want[@]} -gt 0 ] || want=("${items[@]}")
+    echo "== 2 cutout $id${*:+: $*}"
+    # hand-edited cutouts are kept unless --force
+    local cut=() kept=()
+    for p in "${want[@]}"; do
+      if [ $force = 0 ] && [ "$(item_state "$p")" = touched ]; then kept+=("$p"); else cut+=("$p"); fi
+    done
+    [ ${#kept[@]} -eq 0 ] || echo "keeping touched-up cutouts: ${kept[*]}  (re-cut them anyway: scripts/imggen $id 2 --force ${kept[*]})"
+    # inputs first: a missing or truncated jpg is a generation problem, say so before cutting anything
+    local gone=()
+    for p in "${cut[@]}"; do usable_jpg "$(item_jpg "$p")" || gone+=("$p"); done
+    if [ ${#gone[@]} -gt 0 ]; then
+      echo "missing or unreadable images: ${gone[*]}" >&2
+      echo "re-roll them: scripts/imggen $id 1 ${gone[*]}" >&2; return 1
+    fi
+    local files=()
+    for p in "${cut[@]}"; do f=$(item_jpg "$p"); rm -f "$dir/cutouts/$(basename "$f" .jpg)".{png,report.txt}; files+=("$f"); done
+    if [ ${#files[@]} -gt 0 ]; then
+      # cutouts are independent and ~1 core each; cap the fan-out so numpy's working set stays small
+      local jobs; jobs=$(nproc 2>/dev/null || echo 2); [ "$jobs" -le 4 ] || jobs=4
+      export -f cut_one; export root dir
+      printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"'
+    fi
+  fi
+  # judge every item, including ones cut in an earlier run
+  local ok=0 touched=() bad=() stale=() regen=() st
+  for p in "${items[@]}"; do
+    st=$(item_state "$p")
+    case "$st" in
+      ok) ok=$((ok+1)) ;;
+      touched) touched+=("$p") ;;
+      stale) stale+=("$p"); bad+=("$p") ;;
+      regen) regen+=("$p"); bad+=("$p") ;;
+      *) bad+=("$p") ;;
+    esac
+  done
+  echo "cutout: $ok ok, ${#touched[@]} touched up, ${#bad[@]} failed${touched[*]:+  (touched up: ${touched[*]})}"
+  if [ ${#bad[@]} -gt 0 ]; then
+    for p in "${bad[@]}"; do n=$(basename "$(item_jpg "$p")" .jpg); echo "  FAIL $p ($(item_state "$p"))  $dir/cutouts/$n.report.txt"; done
+    if [ ${#stale[@]} -gt 0 ]; then echo "  re-rolled since the last cut: ${stale[*]}  (re-cut: scripts/imggen $id 2 ${stale[*]})" >&2; fi
+    if [ ${#regen[@]} -gt 0 ]; then echo "  render unusable (clipped or scenic), re-roll: scripts/imggen $id 1 ${regen[*]}" >&2; fi
+    echo "no sheets built. Re-cut: scripts/imggen $id 2 ${bad[*]}   or fix the 1k cutouts by hand in $dir/cutouts/ and run: scripts/imggen $id 2 pack" >&2
+    return 1
+  fi
+  magick montage "$dir/cutouts/ready.png" "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
   echo "== 2 sheets $id"
-  python3 -I "$root/scripts/pack_enemy_sheets.py" "$id" "$dir" --ready "$dir/ready.jpg" || return 1
-  echo "review: $dir/cutouts/check-green.png and $dir/export/$id/  then: scripts/imggen $id 3"
+  python3 -I "$root/scripts/pack_enemy_sheets.py" "$id" "$dir" --ready "$dir/cutouts/ready.png" || return 1
+  echo "review: $dir/cutouts/check-green.png and $dir/export/$id/"
+  echo "touch up: edit $dir/cutouts/*.png, then: scripts/imggen $id 2 pack     promote: scripts/imggen $id 3"
 }
 
 step3() {
