@@ -333,7 +333,11 @@ def verify(src, out, report):
 def main():
     if len(sys.argv) != 3:
         raise SystemExit(__doc__)
-    src = load(sys.argv[1])[..., :3]
+    try:
+        src = load(sys.argv[1])[..., :3]
+    except (subprocess.CalledProcessError, ValueError):
+        print("FAIL: REGENERATE: image is unreadable or truncated")
+        sys.exit(2)
     report = []
     out = cutout(src, report)
     save(out, sys.argv[2])
