@@ -42,6 +42,8 @@ PINK_MAX = 100    # leftover magenta px allowed (~6px at the 256px tile; real fr
 PLUM_MAX = 400     # opaque plum px at the rim allowed (real fringe is thousands; ember and membrane edges give a few hundred)
 EDGE_BAND = 6     # px from transparency where verify() looks for fringe / shadow leftovers
 POCKET_REACH = 14  # px a pure-field seed spreads through an enclosed pocket before the rest counts as art
+HOLES_MAX = 150   # enclosed see-through body-colour px allowed (open ribcages give ~100; real holes give hundreds to thousands)
+STRAY_REACH = 8   # px from a gap within which leftover field colour is cleared
 HUE_TOL = 0.07    # max |b/r - key b/r| for an enclosed pixel to count as field
 
 
@@ -277,6 +279,15 @@ def cutout(src, report):
     fix = clear & ~outside(clear) & body & ((dkey >= 45) | ~keyish)
     alpha = np.where(fix, 1.0, alpha)
     col = np.where(fix[..., None], src, col)
+    # 8. stray field: opaque pixels that verify() would call visible magenta, within STRAY_REACH of any
+    # transparency (an inner gap or the outer silhouette), are field seen through bone, rib or strap
+    # gaps that the hue guard above kept as art. Magenta-ish art further inside is left alone.
+    ro, go, bo = col[..., 0], col[..., 1], col[..., 2]
+    near_gap = dilate(alpha < 0.5, STRAY_REACH)
+    pink_out = (ro - go > 60) & (bo - go > 60) & (np.abs(ro - bo) < 90) & (bo < cap * ro)
+    stray = (alpha > 0) & near_gap & pink_out
+    report.append(f"stray field: {int(stray.sum())} px cleared")
+    alpha = np.where(stray, 0.0, alpha)
     col = np.where((alpha > 0)[..., None], col, 0)
     return np.dstack([col, alpha * 255])
 
@@ -315,7 +326,7 @@ def verify(src, out, report):
             & ~shadowish(sr, sg, sb, KEY[0]))
     holes = int((clear & ~outside(clear) & body).sum())
     report.append(f"check: {holes} enclosed body-colour holes")
-    if holes > 30:
+    if holes > HOLES_MAX:
         fails.append(f"{holes} see-through pixels inside the body")
     # dark flat ring still hugging the silhouette?
     lum = out[..., :3].mean(-1)
