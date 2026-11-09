@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Enemy v2 battler art in three steps.
-#   scripts/imggen ENEMY_ID 1   generate: poses from the image generator   -> STAGE/ID/
-#   scripts/imggen ENEMY_ID 2   cutout + 256px sheets (review the result)  -> STAGE/ID/export/
-#   scripts/imggen ENEMY_ID 3   promote sheets into v2/ + ledger rows (no commit)
+#   scripts/imggen ENEMY_ID 1 [POSE...]  generate poses from the image generator -> STAGE/ID/
+#                                        with POSE names: re-roll just those poses
+#   scripts/imggen ENEMY_ID 2 [POSE...]  cutout + 256px sheets (review the result) -> STAGE/ID/export/
+#                                        with POSE names: re-cut just those, reuse the other cutouts
+#   scripts/imggen ENEMY_ID 3            promote sheets into v2/ + ledger rows (no commit)
 # Settings come from ~/.imggen.env (or the environment):
 #   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
 #   ENEMY_GEN_CMD  generator, called as: $ENEMY_GEN_CMD ID DIR   (needs DIR/ready.jpg + DIR/ID-NN-<pose>.jpg)
@@ -15,38 +17,97 @@ _stage=${IMGGEN_STAGE:-}; _gen=${ENEMY_GEN_CMD:-}
 [ -n "$_stage" ] && IMGGEN_STAGE=$_stage
 [ -n "$_gen" ] && ENEMY_GEN_CMD=$_gen
 id=${1:-}; step=${2:-}
-case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3}   (1 generate, 2 cutout+sheets, 3 promote)" >&2; exit 2;; esac
+case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3} [POSE...]   (1 generate, 2 cutout+sheets, 3 promote)" >&2; exit 2;; esac
 [ -n "$id" ] || { echo "missing ENEMY_ID" >&2; exit 2; }
+shift 2
 : "${IMGGEN_STAGE:?set IMGGEN_STAGE in ~/.imggen.env}"
 dir="$IMGGEN_STAGE/$id"
 mkdir -p "$IMGGEN_STAGE"
+# the 16 poses, in file-number order (NN = position); must match the generator and pack_enemy_sheets.py
+POSES=(poison sleep stun silence burn freeze knockback taunt guard cover haste slow regen ko attack-thrust attack-lunge)
+
+# pose_file POSE -> path of the generated jpg (may not exist)
+pose_file() { local i; for i in "${!POSES[@]}"; do [ "${POSES[$i]}" = "$1" ] && { printf '%s/%s-%02d-%s.jpg' "$dir" "$id" $((i+1)) "$1"; return; }; done; return 1; }
+
+# check_poses POSE... : every named pose must be a known name (aborts with the valid list otherwise)
+check_poses() {
+  local p
+  for p in "$@"; do
+    pose_file "$p" >/dev/null || { echo "unknown pose '$p'; poses: ${POSES[*]}" >&2; return 1; }
+  done
+}
+
+# usable_jpg FILE: exists, non-empty, decodes to the end (a truncated download still has a header)
+usable_jpg() { [ -s "$1" ] && magick "$1" -format '' info: 2>/dev/null && magick "$1" null: 2>/dev/null; }
+
+# cut_one JPG: one cutout, run by xargs; prints "ok NAME" or "FAIL NAME"
+cut_one() {
+  local n; n=$(basename "${1%.*}")
+  if python3 -I "$root/scripts/cutout.py" "$1" "$dir/cutouts/$n.png" > "$dir/cutouts/$n.report.txt" 2>&1; then
+    echo "ok $n"; else echo "FAIL $n"; fi
+}
 
 step1() {
   : "${ENEMY_GEN_CMD:?set ENEMY_GEN_CMD in ~/.imggen.env}"
+  if [ $# -gt 0 ]; then
+    check_poses "$@" || return 1
+    [ -s "$dir/ready.jpg" ] || { echo "no $dir/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
+    echo "== 1 re-roll $id: $*"
+    local p; for p in "$@"; do rm -f "$(pose_file "$p")"; done
+    $ENEMY_GEN_CMD "$id" "$dir" "$@" || return 1
+    local bad=(); for p in "$@"; do usable_jpg "$(pose_file "$p")" || bad+=("$p"); done
+    [ ${#bad[@]} -eq 0 ] || { echo "still missing or unreadable: ${bad[*]}  (retry: scripts/imggen $id 1 ${bad[*]})" >&2; return 1; }
+    echo "next: review, then: scripts/imggen $id 2 $*"
+    return
+  fi
   if compgen -G "$dir/$id-*.jpg" >/dev/null; then
-    echo "already generated: $dir (delete that folder to generate again)" >&2; return 1
+    echo "already generated: $dir (delete that folder to generate again, or re-roll poses: scripts/imggen $id 1 POSE...)" >&2; return 1
   fi
   echo "== 1 generate $id"
   $ENEMY_GEN_CMD "$id" "$dir" || return 1
   [ -s "$dir/ready.jpg" ] || { echo "generator left no ready.jpg" >&2; return 1; }
+  local bad=() p; for p in "${POSES[@]}"; do usable_jpg "$(pose_file "$p")" || bad+=("$p"); done
+  [ ${#bad[@]} -eq 0 ] || echo "missing or unreadable poses: ${bad[*]}  (re-roll: scripts/imggen $id 1 ${bad[*]})" >&2
   echo "next: review the images in $dir, then: scripts/imggen $id 2"
 }
 
 step2() {
   [ -d "$dir" ] || { echo "nothing to cut out; run: scripts/imggen $id 1" >&2; return 1; }
-  echo "== 2 cutout $id"
-  rm -rf "$dir/cutouts" "$dir/export"; mkdir -p "$dir/cutouts"
-  local ok=0 bad=() f n
-  for f in "$dir"/$id-*.jpg; do
-    [ -e "$f" ] || continue
-    n=$(basename "${f%.*}")
-    if python3 -I "$root/scripts/cutout.py" "$f" "$dir/cutouts/$n.png" > "$dir/cutouts/$n.report.txt" 2>&1; then
-      ok=$((ok+1)); else bad+=("$n"); fi
+  local want=("$@") p f
+  [ ${#want[@]} -gt 0 ] || want=("${POSES[@]}")
+  check_poses "${want[@]}" || return 1
+  echo "== 2 cutout $id${*:+: $*}"
+  # inputs first: a missing or truncated jpg is a generation problem, say so before cutting anything
+  local gone=()
+  usable_jpg "$dir/ready.jpg" || gone+=(ready)
+  for p in "${want[@]}"; do usable_jpg "$(pose_file "$p")" || gone+=("$p"); done
+  if [ ${#gone[@]} -gt 0 ]; then
+    echo "missing or unreadable images: ${gone[*]}" >&2
+    echo "re-roll them: scripts/imggen $id 1 ${gone[*]}" >&2; return 1
+  fi
+  if [ $# -eq 0 ]; then rm -rf "$dir/cutouts" "$dir/export"; else rm -rf "$dir/export"; fi
+  mkdir -p "$dir/cutouts"
+  local files=()
+  for p in "${want[@]}"; do f=$(pose_file "$p"); rm -f "$dir/cutouts/$(basename "${f%.*}")".*; files+=("$f"); done
+  # cutouts are independent and ~1 core each; cap the fan-out so numpy's working set stays small
+  local jobs; jobs=$(nproc 2>/dev/null || echo 2); [ "$jobs" -le 4 ] || jobs=4
+  export -f cut_one; export root dir
+  printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"' | sort -k2 > "$dir/cutouts/.results"
+  # judge every pose, including ones cut in an earlier run: a pose is good if its report ends in OK
+  local ok=0 bad=() regen=() n
+  for p in "${POSES[@]}"; do
+    n=$(basename "$(pose_file "$p")" .jpg)
+    if [ -s "$dir/cutouts/$n.report.txt" ] && [ "$(tail -n1 "$dir/cutouts/$n.report.txt")" = OK ]; then ok=$((ok+1))
+    else
+      bad+=("$p"); grep -q '^FAIL: REGENERATE' "$dir/cutouts/$n.report.txt" 2>/dev/null && regen+=("$p")
+    fi
   done
+  rm -f "$dir/cutouts/.results"
   echo "cutout: $ok ok, ${#bad[@]} failed"
   if [ ${#bad[@]} -gt 0 ]; then
-    for n in "${bad[@]}"; do echo "  FAIL $n  ($dir/cutouts/$n.report.txt)"; done
-    echo "no sheets built. This is a cutout.py issue, not a reason to regenerate." >&2; return 1
+    for p in "${bad[@]}"; do n=$(basename "$(pose_file "$p")" .jpg); echo "  FAIL $p  ($dir/cutouts/$n.report.txt)"; done
+    if [ ${#regen[@]} -gt 0 ]; then echo "  render unusable (clipped or scenic), re-roll: scripts/imggen $id 1 ${regen[*]}" >&2; fi
+    echo "no sheets built. After fixing scripts/cutout.py, re-cut only these: scripts/imggen $id 2 ${bad[*]}" >&2; return 1
   fi
   magick montage "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
   echo "== 2 sheets $id"
@@ -62,5 +123,5 @@ step3() {
 }
 
 if [ "$step" = 1 ]; then mkdir -p "$dir"; elif [ ! -d "$dir" ]; then echo "no work folder $dir; run: scripts/imggen $id 1" >&2; exit 1; fi
-step$step 2>&1 | tee -a "$dir/$id.log"
+step$step "$@" 2>&1 | tee -a "$dir/$id.log"
 exit "${PIPESTATUS[0]}"
