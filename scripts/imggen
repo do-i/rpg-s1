@@ -121,6 +121,11 @@ step2() {
   mkdir -p "$dir/cutouts"
   if [ $pack = 1 ]; then
     echo "== 2 pack $id (from existing cutouts)"
+    # stages cut before ready had its own cutout have none: cut just that one (no other cutout is touched)
+    if [ "$(item_state ready)" = missing ] && usable_jpg "$dir/ready.jpg"; then
+      echo "ready has no 1k cutout yet (older stage); cutting ready.jpg"
+      export root dir; cut_one "$dir/ready.jpg"
+    fi
   else
     [ ${#want[@]} -gt 0 ] || want=("${items[@]}")
     echo "== 2 cutout $id${*:+: $*}"
