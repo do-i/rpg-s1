@@ -11,13 +11,16 @@
 # A cutout saved after its report is "touched up": step 2 accepts it even if its cut had failed,
 # and never re-cuts it unless --force is given (a re-rolled jpg still marks it stale).
 #   scripts/imggen ENEMY_ID 3            promote sheets into v2/ + ledger rows (no commit)
+#   scripts/imggen ID1 ID2 ... STEP [ARGS] run STEP for each id in turn (same ARGS for each);
+#                                        step 1 pauses ENEMY_GEN_DELAY between enemies; the first failure stops the batch
 # Settings come from ~/.imggen.env (or the environment):
 #   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
 #   ENEMY_CONCEPTS concepts file (ID|description|keep-list|item per line); with no arguments, imggen lists its ids not yet in v2/
 #   ENEMY_GEN_CMD  image generator, one image per call: $ENEMY_GEN_CMD OUT.jpg PROMPT_FILE [REF.jpg]
 #                  no REF = new image; REF = edit seeded from it. Request settings arrive as env vars
 #                  scoped to the call: GEN_MODEL GEN_RESOLUTION GEN_ASPECT GEN_QUALITY (may be empty).
-#                  It must write a JPEG to OUT and exit non-zero on failure. Credentials are its own business.
+#                  It must write a JPEG to OUT and exit non-zero on failure. Credentials are its own business;
+#                  exit 3 means auth was rejected: no retry, the step (and a batch) stops.
 #   ENEMY_GEN_MODEL model name handed to the generator as GEN_MODEL
 #   ENEMY_GEN_DELAY seconds to wait after each generator call (requests run one at a time, for rate limits)
 # Output of every step is also appended to STAGE/ID/ID.log.
@@ -27,7 +30,6 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 _env=(); for _v in IMGGEN_STAGE ENEMY_GEN_CMD ENEMY_GEN_MODEL ENEMY_GEN_DELAY ENEMY_CONCEPTS; do [ -n "${!_v:-}" ] && _env+=("$_v=${!_v}"); done
 [ -f "$HOME/.imggen.env" ] && . "$HOME/.imggen.env"
 for _v in "${_env[@]}"; do declare "$_v"; done
-id=${1:-}; step=${2:-}
 v2dir="$root/assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2"
 # no ID and no step: list the concept ids that have no v2 art yet
 if [ $# -eq 0 ]; then
@@ -45,9 +47,47 @@ if [ $# -eq 0 ]; then
   echo "-- $todo of $total concepts not yet in v2; start one: scripts/imggen ENEMY_ID 1" >&2
   exit 0
 fi
-case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID {1|2|3} [POSE...]   (1 generate, 2 cutout+sheets, 3 promote; no arguments: list ids still to do)" >&2; exit 2;; esac
-[ -n "$id" ] || { echo "missing ENEMY_ID" >&2; exit 2; }
-shift 2
+# ENEMY_ID... STEP [ARGS]: every word before the step number is an enemy id
+ids=()
+while [ $# -gt 0 ] && ! [[ $1 =~ ^[123]$ ]]; do ids+=("$1"); shift; done
+step=${1:-}
+case "$step" in 1|2|3) ;; *) echo "usage: scripts/imggen ENEMY_ID [ENEMY_ID...] {1|2|3} [POSE...]   (1 generate, 2 cutout+sheets, 3 promote; no arguments: list ids still to do)" >&2; exit 2;; esac
+[ ${#ids[@]} -gt 0 ] || { echo "missing ENEMY_ID" >&2; exit 2; }
+shift
+# several ids: run this script once per id, in order, with the same step and arguments.
+# Step 1 waits ENEMY_GEN_DELAY between enemies (each run's first generator call does not wait on its own).
+# The first failed enemy stops the batch, as does Ctrl-C.
+if [ ${#ids[@]} -gt 1 ]; then
+  if [ "$step" = 1 ]; then
+    : "${ENEMY_GEN_DELAY:?set ENEMY_GEN_DELAY (seconds between generator calls) in ~/.imggen.env}"
+    [[ $ENEMY_GEN_DELAY =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "ENEMY_GEN_DELAY must be a number of seconds, got '$ENEMY_GEN_DELAY'" >&2; exit 1; }
+  fi
+  # shipped art is checked for every id up front, so a typo'd batch fails before any generator call
+  if [ "$step" = 1 ]; then
+    shipped=(); for id in "${ids[@]}"; do [ -e "$v2dir/$id-status.png" ] || [ -e "$v2dir/$id-attack.png" ] && shipped+=("$id"); done
+    [ ${#shipped[@]} -eq 0 ] || { echo "already have v2 art, nothing to generate: ${shipped[*]}; drop them from the list" >&2; exit 1; }
+  fi
+  n=0
+  for id in "${ids[@]}"; do
+    if [ "$step" = 1 ] && [ $n -gt 0 ]; then
+      echo "### pausing ${ENEMY_GEN_DELAY}s before the next enemy"; sleep "$ENEMY_GEN_DELAY" || exit 130
+    fi
+    n=$((n+1))
+    echo "### [$n/${#ids[@]}] $id"
+    "$0" "$id" "$step" "$@"; rc=$?
+    [ $rc -eq 130 ] && { echo "interrupted at $id" >&2; exit 130; }
+    # the first failure stops the batch; the rest is never started
+    if [ $rc -ne 0 ]; then
+      rest=("${ids[@]:$n}")
+      echo "### $id failed (exit $rc); batch stopped after $((n-1))/${#ids[@]} ok.${rest[*]:+ Not started: ${rest[*]}}" >&2
+      [ $rc -eq 3 ] && echo "### auth rejected: log in again first" >&2
+      exit $rc
+    fi
+  done
+  echo "### batch step $step: ${#ids[@]}/${#ids[@]} ok"
+  exit 0
+fi
+id=${ids[0]}
 : "${IMGGEN_STAGE:?set IMGGEN_STAGE in ~/.imggen.env}"
 dir="$IMGGEN_STAGE/$id"
 mkdir -p "$IMGGEN_STAGE"
@@ -90,12 +130,14 @@ concept() { awk -F'|' -v id="$id" -v f="$1" '$1 == id { print $f; exit }' "$ENEM
 # except that the first call of a run does not wait for a previous one.
 gen_calls=0
 gen_one() {
-  local try
+  local try rc
   for try in 1 2; do
     [ $gen_calls -eq 0 ] || sleep "$ENEMY_GEN_DELAY"
     gen_calls=$((gen_calls+1))
     GEN_MODEL=$ENEMY_GEN_MODEL GEN_RESOLUTION=$GEN_SIZE GEN_ASPECT=$GEN_ASPECT_RATIO GEN_QUALITY=${QUALITY:-} \
-      $ENEMY_GEN_CMD "$@" && usable_jpg "$1" && return 0
+      $ENEMY_GEN_CMD "$@"; rc=$?
+    [ $rc -eq 0 ] && usable_jpg "$1" && return 0
+    [ $rc -eq 3 ] && { rm -f "$1"; return 3; }   # auth rejected: retrying cannot help
   done
   rm -f "$1"; return 1
 }
@@ -103,21 +145,24 @@ gen_one() {
 # generate [POSE...]: ready.jpg (unless re-rolling poses with one present), then the poses one by one,
 # each an edit seeded from ready.jpg. Prompts are kept in DIR/prompts/.
 generate() {
-  local name canon keep p i
+  local name canon keep p i rc
   name=${id//_/ }; canon=$(concept 2); keep=$(concept 3)
   [ -n "$canon" ] && [ -n "$keep" ] || { echo "no concept for $id in $ENEMY_CONCEPTS" >&2; return 1; }
   mkdir -p "$dir/prompts"
   if [ $# -eq 0 ] || [ ! -s "$dir/ready.jpg" ]; then
     printf '%s' "A hand-painted full-body battle sprite of the $name, $canon. Exactly two arms and two legs. Paint it in a hand-painted item-icon style: dark contour, saturated color, brushed material highlights. $FRAME. $FIELD" > "$dir/prompts/ready.txt"
     echo "ready"
-    QUALITY=low gen_one "$dir/ready.jpg" "$dir/prompts/ready.txt" || { echo "canonical generation failed" >&2; return 1; }
+    QUALITY=low gen_one "$dir/ready.jpg" "$dir/prompts/ready.txt"; rc=$?
+    [ $rc -eq 0 ] || { echo "canonical generation failed" >&2; return $rc; }
   fi
   local want=("$@"); [ $# -gt 0 ] || want=("${POSES[@]}")
   for p in "${want[@]}"; do
     i=$(pose_index "$p")
     printf '%s' "Keep this exact $name and the same hand-painted battler: $keep. Same proportions and paint. Change only the pose: ${POSE_PROMPTS[$i]}. Exactly two arms and two legs. $FRAME and the held item. $FIELD" > "$dir/prompts/$p.txt"
     echo "$p"
-    gen_one "$(pose_file "$p")" "$dir/prompts/$p.txt" "$dir/ready.jpg" || echo "  $p failed" >&2
+    gen_one "$(pose_file "$p")" "$dir/prompts/$p.txt" "$dir/ready.jpg"; rc=$?
+    [ $rc -eq 3 ] && { echo "  $p: auth rejected; stopping (log in again, then re-roll the missing poses)" >&2; return 3; }
+    [ $rc -eq 0 ] || echo "  $p failed" >&2
   done
   echo "generated $(compgen -G "$dir/$id-*.jpg" | wc -l)/16 poses + ready.jpg in $dir"
 }
@@ -155,14 +200,14 @@ step1() {
     # set the current images aside (not .jpg, so the generator's count ignores them); a failed
     # request must not cost the image already paid for
     local p f; for p in "$@"; do f=$(pose_file "$p"); [ -e "$f" ] && mv -f "$f" "$f.prev"; done
-    generate "$@"
+    generate "$@"; local grc=$?
     local bad=()
     for p in "$@"; do
       f=$(pose_file "$p")
       if usable_jpg "$f"; then rm -f "$f.prev"
       else bad+=("$p"); [ -e "$f.prev" ] && mv -f "$f.prev" "$f"; fi
     done
-    [ ${#bad[@]} -eq 0 ] || { echo "re-roll failed for: ${bad[*]} (previous image kept); retry: scripts/imggen $id 1 ${bad[*]}" >&2; return 1; }
+    [ ${#bad[@]} -eq 0 ] || { echo "re-roll failed for: ${bad[*]} (previous image kept); retry: scripts/imggen $id 1 ${bad[*]}" >&2; [ $grc -eq 3 ] && return 3; return 1; }
     echo "next: review, then: scripts/imggen $id 2 $*"
     return
   fi
@@ -170,10 +215,12 @@ step1() {
     echo "already generated: $dir (delete that folder to generate again, or re-roll poses: scripts/imggen $id 1 POSE...)" >&2; return 1
   fi
   echo "== 1 generate $id"
-  generate || return 1
+  generate; local grc=$?
+  [ $grc -eq 3 ] && return 3
+  [ $grc -eq 0 ] || return 1
   [ -s "$dir/ready.jpg" ] || { echo "generator left no ready.jpg" >&2; return 1; }
   local bad=() p; for p in "${POSES[@]}"; do usable_jpg "$(pose_file "$p")" || bad+=("$p"); done
-  [ ${#bad[@]} -eq 0 ] || echo "missing or unreadable poses: ${bad[*]}  (re-roll: scripts/imggen $id 1 ${bad[*]})" >&2
+  [ ${#bad[@]} -eq 0 ] || { echo "missing or unreadable poses: ${bad[*]}  (re-roll: scripts/imggen $id 1 ${bad[*]})" >&2; return 1; }
   echo "next: review the images in $dir, then: scripts/imggen $id 2"
 }
 
