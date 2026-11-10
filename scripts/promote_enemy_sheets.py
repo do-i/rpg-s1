@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Promote packed enemy sheets into the shipped v2 folder and add their ledger rows.
 
-    python3 -I scripts/promote_enemy_sheets.py ID EXPORT_DIR [--dry-run] [--force]
+    python3 -I scripts/promote_enemy_sheets.py ID SHEETS_DIR [--dry-run] [--force]
 
-EXPORT_DIR is the folder scripts/pack_enemy_sheets.py wrote (it holds ID/ID-status.png etc.).
+SHEETS_DIR is the folder scripts/pack_enemy_sheets.py wrote (ID-status.png etc.; imggen: STAGE/ID/sheets/).
 Copies ID-status.{png,tsx} and ID-attack.{png,tsx} into
 assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/ and appends four rows
 (next free ALI id, SHA-256) to the end of the `Home-grown assets (MIT)` table in
@@ -23,10 +23,10 @@ def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("id"); ap.add_argument("export_dir")
+    ap.add_argument("id"); ap.add_argument("sheets_dir")
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    src = Path(a.export_dir) / a.id
+    src = Path(a.sheets_dir)
     names = [f"{a.id}-{k}.{e}" for k in ("status", "attack") for e in ("png", "tsx")]
     missing = [n for n in names if not (src / n).is_file()]
     if missing: sys.exit(f"missing in {src}: {', '.join(missing)}")

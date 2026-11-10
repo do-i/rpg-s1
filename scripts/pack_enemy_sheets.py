@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 """Pack approved enemy pose cutouts into production v2 battler sheets.
 
-    python3 -I scripts/pack_enemy_sheets.py ID POSES_DIR --ready READY.jpg [--out DIR] [--tile 256]
+    python3 -I scripts/pack_enemy_sheets.py ID CUTOUTS_DIR OUT_DIR [--tile 256]
 
-POSES_DIR holds ID-NN-<pose>.jpg; scripts/imggen step 2 cuts them out into POSES_DIR/cutouts/ and calls this
-READY is the canonical image (jpg is cut out first; a transparent png is used as is).
+CUTOUTS_DIR holds the accepted 1k cutouts: ready.png and ID-NN-<pose>.png (scripts/imggen step 2
+keeps them in STAGE/ID/ID/). They are read in place, never copied.
 
-Writes OUT/ID/ (default OUT = POSES_DIR/export):
+Writes into OUT_DIR:
   ID-status.png/.tsx   4x4 tiles, index order from docs/authoring.md, tile 15 empty
   ID-attack.png/.tsx   2x1 tiles (thrust, lunge)
-  1k/<pose>.png        the full-size cutouts, renamed after the pose
 Layout matches shipped sheets: one shared scale (widest pose fits), feet 4px above the
 cell bottom, centered on each pose's bounding box, transparent, no labels. Needs ImageMagick.
 Does not touch assets/ or the ledger.
 """
-import argparse, os, re, shutil, subprocess, sys, glob
+import argparse, os, re, subprocess, sys, glob
 
 STATUS = ["ready","poison","sleep","stun","silence","burn","freeze","knockback",
           "taunt","guard","cover","haste","slow","regen","ko"]
 ATTACK = ["attack-thrust","attack-lunge"]
-HERE = os.path.dirname(os.path.abspath(__file__))
-CUTOUT = os.path.join(HERE, "cutout.py")
 
 def run(*a):
     return subprocess.run(a, check=True, capture_output=True, text=True).stdout
@@ -31,31 +28,20 @@ def bbox(p):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("id"); ap.add_argument("poses_dir")
-    ap.add_argument("--ready", required=True)
-    ap.add_argument("--out"); ap.add_argument("--tile", type=int, default=256)
+    ap.add_argument("id"); ap.add_argument("cutouts_dir"); ap.add_argument("out_dir")
+    ap.add_argument("--tile", type=int, default=256)
     a = ap.parse_args()
     T = a.tile
-    out = os.path.join(a.out or os.path.join(a.poses_dir, "export"), a.id)
-    k1 = os.path.join(out, "1k"); os.makedirs(k1, exist_ok=True)
+    out = a.out_dir; os.makedirs(out, exist_ok=True)
 
-    # 1k cutouts renamed after the pose
     src = {}
-    for f in glob.glob(os.path.join(a.poses_dir, "cutouts", "*.png")):
+    for f in glob.glob(os.path.join(a.cutouts_dir, f"{glob.escape(a.id)}-[0-9][0-9]-*.png")):
         m = re.search(r"-\d\d-(.+)\.png$", f)
         if m: src[m.group(1)] = f
-    ready = os.path.join(k1, "ready.png")
-    if a.ready.lower().endswith(".png"):
-        shutil.copy(a.ready, ready)
-    else:
-        subprocess.run([sys.executable, "-I", CUTOUT, a.ready, ready], check=True)
-    src["ready"] = ready
+    ready = os.path.join(a.cutouts_dir, "ready.png")
+    if os.path.isfile(ready): src["ready"] = ready
     miss = [p for p in STATUS + ATTACK if p not in src]
     if miss: sys.exit("missing poses: " + ", ".join(miss))
-    for p in STATUS + ATTACK:
-        dst = os.path.join(k1, p.replace("-", "_") + ".png")
-        if os.path.abspath(src[p]) != os.path.abspath(dst): shutil.copy(src[p], dst)
-        src[p] = dst
 
     # one shared scale across every pose; widest (or tallest) pose just fits
     bb = {p: bbox(src[p]) for p in STATUS + ATTACK}
@@ -86,6 +72,5 @@ def main():
 
     sheet("status", STATUS, 4, 4)
     sheet("attack", ATTACK, 2, 1)
-    print("1k poses:", k1)
 
 main()

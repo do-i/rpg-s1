@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Enemy v2 battler art in three steps.
 #   scripts/imggen                       list concept ids (ENEMY_CONCEPTS) that have no v2 art yet
-#   scripts/imggen ENEMY_ID 1 [POSE...]  generate poses from the image generator -> STAGE/ID/
+#   scripts/imggen ENEMY_ID 1 [POSE...]  generate poses from the image generator -> STAGE/ID/raw/
 #                                        with POSE names: re-roll just those poses
 #   scripts/imggen ENEMY_ID 2 [--force] [POSE...]
-#                                        cutout + 256px sheets (review the result) -> STAGE/ID/export/
+#                                        cutout -> accepted 1k cutouts in STAGE/ID/ID/, then 256px sheets
+#                                        in STAGE/ID/sheets/ (review the result)
 #                                        with POSE names (or ready): re-cut just those, reuse the other cutouts
 #   scripts/imggen ENEMY_ID 2 pack       sheets only, from the existing 1k cutouts; nothing is re-cut
-# Touch-ups: edit the 1k cutouts in STAGE/ID/cutouts/ (ready.png, ID-NN-<pose>.png), then run step 2 pack.
+# Stage layout: STAGE/ID/{raw,cutouts,ID,sheets}/; ID/ holds only accepted cutouts (ready.png, ID-NN-<pose>.png),
+# failed ones stay in cutouts/ next to their reports. Older stages are converted on the next run.
+# Touch-ups: edit an accepted cutout in ID/ (or a failed one in cutouts/), then run step 2 pack.
 # A cutout saved after its report is "touched up": step 2 accepts it even if its cut had failed,
 # and never re-cuts it unless --force is given (a re-rolled jpg still marks it stale).
 #   scripts/imggen ENEMY_ID 3            promote sheets into v2/ + ledger rows (no commit)
@@ -23,7 +26,7 @@
 #                  exit 3 means auth was rejected: no retry, the step (and a batch) stops.
 #   ENEMY_GEN_MODEL model name handed to the generator as GEN_MODEL
 #   ENEMY_GEN_DELAY seconds to wait after each generator call (requests run one at a time, for rate limits)
-# Output of every step is also appended to STAGE/ID/ID.log.
+# Output of every step is also appended to STAGE/ID/raw/ID.log.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 # config file supplies defaults; variables already set in the environment win
@@ -90,6 +93,10 @@ fi
 id=${ids[0]}
 : "${IMGGEN_STAGE:?set IMGGEN_STAGE in ~/.imggen.env}"
 dir="$IMGGEN_STAGE/$id"
+# STAGE/ID/ layout: raw/ (generated jpgs, prompts/, ID.log)  cutouts/ (cut work area: reports, rejected
+# cutouts, check-green.png)  ID/ (accepted 1k cutouts only; this folder goes to the content repo)
+# sheets/ (ID-status.png/.tsx, ID-attack.png/.tsx). Every file exists exactly once.
+raw="$dir/raw"; acc="$dir/$id"
 mkdir -p "$IMGGEN_STAGE"
 # the 16 poses, in file-number order (NN = position); must match the generator and pack_enemy_sheets.py
 POSES=(poison sleep stun silence burn freeze knockback taunt guard cover haste slow regen ko attack-thrust attack-lunge)
@@ -120,7 +127,7 @@ GEN_SIZE=1k; GEN_ASPECT_RATIO=1:1
 # pose_index POSE -> 0-based position in POSES
 pose_index() { local i; for i in "${!POSES[@]}"; do [ "${POSES[$i]}" = "$1" ] && { echo "$i"; return; }; done; return 1; }
 # pose_file POSE -> path of the generated jpg (may not exist)
-pose_file() { local i; i=$(pose_index "$1") || return 1; printf '%s/%s-%02d-%s.jpg' "$dir" "$id" $((i+1)) "$1"; }
+pose_file() { local i; i=$(pose_index "$1") || return 1; printf '%s/%s-%02d-%s.jpg' "$raw" "$id" $((i+1)) "$1"; }
 
 # concept FIELD -> that field of this enemy's ENEMY_CONCEPTS row (2 = canonical design, 3 = keep-list)
 concept() { awk -F'|' -v id="$id" -v f="$1" '$1 == id { print $f; exit }' "$ENEMY_CONCEPTS"; }
@@ -148,23 +155,23 @@ generate() {
   local name canon keep p i rc
   name=${id//_/ }; canon=$(concept 2); keep=$(concept 3)
   [ -n "$canon" ] && [ -n "$keep" ] || { echo "no concept for $id in $ENEMY_CONCEPTS" >&2; return 1; }
-  mkdir -p "$dir/prompts"
-  if [ $# -eq 0 ] || [ ! -s "$dir/ready.jpg" ]; then
-    printf '%s' "A hand-painted full-body battle sprite of the $name, $canon. Exactly two arms and two legs. Paint it in a hand-painted item-icon style: dark contour, saturated color, brushed material highlights. $FRAME. $FIELD" > "$dir/prompts/ready.txt"
+  mkdir -p "$raw/prompts"
+  if [ $# -eq 0 ] || [ ! -s "$raw/ready.jpg" ]; then
+    printf '%s' "A hand-painted full-body battle sprite of the $name, $canon. Exactly two arms and two legs. Paint it in a hand-painted item-icon style: dark contour, saturated color, brushed material highlights. $FRAME. $FIELD" > "$raw/prompts/ready.txt"
     echo "ready"
-    QUALITY=low gen_one "$dir/ready.jpg" "$dir/prompts/ready.txt"; rc=$?
+    QUALITY=low gen_one "$raw/ready.jpg" "$raw/prompts/ready.txt"; rc=$?
     [ $rc -eq 0 ] || { echo "canonical generation failed" >&2; return $rc; }
   fi
   local want=("$@"); [ $# -gt 0 ] || want=("${POSES[@]}")
   for p in "${want[@]}"; do
     i=$(pose_index "$p")
-    printf '%s' "Keep this exact $name and the same hand-painted battler: $keep. Same proportions and paint. Change only the pose: ${POSE_PROMPTS[$i]}. Exactly two arms and two legs. $FRAME and the held item. $FIELD" > "$dir/prompts/$p.txt"
+    printf '%s' "Keep this exact $name and the same hand-painted battler: $keep. Same proportions and paint. Change only the pose: ${POSE_PROMPTS[$i]}. Exactly two arms and two legs. $FRAME and the held item. $FIELD" > "$raw/prompts/$p.txt"
     echo "$p"
-    gen_one "$(pose_file "$p")" "$dir/prompts/$p.txt" "$dir/ready.jpg"; rc=$?
+    gen_one "$(pose_file "$p")" "$raw/prompts/$p.txt" "$raw/ready.jpg"; rc=$?
     [ $rc -eq 3 ] && { echo "  $p: auth rejected; stopping (log in again, then re-roll the missing poses)" >&2; return 3; }
     [ $rc -eq 0 ] || echo "  $p failed" >&2
   done
-  echo "generated $(compgen -G "$dir/$id-*.jpg" | wc -l)/16 poses + ready.jpg in $dir"
+  echo "generated $(compgen -G "$raw/$id-*.jpg" | wc -l)/16 poses + ready.jpg in $dir"
 }
 
 # check_poses POSE... : every named pose must be a known name (aborts with the valid list otherwise)
@@ -195,7 +202,7 @@ step1() {
   [[ $ENEMY_GEN_DELAY =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "ENEMY_GEN_DELAY must be a number of seconds, got '$ENEMY_GEN_DELAY'" >&2; return 1; }
   if [ $# -gt 0 ]; then
     check_poses "$@" || return 1
-    [ -s "$dir/ready.jpg" ] || { echo "no $dir/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
+    [ -s "$raw/ready.jpg" ] || { echo "no $raw/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
     echo "== 1 re-roll $id: $*"
     # set the current images aside (not .jpg, so the generator's count ignores them); a failed
     # request must not cost the image already paid for
@@ -211,32 +218,92 @@ step1() {
     echo "next: review, then: scripts/imggen $id 2 $*"
     return
   fi
-  if compgen -G "$dir/$id-*.jpg" >/dev/null; then
+  if compgen -G "$raw/$id-*.jpg" >/dev/null; then
     echo "already generated: $dir (delete that folder to generate again, or re-roll poses: scripts/imggen $id 1 POSE...)" >&2; return 1
   fi
   echo "== 1 generate $id"
   generate; local grc=$?
   [ $grc -eq 3 ] && return 3
   [ $grc -eq 0 ] || return 1
-  [ -s "$dir/ready.jpg" ] || { echo "generator left no ready.jpg" >&2; return 1; }
+  [ -s "$raw/ready.jpg" ] || { echo "generator left no ready.jpg" >&2; return 1; }
   local bad=() p; for p in "${POSES[@]}"; do usable_jpg "$(pose_file "$p")" || bad+=("$p"); done
   [ ${#bad[@]} -eq 0 ] || { echo "missing or unreadable poses: ${bad[*]}  (re-roll: scripts/imggen $id 1 ${bad[*]})" >&2; return 1; }
-  echo "next: review the images in $dir, then: scripts/imggen $id 2"
+  echo "next: review the images in $raw, then: scripts/imggen $id 2"
 }
 
 # item_jpg ITEM -> source jpg of a pose or of ready
-item_jpg() { if [ "$1" = ready ]; then printf '%s/ready.jpg' "$dir"; else pose_file "$1"; fi; }
+item_jpg() { if [ "$1" = ready ]; then printf '%s/ready.jpg' "$raw"; else pose_file "$1"; fi; }
+# cut_name ITEM -> stem shared by its jpg, cutout png and report (ready | ID-NN-pose)
+cut_name() { basename "$(item_jpg "$1")" .jpg; }
+# cut_png ITEM -> its 1k cutout: in ID/ once accepted, otherwise in cutouts/
+cut_png() {
+  local n; n=$(cut_name "$1")
+  if [ -e "$acc/$n.png" ]; then printf '%s/%s.png' "$acc" "$n"; else printf '%s/cutouts/%s.png' "$dir" "$n"; fi
+}
 
 # item_state ITEM -> ok | touched | stale | regen | fail | missing  (of its 1k cutout)
 item_state() {
   local f n png rep
-  f=$(item_jpg "$1"); n=$(basename "$f" .jpg); png="$dir/cutouts/$n.png"; rep="$dir/cutouts/$n.report.txt"
+  f=$(item_jpg "$1"); n=$(cut_name "$1"); png=$(cut_png "$1"); rep="$dir/cutouts/$n.report.txt"
   if [ ! -s "$png" ]; then echo missing
   elif [ "$f" -nt "$png" ]; then echo stale                          # source re-rolled after the cut / touch-up
   elif [ ! -s "$rep" ] || [ "$png" -nt "$rep" ]; then echo touched   # edited by hand after the cut
   elif [ "$(tail -n1 "$rep")" = OK ]; then echo ok
   elif grep -q '^FAIL: REGENERATE' "$rep"; then echo regen
   else echo fail; fi
+}
+
+# sync_accepted: accepted cutouts (ok, touched) move to ID/, any other cutout back to cutouts/.
+# mv keeps the mtime, so a touched-up cutout stays newer than its report.
+sync_accepted() {
+  local p n
+  mkdir -p "$acc" "$dir/cutouts"
+  for p in ready "${POSES[@]}"; do
+    n=$(cut_name "$p")
+    case $(item_state "$p") in
+      ok|touched) [ -e "$dir/cutouts/$n.png" ] && [ ! -e "$acc/$n.png" ] && mv "$dir/cutouts/$n.png" "$acc/$n.png" ;;
+      missing) ;;
+      *) [ -e "$acc/$n.png" ] && mv -f "$acc/$n.png" "$dir/cutouts/$n.png" ;;
+    esac
+  done
+  return 0
+}
+
+# migrate_layout: a stage made before raw/ ID/ sheets/ existed (jpgs, prompts/ and the log at the top,
+# sheets plus a renamed copy of every cutout in export/ID/1k/) is moved into the current layout.
+# A 1k copy identical to its cutout is dropped; one whose cutout is gone becomes that cutout;
+# one that differs stays in export/ with a warning.
+migrate_layout() {
+  local f k p c moved=0
+  mkdir -p "$raw"
+  for f in "$dir"/*.jpg "$dir"/*.jpg.prev "$dir/$id.log" "$dir/prompts"; do
+    [ -e "$f" ] || continue
+    if [ -e "$raw/$(basename "$f")" ]; then echo "migrate: $f is also in raw/; left where it is" >&2; continue; fi
+    mv "$f" "$raw/"; moved=1
+  done
+  local ex="$dir/export/$id"
+  if [ -d "$ex" ]; then
+    mkdir -p "$dir/cutouts"
+    for f in "$ex/$id"-{status,attack}.{png,tsx}; do
+      [ -e "$f" ] && { mkdir -p "$dir/sheets"; mv -f "$f" "$dir/sheets/"; moved=1; }
+    done
+    for k in "$ex"/1k/*.png; do
+      [ -e "$k" ] || continue
+      p=$(basename "$k" .png); p=${p//_/-}
+      [ "$p" = ready ] || pose_index "$p" >/dev/null || continue
+      c=$(cut_png "$p")
+      if [ ! -e "$c" ]; then mv "$k" "$dir/cutouts/$(cut_name "$p").png"
+      elif cmp -s "$k" "$c"; then rm -f "$k"
+      else continue; fi
+      moved=1
+    done
+    rmdir "$ex/1k" 2>/dev/null
+  fi
+  if [ -d "$dir/export" ]; then
+    rmdir "$ex" "$dir/export" 2>/dev/null; [ -d "$dir/export" ] && echo "migrate: kept $dir/export (it holds files that differ from the cutouts)" >&2
+  fi
+  [ -d "$dir/cutouts" ] && sync_accepted
+  [ $moved = 0 ] || echo "migrated $dir to raw/ cutouts/ $id/ sheets/"
 }
 
 step2() {
@@ -254,14 +321,15 @@ step2() {
     echo "step 2 pack takes no poses or --force; it only rebuilds sheets from $dir/cutouts" >&2; return 1
   fi
   local items=(ready "${POSES[@]}")
-  rm -rf "$dir/export"
-  mkdir -p "$dir/cutouts"
+  # sheets are rebuilt from scratch: a failed step 2 must leave nothing for step 3 to promote
+  rm -rf "$dir/sheets"
+  mkdir -p "$dir/cutouts" "$acc"
   if [ $pack = 1 ]; then
     echo "== 2 pack $id (from existing cutouts)"
     # stages cut before ready had its own cutout have none: cut just that one (no other cutout is touched)
-    if [ "$(item_state ready)" = missing ] && usable_jpg "$dir/ready.jpg"; then
+    if [ "$(item_state ready)" = missing ] && usable_jpg "$raw/ready.jpg"; then
       echo "ready has no 1k cutout yet (older stage); cutting ready.jpg"
-      export root dir; cut_one "$dir/ready.jpg"
+      export root dir; cut_one "$raw/ready.jpg"
     fi
   else
     [ ${#want[@]} -gt 0 ] || want=("${items[@]}")
@@ -280,7 +348,7 @@ step2() {
       echo "re-roll them: scripts/imggen $id 1 ${gone[*]}" >&2; return 1
     fi
     local files=()
-    for p in "${cut[@]}"; do f=$(item_jpg "$p"); rm -f "$dir/cutouts/$(basename "$f" .jpg)".{png,report.txt}; files+=("$f"); done
+    for p in "${cut[@]}"; do n=$(cut_name "$p"); rm -f "$dir/cutouts/$n".{png,report.txt} "$acc/$n.png"; files+=("$(item_jpg "$p")"); done
     if [ ${#files[@]} -gt 0 ]; then
       # cutouts are independent and ~1 core each; cap the fan-out so numpy's working set stays small
       local jobs; jobs=$(nproc 2>/dev/null || echo 2); [ "$jobs" -le 4 ] || jobs=4
@@ -288,7 +356,8 @@ step2() {
       printf '%s\0' "${files[@]}" | xargs -0 -n1 -P "$jobs" bash -c 'cut_one "$0"'
     fi
   fi
-  # judge every item, including ones cut in an earlier run
+  # accepted cutouts go to ID/, the rest stay in cutouts/; then judge every item, including earlier cuts
+  sync_accepted
   local ok=0 touched=() bad=() stale=() regen=() st
   for p in "${items[@]}"; do
     st=$(item_state "$p")
@@ -302,23 +371,23 @@ step2() {
   done
   echo "cutout: $ok ok, ${#touched[@]} touched up, ${#bad[@]} failed${touched[*]:+  (touched up: ${touched[*]})}"
   if [ ${#bad[@]} -gt 0 ]; then
-    for p in "${bad[@]}"; do n=$(basename "$(item_jpg "$p")" .jpg); echo "  FAIL $p ($(item_state "$p"))  $dir/cutouts/$n.report.txt"; done
+    for p in "${bad[@]}"; do n=$(cut_name "$p"); echo "  FAIL $p ($(item_state "$p"))  $dir/cutouts/$n.report.txt"; done
     if [ ${#stale[@]} -gt 0 ]; then echo "  re-rolled since the last cut: ${stale[*]}  (re-cut: scripts/imggen $id 2 ${stale[*]})" >&2; fi
     if [ ${#regen[@]} -gt 0 ]; then echo "  render unusable (clipped or scenic), re-roll: scripts/imggen $id 1 ${regen[*]}" >&2; fi
-    echo "no sheets built. Re-cut: scripts/imggen $id 2 ${bad[*]}   or fix the 1k cutouts by hand in $dir/cutouts/ and run: scripts/imggen $id 2 pack" >&2
+    echo "no sheets built. Re-cut: scripts/imggen $id 2 ${bad[*]}   or accept/fix the failed cutouts in $dir/cutouts/ (save or touch them) and run: scripts/imggen $id 2 pack" >&2
     return 1
   fi
-  magick montage "$dir/cutouts/ready.png" "$dir"/cutouts/"$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
+  magick montage "$acc/ready.png" "$acc/$id"-*.png -tile 4x -geometry 256x256+2+2 -background '#00ff40' "$dir/cutouts/check-green.png"
   echo "== 2 sheets $id"
-  python3 -I "$root/scripts/pack_enemy_sheets.py" "$id" "$dir" --ready "$dir/cutouts/ready.png" || return 1
-  echo "review: $dir/cutouts/check-green.png and $dir/export/$id/"
-  echo "touch up: edit $dir/cutouts/*.png, then: scripts/imggen $id 2 pack     promote: scripts/imggen $id 3"
+  python3 -I "$root/scripts/pack_enemy_sheets.py" "$id" "$acc" "$dir/sheets" || return 1
+  echo "review: $dir/cutouts/check-green.png and $dir/sheets/"
+  echo "touch up: edit $acc/*.png, then: scripts/imggen $id 2 pack     promote: scripts/imggen $id 3"
 }
 
 step3() {
-  [ -d "$dir/export/$id" ] || { echo "no sheets to promote; run: scripts/imggen $id 2" >&2; return 1; }
+  [ -d "$dir/sheets" ] || { echo "no sheets to promote; run: scripts/imggen $id 2" >&2; return 1; }
   echo "== 3 promote $id"
-  python3 -I "$root/scripts/promote_enemy_sheets.py" "$id" "$dir/export" || return 1
+  python3 -I "$root/scripts/promote_enemy_sheets.py" "$id" "$dir/sheets" || return 1
   echo "promoted; review git diff and commit"
 }
 
@@ -329,5 +398,6 @@ if [ "$step" = 1 ]; then
   fi
   mkdir -p "$dir"
 elif [ ! -d "$dir" ]; then echo "no work folder $dir; run: scripts/imggen $id 1" >&2; exit 1; fi
-step$step "$@" 2>&1 | tee -a "$dir/$id.log"
+migrate_layout
+step$step "$@" 2>&1 | tee -a "$raw/$id.log"
 exit "${PIPESTATUS[0]}"
