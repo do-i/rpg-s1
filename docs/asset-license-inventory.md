@@ -2207,6 +2207,10 @@ Everything not listed above. Shared fields for every row:
 | ALI-1692 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pumpkin_jack_lantern_duelist-status.tsx` | `fe81379c470cd1963a975a92df6e3664458b9d64100ac82739924f4bb4c0b203` | Tiled tileset / pumpkin_jack_lantern_duelist v2 status sheet |
 | ALI-1693 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pumpkin_jack_lantern_duelist-attack.png` | `a15e1a3a1156ab7fa250db55e5470a3bfb5682d95385c14d6d7e879cc21f226e` | enemy battler sheet / pumpkin_jack_lantern_duelist v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1694 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pumpkin_jack_lantern_duelist-attack.tsx` | `def9d504ad73b09df85503f55291c8602c727d2c7452aa5bdef59afbbdef531d` | Tiled tileset / pumpkin_jack_lantern_duelist v2 attack sheet |
+| ALI-1695 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pigman_guard_boar_guard-status.png` | `438d3b82c7e7c375106c533ddcac422519f9630f3164ff5564f3dd01f4534425` | enemy battler sheet / pigman_guard_boar_guard v2 status poses; 1024x1024 transparent PNG, 4x4 of 256px pose tiles |
+| ALI-1696 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pigman_guard_boar_guard-status.tsx` | `fcfa51072539eaa5f125261024a7f2d05560618c168df7c2e8cb40fe8391bb58` | Tiled tileset / pigman_guard_boar_guard v2 status sheet |
+| ALI-1697 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pigman_guard_boar_guard-attack.png` | `517a8cfab49a21a09e9e1665511bf855b9dd0581056ea438e9b5be8916953244` | enemy battler sheet / pigman_guard_boar_guard v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
+| ALI-1698 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/pigman_guard_boar_guard-attack.tsx` | `2a80809418bf7e2b42c87591b73b4aab328ce1f33e58bbc242f15aa53c354aa9` | Tiled tileset / pigman_guard_boar_guard v2 attack sheet |
 
 ## Third-party: LPC attribution records
 
