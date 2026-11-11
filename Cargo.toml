@@ -1,6 +1,11 @@
 [workspace]
 members = ["crates/rpg-content", "crates/rpg-engine"]
+exclude = ["vendor/bevy_audio"]
 resolver = "3"
+
+[patch.crates-io]
+# Bevy 0.19 keeps failed output streams alive. Reopen them with bounded retries.
+bevy_audio = { path = "vendor/bevy_audio" }
 
 [package]
 name = "rpg-s1"

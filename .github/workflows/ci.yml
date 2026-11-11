@@ -61,6 +61,8 @@ jobs:
       # target kinds rather than packages, so clippy linted only the root package too.
       # (`cargo fmt` already walks the workspace; `--all` is explicit for consistency.)
       - run: cargo fmt --all -- --check
+      - run: cargo fmt --manifest-path vendor/bevy_audio/Cargo.toml -- --check
+      - run: cargo test -p bevy_audio --lib
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Validate the asset-rights checker and report current blockers

@@ -225,6 +225,11 @@ are logged and remain session-only unless you explicitly save. Set
 `RPG_S1_MUTE_AUDIO=1` to mute audio or `RPG_S1_DEBUG_COLLISION=1` to draw world
 collision and portal outlines.
 
+If the audio device fails or disconnects, the game closes the failed stream and
+retries with increasing delays, up to 30 seconds between attempts. Each failed
+attempt produces one warning. Looping music restarts when output returns;
+sound effects requested during the outage are discarded.
+
 Aric starts with the Armored field sprite. In **Character**, highlight Aric and
 use Left/Right to preview Armored, Classic or Traveler. Enter applies the choice;
 Escape cancels it. Sprite choices persist in native saves, and older saves use
