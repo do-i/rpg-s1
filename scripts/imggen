@@ -23,7 +23,7 @@
 #                  no REF = new image; REF = edit seeded from it. Request settings arrive as env vars
 #                  scoped to the call: GEN_MODEL GEN_RESOLUTION GEN_ASPECT GEN_QUALITY (may be empty).
 #                  It must write a JPEG to OUT and exit non-zero on failure. Credentials are its own business;
-#                  exit 3 means auth was rejected: no retry, the step (and a batch) stops.
+#                  exit 3 means authentication recovery failed: no retry, the step (and a batch) stops.
 #   ENEMY_GEN_MODEL model name handed to the generator as GEN_MODEL
 #   ENEMY_GEN_DELAY seconds to wait after each generator call (requests run one at a time, for rate limits)
 # Output of every step is also appended to STAGE/ID/raw/ID.log.
@@ -83,7 +83,7 @@ if [ ${#ids[@]} -gt 1 ]; then
     if [ $rc -ne 0 ]; then
       rest=("${ids[@]:$n}")
       echo "### $id failed (exit $rc); batch stopped after $((n-1))/${#ids[@]} ok.${rest[*]:+ Not started: ${rest[*]}}" >&2
-      [ $rc -eq 3 ] && echo "### auth rejected: log in again first" >&2
+      [ $rc -eq 3 ] && echo "### authentication recovery failed; follow the generator diagnostic above" >&2
       exit $rc
     fi
   done
@@ -144,7 +144,7 @@ gen_one() {
     GEN_MODEL=$ENEMY_GEN_MODEL GEN_RESOLUTION=$GEN_SIZE GEN_ASPECT=$GEN_ASPECT_RATIO GEN_QUALITY=${QUALITY:-} \
       $ENEMY_GEN_CMD "$@"; rc=$?
     [ $rc -eq 0 ] && usable_jpg "$1" && return 0
-    [ $rc -eq 3 ] && { rm -f "$1"; return 3; }   # auth rejected: retrying cannot help
+    [ $rc -eq 3 ] && { rm -f "$1"; return 3; }   # generator already attempted authentication recovery
   done
   rm -f "$1"; return 1
 }
@@ -168,7 +168,7 @@ generate() {
     printf '%s' "Keep this exact $name and the same hand-painted battler: $keep. Same proportions and paint. Change only the pose: ${POSE_PROMPTS[$i]}. Exactly two arms and two legs. $FRAME and the held item. $FIELD" > "$raw/prompts/$p.txt"
     echo "$p"
     gen_one "$(pose_file "$p")" "$raw/prompts/$p.txt" "$raw/ready.jpg"; rc=$?
-    [ $rc -eq 3 ] && { echo "  $p: auth rejected; stopping (log in again, then re-roll the missing poses)" >&2; return 3; }
+    [ $rc -eq 3 ] && { echo "  $p: authentication recovery failed; stopping (resolve the diagnostic above, then re-roll the missing poses)" >&2; return 3; }
     [ $rc -eq 0 ] || echo "  $p failed" >&2
   done
   echo "generated $(compgen -G "$raw/$id-*.jpg" | wc -l)/16 poses + ready.jpg in $dir"
