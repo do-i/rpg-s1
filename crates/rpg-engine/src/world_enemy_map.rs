@@ -189,6 +189,40 @@ struct MapSources<'w, 's> {
     players: Query<'w, 's, &'static WorldPlayerMotion, With<WorldPlayer>>,
 }
 
+/// Portal centres for the active map. They change only when a different map asset is active or
+/// when the map assets are modified in place (hot reload keeps the asset id), so the cache is keyed
+/// on the asset ids and dropped whenever the `Assets` collection is marked changed.
+#[derive(Default)]
+struct PortalCache {
+    entry: Option<(Vec<bevy::asset::UntypedAssetId>, Vec<Vec2>)>,
+}
+
+impl PortalCache {
+    fn invalidate(&mut self) {
+        self.entry = None;
+    }
+
+    fn get(
+        &mut self,
+        key: &[bevy::asset::UntypedAssetId],
+        compute: impl FnOnce() -> Vec<Vec2>,
+    ) -> &[Vec2] {
+        if self.entry.as_ref().is_none_or(|(k, _)| k != key) {
+            self.entry = Some((key.to_vec(), compute()));
+        }
+        self.entry.as_ref().map_or(&[], |(_, p)| p.as_slice())
+    }
+}
+
+type DotFilter = (With<EnemyMapDot>, Without<EnemyMapRoot>);
+
+/// The panel's existing dots, for moving in place.
+#[derive(SystemParam)]
+struct PanelDots<'w, 's> {
+    children: Query<'w, 's, &'static Children, With<EnemyMapRoot>>,
+    dots: Query<'w, 's, (&'static mut Node, &'static mut BackgroundColor), DotFilter>,
+}
+
 fn sync_panel(
     mut commands: Commands,
     overlay: Res<EnemyMapOverlay>,
@@ -204,8 +238,13 @@ fn sync_panel(
         ),
         With<EnemyMapRoot>,
     >,
-    dots: Query<Entity, With<EnemyMapDot>>,
+    mut panel_dots: PanelDots,
+    mut portal_cache: Local<PortalCache>,
 ) {
+    // Checked before any early return, so a reload while the overlay is off is still noticed.
+    if sources.maps.is_changed() {
+        portal_cache.invalidate();
+    }
     let Some(theme) = overlay.mode.theme() else {
         for (root, ..) in &roots {
             commands.entity(root).despawn();
@@ -235,29 +274,72 @@ fn sync_panel(
         }
         Err(_) => spawn_root(&mut commands, theme, size),
     };
-    for dot in &dots {
-        commands.entity(dot).despawn();
-    }
 
     let enemies: Vec<&WorldEnemy> = sources.enemies.iter().collect();
     let player = sources.players.iter().next().map(|motion| {
         let rect = motion.collision_rect();
         Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
     });
-    let portals: Vec<Vec2> = runtime_portals(map.document())
-        .unwrap_or_default()
-        .iter()
-        .map(|portal| {
-            let bounds = portal.bounds();
-            Vec2::new(
-                (bounds.x + bounds.width / 2.0) as f32,
-                (bounds.y + bounds.height / 2.0) as f32,
-            )
-        })
-        .collect();
+    let portals = portal_cache.get(&sources.render.asset_ids(), || {
+        runtime_portals(map.document())
+            .unwrap_or_default()
+            .iter()
+            .map(|portal| {
+                let bounds = portal.bounds();
+                Vec2::new(
+                    (bounds.x + bounds.width / 2.0) as f32,
+                    (bounds.y + bounds.height / 2.0) as f32,
+                )
+            })
+            .collect()
+    });
+    let wanted = map_dots(theme, portals, &enemies, player, map_px, inner);
+    reconcile_dots(&mut commands, root, &mut panel_dots, &wanted);
+}
+
+/// Brings the panel's dots to `wanted`, which is in paint order. While the count is unchanged the
+/// existing entities are moved and recoloured in place; when it changes they are replaced, so
+/// the paint order (portals, enemies, player) always holds.
+fn reconcile_dots(
+    commands: &mut Commands,
+    root: Entity,
+    panel_dots: &mut PanelDots,
+    wanted: &[(Vec2, f32, Color)],
+) {
+    let existing: Vec<Entity> = panel_dots
+        .children
+        .get(root)
+        .map(|c| c.iter().filter(|e| panel_dots.dots.contains(*e)).collect())
+        .unwrap_or_default();
+    if existing.len() == wanted.len() {
+        for (entity, (centre, size, color)) in existing.iter().zip(wanted) {
+            if let Ok((mut node, mut background)) = panel_dots.dots.get_mut(*entity) {
+                // Compare through the shared deref so an unchanged dot is not marked changed
+                // and not re-laid-out.
+                let (left, top) = (px(centre.x - size / 2.0), px(centre.y - size / 2.0));
+                if node.left != left {
+                    node.left = left;
+                }
+                if node.top != top {
+                    node.top = top;
+                }
+                if node.width != px(*size) {
+                    node.width = px(*size);
+                    node.height = px(*size);
+                }
+                if background.0 != *color {
+                    background.0 = *color;
+                }
+            }
+        }
+        return;
+    }
+    for dot in existing {
+        commands.entity(dot).despawn();
+    }
     commands.entity(root).with_children(|panel| {
-        for (centre, size, color) in map_dots(theme, &portals, &enemies, player, map_px, inner) {
-            panel.spawn(dot_bundle(centre, size, color));
+        for (centre, size, color) in wanted {
+            panel.spawn(dot_bundle(*centre, *size, *color));
         }
     });
 }
@@ -387,6 +469,136 @@ mod tests {
                 (PLAYER_DOT, theme.player),
             ]
         );
+    }
+
+    #[derive(Resource)]
+    struct Wanted(Vec<(Vec2, f32, Color)>);
+
+    fn reconcile_app() -> (App, Entity) {
+        let mut app = App::new();
+        let root = app.world_mut().spawn(EnemyMapRoot).id();
+        app.insert_resource(Wanted(Vec::new()));
+        app.add_systems(
+            Update,
+            move |mut commands: Commands, wanted: Res<Wanted>, mut panel_dots: PanelDots| {
+                reconcile_dots(&mut commands, root, &mut panel_dots, &wanted.0);
+            },
+        );
+        (app, root)
+    }
+
+    fn dot_entities(app: &mut App) -> Vec<Entity> {
+        app.world_mut()
+            .query_filtered::<Entity, With<EnemyMapDot>>()
+            .iter(app.world())
+            .collect()
+    }
+
+    #[test]
+    fn idle_frames_keep_the_same_dot_entities_and_move_them_in_place() {
+        let (mut app, _root) = reconcile_app();
+        let red = Color::srgb(1.0, 0.0, 0.0);
+        app.world_mut().resource_mut::<Wanted>().0 = vec![
+            (Vec2::new(10.0, 10.0), 6.0, red),
+            (Vec2::new(20.0, 20.0), 6.0, red),
+        ];
+        app.update();
+        let first = dot_entities(&mut app);
+        assert_eq!(first.len(), 2);
+
+        // Nothing moves: no dot may have its Node or colour marked changed.
+        let mut changed_dots = app
+            .world_mut()
+            .query_filtered::<(Ref<Node>, Ref<BackgroundColor>), With<EnemyMapDot>>();
+        for _ in 0..3 {
+            let before = app.world().read_change_tick();
+            app.update();
+            let now = app.world().read_change_tick();
+            let changed = changed_dots
+                .iter(app.world())
+                .filter(|(node, colour)| {
+                    node.last_changed().is_newer_than(before, now)
+                        || colour.last_changed().is_newer_than(before, now)
+                })
+                .count();
+            assert_eq!(changed, 0, "idle frame rewrote {changed} dots");
+            assert_eq!(dot_entities(&mut app), first);
+        }
+
+        // An enemy walks; same count, so nothing is spawned or despawned and only it is touched.
+        app.world_mut().resource_mut::<Wanted>().0[0].0 = Vec2::new(40.0, 50.0);
+        let before = app.world().read_change_tick();
+        app.update();
+        let now = app.world().read_change_tick();
+        assert_eq!(dot_entities(&mut app), first);
+        let moved: Vec<Entity> = changed_dots
+            .iter(app.world())
+            .zip(&first)
+            .filter(|((node, _), _)| node.last_changed().is_newer_than(before, now))
+            .map(|(_, e)| *e)
+            .collect();
+        assert_eq!(moved, vec![first[0]]);
+        let node = app.world().get::<Node>(first[0]).unwrap();
+        assert_eq!(node.left, px(37.0));
+        assert_eq!(node.top, px(47.0));
+
+        // A change in count rebuilds, so paint order stays portals, enemies, player.
+        app.world_mut()
+            .resource_mut::<Wanted>()
+            .0
+            .push((Vec2::ZERO, 6.0, red));
+        app.update();
+        assert_eq!(dot_entities(&mut app).len(), 3);
+    }
+
+    #[test]
+    fn the_portal_cache_recomputes_on_a_new_map_or_an_invalidation_only() {
+        use bevy::asset::UntypedAssetId;
+        let key_a = [UntypedAssetId::Uuid {
+            type_id: std::any::TypeId::of::<u8>(),
+            uuid: bevy::asset::uuid::Uuid::from_u128(1),
+        }];
+        let key_b = [UntypedAssetId::Uuid {
+            type_id: std::any::TypeId::of::<u8>(),
+            uuid: bevy::asset::uuid::Uuid::from_u128(2),
+        }];
+        let mut cache = PortalCache::default();
+        let mut parses = 0;
+        let mut get = |cache: &mut PortalCache, key: &[UntypedAssetId]| {
+            cache.get(key, || {
+                parses += 1;
+                vec![Vec2::splat(parses as f32)]
+            })[0]
+        };
+
+        assert_eq!(get(&mut cache, &key_a), Vec2::splat(1.0));
+        assert_eq!(get(&mut cache, &key_a), Vec2::splat(1.0));
+        assert_eq!(get(&mut cache, &key_b), Vec2::splat(2.0));
+        // Same asset id, content modified in place (hot reload): invalidation forces a re-parse.
+        cache.invalidate();
+        assert_eq!(get(&mut cache, &key_b), Vec2::splat(3.0));
+        assert_eq!(get(&mut cache, &key_b), Vec2::splat(3.0));
+    }
+
+    #[test]
+    fn idle_frames_do_not_mark_the_map_assets_changed() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<TmxGroundAsset>();
+        app.update();
+        app.update();
+        let tick = |app: &App| app.world().read_change_tick();
+        let is_changed = |app: &mut App, f: &mut dyn FnMut(&mut App)| {
+            let before = tick(app);
+            f(app);
+            let now = tick(app);
+            app.world()
+                .resource_ref::<Assets<TmxGroundAsset>>()
+                .last_changed()
+                .is_newer_than(before, now)
+        };
+        assert!(!is_changed(&mut app, &mut |a| a.update()));
+        assert!(!is_changed(&mut app, &mut |a| a.update()));
     }
 
     fn toggle_app() -> App {
