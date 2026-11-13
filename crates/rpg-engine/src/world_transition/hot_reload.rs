@@ -654,4 +654,34 @@ mod tests {
         assert_ne!(before, scan(&directory, &root).unwrap());
         fs::remove_dir_all(directory).unwrap();
     }
+
+    #[test]
+    fn disabled_plugin_never_scans_or_polls() {
+        let directory =
+            std::env::temp_dir().join(format!("rpg-hot-disabled-{}", std::process::id()));
+        let root = ScenarioRoot::try_for_package_key("disabled").unwrap();
+        let package = directory.join(root.logical_root());
+        fs::create_dir_all(&package).unwrap();
+        fs::write(package.join("map.yaml"), b"name: first\n").unwrap();
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .insert_resource(root)
+            .insert_resource(ScenarioInventory::default())
+            .add_plugins(ScenarioHotReloadPlugin::new(directory.clone(), false));
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            app.update();
+        }
+        fs::write(package.join("map.yaml"), b"name: second, longer\n").unwrap();
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            app.update();
+        }
+        let reload = app.world().resource::<HotReload>();
+        assert!(reload.files.is_empty());
+        assert_eq!(reload.elapsed, 0.0);
+        assert_eq!(reload.revision, 0);
+        assert!(!reload.active && reload.requested.is_empty());
+        fs::remove_dir_all(directory).unwrap();
+    }
 }
