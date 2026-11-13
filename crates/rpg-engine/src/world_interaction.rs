@@ -1249,7 +1249,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                     Text::new(""),
                     TextFont {
                         font: font.clone().into(),
-                        font_size: FontSize::Px(18.0),
+                        font_size: FontSize::Px(theme.scaled(18.0)),
                         ..default()
                     },
                     TextColor(Color::srgb_u8(235, 210, 140)),
@@ -1293,7 +1293,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                         Text::new(""),
                         TextFont {
                             font: font.clone().into(),
-                            font_size: FontSize::Px(22.0),
+                            font_size: FontSize::Px(theme.scaled(22.0)),
                             ..default()
                         },
                         TextColor(Color::srgb_u8(220, 220, 180)),
@@ -1317,7 +1317,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                                 Text::new(""),
                                 TextFont {
                                     font: font.clone().into(),
-                                    font_size: FontSize::Px(18.0),
+                                    font_size: FontSize::Px(theme.scaled(18.0)),
                                     ..default()
                                 },
                                 TextColor(theme.name_entry_input_color),
@@ -1335,7 +1335,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                                 Text::new(""),
                                 TextFont {
                                     font: font.clone().into(),
-                                    font_size: FontSize::Px(18.0),
+                                    font_size: FontSize::Px(theme.scaled(18.0)),
                                     ..default()
                                 },
                                 TextColor(theme.name_entry_input_color),
@@ -1362,7 +1362,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                                 Text::new(""),
                                 TextFont {
                                     font: font.clone().into(),
-                                    font_size: FontSize::Px(15.0),
+                                    font_size: FontSize::Px(theme.scaled(15.0)),
                                     ..default()
                                 },
                                 TextColor(theme.name_entry_hint_color),
@@ -1372,7 +1372,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                                 Text::new(""),
                                 TextFont {
                                     font: font.into(),
-                                    font_size: FontSize::Px(15.0),
+                                    font_size: FontSize::Px(theme.scaled(15.0)),
                                     ..default()
                                 },
                                 TextColor(theme.name_entry_hint_color),
@@ -1401,6 +1401,7 @@ fn sync_treasure_overlay(
     scenario_root: Res<ScenarioRoot>,
     inventory: Res<ScenarioInventory>,
     state: Res<WorldInteractionState>,
+    theme: Res<UiTheme>,
     roots: Query<Entity, With<TreasureOverlayRoot>>,
 ) {
     let Some(reveal) = state.treasure.as_ref() else {
@@ -1416,10 +1417,15 @@ fn sync_treasure_overlay(
         return;
     };
     let font: Handle<Font> = asset_server.load(scenario_root.resolve(font_path));
-    spawn_treasure_overlay(&mut commands, font, &reveal.rows);
+    spawn_treasure_overlay(&mut commands, &theme, font, &reveal.rows);
 }
 
-fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[TreasureRow]) {
+fn spawn_treasure_overlay(
+    commands: &mut Commands,
+    theme: &UiTheme,
+    font: Handle<Font>,
+    rows: &[TreasureRow],
+) {
     commands
         .spawn((
             // The scrim covers the whole canvas rather than a fixed size, so the modal stays
@@ -1464,7 +1470,7 @@ fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[T
                         Text::new("You found:"),
                         TextFont {
                             font: font.clone().into(),
-                            font_size: FontSize::Px(24.0),
+                            font_size: FontSize::Px(theme.scaled(24.0)),
                             ..default()
                         },
                         TextColor(Color::srgb_u8(240, 220, 140)),
@@ -1489,7 +1495,7 @@ fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[T
                                     Text::new(row.text.clone()),
                                     TextFont {
                                         font: font.clone().into(),
-                                        font_size: FontSize::Px(20.0),
+                                        font_size: FontSize::Px(theme.scaled(20.0)),
                                         ..default()
                                     },
                                     TextColor(Color::srgb_u8(220, 220, 180)),
@@ -1500,7 +1506,7 @@ fn spawn_treasure_overlay(commands: &mut Commands, font: Handle<Font>, rows: &[T
                         Text::new("ENTER  take"),
                         TextFont {
                             font: font.into(),
-                            font_size: FontSize::Px(16.0),
+                            font_size: FontSize::Px(theme.scaled(16.0)),
                             ..default()
                         },
                         TextColor(Color::srgb_u8(160, 160, 120)),
@@ -1533,6 +1539,39 @@ mod tests {
     use std::{num::NonZeroU32, thread, time::Duration};
 
     use super::*;
+
+    fn spawned_font_sizes(spawn: impl Fn(&mut Commands) + Send + Sync + 'static) -> Vec<f32> {
+        use bevy::ecs::system::RunSystemOnce;
+        let mut world = World::new();
+        world
+            .run_system_once(move |mut commands: Commands| spawn(&mut commands))
+            .unwrap();
+        let mut sizes = world
+            .query::<&TextFont>()
+            .iter(&world)
+            .map(|font| match font.font_size {
+                FontSize::Px(px) => px,
+                other => panic!("unexpected font size {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        sizes.sort_by(f32::total_cmp);
+        sizes
+    }
+
+    #[test]
+    fn the_dialogue_overlay_text_follows_the_font_scale() {
+        let sizes = |scale: f32| {
+            let theme = UiTheme::with_font_scale(scale);
+            spawned_font_sizes(move |commands| {
+                spawn_dialogue_overlay(commands, &theme, Handle::default())
+            })
+        };
+        let base = sizes(1.0);
+        assert!(base.contains(&18.0) && base.contains(&22.0) && base.contains(&15.0));
+        let scaled = sizes(1.5);
+        let expected: Vec<f32> = base.iter().map(|size| size * 1.5).collect();
+        assert_eq!(scaled, expected);
+    }
     use crate::{
         new_game::{NewGameScenario, build_new_game_state},
         runtime_map::RuntimeMapId,

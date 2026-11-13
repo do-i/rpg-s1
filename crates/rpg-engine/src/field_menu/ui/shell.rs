@@ -128,7 +128,7 @@ pub(in crate::field_menu) fn spawn_field_menu_overlay(
                 Text::new(""),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(34.0),
+                    font_size: FontSize::Px(theme.scaled(34.0)),
                     ..default()
                 },
                 TextColor(theme.name_entry_input_color),
@@ -139,7 +139,7 @@ pub(in crate::field_menu) fn spawn_field_menu_overlay(
                 Text::new(""),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(21.0),
+                    font_size: FontSize::Px(theme.scaled(21.0)),
                     ..default()
                 },
                 TextColor(Color::srgb_u8(235, 225, 190)),
@@ -156,7 +156,7 @@ pub(in crate::field_menu) fn spawn_field_menu_overlay(
                 Text::new(""),
                 TextFont {
                     font: font.into(),
-                    font_size: FontSize::Px(17.0),
+                    font_size: FontSize::Px(theme.scaled(17.0)),
                     ..default()
                 },
                 TextColor(theme.name_entry_hint_color),

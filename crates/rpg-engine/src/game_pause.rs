@@ -211,7 +211,7 @@ fn spawn_overlay(commands: &mut Commands, font: Handle<Font>, theme: &UiTheme) {
                 Text::new("PAUSED"),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(64.0),
+                    font_size: FontSize::Px(theme.scaled(64.0)),
                     ..default()
                 },
                 TextColor(theme.menu_selected_color),
@@ -220,7 +220,7 @@ fn spawn_overlay(commands: &mut Commands, font: Handle<Font>, theme: &UiTheme) {
                 Text::new("Press P to resume"),
                 TextFont {
                     font: font.into(),
-                    font_size: FontSize::Px(theme.status_font_size + 5.0),
+                    font_size: FontSize::Px(theme.status_font_size + theme.scaled(5.0)),
                     ..default()
                 },
                 TextColor(theme.menu_normal_color),
@@ -245,6 +245,35 @@ mod tests {
             .add_plugins((ActionInputPlugin, GamePausePlugin));
         app.update();
         app
+    }
+
+    fn spawned_font_sizes(spawn: impl Fn(&mut Commands) + Send + Sync + 'static) -> Vec<f32> {
+        use bevy::ecs::system::RunSystemOnce;
+        let mut world = World::new();
+        world
+            .run_system_once(move |mut commands: Commands| spawn(&mut commands))
+            .unwrap();
+        let mut sizes = world
+            .query::<&TextFont>()
+            .iter(&world)
+            .map(|font| match font.font_size {
+                FontSize::Px(px) => px,
+                other => panic!("unexpected font size {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        sizes.sort_by(f32::total_cmp);
+        sizes
+    }
+
+    #[test]
+    fn the_pause_overlay_text_follows_the_font_scale() {
+        let sizes = |scale: f32| {
+            let theme = UiTheme::with_font_scale(scale);
+            spawned_font_sizes(move |commands| spawn_overlay(commands, Handle::default(), &theme))
+        };
+        let base = sizes(1.0);
+        assert_eq!(base, vec![22.0, 64.0]);
+        assert_eq!(sizes(1.5), vec![33.0, 96.0]);
     }
 
     fn tap(app: &mut App, key: KeyCode) {

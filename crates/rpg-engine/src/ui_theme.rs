@@ -22,6 +22,8 @@ pub(crate) struct UiTheme {
     pub(crate) name_entry_prompt_font_size: f32,
     pub(crate) name_entry_input_font_size: f32,
     pub(crate) name_entry_hint_font_size: f32,
+    /// The multiplier `with_font_scale` applied, kept so literal sizes can follow it via [`Self::scaled`].
+    pub(crate) font_scale: f32,
 }
 
 impl Default for UiTheme {
@@ -53,6 +55,7 @@ impl Default for UiTheme {
             name_entry_prompt_font_size: 36.0,
             name_entry_input_font_size: 48.0,
             name_entry_hint_font_size: 24.0,
+            font_scale: 1.0,
         }
     }
 }
@@ -75,8 +78,17 @@ impl UiTheme {
             name_entry_prompt_font_size: base.name_entry_prompt_font_size * scale,
             name_entry_input_font_size: base.name_entry_input_font_size * scale,
             name_entry_hint_font_size: base.name_entry_hint_font_size * scale,
+            font_scale: scale,
             ..base
         }
+    }
+
+    /// An arbitrary text size multiplied by the same scale the named sizes use.
+    ///
+    /// For screens whose text is not one of the named roles; at the shipped scale of 1.0 the size
+    /// comes back unchanged.
+    pub(crate) fn scaled(&self, size: f32) -> f32 {
+        size * self.font_scale
     }
 }
 
@@ -104,6 +116,13 @@ mod tests {
             scaled.menu_selected_color, base.menu_selected_color,
             "a type scale must not touch the palette"
         );
+    }
+
+    #[test]
+    fn scaled_applies_the_same_factor_to_any_size() {
+        assert_eq!(UiTheme::default().scaled(64.0), 64.0);
+        assert_eq!(UiTheme::with_font_scale(1.5).scaled(64.0), 96.0);
+        assert_eq!(UiTheme::with_font_scale(0.0).scaled(64.0), 64.0);
     }
 
     #[test]

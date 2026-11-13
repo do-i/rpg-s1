@@ -95,7 +95,7 @@ fn enter_game_over(
                 Text::new("GAME OVER"),
                 TextFont {
                     font: font.clone().into(),
-                    font_size: FontSize::Px(64.0),
+                    font_size: FontSize::Px(theme.scaled(64.0)),
                     ..default()
                 },
                 TextColor(Color::srgb_u8(190, 55, 55)),
