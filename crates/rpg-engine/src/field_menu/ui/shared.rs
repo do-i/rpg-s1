@@ -1,5 +1,80 @@
 use super::*;
 
+/// Keys the field menu reads through the binding table. The arrow keys that move a column
+/// sideways are read raw (`input.horizontal`), so those hints use [`HintKey::Fixed`].
+pub(in crate::field_menu) const UP_DOWN: HintKey = HintKey::Pair(AppAction::Up, AppAction::Down);
+pub(in crate::field_menu) const DOWN: HintKey = HintKey::Action(AppAction::Down);
+pub(in crate::field_menu) const CONFIRM: HintKey = HintKey::Action(AppAction::Confirm);
+pub(in crate::field_menu) const BACK: HintKey = HintKey::Action(AppAction::Back);
+/// Left and right as bound actions, which page the battle log and pick a sprite.
+pub(in crate::field_menu) const PAGE: HintKey = HintKey::Pair(AppAction::Left, AppAction::Right);
+pub(in crate::field_menu) const LEFT: HintKey = HintKey::Fixed("LEFT");
+pub(in crate::field_menu) const RIGHT: HintKey = HintKey::Fixed("RIGHT");
+pub(in crate::field_menu) const LEFT_RIGHT: HintKey = HintKey::Fixed("LEFT/RIGHT");
+
+/// The compact fallback footers: `UP/DOWN choose  ENTER open  M/ESC close`.
+pub(in crate::field_menu) const FALLBACK_HINTS: HintStyle = HintStyle {
+    key_gap: " ",
+    segment_gap: "  ",
+    pair: "/",
+    either: "/",
+    label_first: false,
+};
+
+/// The status page footer: `Q/E  CHARACTER    LEFT/RIGHT  SELECT    TAB / ENTER  POSITION`.
+pub(in crate::field_menu) const STATUS_HINTS: HintStyle = HintStyle {
+    key_gap: "  ",
+    segment_gap: "    ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
+
+/// The switch overlay's one-line footer: `UP/DOWN CHARACTER   LEFT/RIGHT SPRITE   ENTER APPLY`.
+pub(in crate::field_menu) const MODAL_HINTS: HintStyle = HintStyle {
+    key_gap: " ",
+    segment_gap: "   ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
+
+/// Notes inside item modals: `LEFT one    RIGHT whole stack`, `Y/ENTER use    N/ESC cancel`.
+pub(in crate::field_menu) const NOTE_HINTS: HintStyle = HintStyle {
+    key_gap: " ",
+    segment_gap: "    ",
+    pair: "/",
+    either: "/",
+    label_first: false,
+};
+
+/// A lone key and what it does inside a panel: `ENTER  -  ACTIONS`.
+pub(in crate::field_menu) const DASH_HINTS: HintStyle = HintStyle {
+    key_gap: "  -  ",
+    segment_gap: "",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
+
+/// Renders a field-menu hint from the live keyboard bindings.
+pub(in crate::field_menu) fn menu_hint(
+    bindings: &InputBindings,
+    style: &HintStyle,
+    segments: &[HintSegment<'_>],
+) -> String {
+    key_hint(bindings, Device::Keyboard, style, segments)
+}
+
+/// The keys of one hint written inside a sentence.
+pub(in crate::field_menu) fn menu_hint_keys(
+    bindings: &InputBindings,
+    style: &HintStyle,
+    keys: &[HintKey],
+) -> String {
+    hint_keys_text(bindings, Device::Keyboard, style, keys)
+}
+
 /// What a page system should do this frame, after the shared lifecycle checks.
 pub(in crate::field_menu) enum PageSync {
     Skip,

@@ -49,6 +49,37 @@ pub(in crate::field_menu) fn sync_battle_page(
     });
 }
 
+/// The battle page footer. The log pages with the bound Left and Right actions.
+pub(in crate::field_menu) fn battle_page_hint(
+    picking: bool,
+    mode: FieldMenuMode,
+    on_log: bool,
+    bindings: &InputBindings,
+) -> String {
+    let segments: &[HintSegment<'_>] = if picking {
+        &[
+            (&[UP_DOWN], "CHOOSE"),
+            (&[CONFIRM], "SET"),
+            (&[BACK], "CANCEL"),
+        ]
+    } else if mode == FieldMenuMode::BattleLog {
+        &[(&[UP_DOWN], "SCROLL"), (&[PAGE], "PAGE"), (&[BACK], "BACK")]
+    } else if on_log {
+        &[
+            (&[UP_DOWN], "SELECT"),
+            (&[CONFIRM], "READ"),
+            (&[BACK], "BACK"),
+        ]
+    } else {
+        &[
+            (&[UP_DOWN], "SELECT"),
+            (&[CONFIRM], "CHANGE"),
+            (&[BACK], "BACK"),
+        ]
+    };
+    menu_hint(bindings, &FIELD_MENU_HINTS, segments)
+}
+
 pub(in crate::field_menu) fn spawn_battle_page(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -194,15 +225,7 @@ pub(in crate::field_menu) fn spawn_battle_page(
             let on_log = battle_row(game, selected) == BattleRow::LastBattle;
             spawn_status_text(
                 page,
-                if picking {
-                    "UP/DOWN   CHOOSE      ENTER   SET      ESC   CANCEL"
-                } else if state.mode == FieldMenuMode::BattleLog {
-                    "UP/DOWN   SCROLL      LEFT/RIGHT   PAGE      ESC   BACK"
-                } else if on_log {
-                    "UP/DOWN   SELECT      ENTER   READ      ESC   BACK"
-                } else {
-                    "UP/DOWN   SELECT      ENTER   CHANGE      ESC   BACK"
-                },
+                battle_page_hint(picking, state.mode, on_log, &options.bindings),
                 font,
                 15.0,
                 status_muted(),

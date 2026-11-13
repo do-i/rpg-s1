@@ -63,6 +63,7 @@ fn spawn_fixture_main_page(
             &game,
             &PartyWalkThumbnails::default(),
             false,
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -85,6 +86,7 @@ fn spawn_fixture_status_page(
                 thumbnails: &PartyWalkThumbnails::default(),
                 inventory: None,
             },
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -103,6 +105,7 @@ fn spawn_fixture_items_page(
             &game,
             &catalog,
             &StatusPortraitAssets::default(),
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -114,7 +117,14 @@ fn spawn_fixture_recipes_page(
     catalog: Res<FieldMenuCatalog>,
 ) {
     commands.spawn(Node::default()).with_children(|parent| {
-        spawn_recipes_page(parent, &Handle::<Font>::default(), &state, &game, &catalog);
+        spawn_recipes_page(
+            parent,
+            &Handle::<Font>::default(),
+            &state,
+            &game,
+            &catalog,
+            &crate::input_bindings::InputBindings::default(),
+        );
     });
 }
 
@@ -152,6 +162,7 @@ fn spawn_fixture_equipment_page(
             &game,
             &catalog,
             &StatusPortraitAssets::default(),
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -170,6 +181,7 @@ fn spawn_fixture_spells_page(
             &game,
             &catalog,
             &StatusPortraitAssets::default(),
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -1289,6 +1301,7 @@ fn spawn_fixture_main_page_with_icons(
             &game,
             &PartyWalkThumbnails::default(),
             false,
+            &crate::input_bindings::InputBindings::default(),
         );
     });
 }
@@ -1411,6 +1424,7 @@ fn quest_board_indicators(selected: usize) -> (usize, Vec<crate::menu_chrome::Sc
                 &game,
                 &catalog,
                 None,
+                &crate::input_bindings::InputBindings::default(),
             );
         });
     }
@@ -3152,4 +3166,271 @@ fn an_idle_open_menu_marks_no_resource_changed() {
             "{screen:?}: the probe missed a key press"
         );
     }
+}
+
+#[test]
+fn field_menu_footers_match_the_shipped_text_under_default_bindings() {
+    let bindings = crate::input_bindings::InputBindings::default();
+    let status = |status_page| FieldMenuState {
+        status_page,
+        ..default()
+    };
+    assert_eq!(
+        super::status::status_hint(&status(StatusPage::Roster), &bindings),
+        "Q/E  CHARACTER    LEFT/RIGHT  SELECT    TAB / ENTER  POSITION    ESC  BACK"
+    );
+    assert_eq!(
+        equipment_hint(FieldMenuMode::EquipmentPicker, &bindings),
+        "UP/DOWN   PREVIEW ITEM      RIGHT / ENTER   EQUIP BUTTON      LEFT / ESC   EQUIPPED"
+    );
+    assert_eq!(
+        items_page_hint(FieldMenuMode::Browse, &bindings),
+        "UP/DOWN   POUCH      RIGHT / ENTER   ITEMS      H   SHOW/HIDE      ESC   BACK"
+    );
+    assert_eq!(
+        spells_page_hint(FieldMenuMode::SpellList, &bindings),
+        "ARROWS   SELECT SPELL      ENTER   CAST WHEN READY      LEFT EDGE / ESC   CASTER"
+    );
+    assert_eq!(
+        battle_page_hint(false, FieldMenuMode::BattleLog, false, &bindings),
+        "UP/DOWN   SCROLL      LEFT/RIGHT   PAGE      ESC   BACK"
+    );
+    assert_eq!(
+        main_page_hint(true, &bindings),
+        "ARROWS   SELECT      ENTER   CONFIRM      T   EMBER ATLAS      M / ESC   CLOSE"
+    );
+    assert_eq!(
+        render_hint(
+            &FieldMenuState {
+                screen: FieldMenuScreen::Items,
+                mode: FieldMenuMode::ItemList,
+                ..default()
+            },
+            &bindings
+        ),
+        "UP/DOWN item  ENTER actions  H show/hide  LEFT/ESC pouch"
+    );
+}
+
+#[test]
+fn field_menu_footers_follow_a_rebound_confirm() {
+    use crate::input_bindings::{AppAction, BindingTarget, InputBindings};
+
+    let mut bindings = InputBindings::default();
+    bindings
+        .set_keys(BindingTarget::Menu(AppAction::Confirm), vec![KeyCode::KeyG])
+        .expect("a nonempty row");
+    let fallback = |screen, mode| {
+        render_hint(
+            &FieldMenuState {
+                screen,
+                mode,
+                ..default()
+            },
+            &bindings,
+        )
+    };
+    let hints = [
+        super::status::status_hint(&FieldMenuState::default(), &bindings),
+        equipment_hint(FieldMenuMode::EquipmentSlots, &bindings),
+        items_page_hint(FieldMenuMode::ItemList, &bindings),
+        spells_page_hint(FieldMenuMode::Browse, &bindings),
+        battle_page_hint(false, FieldMenuMode::Browse, false, &bindings),
+        main_page_hint(false, &bindings),
+        fallback(FieldMenuScreen::Main, FieldMenuMode::Browse),
+        fallback(FieldMenuScreen::Save, FieldMenuMode::SaveConfirm),
+    ];
+    for hint in &hints {
+        assert!(!hint.contains("ENTER"), "{hint}");
+        assert!(hint.contains('G'), "{hint}");
+    }
+    assert_eq!(
+        items_page_hint(FieldMenuMode::ItemList, &bindings),
+        "UP/DOWN   BROWSE      G   ACTIONS      H   SHOW/HIDE      LEFT / ESC   POUCH"
+    );
+    assert_eq!(
+        fallback(FieldMenuScreen::Main, FieldMenuMode::Browse),
+        "UP/DOWN choose  G open  M/ESC close"
+    );
+}
+
+#[test]
+fn the_items_detail_prompt_follows_a_rebound_confirm() {
+    use crate::input_bindings::{AppAction, BindingTarget, InputBindings};
+
+    let mut bindings = InputBindings::default();
+    bindings
+        .set_keys(BindingTarget::Menu(AppAction::Confirm), vec![KeyCode::KeyG])
+        .expect("a nonempty row");
+    let mut app = App::new();
+    app.insert_resource(game_with_pouched_vest())
+        .insert_resource(crate::field_menu_domain::tests::catalog())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen: FieldMenuScreen::Items,
+            mode: FieldMenuMode::ItemList,
+            ..default()
+        })
+        .add_systems(
+            Update,
+            move |mut commands: Commands,
+                  state: Res<FieldMenuState>,
+                  game: Res<GameState>,
+                  catalog: Res<FieldMenuCatalog>| {
+                commands.spawn(Node::default()).with_children(|parent| {
+                    spawn_items_page(
+                        parent,
+                        &Handle::<Font>::default(),
+                        &state,
+                        &game,
+                        &catalog,
+                        &StatusPortraitAssets::default(),
+                        &bindings,
+                    );
+                });
+            },
+        );
+    app.update();
+    let world = app.world_mut();
+    let labels = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.clone())
+        .collect::<Vec<_>>();
+    assert!(labels.iter().any(|label| label == "G  -  ACTIONS"));
+    assert!(labels.iter().all(|label| !label.contains("ENTER")));
+}
+
+/// Every `Text` the page system spawns for `screen`.
+fn footer_texts(
+    screen: FieldMenuScreen,
+    system: impl System<In = (), Out = ()> + 'static,
+) -> Vec<String> {
+    let mut app = App::new();
+    app.insert_resource(fixture_game())
+        .insert_resource(crate::field_menu_domain::tests::catalog_with_quests())
+        .insert_resource(FieldMenuState {
+            open: true,
+            screen,
+            ..default()
+        })
+        .add_systems(Update, system);
+    app.update();
+    let world = app.world_mut();
+    world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.clone())
+        .collect()
+}
+
+fn quests_recipes_settings_footers(
+    bindings: &crate::input_bindings::InputBindings,
+) -> [Vec<String>; 3] {
+    let quests = {
+        let bindings = bindings.clone();
+        footer_texts(
+            FieldMenuScreen::Quests,
+            IntoSystem::into_system(
+                move |mut commands: Commands,
+                      state: Res<FieldMenuState>,
+                      game: Res<GameState>,
+                      catalog: Res<FieldMenuCatalog>| {
+                    commands.spawn(Node::default()).with_children(|parent| {
+                        spawn_quests_page(
+                            parent,
+                            &Handle::<Font>::default(),
+                            &state,
+                            &game,
+                            &catalog,
+                            None,
+                            &bindings,
+                        );
+                    });
+                },
+            ),
+        )
+    };
+    let recipes = {
+        let bindings = bindings.clone();
+        footer_texts(
+            FieldMenuScreen::Recipes,
+            IntoSystem::into_system(
+                move |mut commands: Commands,
+                      state: Res<FieldMenuState>,
+                      game: Res<GameState>,
+                      catalog: Res<FieldMenuCatalog>| {
+                    commands.spawn(Node::default()).with_children(|parent| {
+                        spawn_recipes_page(
+                            parent,
+                            &Handle::<Font>::default(),
+                            &state,
+                            &game,
+                            &catalog,
+                            &bindings,
+                        );
+                    });
+                },
+            ),
+        )
+    };
+    let settings = {
+        let options = PlayerOptions {
+            bindings: bindings.clone(),
+            ..default()
+        };
+        footer_texts(
+            FieldMenuScreen::Settings,
+            IntoSystem::into_system(move |mut commands: Commands, state: Res<FieldMenuState>| {
+                commands.spawn(Node::default()).with_children(|parent| {
+                    spawn_settings_page(parent, &Handle::<Font>::default(), &state, &options);
+                });
+            }),
+        )
+    };
+    [quests, recipes, settings]
+}
+
+#[test]
+fn quest_recipe_and_settings_footers_match_the_shipped_text_under_default_bindings() {
+    let [quests, recipes, settings] =
+        quests_recipes_settings_footers(&crate::input_bindings::InputBindings::default());
+    assert!(
+        quests
+            .iter()
+            .any(|t| t == "UP/DOWN   SELECT QUEST      ESC   BACK      M   CLOSE")
+    );
+    assert!(
+        recipes
+            .iter()
+            .any(|t| t == "UP/DOWN   SELECT RECIPE      ESC   BACK      M   CLOSE")
+    );
+    assert!(settings.iter().any(|t| t
+        == "UP/DOWN   SELECT      ENTER / SPACE   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      ESC   BACK"));
+}
+
+#[test]
+fn quest_recipe_and_settings_footers_follow_rebound_keys() {
+    use crate::input_bindings::{AppAction, BindingTarget, InputBindings};
+
+    let mut bindings = InputBindings::default();
+    bindings
+        .set_keys(BindingTarget::Menu(AppAction::Back), vec![KeyCode::KeyB])
+        .expect("a nonempty row");
+    bindings
+        .set_keys(BindingTarget::Menu(AppAction::Confirm), vec![KeyCode::KeyG])
+        .expect("a nonempty row");
+    let [quests, recipes, settings] = quests_recipes_settings_footers(&bindings);
+    assert!(
+        quests
+            .iter()
+            .any(|t| t == "UP/DOWN   SELECT QUEST      B   BACK      M   CLOSE")
+    );
+    assert!(
+        recipes
+            .iter()
+            .any(|t| t == "UP/DOWN   SELECT RECIPE      B   BACK      M   CLOSE")
+    );
+    assert!(settings.iter().any(|t| t
+        == "UP/DOWN   SELECT      G / SPACE   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      B   BACK"));
 }

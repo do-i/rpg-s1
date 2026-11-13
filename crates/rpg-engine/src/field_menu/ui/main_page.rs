@@ -14,6 +14,7 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     walk_sheets: Res<PartyWalkSheets>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     transport: Option<Res<TransportDomain>>,
+    options: Option<Res<PlayerOptions>>,
     mut layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut icons: Local<Option<MainCommandIcons>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
@@ -26,7 +27,8 @@ pub(in crate::field_menu) fn sync_main_menu_page(
         state.is_changed()
             || atlases.is_changed()
             || transport.as_ref().is_some_and(|domain| domain.is_changed())
-            || game.as_ref().is_some_and(|game| game.is_changed()),
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -50,6 +52,8 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     }
     let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game, &inventory);
     commands.entity(menu_root).with_children(|parent| {
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
         spawn_main_menu_page(
             parent,
             &font,
@@ -60,6 +64,7 @@ pub(in crate::field_menu) fn sync_main_menu_page(
             transport
                 .as_deref()
                 .is_some_and(|domain| domain.any_convenience_unlocked(game.flags())),
+            &options.bindings,
         );
     });
 }
@@ -216,6 +221,10 @@ impl MainCommandIcons {
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the deck page takes the shared font, icons, state, party, thumbnails, atlas flag, and bindings"
+)]
 pub(in crate::field_menu) fn spawn_main_menu_page(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -224,6 +233,7 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
     game: &GameState,
     thumbnails: &PartyWalkThumbnails,
     show_atlas_hint: bool,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -259,23 +269,41 @@ pub(in crate::field_menu) fn spawn_main_menu_page(
             });
             spawn_status_text(
                 page,
-                if show_atlas_hint {
-                    "ARROWS   SELECT      ENTER   CONFIRM      T   EMBER ATLAS      M / ESC   CLOSE"
-                } else {
-                    "ARROWS   SELECT      ENTER   CONFIRM      M / ESC   CLOSE"
-                },
+                main_page_hint(show_atlas_hint, bindings),
                 font,
                 15.0,
                 status_muted(),
             );
 
             if state.mode == FieldMenuMode::QuitConfirm {
-                spawn_field_menu_quit_modal(page, font);
+                spawn_field_menu_quit_modal(page, font, bindings);
             }
             if state.mode == FieldMenuMode::CharacterSwitch {
-                spawn_field_menu_character_modal(page, font, state, game, thumbnails);
+                spawn_field_menu_character_modal(page, font, state, game, thumbnails, bindings);
             }
         });
+}
+
+/// The deck footer. The arrows move the deck through raw keys and `M` closes it directly; the
+/// Ember Atlas opens on the bound Travel action.
+pub(in crate::field_menu) fn main_page_hint(
+    show_atlas_hint: bool,
+    bindings: &InputBindings,
+) -> String {
+    use HintKey::{Action, Fixed};
+
+    let atlas: &[HintSegment<'_>] = if show_atlas_hint {
+        &[(&[Action(AppAction::Travel)], "EMBER ATLAS")]
+    } else {
+        &[]
+    };
+    let segments = [
+        &[(&[Fixed("ARROWS")][..], "SELECT"), (&[CONFIRM], "CONFIRM")][..],
+        atlas,
+        &[(&[Fixed("M"), BACK], "CLOSE")],
+    ]
+    .concat();
+    menu_hint(bindings, &FIELD_MENU_HINTS, &segments)
 }
 
 pub(in crate::field_menu) fn spawn_main_menu_header(
@@ -515,6 +543,7 @@ fn spawn_main_command_image(
 pub(in crate::field_menu) fn spawn_field_menu_quit_modal(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -562,7 +591,14 @@ pub(in crate::field_menu) fn spawn_field_menu_quit_modal(
                     spawn_section_rule(modal);
                     spawn_status_text(
                         modal,
-                        "ENTER / Y   CONFIRM      ESC / N   CANCEL",
+                        menu_hint(
+                            bindings,
+                            &FIELD_MENU_HINTS,
+                            &[
+                                (&[CONFIRM, HintKey::Fixed("Y")], "CONFIRM"),
+                                (&[BACK, HintKey::Fixed("N")], "CANCEL"),
+                            ],
+                        ),
                         font,
                         14.0,
                         status_gold(),
@@ -581,6 +617,7 @@ pub(in crate::field_menu) fn spawn_field_menu_character_modal(
     state: &FieldMenuState,
     game: &GameState,
     thumbnails: &PartyWalkThumbnails,
+    bindings: &InputBindings,
 ) {
     let has_choices = member_at(game, state.selected).is_some_and(|member| member.is_protagonist())
         && !thumbnails.variants.is_empty();
@@ -641,9 +678,26 @@ pub(in crate::field_menu) fn spawn_field_menu_character_modal(
                     spawn_status_text(
                         modal,
                         if has_choices {
-                            "UP/DOWN CHARACTER   LEFT/RIGHT SPRITE   ENTER APPLY   ESC CANCEL"
+                            menu_hint(
+                                bindings,
+                                &MODAL_HINTS,
+                                &[
+                                    (&[UP_DOWN], "CHARACTER"),
+                                    (&[PAGE], "SPRITE"),
+                                    (&[CONFIRM], "APPLY"),
+                                    (&[BACK], "CANCEL"),
+                                ],
+                            )
                         } else {
-                            "UP/DOWN   SELECT      ENTER   CONFIRM      ESC   CANCEL"
+                            menu_hint(
+                                bindings,
+                                &FIELD_MENU_HINTS,
+                                &[
+                                    (&[UP_DOWN], "SELECT"),
+                                    (&[CONFIRM], "CONFIRM"),
+                                    (&[BACK], "CANCEL"),
+                                ],
+                            )
                         },
                         font,
                         14.0,
@@ -835,6 +889,7 @@ mod appearance_tests {
                     &game,
                     &PartyWalkThumbnails::default(),
                     false,
+                    &InputBindings::default(),
                 );
             });
         });
@@ -956,6 +1011,7 @@ mod appearance_tests {
                     &state,
                     &game,
                     &thumbnails,
+                    &InputBindings::default(),
                 );
             });
         });

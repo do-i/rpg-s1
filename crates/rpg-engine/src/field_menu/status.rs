@@ -5,9 +5,14 @@ use super::{
     main_deck::apply_character_choice,
     member_at, member_id_at,
     state::{FieldMenuMode, FieldMenuState, StatusPage, cycle_member, wrapped_or_zero},
+    ui::{BACK, CONFIRM, PAGE, STATUS_HINTS, menu_hint},
 };
 use crate::{
-    game_state::GameState, scenario_inventory::ScenarioInventory, scenario_party::PartyRow,
+    game_state::GameState,
+    input_bindings::InputBindings,
+    key_hints::{HintKey, HintSegment},
+    scenario_inventory::ScenarioInventory,
+    scenario_party::PartyRow,
 };
 use bevy::prelude::*;
 
@@ -124,18 +129,34 @@ pub(super) fn status_sprite_count(
     }
 }
 
-pub(super) fn status_hint(state: &FieldMenuState) -> &'static str {
-    match state.status_page {
-        StatusPage::Roster => {
-            "Q/E  CHARACTER    LEFT/RIGHT  SELECT    TAB / ENTER  POSITION    ESC  BACK"
-        }
-        StatusPage::Position => {
-            "Q/E  CHARACTER    LEFT/RIGHT  ROW    ENTER  SET    TAB  FIELD SPRITE    ESC  CHARACTERS"
-        }
-        StatusPage::Sprite => {
-            "Q/E  CHARACTER    LEFT/RIGHT  SPRITE    ENTER  USE ON MAP    TAB  CHARACTERS    ESC  CANCEL"
-        }
-    }
+/// The status footer. `Q`, `E` and `TAB` are read as raw keys, so they stay fixed; Left and Right
+/// page through the bound actions.
+pub(super) fn status_hint(state: &FieldMenuState, bindings: &InputBindings) -> String {
+    use HintKey::Fixed;
+
+    let segments: &[HintSegment<'_>] = match state.status_page {
+        StatusPage::Roster => &[
+            (&[Fixed("Q/E")], "CHARACTER"),
+            (&[PAGE], "SELECT"),
+            (&[Fixed("TAB"), CONFIRM], "POSITION"),
+            (&[BACK], "BACK"),
+        ],
+        StatusPage::Position => &[
+            (&[Fixed("Q/E")], "CHARACTER"),
+            (&[PAGE], "ROW"),
+            (&[CONFIRM], "SET"),
+            (&[Fixed("TAB")], "FIELD SPRITE"),
+            (&[BACK], "CHARACTERS"),
+        ],
+        StatusPage::Sprite => &[
+            (&[Fixed("Q/E")], "CHARACTER"),
+            (&[PAGE], "SPRITE"),
+            (&[CONFIRM], "USE ON MAP"),
+            (&[Fixed("TAB")], "CHARACTERS"),
+            (&[BACK], "CANCEL"),
+        ],
+    };
+    menu_hint(bindings, &STATUS_HINTS, segments)
 }
 
 /// Applies the Position picker's selection to the focused member.

@@ -19,6 +19,7 @@ pub(in crate::field_menu) fn sync_recipes_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuRecipesPage>>,
 ) {
@@ -30,7 +31,8 @@ pub(in crate::field_menu) fn sync_recipes_page(
             && game.is_some(),
         state.is_changed()
             || catalog.is_changed()
-            || game.as_ref().is_some_and(|game| game.is_changed()),
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -43,7 +45,9 @@ pub(in crate::field_menu) fn sync_recipes_page(
         return;
     };
     commands.entity(menu_root).with_children(|parent| {
-        spawn_recipes_page(parent, &font, &state, &game, &catalog);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_recipes_page(parent, &font, &state, &game, &catalog, &options.bindings);
     });
 }
 
@@ -53,6 +57,7 @@ pub(in crate::field_menu) fn spawn_recipes_page(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    bindings: &InputBindings,
 ) {
     let recipes = catalog.recipes();
     let selected = selected_recipe_index(state, recipes);
@@ -83,7 +88,15 @@ pub(in crate::field_menu) fn spawn_recipes_page(
             });
             spawn_status_text(
                 page,
-                "UP/DOWN   SELECT RECIPE      ESC   BACK      M   CLOSE",
+                menu_hint(
+                    bindings,
+                    &FIELD_MENU_HINTS,
+                    &[
+                        (&[UP_DOWN], "SELECT RECIPE"),
+                        (&[BACK], "BACK"),
+                        (&[HintKey::Fixed("M")], "CLOSE"),
+                    ],
+                ),
                 font,
                 15.0,
                 status_muted(),

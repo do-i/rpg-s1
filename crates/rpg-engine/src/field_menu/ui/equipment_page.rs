@@ -16,6 +16,7 @@ pub(in crate::field_menu) fn sync_equipment_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuEquipmentPage>>,
 ) {
@@ -28,7 +29,8 @@ pub(in crate::field_menu) fn sync_equipment_page(
                 && game.is_some(),
             state.is_changed()
                 || catalog.is_changed()
-                || game.as_ref().is_some_and(|game| game.is_changed()),
+                || game.as_ref().is_some_and(|game| game.is_changed())
+                || options.as_ref().is_some_and(|options| options.is_changed()),
             &menu_roots,
             &pages,
             &asset_server,
@@ -43,7 +45,17 @@ pub(in crate::field_menu) fn sync_equipment_page(
     };
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_equipment_page(parent, &font, &state, &game, &catalog, &portraits);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_equipment_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &catalog,
+            &portraits,
+            &options.bindings,
+        );
     });
 }
 
@@ -54,6 +66,7 @@ pub(in crate::field_menu) fn spawn_equipment_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -107,17 +120,19 @@ pub(in crate::field_menu) fn spawn_equipment_page(
                             })
                             .with_children(|lower| {
                                 spawn_equipment_inventory(lower, font, state, game, catalog);
-                                spawn_equipment_details(lower, font, state, game, catalog);
+                                spawn_equipment_details(
+                                    lower, font, state, game, catalog, bindings,
+                                );
                             });
                     });
             });
-            let hint = equipment_hint(state.mode);
+            let hint = equipment_hint(state.mode, bindings);
             spawn_status_text(
                 page,
                 if state.message.is_empty() {
                     hint
                 } else {
-                    &state.message
+                    state.message.clone()
                 },
                 font,
                 15.0,
@@ -130,19 +145,34 @@ pub(in crate::field_menu) fn spawn_equipment_page(
         });
 }
 
-pub(in crate::field_menu) fn equipment_hint(mode: FieldMenuMode) -> &'static str {
-    match mode {
-        FieldMenuMode::EquipmentSlots => {
-            "LEFT/RIGHT   SELECT SLOT      DOWN / ENTER   INVENTORY      ESC   PARTY"
-        }
-        FieldMenuMode::EquipmentPicker => {
-            "UP/DOWN   PREVIEW ITEM      RIGHT / ENTER   EQUIP BUTTON      LEFT / ESC   EQUIPPED"
-        }
-        FieldMenuMode::EquipmentConfirm => {
-            "ENTER   EQUIP & RETURN TO INVENTORY      LEFT / ESC   CANCEL"
-        }
-        _ => "UP/DOWN   SELECT MEMBER      RIGHT / ENTER   EQUIPPED      ESC   BACK",
-    }
+/// The equipment footer. Left and Right move between the cards through the raw arrow keys, so they
+/// stay fixed; Confirm, Back and Down follow the binding table.
+pub(in crate::field_menu) fn equipment_hint(
+    mode: FieldMenuMode,
+    bindings: &InputBindings,
+) -> String {
+    let segments: &[HintSegment<'_>] = match mode {
+        FieldMenuMode::EquipmentSlots => &[
+            (&[LEFT_RIGHT], "SELECT SLOT"),
+            (&[DOWN, CONFIRM], "INVENTORY"),
+            (&[BACK], "PARTY"),
+        ],
+        FieldMenuMode::EquipmentPicker => &[
+            (&[UP_DOWN], "PREVIEW ITEM"),
+            (&[RIGHT, CONFIRM], "EQUIP BUTTON"),
+            (&[LEFT, BACK], "EQUIPPED"),
+        ],
+        FieldMenuMode::EquipmentConfirm => &[
+            (&[CONFIRM], "EQUIP & RETURN TO INVENTORY"),
+            (&[LEFT, BACK], "CANCEL"),
+        ],
+        _ => &[
+            (&[UP_DOWN], "SELECT MEMBER"),
+            (&[RIGHT, CONFIRM], "EQUIPPED"),
+            (&[BACK], "BACK"),
+        ],
+    };
+    menu_hint(bindings, &FIELD_MENU_HINTS, segments)
 }
 
 fn spawn_equipment_header(
@@ -472,6 +502,7 @@ fn spawn_equipment_details(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    bindings: &InputBindings,
 ) {
     let Some(member) = member_at(game, state.member_index) else {
         return;
@@ -546,7 +577,16 @@ fn spawn_equipment_details(
                 spawn_equipment_stat_grid(panel, font, derived_stats(member, catalog));
             } else if comparing {
                 let candidates = equipment_candidates(game, catalog, slot);
-                spawn_equipment_preview(panel, font, state, catalog, member, slot, &candidates);
+                spawn_equipment_preview(
+                    panel,
+                    font,
+                    state,
+                    catalog,
+                    member,
+                    slot,
+                    &candidates,
+                    bindings,
+                );
             } else {
                 let equipped = member.equipment().get(slot).and_then(|id| catalog.item(id));
                 spawn_equipment_item_heading(
@@ -580,7 +620,11 @@ fn spawn_equipment_details(
                 spawn_equipment_stat_grid(panel, font, derived_stats(member, catalog));
                 spawn_status_text(
                     panel,
-                    "DOWN / ENTER   SELECT REPLACEMENT",
+                    menu_hint(
+                        bindings,
+                        &FIELD_MENU_HINTS,
+                        &[(&[DOWN, CONFIRM], "SELECT REPLACEMENT")],
+                    ),
                     font,
                     12.0,
                     status_muted(),
@@ -638,6 +682,10 @@ fn spawn_equipment_item_heading(
         });
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the preview takes the page's shared font, state, catalog, member, slot, candidates, and bindings"
+)]
 fn spawn_equipment_preview(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -646,6 +694,7 @@ fn spawn_equipment_preview(
     member: &crate::runtime_member::RuntimeMember,
     slot: EquipmentSlot,
     candidates: &[String],
+    bindings: &InputBindings,
 ) {
     let candidate_id = equipment_candidate(state, candidates);
     let item = candidate_id.and_then(|id| catalog.item(id));
@@ -700,16 +749,19 @@ fn spawn_equipment_preview(
             EquipmentCommitButton,
         ))
         .with_children(|button| {
+            let button_hint = |keys: &[HintKey], label: &str| {
+                menu_hint(bindings, &FIELD_MENU_HINTS, &[(keys, label)])
+            };
             let label = if empty_slot {
-                "SLOT ALREADY EMPTY"
+                "SLOT ALREADY EMPTY".to_owned()
             } else if !available {
-                "CANNOT EQUIP"
+                "CANNOT EQUIP".to_owned()
             } else if !focused {
-                "RIGHT / ENTER   REVIEW & EQUIP"
+                button_hint(&[RIGHT, CONFIRM], "REVIEW & EQUIP")
             } else if candidate_id.is_some() {
-                "ENTER   EQUIP"
+                button_hint(&[CONFIRM], "EQUIP")
             } else {
-                "ENTER   UNEQUIP"
+                button_hint(&[CONFIRM], "UNEQUIP")
             };
             spawn_status_text(
                 button,

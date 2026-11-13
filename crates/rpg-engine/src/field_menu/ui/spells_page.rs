@@ -13,6 +13,7 @@ pub(in crate::field_menu) fn sync_spells_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuSpellsPage>>,
 ) {
@@ -24,7 +25,8 @@ pub(in crate::field_menu) fn sync_spells_page(
             && game.is_some(),
         state.is_changed()
             || catalog.is_changed()
-            || game.as_ref().is_some_and(|game| game.is_changed()),
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -38,7 +40,17 @@ pub(in crate::field_menu) fn sync_spells_page(
     };
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_spells_page(parent, &font, &state, &game, &catalog, &portraits);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_spells_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &catalog,
+            &portraits,
+            &options.bindings,
+        );
     });
 }
 
@@ -49,6 +61,7 @@ pub(in crate::field_menu) fn spawn_spells_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -91,18 +104,18 @@ pub(in crate::field_menu) fn spawn_spells_page(
                 } else if let Some(member) = member_at(game, state.member_index) {
                     let abilities = learned_abilities(member, game, catalog);
                     let selected = selected_spell_index(state, &abilities);
-                    spawn_spell_detail(columns, font, member, abilities.get(selected).copied());
+                    spawn_spell_detail(
+                        columns,
+                        font,
+                        member,
+                        abilities.get(selected).copied(),
+                        bindings,
+                    );
                 }
             });
             spawn_status_text(
                 page,
-                if state.mode == FieldMenuMode::SpellTarget {
-                    "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
-                } else if state.mode == FieldMenuMode::SpellList {
-                    "ARROWS   SELECT SPELL      ENTER   CAST WHEN READY      LEFT EDGE / ESC   CASTER"
-                } else {
-                    "UP/DOWN   CHANGE CASTER      RIGHT / ENTER   SPELLBOOK      ESC   BACK"
-                },
+                spells_page_hint(state.mode, bindings),
                 font,
                 15.0,
                 status_muted(),
@@ -112,6 +125,35 @@ pub(in crate::field_menu) fn spawn_spells_page(
             }
             spawn_spell_overlay(page, font, state, game, catalog);
         });
+}
+
+/// The spells footer. The spellbook grid and the column hand-off read raw arrow keys, so
+/// `ARROWS`, `RIGHT` and `LEFT EDGE` stay fixed.
+pub(in crate::field_menu) fn spells_page_hint(
+    mode: FieldMenuMode,
+    bindings: &InputBindings,
+) -> String {
+    use HintKey::Fixed;
+
+    let segments: &[HintSegment<'_>] = match mode {
+        FieldMenuMode::SpellTarget => &[
+            (&[UP_DOWN], "CHOOSE"),
+            (&[CONFIRM], "CONFIRM"),
+            (&[BACK], "SPELLBOOK"),
+            (&[Fixed("M")], "CLOSE"),
+        ],
+        FieldMenuMode::SpellList => &[
+            (&[Fixed("ARROWS")], "SELECT SPELL"),
+            (&[CONFIRM], "CAST WHEN READY"),
+            (&[Fixed("LEFT EDGE"), BACK], "CASTER"),
+        ],
+        _ => &[
+            (&[UP_DOWN], "CHANGE CASTER"),
+            (&[RIGHT, CONFIRM], "SPELLBOOK"),
+            (&[BACK], "BACK"),
+        ],
+    };
+    menu_hint(bindings, &FIELD_MENU_HINTS, segments)
 }
 
 pub(in crate::field_menu) fn spawn_spells_header(
@@ -471,6 +513,7 @@ pub(in crate::field_menu) fn spawn_spell_detail(
     font: &Handle<Font>,
     member: &crate::runtime_member::RuntimeMember,
     ability: Option<&Ability>,
+    bindings: &InputBindings,
 ) {
     spawn_status_panel(
         parent,
@@ -558,13 +601,13 @@ pub(in crate::field_menu) fn spawn_spell_detail(
             spawn_status_text(
                 detail,
                 if !field_castable(ability) {
-                    "Cannot cast from the field."
+                    "Cannot cast from the field.".to_owned()
                 } else if !affordable {
-                    "Not enough MP."
+                    "Not enough MP.".to_owned()
                 } else if crate::field_menu_domain::heals_whole_party(ability) {
-                    "ENTER  -  CAST ON PARTY"
+                    menu_hint(bindings, &DASH_HINTS, &[(&[CONFIRM], "CAST ON PARTY")])
                 } else {
-                    "ENTER  -  CHOOSE TARGET"
+                    menu_hint(bindings, &DASH_HINTS, &[(&[CONFIRM], "CHOOSE TARGET")])
                 },
                 font,
                 14.0,

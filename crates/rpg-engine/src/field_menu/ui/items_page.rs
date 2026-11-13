@@ -94,6 +94,7 @@ pub(in crate::field_menu) fn sync_items_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuItemsPage>>,
 ) {
@@ -105,7 +106,8 @@ pub(in crate::field_menu) fn sync_items_page(
             && game.is_some(),
         state.is_changed()
             || catalog.is_changed()
-            || game.as_ref().is_some_and(|game| game.is_changed()),
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -119,7 +121,17 @@ pub(in crate::field_menu) fn sync_items_page(
     };
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     commands.entity(menu_root).with_children(|parent| {
-        spawn_items_page(parent, &font, &state, &game, &catalog, &portraits);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_items_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &catalog,
+            &portraits,
+            &options.bindings,
+        );
     });
 }
 
@@ -130,6 +142,7 @@ pub(in crate::field_menu) fn spawn_items_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    bindings: &InputBindings,
 ) {
     let tab = InventoryTab::ALL[state.tab_index];
     let ids = inventory_ids(game, catalog, tab);
@@ -172,6 +185,7 @@ pub(in crate::field_menu) fn spawn_items_page(
                     &ids,
                     list_index,
                     !pouch_focused,
+                    bindings,
                 );
                 // Detail describes the list cursor, which does not exist until the list has
                 // focus; hold the column's width so the other columns stay put.
@@ -181,32 +195,57 @@ pub(in crate::field_menu) fn spawn_items_page(
                         ..default()
                     });
                 } else if state.mode == FieldMenuMode::ItemEquipTarget {
-                    spawn_item_equip_preview_column(columns, font, state, game, catalog);
+                    spawn_item_equip_preview_column(columns, font, state, game, catalog, bindings);
                 } else {
                     spawn_item_detail_column(
-                        columns, font, state, game, catalog, &ids, list_index,
+                        columns, font, state, game, catalog, &ids, list_index, bindings,
                     );
                 }
             });
 
-            let hint = match state.mode {
-                FieldMenuMode::Browse => {
-                    "UP/DOWN   POUCH      RIGHT / ENTER   ITEMS      H   SHOW/HIDE      ESC   BACK"
-                }
-                FieldMenuMode::ItemList => {
-                    "UP/DOWN   BROWSE      ENTER   ACTIONS      H   SHOW/HIDE      LEFT / ESC   POUCH"
-                }
-                FieldMenuMode::ItemNewTag => {
-                    "TYPE   a-z 0-9 _      ENTER   ADD      ESC   BACK"
-                }
-                _ => "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   CANCEL      I   CLOSE",
-            };
+            let hint = items_page_hint(state.mode, bindings);
             spawn_status_text(page, hint, font, 15.0, status_muted());
             if !state.message.is_empty() {
                 spawn_items_message(page, font, &state.message);
             }
-            spawn_item_modal(page, font, state, game, catalog, portraits);
+            spawn_item_modal(page, font, state, game, catalog, portraits, bindings);
         });
+}
+
+/// The items page footer. Left and Right are read as raw arrow keys by the item screens, so they
+/// stay fixed; `H`, `I` and typing are raw too.
+pub(in crate::field_menu) fn items_page_hint(
+    mode: FieldMenuMode,
+    bindings: &InputBindings,
+) -> String {
+    use HintKey::Fixed;
+
+    let segments: &[HintSegment<'_>] = match mode {
+        FieldMenuMode::Browse => &[
+            (&[UP_DOWN], "POUCH"),
+            (&[RIGHT, CONFIRM], "ITEMS"),
+            (&[Fixed("H")], "SHOW/HIDE"),
+            (&[BACK], "BACK"),
+        ],
+        FieldMenuMode::ItemList => &[
+            (&[UP_DOWN], "BROWSE"),
+            (&[CONFIRM], "ACTIONS"),
+            (&[Fixed("H")], "SHOW/HIDE"),
+            (&[LEFT, BACK], "POUCH"),
+        ],
+        FieldMenuMode::ItemNewTag => &[
+            (&[Fixed("TYPE")], "a-z 0-9 _"),
+            (&[CONFIRM], "ADD"),
+            (&[BACK], "BACK"),
+        ],
+        _ => &[
+            (&[UP_DOWN], "CHOOSE"),
+            (&[CONFIRM], "CONFIRM"),
+            (&[BACK], "CANCEL"),
+            (&[Fixed("I")], "CLOSE"),
+        ],
+    };
+    menu_hint(bindings, &FIELD_MENU_HINTS, segments)
 }
 
 pub(in crate::field_menu) fn spawn_items_header(
@@ -327,6 +366,7 @@ pub(in crate::field_menu) fn spawn_item_list_column(
     ids: &[&str],
     list_index: usize,
     focused: bool,
+    bindings: &InputBindings,
 ) {
     spawn_focus_panel(
         parent,
@@ -351,7 +391,10 @@ pub(in crate::field_menu) fn spawn_item_list_column(
                 spawn_status_text(panel, "Pouch is empty.", font, 18.0, status_muted());
                 spawn_status_text(
                     panel,
-                    "Choose another pouch with UP/DOWN.",
+                    format!(
+                        "Choose another pouch with {}.",
+                        menu_hint_keys(bindings, &FIELD_MENU_HINTS, &[UP_DOWN])
+                    ),
                     font,
                     14.0,
                     status_faint(),
@@ -432,6 +475,10 @@ pub(in crate::field_menu) fn spawn_item_list_column(
     );
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the detail column takes the page's shared font, state, party, catalog, list, and bindings"
+)]
 pub(in crate::field_menu) fn spawn_item_detail_column(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
@@ -440,6 +487,7 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
     catalog: &FieldMenuCatalog,
     ids: &[&str],
     list_index: usize,
+    bindings: &InputBindings,
 ) {
     spawn_status_panel(
         parent,
@@ -550,7 +598,13 @@ pub(in crate::field_menu) fn spawn_item_detail_column(
                 spawn_section_rule(panel);
                 spawn_equippable_by(panel, font, game, catalog, id, slot);
             }
-            spawn_status_text(panel, "ENTER  -  ACTIONS", font, 14.0, status_muted());
+            spawn_status_text(
+                panel,
+                menu_hint(bindings, &DASH_HINTS, &[(&[CONFIRM], "ACTIONS")]),
+                font,
+                14.0,
+                status_muted(),
+            );
         },
     );
 }
@@ -623,6 +677,7 @@ pub(in crate::field_menu) fn spawn_item_equip_preview_column(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    bindings: &InputBindings,
 ) {
     spawn_status_panel(
         parent,
@@ -729,7 +784,13 @@ pub(in crate::field_menu) fn spawn_item_equip_preview_column(
                 status_muted(),
             );
             spawn_section_rule(panel);
-            spawn_status_text(panel, "ENTER  -  EQUIP", font, 14.0, status_muted());
+            spawn_status_text(
+                panel,
+                menu_hint(bindings, &DASH_HINTS, &[(&[CONFIRM], "EQUIP")]),
+                font,
+                14.0,
+                status_muted(),
+            );
         },
     );
 }
@@ -841,6 +902,7 @@ pub(in crate::field_menu) fn spawn_item_modal(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    bindings: &InputBindings,
 ) {
     // Only the item's own modals draw here; the pouch and the list are the page itself.
     if state.selected_is_list_cursor() {
@@ -910,9 +972,11 @@ pub(in crate::field_menu) fn spawn_item_modal(
                             }
                         }
                         FieldMenuMode::ItemTags => spawn_tag_editor(modal, font, state, game),
-                        FieldMenuMode::ItemNewTag => spawn_new_tag_prompt(modal, font, state),
+                        FieldMenuMode::ItemNewTag => {
+                            spawn_new_tag_prompt(modal, font, state, bindings);
+                        }
                         FieldMenuMode::ItemManage => {
-                            spawn_manage_rows(modal, font, state, game, catalog);
+                            spawn_manage_rows(modal, font, state, game, catalog, bindings);
                         }
                         FieldMenuMode::DiscardQuantity => {
                             spawn_status_text(
@@ -931,7 +995,15 @@ pub(in crate::field_menu) fn spawn_item_modal(
                             );
                             spawn_status_text(
                                 modal,
-                                "LEFT one    RIGHT whole stack    UP/DOWN adjust",
+                                menu_hint(
+                                    bindings,
+                                    &NOTE_HINTS,
+                                    &[
+                                        (&[LEFT], "one"),
+                                        (&[RIGHT], "whole stack"),
+                                        (&[UP_DOWN], "adjust"),
+                                    ],
+                                ),
                                 font,
                                 14.0,
                                 status_muted(),
@@ -956,7 +1028,9 @@ pub(in crate::field_menu) fn spawn_item_modal(
                             }
                         }
                         FieldMenuMode::ItemEquipTarget => {
-                            spawn_equip_member_cards(modal, font, state, game, catalog, portraits);
+                            spawn_equip_member_cards(
+                                modal, font, state, game, catalog, portraits, bindings,
+                            );
                         }
                         FieldMenuMode::ItemAoeConfirm => {
                             spawn_status_text(
@@ -987,7 +1061,14 @@ pub(in crate::field_menu) fn spawn_item_modal(
                             }
                             spawn_status_text(
                                 modal,
-                                "Y/ENTER use    N/ESC cancel",
+                                menu_hint(
+                                    bindings,
+                                    &NOTE_HINTS,
+                                    &[
+                                        (&[HintKey::Fixed("Y"), CONFIRM], "use"),
+                                        (&[HintKey::Fixed("N"), BACK], "cancel"),
+                                    ],
+                                ),
                                 font,
                                 14.0,
                                 status_muted(),
@@ -1009,6 +1090,7 @@ fn spawn_equip_member_cards(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     portraits: &StatusPortraitAssets,
+    bindings: &InputBindings,
 ) {
     let Some(id) = state.pending_id.as_deref() else {
         return;
@@ -1110,7 +1192,15 @@ fn spawn_equip_member_cards(
     }
     spawn_status_text(
         parent,
-        "UP/DOWN   MEMBER      ENTER   EQUIP      ESC   BACK",
+        menu_hint(
+            bindings,
+            &FIELD_MENU_HINTS,
+            &[
+                (&[UP_DOWN], "MEMBER"),
+                (&[CONFIRM], "EQUIP"),
+                (&[BACK], "BACK"),
+            ],
+        ),
         font,
         13.0,
         status_muted(),
@@ -1170,6 +1260,7 @@ fn spawn_new_tag_prompt(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     state: &FieldMenuState,
+    bindings: &InputBindings,
 ) {
     spawn_status_text(parent, "NEW TAG", font, 13.0, status_muted());
     parent
@@ -1208,7 +1299,11 @@ fn spawn_new_tag_prompt(
     );
     spawn_status_text(
         parent,
-        "ENTER   ADD      ESC   BACK",
+        menu_hint(
+            bindings,
+            &FIELD_MENU_HINTS,
+            &[(&[CONFIRM], "ADD"), (&[BACK], "BACK")],
+        ),
         font,
         13.0,
         status_muted(),
@@ -1222,6 +1317,7 @@ fn spawn_manage_rows(
     state: &FieldMenuState,
     game: &GameState,
     catalog: &FieldMenuCatalog,
+    bindings: &InputBindings,
 ) {
     let ids = manage_ids(game, catalog);
     spawn_status_text(parent, "SHOW / HIDE", font, 13.0, status_muted());
@@ -1247,7 +1343,14 @@ fn spawn_manage_rows(
     });
     spawn_status_text(
         parent,
-        "ENTER   TOGGLE      H / ESC   BACK",
+        menu_hint(
+            bindings,
+            &FIELD_MENU_HINTS,
+            &[
+                (&[CONFIRM], "TOGGLE"),
+                (&[HintKey::Fixed("H"), BACK], "BACK"),
+            ],
+        ),
         font,
         13.0,
         status_muted(),

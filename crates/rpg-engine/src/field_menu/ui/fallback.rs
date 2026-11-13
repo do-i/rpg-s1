@@ -596,66 +596,130 @@ pub(in crate::field_menu) fn render_save(
     }
 }
 
-pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
-    match (state.screen, state.mode) {
-        (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => {
-            "Y/ENTER exit to desktop  N/ESC cancel"
-        }
-        (FieldMenuScreen::Main, _) => "UP/DOWN choose  ENTER open  M/ESC close",
-        (FieldMenuScreen::Status, _) => status_hint(state),
-        (FieldMenuScreen::Items, FieldMenuMode::Browse) => {
-            "UP/DOWN pouch  RIGHT/ENTER items  H show/hide  ESC back"
-        }
-        (FieldMenuScreen::Items, FieldMenuMode::ItemList) => {
-            "UP/DOWN item  ENTER actions  H show/hide  LEFT/ESC pouch"
-        }
-        (FieldMenuScreen::Items, FieldMenuMode::ItemTags) => "UP/DOWN tag  ENTER toggle  ESC back",
-        (FieldMenuScreen::Items, FieldMenuMode::ItemNewTag) => {
-            "TYPE a-z 0-9 _  ENTER add  ESC back"
-        }
-        (FieldMenuScreen::Items, FieldMenuMode::ItemManage) => {
-            "UP/DOWN item  ENTER show/hide  H/ESC back"
-        }
-        (FieldMenuScreen::Items, FieldMenuMode::DiscardQuantity) => {
-            "UP/DOWN quantity  LEFT one  RIGHT whole stack  ENTER discard  ESC cancel"
-        }
-        (FieldMenuScreen::Equipment, FieldMenuMode::Browse) => {
-            equipment_hint(FieldMenuMode::Browse)
-        }
-        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentSlots) => {
-            equipment_hint(FieldMenuMode::EquipmentSlots)
-        }
-        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentPicker) => {
-            equipment_hint(FieldMenuMode::EquipmentPicker)
-        }
-        (FieldMenuScreen::Equipment, FieldMenuMode::EquipmentConfirm) => {
-            equipment_hint(FieldMenuMode::EquipmentConfirm)
-        }
-        (FieldMenuScreen::Spells, FieldMenuMode::Browse) => {
-            "UP/DOWN caster  RIGHT/ENTER spellbook  ESC back"
-        }
-        (FieldMenuScreen::Spells, FieldMenuMode::SpellList) => {
-            "ARROWS spell  ENTER cast  LEFT EDGE/ESC caster"
-        }
-        (FieldMenuScreen::Quests, _) => "UP/DOWN quest  ESC back  M close",
-        (FieldMenuScreen::Recipes, _) => "UP/DOWN recipe  ESC back  M close",
-        (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => {
-            "UP/DOWN choose  ENTER set  ESC cancel"
-        }
+/// The fallback footer of the generic text overlay. Keys the screens read raw (`M`, `H`, `Y`, `N`,
+/// the sideways arrows) are fixed; the rest follow the binding table.
+pub(in crate::field_menu) fn render_hint(
+    state: &FieldMenuState,
+    bindings: &InputBindings,
+) -> String {
+    use HintKey::Fixed;
+
+    let segments: &[HintSegment<'_>] = match (state.screen, state.mode) {
+        (FieldMenuScreen::Main, FieldMenuMode::QuitConfirm) => &[
+            (&[Fixed("Y"), CONFIRM], "exit to desktop"),
+            (&[Fixed("N"), BACK], "cancel"),
+        ],
+        (FieldMenuScreen::Main, _) => &[
+            (&[UP_DOWN], "choose"),
+            (&[CONFIRM], "open"),
+            (&[Fixed("M"), BACK], "close"),
+        ],
+        (FieldMenuScreen::Status, _) => return status_hint(state, bindings),
+        (FieldMenuScreen::Items, FieldMenuMode::Browse) => &[
+            (&[UP_DOWN], "pouch"),
+            (&[RIGHT, CONFIRM], "items"),
+            (&[Fixed("H")], "show/hide"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Items, FieldMenuMode::ItemList) => &[
+            (&[UP_DOWN], "item"),
+            (&[CONFIRM], "actions"),
+            (&[Fixed("H")], "show/hide"),
+            (&[LEFT, BACK], "pouch"),
+        ],
+        (FieldMenuScreen::Items, FieldMenuMode::ItemTags) => &[
+            (&[UP_DOWN], "tag"),
+            (&[CONFIRM], "toggle"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Items, FieldMenuMode::ItemNewTag) => &[
+            (&[Fixed("TYPE")], "a-z 0-9 _"),
+            (&[CONFIRM], "add"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Items, FieldMenuMode::ItemManage) => &[
+            (&[UP_DOWN], "item"),
+            (&[CONFIRM], "show/hide"),
+            (&[Fixed("H"), BACK], "back"),
+        ],
+        (FieldMenuScreen::Items, FieldMenuMode::DiscardQuantity) => &[
+            (&[UP_DOWN], "quantity"),
+            (&[LEFT], "one"),
+            (&[RIGHT], "whole stack"),
+            (&[CONFIRM], "discard"),
+            (&[BACK], "cancel"),
+        ],
+        (
+            FieldMenuScreen::Equipment,
+            mode @ (FieldMenuMode::Browse
+            | FieldMenuMode::EquipmentSlots
+            | FieldMenuMode::EquipmentPicker
+            | FieldMenuMode::EquipmentConfirm),
+        ) => return equipment_hint(mode, bindings),
+        (FieldMenuScreen::Spells, FieldMenuMode::Browse) => &[
+            (&[UP_DOWN], "caster"),
+            (&[RIGHT, CONFIRM], "spellbook"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Spells, FieldMenuMode::SpellList) => &[
+            (&[Fixed("ARROWS")], "spell"),
+            (&[CONFIRM], "cast"),
+            (&[Fixed("LEFT EDGE"), BACK], "caster"),
+        ],
+        (FieldMenuScreen::Quests, _) => &[
+            (&[UP_DOWN], "quest"),
+            (&[BACK], "back"),
+            (&[Fixed("M")], "close"),
+        ],
+        (FieldMenuScreen::Recipes, _) => &[
+            (&[UP_DOWN], "recipe"),
+            (&[BACK], "back"),
+            (&[Fixed("M")], "close"),
+        ],
+        (FieldMenuScreen::Battle, FieldMenuMode::BattleTacticPicker) => &[
+            (&[UP_DOWN], "choose"),
+            (&[CONFIRM], "set"),
+            (&[BACK], "cancel"),
+        ],
         (FieldMenuScreen::Battle, FieldMenuMode::BattleLog) => {
-            "UP/DOWN scroll  LEFT/RIGHT page  ESC back"
+            &[(&[UP_DOWN], "scroll"), (&[PAGE], "page"), (&[BACK], "back")]
         }
-        (FieldMenuScreen::Battle, _) => "UP/DOWN select  ENTER change  ESC back",
-        (FieldMenuScreen::Settings, _) => "UP/DOWN select  ENTER toggle  ESC back",
-        (FieldMenuScreen::Save, FieldMenuMode::Browse) => {
-            "UP/DOWN slot  ENTER save  ESC back  M close"
-        }
-        (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => "Y/ENTER overwrite  N/ESC cancel",
-        (_, FieldMenuMode::ItemEquipTarget) => "UP/DOWN member  ENTER equip  ESC cancel",
-        (_, FieldMenuMode::ItemTarget | FieldMenuMode::SpellTarget) => {
-            "UP/DOWN target  ENTER confirm  ESC cancel"
-        }
-        _ => "UP/DOWN choose  ENTER confirm  ESC cancel  M close",
-    }
-    .to_owned()
+        (FieldMenuScreen::Battle, _) => &[
+            (&[UP_DOWN], "select"),
+            (&[CONFIRM], "change"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Settings, _) => &[
+            (&[UP_DOWN], "select"),
+            (&[CONFIRM], "toggle"),
+            (&[BACK], "back"),
+        ],
+        (FieldMenuScreen::Save, FieldMenuMode::Browse) => &[
+            (&[UP_DOWN], "slot"),
+            (&[CONFIRM], "save"),
+            (&[BACK], "back"),
+            (&[Fixed("M")], "close"),
+        ],
+        (FieldMenuScreen::Save, FieldMenuMode::SaveConfirm) => &[
+            (&[Fixed("Y"), CONFIRM], "overwrite"),
+            (&[Fixed("N"), BACK], "cancel"),
+        ],
+        (_, FieldMenuMode::ItemEquipTarget) => &[
+            (&[UP_DOWN], "member"),
+            (&[CONFIRM], "equip"),
+            (&[BACK], "cancel"),
+        ],
+        (_, FieldMenuMode::ItemTarget | FieldMenuMode::SpellTarget) => &[
+            (&[UP_DOWN], "target"),
+            (&[CONFIRM], "confirm"),
+            (&[BACK], "cancel"),
+        ],
+        _ => &[
+            (&[UP_DOWN], "choose"),
+            (&[CONFIRM], "confirm"),
+            (&[BACK], "cancel"),
+            (&[Fixed("M")], "close"),
+        ],
+    };
+    menu_hint(bindings, &FALLBACK_HINTS, segments)
 }

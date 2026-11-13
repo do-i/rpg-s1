@@ -22,11 +22,16 @@ pub(in crate::field_menu) fn sync_field_menu_overlay_lifecycle(
     clippy::type_complexity,
     reason = "the overlay updates three independently styled text roles"
 )]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the overlay text sync reads the menu state, catalogs, session, options, and three text roles"
+)]
 pub(in crate::field_menu) fn sync_field_menu_generic_text(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     saves: Res<SaveSlotCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     mut titles: Query<
         &mut Text,
         (
@@ -59,7 +64,13 @@ pub(in crate::field_menu) fn sync_field_menu_generic_text(
         return;
     }
     let game_changed = game.as_ref().is_some_and(|game| game.is_changed());
-    if !state.is_changed() && !catalog.is_changed() && !saves.is_changed() && !game_changed {
+    let options_changed = options.as_ref().is_some_and(|options| options.is_changed());
+    if !state.is_changed()
+        && !catalog.is_changed()
+        && !saves.is_changed()
+        && !game_changed
+        && !options_changed
+    {
         return;
     }
     let Some(game) = game else { return };
@@ -70,7 +81,9 @@ pub(in crate::field_menu) fn sync_field_menu_generic_text(
         body.0 = render_body(&state, &game, &catalog, &saves);
     }
     if let Ok(mut hint) = hints.single_mut() {
-        hint.0 = render_hint(&state);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        hint.0 = render_hint(&state, &options.bindings);
     }
 }
 

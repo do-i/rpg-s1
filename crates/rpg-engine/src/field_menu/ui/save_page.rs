@@ -1,9 +1,4 @@
 use super::*;
-use crate::{
-    input_bindings::InputBindings,
-    key_hints::{FIELD_MENU_HINTS, HintKey, HintSegment, key_hint},
-    options_domain::Device,
-};
 
 #[expect(
     clippy::too_many_arguments,
@@ -52,23 +47,22 @@ pub(in crate::field_menu) fn save_page_hint(
     mode: FieldMenuMode,
     bindings: &InputBindings,
 ) -> String {
-    use crate::action_input::AppAction::{Back, Confirm, Down, Up};
-    use HintKey::{Action, Fixed, Pair};
+    use HintKey::Fixed;
 
     let segments: &[HintSegment<'_>] = if mode == FieldMenuMode::SaveConfirm {
         &[
-            (&[Action(Confirm), Fixed("Y")], "OVERWRITE"),
-            (&[Action(Back), Fixed("N")], "CANCEL"),
+            (&[CONFIRM, Fixed("Y")], "OVERWRITE"),
+            (&[BACK, Fixed("N")], "CANCEL"),
         ]
     } else {
         &[
-            (&[Pair(Up, Down)], "SELECT SLOT"),
-            (&[Action(Confirm)], "SAVE"),
-            (&[Action(Back)], "BACK"),
+            (&[UP_DOWN], "SELECT SLOT"),
+            (&[CONFIRM], "SAVE"),
+            (&[BACK], "BACK"),
             (&[Fixed("M")], "CLOSE"),
         ]
     };
-    key_hint(bindings, Device::Keyboard, &FIELD_MENU_HINTS, segments)
+    menu_hint(bindings, &FIELD_MENU_HINTS, segments)
 }
 
 pub(in crate::field_menu) fn spawn_save_page(
@@ -175,7 +169,7 @@ pub(in crate::field_menu) fn spawn_save_page(
                         spawn_save_message(row, font, message.unwrap_or("-"), status_border());
                     });
             });
-            spawn_save_overwrite_modal(page, font, state, saves);
+            spawn_save_overwrite_modal(page, font, state, saves, bindings);
         });
 }
 
@@ -283,6 +277,7 @@ pub(in crate::field_menu) fn spawn_save_overwrite_modal(
     font: &Handle<Font>,
     state: &FieldMenuState,
     saves: &SaveSlotCatalog,
+    bindings: &InputBindings,
 ) {
     if state.mode != FieldMenuMode::SaveConfirm {
         return;
@@ -335,7 +330,14 @@ pub(in crate::field_menu) fn spawn_save_overwrite_modal(
                     );
                     spawn_status_text(
                         modal,
-                        "ENTER / Y   CONFIRM      ESC / N   CANCEL",
+                        menu_hint(
+                            bindings,
+                            &FIELD_MENU_HINTS,
+                            &[
+                                (&[CONFIRM, HintKey::Fixed("Y")], "CONFIRM"),
+                                (&[BACK, HintKey::Fixed("N")], "CANCEL"),
+                            ],
+                        ),
                         font,
                         13.0,
                         status_muted(),

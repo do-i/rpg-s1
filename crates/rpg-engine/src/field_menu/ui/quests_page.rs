@@ -12,6 +12,7 @@ pub(in crate::field_menu) fn sync_quests_page(
     state: Res<FieldMenuState>,
     catalog: Res<FieldMenuCatalog>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuQuestsPage>>,
 ) {
@@ -23,7 +24,8 @@ pub(in crate::field_menu) fn sync_quests_page(
             && game.is_some(),
         state.is_changed()
             || catalog.is_changed()
-            || game.as_ref().is_some_and(|game| game.is_changed()),
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -37,7 +39,17 @@ pub(in crate::field_menu) fn sync_quests_page(
     };
     let quest_icon = load_status_image(&asset_server, &root, "media/images/icons/menu/quests.png");
     commands.entity(menu_root).with_children(|parent| {
-        spawn_quests_page(parent, &font, &state, &game, &catalog, quest_icon.as_ref());
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_quests_page(
+            parent,
+            &font,
+            &state,
+            &game,
+            &catalog,
+            quest_icon.as_ref(),
+            &options.bindings,
+        );
     });
 }
 
@@ -48,6 +60,7 @@ pub(in crate::field_menu) fn spawn_quests_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     quest_icon: Option<&Handle<Image>>,
+    bindings: &InputBindings,
 ) {
     let quests = catalog.quests();
     let selected = selected_quest_index(state, quests);
@@ -78,7 +91,15 @@ pub(in crate::field_menu) fn spawn_quests_page(
             });
             spawn_status_text(
                 page,
-                "UP/DOWN   SELECT QUEST      ESC   BACK      M   CLOSE",
+                menu_hint(
+                    bindings,
+                    &FIELD_MENU_HINTS,
+                    &[
+                        (&[UP_DOWN], "SELECT QUEST"),
+                        (&[BACK], "BACK"),
+                        (&[HintKey::Fixed("M")], "CLOSE"),
+                    ],
+                ),
                 font,
                 15.0,
                 status_muted(),

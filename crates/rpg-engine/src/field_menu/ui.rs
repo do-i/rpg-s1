@@ -5,12 +5,15 @@ use super::{
     state::*, status::*, *,
 };
 use crate::{
+    action_input::AppAction,
     field_menu_domain::{
         CUSTOM_TAG_MAX_LENGTH, CatalogStatus, EDITABLE_SYSTEM_TAGS, FieldMenuCatalog, InventoryTab,
         can_equip, derived_stats, equipment_slot, field_castable, inventory_ids, item_description,
         item_name, learned_abilities, preview_stats,
     },
     game_state::GameState,
+    input_bindings::InputBindings,
+    key_hints::{FIELD_MENU_HINTS, HintKey, HintSegment, HintStyle, hint_keys_text, key_hint},
     menu_chrome::{
         ScrollWindow, location_display_name, scroll_list_node, selectable_card_colors,
         spawn_focus_panel, spawn_header_bars, spawn_panel_rule, spawn_scroll_list,
@@ -18,6 +21,7 @@ use crate::{
         status_border_active, status_ember, status_faint, status_gold, status_ink, status_muted,
         status_ready, status_teal, status_violet,
     },
+    options_domain::Device,
     options_store::PlayerOptions,
     runtime_member::EquipmentSlot,
     runtime_quest::{QuestStatus, quest_status},

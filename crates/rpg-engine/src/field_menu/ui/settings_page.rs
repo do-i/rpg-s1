@@ -109,12 +109,28 @@ pub(in crate::field_menu) fn spawn_settings_page(
             });
             spawn_status_text(
                 page,
-                "UP/DOWN   SELECT      ENTER / SPACE   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      ESC   BACK",
+                settings_page_hint(&options.bindings),
                 font,
                 15.0,
                 status_muted(),
             );
         });
+}
+
+/// The settings footer. Left and Right move between the lists through raw arrow keys, so they
+/// stay fixed. Space is shown as a second key beside the bound Confirm, which keeps the shipped
+/// text but still names it after Confirm is rebound (the table is not read for it).
+pub(in crate::field_menu) fn settings_page_hint(bindings: &InputBindings) -> String {
+    menu_hint(
+        bindings,
+        &FIELD_MENU_HINTS,
+        &[
+            (&[UP_DOWN], "SELECT"),
+            (&[CONFIRM, HintKey::Fixed("SPACE")], "TOGGLE"),
+            (&[LEFT_RIGHT], "LIST / OPTIONS"),
+            (&[BACK], "BACK"),
+        ],
+    )
 }
 
 /// Fixed width of each settings column. Wide enough for the label, subtitle, and value chip.

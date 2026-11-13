@@ -20,6 +20,7 @@ pub(in crate::field_menu) fn sync_status_page(
     game: Option<Res<GameState>>,
     walk_sheets: Res<PartyWalkSheets>,
     atlases: Res<Assets<TsxAtlasAsset>>,
+    options: Option<Res<PlayerOptions>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuStatusPage>>,
 ) {
@@ -33,7 +34,8 @@ pub(in crate::field_menu) fn sync_status_page(
             || catalog.is_changed()
             || game.as_ref().is_some_and(|game| game.is_changed())
             || atlases.is_changed()
-            || inventory.is_changed(),
+            || inventory.is_changed()
+            || options.as_ref().is_some_and(|options| options.is_changed()),
         &menu_roots,
         &pages,
         &asset_server,
@@ -48,6 +50,8 @@ pub(in crate::field_menu) fn sync_status_page(
     let portraits = StatusPortraitAssets::load(&asset_server, &root, &game);
     let thumbnails = PartyWalkThumbnails::resolve(&walk_sheets, &atlases, &game, &inventory);
     commands.entity(menu_root).with_children(|parent| {
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
         spawn_status_page(
             parent,
             &font,
@@ -59,6 +63,7 @@ pub(in crate::field_menu) fn sync_status_page(
                 thumbnails: &thumbnails,
                 inventory: Some(&inventory),
             },
+            &options.bindings,
         );
     });
 }
@@ -70,6 +75,7 @@ pub(in crate::field_menu) fn spawn_status_page(
     game: &GameState,
     catalog: &FieldMenuCatalog,
     art: &StatusPageArt<'_>,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -112,9 +118,9 @@ pub(in crate::field_menu) fn spawn_status_page(
             spawn_status_text(
                 page,
                 if state.message.is_empty() {
-                    status_hint(state)
+                    status_hint(state, bindings)
                 } else {
-                    &state.message
+                    state.message.clone()
                 },
                 font,
                 13.0,
