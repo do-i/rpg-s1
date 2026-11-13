@@ -37,7 +37,12 @@ use crate::{
 mod apothecary;
 mod core_shop;
 mod forge;
+mod kit;
 mod shop;
+
+use kit::{
+    HeaderSpec, spawn_hint_footer, spawn_workshop_header, spawn_workshop_panel, spawn_workspace,
+};
 
 #[derive(Component)]
 pub(super) struct ServiceRoot;

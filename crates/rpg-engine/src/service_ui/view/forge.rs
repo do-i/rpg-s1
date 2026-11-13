@@ -62,64 +62,19 @@ pub(super) fn spawn_header(
     game: &GameState,
     face: Option<DialoguePortrait>,
 ) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                height: px(76),
-                flex_shrink: 0.0,
-                align_items: AlignItems::Center,
-                column_gap: px(16),
-                padding: UiRect::bottom(px(15)),
-                margin: UiRect::bottom(px(16)),
-                border: UiRect::bottom(px(1)),
-                ..default()
-            },
-            BorderColor::all(status_border()),
-            Name::new("Forge header"),
-        ))
-        .with_children(|header| {
-            spawn_keeper_frame(header, font, 60.0, face);
-            header
-                .spawn(Node {
-                    flex_grow: 1.0,
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(3),
-                    ..default()
-                })
-                .with_children(|title| {
-                    spawn_status_text(title, "FORGE", font, 30.0, status_ink());
-                    spawn_status_text(
-                        title,
-                        "TEMPER GEAR FOR GP AND MATERIAL",
-                        font,
-                        11.0,
-                        status_muted(),
-                    );
-                });
-            header
-                .spawn((
-                    Node {
-                        padding: UiRect::left(px(28)),
-                        border: UiRect::left(px(1)),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::End,
-                        row_gap: px(3),
-                        ..default()
-                    },
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|wallet| {
-                    spawn_status_text(wallet, "YOUR COIN", font, 11.0, status_muted());
-                    spawn_status_text(
-                        wallet,
-                        format!("{} GP", format_shop_number(game.repository().gp())),
-                        font,
-                        26.0,
-                        status_ink(),
-                    );
-                });
-        });
+    spawn_workshop_header(
+        parent,
+        font,
+        face,
+        HeaderSpec {
+            name: "Forge header",
+            title: "FORGE",
+            subtitle: "TEMPER GEAR FOR GP AND MATERIAL",
+            bars: false,
+            wallet: format!("{} GP", format_shop_number(game.repository().gp())),
+            wallet_color: status_ink(),
+        },
+    );
 }
 
 pub(super) fn spawn_page(
@@ -133,93 +88,20 @@ pub(super) fn spawn_page(
     let listed = rows(state, catalog, game);
     let selected = state.selected.min(listed.len().saturating_sub(1));
     let in_list = state.forge_in_list && !listed.is_empty();
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                flex_grow: 1.0,
-                min_height: px(0),
-                column_gap: px(16),
-                ..default()
-            },
-            Name::new("Forge workspace"),
-        ))
-        .with_children(|columns| {
-            spawn_types(columns, font, state, catalog, game, icons, !in_list);
-            spawn_pieces(
-                columns, font, state, catalog, game, &listed, selected, in_list,
-            );
-            spawn_detail(
-                columns,
-                font,
-                state,
-                catalog,
-                game,
-                listed.get(selected).filter(|_| in_list),
-            );
-        });
-}
-
-fn spawn_panel(
-    parent: &mut ChildSpawnerCommands<'_>,
-    node: Node,
-    title: &str,
-    caption: &str,
-    font: &Handle<Font>,
-    focused: bool,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    parent
-        .spawn((
-            Node {
-                height: percent(100),
-                min_height: px(0),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::all(px(15)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(5)),
-                overflow: Overflow::clip(),
-                ..node
-            },
-            BackgroundColor(Color::srgba_u8(23, 24, 30, 240)),
-            BorderColor::all(if focused {
-                status_border_active()
-            } else {
-                status_border()
-            }),
-            Outline {
-                width: px(2),
-                offset: px(0),
-                color: if focused {
-                    status_border_active()
-                } else {
-                    Color::NONE
-                },
-            },
-            Name::new(format!("Forge {title}")),
-        ))
-        .with_children(|panel| {
-            panel
-                .spawn((
-                    Node {
-                        width: percent(100),
-                        height: px(27),
-                        flex_shrink: 0.0,
-                        justify_content: JustifyContent::SpaceBetween,
-                        align_items: AlignItems::Start,
-                        border: UiRect::bottom(px(1)),
-                        padding: UiRect::bottom(px(10)),
-                        margin: UiRect::bottom(px(12)),
-                        ..default()
-                    },
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|heading| {
-                    spawn_status_text(heading, title, font, 12.0, status_gold());
-                    spawn_status_text(heading, caption, font, 11.0, status_muted());
-                });
-            content(panel);
-        });
+    spawn_workspace(parent, "Forge workspace", |columns| {
+        spawn_types(columns, font, state, catalog, game, icons, !in_list);
+        spawn_pieces(
+            columns, font, state, catalog, game, &listed, selected, in_list,
+        );
+        spawn_detail(
+            columns,
+            font,
+            state,
+            catalog,
+            game,
+            listed.get(selected).filter(|_| in_list),
+        );
+    });
 }
 
 fn spawn_types(
@@ -231,8 +113,9 @@ fn spawn_types(
     icons: &SlotIcons,
     focused: bool,
 ) {
-    spawn_panel(
+    spawn_workshop_panel(
         parent,
+        "Forge",
         Node {
             width: px(TYPE_WIDTH),
             flex_shrink: 0.0,
@@ -241,7 +124,7 @@ fn spawn_types(
         "EQUIPMENT",
         "",
         font,
-        focused,
+        Some(focused),
         |panel| {
             // The five types always fit, so the cards share the column's full height.
             panel
@@ -343,8 +226,9 @@ fn spawn_pieces(
     focused: bool,
 ) {
     let kind = ForgeType::ALL[state.forge_type.min(ForgeType::ALL.len() - 1)];
-    spawn_panel(
+    spawn_workshop_panel(
         parent,
+        "Forge",
         Node {
             flex_grow: 1.0,
             flex_basis: px(0),
@@ -353,7 +237,7 @@ fn spawn_pieces(
         "PIECES",
         &format!("{} you carry", kind.label()),
         font,
-        focused,
+        Some(focused),
         |panel| {
             if listed.is_empty() {
                 spawn_status_text(
@@ -525,8 +409,9 @@ fn spawn_detail(
     game: &GameState,
     id: Option<&String>,
 ) {
-    spawn_panel(
+    spawn_workshop_panel(
         parent,
+        "Forge",
         Node {
             width: px(DETAIL_WIDTH),
             flex_shrink: 0.0,
@@ -540,7 +425,7 @@ fn spawn_detail(
             ""
         },
         font,
-        state.page == Some(ServicePage::ForgeConfirm),
+        Some(state.page == Some(ServicePage::ForgeConfirm)),
         |panel| {
             let Some((id, item)) = id.and_then(|id| Some((id, catalog.item(id)?))) else {
                 spawn_status_text(
@@ -841,16 +726,7 @@ pub(super) fn spawn_footer(
     } else {
         "UP/DOWN  equipment type     RIGHT / ENTER  pieces     ESC  leave forge"
     };
-    parent
-        .spawn(Node {
-            width: percent(100),
-            margin: UiRect::top(px(14)),
-            height: px(20),
-            flex_shrink: 0.0,
-            align_items: AlignItems::Center,
-            ..default()
-        })
-        .with_children(|footer| spawn_status_text(footer, hint, font, 12.0, status_muted()));
+    spawn_hint_footer(parent, font, hint);
     spawn_toast(parent, font, state);
 }
 

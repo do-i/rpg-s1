@@ -13,72 +13,19 @@ pub(super) fn spawn_header(
     game: &GameState,
     face: Option<DialoguePortrait>,
 ) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                height: px(76),
-                flex_shrink: 0.0,
-                align_items: AlignItems::Center,
-                column_gap: px(16),
-                padding: UiRect::bottom(px(15)),
-                margin: UiRect::bottom(px(16)),
-                border: UiRect::bottom(px(1)),
-                ..default()
-            },
-            BorderColor::all(status_border()),
-            Name::new("Apothecary header"),
-        ))
-        .with_children(|header| {
-            spawn_keeper_frame(header, font, 60.0, face);
-            header
-                .spawn(Node {
-                    width: px(12),
-                    height: px(42),
-                    flex_shrink: 0.0,
-                    ..default()
-                })
-                .with_children(|bars| spawn_header_bars(bars, 42.0, 0.0));
-            header
-                .spawn(Node {
-                    flex_grow: 1.0,
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(3),
-                    ..default()
-                })
-                .with_children(|title| {
-                    spawn_status_text(title, "APOTHECARY", font, 30.0, status_ink());
-                    spawn_status_text(
-                        title,
-                        "FORMULAE GATHERED, INGREDIENTS WEIGHED",
-                        font,
-                        11.0,
-                        status_muted(),
-                    );
-                });
-            header
-                .spawn((
-                    Node {
-                        padding: UiRect::left(px(28)),
-                        border: UiRect::left(px(1)),
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::End,
-                        row_gap: px(3),
-                        ..default()
-                    },
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|wallet| {
-                    spawn_status_text(wallet, "YOUR COIN", font, 11.0, status_muted());
-                    spawn_status_text(
-                        wallet,
-                        format!("{} GP", game.repository().gp()),
-                        font,
-                        26.0,
-                        status_gold(),
-                    );
-                });
-        });
+    spawn_workshop_header(
+        parent,
+        font,
+        face,
+        HeaderSpec {
+            name: "Apothecary header",
+            title: "APOTHECARY",
+            subtitle: "FORMULAE GATHERED, INGREDIENTS WEIGHED",
+            bars: true,
+            wallet: format!("{} GP", game.repository().gp()),
+            wallet_color: status_gold(),
+        },
+    );
 }
 
 pub(super) fn spawn_page(
@@ -89,199 +36,143 @@ pub(super) fn spawn_page(
     game: &GameState,
 ) {
     let rows = recipe_rows(state, catalog, game);
-    parent
-        .spawn((
+    spawn_workspace(parent, "Apothecary workspace", |columns| {
+        spawn_workshop_panel(
+            columns,
+            "Apothecary",
             Node {
-                width: percent(100),
-                flex_grow: 1.0,
-                min_height: px(0),
-                column_gap: px(16),
+                width: px(420),
+                flex_shrink: 0.0,
                 ..default()
             },
-            Name::new("Apothecary workspace"),
-        ))
-        .with_children(|columns| {
-            spawn_panel(
-                columns,
-                Node {
-                    width: px(420),
-                    flex_shrink: 0.0,
-                    ..default()
-                },
-                "FORMULAE",
-                &format!("{} collected", catalog.recipes().len()),
-                font,
-                |panel| {
-                    spawn_filters(panel, font, state.ready_recipes_only);
-                    let selected = rows
-                        .iter()
-                        .position(|&index| index == state.selected)
-                        .unwrap_or(0);
-                    let window =
-                        state
-                            .scroll
-                            .window("recipes", selected, rows.len(), VISIBLE_RECIPES);
-                    spawn_scroll_list(
-                        panel,
-                        window,
-                        Node {
-                            width: percent(100),
-                            flex_direction: FlexDirection::Column,
-                            flex_grow: 1.0,
-                            min_height: px(0),
-                            row_gap: px(7),
-                            ..default()
-                        },
-                        |cards| {
-                            if rows.is_empty() {
-                                spawn_status_text(
-                                    cards,
-                                    if state.ready_recipes_only {
-                                        "No formulae are ready to brew."
-                                    } else {
-                                        "No recipes are known."
-                                    },
-                                    font,
-                                    17.0,
-                                    status_muted(),
-                                );
-                            }
-                            for position in window.indices() {
-                                let index = rows[position];
-                                let recipe = &catalog.recipes()[index];
-                                spawn_recipe_card(
-                                    cards,
-                                    font,
-                                    recipe,
-                                    catalog,
-                                    recipe_availability(recipe, game.flags(), game.repository()),
-                                    index,
-                                    index == state.selected,
-                                );
-                            }
-                        },
-                    );
-                    panel
-                        .spawn((
-                            Node {
-                                width: percent(100),
-                                flex_shrink: 0.0,
-                                margin: UiRect::top(px(12)),
-                                padding: UiRect::top(px(10)),
-                                border: UiRect::top(px(1)),
-                                justify_content: JustifyContent::SpaceBetween,
-                                ..default()
-                            },
-                            BorderColor::all(status_border()),
-                        ))
-                        .with_children(|footer| {
-                            spawn_status_text(
-                                footer,
-                                format!(
-                                    "{:02} / {} formulae",
-                                    if rows.is_empty() { 0 } else { selected + 1 },
-                                    rows.len()
-                                ),
-                                font,
-                                11.0,
-                                status_muted(),
-                            );
-                            let shown = window.indices();
-                            spawn_status_text(
-                                footer,
-                                if rows.is_empty() {
-                                    "0 shown".to_owned()
-                                } else {
-                                    format!("{}-{} shown", shown.start + 1, shown.end)
-                                },
-                                font,
-                                11.0,
-                                status_muted(),
-                            );
-                        });
-                },
-            );
-            spawn_panel(
-                columns,
-                Node {
-                    flex_basis: px(0),
-                    flex_grow: 1.0,
-                    ..default()
-                },
-                "RECIPE",
-                if state.page == Some(ServicePage::RecipeDetail) {
-                    "Review before brewing"
-                } else {
-                    "Updates as you browse"
-                },
-                font,
-                |panel| {
-                    let Some(recipe) = rows
-                        .iter()
-                        .find(|&&index| index == state.selected)
-                        .and_then(|&index| catalog.recipes().get(index))
-                    else {
-                        spawn_status_text(
-                            panel,
-                            "Select a formula to inspect its recipe.",
-                            font,
-                            17.0,
-                            status_muted(),
-                        );
-                        return;
-                    };
-                    spawn_recipe_detail(panel, font, state, recipe, catalog, game);
-                },
-            );
-        });
-}
-
-fn spawn_panel(
-    parent: &mut ChildSpawnerCommands<'_>,
-    node: Node,
-    title: &str,
-    caption: &str,
-    font: &Handle<Font>,
-    content: impl FnOnce(&mut ChildSpawnerCommands<'_>),
-) {
-    parent
-        .spawn((
-            Node {
-                height: percent(100),
-                min_height: px(0),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::all(px(15)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(5)),
-                overflow: Overflow::clip(),
-                ..node
-            },
-            BackgroundColor(Color::srgba_u8(23, 24, 30, 240)),
-            BorderColor::all(status_border()),
-            Name::new(format!("Apothecary {title}")),
-        ))
-        .with_children(|panel| {
-            panel
-                .spawn((
+            "FORMULAE",
+            &format!("{} collected", catalog.recipes().len()),
+            font,
+            None,
+            |panel| {
+                spawn_filters(panel, font, state.ready_recipes_only);
+                let selected = rows
+                    .iter()
+                    .position(|&index| index == state.selected)
+                    .unwrap_or(0);
+                let window = state
+                    .scroll
+                    .window("recipes", selected, rows.len(), VISIBLE_RECIPES);
+                spawn_scroll_list(
+                    panel,
+                    window,
                     Node {
                         width: percent(100),
-                        height: px(27),
-                        flex_shrink: 0.0,
-                        justify_content: JustifyContent::SpaceBetween,
-                        align_items: AlignItems::Start,
-                        border: UiRect::bottom(px(1)),
-                        padding: UiRect::bottom(px(10)),
-                        margin: UiRect::bottom(px(12)),
+                        flex_direction: FlexDirection::Column,
+                        flex_grow: 1.0,
+                        min_height: px(0),
+                        row_gap: px(7),
                         ..default()
                     },
-                    BorderColor::all(status_border()),
-                ))
-                .with_children(|heading| {
-                    spawn_status_text(heading, title, font, 12.0, status_gold());
-                    spawn_status_text(heading, caption, font, 11.0, status_muted());
-                });
-            content(panel);
-        });
+                    |cards| {
+                        if rows.is_empty() {
+                            spawn_status_text(
+                                cards,
+                                if state.ready_recipes_only {
+                                    "No formulae are ready to brew."
+                                } else {
+                                    "No recipes are known."
+                                },
+                                font,
+                                17.0,
+                                status_muted(),
+                            );
+                        }
+                        for position in window.indices() {
+                            let index = rows[position];
+                            let recipe = &catalog.recipes()[index];
+                            spawn_recipe_card(
+                                cards,
+                                font,
+                                recipe,
+                                catalog,
+                                recipe_availability(recipe, game.flags(), game.repository()),
+                                index,
+                                index == state.selected,
+                            );
+                        }
+                    },
+                );
+                panel
+                    .spawn((
+                        Node {
+                            width: percent(100),
+                            flex_shrink: 0.0,
+                            margin: UiRect::top(px(12)),
+                            padding: UiRect::top(px(10)),
+                            border: UiRect::top(px(1)),
+                            justify_content: JustifyContent::SpaceBetween,
+                            ..default()
+                        },
+                        BorderColor::all(status_border()),
+                    ))
+                    .with_children(|footer| {
+                        spawn_status_text(
+                            footer,
+                            format!(
+                                "{:02} / {} formulae",
+                                if rows.is_empty() { 0 } else { selected + 1 },
+                                rows.len()
+                            ),
+                            font,
+                            11.0,
+                            status_muted(),
+                        );
+                        let shown = window.indices();
+                        spawn_status_text(
+                            footer,
+                            if rows.is_empty() {
+                                "0 shown".to_owned()
+                            } else {
+                                format!("{}-{} shown", shown.start + 1, shown.end)
+                            },
+                            font,
+                            11.0,
+                            status_muted(),
+                        );
+                    });
+            },
+        );
+        spawn_workshop_panel(
+            columns,
+            "Apothecary",
+            Node {
+                flex_basis: px(0),
+                flex_grow: 1.0,
+                ..default()
+            },
+            "RECIPE",
+            if state.page == Some(ServicePage::RecipeDetail) {
+                "Review before brewing"
+            } else {
+                "Updates as you browse"
+            },
+            font,
+            None,
+            |panel| {
+                let Some(recipe) = rows
+                    .iter()
+                    .find(|&&index| index == state.selected)
+                    .and_then(|&index| catalog.recipes().get(index))
+                else {
+                    spawn_status_text(
+                        panel,
+                        "Select a formula to inspect its recipe.",
+                        font,
+                        17.0,
+                        status_muted(),
+                    );
+                    return;
+                };
+                spawn_recipe_detail(panel, font, state, recipe, catalog, game);
+            },
+        );
+    });
 }
 
 fn spawn_filters(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, ready_only: bool) {
@@ -853,10 +744,15 @@ pub(super) fn spawn_footer(
     font: &Handle<Font>,
     state: &ServiceUiState,
 ) {
-    parent.spawn(Node { width: percent(100), margin: UiRect::top(px(14)), height: px(20), flex_shrink: 0.0, align_items: AlignItems::Center, ..default() })
-        .with_children(|footer| spawn_status_text(footer, if state.page == Some(ServicePage::RecipeDetail) {
+    spawn_hint_footer(
+        parent,
+        font,
+        if state.page == Some(ServicePage::RecipeDetail) {
             "ENTER  confirm brew     ESC  cancel review     UP/DOWN  browse"
-        } else { "UP/DOWN  browse recipes     TAB / LEFT/RIGHT  filter     ENTER  review brew     ESC  leave shop" }, font, 12.0, status_muted()));
+        } else {
+            "UP/DOWN  browse recipes     TAB / LEFT/RIGHT  filter     ENTER  review brew     ESC  leave shop"
+        },
+    );
 }
 
 #[cfg(test)]
