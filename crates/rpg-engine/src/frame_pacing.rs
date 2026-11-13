@@ -11,6 +11,10 @@
 //!
 //! Movement and enemy deltas are clamped at 0.1 s, well above a 30 Hz frame, so the cap changes
 //! smoothness, not speed.
+//!
+//! A measurement run (`--perf-report`) keeps the software cap, since that is how the game ships on
+//! such a machine, but runs unfocused at the focused rate: under a virtual display with no window
+//! manager the window never gains focus, and a 1 Hz run measures nothing useful.
 
 use std::time::Duration;
 
@@ -30,7 +34,7 @@ impl Plugin for FramePacingPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(WinitSettings {
             focused_mode: UpdateMode::Continuous,
-            unfocused_mode: UpdateMode::reactive_low_power(UNFOCUSED_WAIT),
+            unfocused_mode: unfocused_mode(UpdateMode::Continuous, false),
         })
         .add_systems(Startup, cap_software_renderer);
     }
@@ -50,19 +54,32 @@ fn focused_mode(device_type: DeviceType) -> UpdateMode {
     }
 }
 
+/// The unfocused update mode: the 1 Hz power saver, or the focused mode in a measurement run.
+fn unfocused_mode(focused: UpdateMode, measuring: bool) -> UpdateMode {
+    if measuring {
+        focused
+    } else {
+        UpdateMode::reactive_low_power(UNFOCUSED_WAIT)
+    }
+}
+
 fn cap_software_renderer(
     adapter: Option<Res<RenderAdapterInfo>>,
+    measurement: Option<Res<crate::frame_timing::PerfRun>>,
     mut settings: ResMut<WinitSettings>,
 ) {
-    let Some(adapter) = adapter else {
-        return;
-    };
-    settings.focused_mode = focused_mode(adapter.device_type);
-    if settings.focused_mode != UpdateMode::Continuous {
-        info!(
-            "Software renderer `{}`: capping the frame rate at 30 Hz to save CPU",
-            adapter.name
-        );
+    if let Some(adapter) = adapter {
+        settings.focused_mode = focused_mode(adapter.device_type);
+        if settings.focused_mode != UpdateMode::Continuous {
+            info!(
+                "Software renderer `{}`: capping the frame rate at 30 Hz to save CPU",
+                adapter.name
+            );
+        }
+    }
+    if measurement.is_some() {
+        settings.unfocused_mode = unfocused_mode(settings.focused_mode, true);
+        info!("Measurement run: the unfocused window updates at the focused rate");
     }
 }
 
@@ -91,6 +108,20 @@ mod tests {
         };
         assert_eq!(wait, SOFTWARE_FRAME);
         assert!(!react_to_device_events && !react_to_user_events && !react_to_window_events);
+    }
+
+    #[test]
+    fn only_a_measurement_run_lifts_the_unfocused_throttle_and_it_keeps_the_cap() {
+        let capped = focused_mode(DeviceType::Cpu);
+        assert_eq!(
+            unfocused_mode(capped, false),
+            UpdateMode::reactive_low_power(UNFOCUSED_WAIT)
+        );
+        assert_eq!(
+            unfocused_mode(UpdateMode::Continuous, false),
+            UpdateMode::reactive_low_power(UNFOCUSED_WAIT)
+        );
+        assert_eq!(unfocused_mode(capped, true), capped);
     }
 
     #[test]

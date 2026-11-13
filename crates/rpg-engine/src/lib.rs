@@ -174,6 +174,7 @@ pub fn run_with_game_version(game_version: &str) -> std::process::ExitCode {
 }
 
 fn run_game(arguments: cli::PlayArguments) {
+    let launched = std::time::Instant::now();
     let asset_base = cli::production_asset_base();
     let inventory = ScenarioInventory::discover(&asset_base, &arguments.root);
     let settings = EngineSettings::load(&asset_base);
@@ -288,6 +289,16 @@ fn run_game(arguments: cli::PlayArguments) {
     }
     if let Some(debug) = arguments.debug {
         app.insert_resource(debug);
+    }
+    if let Some(perf) = arguments.perf {
+        // Before `FrameTimingPlugin`, whose `init_resource` then keeps the recording timings.
+        app.insert_resource(frame_timing::PerfRun::new(
+            perf.report,
+            arguments.seed,
+            launched,
+        ))
+        .insert_resource(input_record::ScriptedInput::new(perf.script, launched))
+        .add_plugins(frame_timing::PerfRunPlugin);
     }
     if arguments.timings {
         app.add_plugins(FrameTimingPlugin);

@@ -16,7 +16,7 @@ use crate::{
     debug_launch::validate_debug_launch,
     dialogue_sweep::{DialogueTraversalReport, build_dialogue_traversal_sweep},
     encounter_sweep::{EncounterSweepReport, build_encounter_sweep},
-    input_record::{InputAutomation, InputRecord, RecordSource},
+    input_record::{InputAutomation, InputRecord, InputScript, RecordSource},
     runtime_map_sweep::{RuntimeMapSweepReport, build_runtime_map_sweep},
     scenario_cross_reference::ScenarioValidationReport,
     scenario_dialogue_report::{DialogueReport, build_dialogue_report},
@@ -55,14 +55,24 @@ where
     }
 
     match command {
-        Command::Play(arguments) => {
-            if let Err(error) = prepare_debug_launch(collection_root, &arguments) {
+        Command::Play(mut arguments) => {
+            if let Err(error) = prepare_debug_launch(collection_root, &arguments)
+                .and_then(|()| prepare_perf_script(&mut arguments))
+            {
                 let _ = writeln!(stderr, "error: {error}");
                 return EXIT_VALIDATION_FAILED;
             }
             let _ = writeln!(stdout, "Gameplay seed: {}", arguments.seed);
             if arguments.timings {
                 let _ = writeln!(stdout, "Per-system frame timing: enabled");
+            }
+            if let Some(perf) = arguments.perf.as_ref() {
+                let _ = writeln!(
+                    stdout,
+                    "Perf measurement: script {}, report {}",
+                    perf.script_path.display(),
+                    perf.report.display()
+                );
             }
             write_debug_log(stdout, arguments.debug.as_ref());
             launch_bevy_app(arguments);
@@ -287,9 +297,25 @@ fn prepare_replay(
         timings: false,
         debug: record.debug.clone(),
         automation: Some(InputAutomation::replay(input.to_owned(), record)),
+        perf: None,
     };
     prepare_debug_launch(collection_root, &play)?;
     Ok(play)
+}
+
+fn prepare_perf_script(play: &mut PlayArguments) -> Result<(), String> {
+    let Some(perf) = play.perf.as_mut() else {
+        return Ok(());
+    };
+    let text = fs::read_to_string(&perf.script_path).map_err(|error| {
+        format!(
+            "could not read perf script `{}`: {error}",
+            perf.script_path.display()
+        )
+    })?;
+    perf.script = InputScript::parse(&text)
+        .map_err(|error| format!("perf script `{}`: {error}", perf.script_path.display()))?;
+    Ok(())
 }
 
 fn prepare_debug_launch(collection_root: &Path, play: &PlayArguments) -> Result<(), String> {

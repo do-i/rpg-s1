@@ -1,6 +1,6 @@
 //! Versioned, physical-key-independent gameplay input records.
 
-use std::{error::Error, fmt, fs, path::PathBuf};
+use std::{error::Error, fmt, fs, path::PathBuf, time::Instant};
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -243,6 +243,307 @@ impl Plugin for InputRecordPlugin {
         app.add_systems(PreUpdate, apply_replay_actions.after(update_action_state))
             .add_systems(Last, (checkpoint_action_frame, advance_frame).chain());
     }
+}
+
+/// Longest a blocking script step may wait before the run is declared stuck: 60 s at 30 Hz.
+const SCRIPT_WAIT_LIMIT_FRAMES: u64 = 1_800;
+
+/// One step of a measurement input script.
+///
+/// A recorded replay keys every action to an exact logical frame and checks a state hash there,
+/// so it can only be produced interactively and diverges as soon as asset loading takes a
+/// different number of frames. A script instead waits on observable conditions, then injects the
+/// same normalized actions a replay would. It is for measurement runs, not for determinism checks.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ScriptStep {
+    /// `wait_state STATE`: block until the top-level application state is `STATE`.
+    WaitState(AppState),
+    /// `wait_map MAP_ID`: block until the session's current map is `MAP_ID`.
+    WaitMap(String),
+    /// `wait_text TEXT`: block until some UI or world text contains `TEXT`.
+    WaitText(String),
+    /// `wait FRAMES`: block for that many frames.
+    WaitFrames(u64),
+    /// `press ACTION...`: inject the actions for one frame.
+    Press(Vec<NormalizedAction>),
+    /// `hold FRAMES ACTION...`: inject the actions on that many consecutive frames.
+    Hold(u64, Vec<NormalizedAction>),
+    /// `measure FRAMES`: open the measurement window; later steps keep running inside it.
+    Measure(u64),
+    /// `dump_text`: print every text on screen, for authoring a `wait_text`.
+    DumpText,
+}
+
+/// A parsed measurement input script, one step per non-empty, non-comment line.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct InputScript {
+    pub(crate) steps: Vec<(usize, String, ScriptStep)>,
+}
+
+impl InputScript {
+    pub(crate) fn parse(text: &str) -> Result<Self, String> {
+        let mut steps = Vec::new();
+        for (index, raw) in text.lines().enumerate() {
+            let line_number = index + 1;
+            let line = raw.split('#').next().unwrap_or_default().trim();
+            if line.is_empty() {
+                continue;
+            }
+            let step = parse_script_step(line)
+                .map_err(|error| format!("script line {line_number} `{line}`: {error}"))?;
+            steps.push((line_number, line.to_owned(), step));
+        }
+        let measures = steps
+            .iter()
+            .filter(|(_, _, step)| matches!(step, ScriptStep::Measure(_)))
+            .count();
+        if measures != 1 {
+            return Err(format!(
+                "script must contain exactly one `measure FRAMES` step, found {measures}"
+            ));
+        }
+        Ok(Self { steps })
+    }
+}
+
+fn parse_script_step(line: &str) -> Result<ScriptStep, String> {
+    let (verb, rest) = line.split_once(char::is_whitespace).unwrap_or((line, ""));
+    let rest = rest.trim();
+    let frames = |value: &str| -> Result<u64, String> {
+        value
+            .parse::<u64>()
+            .ok()
+            .filter(|frames| *frames > 0)
+            .ok_or_else(|| format!("`{value}` is not a positive frame count"))
+    };
+    let actions = |words: &str| -> Result<Vec<NormalizedAction>, String> {
+        let mut parsed = words
+            .split_whitespace()
+            .map(|word| {
+                serde_yaml_ng::from_str::<NormalizedAction>(word)
+                    .map_err(|_| format!("unknown action `{word}`"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if parsed.is_empty() {
+            return Err("at least one action is required".to_owned());
+        }
+        parsed.sort();
+        parsed.dedup();
+        Ok(parsed)
+    };
+    match verb {
+        "wait_state" => parse_app_state(rest)
+            .map(ScriptStep::WaitState)
+            .ok_or_else(|| format!("unknown application state `{rest}`")),
+        "wait_map" if !rest.is_empty() => Ok(ScriptStep::WaitMap(rest.to_owned())),
+        "wait_text" if !rest.is_empty() => Ok(ScriptStep::WaitText(rest.to_owned())),
+        "wait" => frames(rest).map(ScriptStep::WaitFrames),
+        "press" => actions(rest).map(ScriptStep::Press),
+        "hold" => {
+            let (count, words) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+            Ok(ScriptStep::Hold(frames(count)?, actions(words)?))
+        }
+        "measure" => frames(rest).map(ScriptStep::Measure),
+        "dump_text" if rest.is_empty() => Ok(ScriptStep::DumpText),
+        _ => Err("unknown or incomplete step".to_owned()),
+    }
+}
+
+fn parse_app_state(name: &str) -> Option<AppState> {
+    [
+        AppState::Boot,
+        AppState::Title,
+        AppState::NameEntry,
+        AppState::Dialogue,
+        AppState::World,
+        AppState::Battle,
+        AppState::FieldMenu,
+        AppState::PostBattle,
+        AppState::GameOver,
+        AppState::Credits,
+        AppState::Options,
+    ]
+    .into_iter()
+    .find(|state| format!("{state:?}") == name)
+}
+
+/// What the run looked like when one script step finished, kept as evidence that it did its job.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ScriptTraceEntry {
+    pub(crate) frame: u64,
+    /// Milliseconds since the game launcher started.
+    pub(crate) elapsed_ms: u64,
+    pub(crate) line: usize,
+    pub(crate) step: String,
+    pub(crate) app_state: String,
+    pub(crate) map: String,
+}
+
+/// Drives a measurement run from an [`InputScript`]; inserted only by the perf measurement mode.
+#[derive(Debug, Resource)]
+pub(crate) struct ScriptedInput {
+    script: InputScript,
+    launched: Instant,
+    cursor: usize,
+    waited: u64,
+    frame: u64,
+    pub(crate) trace: Vec<ScriptTraceEntry>,
+    pub(crate) failure: Option<String>,
+    pub(crate) measure_request: Option<u64>,
+}
+
+impl ScriptedInput {
+    pub(crate) fn new(script: InputScript, launched: Instant) -> Self {
+        Self {
+            script,
+            launched,
+            cursor: 0,
+            waited: 0,
+            frame: 0,
+            trace: Vec::new(),
+            failure: None,
+            measure_request: None,
+        }
+    }
+
+    pub(crate) fn remaining_steps(&self) -> usize {
+        self.script.steps.len() - self.cursor
+    }
+}
+
+/// What a script step can observe this frame.
+struct ScriptView<'a> {
+    app_state: Option<AppState>,
+    map: Option<&'a str>,
+    texts: Vec<&'a str>,
+}
+
+enum StepOutcome {
+    /// The step finished; the next one may run this frame.
+    Done,
+    /// The step finished and used this frame's input.
+    DoneThisFrame(Vec<NormalizedAction>),
+    /// The step is still running and injects these actions this frame.
+    Blocked(Vec<NormalizedAction>),
+}
+
+impl ScriptedInput {
+    /// Advances the script by one frame and returns the actions to inject.
+    fn step(&mut self, view: &ScriptView<'_>, elapsed_ms: u64) -> Vec<NormalizedAction> {
+        self.frame += 1;
+        if self.failure.is_some() {
+            return Vec::new();
+        }
+        while let Some((line, text, step)) = self.script.steps.get(self.cursor).cloned() {
+            let outcome = match &step {
+                ScriptStep::WaitState(target) => self.wait(view.app_state == Some(*target)),
+                ScriptStep::WaitMap(target) => self.wait(view.map == Some(target.as_str())),
+                ScriptStep::WaitText(target) => self.wait(
+                    view.texts
+                        .iter()
+                        .any(|candidate| candidate.contains(target.as_str())),
+                ),
+                ScriptStep::WaitFrames(frames) => {
+                    if self.waited < *frames {
+                        self.waited += 1;
+                        Ok(StepOutcome::Blocked(Vec::new()))
+                    } else {
+                        Ok(StepOutcome::Done)
+                    }
+                }
+                ScriptStep::Press(actions) => Ok(StepOutcome::DoneThisFrame(actions.clone())),
+                ScriptStep::Hold(frames, actions) => {
+                    self.waited += 1;
+                    if self.waited < *frames {
+                        Ok(StepOutcome::Blocked(actions.clone()))
+                    } else {
+                        Ok(StepOutcome::DoneThisFrame(actions.clone()))
+                    }
+                }
+                ScriptStep::Measure(frames) => {
+                    self.measure_request = Some(*frames);
+                    Ok(StepOutcome::Done)
+                }
+                ScriptStep::DumpText => {
+                    for text in &view.texts {
+                        println!("Perf text: {text}");
+                    }
+                    Ok(StepOutcome::Done)
+                }
+            };
+            let outcome = match outcome {
+                Ok(outcome) => outcome,
+                Err(error) => {
+                    let message = format!("script line {line} `{text}`: {error}");
+                    eprintln!("Perf script failed: {message}");
+                    self.failure = Some(message);
+                    return Vec::new();
+                }
+            };
+            match outcome {
+                StepOutcome::Blocked(actions) => return actions,
+                StepOutcome::Done | StepOutcome::DoneThisFrame(_) => {
+                    self.trace.push(ScriptTraceEntry {
+                        frame: self.frame,
+                        elapsed_ms,
+                        line,
+                        step: text,
+                        app_state: view
+                            .app_state
+                            .map_or_else(|| "Uninitialized".to_owned(), |s| format!("{s:?}")),
+                        map: view.map.unwrap_or("-").to_owned(),
+                    });
+                    self.cursor += 1;
+                    self.waited = 0;
+                    if let StepOutcome::DoneThisFrame(actions) = outcome {
+                        return actions;
+                    }
+                }
+            }
+        }
+        Vec::new()
+    }
+
+    fn wait(&mut self, satisfied: bool) -> Result<StepOutcome, String> {
+        if satisfied {
+            return Ok(StepOutcome::Done);
+        }
+        self.waited += 1;
+        if self.waited > SCRIPT_WAIT_LIMIT_FRAMES {
+            return Err(format!(
+                "condition not met within {SCRIPT_WAIT_LIMIT_FRAMES} frames"
+            ));
+        }
+        Ok(StepOutcome::Blocked(Vec::new()))
+    }
+}
+
+/// Registered by the measurement mode only, so ordinary play has no extra system.
+pub(crate) fn apply_scripted_actions(
+    mut actions: ResMut<ActionState>,
+    mut script: ResMut<ScriptedInput>,
+    state: Option<Res<State<AppState>>>,
+    game: Option<Res<GameState>>,
+    ui_texts: Query<&Text>,
+    world_texts: Query<&Text2d>,
+) {
+    let view = ScriptView {
+        app_state: state.map(|state| *state.get()),
+        map: game
+            .as_deref()
+            .and_then(|game| game.map().current())
+            .map(|map| map.as_str()),
+        texts: ui_texts
+            .iter()
+            .map(|text| text.0.as_str())
+            .chain(world_texts.iter().map(|text| text.0.as_str()))
+            .collect(),
+    };
+    let elapsed_ms = script.launched.elapsed().as_millis() as u64;
+    let injected = script.step(&view, elapsed_ms);
+    // Like a replay, a scripted run ignores the physical devices so nothing outside the script
+    // can steer it.
+    actions.replace_with_normalized(&injected);
 }
 
 fn apply_replay_actions(
@@ -735,5 +1036,133 @@ mod tests {
         );
 
         fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn measurement_script_parses_steps_and_requires_one_window() {
+        let script = InputScript::parse(
+            "# idle in town\n\
+             wait_state World\n\
+             wait_map town_01_ardel  # arrival\n\
+             \n\
+             measure 300\n\
+             press move_up confirm move_up\n\
+             hold 20 move_left\n\
+             wait_text PARTY COMMAND DECK\n\
+             wait 5\n\
+             dump_text\n",
+        )
+        .unwrap();
+        let steps: Vec<_> = script
+            .steps
+            .iter()
+            .map(|(line, _, step)| (*line, step.clone()))
+            .collect();
+        assert_eq!(
+            steps,
+            [
+                (2, ScriptStep::WaitState(AppState::World)),
+                (3, ScriptStep::WaitMap("town_01_ardel".to_owned())),
+                (5, ScriptStep::Measure(300)),
+                (
+                    6,
+                    ScriptStep::Press(vec![NormalizedAction::Confirm, NormalizedAction::MoveUp])
+                ),
+                (7, ScriptStep::Hold(20, vec![NormalizedAction::MoveLeft])),
+                (8, ScriptStep::WaitText("PARTY COMMAND DECK".to_owned())),
+                (9, ScriptStep::WaitFrames(5)),
+                (10, ScriptStep::DumpText),
+            ]
+        );
+
+        for (document, error) in [
+            (
+                "wait_state World\n",
+                "exactly one `measure FRAMES` step, found 0",
+            ),
+            (
+                "measure 5\nmeasure 5\n",
+                "exactly one `measure FRAMES` step, found 2",
+            ),
+            ("measure 0\n", "`0` is not a positive frame count"),
+            (
+                "measure 5\nwait_state Sleeping\n",
+                "unknown application state `Sleeping`",
+            ),
+            ("measure 5\npress jump\n", "unknown action `jump`"),
+            ("measure 5\nhold 3\n", "at least one action is required"),
+            ("measure 5\nteleport\n", "unknown or incomplete step"),
+        ] {
+            let message = InputScript::parse(document).unwrap_err();
+            assert!(message.contains(error), "{document:?}: {message}");
+        }
+    }
+
+    fn view(app_state: AppState, map: Option<&str>) -> ScriptView<'_> {
+        ScriptView {
+            app_state: Some(app_state),
+            map,
+            texts: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn scripted_input_waits_on_conditions_then_injects_actions_frame_by_frame() {
+        let script = InputScript::parse(
+            "wait_state World\nmeasure 10\npress back\nhold 2 move_up\nwait 1\npress confirm\n",
+        )
+        .unwrap();
+        let mut runner = ScriptedInput::new(script, Instant::now());
+
+        assert_eq!(runner.step(&view(AppState::Boot, None), 0), []);
+        assert_eq!(runner.measure_request, None);
+        // The wait and the measure finish on the same frame as the first press.
+        assert_eq!(
+            runner.step(&view(AppState::World, Some("town")), 0),
+            [NormalizedAction::Back]
+        );
+        assert_eq!(runner.measure_request, Some(10));
+        let world = view(AppState::World, Some("town"));
+        assert_eq!(runner.step(&world, 0), [NormalizedAction::MoveUp]);
+        assert_eq!(runner.step(&world, 0), [NormalizedAction::MoveUp]);
+        assert_eq!(runner.step(&world, 0), []);
+        assert_eq!(runner.step(&world, 0), [NormalizedAction::Confirm]);
+        assert_eq!(runner.step(&world, 0), []);
+        assert_eq!(runner.remaining_steps(), 0);
+        assert_eq!(runner.failure, None);
+        let traced: Vec<_> = runner
+            .trace
+            .iter()
+            .map(|entry| (entry.frame, entry.step.as_str(), entry.app_state.as_str()))
+            .collect();
+        assert_eq!(
+            traced,
+            [
+                (2, "wait_state World", "World"),
+                (2, "measure 10", "World"),
+                (2, "press back", "World"),
+                (4, "hold 2 move_up", "World"),
+                (6, "wait 1", "World"),
+                (6, "press confirm", "World"),
+            ]
+        );
+    }
+
+    #[test]
+    fn scripted_input_fails_a_wait_that_never_comes_true() {
+        let script = InputScript::parse("measure 5\nwait_text Victory\n").unwrap();
+        let mut runner = ScriptedInput::new(script, Instant::now());
+        let mut title = view(AppState::Title, None);
+        title.texts = vec!["New Game"];
+        for _ in 0..=SCRIPT_WAIT_LIMIT_FRAMES {
+            assert_eq!(runner.step(&title, 0), []);
+        }
+        assert!(
+            runner
+                .failure
+                .as_deref()
+                .unwrap()
+                .contains("line 2 `wait_text Victory`: condition not met")
+        );
+        assert_eq!(runner.remaining_steps(), 1);
     }
 }

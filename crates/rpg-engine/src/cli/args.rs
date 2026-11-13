@@ -5,11 +5,11 @@ use std::{ffi::OsString, fmt, path::PathBuf};
 use crate::{
     debug_launch::{DebugBattleFixture, DebugLaunchConfig, DebugPartyPreset},
     gameplay_rng::DEFAULT_GAMEPLAY_SEED,
-    input_record::InputAutomation,
+    input_record::{InputAutomation, InputScript},
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, ScenarioRoot},
 };
 
-pub(crate) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.\n  RPG_S1_SAVE_DIR                Save directory; must not be empty. Overrides the XDG_DATA_HOME and HOME defaults.\n  RPG_S1_CONFIG_DIR              Options directory; must not be empty. Overrides the XDG_CONFIG_HOME and HOME defaults.";
+pub(crate) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [--perf-script SCRIPT --perf-report PATH] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. --perf-script drives the run from a measurement script of one step per line (wait_state STATE, wait_map MAP_ID, wait_text TEXT, wait FRAMES, press ACTION..., hold FRAMES ACTION..., measure FRAMES, dump_text) and --perf-report writes its frame-time percentiles, CPU time and peak memory to PATH, then exits; the unfocused window runs at the focused rate for that run only. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.\n  RPG_S1_SAVE_DIR                Save directory; must not be empty. Overrides the XDG_DATA_HOME and HOME defaults.\n  RPG_S1_CONFIG_DIR              Options directory; must not be empty. Overrides the XDG_CONFIG_HOME and HOME defaults.";
 
 pub(super) enum Command {
     Play(PlayArguments),
@@ -35,6 +35,16 @@ pub(crate) struct PlayArguments {
     pub(crate) timings: bool,
     pub(crate) debug: Option<DebugLaunchConfig>,
     pub(crate) automation: Option<InputAutomation>,
+    pub(crate) perf: Option<PerfLaunch>,
+}
+
+/// Measurement mode from `--perf-script` and `--perf-report`. The executor reads and parses the
+/// script into `script` before launch; parsing here never touches the filesystem.
+#[derive(Debug)]
+pub(crate) struct PerfLaunch {
+    pub(crate) script_path: PathBuf,
+    pub(crate) report: PathBuf,
+    pub(crate) script: InputScript,
 }
 
 /// Validated `validate-scenario` options.
@@ -82,9 +92,15 @@ pub(super) fn parse_command(
             Ok(Command::Help)
         }
         [command, output, rest @ ..] if command == "record" && !output.starts_with('-') => {
+            let play = parse_play_arguments(rest)?;
+            if play.perf.is_some() {
+                return Err(UsageError(
+                    "record does not take --perf-script or --perf-report".to_owned(),
+                ));
+            }
             Ok(Command::Record {
                 output: PathBuf::from(output),
-                play: parse_play_arguments(rest)?,
+                play,
             })
         }
         [command, ..] if command == "record" => {
@@ -244,6 +260,7 @@ fn default_play_arguments() -> PlayArguments {
         timings: false,
         debug: None,
         automation: None,
+        perf: None,
     }
 }
 
@@ -287,6 +304,8 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
     let mut package = None;
     let mut seed = None;
     let mut timings = false;
+    let mut perf_script = None;
+    let mut perf_report = None;
     let mut start_map = None;
     let mut start_position = None;
     let mut party_preset = None;
@@ -308,6 +327,21 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
                 }
             }
             "--timings" if !timings => timings = true,
+            option @ ("--perf-script" | "--perf-report") => {
+                index += 1;
+                let value = arguments
+                    .get(index)
+                    .filter(|value| !value.is_empty())
+                    .ok_or_else(|| UsageError(format!("{option} requires a PATH")))?;
+                let slot = if option == "--perf-script" {
+                    &mut perf_script
+                } else {
+                    &mut perf_report
+                };
+                if slot.replace(PathBuf::from(value)).is_some() {
+                    return Err(UsageError(format!("{option} may appear only once")));
+                }
+            }
             "--start-map" => {
                 index += 1;
                 let value = arguments
@@ -438,6 +472,19 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
             Some(_) => {}
         }
     }
+    let perf = match (perf_script, perf_report) {
+        (Some(script_path), Some(report)) => Some(PerfLaunch {
+            script_path,
+            report,
+            script: InputScript::default(),
+        }),
+        (None, None) => None,
+        _ => {
+            return Err(UsageError(
+                "--perf-script and --perf-report must be supplied together".to_owned(),
+            ));
+        }
+    };
     let debug = DebugLaunchConfig {
         start_map,
         start_position,
@@ -451,6 +498,7 @@ fn parse_play_arguments(arguments: &[String]) -> Result<PlayArguments, UsageErro
         timings,
         debug: debug.is_active().then_some(debug),
         automation: None,
+        perf,
     })
 }
 
@@ -476,6 +524,72 @@ pub(super) const fn battle_fixture_label(fixture: DebugBattleFixture) -> &'stati
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn arguments(words: &[&str]) -> Vec<OsString> {
+        words.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn perf_options_come_as_a_pair_on_play_only() {
+        let Ok(Command::Play(play)) = parse_command(arguments(&[
+            "play",
+            "--perf-script",
+            "idle.script",
+            "--start-map",
+            "town_01",
+            "--start-position",
+            "1,2",
+            "--perf-report",
+            "idle.txt",
+        ])) else {
+            panic!("a perf pair should parse as play");
+        };
+        let perf = play.perf.expect("perf mode should be selected");
+        assert_eq!(perf.script_path, PathBuf::from("idle.script"));
+        assert_eq!(perf.report, PathBuf::from("idle.txt"));
+        assert!(play.debug.is_some());
+
+        let Ok(Command::Play(plain)) = parse_command(arguments(&["play"])) else {
+            unreachable!()
+        };
+        assert!(plain.perf.is_none());
+
+        for (words, error) in [
+            (
+                vec!["play", "--perf-script", "a"],
+                "--perf-script and --perf-report must be supplied together",
+            ),
+            (
+                vec!["play", "--perf-report", "a"],
+                "--perf-script and --perf-report must be supplied together",
+            ),
+            (
+                vec!["play", "--perf-report"],
+                "--perf-report requires a PATH",
+            ),
+            (
+                vec!["play", "--perf-script", "a", "--perf-script", "b"],
+                "--perf-script may appear only once",
+            ),
+            (
+                vec![
+                    "record",
+                    "out.yaml",
+                    "--perf-script",
+                    "a",
+                    "--perf-report",
+                    "b",
+                ],
+                "record does not take --perf-script or --perf-report",
+            ),
+        ] {
+            assert_eq!(
+                parse_command(arguments(&words)).err(),
+                Some(UsageError(error.to_owned())),
+                "{words:?}"
+            );
+        }
+    }
 
     #[test]
     fn baseline_requires_a_path_and_the_package_key_may_come_either_side_of_it() {
