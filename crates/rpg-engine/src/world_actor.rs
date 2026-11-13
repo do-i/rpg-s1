@@ -204,6 +204,17 @@ fn reset_world_actors(mut state: ResMut<WorldActorState>) {
     *state = WorldActorState::default();
 }
 
+/// Compares the active flags with the remembered copy without allocating.
+fn flags_match(game: Option<&GameState>, remembered: &[String]) -> bool {
+    match game {
+        Some(game) => game
+            .flags()
+            .iter()
+            .eq(remembered.iter().map(String::as_str)),
+        None => remembered.is_empty(),
+    }
+}
+
 fn sync_world_actor_request(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -217,13 +228,13 @@ fn sync_world_actor_request(
         .as_deref()
         .and_then(|game| game.map().current())
         .map(|map| map.as_str());
+    if current == state.map_id.as_deref() && flags_match(game.as_deref(), &state.flags) {
+        return;
+    }
     let flags = game
         .as_deref()
         .map(|game| game.flags().iter().map(str::to_owned).collect::<Vec<_>>())
         .unwrap_or_default();
-    if current == state.map_id.as_deref() && flags == state.flags {
-        return;
-    }
 
     for entity in &actors {
         commands.entity(entity).despawn();
@@ -810,6 +821,21 @@ mod tests {
         let state = app.world().resource::<WorldActorState>();
         assert_eq!(state.status, WorldActorStatus::Failed);
         assert_eq!(state.failure.as_deref(), Some("sentinel"));
+    }
+
+    #[test]
+    fn flag_comparison_detects_set_unset_and_swapped_flags_without_a_copy() {
+        let game = crate::field_menu_domain::tests::game(["a", "b"]);
+        let same = ["a".to_owned(), "b".to_owned()];
+        assert!(flags_match(Some(&game), &same));
+        assert!(!flags_match(Some(&game), &same[..1]));
+        assert!(!flags_match(
+            Some(&game),
+            &["a".to_owned(), "b".to_owned(), "c".to_owned()]
+        ));
+        assert!(!flags_match(Some(&game), &["a".to_owned(), "c".to_owned()]));
+        assert!(flags_match(None, &[]));
+        assert!(!flags_match(None, &same));
     }
 
     #[test]
