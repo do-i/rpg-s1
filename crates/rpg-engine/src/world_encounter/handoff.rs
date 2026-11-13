@@ -16,6 +16,7 @@ use crate::{
     scenario_balance::BalanceData,
     scenario_encounter::EncounterZone,
     scenario_map::MapMetadata,
+    scenario_new_game_assets::ActiveNewGameInputs,
     world_player::{WorldPlayer, WorldPlayerMotion},
 };
 
@@ -86,14 +87,15 @@ pub(super) fn cleanup_battle_flash_overlay(
     }
 }
 
-/// Resolves the loaded scenario's battle balance, falling back to the built-in defaults when no
-/// balance asset is present (the same pattern `update_world_enemies` uses for spawner values).
+/// Resolves the active scenario's battle balance, falling back to the built-in defaults when its
+/// balance asset is not loaded (the same pattern `update_world_enemies` uses for spawner values).
 pub(super) fn resolve_battle_balance(
+    active: &ActiveNewGameInputs,
     balances: &Assets<BalanceData>,
 ) -> rpg_content::scenario_balance::BattleBalance {
-    balances.iter().next().map_or_else(
+    active.balance(balances).map_or_else(
         || BalanceData::default().battle,
-        |(_, balance)| balance.battle.clone(),
+        |balance| balance.battle.clone(),
     )
 }
 
@@ -110,6 +112,7 @@ pub(super) fn detect_enemy_contact(
     zones: Res<Assets<EncounterZone>>,
     metadata_assets: Res<Assets<MapMetadata>>,
     balances: Res<Assets<BalanceData>>,
+    active: Res<ActiveNewGameInputs>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
     mut battle_transition: ResMut<BattleTransition>,
@@ -186,7 +189,7 @@ pub(super) fn detect_enemy_contact(
         game.party(),
         game.repository(),
         game.flags(),
-        &resolve_battle_balance(&balances),
+        &resolve_battle_balance(&active, &balances),
         contact.boss,
         context,
     ) {
@@ -246,6 +249,7 @@ pub(super) fn start_scripted_battle(
     zones: Res<Assets<EncounterZone>>,
     metadata_assets: Res<Assets<MapMetadata>>,
     balances: Res<Assets<BalanceData>>,
+    active: Res<ActiveNewGameInputs>,
     mut state: ResMut<WorldEncounterState>,
     mut battle_transition: ResMut<BattleTransition>,
     enemies: Query<&WorldEnemy>,
@@ -325,7 +329,7 @@ pub(super) fn start_scripted_battle(
         game.party(),
         game.repository(),
         game.flags(),
-        &resolve_battle_balance(&balances),
+        &resolve_battle_balance(&active, &balances),
         context,
     ) {
         Ok(entry) => entry,
@@ -406,6 +410,20 @@ pub(super) fn update_battle_flash_overlay(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn battle_balance_comes_from_the_active_asset_not_the_first_loaded() {
+        let mut balances = Assets::<BalanceData>::default();
+        let mut decoy = BalanceData::default();
+        decoy.battle.mc_break_percent = 1;
+        let mut active = BalanceData::default();
+        active.battle.mc_break_percent = 2;
+        balances.add(decoy);
+        let handle = balances.add(active);
+        let active = ActiveNewGameInputs::with_balance_handle(handle);
+        let resolved = resolve_battle_balance(&active, &balances);
+        assert_eq!(resolved.mc_break_percent, 2);
+    }
 
     #[test]
     fn transition_accepts_exactly_one_request_and_locks_input() {

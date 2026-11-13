@@ -12,7 +12,8 @@ use rpg_content::scenario_balance::{BalanceData, MpRegenBalance};
 
 use crate::{
     app_state::AppState, game_state::GameState, runtime_member::RuntimeMember,
-    world_encounter::WorldEncounterState, world_player::WorldPlayerMotion,
+    scenario_new_game_assets::ActiveNewGameInputs, world_encounter::WorldEncounterState,
+    world_player::WorldPlayerMotion,
 };
 
 const STEP_PIXELS: f32 = 32.0;
@@ -119,6 +120,7 @@ fn reset_mp_regen_clock(mut clock: ResMut<MpRegenClock>) {
 fn regenerate_party_mana(
     time: Res<Time>,
     balances: Res<Assets<BalanceData>>,
+    active: Res<ActiveNewGameInputs>,
     encounters: Option<Res<WorldEncounterState>>,
     players: Query<&WorldPlayerMotion>,
     game: Option<ResMut<GameState>>,
@@ -133,9 +135,9 @@ fn regenerate_party_mana(
     let Some(map_id) = game.map().current().map(|map| map.as_str().to_owned()) else {
         return;
     };
-    let balance = balances.iter().next().map_or_else(
+    let balance = active.balance(&balances).map_or_else(
         || BalanceData::default().mp_regen,
-        |(_, balance)| balance.mp_regen.clone(),
+        |balance| balance.mp_regen.clone(),
     );
     let safe = encounters
         .as_deref()

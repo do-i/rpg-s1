@@ -43,7 +43,7 @@ fn fixture(phase: BattlePhase) -> App {
         },
     };
     let mut balances = Assets::<BalanceData>::default();
-    balances.add(fixture_balance());
+    let balance_handle = balances.add(fixture_balance());
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(StatesPlugin)
@@ -51,6 +51,7 @@ fn fixture(phase: BattlePhase) -> App {
         .add_plugins(AppStateTransitionPlugin)
         .add_message::<PlaySfx>()
         .insert_resource(balances)
+        .insert_resource(ActiveNewGameInputs::with_balance_handle(balance_handle))
         .insert_resource(FieldMenuCatalog::production_class_fixture())
         .insert_resource(ActionState::default())
         .insert_resource(deck::BattleDeck::default())

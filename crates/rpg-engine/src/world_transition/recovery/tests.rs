@@ -123,6 +123,7 @@ impl Fixture {
             .init_asset::<AudioSource>()
             .register_asset_loader(bevy::audio::AudioLoader)
             .init_asset::<BalanceData>()
+            .init_resource::<crate::scenario_new_game_assets::ActiveNewGameInputs>()
             .init_asset::<SfxIndex>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<FieldMenuCatalog>()

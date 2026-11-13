@@ -66,6 +66,25 @@ struct NewGameHandles {
     intro_path: String,
 }
 
+#[cfg(test)]
+impl ActiveNewGameInputs {
+    /// Test seam: an active scenario that names only its balance handle.
+    pub(crate) fn with_balance_handle(balance: Handle<BalanceData>) -> Self {
+        Self {
+            status: ActiveNewGameInputsStatus::Ready,
+            handles: Some(NewGameHandles {
+                party: Handle::default(),
+                balance,
+                intro: Handle::default(),
+                party_path: String::new(),
+                balance_path: String::new(),
+                intro_path: String::new(),
+            }),
+            failure: None,
+        }
+    }
+}
+
 impl Default for ActiveNewGameInputs {
     fn default() -> Self {
         Self {
@@ -86,6 +105,11 @@ pub struct NewGameInputs<'a> {
 impl ActiveNewGameInputs {
     pub const fn status(&self) -> ActiveNewGameInputsStatus {
         self.status
+    }
+    /// The balance asset of the active scenario, by handle; other loaded balance assets (hot
+    /// reload, a second package) are never consulted.
+    pub fn balance<'a>(&self, balances: &'a Assets<BalanceData>) -> Option<&'a BalanceData> {
+        balances.get(&self.handles.as_ref()?.balance)
     }
     pub fn failure(&self) -> Option<&NewGameInputsLoadFailure> {
         self.failure.as_ref()

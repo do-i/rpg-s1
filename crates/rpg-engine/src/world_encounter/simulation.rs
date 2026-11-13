@@ -6,6 +6,7 @@ use crate::{
     encounter::party_encounter_modifiers,
     game_state::GameState,
     scenario_balance::BalanceData,
+    scenario_new_game_assets::ActiveNewGameInputs,
     scenario_spatial::{
         CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
         world_collision::WorldCollision,
@@ -34,6 +35,7 @@ pub(super) const MAX_ENEMY_DELTA_SECONDS: f32 = 0.1;
 pub(super) struct EnemySimulationAssets<'w> {
     collision: Option<Res<'w, WorldCollision>>,
     balances: Res<'w, Assets<BalanceData>>,
+    active: Res<'w, ActiveNewGameInputs>,
 }
 
 #[expect(
@@ -69,10 +71,9 @@ pub(super) fn update_world_enemies(
         return;
     };
     let modifiers = assets
-        .balances
-        .iter()
-        .next()
-        .map(|(_, balance)| party_encounter_modifiers(game.party(), &balance.spawner))
+        .active
+        .balance(&assets.balances)
+        .map(|balance| party_encounter_modifiers(game.party(), &balance.spawner))
         .unwrap_or_else(|| {
             party_encounter_modifiers(game.party(), &BalanceData::default().spawner)
         });

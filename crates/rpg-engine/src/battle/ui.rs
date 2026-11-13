@@ -16,6 +16,7 @@ use crate::{
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
     scenario_enemy::EnemySize,
     scenario_inventory::ScenarioInventory,
+    scenario_new_game_assets::ActiveNewGameInputs,
     scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx, cue},
@@ -1639,6 +1640,7 @@ fn animate_enemy_breathing(
 #[derive(SystemParam)]
 struct BattleInputContext<'w, 's> {
     balances: Res<'w, Assets<BalanceData>>,
+    active: Res<'w, ActiveNewGameInputs>,
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<ResMut<'w, GameState>>,
     deck: Option<ResMut<'w, deck::BattleDeck>>,
@@ -1693,6 +1695,7 @@ fn handle_battle_input(
         .unwrap_or(&mut fallback_deck);
     let pointer_confirm = deck.take_pointer_confirm();
     let balances: &Assets<BalanceData> = &context.balances;
+    let active: &ActiveNewGameInputs = &context.active;
     let catalog: &FieldMenuCatalog = &context.catalog;
     let now = context.time.elapsed();
     let auto_continue = state.auto_continue_at.is_some_and(|at| now >= at);
@@ -1732,6 +1735,7 @@ fn handle_battle_input(
                 command,
                 &mut game,
                 catalog,
+                active,
                 balances,
                 &mut menu_sfx,
             );
@@ -1741,7 +1745,7 @@ fn handle_battle_input(
         }
         BattlePhase::Command => {
             if actions.just_pressed(AppAction::Back) {
-                attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
+                attempt_flee(&mut state, active, balances, &mut game, &mut menu_sfx);
                 return;
             }
             if let Some(movement) = actions
@@ -1780,7 +1784,7 @@ fn handle_battle_input(
                         }
                     }
                     BattleCommand::Run => {
-                        attempt_flee(&mut state, balances, &mut game, &mut menu_sfx);
+                        attempt_flee(&mut state, active, balances, &mut game, &mut menu_sfx);
                     }
                     BattleCommand::Spell => {
                         state.ability_index = 0;
@@ -1899,7 +1903,7 @@ fn handle_battle_input(
             state.assess_result();
         }
         BattlePhase::Victory if actions.just_pressed(AppAction::Confirm) || skip_victory_screen => {
-            let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
+            let Some(balance) = active.balance(balances) else {
                 state.message = "Battle balance is still loading.".to_owned();
                 return;
             };
@@ -2159,6 +2163,7 @@ fn run_auto_turn(
     command: AutoCommand,
     game: &mut GameState,
     catalog: &FieldMenuCatalog,
+    active: &ActiveNewGameInputs,
     balances: &Assets<BalanceData>,
     menu_sfx: &mut MenuSfx,
 ) {
@@ -2185,7 +2190,7 @@ fn run_auto_turn(
             resolve_selected_item(state, actor, &id, target, catalog, game.repository_mut());
         }
         Some(AutoAction::Flee) => {
-            attempt_flee(state, balances, game, menu_sfx);
+            attempt_flee(state, active, balances, game, menu_sfx);
             return;
         }
         None => {}
@@ -2218,11 +2223,12 @@ fn run_auto_turn(
 
 fn attempt_flee(
     state: &mut BattleState,
+    active: &ActiveNewGameInputs,
     balances: &Assets<BalanceData>,
     game: &mut GameState,
     menu_sfx: &mut MenuSfx,
 ) {
-    let Some(balance) = balances.iter().next().map(|(_, value)| value) else {
+    let Some(balance) = active.balance(balances) else {
         state.message = "Battle balance is still loading.".to_owned();
         menu_sfx.blocked();
         return;
