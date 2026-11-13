@@ -233,12 +233,12 @@ fn sync_world_actor_request(
         return;
     };
     state.map_id = Some(map_id.to_owned());
+    // Remembered before any early return so a failed request is not retried every frame.
+    state.flags = flags;
     let Some(logical) = inventory.map_metadata_path(map_id) else {
         state.fail("NPC metadata path is invalid");
         return;
     };
-    state.map_id = Some(map_id.to_owned());
-    state.flags = flags;
     state.metadata = Some(asset_server.load(scenario_root.resolve(&logical)));
     state.status = WorldActorStatus::LoadingMetadata;
 }
@@ -777,6 +777,39 @@ mod tests {
             wander_pause: 0.0,
             wander_target: None,
         }
+    }
+
+    #[test]
+    fn invalid_metadata_path_fails_once_and_the_next_frame_is_a_no_op() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, bevy::asset::AssetPlugin::default()))
+            .init_resource::<WorldActorState>()
+            .insert_resource(ScenarioRoot::default())
+            // The default inventory has no map directory, so every metadata path is invalid.
+            .insert_resource(ScenarioInventory::default())
+            .insert_resource(crate::field_menu_domain::tests::game([
+                "story_quest_started",
+            ]))
+            .add_systems(Update, sync_world_actor_request);
+
+        app.update();
+        {
+            let state = app.world().resource::<WorldActorState>();
+            assert_eq!(state.status, WorldActorStatus::Failed);
+            assert_eq!(
+                state.failure.as_deref(),
+                Some("NPC metadata path is invalid")
+            );
+            assert_eq!(state.map_id.as_deref(), Some("town_01_ardel"));
+            assert_eq!(state.flags, ["story_quest_started"]);
+        }
+
+        // A retry would reset the state and overwrite this sentinel.
+        app.world_mut().resource_mut::<WorldActorState>().failure = Some("sentinel".to_owned());
+        app.update();
+        let state = app.world().resource::<WorldActorState>();
+        assert_eq!(state.status, WorldActorStatus::Failed);
+        assert_eq!(state.failure.as_deref(), Some("sentinel"));
     }
 
     #[test]
