@@ -7,12 +7,27 @@ resolver = "3"
 # Bevy 0.19 keeps failed output streams alive. Reopen them with bounded retries.
 bevy_audio = { path = "vendor/bevy_audio" }
 
+[workspace.lints.rust]
+unsafe_code = "warn"
+unused_must_use = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+undocumented_unsafe_blocks = "warn"
+
 [package]
 name = "rpg-s1"
 version = "2026.10.1"
 edition = "2024"
 rust-version = "1.97"
 description = "A small Rust and Bevy RPG prototype"
+
+[lints]
+workspace = true
 
 [dependencies]
 rpg-engine = { path = "crates/rpg-engine" }

@@ -5,6 +5,9 @@ edition = "2024"
 rust-version = "1.97"
 description = "Reusable Bevy RPG runtime for scenario packages"
 
+[lints]
+workspace = true
+
 [dependencies]
 bevy = { version = "0.19", default-features = false, features = [
     "2d",

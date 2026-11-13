@@ -5,6 +5,9 @@ edition = "2024"
 rust-version = "1.97"
 description = "Scenario package boundaries and source-compatible content types for rpg-s1"
 
+[lints]
+workspace = true
+
 [dependencies]
 bevy = { version = "0.19", default-features = false, features = ["bevy_asset"] }
 quick-xml = "=0.41.0"
