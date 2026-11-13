@@ -9,7 +9,11 @@ use crate::{
     field_menu::FieldMenuState,
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    input_bindings::InputBindings,
+    key_hints::{HintKey, HintStyle, key_hint},
     menu_chrome::{ScrollWindow, scroll_list_node, spawn_scroll_list},
+    options_domain::Device,
+    options_store::PlayerOptions,
     runtime_map::RuntimeMapId,
     scenario_class::{AbilityKind, UtilityAbility},
     scenario_inventory::ScenarioInventory,
@@ -540,6 +544,7 @@ struct TransportOverlayParams<'w, 's> {
     catalog: Res<'w, FieldMenuCatalog>,
     game: Option<Res<'w, GameState>>,
     roots: Query<'w, 's, Entity, With<TransportRoot>>,
+    options: Option<Res<'w, PlayerOptions>>,
 }
 
 fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams) {
@@ -552,6 +557,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
         catalog,
         game,
         roots,
+        options,
     } = params;
     if state.phase == TransportPhase::Closed {
         for entity in &roots {
@@ -559,7 +565,10 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
         }
         return;
     }
-    if !state.is_changed() && !domain.is_changed() && game.as_ref().is_none_or(|g| !g.is_changed())
+    if !state.is_changed()
+        && !domain.is_changed()
+        && game.as_ref().is_none_or(|g| !g.is_changed())
+        && options.as_ref().is_none_or(|options| !options.is_changed())
     {
         return;
     }
@@ -572,6 +581,8 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
         return;
     };
     let font = asset_server.load(root.resolve(font_path));
+    let fallback = PlayerOptions::default();
+    let bindings = &options.as_deref().unwrap_or(&fallback).bindings;
     let map_image = asset_server.load(root.resolve(&transport.map_image));
     let rows = destinations(&state, &domain, &catalog, &game);
     let window = state
@@ -663,7 +674,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                     spawn_destination_panel(body, &font, &state, &domain, &rows, window, selected);
                 });
             overlay.spawn((
-                Text::new(footer(&state)),
+                Text::new(footer(&state, bindings)),
                 TextFont {
                     font: font.into(),
                     font_size: FontSize::Px(17.0),
@@ -1206,23 +1217,54 @@ fn spawn_atlas_header(
         });
 }
 
-fn footer(state: &TransportUiState) -> String {
+/// The atlas footer: `LEFT/RIGHT MODE   UP/DOWN DESTINATION   ENTER TRAVEL   ESC BACK`.
+/// Modes and destinations move through the menu actions, Confirm travels and Back leaves, so
+/// the keys follow rebinds.
+fn footer(state: &TransportUiState, bindings: &InputBindings) -> String {
+    const CONFIRM: HintKey = HintKey::Action(AppAction::Confirm);
+    const BACK: HintKey = HintKey::Action(AppAction::Back);
+    let hint = |segments: &[crate::key_hints::HintSegment<'_>]| {
+        key_hint(bindings, Device::Keyboard, &ATLAS_HINTS, segments)
+    };
     match state.phase {
         TransportPhase::Browse => format!(
-            "LEFT/RIGHT MODE   UP/DOWN DESTINATION   ENTER TRAVEL   ESC BACK{}",
+            "{}{}",
+            hint(&[
+                (&[HintKey::Pair(AppAction::Left, AppAction::Right)], "MODE"),
+                (
+                    &[HintKey::Pair(AppAction::Up, AppAction::Down)],
+                    "DESTINATION"
+                ),
+                (&[CONFIRM], "TRAVEL"),
+                (&[BACK], "BACK"),
+            ]),
             if state.message.is_empty() {
                 String::new()
             } else {
                 format!("     {}", state.message)
             }
         ),
-        TransportPhase::Confirm => format!("ENTER CONFIRM   ESC BACK     {}", state.message),
-        TransportPhase::Animating => {
-            "ENTER SKIP ANIMATION   Travel is being prepared...".to_owned()
-        }
+        TransportPhase::Confirm => format!(
+            "{}     {}",
+            hint(&[(&[CONFIRM], "CONFIRM"), (&[BACK], "BACK")]),
+            state.message
+        ),
+        TransportPhase::Animating => format!(
+            "{}   Travel is being prepared...",
+            hint(&[(&[CONFIRM], "SKIP ANIMATION")])
+        ),
         TransportPhase::Closed => String::new(),
     }
 }
+
+/// The atlas footer's separators: a single space between key and label, three between segments.
+const ATLAS_HINTS: HintStyle = HintStyle {
+    key_gap: " ",
+    segment_gap: "   ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
 
 fn spawn_route_preview(
     map: &mut ChildSpawnerCommands,
@@ -1516,7 +1558,7 @@ mod tests {
             ..default()
         };
         for copy in [
-            footer(&state),
+            footer(&state, &InputBindings::default()),
             destination_count_copy(0, 12),
             destination_count_copy(0, 1),
             destination_count_copy(0, 0),
@@ -1525,7 +1567,7 @@ mod tests {
         }
 
         state.phase = TransportPhase::Animating;
-        assert!(footer(&state).is_ascii());
+        assert!(footer(&state, &InputBindings::default()).is_ascii());
     }
 
     #[test]
@@ -1672,6 +1714,47 @@ mod tests {
             app.world().resource::<HeardCues>().0,
             [cue::TELEPORT],
             "the unified Atlas must retain Teleport's authored cue"
+        );
+    }
+
+    fn rebound_confirm_and_back() -> InputBindings {
+        let mut bindings = InputBindings::default();
+        bindings
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Confirm),
+                vec![KeyCode::KeyG],
+            )
+            .expect("a nonempty row");
+        bindings
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Back),
+                vec![KeyCode::KeyB],
+            )
+            .expect("a nonempty row");
+        bindings
+    }
+
+    #[test]
+    fn the_atlas_footer_follows_a_rebound_confirm_and_back() {
+        let bindings = rebound_confirm_and_back();
+        let mut state = TransportUiState {
+            phase: TransportPhase::Browse,
+            ..default()
+        };
+        assert_eq!(
+            footer(&state, &bindings),
+            "LEFT/RIGHT MODE   UP/DOWN DESTINATION   G TRAVEL   B BACK"
+        );
+        state.phase = TransportPhase::Confirm;
+        state.message = "FLY to Ardel?".to_owned();
+        assert_eq!(
+            footer(&state, &bindings),
+            "G CONFIRM   B BACK     FLY to Ardel?"
+        );
+        state.phase = TransportPhase::Animating;
+        assert_eq!(
+            footer(&state, &bindings),
+            "G SKIP ANIMATION   Travel is being prepared..."
         );
     }
 }

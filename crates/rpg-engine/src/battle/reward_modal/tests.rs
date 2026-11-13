@@ -262,6 +262,7 @@ fn rendered_screen_text(rewards: &BattleRewards, screen: BattleRewardScreen) -> 
             rewards,
             &Handle::default(),
             &RewardModalArt::default(),
+            &InputBindings::default(),
         ),
         BattleRewardScreen::LevelUp(index) => spawn_level_up_modal(
             &mut commands,
@@ -269,6 +270,7 @@ fn rendered_screen_text(rewards: &BattleRewards, screen: BattleRewardScreen) -> 
             index,
             &Handle::default(),
             &RewardModalArt::default(),
+            &InputBindings::default(),
         ),
     }
     queue.apply(&mut world);
@@ -462,15 +464,20 @@ fn spawn_layout(
     let mut queue = bevy::ecs::world::CommandQueue::default();
     let mut commands = Commands::new(&mut queue, app.world());
     match screen {
-        BattleRewardScreen::Loot => {
-            spawn_reward_modal(&mut commands, rewards, font, &RewardModalArt::default())
-        }
+        BattleRewardScreen::Loot => spawn_reward_modal(
+            &mut commands,
+            rewards,
+            font,
+            &RewardModalArt::default(),
+            &InputBindings::default(),
+        ),
         BattleRewardScreen::LevelUp(index) => spawn_level_up_modal(
             &mut commands,
             rewards,
             index,
             font,
             &RewardModalArt::default(),
+            &InputBindings::default(),
         ),
     }
     queue.apply(app.world_mut());
@@ -1114,4 +1121,55 @@ fn skipping_the_prelude_reveals_the_loot_on_the_next_sync() {
 
     assert!(!app.world().contains_resource::<BattleRewardPrelude>());
     assert_eq!(modal_count(&mut app), 1);
+}
+
+#[test]
+fn the_continue_button_names_the_bound_confirm_key() {
+    let mut rebound = InputBindings::default();
+    rebound
+        .set_keys(
+            crate::input_bindings::BindingTarget::Menu(AppAction::Confirm),
+            vec![KeyCode::KeyG],
+        )
+        .expect("a nonempty row");
+    let rewards = rewards_with(vec![MemberReward {
+        member_id: "aric".to_owned(),
+        member_name: "Aric".to_owned(),
+        experience_gained: 60,
+        experience_applied: 60,
+        experience_now: 450,
+        experience_next: 1000,
+        level_ups: vec![level_up(1, 2)],
+        learned_abilities: Vec::new(),
+    }]);
+    for index in [None, Some(0)] {
+        let mut world = World::new();
+        let mut queue = bevy::ecs::world::CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, &world);
+        match index {
+            None => spawn_reward_modal(
+                &mut commands,
+                &rewards,
+                &Handle::default(),
+                &RewardModalArt::default(),
+                &rebound,
+            ),
+            Some(index) => spawn_level_up_modal(
+                &mut commands,
+                &rewards,
+                index,
+                &Handle::default(),
+                &RewardModalArt::default(),
+                &rebound,
+            ),
+        }
+        queue.apply(&mut world);
+        let text: Vec<String> = world
+            .query::<&Text>()
+            .iter(&world)
+            .map(|text| text.0.clone())
+            .collect();
+        assert!(text.contains(&"G".to_owned()), "{index:?}: {text:?}");
+        assert!(!text.contains(&"ENTER".to_owned()), "{index:?}: {text:?}");
+    }
 }

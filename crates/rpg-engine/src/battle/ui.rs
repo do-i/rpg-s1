@@ -10,6 +10,9 @@ use crate::{
     encounter::{BattleEntry, BattleSide, restore_pre_battle_context},
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    input_bindings::InputBindings,
+    key_hints::{HintKey, HintSegment, HintStyle, hint_keys_text, key_hint},
+    options_domain::Device,
     options_store::PlayerOptions,
     runtime_party::RuntimeParty,
     scenario_balance::BalanceData,
@@ -1699,16 +1702,15 @@ fn handle_battle_input(
     let catalog: &FieldMenuCatalog = &context.catalog;
     let now = context.time.elapsed();
     let auto_continue = state.auto_continue_at.is_some_and(|at| now >= at);
-    let (auto_enemy_turns, pause, skip_victory_screen) = context.options.as_deref().map_or(
-        (false, TurnPause::default().duration(), false),
-        |options| {
+    let options = context.options.as_deref();
+    let (auto_enemy_turns, pause, skip_victory_screen) =
+        options.map_or((false, TurnPause::default().duration(), false), |options| {
             (
                 options.auto_enemy_turns,
                 options.turn_pause.duration(),
                 options.skip_victory_screen,
             )
-        },
-    );
+        });
     match state.phase {
         BattlePhase::Start | BattlePhase::Advance => {
             if state.phase == BattlePhase::Start {
@@ -1778,7 +1780,7 @@ fn handle_battle_input(
                         if state.target.is_some() {
                             debug_assert!(state.phase.allows(BattlePhase::Target));
                             state.phase = BattlePhase::Target;
-                            state.message = "Choose a living enemy. ESC cancels.".to_owned();
+                            state.message = cancel_prompt(options, "Choose a living enemy.");
                         } else {
                             state.assess_result();
                         }
@@ -1791,13 +1793,13 @@ fn handle_battle_input(
                         state.pending_ability = None;
                         state.phase = BattlePhase::Ability;
                         deck.open(&mut state);
-                        state.message = "UP/DOWN group · RIGHT spells · ESC commands".to_owned();
+                        state.message = spell_groups_hint(options);
                     }
                     BattleCommand::Item => {
                         state.item_index = 0;
                         state.pending_item = None;
                         state.phase = BattlePhase::Item;
-                        state.message = "Choose an item. ESC cancels.".to_owned();
+                        state.message = cancel_prompt(options, "Choose an item.");
                     }
                 }
             }
@@ -1806,7 +1808,7 @@ fn handle_battle_input(
             if cancel_pressed(&actions) {
                 if deck.list_focused {
                     deck.list_focused = false;
-                    state.message = "UP/DOWN group · RIGHT spells · ESC commands".to_owned();
+                    state.message = spell_groups_hint(options);
                 } else {
                     state.phase = BattlePhase::Command;
                     state.message = "Action cancelled.".to_owned();
@@ -1818,7 +1820,7 @@ fn handle_battle_input(
                 }
                 if confirm_pressed(&actions) {
                     deck.list_focused = true;
-                    state.message = "UP/DOWN spell · ENTER cast · LEFT groups".to_owned();
+                    state.message = spell_list_hint(options);
                     menu_sfx.confirm();
                 }
             } else {
@@ -1830,7 +1832,7 @@ fn handle_battle_input(
                     && let Some(&ability_index) =
                         state.battle_ability_indices().get(state.ability_index)
                 {
-                    begin_ability_targeting(&mut state, ability_index, game.rng_mut());
+                    begin_ability_targeting(&mut state, ability_index, game.rng_mut(), options);
                 }
             }
         }
@@ -1846,7 +1848,7 @@ fn handle_battle_input(
                 if (confirm_pressed(&actions) || pointer_confirm)
                     && let Some(choice) = state.item_choices.get(state.item_index).cloned()
                 {
-                    begin_item_targeting(&mut state, &choice.id, catalog);
+                    begin_item_targeting(&mut state, &choice.id, catalog, options);
                 }
             }
         }
@@ -2021,7 +2023,75 @@ fn target_navigation(actions: &ActionState) -> Option<isize> {
         .or_else(|| actions.menu_navigation_horizontal())
 }
 
-fn begin_item_targeting(state: &mut BattleState, item_id: &str, catalog: &FieldMenuCatalog) {
+/// The battle message hints: a space between key and label, a dot between segments.
+const BATTLE_HINTS: HintStyle = HintStyle {
+    key_gap: " ",
+    segment_gap: " · ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
+
+fn battle_hint(options: Option<&PlayerOptions>, segments: &[HintSegment<'_>]) -> String {
+    match options {
+        Some(options) => key_hint(&options.bindings, Device::Keyboard, &BATTLE_HINTS, segments),
+        None => key_hint(
+            &InputBindings::default(),
+            Device::Keyboard,
+            &BATTLE_HINTS,
+            segments,
+        ),
+    }
+}
+
+const BATTLE_UP_DOWN: HintKey = HintKey::Pair(AppAction::Up, AppAction::Down);
+
+/// `Choose a target. ESC cancels.`: a prompt naming the key that backs out of the choice.
+fn cancel_prompt(options: Option<&PlayerOptions>, prompt: &str) -> String {
+    let back = [HintKey::Action(AppAction::Back)];
+    let key = match options {
+        Some(options) => hint_keys_text(&options.bindings, Device::Keyboard, &BATTLE_HINTS, &back),
+        None => hint_keys_text(
+            &InputBindings::default(),
+            Device::Keyboard,
+            &BATTLE_HINTS,
+            &back,
+        ),
+    };
+    format!("{prompt} {key} cancels.")
+}
+
+/// The spell menu's group column. Groups move on Up and Down, Right (or Confirm) enters the
+/// list and Back leaves, all through the action table.
+fn spell_groups_hint(options: Option<&PlayerOptions>) -> String {
+    battle_hint(
+        options,
+        &[
+            (&[BATTLE_UP_DOWN], "group"),
+            (&[HintKey::Action(AppAction::Right)], "spells"),
+            (&[HintKey::Action(AppAction::Back)], "commands"),
+        ],
+    )
+}
+
+/// The spell menu's list column. Left (or Back) returns to the groups.
+fn spell_list_hint(options: Option<&PlayerOptions>) -> String {
+    battle_hint(
+        options,
+        &[
+            (&[BATTLE_UP_DOWN], "spell"),
+            (&[HintKey::Action(AppAction::Confirm)], "cast"),
+            (&[HintKey::Action(AppAction::Left)], "groups"),
+        ],
+    )
+}
+
+fn begin_item_targeting(
+    state: &mut BattleState,
+    item_id: &str,
+    catalog: &FieldMenuCatalog,
+    options: Option<&PlayerOptions>,
+) {
     let Some(item) = catalog.item(item_id).and_then(battle_item) else {
         state.message = "That item cannot be used in battle.".to_owned();
         return;
@@ -2031,7 +2101,7 @@ fn begin_item_targeting(state: &mut BattleState, item_id: &str, catalog: &FieldM
     if state.target.is_some() {
         state.pending_item = Some(item_id.to_owned());
         state.phase = BattlePhase::Target;
-        state.message = "Choose a target. ESC cancels.".to_owned();
+        state.message = cancel_prompt(options, "Choose a target.");
     } else {
         state.message = "No valid target.".to_owned();
     }
@@ -2081,6 +2151,7 @@ fn begin_ability_targeting(
     state: &mut BattleState,
     ability_index: usize,
     rng: &mut crate::gameplay_rng::GameplayRng,
+    options: Option<&PlayerOptions>,
 ) {
     let Some(caster) = state.active_key() else {
         return;
@@ -2105,7 +2176,7 @@ fn begin_ability_targeting(
             if state.target.is_some() {
                 state.pending_ability = Some(ability_index);
                 state.phase = BattlePhase::Target;
-                state.message = "Choose a target. ESC cancels.".to_owned();
+                state.message = cancel_prompt(options, "Choose a target.");
             } else {
                 state.message = "No valid target.".to_owned();
             }

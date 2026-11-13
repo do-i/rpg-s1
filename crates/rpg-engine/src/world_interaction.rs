@@ -16,6 +16,10 @@ use crate::{
     field_menu::FieldMenuState,
     field_menu_domain::{FieldMenuCatalog, item_name},
     game_state::GameState,
+    input_bindings::InputBindings,
+    key_hints::{HintKey, HintStyle, key_hint},
+    options_domain::Device,
+    options_store::PlayerOptions,
     runtime_map::RuntimeMapId,
     runtime_member::RuntimeMember,
     scenario_audio::{SFX_INDEX_PATH, SfxIndex},
@@ -1078,6 +1082,7 @@ fn sync_dialogue_overlay(
     >,
     mut plates: Query<&mut Node, With<WorldDialogueSpeakerPlate>>,
     mut portraits: Query<(&mut ImageNode, &mut Visibility), With<WorldDialoguePortrait>>,
+    options: Option<Res<PlayerOptions>>,
 ) {
     let Some(session) = state.session() else {
         for (entity, _) in &mut roots {
@@ -1160,18 +1165,67 @@ fn sync_dialogue_overlay(
         set_text_if_changed(&mut page_count, &pages);
     }
     if let Ok(mut hint) = hints.single_mut() {
-        let hint_text = match session.phase() {
-            DialoguePhase::Typing => "ENTER · reveal     ESC · close",
-            DialoguePhase::Ready if session.finishes_on_confirm() => {
-                ">  ENTER · finish     ESC · close"
-            }
-            DialoguePhase::Ready => ">  ENTER · continue     ESC · close",
-            DialoguePhase::Choosing => "UP/DOWN · choose     ENTER · select     ESC · close",
-            DialoguePhase::Closed => "",
-        };
-        set_text_if_changed(&mut hint, hint_text);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        let hint_text = dialogue_hint(
+            session.phase(),
+            session.finishes_on_confirm(),
+            &options.bindings,
+        );
+        set_text_if_changed(&mut hint, &hint_text);
     }
 }
+
+/// The dialogue box's hint line: `ENTER · reveal     ESC · close`. Choosing is navigated with
+/// the vertical menu actions, a line is advanced by Confirm and the box closed by Back, so the
+/// keys follow rebinds.
+fn dialogue_hint(
+    phase: DialoguePhase,
+    finishes_on_confirm: bool,
+    bindings: &InputBindings,
+) -> String {
+    const CONFIRM: HintKey = HintKey::Action(AppAction::Confirm);
+    const BACK: HintKey = HintKey::Action(AppAction::Back);
+    let hint = |segments: &[crate::key_hints::HintSegment<'_>]| {
+        key_hint(bindings, Device::Keyboard, &DIALOGUE_HINTS, segments)
+    };
+    match phase {
+        DialoguePhase::Typing => hint(&[(&[CONFIRM], "reveal"), (&[BACK], "close")]),
+        DialoguePhase::Ready if finishes_on_confirm => {
+            format!(">  {}", hint(&[(&[CONFIRM], "finish"), (&[BACK], "close")]))
+        }
+        DialoguePhase::Ready => {
+            format!(
+                ">  {}",
+                hint(&[(&[CONFIRM], "continue"), (&[BACK], "close")])
+            )
+        }
+        DialoguePhase::Choosing => hint(&[
+            (&[HintKey::Pair(AppAction::Up, AppAction::Down)], "choose"),
+            (&[CONFIRM], "select"),
+            (&[BACK], "close"),
+        ]),
+        DialoguePhase::Closed => String::new(),
+    }
+}
+
+/// The dialogue hint's separators: a dot between key and label, wide gaps between segments.
+const DIALOGUE_HINTS: HintStyle = HintStyle {
+    key_gap: " · ",
+    segment_gap: "     ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
+
+/// The treasure reveal's prompt: `ENTER  take`.
+const TREASURE_HINTS: HintStyle = HintStyle {
+    key_gap: "  ",
+    segment_gap: "  ",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
 
 /// Assigns through `DerefMut` only when the string differs, so an unchanged line is not laid out
 /// again every frame.
@@ -1395,6 +1449,10 @@ const TREASURE_PADDING: f32 = 20.0;
 ///
 /// The rows never change while the modal is up -- the box is looted once, before the reveal
 /// exists -- so this spawns the contents rather than re-synchronizing text every frame.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the treasure reveal spawns from the box rows, assets, theme and live options"
+)]
 fn sync_treasure_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -1403,6 +1461,7 @@ fn sync_treasure_overlay(
     state: Res<WorldInteractionState>,
     theme: Res<UiTheme>,
     roots: Query<Entity, With<TreasureOverlayRoot>>,
+    options: Option<Res<PlayerOptions>>,
 ) {
     let Some(reveal) = state.treasure.as_ref() else {
         for entity in &roots {
@@ -1417,7 +1476,9 @@ fn sync_treasure_overlay(
         return;
     };
     let font: Handle<Font> = asset_server.load(scenario_root.resolve(font_path));
-    spawn_treasure_overlay(&mut commands, &theme, font, &reveal.rows);
+    let default = PlayerOptions::default();
+    let options = options.as_deref().unwrap_or(&default);
+    spawn_treasure_overlay(&mut commands, &theme, font, &reveal.rows, &options.bindings);
 }
 
 fn spawn_treasure_overlay(
@@ -1425,6 +1486,7 @@ fn spawn_treasure_overlay(
     theme: &UiTheme,
     font: Handle<Font>,
     rows: &[TreasureRow],
+    bindings: &InputBindings,
 ) {
     commands
         .spawn((
@@ -1503,7 +1565,12 @@ fn spawn_treasure_overlay(
                             });
                     }
                     panel.spawn((
-                        Text::new("ENTER  take"),
+                        Text::new(key_hint(
+                            bindings,
+                            Device::Keyboard,
+                            &TREASURE_HINTS,
+                            &[(&[HintKey::Action(AppAction::Confirm)], "take")],
+                        )),
                         TextFont {
                             font: font.into(),
                             font_size: FontSize::Px(theme.scaled(16.0)),
@@ -2706,5 +2773,107 @@ mod tests {
         assert_eq!(InteractionSound::Blocked.source_key(), "denied");
         // Opening a chest used the item cue as a stand-in until the dungeon samples were indexed.
         assert_eq!(InteractionSound::Box.source_key(), cue::CHEST_OPEN);
+    }
+
+    fn rebound_confirm_and_back() -> InputBindings {
+        let mut bindings = InputBindings::default();
+        bindings
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Confirm),
+                vec![KeyCode::KeyG],
+            )
+            .expect("a nonempty row");
+        bindings
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Back),
+                vec![KeyCode::KeyB],
+            )
+            .expect("a nonempty row");
+        bindings
+    }
+
+    #[test]
+    fn dialogue_hints_match_the_shipped_text_under_default_bindings() {
+        let defaults = InputBindings::default();
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Typing, false, &defaults),
+            "ENTER · reveal     ESC · close"
+        );
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Ready, true, &defaults),
+            ">  ENTER · finish     ESC · close"
+        );
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Ready, false, &defaults),
+            ">  ENTER · continue     ESC · close"
+        );
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Choosing, false, &defaults),
+            "UP/DOWN · choose     ENTER · select     ESC · close"
+        );
+        assert_eq!(dialogue_hint(DialoguePhase::Closed, false, &defaults), "");
+    }
+
+    #[test]
+    fn dialogue_and_treasure_hints_follow_a_rebound_confirm_and_back() {
+        let bindings = rebound_confirm_and_back();
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Typing, false, &bindings),
+            "G · reveal     B · close"
+        );
+        assert_eq!(
+            dialogue_hint(DialoguePhase::Choosing, false, &bindings),
+            "UP/DOWN · choose     G · select     B · close"
+        );
+
+        let mut world = World::new();
+        let mut queue = bevy::ecs::world::CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, &world);
+        spawn_treasure_overlay(
+            &mut commands,
+            &UiTheme::default(),
+            Handle::default(),
+            &[TreasureRow::message("Potion x2")],
+            &bindings,
+        );
+        queue.apply(&mut world);
+        let texts = world
+            .query::<&Text>()
+            .iter(&world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(texts.contains(&"G  take".to_owned()), "{texts:?}");
+    }
+
+    #[test]
+    fn the_dialogue_overlay_hint_reads_the_live_options() {
+        let mut app = interaction_app("town_03_harborgate", Position::new(5, 5));
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        app.insert_resource(ScenarioInventory {
+            font: Some(manifest.font.path.clone()),
+            ..ScenarioInventory::default()
+        });
+        app.world_mut()
+            .resource_mut::<crate::options_store::PlayerOptions>()
+            .bindings = rebound_confirm_and_back();
+        for _ in 0..10 {
+            app.update();
+        }
+        app.world_mut()
+            .resource_mut::<WorldInteractionState>()
+            .session = Some(DialogueSession::message(
+            "hint",
+            None,
+            vec!["One line.".to_owned()],
+        ));
+        for _ in 0..4 {
+            app.update();
+        }
+        let mut hints = app
+            .world_mut()
+            .query_filtered::<&Text, With<WorldDialogueHint>>();
+        let hint = hints.single(app.world()).unwrap().0.clone();
+        assert_eq!(hint, "G · reveal     B · close");
     }
 }

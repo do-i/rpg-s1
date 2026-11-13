@@ -3431,6 +3431,8 @@ fn quest_recipe_and_settings_footers_follow_rebound_keys() {
             .iter()
             .any(|t| t == "UP/DOWN   SELECT RECIPE      B   BACK      M   CLOSE")
     );
-    assert!(settings.iter().any(|t| t
-        == "UP/DOWN   SELECT      G / SPACE   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      B   BACK"));
+    assert!(
+        settings.iter().any(|t| t
+            == "UP/DOWN   SELECT      G   TOGGLE      LEFT/RIGHT   LIST / OPTIONS      B   BACK")
+    );
 }

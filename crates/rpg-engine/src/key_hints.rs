@@ -27,6 +27,12 @@ pub(crate) enum HintKey {
     /// unbound half is dropped, leaving the other alone; with both unbound the part is
     /// [`UNBOUND`].
     Pair(AppAction, AppAction),
+    /// The action's first `count` bindings on the described device, joined by
+    /// [`HintStyle::either`]: `Bindings(Confirm, 2)` is `ENTER / SPACE` by default. Use it where
+    /// a screen names several keys of one action, so a rebind stops naming keys that no longer do
+    /// the job. Fewer bindings than `count` show what exists; with none the key is dropped like an
+    /// unbound [`HintKey::Action`].
+    Bindings(AppAction, usize),
     /// Text shown verbatim: a key the screen reads directly rather than through the binding
     /// table (`M`, `Y`, `TAB`), or a gesture that is not a key (`LEFT EDGE`).
     Fixed(&'static str),
@@ -109,6 +115,10 @@ pub(crate) fn hint_keys_text(
                 (Some(first), Some(second)) => Some(format!("{first}{}{second}", style.pair)),
                 (first, second) => first.or(second),
             },
+            HintKey::Bindings(action, count) => {
+                let names = action_texts(bindings, device, action, count);
+                (!names.is_empty()).then(|| names.join(style.either))
+            }
             HintKey::Fixed(text) => Some(text.to_owned()),
         })
         .collect::<Vec<_>>();
@@ -120,16 +130,30 @@ pub(crate) fn hint_keys_text(
 }
 
 fn action_text(bindings: &InputBindings, device: Device, action: AppAction) -> Option<String> {
+    action_texts(bindings, device, action, 1).pop()
+}
+
+/// The hint names of the action's first `count` named bindings on the device, in binding order.
+fn action_texts(
+    bindings: &InputBindings,
+    device: Device,
+    action: AppAction,
+    count: usize,
+) -> Vec<String> {
     let target = BindingTarget::Menu(action);
     match device {
         Device::Keyboard => bindings
             .keys(target)
             .iter()
-            .find_map(|key| keyboard_hint_name(*key)),
+            .filter_map(|key| keyboard_hint_name(*key))
+            .take(count)
+            .collect(),
         Device::Gamepad => bindings
             .buttons(target)
             .iter()
-            .find_map(|button| gamepad_hint_name(*button)),
+            .filter_map(|button| gamepad_hint_name(*button))
+            .take(count)
+            .collect(),
     }
 }
 
@@ -168,7 +192,7 @@ mod tests {
     use crate::input_names::{ALL_BINDABLE_GAMEPAD_BUTTONS, ALL_BINDABLE_KEYS};
 
     use AppAction::{Back, Confirm, Down, Left, Right, Up};
-    use HintKey::{Action, Fixed, Pair};
+    use HintKey::{Action, Bindings, Fixed, Pair};
 
     const UP_DOWN: HintKey = Pair(Up, Down);
     const LEFT_RIGHT: HintKey = Pair(Left, Right);
@@ -420,6 +444,63 @@ mod tests {
         assert_eq!(
             key_hint(&bindings, Device::Keyboard, &FIELD_MENU_HINTS, segments),
             "SPACE   SAVE      ESC   BACK"
+        );
+    }
+
+    #[test]
+    fn a_bindings_key_names_the_first_n_keys_of_an_action_and_only_those_really_bound() {
+        let render = |bindings: &InputBindings, count: usize| {
+            key_hint(
+                bindings,
+                Device::Keyboard,
+                &FIELD_MENU_HINTS,
+                &[(&[Bindings(Confirm, count)], "TOGGLE")],
+            )
+        };
+        let defaults = InputBindings::default();
+        assert_eq!(render(&defaults, 2), "ENTER / SPACE   TOGGLE");
+        assert_eq!(render(&defaults, 1), "ENTER   TOGGLE");
+        assert_eq!(
+            render(&defaults, 3),
+            "ENTER / SPACE / NUMPAD ENTER   TOGGLE"
+        );
+
+        // A rebind to one key names only that key; the old Space is gone from the hint.
+        let mut rebound = InputBindings::default();
+        rebound
+            .set_keys(BindingTarget::Menu(Confirm), vec![KeyCode::KeyG])
+            .expect("a nonempty row");
+        assert_eq!(render(&rebound, 2), "G   TOGGLE");
+
+        // Two bound keys with a count of four shows both.
+        rebound
+            .bind_key(BindingTarget::Menu(Confirm), KeyCode::KeyH)
+            .expect("H is free");
+        assert_eq!(render(&rebound, 4), "G / H   TOGGLE");
+
+        // A beside-alternative composes with the joined keys.
+        assert_eq!(
+            key_hint(
+                &defaults,
+                Device::Keyboard,
+                &FIELD_MENU_HINTS,
+                &[(&[Bindings(Confirm, 2), Fixed("Y")], "OK")],
+            ),
+            "ENTER / SPACE / Y   OK"
+        );
+
+        let mut none = InputBindings::default();
+        none.clear_for_test(BindingTarget::Menu(Confirm));
+        assert_eq!(render(&none, 2), "UNBOUND   TOGGLE");
+        assert_eq!(
+            key_hint(
+                &none,
+                Device::Keyboard,
+                &FIELD_MENU_HINTS,
+                &[(&[Bindings(Confirm, 2), Fixed("Y")], "OK")],
+            ),
+            "Y   OK",
+            "an unbound action is dropped from the alternatives"
         );
     }
 

@@ -69,6 +69,7 @@ pub(super) fn spawn_level_up_modal(
     index: usize,
     font: &Handle<Font>,
     art: &RewardModalArt,
+    bindings: &InputBindings,
 ) {
     let Some(member) = rewards.members.get(index) else {
         return;
@@ -181,7 +182,7 @@ pub(super) fn spawn_level_up_modal(
                         spawn_abilities(columns, row, details, art.ability_fallback.as_ref(), font);
                     });
                 });
-            spawn_footer(panel, font);
+            spawn_footer(panel, font, bindings);
         },
     );
 }
@@ -625,7 +626,11 @@ fn spawn_abilities(
             });
         });
 }
-fn spawn_footer(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+fn spawn_footer(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    bindings: &InputBindings,
+) {
     parent
         .spawn((
             Node {
@@ -659,7 +664,7 @@ fn spawn_footer(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
                 ))
                 .with_children(|button| {
                     label(button, "Continue", font, 17.0, battle_ink());
-                    label(button, "ENTER", font, 11.0, battle_gold());
+                    label(button, continue_key(bindings), font, 11.0, battle_gold());
                 });
         });
 }

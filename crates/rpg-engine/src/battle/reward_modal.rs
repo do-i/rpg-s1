@@ -20,7 +20,10 @@ use super::{
 use crate::{
     field_menu_domain::FieldMenuCatalog,
     game_state::GameState,
+    input_bindings::{AppAction, InputBindings},
     item_images::ItemIcon,
+    key_hints::{FIELD_MENU_HINTS, HintKey, key_hint},
+    options_domain::Device,
     options_store::PlayerOptions,
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
@@ -226,10 +229,14 @@ pub(super) fn sync_reward_modal(
     if let (Some(game), Some(catalog)) = (context.game.as_deref(), context.catalog.as_deref()) {
         art.members = level::member_art(rewards, game, catalog);
     }
+    let fallback = PlayerOptions::default();
+    let bindings = &context.options.as_deref().unwrap_or(&fallback).bindings;
     match screen {
-        BattleRewardScreen::Loot => spawn_reward_modal(&mut commands, rewards, &assets.font, &art),
+        BattleRewardScreen::Loot => {
+            spawn_reward_modal(&mut commands, rewards, &assets.font, &art, bindings)
+        }
         BattleRewardScreen::LevelUp(index) => {
-            spawn_level_up_modal(&mut commands, rewards, index, &assets.font, &art);
+            spawn_level_up_modal(&mut commands, rewards, index, &assets.font, &art, bindings);
             sfx.write(PlaySfx::boosted(cue::LEVEL_UP, 250));
         }
     }
@@ -323,7 +330,22 @@ fn spawn_reward_frame_node(
         });
 }
 
-fn spawn_continue_prompt(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, notice: &str) {
+/// The Continue button's key, which is whatever Confirm is bound to (`ENTER` by default).
+fn continue_key(bindings: &InputBindings) -> String {
+    key_hint(
+        bindings,
+        Device::Keyboard,
+        &FIELD_MENU_HINTS,
+        &[(&[HintKey::Action(AppAction::Confirm)], "")],
+    )
+}
+
+fn spawn_continue_prompt(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    notice: &str,
+    bindings: &InputBindings,
+) {
     spawn_divider(parent);
     parent
         .spawn(Node {
@@ -351,7 +373,14 @@ fn spawn_continue_prompt(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Fo
                 ))
                 .with_children(|button| {
                     spawn_battle_text(button, "Continue", font, 17.0, battle_ink(), Justify::Left);
-                    spawn_battle_text(button, "ENTER", font, 11.0, battle_gold(), Justify::Center);
+                    spawn_battle_text(
+                        button,
+                        continue_key(bindings),
+                        font,
+                        11.0,
+                        battle_gold(),
+                        Justify::Center,
+                    );
                 });
         });
 }
@@ -361,6 +390,7 @@ fn spawn_reward_modal(
     rewards: &BattleRewards,
     font: &Handle<Font>,
     art: &RewardModalArt,
+    bindings: &InputBindings,
 ) {
     let rows = rewards.member_rows();
     spawn_reward_frame(commands, LOOT_MODAL_WIDTH, "Victory loot modal", |panel| {
@@ -508,7 +538,7 @@ fn spawn_reward_modal(
                     });
                 });
             });
-        spawn_continue_prompt(panel, font, "Rewards added to your inventory");
+        spawn_continue_prompt(panel, font, "Rewards added to your inventory", bindings);
     });
 }
 

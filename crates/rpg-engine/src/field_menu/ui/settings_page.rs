@@ -118,15 +118,15 @@ pub(in crate::field_menu) fn spawn_settings_page(
 }
 
 /// The settings footer. Left and Right move between the lists through raw arrow keys, so they
-/// stay fixed. Space is shown as a second key beside the bound Confirm, which keeps the shipped
-/// text but still names it after Confirm is rebound (the table is not read for it).
+/// stay fixed. Toggling is Confirm, whose first two bindings are named (`ENTER / SPACE` by
+/// default), so a rebind stops naming a Space that no longer toggles.
 pub(in crate::field_menu) fn settings_page_hint(bindings: &InputBindings) -> String {
     menu_hint(
         bindings,
         &FIELD_MENU_HINTS,
         &[
             (&[UP_DOWN], "SELECT"),
-            (&[CONFIRM, HintKey::Fixed("SPACE")], "TOGGLE"),
+            (&[HintKey::Bindings(AppAction::Confirm, 2)], "TOGGLE"),
             (&[LEFT_RIGHT], "LIST / OPTIONS"),
             (&[BACK], "BACK"),
         ],

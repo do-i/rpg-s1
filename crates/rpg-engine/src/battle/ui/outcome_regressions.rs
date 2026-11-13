@@ -515,3 +515,71 @@ fn grouped_spell_input_skips_empty_schools_and_preserves_target_cancellation() {
         BattlePhase::Command
     );
 }
+
+#[test]
+fn battle_prompts_follow_rebound_back_confirm_and_direction_keys() {
+    use crate::input_bindings::BindingTarget;
+
+    let mut options = PlayerOptions::default();
+    for (action, key) in [
+        (AppAction::Back, KeyCode::KeyB),
+        (AppAction::Confirm, KeyCode::KeyG),
+        (AppAction::Right, KeyCode::KeyD),
+        (AppAction::Left, KeyCode::KeyA),
+    ] {
+        options
+            .bindings
+            .set_keys(BindingTarget::Menu(action), vec![key])
+            .expect("a nonempty row");
+    }
+    let message = |app: &App| app.world().resource::<BattleState>().message.clone();
+
+    let mut app = fixture(BattlePhase::Command);
+    app.insert_resource(options.clone());
+    let catalog = app.world().resource::<FieldMenuCatalog>();
+    let fire = catalog
+        .class("sorcerer")
+        .unwrap()
+        .abilities
+        .iter()
+        .find(|ability| ability.id == "fire_bolt")
+        .unwrap()
+        .clone();
+    {
+        let mut state = app.world_mut().resource_mut::<BattleState>();
+        state.command_index = 1;
+        state.combatants[0].abilities = vec![fire];
+        state.combatants[0].mana = 20;
+        state.combatants[1].health = 100;
+    }
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(message(&app), "UP/DOWN group · D spells · B commands");
+    press(&mut app, NormalizedAction::MenuRight);
+    assert_eq!(message(&app), "UP/DOWN spell · G cast · A groups");
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(message(&app), "Choose a target. B cancels.");
+    press(&mut app, NormalizedAction::Back);
+    press(&mut app, NormalizedAction::MenuLeft);
+    app.world_mut().resource_mut::<BattleState>().phase = BattlePhase::Command;
+    app.world_mut().resource_mut::<BattleState>().command_index = 0;
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(message(&app), "Choose a living enemy. B cancels.");
+
+    let mut app = fixture(BattlePhase::Command);
+    app.insert_resource(options);
+    app.insert_resource(crate::field_menu_domain::tests::catalog());
+    {
+        let mut state = app.world_mut().resource_mut::<BattleState>();
+        state.command_index = 2;
+        state.combatants[1].health = 100;
+        state.item_choices = vec![BattleItemChoice {
+            id: "potion".into(),
+            name: "Potion".into(),
+            quantity: 2,
+        }];
+    }
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(message(&app), "Choose an item. B cancels.");
+    press(&mut app, NormalizedAction::Confirm);
+    assert_eq!(message(&app), "Choose a target. B cancels.");
+}

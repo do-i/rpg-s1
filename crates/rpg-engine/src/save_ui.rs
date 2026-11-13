@@ -9,12 +9,16 @@ use crate::{
     action_input::{ActionState, AppAction},
     app_state::{AppState, AppStateTransitionRequest},
     gameplay_rng::GameplayRng,
+    input_bindings::InputBindings,
+    key_hints::{FIELD_MENU_HINTS, HintKey, key_hint},
     menu_chrome::{
         location_display_name, scroll_list_node, selectable_card_colors, spawn_header_bars,
         spawn_scroll_list, spawn_section_rule, spawn_status_text, status_border_active,
         status_ember, status_faint, status_gold, status_ink, status_muted, status_teal,
         status_violet,
     },
+    options_domain::Device,
+    options_store::PlayerOptions,
     playtime::Playtime,
     save_store::{SAVE_SLOT_COUNT, SaveSlot, SaveSlotState, SaveStore},
     scenario_balance::BalanceData,
@@ -404,6 +408,10 @@ fn handle_title_load_input(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the load picker redraws from the catalog, menu state, assets and live options"
+)]
 fn sync_title_load_overlay(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -411,6 +419,7 @@ fn sync_title_load_overlay(
     inventory: Res<ScenarioInventory>,
     catalog: Res<SaveSlotCatalog>,
     load_menu: Res<TitleLoadMenu>,
+    options: Option<Res<PlayerOptions>>,
     roots: Query<Entity, With<TitleLoadRoot>>,
 ) {
     if !load_menu.open {
@@ -419,7 +428,11 @@ fn sync_title_load_overlay(
         }
         return;
     }
-    if !roots.is_empty() && !load_menu.is_changed() && !catalog.is_changed() {
+    if !roots.is_empty()
+        && !load_menu.is_changed()
+        && !catalog.is_changed()
+        && options.as_ref().is_none_or(|options| !options.is_changed())
+    {
         return;
     }
     for entity in &roots {
@@ -451,7 +464,16 @@ fn sync_title_load_overlay(
             TitleLoadRoot,
         ))
         .with_children(|root| {
-            spawn_load_panel(root, &font, &catalog, &load_menu, load_icon.as_ref());
+            let default = PlayerOptions::default();
+            let options = options.as_deref().unwrap_or(&default);
+            spawn_load_panel(
+                root,
+                &font,
+                &catalog,
+                &load_menu,
+                load_icon.as_ref(),
+                &options.bindings,
+            );
         });
 }
 
@@ -461,6 +483,7 @@ fn spawn_load_panel(
     catalog: &SaveSlotCatalog,
     menu: &TitleLoadMenu,
     load_icon: Option<&Handle<Image>>,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -527,7 +550,7 @@ fn spawn_load_panel(
             spawn_section_rule(panel);
             spawn_status_text(
                 panel,
-                "UP/DOWN   SELECT SLOT      ENTER   LOAD      ESC   BACK",
+                load_picker_hint(bindings),
                 font,
                 14.0,
                 status_muted(),
@@ -536,6 +559,23 @@ fn spawn_load_panel(
                 spawn_save_message(panel, font, &menu.message, status_border_active());
             }
         });
+}
+
+/// The load picker's footer, which follows rebinds of Confirm, Back and the vertical directions.
+fn load_picker_hint(bindings: &InputBindings) -> String {
+    key_hint(
+        bindings,
+        Device::Keyboard,
+        &FIELD_MENU_HINTS,
+        &[
+            (
+                &[HintKey::Pair(AppAction::Up, AppAction::Down)],
+                "SELECT SLOT",
+            ),
+            (&[HintKey::Action(AppAction::Confirm)], "LOAD"),
+            (&[HintKey::Action(AppAction::Back)], "BACK"),
+        ],
+    )
 }
 
 fn spawn_load_header(
@@ -1044,5 +1084,43 @@ mod tests {
         menu.open(&slots);
         assert_eq!(menu.selected, 2);
         assert!(menu.open && menu.just_opened);
+    }
+
+    #[test]
+    fn the_load_picker_footer_matches_the_shipped_text_and_follows_a_rebound_confirm() {
+        assert_eq!(
+            load_picker_hint(&InputBindings::default()),
+            "UP/DOWN   SELECT SLOT      ENTER   LOAD      ESC   BACK"
+        );
+        let mut bindings = InputBindings::default();
+        bindings
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Confirm),
+                vec![KeyCode::KeyG],
+            )
+            .expect("a nonempty row");
+        assert_eq!(
+            load_picker_hint(&bindings),
+            "UP/DOWN   SELECT SLOT      G   LOAD      ESC   BACK"
+        );
+
+        let catalog = SaveSlotCatalog::default();
+        let menu = TitleLoadMenu::default();
+        let mut world = World::new();
+        let mut queue = bevy::ecs::world::CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, &world);
+        commands.spawn(Node::default()).with_children(|root| {
+            spawn_load_panel(root, &Handle::default(), &catalog, &menu, None, &bindings);
+        });
+        queue.apply(&mut world);
+        let texts = world
+            .query::<&Text>()
+            .iter(&world)
+            .map(|text| text.0.clone())
+            .collect::<Vec<_>>();
+        assert!(
+            texts.contains(&"UP/DOWN   SELECT SLOT      G   LOAD      ESC   BACK".to_owned()),
+            "{texts:?}"
+        );
     }
 }

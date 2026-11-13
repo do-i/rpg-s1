@@ -3,6 +3,8 @@
 //! This slice renders complete authored lines immediately. Typewriter timing remains owned by a
 //! later milestone; cancellation and completion hand off to the installed game flow.
 
+use std::borrow::Cow;
+
 use bevy::{ecs::system::SystemParam, prelude::*, text::LineBreak};
 
 use crate::{
@@ -10,6 +12,10 @@ use crate::{
     app_state::{AppState, AppStateTransitionRequest},
     game_state::GameState,
     gameplay_canvas::fixed_gameplay_camera,
+    input_bindings::InputBindings,
+    key_hints::{HintKey, HintStyle, key_hint},
+    options_domain::Device,
+    options_store::PlayerOptions,
     scenario_balance::BalanceData,
     scenario_dialogue::{CutsceneDialogue, DialogueActions},
     scenario_manifest::Manifest,
@@ -26,6 +32,15 @@ pub(crate) const INTRO_PANEL_HEIGHT: f32 = 180.0;
 const INTRO_TEXT_WIDTH: f32 = 552.0;
 const INTRO_TEXT_HEIGHT: f32 = 112.0;
 const LOADING_MESSAGE: &str = "Loading introduction...";
+
+/// The continuation hint: `ENTER / SPACE  ▶  1/3`.
+const INTRO_HINT: HintStyle = HintStyle {
+    key_gap: "  ▶  ",
+    segment_gap: "",
+    pair: "/",
+    either: " / ",
+    label_first: false,
+};
 
 pub(crate) struct IntroDialoguePlugin;
 
@@ -147,6 +162,17 @@ struct ActiveIntroInputs<'w> {
     balances: Res<'w, Assets<BalanceData>>,
     intros: Res<'w, Assets<CutsceneDialogue>>,
     asset_server: Res<'w, AssetServer>,
+    options: Option<Res<'w, PlayerOptions>>,
+}
+
+impl ActiveIntroInputs<'_> {
+    /// The live binding table, or the defaults where no options resource exists.
+    fn bindings(&self) -> Cow<'_, InputBindings> {
+        match self.options.as_deref() {
+            Some(options) => Cow::Borrowed(&options.bindings),
+            None => Cow::Owned(InputBindings::default()),
+        }
+    }
 }
 
 fn setup_intro_dialogue(
@@ -216,8 +242,12 @@ fn sync_intro_dialogue_view(
                 &theme,
                 &font,
                 line,
-                progress.line_index,
-                selected.intro.lines.len(),
+                continuation_hint(
+                    progress.line_index,
+                    selected.intro.lines.len(),
+                    false,
+                    &inputs.bindings(),
+                ),
             );
             *view = IntroDialogueViewState::Ready;
         }
@@ -291,10 +321,16 @@ fn advance_intro_dialogue(
     match progress.confirm(selected.intro.lines.len()) {
         ProgressEffect::AdvancedTo(index) => {
             line.0 = selected.intro.lines[index].clone();
-            hint.0 = continuation_hint(index, selected.intro.lines.len(), false);
+            hint.0 =
+                continuation_hint(index, selected.intro.lines.len(), false, &inputs.bindings());
         }
         ProgressEffect::Completed => {
-            hint.0 = continuation_hint(progress.line_index, selected.intro.lines.len(), true);
+            hint.0 = continuation_hint(
+                progress.line_index,
+                selected.intro.lines.len(),
+                true,
+                &inputs.bindings(),
+            );
             completions.write(IntroDialogueCompleted {
                 on_complete: selected.intro.on_complete.clone(),
             });
@@ -325,8 +361,7 @@ fn replace_with_dialogue(
     theme: &UiTheme,
     font: &Handle<Font>,
     line: &str,
-    line_index: usize,
-    line_count: usize,
+    hint: String,
 ) {
     commands.entity(root).despawn_children();
     commands.entity(root).with_children(|root| {
@@ -366,7 +401,7 @@ fn replace_with_dialogue(
                 IntroDialogueLine,
             ));
             panel.spawn((
-                Text::new(continuation_hint(line_index, line_count, false)),
+                Text::new(hint),
                 TextFont {
                     font: font.clone().into(),
                     font_size: FontSize::Px(theme.status_font_size),
@@ -423,14 +458,25 @@ fn spawn_status(
     });
 }
 
-fn continuation_hint(line_index: usize, line_count: usize, completed: bool) -> String {
+fn continuation_hint(
+    line_index: usize,
+    line_count: usize,
+    completed: bool,
+    bindings: &InputBindings,
+) -> String {
     if completed {
         "Introduction complete".to_owned()
     } else {
-        format!(
-            "ENTER / SPACE  ▶  {}/{}",
+        let position = format!(
+            "{}/{}",
             line_index.saturating_add(1).min(line_count),
             line_count
+        );
+        key_hint(
+            bindings,
+            Device::Keyboard,
+            &INTRO_HINT,
+            &[(&[HintKey::Bindings(AppAction::Confirm, 2)], &position)],
         )
     }
 }
@@ -1231,5 +1277,26 @@ on_complete:
             app.world().resource::<IntroDialogueViewState>(),
             &IntroDialogueViewState::Loading
         );
+    }
+
+    #[test]
+    fn the_continuation_hint_names_only_keys_that_still_confirm() {
+        let defaults = InputBindings::default();
+        assert_eq!(
+            continuation_hint(0, 3, false, &defaults),
+            "ENTER / SPACE  ▶  1/3"
+        );
+        assert_eq!(
+            continuation_hint(2, 3, true, &defaults),
+            "Introduction complete"
+        );
+        let mut rebound = InputBindings::default();
+        rebound
+            .set_keys(
+                crate::input_bindings::BindingTarget::Menu(AppAction::Confirm),
+                vec![KeyCode::KeyG],
+            )
+            .expect("a nonempty row");
+        assert_eq!(continuation_hint(0, 3, false, &rebound), "G  ▶  1/3");
     }
 }
