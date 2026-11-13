@@ -48,6 +48,7 @@ mod options_store;
 mod options_ui;
 mod persistence_status;
 pub mod playtime;
+mod report_support;
 pub mod runtime_flags;
 pub mod runtime_map;
 mod runtime_map_sweep;

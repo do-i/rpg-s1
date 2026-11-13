@@ -36,14 +36,9 @@ pub(crate) struct RuntimeMapSweepReport {
     pub(crate) load_error: Option<String>,
 }
 
-impl RuntimeMapSweepReport {
-    pub(crate) fn with_load_error(message: impl Into<String>) -> Self {
-        Self {
-            load_error: Some(message.into()),
-            ..Self::default()
-        }
-    }
+crate::report_support::impl_with_load_error!(RuntimeMapSweepReport);
 
+impl RuntimeMapSweepReport {
     pub(crate) fn passed(&self) -> usize {
         self.entries
             .iter()

@@ -48,14 +48,9 @@ pub(crate) struct EncounterSweepReport {
     pub(crate) load_error: Option<String>,
 }
 
-impl EncounterSweepReport {
-    pub(crate) fn with_load_error(message: impl Into<String>) -> Self {
-        Self {
-            load_error: Some(message.into()),
-            ..Self::default()
-        }
-    }
+crate::report_support::impl_with_load_error!(EncounterSweepReport);
 
+impl EncounterSweepReport {
     pub(crate) fn constructions(&self) -> usize {
         self.zones.iter().map(|zone| zone.constructions.len()).sum()
     }

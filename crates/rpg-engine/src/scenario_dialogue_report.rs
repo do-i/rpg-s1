@@ -16,13 +16,10 @@
 //! [`crate::scenario_cross_reference::validate_scenario_directory`] performs at error level.
 //! Unresolved item ids appear here only as informational notes.
 
-use std::{
-    collections::BTreeSet,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{collections::BTreeSet, fs, path::Path};
 
 use crate::{
+    report_support::safe_read_dir,
     scenario_dialogue::{DialogueActions, DialogueDocument, DialogueEntry, EntryDialogueKind},
     scenario_item::ItemCatalogFile,
     scenario_manifest::Manifest,
@@ -44,6 +41,7 @@ const DOCUMENTED_DEAD_ENTRIES: &[(&str, &[usize])] = &[
 ];
 
 /// The complete dialogue report for one scenario package.
+#[derive(Default)]
 pub(crate) struct DialogueReport {
     pub(crate) scenario_id: Option<String>,
     pub(crate) scenario_name: Option<String>,
@@ -52,16 +50,9 @@ pub(crate) struct DialogueReport {
     pub(crate) load_error: Option<String>,
 }
 
-impl DialogueReport {
-    pub(crate) fn with_load_error(message: impl Into<String>) -> Self {
-        Self {
-            scenario_id: None,
-            scenario_name: None,
-            documents: Vec::new(),
-            load_error: Some(message.into()),
-        }
-    }
+crate::report_support::impl_with_load_error!(DialogueReport);
 
+impl DialogueReport {
     /// A document is clean when it has no undocumented dead entries, no zero-line reachable
     /// entries, and no informational notes at all.
     pub(crate) fn clean_count(&self) -> usize {
@@ -568,25 +559,6 @@ fn read_known_item_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<St
     ids
 }
 
-/// Lists the files directly within `dir`, refusing to follow it outside `canonical_root`.
-/// `data/dialogue` and `data/items` are flat in the pinned scenario corpus, so this deliberately
-/// does not recurse.
-fn safe_read_dir(dir: &Path, canonical_root: Option<&Path>) -> Option<Vec<PathBuf>> {
-    let canonical_root = canonical_root?;
-    let canonical_dir = dir.canonicalize().ok()?;
-    if !canonical_dir.starts_with(canonical_root) || !canonical_dir.is_dir() {
-        return None;
-    }
-    let entries = fs::read_dir(dir).ok()?;
-    Some(
-        entries
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.is_file())
-            .collect(),
-    )
-}
-
 fn read_file_safely(root: &Path, canonical_root: Option<&Path>, relative: &str) -> Option<String> {
     let canonical_root = canonical_root?;
     let candidate = root.join(relative);
@@ -601,6 +573,7 @@ fn read_file_safely(root: &Path, canonical_root: Option<&Path>, relative: &str) 
 mod tests {
     use super::*;
     use std::{
+        path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };

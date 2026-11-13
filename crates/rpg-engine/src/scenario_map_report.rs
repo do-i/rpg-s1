@@ -11,13 +11,19 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use crate::{
-    scenario_dialogue::DialogueDocument, scenario_manifest::Manifest, scenario_map::MapMetadata,
-    scenario_path::ScenarioRelativePath, scenario_spatial::Position, scenario_yaml,
-    tmx_header::parse_tmx_map_document, world_transition::runtime_portals,
+    report_support::{read_stem_set, safe_read_dir},
+    scenario_dialogue::DialogueDocument,
+    scenario_manifest::Manifest,
+    scenario_map::MapMetadata,
+    scenario_path::ScenarioRelativePath,
+    scenario_spatial::Position,
+    scenario_yaml,
+    tmx_header::parse_tmx_map_document,
+    world_transition::runtime_portals,
 };
 
 /// True when `candidate` names a numbered TMX segment of `parent`: `parent` followed by `_` and
@@ -44,6 +50,7 @@ fn map_id_is_resolvable(id: &str, tmx_stems: &BTreeSet<String>) -> bool {
 }
 
 /// The complete per-map reachability report for one scenario package.
+#[derive(Default)]
 pub(crate) struct MapReport {
     pub(crate) scenario_id: Option<String>,
     pub(crate) scenario_name: Option<String>,
@@ -52,23 +59,14 @@ pub(crate) struct MapReport {
     pub(crate) load_error: Option<String>,
 }
 
+crate::report_support::impl_with_load_error!(MapReport);
+
 impl MapReport {
     pub(crate) fn resolvable_count(&self) -> usize {
         self.entries
             .iter()
             .filter(|entry| entry.findings().is_empty())
             .count()
-    }
-
-    /// An empty report describing why nothing could be loaded, used when the manifest or a
-    /// package selection step fails before any map can be examined.
-    pub(crate) fn with_load_error(message: impl Into<String>) -> Self {
-        Self {
-            scenario_id: None,
-            scenario_name: None,
-            entries: Vec::new(),
-            load_error: Some(message.into()),
-        }
     }
 }
 
@@ -338,21 +336,6 @@ fn read_map_yaml_directory(
     out
 }
 
-fn read_stem_set(dir: &Path, canonical_root: Option<&Path>, extension: &str) -> BTreeSet<String> {
-    let mut out = BTreeSet::new();
-    let Some(paths) = safe_read_dir(dir, canonical_root) else {
-        return out;
-    };
-    for path in paths {
-        if path.extension().is_some_and(|found| found == extension)
-            && let Some(stem) = path.file_stem().and_then(|stem| stem.to_str())
-        {
-            out.insert(stem.to_owned());
-        }
-    }
-    out
-}
-
 fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     let Some(paths) = safe_read_dir(dir, canonical_root) else {
@@ -372,25 +355,6 @@ fn read_dialogue_ids(dir: &Path, canonical_root: Option<&Path>) -> BTreeSet<Stri
     out
 }
 
-/// Lists the files directly within `dir`, refusing to follow it outside `canonical_root`.
-/// Every directory this module reads (`data/maps`, `media/maps`, `data/dialogue`) is flat in
-/// the pinned scenario corpus, so this deliberately does not recurse.
-fn safe_read_dir(dir: &Path, canonical_root: Option<&Path>) -> Option<Vec<PathBuf>> {
-    let canonical_root = canonical_root?;
-    let canonical_dir = dir.canonicalize().ok()?;
-    if !canonical_dir.starts_with(canonical_root) || !canonical_dir.is_dir() {
-        return None;
-    }
-    let entries = fs::read_dir(dir).ok()?;
-    Some(
-        entries
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.is_file())
-            .collect(),
-    )
-}
-
 fn read_file_safely(root: &Path, canonical_root: Option<&Path>, relative: &str) -> Option<String> {
     let canonical_root = canonical_root?;
     let candidate = root.join(relative);
@@ -405,6 +369,7 @@ fn read_file_safely(root: &Path, canonical_root: Option<&Path>, relative: &str) 
 mod tests {
     use super::*;
     use std::{
+        path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };

@@ -17,14 +17,9 @@ pub(crate) struct DialogueTraversalReport {
     pub(crate) load_error: Option<String>,
 }
 
-impl DialogueTraversalReport {
-    pub(crate) fn with_load_error(message: impl Into<String>) -> Self {
-        Self {
-            load_error: Some(message.into()),
-            ..Self::default()
-        }
-    }
+crate::report_support::impl_with_load_error!(DialogueTraversalReport);
 
+impl DialogueTraversalReport {
     pub(crate) fn root_branches(&self) -> usize {
         self.documents.iter().map(|document| document.roots).sum()
     }
