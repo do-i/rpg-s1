@@ -582,8 +582,8 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap();
-        let python =
-            std::env::var_os("RPG_S1_EDITOR_TEST_PYTHON").unwrap_or_else(|| "python3".into());
+        let python = std::env::var_os(crate::env_switches::EDITOR_TEST_PYTHON)
+            .unwrap_or_else(|| "python3".into());
         let output = std::process::Command::new(python)
             .current_dir(root)
             .args([

@@ -39,7 +39,6 @@ use crate::{
     input_names::{gamepad_button_from_name, gamepad_button_name, key_from_name, key_name},
 };
 
-pub(crate) const CONFIG_DIRECTORY_OVERRIDE: &str = "RPG_S1_CONFIG_DIR";
 const OPTIONS_FILE_NAME: &str = "options.yaml";
 
 /// The schema version this build writes.
@@ -389,11 +388,12 @@ fn binding_target(is_menu: bool, action_name: &str) -> Option<BindingTarget> {
 pub(crate) fn resolve_config_directory(
     environment: impl Fn(&str) -> Option<OsString>,
 ) -> Result<PathBuf, OptionsStoreError> {
-    if let Some(override_path) = environment(CONFIG_DIRECTORY_OVERRIDE) {
+    if let Some(override_path) = environment(crate::env_switches::CONFIG_DIR) {
         let path = PathBuf::from(override_path);
         if path.as_os_str().is_empty() {
             return Err(OptionsStoreError::InvalidDirectory(format!(
-                "{CONFIG_DIRECTORY_OVERRIDE} must not be empty"
+                "{} must not be empty",
+                crate::env_switches::CONFIG_DIR
             )));
         }
         return Ok(path);
@@ -721,7 +721,7 @@ mod tests {
     fn the_override_outranks_xdg_which_outranks_home() {
         assert_eq!(
             resolve(&[
-                (CONFIG_DIRECTORY_OVERRIDE, "/tmp/custom-config"),
+                (crate::env_switches::CONFIG_DIR, "/tmp/custom-config"),
                 ("XDG_CONFIG_HOME", "/tmp/xdg"),
                 ("HOME", "/tmp/home"),
             ]),
@@ -752,7 +752,7 @@ mod tests {
             Err(OptionsStoreError::InvalidDirectory(_))
         ));
         assert!(matches!(
-            resolve(&[(CONFIG_DIRECTORY_OVERRIDE, "")]),
+            resolve(&[(crate::env_switches::CONFIG_DIR, "")]),
             Err(OptionsStoreError::InvalidDirectory(_))
         ));
     }

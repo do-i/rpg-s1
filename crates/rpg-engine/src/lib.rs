@@ -20,6 +20,7 @@ pub mod encounter;
 mod encounter_assets;
 mod encounter_sweep;
 mod engine_settings;
+mod env_switches;
 mod field_menu;
 mod field_menu_domain;
 mod forge;
@@ -190,7 +191,7 @@ fn run_game(arguments: cli::PlayArguments) {
             })
             .set(AudioPlugin {
                 global_volume: GlobalVolume::new(
-                    if std::env::var_os("RPG_S1_MUTE_AUDIO").is_some() {
+                    if std::env::var_os(env_switches::MUTE_AUDIO).is_some() {
                         Volume::Linear(0.0)
                     } else {
                         Volume::Linear(1.0)
@@ -279,7 +280,7 @@ fn run_game(arguments: cli::PlayArguments) {
     .add_plugins(CreditsPlugin)
     .add_plugins(world_transition::hot_reload::ScenarioHotReloadPlugin::new(
         asset_base,
-        std::env::var_os("RPG_S1_HOT_RELOAD").is_some(),
+        std::env::var_os(env_switches::HOT_RELOAD).is_some(),
     ));
     if let Some(automation) = arguments.automation {
         app.insert_resource(automation);

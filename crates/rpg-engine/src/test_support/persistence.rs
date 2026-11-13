@@ -37,8 +37,8 @@ impl FixtureDirectory {
         let output = fs::File::create(self.0.join(format!("{phase}.log"))).unwrap();
         let mut child = Command::new(std::env::current_exe().unwrap())
             .args(["--exact", test, "--nocapture", "--test-threads=1"])
-            .env("RPG_S1_REGRESSION_CHILD", phase)
-            .env("RPG_S1_REGRESSION_ROOT", &self.0)
+            .env(crate::env_switches::REGRESSION_CHILD, phase)
+            .env(crate::env_switches::REGRESSION_ROOT, &self.0)
             .stdout(output.try_clone().unwrap())
             .stderr(output)
             .spawn()

@@ -13,9 +13,6 @@ use bevy::{
 
 use crate::{options_store::PlayerOptions, world_audio::LogicalBgmPlayer};
 
-/// Set by the launcher to silence the game regardless of the player's sound settings.
-const MUTE_AUDIO_VARIABLE: &str = "RPG_S1_MUTE_AUDIO";
-
 pub(crate) struct SoundOptionPlugin;
 
 impl Plugin for SoundOptionPlugin {
@@ -40,7 +37,7 @@ pub(crate) fn channel_gain(options: &PlayerOptions, music: bool, forced_mute: bo
 }
 
 fn forced_mute() -> bool {
-    std::env::var_os(MUTE_AUDIO_VARIABLE).is_some()
+    std::env::var_os(crate::env_switches::MUTE_AUDIO).is_some()
 }
 
 fn apply_to_new_sink(

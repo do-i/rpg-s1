@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 pub(crate) fn enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
     *ENABLED.get_or_init(|| {
-        let on = std::env::var_os("RPG_S1_STATUS_TEST").is_some_and(|value| value != "0");
+        let on = std::env::var_os(crate::env_switches::STATUS_TEST).is_some_and(|value| value != "0");
         if on {
             bevy::log::warn!(
                 "RPG_S1_STATUS_TEST is on: battle abilities are all unlocked and status side effects always land"

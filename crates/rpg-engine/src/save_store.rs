@@ -20,7 +20,6 @@ use crate::{
 pub(crate) const SAVE_SLOT_COUNT: usize = 101;
 pub(crate) const FIRST_PLAYER_SLOT: usize = 1;
 pub(crate) const LAST_PLAYER_SLOT: usize = SAVE_SLOT_COUNT - 1;
-pub(crate) const SAVE_DIRECTORY_OVERRIDE: &str = "RPG_S1_SAVE_DIR";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum SaveSlotState {
@@ -269,7 +268,7 @@ impl FromWorld for SaveStore {
 pub(crate) fn resolve_save_directory(
     environment: impl Fn(&str) -> Option<OsString>,
 ) -> Result<PathBuf, SaveStoreError> {
-    if let Some(override_path) = environment(SAVE_DIRECTORY_OVERRIDE) {
+    if let Some(override_path) = environment(crate::env_switches::SAVE_DIR) {
         let path = PathBuf::from(override_path);
         if path.as_os_str().is_empty() {
             return Err(SaveStoreError::InvalidDirectory(
@@ -433,7 +432,7 @@ mod tests {
         };
         assert_eq!(
             resolve(&[
-                (SAVE_DIRECTORY_OVERRIDE, "/tmp/custom-saves"),
+                (crate::env_switches::SAVE_DIR, "/tmp/custom-saves"),
                 ("XDG_DATA_HOME", "/tmp/data"),
                 ("HOME", "/tmp/home"),
             ])
@@ -448,7 +447,7 @@ mod tests {
             resolve(&[("HOME", "/tmp/home")]).unwrap(),
             PathBuf::from("/tmp/home/.local/share/rpg-s1/saves")
         );
-        assert!(resolve(&[(SAVE_DIRECTORY_OVERRIDE, "")]).is_err());
+        assert!(resolve(&[(crate::env_switches::SAVE_DIR, "")]).is_err());
         assert!(resolve(&[("XDG_DATA_HOME", "relative")]).is_err());
         assert!(resolve(&[]).is_err());
     }

@@ -9,7 +9,7 @@ use crate::{
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, ScenarioRoot},
 };
 
-pub(super) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.";
+pub(crate) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.\n  RPG_S1_SAVE_DIR                Save directory; must not be empty. Overrides the XDG_DATA_HOME and HOME defaults.\n  RPG_S1_CONFIG_DIR              Options directory; must not be empty. Overrides the XDG_CONFIG_HOME and HOME defaults.";
 
 pub(super) enum Command {
     Play(PlayArguments),
@@ -210,13 +210,6 @@ pub(super) fn parse_command(
     }
 }
 
-/// Set to `solo` or `full` to launch straight into the world with that debug party.
-///
-/// This exists so a launcher entry (see `menu.toml`) can start a debug session with no
-/// CLI arguments at all, following the same env-var precedent as `RPG_S1_MUTE_AUDIO`
-/// and `RPG_S1_DEBUG_COLLISION`. An explicit `--party-preset` always wins.
-pub(crate) const PARTY_PRESET_ENV_VAR: &str = "RPG_S1_PARTY_PRESET";
-
 fn parse_party_preset(value: &str) -> Option<DebugPartyPreset> {
     match value {
         "solo" => Some(DebugPartyPreset::Solo),
@@ -238,14 +231,21 @@ pub(super) fn apply_environment_debug_defaults(
         Command::Play(play) | Command::Record { play, .. } => play,
         _ => return Ok(()),
     };
-    let Some(raw) = environment(PARTY_PRESET_ENV_VAR) else {
+    let Some(raw) = environment(crate::env_switches::PARTY_PRESET) else {
         return Ok(());
     };
-    let value = raw
-        .into_string()
-        .map_err(|_| UsageError(format!("{PARTY_PRESET_ENV_VAR} must be valid UTF-8")))?;
-    let preset = parse_party_preset(value.trim())
-        .ok_or_else(|| UsageError(format!("{PARTY_PRESET_ENV_VAR} requires solo|full")))?;
+    let value = raw.into_string().map_err(|_| {
+        UsageError(format!(
+            "{} must be valid UTF-8",
+            crate::env_switches::PARTY_PRESET
+        ))
+    })?;
+    let preset = parse_party_preset(value.trim()).ok_or_else(|| {
+        UsageError(format!(
+            "{} requires solo|full",
+            crate::env_switches::PARTY_PRESET
+        ))
+    })?;
     let mut debug = play.debug.take().unwrap_or_default();
     if debug.party_preset.is_none() {
         debug.party_preset = Some(preset);

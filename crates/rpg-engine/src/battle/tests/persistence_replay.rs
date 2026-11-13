@@ -132,10 +132,11 @@ fn seeded_gameplay_record_replay_and_corrupted_copy_across_processes() {
 
 #[test]
 fn replay_child() {
-    let Ok(phase) = std::env::var("RPG_S1_REGRESSION_CHILD") else {
+    let Ok(phase) = std::env::var(crate::env_switches::REGRESSION_CHILD) else {
         return;
     };
-    let root = std::path::PathBuf::from(std::env::var_os("RPG_S1_REGRESSION_ROOT").unwrap());
+    let root =
+        std::path::PathBuf::from(std::env::var_os(crate::env_switches::REGRESSION_ROOT).unwrap());
     let store = SaveStore::new(root.join("saves"));
     if ["record", "repeat", "different"].contains(&phase.as_str()) {
         let seed = if phase == "different" { 43 } else { 42 };

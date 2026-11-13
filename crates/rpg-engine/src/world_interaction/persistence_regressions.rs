@@ -188,7 +188,7 @@ fn authored_rewards_and_campaign_boundaries_survive_fresh_processes() {
     }
     // This opt-in exports resettable, generated saves for the operator checklist. Never
     // replace an existing fixture/profile directory or touch a player's normal save root.
-    if let Some(destination) = std::env::var_os("RPG_S1_RF10_EXPORT") {
+    if let Some(destination) = std::env::var_os(crate::env_switches::RF10_EXPORT) {
         let destination = std::path::PathBuf::from(destination);
         fs::create_dir(&destination).expect("choose a new RF-10 export directory");
         for entry in fs::read_dir(&directory.0).unwrap() {
@@ -205,10 +205,11 @@ fn authored_rewards_and_campaign_boundaries_survive_fresh_processes() {
 
 #[test]
 fn persistence_child() {
-    let Ok(phase) = std::env::var("RPG_S1_REGRESSION_CHILD") else {
+    let Ok(phase) = std::env::var(crate::env_switches::REGRESSION_CHILD) else {
         return;
     };
-    let root = std::path::PathBuf::from(std::env::var_os("RPG_S1_REGRESSION_ROOT").unwrap());
+    let root =
+        std::path::PathBuf::from(std::env::var_os(crate::env_switches::REGRESSION_ROOT).unwrap());
     let store = SaveStore::new(root.clone());
     if phase == "seed" {
         fs::write(root.join("writer-pid"), std::process::id().to_string()).unwrap();

@@ -32,9 +32,6 @@ use crate::{
     world_transition::runtime_portals,
 };
 
-/// Set (to any value) before launching to draw portal and collision debug outlines in the World.
-pub(crate) const DEBUG_COLLISION_ENV_VAR: &str = "RPG_S1_DEBUG_COLLISION";
-
 const PORTAL_COLOR: Color = Color::srgb(0.0, 200.0 / 255.0, 1.0);
 const PLAYER_COLOR: Color = Color::srgb(1.0, 0.0, 0.0);
 const NPC_COLOR: Color = Color::srgb(1.0, 0.0, 1.0);
@@ -50,7 +47,7 @@ impl DebugCollisionOverlay {
     /// Resolves the flag from an environment lookup, injectable for tests the same way
     /// [`crate::save_store::resolve_save_directory`] takes its `environment` closure.
     pub(crate) fn from_environment(environment: impl Fn(&str) -> Option<OsString>) -> Self {
-        Self(environment(DEBUG_COLLISION_ENV_VAR).is_some())
+        Self(environment(crate::env_switches::DEBUG_COLLISION).is_some())
     }
 
     #[cfg(test)]
@@ -152,23 +149,23 @@ mod tests {
     fn overlay_is_off_by_default_and_on_only_when_the_env_var_is_set() {
         assert!(!DebugCollisionOverlay::from_environment(|_| None).enabled());
         assert!(
-            DebugCollisionOverlay::from_environment(
-                |name| (name == DEBUG_COLLISION_ENV_VAR).then(|| OsString::from("1"))
-            )
+            DebugCollisionOverlay::from_environment(|name| (name
+                == crate::env_switches::DEBUG_COLLISION)
+                .then(|| OsString::from("1")))
             .enabled()
         );
         // Any value at all turns it on, matching `RPG_S1_MUTE_AUDIO`'s `is_some()` check.
         assert!(
-            DebugCollisionOverlay::from_environment(
-                |name| (name == DEBUG_COLLISION_ENV_VAR).then(|| OsString::from(""))
-            )
+            DebugCollisionOverlay::from_environment(|name| (name
+                == crate::env_switches::DEBUG_COLLISION)
+                .then(|| OsString::from("")))
             .enabled()
         );
         // A different variable being set must not turn the overlay on.
         assert!(
-            !DebugCollisionOverlay::from_environment(
-                |name| (name == "RPG_S1_MUTE_AUDIO").then(|| OsString::from("1"))
-            )
+            !DebugCollisionOverlay::from_environment(|name| (name
+                == crate::env_switches::MUTE_AUDIO)
+                .then(|| OsString::from("1")))
             .enabled()
         );
     }

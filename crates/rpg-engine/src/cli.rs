@@ -14,6 +14,8 @@ mod tests;
 
 use std::{ffi::OsString, io::Write, path::Path};
 
+#[cfg(test)]
+pub(crate) use self::args::USAGE;
 pub(crate) use self::{args::PlayArguments, packages::production_asset_base};
 use self::{execute::run_with_version, packages::production_scenario_collection};
 use crate::{

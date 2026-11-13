@@ -899,7 +899,7 @@ fn play_seed_is_bounded_to_u64_and_reaches_the_launcher() {
 fn fake_environment(value: Option<&str>) -> impl Fn(&str) -> Option<OsString> + use<> {
     let value = value.map(OsString::from);
     move |name| {
-        (name == PARTY_PRESET_ENV_VAR)
+        (name == crate::env_switches::PARTY_PRESET)
             .then(|| value.clone())
             .flatten()
     }
