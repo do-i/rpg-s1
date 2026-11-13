@@ -141,14 +141,14 @@ fn autosave_on_map_arrival(
     match result {
         Ok(_) => {
             tracker.failure = None;
-            saves.request_refresh();
+            saves.request_slot_refresh(AUTOSAVE_SLOT);
             status
                 .autosave
                 .report("Autosave saved to disk.".to_owned(), false);
         }
         Err((error, published)) => {
             let message = if published {
-                saves.request_refresh();
+                saves.request_slot_refresh(AUTOSAVE_SLOT);
                 format!(
                     "Autosave file published, but disk durability could not be confirmed: {error}. Retry after fixing the storage problem."
                 )
@@ -358,6 +358,37 @@ mod tests {
         permissions.set_readonly(false);
         fs::set_permissions(&root, permissions).unwrap();
     }
+    #[test]
+    fn an_autosave_refreshes_only_its_own_slot_and_matches_a_full_scan() {
+        use std::sync::atomic::Ordering;
+
+        let dir = TempSaveDir::new("one-slot-refresh");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        let balance = fixture_balance();
+        let store = app.world().resource::<SaveStore>().clone();
+        app.world_mut()
+            .resource_mut::<SaveSlotCatalog>()
+            .request_refresh();
+        app.world_mut()
+            .resource_mut::<SaveSlotCatalog>()
+            .apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
+
+        app.update();
+        let before = store.inspected.load(Ordering::Relaxed);
+        app.world_mut()
+            .resource_mut::<SaveSlotCatalog>()
+            .apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
+        assert_eq!(store.inspected.load(Ordering::Relaxed) - before, 1);
+        let catalog = app.world().resource::<SaveSlotCatalog>();
+        assert!(catalog.slots()[0].is_valid());
+        assert_eq!(
+            catalog.slots(),
+            store
+                .enumerate("my_rpg_story", "1.0.0", &balance)
+                .as_slice()
+        );
+    }
+
     #[test]
     fn injected_write_and_sync_failures_preserve_checkpoint_and_deliberate_retry_refreshes() {
         for operation in ["write temporary save", "sync temporary save"] {

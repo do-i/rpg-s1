@@ -60,6 +60,9 @@ pub(crate) struct SaveStore {
     root: PathBuf,
     #[cfg(test)]
     pub(crate) fail_operation: Option<&'static str>,
+    /// Slot files opened for inspection, so tests can prove a refresh reads only what changed.
+    #[cfg(test)]
+    pub(crate) inspected: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl SaveStore {
@@ -68,6 +71,8 @@ impl SaveStore {
             root,
             #[cfg(test)]
             fail_operation: None,
+            #[cfg(test)]
+            inspected: std::sync::Arc::default(),
         }
     }
 
@@ -102,13 +107,17 @@ impl SaveStore {
             .collect()
     }
 
-    fn inspect_slot(
+    /// Reads, decodes and verifies one slot exactly as [`Self::enumerate`] does for each slot.
+    pub(crate) fn inspect_slot(
         &self,
         index: usize,
         scenario_id: &str,
         scenario_version: &str,
         balance: &BalanceData,
     ) -> SaveSlot {
+        #[cfg(test)]
+        self.inspected
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = self.root.join(format!("{index:03}.yaml"));
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,

@@ -117,6 +117,8 @@ pub(crate) struct SaveSlotCatalog {
     balance: Option<BalanceData>,
     ready: bool,
     refresh_requested: bool,
+    /// Slots written by the game since the last refresh; each needs only its own file re-read.
+    pending_slots: Vec<usize>,
     failure: Option<String>,
 }
 
@@ -133,14 +135,23 @@ impl SaveSlotCatalog {
         self.refresh_requested = true;
     }
 
+    /// Requests a re-read of one slot the game itself just wrote. Anything that could have
+    /// changed other files requests the full scan with [`Self::request_refresh`] instead.
+    pub(crate) fn request_slot_refresh(&mut self, slot: usize) {
+        if !self.pending_slots.contains(&slot) {
+            self.pending_slots.push(slot);
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn refresh_requested_for_test(&self) -> bool {
-        self.refresh_requested
+        self.refresh_requested || !self.pending_slots.is_empty()
     }
 
     #[cfg(test)]
     pub(crate) fn clear_refresh_for_test(&mut self) {
         self.refresh_requested = false;
+        self.pending_slots.clear();
     }
 
     #[cfg(test)]
@@ -252,7 +263,7 @@ fn refresh_save_slots(
     inputs: SaveInputs,
     mut catalog: ResMut<SaveSlotCatalog>,
 ) {
-    if !catalog.refresh_requested {
+    if !catalog.refresh_requested && catalog.pending_slots.is_empty() {
         return;
     }
     let Some((manifest, balance)) = inputs.current() else {
@@ -260,16 +271,45 @@ fn refresh_save_slots(
             catalog.ready = false;
             catalog.failure = inputs.active.failure().map(ToString::to_string);
             catalog.refresh_requested = false;
+            catalog.pending_slots.clear();
         }
         return;
     };
-    catalog.slots = store.enumerate(&manifest.id, &manifest.version, balance);
-    catalog.scenario_id.clone_from(&manifest.id);
-    catalog.scenario_version.clone_from(&manifest.version);
-    catalog.balance = Some(balance.clone());
-    catalog.ready = true;
-    catalog.failure = None;
-    catalog.refresh_requested = false;
+    catalog.apply_refresh(&store, &manifest.id, &manifest.version, balance);
+}
+
+impl SaveSlotCatalog {
+    /// Brings the catalog up to date: only the slots the game wrote when the catalog is complete
+    /// for this scenario, otherwise a full scan.
+    pub(crate) fn apply_refresh(
+        &mut self,
+        store: &SaveStore,
+        scenario_id: &str,
+        scenario_version: &str,
+        balance: &BalanceData,
+    ) {
+        let incremental = !self.refresh_requested
+            && self.ready
+            && self.slots.len() == SAVE_SLOT_COUNT
+            && self.scenario_id == scenario_id
+            && self.scenario_version == scenario_version;
+        if incremental {
+            let pending = std::mem::take(&mut self.pending_slots);
+            for index in pending.into_iter().filter(|&index| index < SAVE_SLOT_COUNT) {
+                self.slots[index] =
+                    store.inspect_slot(index, scenario_id, scenario_version, balance);
+            }
+            return;
+        }
+        self.pending_slots.clear();
+        self.slots = store.enumerate(scenario_id, scenario_version, balance);
+        self.scenario_id = scenario_id.to_owned();
+        self.scenario_version = scenario_version.to_owned();
+        self.balance = Some(balance.clone());
+        self.ready = true;
+        self.failure = None;
+        self.refresh_requested = false;
+    }
 }
 
 #[expect(
@@ -815,6 +855,92 @@ mod tests {
             }),
             saved_at_unix_seconds: saved_at,
         }
+    }
+
+    #[test]
+    fn single_slot_refresh_reads_one_file_and_matches_a_full_scan() {
+        use crate::save_data::tests::{fixture_balance, fixture_envelope};
+        use std::sync::atomic::Ordering;
+
+        let root = std::env::temp_dir().join(format!(
+            "rpg-s1-save-ui-slot-refresh-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = SaveStore::new(root.clone());
+        let balance = fixture_balance();
+        let envelope = fixture_envelope();
+        let mut catalog = SaveSlotCatalog::ready_for_test("my_rpg_story", "1.0.0", balance.clone());
+
+        // An empty catalog is not complete, so the first refresh is the full scan.
+        catalog.request_slot_refresh(1);
+        catalog.apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
+        assert_eq!(store.inspected.load(Ordering::Relaxed), SAVE_SLOT_COUNT);
+        assert_eq!(catalog.slots().len(), SAVE_SLOT_COUNT);
+        assert!(!catalog.refresh_requested_for_test());
+
+        // Healthy writes through the production path, then corrupt and incompatible files.
+        store.write(0, &envelope, true, &balance).unwrap();
+        store.write(7, &envelope, true, &balance).unwrap();
+        std::fs::write(store.slot_path(9).unwrap(), b"not: [valid").unwrap();
+        let incompatible = String::from_utf8(envelope.encode().unwrap())
+            .unwrap()
+            .replacen("format_version: 1", "format_version: 99", 1);
+        std::fs::write(store.slot_path(12).unwrap(), incompatible).unwrap();
+        for slot in [0, 7, 9, 12, 20] {
+            catalog.request_slot_refresh(slot);
+            catalog.request_slot_refresh(slot);
+            let before = store.inspected.load(Ordering::Relaxed);
+            catalog.apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
+            assert_eq!(store.inspected.load(Ordering::Relaxed) - before, 1);
+        }
+        assert!(catalog.slots()[0].is_valid());
+        assert!(catalog.slots()[7].is_valid());
+        assert!(matches!(
+            catalog.slots()[9].state,
+            SaveSlotState::Corrupt(_)
+        ));
+        assert!(matches!(
+            catalog.slots()[12].state,
+            SaveSlotState::Incompatible(_)
+        ));
+        assert!(catalog.slots()[20].is_empty());
+
+        // An overwrite and a file turned corrupt are picked up by a slot refresh too.
+        let mut newer = envelope.clone();
+        newer.saved_at_unix_seconds += 5;
+        store.write(7, &newer, true, &balance).unwrap();
+        std::fs::write(store.slot_path(0).unwrap(), b"not: [valid").unwrap();
+        catalog.request_slot_refresh(7);
+        catalog.request_slot_refresh(0);
+        catalog.apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
+        assert_eq!(
+            catalog.slots(),
+            store
+                .enumerate("my_rpg_story", "1.0.0", &balance)
+                .as_slice()
+        );
+
+        // A scenario change or an explicit full request rescans everything.
+        let before = store.inspected.load(Ordering::Relaxed);
+        catalog.request_slot_refresh(7);
+        catalog.apply_refresh(&store, "other_story", "1.0.0", &balance);
+        assert_eq!(
+            store.inspected.load(Ordering::Relaxed) - before,
+            SAVE_SLOT_COUNT
+        );
+        assert!(matches!(
+            catalog.slots()[7].state,
+            SaveSlotState::Incompatible(_)
+        ));
+        catalog.request_refresh();
+        let before = store.inspected.load(Ordering::Relaxed);
+        catalog.apply_refresh(&store, "other_story", "1.0.0", &balance);
+        assert_eq!(
+            store.inspected.load(Ordering::Relaxed) - before,
+            SAVE_SLOT_COUNT
+        );
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

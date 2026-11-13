@@ -99,7 +99,7 @@ pub(super) fn save_game(
         Ok(_) => {
             state.mode = FieldMenuMode::Browse;
             state.message = format!("{} saved.", slot_label(state.selected));
-            saves.request_refresh();
+            saves.request_slot_refresh(state.selected);
         }
         // The slot holds the new save even though durability is unconfirmed, so the list must
         // show it and the menu must not imply the old save survived.
@@ -109,7 +109,7 @@ pub(super) fn save_game(
                 "{} saved, but disk durability could not be confirmed: {error}.",
                 slot_label(state.selected)
             );
-            saves.request_refresh();
+            saves.request_slot_refresh(state.selected);
         }
         Err((error, false)) => state.message = error,
     }
