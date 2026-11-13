@@ -1,23 +1,16 @@
 //! Optional debug rendering of portal and collision geometry.
 //!
-//! Mirrors the source's own debug overlay: `engine/world/world_map_renderer.py::_render_portal_debug`
-//! draws every portal as a 2px outline in `(0, 200, 255)` (a zero-size point portal draws as a 4x4
-//! box), and `engine/world/player.py` (~line 266) draws the player's live collision rect as a 2px
-//! outline in `(255, 0, 0)`. Both are gated in the source by an optional `debug.collision` flag in
-//! `engine/settings/engine_config_data.py`, absent (off) by default.
+//! Portals draw as cyan outlines (a zero-size point portal draws as a 4x4 box), the player's
+//! collision rect as a red outline, and NPC collision rects in magenta.
 //!
-//! The port has no settings file wired up yet for this, so it follows the repo's existing
-//! env-var-flag precedent instead (`RPG_S1_MUTE_AUDIO` in `src/main.rs`, `RPG_S1_SAVE_DIR` in
-//! `src/save_store.rs`): set `RPG_S1_DEBUG_COLLISION` (any value) before launching to turn the
-//! overlay on. It is read once at startup into [`DebugCollisionOverlay`], a plain resource, so the
-//! flag can't change gameplay mid-session and every other system is unaware of it. As a bonus over
-//! the source, NPC collision rects are also drawn (in magenta) when the flag is set, since the
-//! source only documents portals and the player.
+//! Off by default. Set `RPG_S1_DEBUG_COLLISION` (any value) before launching. The flag is read once
+//! at startup into [`DebugCollisionOverlay`], so it cannot change gameplay mid-session. The name
+//! is defined with the other environment switches in `env_switches`.
 //!
-//! Purely visual: drawn with Bevy's immediate-mode gizmos, which in 2D always render in front of
-//! sprites regardless of z, so no interaction with the map's `world_entity_y_z` y-sort convention
-//! is needed. The pixel-to-world axis convention matches every other World renderer (`x` unchanged,
-//! `y` negated) — see `world_player::WorldPlayerMotion::sprite_center_world`.
+//! Purely visual: the overlay uses immediate-mode gizmos, which render in front of sprites in 2D
+//! regardless of z, so it does not take part in the `world_entity_y_z` y-sort. Pixel-to-world axes
+//! match the other World renderers (`x` unchanged, `y` negated); see
+//! `world_player::WorldPlayerMotion::sprite_center_world`.
 
 use std::ffi::OsString;
 

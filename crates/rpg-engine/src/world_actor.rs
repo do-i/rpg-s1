@@ -118,29 +118,16 @@ impl WorldActorState {
 
 /// One live, present NPC. Tile occupancy is authoritative for grid interaction and collision.
 ///
-/// # Placement convention
+/// NPC sprites sit on the authored tile corner (`top_left = tile * TILE_SIZE`, no collision
+/// centring). The player and enemies instead centre their collision box on the tile (see
+/// `character_top_left`), so an NPC's collision box (`top_left + (22, 41)`, 20x18) lands about
+/// one tile south-east of its authored tile.
 ///
-/// Unlike the player and world-map enemies (`world_player`, `world_encounter`), which place
-/// their sprite's collision-box *center* on the authored tile's center (source
-/// `engine/world/player.py` / `engine/encounter/enemy_sprite.py`, both computing
-/// `tile*ts + ts/2 - collision_offset - collision_size/2`), a source NPC (`engine/world/npc.py`)
-/// stores its pixel origin as the *plain* authored tile corner: `_origin_px = tile_x * tile_size`
-/// with no collision centering at all. `top_left` mirrors that: see `character_top_left`.
-///
-/// One consequence the source embraces: an NPC's `collision_rect` (`_px + 22, _py + 41, 20, 18`)
-/// sits with its center near `(tile+1, tile+1)`, not on the authored tile itself — the NPC's feet
-/// are drawn at the authored tile's corner, so its collision box lands roughly a tile
-/// southeast. `origin` and `position` below give the two tiles that distinction implies:
-///
-/// - `origin` is the *authored anchor* tile (`npc.position` from the map YAML, unconverted). It
-///   never changes after spawn and is what wander target selection re-centers on, matching the
-///   source's `_origin_px/_origin_py` (see `pick_wander_target`).
-/// - `position` is the tile the NPC's collision box *currently occupies* — i.e.
-///   `tile_from_top_left(top_left)`, recomputed the same way at spawn and after every wander
-///   step, so the two call sites can never disagree. For an unmoved NPC this is `origin + (1,
-///   1)`, by the same geometry as `collision_rect` above; it is intentionally not "the authored
-///   tile" once occupancy or interaction distance ties need the box the player can actually
-///   bump into.
+/// - `origin` is the authored anchor tile (`npc.position` from the map YAML). It is fixed after
+///   spawn, and wander target selection re-centres on it (see `pick_wander_target`).
+/// - `position` is the tile the collision box occupies, `tile_from_top_left(top_left)`, recomputed
+///   at spawn and after every wander step so both call sites agree. For an unmoved NPC it is
+///   `origin + (1, 1)`, not the authored tile.
 #[derive(Component, Debug)]
 pub(crate) struct WorldNpc {
     map_id: String,
