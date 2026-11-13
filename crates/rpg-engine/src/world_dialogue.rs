@@ -153,18 +153,16 @@ impl DialogueSession {
 
     /// One-based position of the line on screen, and how many the run holds.
     ///
-    /// A *run* is everything the player will read before they are asked to do anything: the
-    /// current entry plus every entry it hands off to with `next:`. `next` targets a node by
-    /// name and resolves without consulting flags, so that chain is walkable in advance and the
-    /// Cinder Marshal's six-entry confrontation counts as one `1/25` conversation instead of
-    /// restarting at `1/4` for each companion who speaks.
+    /// A *run* is everything the player reads before they are asked to do anything: the current
+    /// entry plus every entry it hands off to with `next:`. `next` targets a node by name and
+    /// resolves without consulting flags, so the chain is walkable in advance and counts as one
+    /// conversation, not a restart for each speaker.
     ///
-    /// The run stops at a branch — an entry carrying `choices`, or one that ends. Which arm comes
-    /// next is the player's to pick and the arms differ in length, so there is no further total
-    /// to promise; the count starts again once they choose.
+    /// The run stops at a branch: an entry carrying `choices`, or one that ends. The player picks
+    /// the arm, and arms differ in length, so there is no further total to promise. The count
+    /// starts again once they choose.
     ///
-    /// `None` once the session is closed, and for a single-page run — a sign that says one thing
-    /// has no progress to report, and `1/1` on every such box is noise rather than information.
+    /// `None` once the session is closed, and for a single-page run, where `1/1` is noise.
     pub(crate) fn page(&self) -> Option<(usize, usize)> {
         if self.phase == DialoguePhase::Closed {
             return None;

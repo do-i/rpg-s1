@@ -1,21 +1,18 @@
 //! Mouse position, transformed into the fixed gameplay canvas.
 //!
-//! The window is not the canvas. [`super::update_gameplay_canvas`] fits a 1280x766 canvas into
-//! whatever the window happens to be and centers it, so at almost every window size some of the
-//! window is bar rather than game. A cursor position taken straight from the window is therefore
-//! wrong twice over: it is offset by the bar, and it is scaled by however far the canvas had to
-//! shrink. Both corrections happen here, once, so no screen has to remember to do them.
+//! The window is not the canvas. [`super::update_gameplay_canvas`] fits the 1280x766 canvas into
+//! the window and centers it, so some of the window is letterbox or pillarbox bar. A raw window
+//! cursor position is offset by the bar and scaled by the canvas's fit. Both corrections happen
+//! here, so no screen has to repeat them.
 //!
-//! Two spaces come out of that transform and both are needed:
+//! Two spaces come out of the transform:
 //!
-//! - **Canvas space** — `0..1280` by `0..766`, matching every hand-placed coordinate in the port.
-//! - **Viewport space** — physical pixels measured from the viewport's top-left corner, which is
-//!   the space Bevy's UI layout reports [`ComputedNode`] rects in, and so the space a hit test
-//!   against a menu row has to use.
+//! - **Canvas space**: `0..1280` by `0..766`, matching the hand-placed coordinates in the port.
+//! - **Viewport space**: physical pixels from the viewport's top-left corner. This is the space
+//!   Bevy's UI layout reports [`ComputedNode`] rects in, so hit tests against menu rows use it.
 //!
-//! A cursor in a letterbox or pillarbox bar is in neither space, and both are `None`. That is the
-//! behavior the `DEFERRED-POINTER` acceptance asks for: bar space is not clamped to the nearest
-//! edge, because clamping would let a click 200px outside the canvas activate the button nearest
+//! A cursor in a bar is in neither space, and both are `None`. Bar space is not clamped to the
+//! nearest edge: clamping would let a click 200 px outside the canvas activate the button nearest
 //! the border.
 
 use bevy::{

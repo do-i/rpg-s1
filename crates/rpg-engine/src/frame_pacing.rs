@@ -1,11 +1,10 @@
 //! How often the game updates and renders, chosen to keep CPU use down where the GPU cannot help.
 //!
-//! On a software renderer (llvmpipe and friends) every frame is rasterized on the CPU, at roughly
-//! 20 ms of CPU work per frame for the 1280x766 canvas -- over 1.5 cores at 60 Hz. Two policies:
+//! On a software renderer (llvmpipe and friends) every frame is rasterized on the CPU: about 20 ms
+//! of work per frame at the 1280x766 canvas, which is over 1.5 cores at 60 Hz. Two policies:
 //!
-//! - Unfocused, the game wakes about once a second instead of 60 times. A key press or the window
-//!   regaining focus still wakes it at once. Gameplay reads clamped frame deltas, so the world
-//!   creeps rather than jumps while nobody is looking.
+//! - Unfocused, the game wakes about once a second. A key press or regaining focus wakes it at
+//!   once. Gameplay reads clamped frame deltas, so the world creeps rather than jumps.
 //! - Focused on a software adapter, the game runs a steady 30 Hz loop. It deliberately does not
 //!   wake on input: holding a direction repeats key events, which would pull walking back to
 //!   60 Hz. Input is still read every frame, so latency grows by at most one 33 ms frame.

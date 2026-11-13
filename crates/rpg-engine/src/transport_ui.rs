@@ -82,17 +82,15 @@ pub(crate) struct TransportUiState {
     /// False for the frame the atlas is opened, so the Confirm press that opened it cannot also
     /// answer it.
     ///
-    /// Two of the three openers accept with Confirm and both live in systems that run *earlier*
-    /// in `Update` than [`handle_transport_input`]: the field menu's spell list
-    /// (`field_menu.rs`, `FieldMenuPlugin` is registered before `TransportUiPlugin`, and the two
-    /// systems both take `ResMut<TransportUiState>` so the executor cannot interleave them) and
-    /// the `open_transport` dialogue verb. Without the latch that same still-`just_pressed`
-    /// Confirm falls straight through into the browse handler, which promotes the atlas to
-    /// [`TransportPhase::Confirm`] on whichever destination happens to be first — and that phase
-    /// ignores the arrow keys, so the player gets a map they cannot steer.
+    /// Two openers accept with Confirm and run earlier in `Update` than
+    /// [`handle_transport_input`]: the field menu's spell list (`field_menu.rs`; `FieldMenuPlugin`
+    /// is registered before `TransportUiPlugin`, and both systems take `ResMut<TransportUiState>`
+    /// so the executor cannot interleave them) and the `open_transport` dialogue verb. Without the
+    /// latch, that still-`just_pressed` Confirm falls into the browse handler and promotes the atlas
+    /// to [`TransportPhase::Confirm`] on the first destination. That phase ignores arrow keys.
     ///
-    /// Lives on the state rather than on the opener, like [`super::world_interaction`]'s
-    /// treasure reveal, so it does not depend on which system runs first.
+    /// Lives on the state rather than the opener, like [`super::world_interaction`]'s treasure
+    /// reveal, so it does not depend on which system runs first.
     confirm_armed: bool,
     pending: Option<TravelRequest>,
     animation_elapsed: f32,

@@ -1,17 +1,16 @@
 //! The end-of-game credits roll.
 //!
-//! B0.3. Entered from the world once the epilogue sets `game_complete` — the flag is declared in
-//! the manifest's `engine_managed_flags` because content produces it and the engine, not other
+//! Entered from the world once the epilogue sets `game_complete`. That flag is declared in the
+//! manifest's `engine_managed_flags` because content produces it and the engine, not other
 //! content, consumes it. The roll names the ending the player earned, scrolls its body once, and
 //! then waits on a keypress before returning to the title.
 //!
-//! Both the trigger and the earned title read their flags out of [`GameState`], which is the only
-//! place a session's [`RuntimeFlags`] ever live — `RuntimeFlags` is never a free-standing
-//! resource, so watching for one matched nothing and stranded finished runs in the epilogue.
+//! The trigger and the earned title both read their flags from [`GameState`], the only place a
+//! session's [`RuntimeFlags`] live. `RuntimeFlags` is not a free-standing resource.
 //!
-//! The trigger is guarded by [`CreditsShown`], which is inserted on entry and never removed: a
-//! finished run rolls credits exactly once. Loading a completed save in a *later* process rolls
-//! them again, which is deliberate — it is the only way back to them.
+//! The trigger is guarded by [`CreditsShown`], inserted on entry and never removed, so a finished
+//! run rolls credits exactly once. Loading a completed save in a later process rolls them again;
+//! that is the only way back to them.
 
 use bevy::prelude::*;
 
