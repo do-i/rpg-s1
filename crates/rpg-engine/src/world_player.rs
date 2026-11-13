@@ -547,8 +547,10 @@ fn spawn_world_player(
 
 fn update_world_player_y_order(mut players: Query<&mut Transform, With<WorldPlayer>>) {
     for mut transform in &mut players {
-        transform.translation.z =
-            world_entity_y_z(transform.translation.y, PLAYER_SPRITE_HALF_HEIGHT);
+        let z = world_entity_y_z(transform.translation.y, PLAYER_SPRITE_HALF_HEIGHT);
+        if transform.translation.z != z {
+            transform.translation.z = z;
+        }
     }
 }
 
@@ -774,6 +776,51 @@ mod tests {
         let second = app.world().entity(player).get::<Transform>().unwrap();
         assert_eq!(second.translation, Vec3::new(80.0, -240.0, 10.272));
         assert!(second.translation.z > first.translation.z);
+    }
+
+    #[test]
+    fn idle_player_depth_pass_does_not_mark_transform_changed() {
+        let mut app = App::new();
+        app.add_systems(Update, update_world_player_y_order);
+        let player = app
+            .world_mut()
+            .spawn((Transform::from_xyz(80.0, -48.0, 0.0), WorldPlayer))
+            .id();
+        app.update();
+        let settled = app
+            .world()
+            .entity(player)
+            .get::<Transform>()
+            .unwrap()
+            .translation
+            .z;
+        assert_eq!(settled, 10.08);
+
+        let mut transforms = app
+            .world_mut()
+            .query_filtered::<Ref<Transform>, With<WorldPlayer>>();
+        for _ in 0..3 {
+            let before = app.world().read_change_tick();
+            app.update();
+            let now = app.world().read_change_tick();
+            let changed = transforms
+                .iter(app.world())
+                .filter(|transform| transform.last_changed().is_newer_than(before, now))
+                .count();
+            assert_eq!(
+                changed, 0,
+                "idle frame marked {changed} player Transforms changed"
+            );
+        }
+        assert_eq!(
+            app.world()
+                .entity(player)
+                .get::<Transform>()
+                .unwrap()
+                .translation
+                .z,
+            settled
+        );
     }
 
     #[test]
