@@ -54,6 +54,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97.0
         with:
           components: rustfmt, clippy
+      # Caches target/ and the registry so Bevy is not rebuilt on every push. Only dev writes
+      # the cache; other branches read it, so feature branches cannot evict dev's entries.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/dev' }}
       # `--workspace` is load-bearing, not decoration. This manifest has a root package *and* a
       # `[workspace]` members list, so a bare `cargo test` resolves to the default members -- the
       # root package alone, whose only target is `src/main.rs` with zero tests. Every test in
