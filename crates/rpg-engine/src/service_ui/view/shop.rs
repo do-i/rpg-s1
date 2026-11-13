@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use super::hints::SHOP_BAR_HINTS;
 use super::*;
 use crate::{field_menu_domain::item_stat_bonuses, scenario_path::ScenarioRelativePath};
 
@@ -215,6 +216,7 @@ pub(super) fn spawn_page(
     catalog: &FieldMenuCatalog,
     game: &GameState,
     portraits: &Portraits,
+    bindings: &InputBindings,
 ) {
     let buying = buying(state);
     let buy = buy_rows(state, catalog, game);
@@ -254,14 +256,15 @@ pub(super) fn spawn_page(
                     flex_grow: 1.0,
                     ..default()
                 });
+                let hint: &[HintSegment<'_>] = match state.shop_focus {
+                    ShopFocus::Mode => &[(&[LEFT_RIGHT], "MODE"), (&[ENTER, DOWN], "ITEM TYPES")],
+                    ShopFocus::Category => &[(&[LEFT_RIGHT], "TYPE"), (&[ENTER, DOWN], "BROWSE")],
+                    ShopFocus::Items => &[(&[UP_DOWN], "BROWSE"), (&[ENTER], "QUANTITY")],
+                    ShopFocus::Detail => &[(&[UP_DOWN], "QUANTITY"), (&[ENTER], "REVIEW")],
+                };
                 spawn_status_text(
                     bar,
-                    match state.shop_focus {
-                        ShopFocus::Mode => "LEFT / RIGHT MODE   ENTER / DOWN ITEM TYPES",
-                        ShopFocus::Category => "LEFT / RIGHT TYPE   ENTER / DOWN BROWSE",
-                        ShopFocus::Items => "UP / DOWN BROWSE   ENTER QUANTITY",
-                        ShopFocus::Detail => "UP / DOWN QUANTITY   ENTER REVIEW",
-                    },
+                    service_hint_line(bindings, &SHOP_BAR_HINTS, hint),
                     font,
                     10.0,
                     status_faint(),
@@ -403,7 +406,7 @@ pub(super) fn spawn_page(
                 } else {
                     sell_price(item).unwrap_or(0)
                 };
-                spawn_counter(columns, font, state, game, item, unit, buying);
+                spawn_counter(columns, font, state, game, item, unit, bindings);
                 if is_equipment(item) {
                     spawn_party(columns, font, catalog, game, portraits, item);
                 }
@@ -522,8 +525,9 @@ fn spawn_counter(
     game: &GameState,
     item: &ItemDefinition,
     unit: u32,
-    buying: bool,
+    bindings: &InputBindings,
 ) {
+    let buying = buying(state);
     parent
         .spawn((
             panel_node(COUNTER_WIDTH, 16.0),
@@ -610,7 +614,7 @@ fn spawn_counter(
                     ..default()
                 });
             }
-            spawn_quantity(counter, font, state, game, unit, buying);
+            spawn_quantity(counter, font, state, game, unit, buying, bindings);
         });
 }
 
@@ -719,6 +723,7 @@ fn spawn_quantity(
     game: &GameState,
     unit: u32,
     buying: bool,
+    bindings: &InputBindings,
 ) {
     let amount = unit.saturating_mul(state.quantity);
     let balance = if buying {
@@ -836,11 +841,18 @@ fn spawn_quantity(
                 .with_children(|hint| {
                     spawn_status_text(
                         hint,
-                        if buying {
-                            "ENTER Review purchase"
-                        } else {
-                            "ENTER Review sale"
-                        },
+                        service_hint_line(
+                            bindings,
+                            &SHOP_FOOTER_HINTS,
+                            &[(
+                                &[ENTER],
+                                if buying {
+                                    "Review purchase"
+                                } else {
+                                    "Review sale"
+                                },
+                            )],
+                        ),
                         font,
                         14.0,
                         status_gold(),
@@ -993,6 +1005,7 @@ pub(super) fn spawn_footer(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     state: &ServiceUiState,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -1011,7 +1024,13 @@ pub(super) fn spawn_footer(
             Name::new("Shop footer"),
         ))
         .with_children(|footer| {
-            spawn_status_text(footer, service_hint(state), font, 12.0, status_muted());
+            spawn_status_text(
+                footer,
+                service_hint(state, bindings),
+                font,
+                12.0,
+                status_muted(),
+            );
             if let Some(toast) = &state.toast {
                 spawn_status_text(
                     footer,
@@ -1060,6 +1079,7 @@ mod tests {
                         &catalog,
                         &game,
                         &Portraits::default(),
+                        &InputBindings::default(),
                     );
                 });
             app.update();

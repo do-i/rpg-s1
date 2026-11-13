@@ -23,9 +23,23 @@ fn view(focus: CoreFocus, review: bool, quantity: u32) -> App {
             spawn_page(root, &Handle::default(), &state, &catalog, &game);
             spawn_footer(root, &Handle::default(), &state);
             if review {
-                spawn_review(root, &Handle::default(), &state, &catalog, &game);
+                spawn_review(
+                    root,
+                    &Handle::default(),
+                    &state,
+                    &catalog,
+                    &game,
+                    &InputBindings::default(),
+                );
             } else if focus == CoreFocus::Quantity {
-                spawn_quantity_dialog(root, &Handle::default(), &state, &catalog, &game);
+                spawn_quantity_dialog(
+                    root,
+                    &Handle::default(),
+                    &state,
+                    &catalog,
+                    &game,
+                    &InputBindings::default(),
+                );
             }
         });
     app.update();
@@ -134,4 +148,39 @@ fn review_shows_exact_exchange_and_only_back_and_confirm_controls() {
         .filter(|control| matches!(control, CoreControl::Back | CoreControl::Confirm))
         .count();
     assert_eq!(controls, 2);
+}
+
+#[test]
+fn dialog_buttons_follow_a_rebound_confirm() {
+    let bindings = super::hints::confirm_on_g();
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    let mut game = game([]);
+    let _ = game.repository_mut().add_item("mc_s", 100).unwrap();
+    let mut state = ServiceUiState::default();
+    state.open(ServiceRequest::Shop(DialogueShopKind::MagicCore), None);
+    state.selected = 1;
+    state.core_shop.mode = CoreMode::RankUp;
+    state.core_shop.focus = CoreFocus::Quantity;
+    state.quantity = 1;
+    state.pending_id = Some("mc_s".to_owned());
+    state.pending = Some(PendingTransaction::RankUp);
+    let catalog = catalog();
+    app.world_mut()
+        .commands()
+        .spawn(Node::default())
+        .with_children(|root| {
+            spawn_quantity_dialog(root, &Handle::default(), &state, &catalog, &game, &bindings);
+            spawn_review(root, &Handle::default(), &state, &catalog, &game, &bindings);
+        });
+    app.update();
+    let world = app.world_mut();
+    let texts = world
+        .query::<&Text>()
+        .iter(world)
+        .map(|text| text.0.clone())
+        .collect::<Vec<_>>();
+    for label in ["REVIEW EXCHANGE · G", "CONFIRM EXCHANGE · G", "BACK · ESC"] {
+        assert!(texts.contains(&label.to_owned()), "{label}: {texts:?}");
+    }
 }

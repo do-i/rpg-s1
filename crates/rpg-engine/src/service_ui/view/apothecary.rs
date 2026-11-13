@@ -1,5 +1,6 @@
 //! The apothecary's illustrated, live recipe workspace.
 
+use super::hints::WORKSHOP_HINTS;
 use super::*;
 use crate::{
     item_images::{ITEM_IMAGE_SIZE, spawn_item_image},
@@ -34,6 +35,7 @@ pub(super) fn spawn_page(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    bindings: &InputBindings,
 ) {
     let rows = recipe_rows(state, catalog, game);
     spawn_workspace(parent, "Apothecary workspace", |columns| {
@@ -169,7 +171,7 @@ pub(super) fn spawn_page(
                     );
                     return;
                 };
-                spawn_recipe_detail(panel, font, state, recipe, catalog, game);
+                spawn_recipe_detail(panel, font, state, recipe, catalog, game, bindings);
             },
         );
     });
@@ -357,6 +359,7 @@ fn spawn_recipe_detail(
     recipe: &RecipeDefinition,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    bindings: &InputBindings,
 ) {
     let availability = recipe_availability(recipe, game.flags(), game.repository());
     let sealed = availability == RecipeAvailability::Locked;
@@ -503,7 +506,7 @@ fn spawn_recipe_detail(
         min_height: px(8),
         ..default()
     });
-    spawn_action(parent, font, state, recipe, game, availability);
+    spawn_action(parent, font, state, recipe, game, availability, bindings);
 }
 
 fn spawn_pill(
@@ -613,6 +616,7 @@ fn spawn_action(
     recipe: &RecipeDefinition,
     game: &GameState,
     availability: RecipeAvailability,
+    bindings: &InputBindings,
 ) {
     let ready = availability == RecipeAvailability::Ready;
     let sealed = availability == RecipeAvailability::Locked;
@@ -717,11 +721,18 @@ fn spawn_action(
                 spawn_status_text(
                     button,
                     if ready {
-                        if state.page == Some(ServicePage::RecipeDetail) {
-                            "ENTER  Confirm brew"
-                        } else {
-                            "ENTER  Review brew"
-                        }
+                        service_hint_line(
+                            bindings,
+                            &WORKSHOP_HINTS,
+                            &[(
+                                &[ENTER],
+                                if state.page == Some(ServicePage::RecipeDetail) {
+                                    "Confirm brew"
+                                } else {
+                                    "Review brew"
+                                },
+                            )],
+                        )
                     } else {
                         match availability {
                             RecipeAvailability::MissingInputs => "Ingredients needed",
@@ -730,6 +741,7 @@ fn spawn_action(
                             RecipeAvailability::OutputCap => "Inventory full",
                             _ => "Formula sealed",
                         }
+                        .to_owned()
                     },
                     font,
                     15.0,
@@ -743,14 +755,32 @@ pub(super) fn spawn_footer(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     state: &ServiceUiState,
+    bindings: &InputBindings,
 ) {
     spawn_hint_footer(
         parent,
         font,
-        if state.page == Some(ServicePage::RecipeDetail) {
-            "ENTER  confirm brew     ESC  cancel review     UP/DOWN  browse"
+        &if state.page == Some(ServicePage::RecipeDetail) {
+            service_hint_line(
+                bindings,
+                &WORKSHOP_HINTS,
+                &[
+                    (&[ENTER], "confirm brew"),
+                    (&[ESC], "cancel review"),
+                    (&[UP_DOWN], "browse"),
+                ],
+            )
         } else {
-            "UP/DOWN  browse recipes     TAB / LEFT/RIGHT  filter     ENTER  review brew     ESC  leave shop"
+            service_hint_line(
+                bindings,
+                &WORKSHOP_HINTS,
+                &[
+                    (&[UP_DOWN], "browse recipes"),
+                    (&[HintKey::Fixed("TAB"), LEFT_RIGHT], "filter"),
+                    (&[ENTER], "review brew"),
+                    (&[ESC], "leave shop"),
+                ],
+            )
         },
     );
 }
@@ -776,7 +806,14 @@ mod tests {
                  catalog: Res<FieldMenuCatalog>,
                  state: Res<ServiceUiState>| {
                     commands.spawn_empty().with_children(|parent| {
-                        spawn_page(parent, &Handle::default(), &state, &catalog, &game)
+                        spawn_page(
+                            parent,
+                            &Handle::default(),
+                            &state,
+                            &catalog,
+                            &game,
+                            &InputBindings::default(),
+                        )
                     });
                 },
             );
@@ -887,6 +924,40 @@ mod tests {
                 .query::<&Name>()
                 .iter(&next)
                 .any(|name| name.as_str() == "Apothecary ingredient: soul_fragment")
+        );
+    }
+
+    #[test]
+    fn the_footer_follows_a_rebound_confirm() {
+        let bindings = hints::confirm_on_g();
+        let footer = |page| {
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins);
+            let state = ServiceUiState {
+                page: Some(page),
+                ..default()
+            };
+            app.world_mut()
+                .commands()
+                .spawn(Node::default())
+                .with_children(|root| spawn_footer(root, &Handle::default(), &state, &bindings));
+            app.update();
+            let world = app.world_mut();
+            world
+                .query::<&Text>()
+                .iter(world)
+                .map(|text| text.0.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            footer(ServicePage::Apothecary),
+            [
+                "UP/DOWN  browse recipes     TAB / LEFT/RIGHT  filter     G  review brew     ESC  leave shop"
+            ]
+        );
+        assert_eq!(
+            footer(ServicePage::RecipeDetail),
+            ["G  confirm brew     ESC  cancel review     UP/DOWN  browse"]
         );
     }
 }

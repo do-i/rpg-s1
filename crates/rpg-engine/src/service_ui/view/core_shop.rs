@@ -1,5 +1,6 @@
 //! Illustrated exchange routes with separate quantity and confirmation dialogs.
 
+use super::hints::BUTTON_HINTS;
 use super::*;
 use crate::{
     service_domain::{CORE_RANK_UP_COST, next_core_id, sale_value},
@@ -621,6 +622,7 @@ pub(super) fn spawn_quantity_dialog(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    bindings: &InputBindings,
 ) {
     let Some(item) = logic::selected(state, catalog) else {
         return;
@@ -801,11 +803,17 @@ pub(super) fn spawn_quantity_dialog(
                 ..default()
             })
             .with_children(|buttons| {
-                spawn_button(buttons, font, "BACK · ESC", CoreControl::Back, false);
                 spawn_button(
                     buttons,
                     font,
-                    "REVIEW EXCHANGE · ENTER",
+                    &service_hint_line(bindings, &BUTTON_HINTS, &[(&[ESC], "BACK")]),
+                    CoreControl::Back,
+                    false,
+                );
+                spawn_button(
+                    buttons,
+                    font,
+                    &service_hint_line(bindings, &BUTTON_HINTS, &[(&[ENTER], "REVIEW EXCHANGE")]),
                     CoreControl::Review,
                     true,
                 );
@@ -849,6 +857,7 @@ pub(super) fn spawn_review(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    bindings: &InputBindings,
 ) {
     let Some(item) = state.pending_id.as_deref().and_then(|id| catalog.item(id)) else {
         return;
@@ -991,11 +1000,17 @@ pub(super) fn spawn_review(
                 ..default()
             })
             .with_children(|buttons| {
-                spawn_button(buttons, font, "BACK · ESC", CoreControl::Back, false);
                 spawn_button(
                     buttons,
                     font,
-                    "CONFIRM EXCHANGE · ENTER",
+                    &service_hint_line(bindings, &BUTTON_HINTS, &[(&[ESC], "BACK")]),
+                    CoreControl::Back,
+                    false,
+                );
+                spawn_button(
+                    buttons,
+                    font,
+                    &service_hint_line(bindings, &BUTTON_HINTS, &[(&[ENTER], "CONFIRM EXCHANGE")]),
                     CoreControl::Confirm,
                     true,
                 );

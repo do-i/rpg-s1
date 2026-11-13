@@ -4,6 +4,7 @@
 //! full icon size over a conversion: what goes into the strike, an arrow, and what comes out.
 //! It stays empty until the piece list holds focus.
 
+use super::hints::WORKSHOP_HINTS;
 use super::*;
 use crate::{
     forge::{
@@ -718,15 +719,32 @@ pub(super) fn spawn_footer(
     parent: &mut ChildSpawnerCommands<'_>,
     font: &Handle<Font>,
     state: &ServiceUiState,
+    bindings: &InputBindings,
 ) {
-    let hint = if state.page == Some(ServicePage::ForgeConfirm) {
-        "ENTER  strike     ESC  back     UP/DOWN  choose another"
+    let segments: &[HintSegment<'_>] = if state.page == Some(ServicePage::ForgeConfirm) {
+        &[
+            (&[ENTER], "strike"),
+            (&[ESC], "back"),
+            (&[UP_DOWN], "choose another"),
+        ]
     } else if state.forge_in_list {
-        "UP/DOWN  browse     ENTER  review quote     LEFT / ESC  equipment types"
+        &[
+            (&[UP_DOWN], "browse"),
+            (&[ENTER], "review quote"),
+            (&[LEFT, ESC], "equipment types"),
+        ]
     } else {
-        "UP/DOWN  equipment type     RIGHT / ENTER  pieces     ESC  leave forge"
+        &[
+            (&[UP_DOWN], "equipment type"),
+            (&[RIGHT, ENTER], "pieces"),
+            (&[ESC], "leave forge"),
+        ]
     };
-    spawn_hint_footer(parent, font, hint);
+    spawn_hint_footer(
+        parent,
+        font,
+        &service_hint_line(bindings, &WORKSHOP_HINTS, segments),
+    );
     spawn_toast(parent, font, state);
 }
 
@@ -780,5 +798,42 @@ mod tests {
             assert!(picking.iter().any(|t| t == label), "{label}: {picking:?}");
         }
         assert!(!picking.iter().any(|t| t.starts_with("you hold")));
+    }
+
+    #[test]
+    fn the_footer_follows_a_rebound_confirm() {
+        let bindings = hints::confirm_on_g();
+        let footer = |page, in_list| {
+            let mut app = App::new();
+            app.add_plugins(MinimalPlugins);
+            let state = ServiceUiState {
+                page: Some(page),
+                forge_in_list: in_list,
+                ..default()
+            };
+            app.world_mut()
+                .commands()
+                .spawn(Node::default())
+                .with_children(|root| spawn_footer(root, &Handle::default(), &state, &bindings));
+            app.update();
+            let world = app.world_mut();
+            world
+                .query::<&Text>()
+                .iter(world)
+                .map(|text| text.0.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            footer(ServicePage::ForgeConfirm, true),
+            ["G  strike     ESC  back     UP/DOWN  choose another"]
+        );
+        assert_eq!(
+            footer(ServicePage::Forge, true),
+            ["UP/DOWN  browse     G  review quote     LEFT / ESC  equipment types"]
+        );
+        assert_eq!(
+            footer(ServicePage::Forge, false),
+            ["UP/DOWN  equipment type     RIGHT / G  pieces     ESC  leave forge"]
+        );
     }
 }

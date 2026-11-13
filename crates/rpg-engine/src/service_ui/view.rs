@@ -17,13 +17,16 @@ use crate::{
         FieldMenuCatalog, can_equip, derived_stats, item_description, item_name, preview_stats,
     },
     game_state::GameState,
+    input_bindings::InputBindings,
     item_images::{spawn_item_icon, spawn_item_image},
+    key_hints::{HintKey, HintSegment},
     menu_chrome::{
         scroll_list_node, selectable_card_colors, spawn_header_bars, spawn_meter,
         spawn_scroll_list, spawn_section_rule, spawn_status_panel, spawn_status_text,
         stack_fill_flag, status_border, status_border_active, status_ember, status_faint,
         status_gold, status_ink, status_muted, status_ready, status_teal,
     },
+    options_store::PlayerOptions,
     scenario_dialogue::DialogueShopKind,
     scenario_inventory::ScenarioInventory,
     scenario_item::ItemDefinition,
@@ -37,9 +40,14 @@ use crate::{
 mod apothecary;
 mod core_shop;
 mod forge;
+mod hints;
 mod kit;
 mod shop;
 
+use hints::{
+    DIALOG_BUTTON_HINTS, DOWN, ENTER, ESC, LEFT, LEFT_RIGHT, RIGHT, SERVICE_CONFIRM_HINTS,
+    SERVICE_HINTS, SHOP_FOOTER_HINTS, UP, UP_DOWN, service_hint_line,
+};
 use kit::{
     HeaderSpec, spawn_hint_footer, spawn_workshop_header, spawn_workshop_panel, spawn_workspace,
 };
@@ -81,6 +89,7 @@ pub(super) fn sync_service_overlay(
     sprites: Res<ServiceSprites>,
     atlases: Res<Assets<TsxAtlasAsset>>,
     game: Option<Res<GameState>>,
+    options: Option<Res<PlayerOptions>>,
     roots: Query<Entity, With<ServiceRoot>>,
 ) {
     if state.request.is_none() {
@@ -94,7 +103,8 @@ pub(super) fn sync_service_overlay(
         || state.is_changed()
         || catalog.is_changed()
         || game.is_changed()
-        || atlases.is_changed();
+        || atlases.is_changed()
+        || options.as_ref().is_some_and(|options| options.is_changed());
     if !rebuild {
         return;
     }
@@ -103,6 +113,14 @@ pub(super) fn sync_service_overlay(
     }
     let Some(font_path) = inventory.font.as_ref() else {
         return;
+    };
+    let default_options;
+    let bindings = match options.as_deref() {
+        Some(options) => &options.bindings,
+        None => {
+            default_options = PlayerOptions::default();
+            &default_options.bindings
+        }
     };
     let font: Handle<Font> = asset_server.load(root.resolve(font_path));
     let face = keeper_face(&state, &sprites, &atlases);
@@ -219,31 +237,45 @@ pub(super) fn sync_service_overlay(
                         core_shop::spawn_page(panel, &font, &state, &catalog, &game);
                         core_shop::spawn_footer(panel, &font, &state);
                         if state.page == Some(ServicePage::CoreConfirm) {
-                            core_shop::spawn_review(panel, &font, &state, &catalog, &game);
+                            core_shop::spawn_review(
+                                panel, &font, &state, &catalog, &game, bindings,
+                            );
                         } else if state.core_shop.focus == super::core_shop::CoreFocus::Quantity {
-                            core_shop::spawn_quantity_dialog(panel, &font, &state, &catalog, &game);
+                            core_shop::spawn_quantity_dialog(
+                                panel, &font, &state, &catalog, &game, bindings,
+                            );
                         }
                     } else if is_forge(&state) {
                         forge::spawn_header(panel, &font, &game, face);
                         forge::spawn_page(panel, &font, &state, &catalog, &game, &slot_icons);
-                        forge::spawn_footer(panel, &font, &state);
+                        forge::spawn_footer(panel, &font, &state, bindings);
                     } else if is_apothecary(&state) {
                         apothecary::spawn_header(panel, &font, &game, face);
-                        apothecary::spawn_page(panel, &font, &state, &catalog, &game);
-                        apothecary::spawn_footer(panel, &font, &state);
+                        apothecary::spawn_page(panel, &font, &state, &catalog, &game, bindings);
+                        apothecary::spawn_footer(panel, &font, &state, bindings);
                     } else if is_item_shop(&state) {
                         shop::spawn_header(panel, &font, &state, &game, face);
-                        spawn_service_body(panel, &font, &state, &catalog, &game, &portraits);
-                        shop::spawn_footer(panel, &font, &state);
+                        spawn_service_body(
+                            panel, &font, &state, &catalog, &game, &portraits, bindings,
+                        );
+                        shop::spawn_footer(panel, &font, &state, bindings);
                         if let Some(error) = state.shop_error.as_deref() {
-                            spawn_shop_error(panel, &font, error);
+                            spawn_shop_error(panel, &font, error, bindings);
                         }
                     } else {
                         spawn_service_header(panel, &font, &state, &game, face);
                         spawn_section_rule(panel);
-                        spawn_service_body(panel, &font, &state, &catalog, &game, &portraits);
+                        spawn_service_body(
+                            panel, &font, &state, &catalog, &game, &portraits, bindings,
+                        );
                         spawn_section_rule(panel);
-                        spawn_status_text(panel, service_hint(&state), &font, 15.0, status_faint());
+                        spawn_status_text(
+                            panel,
+                            service_hint(&state, bindings),
+                            &font,
+                            15.0,
+                            status_faint(),
+                        );
                         spawn_toast(panel, &font, &state);
                     }
                 });
@@ -427,21 +459,22 @@ fn spawn_service_body(
     catalog: &FieldMenuCatalog,
     game: &GameState,
     portraits: &shop::Portraits,
+    bindings: &InputBindings,
 ) {
     match state.page {
         Some(ServicePage::Buy | ServicePage::Sell) => {
-            shop::spawn_page(parent, font, state, catalog, game, portraits);
+            shop::spawn_page(parent, font, state, catalog, game, portraits, bindings);
         }
         Some(ServicePage::ShopConfirm) => {
-            shop::spawn_page(parent, font, state, catalog, game, portraits);
-            spawn_shop_confirmation(parent, font, state, catalog, game);
+            shop::spawn_page(parent, font, state, catalog, game, portraits, bindings);
+            spawn_shop_confirmation(parent, font, state, catalog, game, bindings);
         }
         Some(ServicePage::MagicCore | ServicePage::CoreConfirm) => {
             core_shop::spawn_page(parent, font, state, catalog, game)
         }
         Some(ServicePage::Inn) => spawn_inn_page(parent, font, catalog, game),
         Some(ServicePage::Apothecary | ServicePage::RecipeDetail) => {
-            apothecary::spawn_page(parent, font, state, catalog, game);
+            apothecary::spawn_page(parent, font, state, catalog, game, bindings);
         }
         Some(ServicePage::Forge | ServicePage::ForgeConfirm) => {
             forge::spawn_page(
@@ -463,7 +496,12 @@ fn spawn_service_body(
 
 // ── Buy ──────────────────────────────────────────────────────────────────────
 
-fn spawn_shop_error(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, error: &str) {
+fn spawn_shop_error(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    error: &str,
+    bindings: &InputBindings,
+) {
     parent
         .spawn((
             Node {
@@ -519,7 +557,11 @@ fn spawn_shop_error(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, 
                         .with_children(|button| {
                             spawn_status_text(
                                 button,
-                                "OK  ·  ENTER / ESC",
+                                service_hint_line(
+                                    bindings,
+                                    &DIALOG_BUTTON_HINTS,
+                                    &[(&[ENTER, ESC], "OK")],
+                                ),
                                 font,
                                 16.0,
                                 status_ink(),
@@ -535,6 +577,7 @@ fn spawn_shop_confirmation(
     state: &ServiceUiState,
     catalog: &FieldMenuCatalog,
     game: &GameState,
+    bindings: &InputBindings,
 ) {
     let id = state.pending_id.as_deref().unwrap_or_default();
     let item = catalog.item(id);
@@ -624,16 +667,24 @@ fn spawn_shop_confirmation(
                             ..default()
                         })
                         .with_children(|buttons| {
+                            let confirm_label = if buying { "BUY" } else { "SELL" };
                             for (label, selected) in [
                                 (
-                                    if buying {
-                                        "BUY  ·  ENTER"
-                                    } else {
-                                        "SELL  ·  ENTER"
-                                    },
+                                    service_hint_line(
+                                        bindings,
+                                        &DIALOG_BUTTON_HINTS,
+                                        &[(&[ENTER], confirm_label)],
+                                    ),
                                     true,
                                 ),
-                                ("CANCEL  ·  ESC", false),
+                                (
+                                    service_hint_line(
+                                        bindings,
+                                        &DIALOG_BUTTON_HINTS,
+                                        &[(&[ESC], "CANCEL")],
+                                    ),
+                                    false,
+                                ),
                             ] {
                                 buttons
                                     .spawn((
@@ -919,39 +970,81 @@ fn service_subtitle(state: &ServiceUiState) -> &'static str {
     }
 }
 
-fn service_hint(state: &ServiceUiState) -> &'static str {
+fn service_hint(state: &ServiceUiState, bindings: &InputBindings) -> String {
+    let plain =
+        |segments: &[HintSegment<'_>]| service_hint_line(bindings, &SERVICE_HINTS, segments);
+    let browse =
+        |segments: &[HintSegment<'_>]| service_hint_line(bindings, &SHOP_FOOTER_HINTS, segments);
+    let confirm = |segments: &[HintSegment<'_>]| {
+        service_hint_line(bindings, &SERVICE_CONFIRM_HINTS, segments)
+    };
+    let selling = state.page == Some(ServicePage::Sell);
     match state.page {
         Some(ServicePage::Buy | ServicePage::Sell) => match state.shop_focus {
-            ShopFocus::Mode => {
-                "LEFT/RIGHT  buy or sell    ENTER / DOWN  item types    ESC  leave shop"
-            }
-            ShopFocus::Category => {
-                "LEFT/RIGHT  choose type    ENTER / DOWN  browse items    UP  buy or sell"
-            }
+            ShopFocus::Mode => plain(&[
+                (&[LEFT_RIGHT], "buy or sell"),
+                (&[ENTER, DOWN], "item types"),
+                (&[ESC], "leave shop"),
+            ]),
+            ShopFocus::Category => plain(&[
+                (&[LEFT_RIGHT], "choose type"),
+                (&[ENTER, DOWN], "browse items"),
+                (&[UP], "buy or sell"),
+            ]),
             ShopFocus::Items => {
-                if state.page == Some(ServicePage::Sell) {
-                    "ESC Back    UP / DOWN Browse    ENTER / RIGHT Quantity    T Sell tags"
-                } else {
-                    "ESC Back    UP / DOWN Browse    ENTER / RIGHT Quantity"
+                let mut segments: Vec<HintSegment<'_>> = vec![
+                    (&[ESC], "Back"),
+                    (&[UP_DOWN], "Browse"),
+                    (&[ENTER, RIGHT], "Quantity"),
+                ];
+                if selling {
+                    segments.push((&[HintKey::Fixed("T")], "Sell tags"));
                 }
+                browse(&segments)
             }
-            ShopFocus::Detail => {
-                if state.page == Some(ServicePage::Sell) {
-                    "ESC Back    UP / DOWN Quantity ±1    LEFT / RIGHT Quantity ±10    ENTER Review sale"
-                } else {
-                    "ESC Back    UP / DOWN Quantity ±1    LEFT / RIGHT Quantity ±10    ENTER Review purchase"
-                }
-            }
+            ShopFocus::Detail => browse(&[
+                (&[ESC], "Back"),
+                (&[UP_DOWN], "Quantity ±1"),
+                (&[LEFT_RIGHT], "Quantity ±10"),
+                (
+                    &[ENTER],
+                    if selling {
+                        "Review sale"
+                    } else {
+                        "Review purchase"
+                    },
+                ),
+            ]),
         },
-        Some(ServicePage::ShopConfirm) => "ENTER  confirm transaction    ESC  cancel",
-        Some(ServicePage::Inn) => "Y/ENTER  rest    N/ESC  leave",
-        Some(ServicePage::CoreConfirm) => "Y/ENTER  exchange    N/ESC  cancel",
-        Some(ServicePage::RecipeDetail) => "ENTER  craft    ESC  back",
-        Some(ServicePage::Forge) => "UP/DOWN  choose    ENTER  review    ESC  leave",
-        Some(ServicePage::ForgeConfirm) => "ENTER  strike    ESC  back",
-        Some(ServicePage::Equip) => "UP/DOWN  choose    ENTER  equip    ESC  skip",
-        Some(ServicePage::Result) => "ENTER / ESC  leave",
-        _ => "UP/DOWN  choose    ENTER  confirm    ESC  back",
+        Some(ServicePage::ShopConfirm) => {
+            plain(&[(&[ENTER], "confirm transaction"), (&[ESC], "cancel")])
+        }
+        Some(ServicePage::Inn) => confirm(&[
+            (&[HintKey::Fixed("Y"), ENTER], "rest"),
+            (&[HintKey::Fixed("N"), ESC], "leave"),
+        ]),
+        Some(ServicePage::CoreConfirm) => confirm(&[
+            (&[HintKey::Fixed("Y"), ENTER], "exchange"),
+            (&[HintKey::Fixed("N"), ESC], "cancel"),
+        ]),
+        Some(ServicePage::RecipeDetail) => plain(&[(&[ENTER], "craft"), (&[ESC], "back")]),
+        Some(ServicePage::Forge) => plain(&[
+            (&[UP_DOWN], "choose"),
+            (&[ENTER], "review"),
+            (&[ESC], "leave"),
+        ]),
+        Some(ServicePage::ForgeConfirm) => plain(&[(&[ENTER], "strike"), (&[ESC], "back")]),
+        Some(ServicePage::Equip) => plain(&[
+            (&[UP_DOWN], "choose"),
+            (&[ENTER], "equip"),
+            (&[ESC], "skip"),
+        ]),
+        Some(ServicePage::Result) => plain(&[(&[ENTER, ESC], "leave")]),
+        _ => plain(&[
+            (&[UP_DOWN], "choose"),
+            (&[ENTER], "confirm"),
+            (&[ESC], "back"),
+        ]),
     }
 }
 
@@ -964,6 +1057,15 @@ mod tests {
     }
 
     fn shop_view_at(focus: ShopFocus, selling: bool, selected: usize) -> App {
+        shop_view_bound(focus, selling, selected, &InputBindings::default())
+    }
+
+    fn shop_view_bound(
+        focus: ShopFocus,
+        selling: bool,
+        selected: usize,
+        bindings: &InputBindings,
+    ) -> App {
         use crate::{
             field_menu_domain::tests::{catalog_with_item_shop, game},
             runtime_map::RuntimeMapId,
@@ -1006,6 +1108,7 @@ mod tests {
                     &catalog,
                     &game,
                     &shop::Portraits::default(),
+                    bindings,
                 );
             });
         app.update();
@@ -1220,7 +1323,14 @@ mod tests {
         app.world_mut()
             .commands()
             .spawn((Node::default(), GlobalZIndex(5_100)))
-            .with_children(|root| spawn_shop_error(root, &Handle::default(), "Not enough GP."));
+            .with_children(|root| {
+                spawn_shop_error(
+                    root,
+                    &Handle::default(),
+                    "Not enough GP.",
+                    &InputBindings::default(),
+                )
+            });
         app.update();
         let world = app.world_mut();
         for (name, node) in world.query::<(&Name, &Node)>().iter(world) {
@@ -1307,7 +1417,10 @@ mod tests {
         ] {
             state.page = Some(page);
             assert!(!service_subtitle(&state).is_empty(), "{page:?}");
-            assert!(!service_hint(&state).is_empty(), "{page:?}");
+            assert!(
+                !service_hint(&state, &InputBindings::default()).is_empty(),
+                "{page:?}"
+            );
         }
     }
 
@@ -1331,7 +1444,14 @@ mod tests {
             .commands()
             .spawn((Node::default(), GlobalZIndex(5_100)))
             .with_children(|root| {
-                spawn_shop_confirmation(root, &Handle::default(), &state, &catalog, &game);
+                spawn_shop_confirmation(
+                    root,
+                    &Handle::default(),
+                    &state,
+                    &catalog,
+                    &game,
+                    &InputBindings::default(),
+                );
             })
             .id();
         app.update();
@@ -1368,5 +1488,72 @@ mod tests {
             &Assets::<TsxAtlasAsset>::default(),
         );
         assert_eq!(face, Some(clerk));
+    }
+
+    fn texts_of(app: &mut App) -> Vec<String> {
+        let world = app.world_mut();
+        world
+            .query::<&Text>()
+            .iter(world)
+            .map(|text| text.0.clone())
+            .collect()
+    }
+
+    #[test]
+    fn service_hints_follow_a_rebound_confirm() {
+        let bindings = hints::confirm_on_g();
+        let hint = |page, focus| {
+            let state = ServiceUiState {
+                page: Some(page),
+                shop_focus: focus,
+                ..default()
+            };
+            service_hint(&state, &bindings)
+        };
+        assert_eq!(
+            hint(ServicePage::Buy, ShopFocus::Mode),
+            "LEFT/RIGHT  buy or sell    G / DOWN  item types    ESC  leave shop"
+        );
+        assert_eq!(
+            hint(ServicePage::Sell, ShopFocus::Detail),
+            "ESC Back    UP / DOWN Quantity ±1    LEFT / RIGHT Quantity ±10    G Review sale"
+        );
+        assert_eq!(
+            hint(ServicePage::Inn, ShopFocus::Mode),
+            "Y/G  rest    N/ESC  leave"
+        );
+        assert_eq!(hint(ServicePage::Result, ShopFocus::Mode), "G / ESC  leave");
+        // The keys the input handler reads raw stay put.
+        assert_eq!(
+            hint(ServicePage::Sell, ShopFocus::Items),
+            "ESC Back    UP / DOWN Browse    G / RIGHT Quantity    T Sell tags"
+        );
+    }
+
+    #[test]
+    fn shop_screens_follow_a_rebound_confirm() {
+        let bindings = hints::confirm_on_g();
+        let mut app = shop_view_bound(ShopFocus::Detail, false, 0, &bindings);
+        let texts = texts_of(&mut app);
+        assert!(texts.contains(&"G Review purchase".to_owned()), "{texts:?}");
+        assert!(
+            texts.contains(&"UP / DOWN QUANTITY   G REVIEW".to_owned()),
+            "{texts:?}"
+        );
+        assert!(
+            !texts.iter().any(|text| text.contains("ENTER")),
+            "{texts:?}"
+        );
+
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.world_mut()
+            .commands()
+            .spawn(Node::default())
+            .with_children(|root| {
+                spawn_shop_error(root, &Handle::default(), "Not enough GP.", &bindings);
+            });
+        app.update();
+        assert!(texts_of(&mut app).contains(&"OK  ·  G / ESC".to_owned()));
     }
 }
