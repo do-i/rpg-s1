@@ -744,22 +744,7 @@ fn any_input(keys: &ButtonInput<KeyCode>, actions: &ActionState) -> bool {
         || actions.just_pressed(AppAction::Back)
         || actions.menu_navigation().is_some()
         || actions.menu_navigation_horizontal().is_some()
-        || horizontal_step(keys).is_some()
         || keys.any_just_pressed([KeyCode::Tab, KeyCode::KeyT, KeyCode::KeyY, KeyCode::KeyN])
-}
-
-/// Left/Right as a single signed step, with Left winning a same-frame tie.
-///
-/// The legacy quantity picker reads physical keys; the redesigned shop uses the shared
-/// horizontal actions so rebinding, gamepads, and recorded input work there too.
-fn horizontal_step(keys: &ButtonInput<KeyCode>) -> Option<isize> {
-    if keys.just_pressed(KeyCode::ArrowLeft) {
-        Some(-1)
-    } else if keys.just_pressed(KeyCode::ArrowRight) {
-        Some(1)
-    } else {
-        None
-    }
 }
 
 /// Applies one quantity step, clamping to `1..=max` or wrapping past both ends.
