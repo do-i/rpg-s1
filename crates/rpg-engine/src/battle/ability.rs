@@ -13,7 +13,7 @@ use crate::{
 use super::{
     action::{BattleAction, BattleEvent},
     model::{BattlePhase, BattleState, CombatantKey, TargetGroup},
-    rules::{critical_damage, critical_hit_chance, roll_succeeds},
+    rules::{critical_damage, critical_hit_chance, damage_margin, roll_succeeds},
     status::{ActiveStatus, StatusEffect},
 };
 
@@ -278,11 +278,11 @@ fn resolve_spell(
         .actor(target)
         .cloned()
         .ok_or(AbilityError::InvalidTarget)?;
-    let raw = (caster.magic_resistance as f64 * spell.spell_coeff.get()) as i64
-        - target_actor.effective_magic_resistance();
+    let raw = ((caster.magic_resistance as f64 * spell.spell_coeff.get()) as i64)
+        .saturating_sub(target_actor.effective_magic_resistance());
     let amount = target_actor
         .mitigated_damage(elemental_damage(
-            raw.max(1) as u32,
+            u32::try_from(raw.max(1)).unwrap_or(u32::MAX),
             elemental_affinity(spell.element, target_actor.enemy_type),
         ))
         .min(target_actor.health);
@@ -371,7 +371,7 @@ fn resolve_physical_ability(
         if !defender.is_alive() {
             break;
         }
-        let base = (source.effective_attack() - defender.effective_defense()).max(1) as u32;
+        let base = damage_margin(source.effective_attack(), defender.effective_defense());
         let mut amount = (f64::from(base) * ability.damage_coeff.get()) as u32;
         if ability.attack_range == AttackRange::Melee
             && source.row == crate::scenario_party::PartyRow::Back
@@ -438,9 +438,9 @@ fn apply_side_effects(
                 duration_turns,
                 ..
             } => {
-                let damage = state
-                    .actor(source)
-                    .map_or(1, |actor| (actor.attack.max(0) as u32 / 10).max(1));
+                let damage = state.actor(source).map_or(1, |actor| {
+                    (u32::try_from(actor.attack.max(0)).unwrap_or(u32::MAX) / 10).max(1)
+                });
                 (
                     chance.get(),
                     ActiveStatus::damage_over_time(

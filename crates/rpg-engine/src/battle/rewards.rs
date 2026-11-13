@@ -148,8 +148,11 @@ pub(super) fn calculate_rewards(
         .collect::<Vec<_>>();
     let mut bonus_pool = living.clone();
     let mut bonuses = Vec::new();
-    let remainder =
-        total_experience.saturating_sub(shares.iter().fold(0_u32, |sum, (_, share)| sum + share));
+    let remainder = total_experience.saturating_sub(
+        shares
+            .iter()
+            .fold(0_u32, |sum, (_, share)| sum.saturating_add(*share)),
+    );
     for _ in 0..remainder {
         if bonus_pool.is_empty() {
             break;

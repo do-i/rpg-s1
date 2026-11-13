@@ -39,8 +39,13 @@ pub(super) fn critical_damage(damage: u32) -> u32 {
     damage.saturating_mul(3) / 2
 }
 
+/// `(attack - defence)` floored at 1, saturating at both i64 and u32 extremes.
+pub(super) fn damage_margin(attack: i64, defence: i64) -> u32 {
+    u32::try_from(attack.saturating_sub(defence).max(1)).unwrap_or(u32::MAX)
+}
+
 pub(super) fn physical_damage(attacker: &BattleCombatant, defender: &BattleCombatant) -> u32 {
-    let mut damage = (attacker.effective_attack() - defender.effective_defense()).max(1) as u32;
+    let mut damage = damage_margin(attacker.effective_attack(), defender.effective_defense());
     if attacker.row == PartyRow::Back {
         damage = (damage / 2).max(1);
     }

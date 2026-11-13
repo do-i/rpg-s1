@@ -15,7 +15,7 @@ use super::{
     resolver::resolve_action,
     rewards::{RewardError, apply_rewards, calculate_rewards},
     rules::{
-        calculate_turn_order, critical_damage, critical_hit_chance, flee_chance,
+        calculate_turn_order, critical_damage, critical_hit_chance, damage_margin, flee_chance,
         phase_after_flee_confirmation, physical_damage, physical_hit_chance, roll_flee,
         roll_succeeds,
     },
@@ -2223,4 +2223,157 @@ fn rough_kills_use_the_higher_break_chance() {
         &mut GameplayRng::from_seed(9),
     );
     assert_eq!(rewards.shattered_cores, 1);
+}
+
+#[test]
+fn damage_margin_saturates_at_integer_extremes_and_floors_at_one() {
+    assert_eq!(damage_margin(20, 6), 14);
+    assert_eq!(damage_margin(6, 6), 1);
+    assert_eq!(damage_margin(1, 999), 1);
+    assert_eq!(damage_margin(i64::MAX, 0), u32::MAX);
+    assert_eq!(damage_margin(i64::MAX, -1), u32::MAX);
+    assert_eq!(damage_margin(i64::MAX, i64::MIN), u32::MAX);
+    assert_eq!(damage_margin(i64::MAX, i64::MIN + 1), u32::MAX);
+    assert_eq!(damage_margin(1_i64 << 32, 0), u32::MAX);
+    assert_eq!(damage_margin(i64::MIN, i64::MAX), 1);
+    assert_eq!(damage_margin(0, i64::MIN), u32::MAX);
+}
+
+#[test]
+fn physical_damage_at_extreme_stats_saturates_instead_of_wrapping() {
+    let mut front = actor(BattleSide::Party, 0, 1, 99);
+    front.attack = i64::MAX;
+    let mut enemy = actor(BattleSide::Enemy, 0, 1, u32::MAX);
+    enemy.defense = 0;
+    assert_eq!(physical_damage(&front, &enemy), u32::MAX);
+    enemy.defense = i64::MIN;
+    assert_eq!(physical_damage(&front, &enemy), u32::MAX);
+    front.attack = 1_i64 << 32;
+    enemy.defense = 0;
+    assert_eq!(physical_damage(&front, &enemy), u32::MAX);
+}
+
+#[test]
+fn physical_ability_at_extreme_stats_kills_instead_of_overflowing() {
+    let mut caster = actor(BattleSide::Party, 0, 1, 40);
+    caster.attack = 1_i64 << 40;
+    caster.mana = 30;
+    caster.max_mana = 30;
+    caster.abilities = vec![ability("shield_bash")];
+    let mut target = actor(BattleSide::Enemy, 0, 1, u32::MAX);
+    target.defense = 0;
+    let mut state = state_with(vec![caster, target]);
+    resolve_ability(
+        &mut state,
+        CombatantKey::party(0),
+        0,
+        &[CombatantKey::enemy(0)],
+        &mut GameplayRng::from_seed(2),
+    )
+    .unwrap();
+    // Base saturates to u32::MAX, then the 0.80 coefficient applies.
+    let dealt = (f64::from(u32::MAX) * 0.8) as u32;
+    assert_eq!(
+        state.actor(CombatantKey::enemy(0)).unwrap().health,
+        u32::MAX - dealt
+    );
+}
+
+#[test]
+fn spell_at_extreme_resistance_saturates_instead_of_overflowing() {
+    let mut caster = actor(BattleSide::Party, 0, 1, 40);
+    caster.magic_resistance = i64::MAX;
+    caster.mana = 30;
+    caster.max_mana = 30;
+    caster.abilities = vec![ability("fire_bolt")];
+    let mut target = actor(BattleSide::Enemy, 0, 1, u32::MAX);
+    target.magic_resistance = i64::MIN;
+    let mut state = state_with(vec![caster, target]);
+    resolve_ability(
+        &mut state,
+        CombatantKey::party(0),
+        0,
+        &[CombatantKey::enemy(0)],
+        &mut GameplayRng::from_seed(2),
+    )
+    .unwrap();
+    assert_eq!(state.actor(CombatantKey::enemy(0)).unwrap().health, 0);
+
+    let mut caster = actor(BattleSide::Party, 0, 1, 40);
+    caster.magic_resistance = (1_i64 << 40) + 2;
+    caster.mana = 30;
+    caster.max_mana = 30;
+    caster.abilities = vec![ability("fire_bolt")];
+    let target = actor(BattleSide::Enemy, 0, 1, u32::MAX);
+    let mut state = state_with(vec![caster, target]);
+    resolve_ability(
+        &mut state,
+        CombatantKey::party(0),
+        0,
+        &[CombatantKey::enemy(0)],
+        &mut GameplayRng::from_seed(2),
+    )
+    .unwrap();
+    assert!(state.actor(CombatantKey::enemy(0)).unwrap().health < u32::MAX - 1_000_000);
+}
+
+#[test]
+fn burn_damage_from_extreme_attack_saturates_instead_of_wrapping() {
+    use super::status::StatusPotency;
+    let burned = (0..200_u64).find_map(|seed| {
+        let mut caster = actor(BattleSide::Party, 0, 1, 40);
+        caster.attack = 1_i64 << 32;
+        caster.mana = 30;
+        caster.max_mana = 30;
+        caster.abilities = vec![ability("fireball")];
+        let target = actor(BattleSide::Enemy, 0, 1, u32::MAX);
+        let mut state = state_with(vec![caster, target]);
+        resolve_ability(
+            &mut state,
+            CombatantKey::party(0),
+            0,
+            &[CombatantKey::enemy(0)],
+            &mut GameplayRng::from_seed(seed),
+        )
+        .unwrap();
+        state
+            .actor(CombatantKey::enemy(0))
+            .unwrap()
+            .status_effects
+            .iter()
+            .find(|status| status.effect == StatusEffect::Burn)
+            .map(|status| status.potency)
+    });
+    assert_eq!(burned, Some(StatusPotency::DamagePerTurn(u32::MAX / 10)));
+}
+
+#[test]
+fn reward_shares_sum_without_overflow_at_maximum_experience() {
+    let members = vec![
+        actor(BattleSide::Party, 0, 10, 50),
+        actor(BattleSide::Party, 1, 9, 50),
+        actor(BattleSide::Party, 2, 8, 50),
+    ];
+    let mut enemy_a = actor(BattleSide::Enemy, 0, 1, 1);
+    enemy_a.health = 0;
+    enemy_a.experience_yield = u32::MAX;
+    let mut enemy_b = actor(BattleSide::Enemy, 1, 1, 1);
+    enemy_b.health = 0;
+    enemy_b.experience_yield = u32::MAX;
+    let mut combatants = members;
+    combatants.extend([enemy_a, enemy_b]);
+    let state = state_with(combatants);
+    let rewards = calculate_rewards(
+        &state,
+        &BTreeMap::new(),
+        &no_break(),
+        &mut GameplayRng::from_seed(3),
+    );
+    assert_eq!(rewards.total_experience, u32::MAX);
+    let gained = rewards
+        .members
+        .iter()
+        .map(|member| u64::from(member.experience_gained))
+        .sum::<u64>();
+    assert_eq!(gained, u64::from(u32::MAX));
 }
