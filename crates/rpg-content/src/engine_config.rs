@@ -1,24 +1,10 @@
-//! Engine-level settings read from `assets/settings.yaml`.
-//!
-//! The source keeps these in `engine/settings/settings.yaml`, loaded by
-//! `engine/settings/engine_config_data.py`. This is a deliberate subset: the port carries only the
-//! keys it actually consumes, because parsed-but-unread settings create misleading aspirational
-//! surfaces.
-//!
-//! Keys the source has that the port governs elsewhere, and therefore does not read here:
-//!
-//! | Source key | Where the port decides it |
-//! | --- | --- |
-//! | `display.*` | the fixed gameplay canvas is 1280x766 |
-//! | `tiles.tile_size` | derived from each map's own TMX header |
-//! | `saves.dir` | `save_store::resolve_save_directory`, which follows platform conventions |
-//! | `audio.*` | the `RPG_S1_MUTE_AUDIO` environment variable |
-//! | `debug.*` | `--party-preset` and `RPG_S1_DEBUG_COLLISION` |
-//! | `movement.smooth_collision` | always on; the port has no non-sliding collision path |
-//! | `enemy_spawn.global_interval` | per-encounter data in the scenario package |
+//! Engine-level settings read from `assets/settings.yaml`. Only keys the port consumes are modelled.
+//! Settings governed elsewhere are not read here: display (fixed canvas size), tile size (from each
+//! map's TMX header), save directory (platform convention), audio, debug switches, collision and
+//! enemy spawn interval.
 //!
 //! A missing file, block, or key falls back to the value the port already used, so the game runs
-//! unchanged without a settings file rather than refusing to start over a display preference.
+//! without a settings file rather than refusing to start over a display preference.
 
 use serde::Deserialize;
 

@@ -1,17 +1,11 @@
-//! Source-authored dialogue schemas.
+//! Dialogue document schemas for `data/dialogue/`. Conditional dialogue selects the first entry
+//! whose [`FlagConditions`] match. Node, choice, `next` and terminal fields are optional
+//! extensions; no authored document needs them. Speaker names and portraits come from map NPC
+//! metadata.
 //!
-//! The pinned `0897035` scenario contains 91 mapping-root dialogue files. One is a cutscene,
-//! 89 contain ordered conditional entries, and one is a reusable line pool. Conditional
-//! dialogue branches by selecting the first entry whose [`FlagConditions`] match. The copied
-//! source corpus is linear; the optional node, choice, `next`, and terminal fields extend that
-//! wire format for the M5 runtime without changing any source-authored document. Speaker names
-//! and portraits still come from map NPC metadata.
-//!
-//! Entry documents may omit `id` (one pinned file does) and `type` (thirteen do). The line-pool
-//! utility also has no id. In those cases the containing filename stem is the effective id,
-//! matching the direct source-format contract. Missing conditions and completion actions are
-//! explicit Python loader defaults. The pinned files contain no YAML nulls, so null is not accepted as shorthand for
-//! any of those defaults.
+//! `id` and `type` may be omitted; the containing filename stem then serves as the effective id.
+//! Missing conditions and completion actions take explicit defaults, and YAML null is not accepted
+//! as shorthand for any of them.
 
 use std::num::NonZeroU32;
 
@@ -179,17 +173,15 @@ pub struct DialogueActions {
 
 /// Which enemy a branch fights, and what winning that fight means.
 ///
-/// Two wire forms. The bare id is the source's and stays exactly as it was:
+/// Two wire forms. The bare enemy id is accepted as-is:
 ///
 /// ```yaml
 /// start_battle: cinder_marshal
 /// ```
 ///
-/// The mapping form adds flags that are set **only on victory**, which the sibling
-/// `set_flag` cannot express: `on_complete` runs when the branch closes, which is before the
-/// fight, so a flag authored there is already committed by the time the player flees. Outcomes
-/// the story depends on — a gate that should stay shut until the duel is actually won — belong
-/// here instead:
+/// The mapping form adds flags set **only on victory**. `on_complete` runs when the branch
+/// closes, which is before the fight, so a flag authored there is already committed if the
+/// player flees. Outcomes that must wait for a won fight belong in `on_victory`:
 ///
 /// ```yaml
 /// start_battle:

@@ -1,16 +1,11 @@
-//! Source-authored quest-board registry schema.
+//! Quest-board registry schema for the list-root `data/quests.yaml`.
 //!
-//! The pinned `0897035` Rusted Kingdoms scenario has one list-root quest file,
-//! `data/quests.yaml`, containing sixteen ordered entries. Each entry has exactly seven required
-//! string-valued fields. Four entries are `main` quests and twelve are `sub` quests.
-//!
-//! Despite the milestone's earlier generic wording, the pinned quest format has no objective or
-//! reward records, conditions, quantities, or optional fields. Progress is represented only by a
-//! required started-flag id and completed-flag id; dialogue actions author the actual flag changes
-//! and item grants. This module therefore does not invent objective/reward wire shapes or apply
-//! runtime status rules. Flag and quest ids remain logical identifiers until later cross-reference
-//! validation. Entry identity always comes from the required `id`; the fixed catalog filename does
-//! not supply a fallback id.
+//! Each entry has exactly seven required fields and no others (`deny_unknown_fields`). Progress is
+//! represented only by a started-flag id and a completed-flag id; dialogue actions author the flag
+//! changes and item grants. There are no objective, reward, condition or optional fields, and no
+//! runtime status rules here. Flag and quest ids are logical identifiers until cross-reference
+//! validation. Entry identity always comes from the required `id`; the catalog filename is never a
+//! fallback.
 
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de};

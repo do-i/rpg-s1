@@ -1,15 +1,11 @@
 //! Compares a scenario validation report against a checked-in list of accepted diagnostics.
 //!
-//! A handful of validator diagnostics are accepted inherited source debt that must *not* be
-//! driven to zero by inventing unlocks, maps, or flags. That leaves bare validation permanently
-//! exiting non-zero, which is why it could not be a CI gate and why a broken title cursor
-//! reference once shipped unnoticed.
+//! Compares a scenario validation report against a checked-in list of accepted diagnostics.
 //!
-//! A baseline resolves both halves. The accepted diagnostics are enumerated in a file; the run is
-//! clean only when the report matches that file exactly. A *new* diagnostic fails, so regressions
-//! cannot ship. A diagnostic that no longer appears also fails, so the file cannot quietly rot into
-//! a list of things that were fixed years ago -- paying down debt is expected to include deleting
-//! its line.
+//! Some accepted diagnostics are inherited source debt. Do not clear them by inventing unlocks,
+//! maps or flags. The run is clean only when the report matches the baseline file exactly: a new
+//! diagnostic fails, and a baseline entry the report no longer produces also fails, so paying down
+//! debt includes deleting its line.
 //!
 //! Comparison is by the exact rendered report line, so the baseline reads as the validator's own
 //! output and needs no second format to learn.

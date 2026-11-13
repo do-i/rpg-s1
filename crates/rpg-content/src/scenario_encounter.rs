@@ -1,16 +1,11 @@
-//! Source-authored encounter-zone schemas.
+//! Encounter-zone schemas for the map-keyed documents beneath `data/encount/`. Each file is
+//! selected by its map's filename stem, and an absent `id` falls back to that stem.
 //!
-//! The pinned `0897035` scenario contains 16 mapping-root files beneath `data/encount/`.
-//! Together they define 147 weighted formations, ten bosses, six barrier-enemy rules, and two
-//! zone-level spawn-frequency overrides. Encounter files are selected by map filename stem. The
-//! source currently authors an identical `id`, while the Python loader falls back to that stem
-//! when `id` is absent.
-//!
-//! Missing names and battle-background ids become empty strings, missing formation/barrier
-//! lists become empty, boss names default to their enemy id, bosses default to once-only, and a
-//! missing or null boss completion block has no flag. A null boss or spawn frequency is also
-//! absent. Formation selection, boss completion, barrier resolution, and spawning are runtime
-//! concerns reserved for later milestones.
+//! Missing names and battle-background ids become empty strings; missing formation and barrier
+//! lists become empty. A boss's name defaults to its enemy id and the boss defaults to once-only.
+//! A missing or null boss completion block has no flag, and a null boss or spawn frequency is
+//! absent. Formation selection, boss completion, barrier resolution and spawning happen at runtime,
+//! not in this module.
 
 use bevy::{asset::Asset, reflect::TypePath};
 

@@ -74,22 +74,12 @@ impl<'a> Validator<'a> {
                 );
             }
 
-            // A map YAML with no same-stem TMX is unreadable at runtime either way: both engines
-            // resolve per-map metadata by exact stem (`data/maps/<map_id>.yaml`), with no
-            // parent-to-segment fallback anywhere.
+            // A map YAML with no same-stem TMX cannot load at runtime. Per-map metadata is resolved
+            // by exact stem (`data/maps/<map_id>.yaml`), with no parent-to-segment fallback.
             //
-            // This previously stayed silent whenever numbered segment TMX files
-            // (`<stem>_01.tmx`, `<stem>_02.tmx`, ...) named the file as their parent, treating
-            // that as the source's multi-segment convention. It is not a convention the runtime
-            // honours, and the suppression is exactly what hid `zone_05_mountain_foothills.yaml`
-            // stranding a BGM key, a `warp_order`, and two unreachable chests (roadmap B2.1).
-            // The pinned engine reaches the same conclusion: `_is_submap` builds its
-            // id set from `media/maps/*.tmx` stems, so a parent with no TMX of its own is not a
-            // submap parent there either.
-            //
-            // So the segment case is now the *louder* one -- it means authored content exists and
-            // no map can load it -- and the repair is to name the file after the segment it
-            // describes.
+            // Numbered segment TMX files (`<stem>_01.tmx`, ...) do not make a parent stem valid, so
+            // they are reported as an error: authored content exists that no map can load. The
+            // repair is to name the file after the segment it describes.
             let segments = index
                 .maps
                 .iter()
