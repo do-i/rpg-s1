@@ -528,9 +528,15 @@ fn sync_opened_box_sprites(
         return;
     };
     for (item_box, mut sprite) in &mut boxes {
-        if let Some(atlas) = sprite.texture_atlas.as_mut() {
-            atlas.index =
-                item_box.closed_tile + usize::from(game.opened_boxes().contains(&item_box.key()));
+        let index =
+            item_box.closed_tile + usize::from(game.opened_boxes().contains(&item_box.key()));
+        if sprite
+            .texture_atlas
+            .as_ref()
+            .is_some_and(|atlas| atlas.index != index)
+            && let Some(atlas) = sprite.texture_atlas.as_mut()
+        {
+            atlas.index = index;
         }
     }
 }
@@ -663,5 +669,67 @@ mod tests {
             sign_tiles(&map, &manifest.signs),
             [Position::new(5, 0), Position::new(17, 28)]
         );
+    }
+
+    #[test]
+    fn idle_frames_leave_box_sprites_unmarked_and_opening_flips_the_frame_at_once() {
+        let mut app = App::new();
+        app.insert_resource(crate::test_support::persistence::fresh_game());
+        app.add_systems(Update, sync_opened_box_sprites);
+        let map_id = RuntimeMapId::try_new("zone_test").unwrap();
+        for index in 0..3 {
+            app.world_mut().spawn((
+                WorldItemBox {
+                    map_id: map_id.clone(),
+                    id: format!("box_{index}"),
+                    position: Position::new(index, 0),
+                    loot: ItemBoxLoot::default(),
+                    trap: None,
+                    closed_tile: 4,
+                },
+                Sprite {
+                    texture_atlas: Some(TextureAtlas {
+                        layout: Handle::default(),
+                        index: 4,
+                    }),
+                    ..default()
+                },
+            ));
+        }
+        app.update();
+
+        let mut sprites = app.world_mut().query::<(&WorldItemBox, Ref<Sprite>)>();
+        for _ in 0..3 {
+            let before = app.world().read_change_tick();
+            app.update();
+            let now = app.world().read_change_tick();
+            let changed = sprites
+                .iter(app.world())
+                .filter(|(_, sprite)| sprite.last_changed().is_newer_than(before, now))
+                .count();
+            assert_eq!(
+                changed, 0,
+                "idle frame marked {changed} box Sprites changed"
+            );
+        }
+
+        let key = OpenedBoxKey::try_new(map_id, "box_1").unwrap();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .opened_boxes_mut()
+            .record(key);
+        app.update();
+        let frames: Vec<(String, usize)> = sprites
+            .iter(app.world())
+            .map(|(item_box, sprite)| {
+                (
+                    item_box.id().to_owned(),
+                    sprite.texture_atlas.as_ref().unwrap().index,
+                )
+            })
+            .collect();
+        assert!(frames.contains(&("box_1".to_owned(), 5)), "{frames:?}");
+        assert!(frames.contains(&("box_0".to_owned(), 4)), "{frames:?}");
+        assert!(frames.contains(&("box_2".to_owned(), 4)), "{frames:?}");
     }
 }
