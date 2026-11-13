@@ -181,7 +181,14 @@ fn spawn_fixture_save_page(
     saves: Res<SaveSlotCatalog>,
 ) {
     commands.spawn(Node::default()).with_children(|parent| {
-        spawn_save_page(parent, &Handle::<Font>::default(), &state, &game, &saves);
+        spawn_save_page(
+            parent,
+            &Handle::<Font>::default(),
+            &state,
+            &game,
+            &saves,
+            &crate::input_bindings::InputBindings::default(),
+        );
     });
 }
 
@@ -1042,6 +1049,37 @@ fn save_overwrite_confirmation_uses_a_focused_modal() {
         .collect::<Vec<_>>();
     assert!(labels.contains(&"OVERWRITE SAVE?"));
     assert!(labels.contains(&"Slot 04"));
+}
+
+#[test]
+fn save_page_footer_matches_the_shipped_text_under_default_bindings() {
+    let bindings = crate::input_bindings::InputBindings::default();
+    assert_eq!(
+        save_page_hint(FieldMenuMode::Browse, &bindings),
+        "UP/DOWN   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
+    );
+    assert_eq!(
+        save_page_hint(FieldMenuMode::SaveConfirm, &bindings),
+        "ENTER / Y   OVERWRITE      ESC / N   CANCEL"
+    );
+}
+
+#[test]
+fn save_page_footer_follows_a_rebound_confirm() {
+    use crate::input_bindings::{AppAction, BindingTarget, InputBindings};
+
+    let mut bindings = InputBindings::default();
+    bindings
+        .set_keys(BindingTarget::Menu(AppAction::Confirm), vec![KeyCode::KeyG])
+        .expect("a nonempty row");
+    assert_eq!(
+        save_page_hint(FieldMenuMode::Browse, &bindings),
+        "UP/DOWN   SELECT SLOT      G   SAVE      ESC   BACK      M   CLOSE"
+    );
+    assert_eq!(
+        save_page_hint(FieldMenuMode::SaveConfirm, &bindings),
+        "G / Y   OVERWRITE      ESC / N   CANCEL"
+    );
 }
 
 #[test]

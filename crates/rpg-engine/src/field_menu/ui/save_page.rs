@@ -1,4 +1,9 @@
 use super::*;
+use crate::{
+    input_bindings::InputBindings,
+    key_hints::{FIELD_MENU_HINTS, HintKey, HintSegment, key_hint},
+    options_domain::Device,
+};
 
 #[expect(
     clippy::too_many_arguments,
@@ -11,6 +16,7 @@ pub(in crate::field_menu) fn sync_save_page(
     inventory: Res<ScenarioInventory>,
     state: Res<FieldMenuState>,
     saves: Res<SaveSlotCatalog>,
+    options: Option<Res<PlayerOptions>>,
     game: Option<Res<GameState>>,
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuSavePage>>,
@@ -29,7 +35,11 @@ pub(in crate::field_menu) fn sync_save_page(
     let Some(game) = game else {
         return;
     };
-    let rebuild = pages.is_empty() || state.is_changed() || saves.is_changed() || game.is_changed();
+    let rebuild = pages.is_empty()
+        || state.is_changed()
+        || saves.is_changed()
+        || game.is_changed()
+        || options.as_ref().is_some_and(|options| options.is_changed());
     if !rebuild {
         return;
     }
@@ -41,8 +51,35 @@ pub(in crate::field_menu) fn sync_save_page(
         return;
     };
     commands.entity(menu_root).with_children(|parent| {
-        spawn_save_page(parent, &font, &state, &game, &saves);
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_save_page(parent, &font, &state, &game, &saves, &options.bindings);
     });
+}
+
+/// The save page's footer, which follows rebinds of Confirm, Back and the vertical directions.
+/// `M`, `Y` and `N` are read as raw keys by the field menu, so they are fixed.
+pub(in crate::field_menu) fn save_page_hint(
+    mode: FieldMenuMode,
+    bindings: &InputBindings,
+) -> String {
+    use crate::action_input::AppAction::{Back, Confirm, Down, Up};
+    use HintKey::{Action, Fixed, Pair};
+
+    let segments: &[HintSegment<'_>] = if mode == FieldMenuMode::SaveConfirm {
+        &[
+            (&[Action(Confirm), Fixed("Y")], "OVERWRITE"),
+            (&[Action(Back), Fixed("N")], "CANCEL"),
+        ]
+    } else {
+        &[
+            (&[Pair(Up, Down)], "SELECT SLOT"),
+            (&[Action(Confirm)], "SAVE"),
+            (&[Action(Back)], "BACK"),
+            (&[Fixed("M")], "CLOSE"),
+        ]
+    };
+    key_hint(bindings, Device::Keyboard, &FIELD_MENU_HINTS, segments)
 }
 
 pub(in crate::field_menu) fn spawn_save_page(
@@ -51,6 +88,7 @@ pub(in crate::field_menu) fn spawn_save_page(
     state: &FieldMenuState,
     game: &GameState,
     saves: &SaveSlotCatalog,
+    bindings: &InputBindings,
 ) {
     parent
         .spawn((
@@ -121,11 +159,7 @@ pub(in crate::field_menu) fn spawn_save_page(
                 }
                 spawn_status_text(
                     modal,
-                    if state.mode == FieldMenuMode::SaveConfirm {
-                        "ENTER / Y   OVERWRITE      ESC / N   CANCEL"
-                    } else {
-                        "UP/DOWN   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
-                    },
+                    save_page_hint(state.mode, bindings),
                     font,
                     14.0,
                     status_muted(),

@@ -38,6 +38,7 @@ mod intro_completion;
 mod intro_dialogue;
 mod intro_transition;
 mod item_images;
+mod key_hints;
 mod menu_chrome;
 mod name_entry;
 pub mod new_game;

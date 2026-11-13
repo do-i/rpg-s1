@@ -426,6 +426,14 @@ impl InputBindings {
         *self.buttons_mut(target) = deduplicated;
         Ok(())
     }
+
+    /// Empties one row on both devices, a state the never-unbind rule keeps out of the game, so
+    /// renderers can be shown to survive it.
+    #[cfg(test)]
+    pub(crate) fn clear_for_test(&mut self, target: BindingTarget) {
+        self.keys_mut(target).clear();
+        self.buttons_mut(target).clear();
+    }
 }
 
 #[cfg(test)]
