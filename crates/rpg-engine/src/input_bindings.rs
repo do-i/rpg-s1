@@ -1,17 +1,6 @@
-//! The editable binding table, and the conflict policy that governs edits to it.
-//!
-//! Reading input lives in [`crate::action_input`]; this module owns only what each action is
-//! bound to and the rules for changing that. Splitting them keeps the per-frame read path free of
-//! editing concerns and lets the binding table be unit-tested with no Bevy app at all.
-//!
-//! # Categories
-//!
-//! Bindings are scoped to a *category*, not to one flat table. Menu actions are edge-triggered and
-//! movement is level-triggered, so the shipped defaults deliberately place `Up` on both
-//! [`AppAction::Up`] and [`MovementAction::Up`] — the same physical key steps a menu in one screen
-//! and walks in another, and no screen reads both. A conflict rule that spanned categories would
-//! call that shipped, correct arrangement an error, so conflicts are resolved within one category
-//! and one device only.
+//! The editable binding table and its conflict policy; reading input is in [`crate::action_input`].
+//! Conflicts resolve within one category and one device. Defaults bind `Up` to both
+//! [`AppAction::Up`] and [`MovementAction::Up`] on purpose: no screen reads both.
 
 use bevy::input::{gamepad::GamepadButton, keyboard::KeyCode};
 

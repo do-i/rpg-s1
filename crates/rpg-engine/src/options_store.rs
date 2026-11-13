@@ -1,20 +1,6 @@
-//! Player-set options, persisted outside both the asset tree and the save slots.
-//!
-//! Three places could have held these, and the other two are wrong for a reason worth recording.
-//!
-//! `assets/settings.yaml` is the source-parity file described in
-//! [`crate::engine_config`]: it ships with the game, it is read-only in practice, and its whole
-//! discipline is that the port carries only keys the Python original had. Rebindings are a port
-//! addition with no source counterpart, so writing them there would corrupt that contract.
-//!
-//! A save slot is wrong because bindings belong to the player, not the campaign. Starting a new
-//! game would silently restore factory keys, and it would force a save-schema change on work that
-//! has otherwise avoided one.
-//!
-//! So options live in the XDG *config* directory — the spec's home for preferences a user sets,
-//! as opposed to the data directory where [`crate::save_store`] keeps saves. Keeping the two
-//! apart also matters in practice: acceptance runs move `RPG_S1_SAVE_DIR` between fixture slots
-//! constantly, and bindings must not reset every time they do.
+//! Player-set options, persisted in the XDG config directory, apart from the asset tree and saves.
+//! Bindings belong to the player, not a save slot, and `assets/settings.yaml` carries only
+//! source-parity keys, so rebindings cannot go there.
 
 use std::{
     collections::BTreeMap,

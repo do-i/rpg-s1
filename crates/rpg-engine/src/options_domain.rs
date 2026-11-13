@@ -1,20 +1,6 @@
-//! The options screen as a pure state machine.
-//!
-//! Split from [`crate::options_ui`] the way [`crate::field_menu_domain`] is split from the field
-//! menu: every rule about what a keypress means lives here and is tested without a Bevy app, and
-//! the UI module only draws the result and forwards raw input.
-//!
-//! # Capture mode
-//!
-//! Rebinding needs the screen to stop interpreting input and start recording it. While a row is
-//! capturing, the caller must feed raw keys and buttons to [`OptionsScreen::capture_key`] and
-//! [`OptionsScreen::capture_button`] and must not act on [`crate::action_input::ActionState`] at
-//! all — otherwise pressing Up to bind Up would also scroll the list.
-//!
-//! Escape always cancels capture and is therefore the one key a player cannot newly bind. That is
-//! a deliberate trade: an unconditional escape hatch matters more than the ability to move a key
-//! that already defaults to Back, because a capture with no way out is unrecoverable without
-//! editing the options file by hand.
+//! The options screen as a pure state machine, tested without a Bevy app; [`crate::options_ui`]
+//! only draws it. While a row captures, raw keys and buttons go to the capture methods, never to
+//! [`crate::action_input::ActionState`]. Escape always cancels capture, so it cannot be bound.
 
 use bevy::{
     input::{gamepad::GamepadButton, keyboard::KeyCode},

@@ -1,14 +1,6 @@
-//! Stable text names for every bindable key and gamepad button.
-//!
-//! Bevy's `serialize` feature is not enabled, so `KeyCode` and `GamepadButton` have no serde
-//! impls to borrow. That absence is convenient rather than annoying: the options file is
-//! hand-editable, so it wants names chosen for a reader ("Up", "LeftShift") rather than Bevy's
-//! internal variant spelling ("ArrowUp", "ShiftLeft"), and owning the table means a Bevy rename
-//! cannot silently invalidate every player's saved bindings.
-//!
-//! The set is deliberately a subset. Only keys a player could reasonably want on a menu action
-//! appear here; media keys, IME keys, and the browser cluster are omitted, so binding them is
-//! impossible rather than possible-but-broken.
+//! Stable text names for every bindable key and gamepad button, for the hand-editable options file.
+//! Bevy's `serialize` feature is off, so this table is owned here and a Bevy rename cannot break
+//! saved bindings. It is a deliberate subset: media, IME and browser keys are unbindable.
 
 use bevy::input::{gamepad::GamepadButton, keyboard::KeyCode};
 

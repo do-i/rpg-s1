@@ -1,16 +1,6 @@
-//! The options screen's Bevy wiring: layout, input routing, and persistence.
-//!
-//! Every rule about what an input *means* lives in [`crate::options_domain`]. This module only
-//! turns raw Bevy input into calls on that state machine, redraws the result, and writes the file
-//! when the machine says something changed.
-//!
-//! # Why raw input is read here at all
-//!
-//! Every other screen consults [`ActionState`], which is already resolved through the player's
-//! bindings. That is exactly wrong for a rebinding screen: while capturing, the screen needs the
-//! physical key, not the action it currently maps to. So input routing forks — resolved actions
-//! while idle, raw device state while capturing — and the two paths are mutually exclusive so a
-//! keypress can never do both.
+//! The options screen's Bevy wiring: layout, input routing and persistence. Meaning lives in
+//! [`crate::options_domain`]; this module forwards input and saves the file when state changes.
+//! Input forks: resolved `ActionState` while idle, raw device state while capturing, never both.
 
 use bevy::{
     ecs::hierarchy::ChildSpawnerCommands,
