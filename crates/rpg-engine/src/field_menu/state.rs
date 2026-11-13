@@ -43,14 +43,6 @@ pub(super) enum FieldMenuMode {
     /// Equipment comparison's Equip/Unequip button; only Confirm here changes equipment.
     EquipmentConfirm,
     SpellTarget,
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "legacy picker retained only for regression fixtures; runtime uses Ember Atlas"
-        )
-    )]
-    TeleportPicker,
     SaveConfirm,
     QuitConfirm,
     /// Roster overlay for choosing which member the World sprite follows.
@@ -228,8 +220,7 @@ impl FieldMenuState {
             FieldMenuMode::DiscardQuantity
             | FieldMenuMode::ItemTarget
             | FieldMenuMode::ItemEquipTarget
-            | FieldMenuMode::SpellTarget
-            | FieldMenuMode::TeleportPicker => {
+            | FieldMenuMode::SpellTarget => {
                 self.quantity = 1;
                 self.message.clear();
                 if self.screen == FieldMenuScreen::Spells {

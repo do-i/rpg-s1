@@ -84,13 +84,6 @@ pub(super) const REGISTER_CARD_MIN_HEIGHT: f32 = 54.0;
 pub(super) const REGISTER_CARD_MAX_HEIGHT: f32 = 76.0;
 pub(super) const RECIPE_VISIBLE_ROWS: usize = 8;
 pub(super) const SAVE_VISIBLE_ROWS: usize = 8;
-/// Destination rows the teleport picker shows before it scrolls.
-///
-/// The modal is capped at 520px tall, and each row is 48px over a 9px gap, so six rows plus
-/// the modal's own chrome is what fits. The list itself is unbounded in principle — every
-/// visited non-submap with a `warp_order` is a destination, 29 of them in the shipped
-/// scenario — so without this window a late-game cast paints far past the canvas.
-pub(super) const TELEPORT_VISIBLE_ROWS: usize = 6;
 pub(super) const ITEM_MANAGE_VISIBLE_ROWS: usize = 8;
 /// Tag rows the editor shows before it scrolls.
 ///

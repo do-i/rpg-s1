@@ -485,19 +485,6 @@ pub(in crate::field_menu) fn render_spells(
         .join("\n");
     let overlay = match state.mode {
         FieldMenuMode::SpellTarget => render_targets(state, game),
-        FieldMenuMode::TeleportPicker => catalog
-            .eligible_warp_destinations(game.map())
-            .iter()
-            .enumerate()
-            .map(|(index, destination)| {
-                format!(
-                    "{} {}",
-                    if index == state.selected { ">" } else { " " },
-                    destination.name
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n"),
         _ => String::new(),
     };
     format!(
@@ -668,7 +655,6 @@ pub(in crate::field_menu) fn render_hint(state: &FieldMenuState) -> String {
         (_, FieldMenuMode::ItemTarget | FieldMenuMode::SpellTarget) => {
             "UP/DOWN target  ENTER confirm  ESC cancel"
         }
-        (_, FieldMenuMode::TeleportPicker) => "UP/DOWN destination  ENTER teleport  ESC cancel",
         _ => "UP/DOWN choose  ENTER confirm  ESC cancel  M close",
     }
     .to_owned()

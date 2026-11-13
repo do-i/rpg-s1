@@ -13,12 +13,8 @@ use crate::{
         learned_abilities,
     },
     game_state::GameState,
-    runtime_map::RuntimeMapId,
     scenario_class::{Ability, AbilityKind, UtilityAbility},
-    scenario_spatial::CardinalDirection,
-    sfx_cue::{MenuSfx, cue},
     transport_ui::TransportUiState,
-    world_transition::WorldTransition,
 };
 
 pub(super) fn handle_input(
@@ -27,8 +23,6 @@ pub(super) fn handle_input(
     input: &MenuInput<'_>,
     catalog: &FieldMenuCatalog,
     transport_ui: Option<ResMut<'_, TransportUiState>>,
-    transition: &mut ResMut<'_, WorldTransition>,
-    menu_sfx: &mut MenuSfx<'_>,
 ) {
     match state.mode {
         // Caster column: Up/Down picks the member, Right or Enter moves into their spellbook.
@@ -140,54 +134,6 @@ pub(super) fn handle_input(
                         state.message = format!("Restored {amount} HP.");
                     }
                     Err(error) => state.message = error.to_string(),
-                }
-            }
-        }
-        FieldMenuMode::TeleportPicker => {
-            let destinations = catalog.eligible_warp_destinations(game.map());
-            if let Some(delta) = input.vertical {
-                state.selected = wrapped_or_zero(state.selected, destinations.len(), delta);
-            }
-            if input.confirm {
-                let Some(destination) = destinations.get(state.selected).cloned() else {
-                    return;
-                };
-                let Some(caster_id) = member_id_at(game, state.member_index).map(str::to_owned)
-                else {
-                    return;
-                };
-                let ability_id = state
-                    .pending_id
-                    .as_deref()
-                    .expect("teleport requires ability");
-                let Some(ability) = ability_by_id(game, catalog, &caster_id, ability_id).cloned()
-                else {
-                    return;
-                };
-                if game
-                    .party()
-                    .member(&caster_id)
-                    .is_none_or(|member| member.mana() < ability.mp_cost)
-                {
-                    state.message = "Not enough MP.".to_owned();
-                    return;
-                }
-                let map_id = RuntimeMapId::try_new(destination.map_id.clone())
-                    .expect("loaded warp id is valid");
-                if transition.request_destination(
-                    map_id,
-                    destination.position,
-                    CardinalDirection::Down,
-                ) {
-                    menu_sfx.play(cue::TELEPORT);
-                    game.party_mut()
-                        .member_mut(&caster_id)
-                        .expect("validated")
-                        .spend_mana(ability.mp_cost);
-                    state.close();
-                } else {
-                    menu_sfx.blocked();
-                    state.message = "A map transition is already active.".to_owned();
                 }
             }
         }

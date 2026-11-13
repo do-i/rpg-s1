@@ -49,7 +49,7 @@ pub(super) fn handle_field_menu_input(
     mut menu_settings: MenuSettings,
     interaction: Res<WorldInteractionState>,
     service: Option<Res<ServiceUiState>>,
-    mut transition: ResMut<WorldTransition>,
+    transition: ResMut<WorldTransition>,
     game: Option<ResMut<GameState>>,
     store: Res<SaveStore>,
     mut saves: ResMut<SaveSlotCatalog>,
@@ -179,15 +179,9 @@ pub(super) fn handle_field_menu_input(
         FieldMenuScreen::Equipment => {
             equipment::handle_input(&mut state, &mut game, &input, &catalog, &mut menu_sfx);
         }
-        FieldMenuScreen::Spells => spells::handle_input(
-            &mut state,
-            &mut game,
-            &input,
-            &catalog,
-            transport_ui,
-            &mut transition,
-            &mut menu_sfx,
-        ),
+        FieldMenuScreen::Spells => {
+            spells::handle_input(&mut state, &mut game, &input, &catalog, transport_ui)
+        }
         FieldMenuScreen::Quests => {
             if state.mode == FieldMenuMode::Browse
                 && let Some(delta) = input.vertical

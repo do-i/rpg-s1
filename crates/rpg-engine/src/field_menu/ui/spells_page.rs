@@ -105,10 +105,7 @@ pub(in crate::field_menu) fn spawn_spells_page(
             });
             spawn_status_text(
                 page,
-                if matches!(
-                    state.mode,
-                    FieldMenuMode::SpellTarget | FieldMenuMode::TeleportPicker
-                ) {
+                if state.mode == FieldMenuMode::SpellTarget {
                     "UP/DOWN   CHOOSE      ENTER   CONFIRM      ESC   SPELLBOOK      M   CLOSE"
                 } else if state.mode == FieldMenuMode::SpellList {
                     "ARROWS   SELECT SPELL      ENTER   CAST WHEN READY      LEFT EDGE / ESC   CASTER"
@@ -597,10 +594,7 @@ pub(in crate::field_menu) fn spawn_spell_overlay(
     game: &GameState,
     catalog: &FieldMenuCatalog,
 ) {
-    if !matches!(
-        state.mode,
-        FieldMenuMode::SpellTarget | FieldMenuMode::TeleportPicker
-    ) {
+    if state.mode != FieldMenuMode::SpellTarget {
         return;
     }
     let title = state
@@ -644,88 +638,25 @@ pub(in crate::field_menu) fn spawn_spell_overlay(
                 font,
                 |modal| {
                     modal.spawn(SpellTargetOverlay);
-                    match state.mode {
-                        FieldMenuMode::SpellTarget => {
-                            spawn_status_text(modal, "CHOOSE A TARGET", font, 13.0, status_muted());
-                            for (index, member) in game.party().members().enumerate() {
-                                spawn_item_modal_row(
-                                    modal,
-                                    font,
-                                    member.name(),
-                                    &format!(
-                                        "HP {}/{}    MP {}/{}",
-                                        member.health(),
-                                        member.max_health(),
-                                        member.mana(),
-                                        member.max_mana()
-                                    ),
-                                    index == state.selected,
-                                );
-                            }
-                        }
-                        FieldMenuMode::TeleportPicker => {
-                            spawn_status_text(
-                                modal,
-                                "CHOOSE A DESTINATION",
-                                font,
-                                13.0,
-                                status_muted(),
-                            );
-                            let destinations = catalog.eligible_warp_destinations(game.map());
-                            if destinations.is_empty() {
-                                spawn_status_text(
-                                    modal,
-                                    "No eligible visited destinations.",
-                                    font,
-                                    16.0,
-                                    status_muted(),
-                                );
-                            }
-                            let window = state.scroll.window(
-                                "teleport",
-                                state.selected,
-                                destinations.len(),
-                                TELEPORT_VISIBLE_ROWS,
-                            );
-                            spawn_scroll_list(modal, window, scroll_list_node(9.0), |modal| {
-                                for index in window.indices() {
-                                    spawn_item_modal_row(
-                                        modal,
-                                        font,
-                                        &destinations[index].name,
-                                        "standard map transition",
-                                        index == state.selected,
-                                    );
-                                }
-                            });
-                            if let Some(footer) =
-                                teleport_footer(state.selected, window.first, destinations.len())
-                            {
-                                spawn_status_text(modal, footer, font, 11.0, status_faint());
-                            }
-                        }
-                        _ => {}
+                    spawn_status_text(modal, "CHOOSE A TARGET", font, 13.0, status_muted());
+                    for (index, member) in game.party().members().enumerate() {
+                        spawn_item_modal_row(
+                            modal,
+                            font,
+                            member.name(),
+                            &format!(
+                                "HP {}/{}    MP {}/{}",
+                                member.health(),
+                                member.max_health(),
+                                member.mana(),
+                                member.max_mana()
+                            ),
+                            index == state.selected,
+                        );
                     }
                 },
             );
         });
-}
-
-/// Reports the visible span, but only once the destination list actually scrolls.
-pub(in crate::field_menu) fn teleport_footer(
-    selected: usize,
-    first: usize,
-    len: usize,
-) -> Option<String> {
-    if len <= TELEPORT_VISIBLE_ROWS {
-        return None;
-    }
-    Some(format!(
-        "DESTINATION {:02} OF {len:02}   ·   SHOWING {:02}-{:02}",
-        selected + 1,
-        first + 1,
-        (first + TELEPORT_VISIBLE_ROWS).min(len)
-    ))
 }
 
 pub(in crate::field_menu) fn selected_spell_index(
@@ -770,20 +701,5 @@ pub(in crate::field_menu) fn ability_target_label(
         AbilityTarget::SingleAlly => "TARGET  ONE ALLY",
         AbilityTarget::SelfTarget => "TARGET  SELF",
         AbilityTarget::AllAllies => "TARGET  ALL ALLIES",
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_footer_appears_only_once_the_destination_list_scrolls() {
-        assert_eq!(teleport_footer(2, 0, 5), None);
-        assert_eq!(teleport_footer(0, 0, TELEPORT_VISIBLE_ROWS), None);
-        assert_eq!(
-            teleport_footer(9, 4, 28).as_deref(),
-            Some("DESTINATION 10 OF 28   ·   SHOWING 05-10")
-        );
     }
 }

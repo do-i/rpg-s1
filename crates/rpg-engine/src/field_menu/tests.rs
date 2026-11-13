@@ -293,14 +293,6 @@ fn custom_menu_row_budgets_fit_the_baseline_canvas() {
     assert!(save <= MENU_CONTENT_HEIGHT, "save slots: {save}px");
     assert!(manage <= MENU_CONTENT_HEIGHT, "item management: {manage}px");
     assert!(tags <= MENU_CONTENT_HEIGHT, "tag editor: {tags}px");
-
-    // The teleport picker caps itself at 520px rather than filling the content box.
-    let teleport = TELEPORT_VISIBLE_ROWS * 48
-        + (TELEPORT_VISIBLE_ROWS - 1) * 9
-        + 17
-        + 15
-        + panel_chrome(16, 2, 17, 9);
-    assert!(teleport <= 520, "teleport picker: {teleport}px");
 }
 
 #[test]
@@ -852,7 +844,6 @@ fn spell_details_follow_spellbook_focus_and_remain_visible_while_targeting() {
         FieldMenuMode::Browse,
         FieldMenuMode::SpellList,
         FieldMenuMode::SpellTarget,
-        FieldMenuMode::TeleportPicker,
     ] {
         let game = fixture_game_with_recruit();
         let catalog = crate::field_menu_domain::tests::catalog();
@@ -938,34 +929,6 @@ fn spell_target_mode_uses_a_party_overlay_without_hiding_the_spellbook() {
         .map(|text| text.0.as_str())
         .collect::<Vec<_>>();
     assert!(labels.contains(&"CHOOSE A TARGET"));
-    assert!(labels.contains(&"SPELLBOOK"));
-}
-
-#[test]
-fn teleport_mode_uses_a_destination_overlay_with_an_empty_state() {
-    let mut app = App::new();
-    app.insert_resource(fixture_game())
-        .insert_resource(FieldMenuCatalog::default())
-        .insert_resource(FieldMenuState {
-            open: true,
-            screen: FieldMenuScreen::Spells,
-            mode: FieldMenuMode::TeleportPicker,
-            pending_id: Some("teleport".to_owned()),
-            ..default()
-        })
-        .add_systems(Update, spawn_fixture_spells_page);
-
-    app.update();
-
-    let world = app.world_mut();
-    assert_eq!(world.query::<&SpellTargetOverlay>().iter(world).count(), 1);
-    let labels = world
-        .query::<&Text>()
-        .iter(world)
-        .map(|text| text.0.as_str())
-        .collect::<Vec<_>>();
-    assert!(labels.contains(&"CHOOSE A DESTINATION"));
-    assert!(labels.contains(&"No eligible visited destinations."));
     assert!(labels.contains(&"SPELLBOOK"));
 }
 
