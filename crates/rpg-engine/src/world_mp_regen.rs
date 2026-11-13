@@ -132,7 +132,8 @@ fn regenerate_party_mana(
     let Ok(motion) = players.single() else {
         return;
     };
-    let Some(map_id) = game.map().current().map(|map| map.as_str().to_owned()) else {
+    // Borrowed from `game`; the borrow ends at `advance`, before `party_mut` below.
+    let Some(map_id) = game.map().current() else {
         return;
     };
     let balance = active.balance(&balances).map_or_else(
@@ -141,10 +142,10 @@ fn regenerate_party_mana(
     );
     let safe = encounters
         .as_deref()
-        .and_then(|state| state.ambient_encounters(&map_id))
+        .and_then(|state| state.ambient_encounters(map_id.as_str()))
         .map(|ambient| !ambient);
     let ticks = clock.advance(
-        &map_id,
+        map_id.as_str(),
         motion.top_left(),
         time.delta_secs(),
         safe,
