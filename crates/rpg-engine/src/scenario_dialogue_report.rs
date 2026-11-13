@@ -1,39 +1,20 @@
 //! Per-dialogue reachability and effects report for the `dialogue-report` CLI subcommand.
 //!
 //! Every source-authored dialogue entry (a `DialogueDocument::Entries` conditional branch) is
-//! evaluated against the pinned Python engine's first-match rule from
-//! `engine/dialogue/dialogue_engine.py`: entries are tried top to bottom, an entry matches when
-//! every `requires` flag is set and no `excludes` flag is set, and the first match wins. An entry
-//! is dead when no assignment of the document's referenced flags ever lets it win. This mirrors
-//! [`crate::world_dialogue::DialogueSession::resolve`], which only ever selects a `node`-less
-//! entry by this same rule; `node` entries are graph targets reached by `next` or a choice, not
-//! flag-gated branches, so they are reported separately and never marked dead.
+//! evaluated with the first-match rule that [`crate::world_dialogue::DialogueSession::resolve`]
+//! applies to `node`-less entries: entries are tried top to bottom, an entry matches when every
+//! `requires` flag is set and no `excludes` flag is set, and the first match wins. An entry is
+//! dead when no assignment of the document's referenced flags ever lets it win. `node` entries
+//! are graph targets reached by `next` or a choice, not flag-gated branches, so they are reported
+//! separately and never marked dead.
 //!
-//! One pinned dialogue, `ardel_fisherman`, ends with two flavor entries that are provably dead
-//! under this rule. The target keeps that source content deliberately, and this report marks
-//! exactly those two entries "documented-accepted" rather than surfacing them as a new finding.
-//! `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` carry the identical pattern
-//! and are accepted the same way as inherited source data.
-//!
-//! This report used to turn up the same shape of dead trailing entry in three more dialogues
-//! (`ashenveil_ashgatherer`, `elder_intro`, `frostholm_courtier`). W12.5-6-DIALOG **revived** all
-//! three rather than adding them to [`DOCUMENTED_DEAD_ENTRIES`], because the port has passed the
-//! source it was ported from and inheriting the original's unreachable content is inheriting its
-//! incompleteness. The two sub-quest givers gained a `sq_*_met` state, so their trailing flavor is
-//! now the first conversation and the errand is offered on the second; `frostholm_courtier`'s Act
-//! IV entry moved above the quest chain, gated on the finished errand so it cannot strand it; and
-//! `elder_intro`'s source-commented "safety fallback" duplicate became the epilogue congratulation
-//! the elder never had. No prose was written or deleted — only the conditions that decide when
-//! each existing line is reached.
-//!
-//! `ardel_fisherman`, `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` still
-//! carry the identical pattern and remain in [`DOCUMENTED_DEAD_ENTRIES`]; reviving them the same
-//! way is real, uncommitted work that needs owner approval before it enters the ledger.
+//! Dead entries listed in [`DOCUMENTED_DEAD_ENTRIES`] are deliberately kept source content and
+//! are reported as documented-accepted; any other dead entry is a new finding.
 //!
 //! Like [`crate::scenario_map_report`], this command is informational only: it never fails the
-//! process, and it deliberately does not repeat the item/flag reference checks
-//! [`crate::scenario_cross_reference::validate_scenario_directory`] already performs at error
-//! level — unresolved item ids show up here only as informational notes.
+//! process, and it does not repeat the item/flag reference checks that
+//! [`crate::scenario_cross_reference::validate_scenario_directory`] performs at error level.
+//! Unresolved item ids appear here only as informational notes.
 
 use std::{
     collections::BTreeSet,

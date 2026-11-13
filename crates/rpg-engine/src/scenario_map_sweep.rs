@@ -1,21 +1,17 @@
 //! Headless production-pipeline sweep for the `map-sweep` CLI subcommand.
 //!
 //! Unlike [`crate::scenario_map_report`], which describes what each map's authored source
-//! *says*, this module actually drives the production loaders over every TMX in the scenario:
-//! the same TMX/TSX parsing (`tmx_header`, `tsx_metadata`), the same ground-layer and
-//! visible-atlas selection rules (`tmx_ground_asset`), the same collision projection
-//! (`scenario_spatial::collision_occupancy`), the same portal extraction
-//! (`world_transition::runtime_portals`), the same NPC spawn-set filter
-//! (`world_actor::present_npcs`), and the same sign-tile discovery (`world_object::sign_tiles`).
-//! None of this needs a window, a GPU, or a running Bevy `App`: every one of those functions is
-//! a plain function over already-read file bytes, so this module calls them directly against
-//! bytes read from disk instead of driving `AssetServer` loads.
+//! *says*, this module drives the production loaders over every TMX in the scenario: TMX/TSX
+//! parsing (`tmx_header`, `tsx_metadata`), ground-layer and visible-atlas selection
+//! (`tmx_ground_asset`), collision projection (`scenario_spatial::collision_occupancy`), portal
+//! extraction (`world_transition::runtime_portals`), NPC spawn-set filtering
+//! (`world_actor::present_npcs`), and sign-tile discovery (`world_object::sign_tiles`).
+//! None of this needs a window, a GPU, or a running Bevy `App`: these functions are plain
+//! functions over file bytes, so the sweep calls them directly on bytes read from disk instead of
+//! driving `AssetServer` loads.
 //!
-//! Every finding here is informational: this module never fails the process, it only describes
-//! what production code did when actually run against the map. It previously excused
-//! `sample_01.tmx`, an editor scratch map whose inline tileset falls outside the M4
-//! external-tileset profile; that map and `sample_dungeon_01.tmx` were removed as dead data, so
-//! every shipped TMX is now expected to parse cleanly.
+//! Every finding is informational: the module never fails the process. Every shipped TMX is
+//! expected to parse cleanly, so a TMX finding means a map regressed.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -740,9 +736,6 @@ fn check_tmx_boxes(
 /// diagonal satisfies both of its two arms rather than neither. The box's own tile is excluded --
 /// every arm requires a strictly nonzero delta, which is why standing on a box never opens it.
 ///
-/// The same rule governs the pinned source: `world/item_box.py::is_near` is the identical
-/// per-axis `tile_size * 1.5` box test, so this is a parity check, not a port-only convention.
-///
 /// Reachability *of* that standing tile is not tested here; a full flood fill needs an entry
 /// point, and no shipped map has a walkable region cut off from its portals.
 fn has_standing_tile(occupancy: &CollisionOccupancy, target: Position) -> bool {
@@ -1318,9 +1311,7 @@ item_boxes:
         assert_eq!(report.clean_count(), 1);
     }
 
-    /// Every shipped TMX now parses. This previously pinned `sample_01.tmx`, an editor scratch map
-    /// that used an inline tileset the loader cannot read; it and `sample_dungeon_01.tmx` were
-    /// removed as dead data, so a TMX finding here means a real map regressed.
+    /// Every shipped TMX parses; a TMX finding here means a real map regressed.
     #[test]
     fn the_shipped_scenario_sweeps_every_tmx_without_a_parse_finding() {
         let root = crate::test_support::scenario_package_dir();
