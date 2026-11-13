@@ -11,6 +11,7 @@ use crate::{
         CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
         world_collision::WorldCollision,
     },
+    tile_coordinates::TILE_SIZE,
     tmx_ground_asset::world_entity_y_z,
     world_player::{
         CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
@@ -19,10 +20,7 @@ use crate::{
     },
 };
 
-use super::{
-    TILE_SIZE,
-    state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy},
-};
+use super::state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy};
 
 pub(super) const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
 pub(super) const ENEMY_WALK_ROW_OFFSET: u32 = 8;

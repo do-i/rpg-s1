@@ -20,12 +20,12 @@ use crate::{
     scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position},
+    tile_coordinates::TILE_SIZE,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tsx_atlas_asset::TsxAtlasAsset,
 };
 
 use super::{
-    TILE_SIZE,
     simulation::{enemy_tile, enemy_top_left, enemy_world_translation, random_pause},
     state::{
         PendingWorldEnemy, WorldEncounterRestore, WorldEncounterState, WorldEncounterStatus,
@@ -427,7 +427,12 @@ pub(super) fn drive_active_encounter_assets(
                     .sprite_for_tile(enemy_tile(CardinalDirection::Down, 0))
                     .ok()
             })
-            .unwrap_or_else(|| Sprite::from_color(Color::srgb(0.8, 0.2, 0.2), Vec2::splat(64.0)));
+            .unwrap_or_else(|| {
+                Sprite::from_color(
+                    Color::srgb(0.8, 0.2, 0.2),
+                    Vec2::splat((2 * TILE_SIZE) as f32),
+                )
+            });
         let top_left = enemy_top_left(pending.position);
         // An inactive enemy (the one just beaten, restored after its battle) must spawn hidden.
         // `update_world_enemies` hides it too, but only from its next run, which let the defeated

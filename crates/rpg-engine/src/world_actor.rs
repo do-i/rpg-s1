@@ -15,6 +15,7 @@ use crate::{
         CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
         world_collision::WorldCollision,
     },
+    tile_coordinates::TILE_SIZE,
     tmx_ground_asset::world_entity_y_z,
     tsx_atlas_asset::TsxAtlasAsset,
     world_player::{
@@ -24,7 +25,6 @@ use crate::{
     },
 };
 
-const TILE_SIZE: u32 = 32;
 const SPRITE_HALF_HEIGHT: f32 = 32.0;
 const BASE_FRAME_SECONDS: f32 = 0.15;
 const WANDER_PIXELS_PER_SECOND: f32 = 60.0;
@@ -348,7 +348,10 @@ fn drive_world_actor_load(
                     .ok()
             })
             .unwrap_or_else(|| {
-                Sprite::from_color(Color::srgb(0.31, 0.63, 0.86), Vec2::splat(64.0))
+                Sprite::from_color(
+                    Color::srgb(0.31, 0.63, 0.86),
+                    Vec2::splat((2 * TILE_SIZE) as f32),
+                )
             });
         let top_left = character_top_left(npc.position);
         let center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);

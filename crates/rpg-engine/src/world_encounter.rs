@@ -31,8 +31,6 @@ use self::{
 };
 use crate::app_state::AppState;
 
-const TILE_SIZE: u32 = 32;
-
 pub(crate) struct WorldEncounterPlugin;
 
 impl Plugin for WorldEncounterPlugin {

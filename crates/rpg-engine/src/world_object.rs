@@ -19,13 +19,11 @@ use crate::{
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
     scenario_spatial::Position,
     scenario_yaml_asset::ScenarioYamlLoader,
-    tile_coordinates::tmx_tile_center,
+    tile_coordinates::{TILE_SIZE, tmx_tile_center},
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tmx_header::TmxMapDocument,
     tsx_atlas_asset::TsxAtlasAsset,
 };
-
-const TILE_SIZE: u32 = 32;
 
 pub(crate) struct WorldObjectPlugin;
 

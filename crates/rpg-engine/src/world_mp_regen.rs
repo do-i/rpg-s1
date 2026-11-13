@@ -12,11 +12,11 @@ use rpg_content::scenario_balance::{BalanceData, MpRegenBalance};
 
 use crate::{
     app_state::AppState, game_state::GameState, runtime_member::RuntimeMember,
-    scenario_new_game_assets::ActiveNewGameInputs, world_encounter::WorldEncounterState,
-    world_player::WorldPlayerMotion,
+    scenario_new_game_assets::ActiveNewGameInputs, tile_coordinates::TILE_SIZE,
+    world_encounter::WorldEncounterState, world_player::WorldPlayerMotion,
 };
 
-const STEP_PIXELS: f32 = 32.0;
+const STEP_PIXELS: f32 = TILE_SIZE as f32;
 /// A larger single-frame displacement is a warp or scripted placement, not walking.
 const MAX_WALKED_PIXELS_PER_FRAME: f32 = STEP_PIXELS * 2.0;
 

@@ -2,6 +2,9 @@
 
 use bevy::math::Vec2;
 
+/// Edge length in pixels of one authored map tile; every World tile conversion uses this.
+pub(crate) const TILE_SIZE: u32 = 32;
+
 /// Returns the Bevy world-space center of one finite orthogonal TMX cell.
 ///
 /// TMX `(0, 0)` is the top-left cell. Columns increase along positive Bevy X,
