@@ -673,16 +673,14 @@ fn scan_tmx_map_document(
             Event::Start(element) => {
                 if element.name().as_ref() == b"objectgroup" {
                     require_root_object_group(depth, offset)?;
-                    let mut group =
-                        parse_object_group(&mut reader, &element, offset, &mut object_ids)?;
-                    validate_object_group_identity(
-                        &group,
+                    let group = parse_object_group(&mut reader, &element, offset, &mut object_ids)?;
+                    push_object_group(
+                        &mut scan.document,
+                        group,
                         &mut object_group_ids,
                         &mut object_group_names,
                         offset,
                     )?;
-                    group.tile_layer_index = scan.document.tile_layers.len();
-                    scan.document.object_groups.push(group);
                     continue;
                 }
                 if element.name().as_ref() == b"object" {
@@ -724,15 +722,14 @@ fn scan_tmx_map_document(
             Event::Empty(element) => {
                 if element.name().as_ref() == b"objectgroup" {
                     require_root_object_group(depth, offset)?;
-                    let mut group = parse_empty_object_group(&reader, &element, offset)?;
-                    validate_object_group_identity(
-                        &group,
+                    let group = parse_empty_object_group(&reader, &element, offset)?;
+                    push_object_group(
+                        &mut scan.document,
+                        group,
                         &mut object_group_ids,
                         &mut object_group_names,
                         offset,
                     )?;
-                    group.tile_layer_index = scan.document.tile_layers.len();
-                    scan.document.object_groups.push(group);
                     continue;
                 }
                 if element.name().as_ref() == b"object" {
@@ -972,6 +969,19 @@ fn parse_object_group_attributes(
         }
     }
     Ok((id, name.to_owned(), translation))
+}
+
+fn push_object_group(
+    document: &mut TmxMapDocument,
+    mut group: TmxObjectGroup,
+    ids: &mut HashSet<u32>,
+    names: &mut HashSet<String>,
+    offset: u64,
+) -> Result<(), TmxMapDocumentError> {
+    validate_object_group_identity(&group, ids, names, offset)?;
+    group.tile_layer_index = document.tile_layers.len();
+    document.object_groups.push(group);
+    Ok(())
 }
 
 fn validate_object_group_identity(
