@@ -1093,11 +1093,14 @@ fn sync_dialogue_overlay(
         spawn_dialogue_overlay(&mut commands, &theme, font);
         return;
     }
+    let root_name = format!("World dialogue: {}", session.id());
     for (_, mut name) in &mut roots {
-        name.set(format!("World dialogue: {}", session.id()));
+        if name.as_str() != root_name {
+            name.set(root_name.clone());
+        }
     }
     if let Ok(mut speaker) = speakers.single_mut() {
-        speaker.0 = session.speaker().unwrap_or_default().to_owned();
+        set_text_if_changed(&mut speaker, session.speaker().unwrap_or_default());
     }
     if let Ok(mut plate) = plates.single_mut() {
         // The source only draws the plate for a named speaker; a sign's box has no name on it.
@@ -1117,12 +1120,12 @@ fn sync_dialogue_overlay(
         }
     }
     if let Ok(mut body) = bodies.single_mut() {
-        body.0 = session.visible_text();
+        set_text_if_changed(&mut body, &session.visible_text());
     }
     // The gutter and the labels are two columns of the same row count, so the marker can move
     // without ever reflowing a label. Both write one `\n`-joined string into their own node.
     if let Ok(mut cursor_text) = choice_cursors.single_mut() {
-        cursor_text.0 = session
+        let cursors = session
             .choices()
             .iter()
             .enumerate()
@@ -1135,9 +1138,10 @@ fn sync_dialogue_overlay(
             })
             .collect::<Vec<_>>()
             .join("\n");
+        set_text_if_changed(&mut cursor_text, &cursors);
     }
     if let Ok(mut choice_text) = choices.single_mut() {
-        choice_text.0 = session
+        let labels = session
             .choices()
             .iter()
             .map(|choice| {
@@ -1146,15 +1150,17 @@ fn sync_dialogue_overlay(
             })
             .collect::<Vec<_>>()
             .join("\n");
+        set_text_if_changed(&mut choice_text, &labels);
     }
     if let Ok(mut page_count) = page_counts.single_mut() {
-        page_count.0 = session
+        let pages = session
             .page()
             .map(|(page, total)| format!("{page}/{total}"))
             .unwrap_or_default();
+        set_text_if_changed(&mut page_count, &pages);
     }
     if let Ok(mut hint) = hints.single_mut() {
-        hint.0 = match session.phase() {
+        let hint_text = match session.phase() {
             DialoguePhase::Typing => "ENTER · reveal     ESC · close",
             DialoguePhase::Ready if session.finishes_on_confirm() => {
                 ">  ENTER · finish     ESC · close"
@@ -1162,8 +1168,16 @@ fn sync_dialogue_overlay(
             DialoguePhase::Ready => ">  ENTER · continue     ESC · close",
             DialoguePhase::Choosing => "UP/DOWN · choose     ENTER · select     ESC · close",
             DialoguePhase::Closed => "",
-        }
-        .to_owned();
+        };
+        set_text_if_changed(&mut hint, hint_text);
+    }
+}
+
+/// Assigns through `DerefMut` only when the string differs, so an unchanged line is not laid out
+/// again every frame.
+fn set_text_if_changed(text: &mut Mut<Text>, value: &str) {
+    if text.0 != value {
+        text.0 = value.to_owned();
     }
 }
 
@@ -2095,6 +2109,69 @@ mod tests {
         let sounds = sfx.iter(app.world()).collect::<Vec<_>>();
         assert_eq!(sounds.len(), 1);
         assert_eq!(sounds[0].logical_event, InteractionSound::Dialogue);
+    }
+
+    /// While a line is fully revealed the overlay must not touch any `Text`, or Bevy lays every
+    /// label out again each frame.
+    #[test]
+    fn an_idle_dialogue_overlay_marks_no_text_changed() {
+        let mut app = interaction_app("town_03_harborgate", Position::new(5, 5));
+        let manifest: Manifest =
+            scenario_yaml::from_str(include_str!(scenario_file!("manifest.yaml"))).unwrap();
+        app.insert_resource(ScenarioInventory {
+            font: Some(manifest.font.path.clone()),
+            ..ScenarioInventory::default()
+        });
+        app.world_mut().spawn(WorldSign::for_test(
+            "harborgate_sign",
+            "sign_town_03_harborgate",
+            Position::new(5, 6),
+        ));
+        press_confirm_and_settle(&mut app);
+        assert!(
+            app.world()
+                .resource::<WorldInteractionState>()
+                .session
+                .is_some(),
+            "an authored sign must open"
+        );
+        for _ in 0..5_000 {
+            let state = app.world().resource::<WorldInteractionState>();
+            if state
+                .session()
+                .is_some_and(|session| session.phase() != DialoguePhase::Typing)
+            {
+                break;
+            }
+            app.update();
+            thread::sleep(Duration::from_millis(1));
+        }
+        for _ in 0..3 {
+            app.update();
+        }
+        let mut texts = app.world_mut().query_filtered::<Ref<Text>, Or<(
+            With<WorldDialogueBody>,
+            With<WorldDialogueSpeaker>,
+            With<WorldDialogueHint>,
+            With<WorldDialoguePageCount>,
+            With<WorldDialogueChoices>,
+            With<WorldDialogueChoiceCursors>,
+        )>>();
+        assert!(
+            texts.iter(app.world()).count() >= 5,
+            "overlay was not built"
+        );
+
+        for _ in 0..3 {
+            let before = app.world().read_change_tick();
+            app.update();
+            let now = app.world().read_change_tick();
+            let changed = texts
+                .iter(app.world())
+                .filter(|text| text.last_changed().is_newer_than(before, now))
+                .count();
+            assert_eq!(changed, 0, "idle dialogue rewrote {changed} Text entities");
+        }
     }
 
     #[test]
