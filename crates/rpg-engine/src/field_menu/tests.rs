@@ -3115,3 +3115,78 @@ fn the_full_pouch_lists_only_stacks_at_ninety_percent_of_the_cap() {
     );
     assert!(inventory_ids(&game, &catalog, InventoryTab::Equipment).contains(&"leather_vest_f"));
 }
+
+/// Records which watched resources were marked changed on each update, from a system that runs
+/// after the menu's own, so every earlier write in the frame is visible to it.
+#[derive(Resource, Default)]
+struct ChangedLog(Vec<&'static str>);
+
+fn log_changed_resources(
+    state: Res<FieldMenuState>,
+    game: Res<GameState>,
+    catalog: Res<FieldMenuCatalog>,
+    saves: Res<SaveSlotCatalog>,
+    transition: Res<WorldTransition>,
+    mut log: ResMut<ChangedLog>,
+) {
+    if state.is_changed() {
+        log.0.push("FieldMenuState");
+    }
+    if game.is_changed() {
+        log.0.push("GameState");
+    }
+    if catalog.is_changed() {
+        log.0.push("FieldMenuCatalog");
+    }
+    if saves.is_changed() {
+        log.0.push("SaveSlotCatalog");
+    }
+    if transition.is_changed() {
+        log.0.push("WorldTransition");
+    }
+}
+
+/// Every page rebuilds when the menu state, the catalog or the game is marked changed, so an
+/// open menu that nobody touches must not mark any of them.
+#[test]
+fn an_idle_open_menu_marks_no_resource_changed() {
+    use FieldMenuScreen::{
+        Battle, Equipment, Items, Main, Quests, Recipes, Save, Settings, Spells, Status,
+    };
+    for screen in [
+        Main, Status, Items, Equipment, Spells, Quests, Recipes, Battle, Settings, Save,
+    ] {
+        let mut app = menu_input_app(
+            fixture_game_with_recruit(),
+            FieldMenuState {
+                open: true,
+                screen,
+                ..default()
+            },
+        );
+        app.init_resource::<ChangedLog>()
+            .add_systems(Update, log_changed_resources.after(handle_field_menu_input));
+        // The first frames legitimately see the resources as newly added.
+        for _ in 0..3 {
+            app.update();
+        }
+        app.world_mut().resource_mut::<ChangedLog>().0.clear();
+        for _ in 0..5 {
+            app.update();
+        }
+        let log = &app.world().resource::<ChangedLog>().0;
+        assert!(
+            log.is_empty(),
+            "{screen:?}: idle frames marked changed: {log:?}"
+        );
+        // The probe itself must see a real change: a key press moves the cursor or the screen.
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowDown);
+        app.update();
+        assert!(
+            !app.world().resource::<ChangedLog>().0.is_empty(),
+            "{screen:?}: the probe missed a key press"
+        );
+    }
+}
