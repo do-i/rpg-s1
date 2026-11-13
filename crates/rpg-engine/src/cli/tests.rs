@@ -746,14 +746,6 @@ fn argument_misuse_exits_two_without_launching_or_validating() {
         vec!["record".into(), "--seed".into(), "1".into()],
         vec!["replay".into()],
         vec!["replay".into(), "one".into(), "two".into()],
-        vec!["import-python-save".into()],
-        vec!["import-python-save".into(), "save.yaml".into()],
-        vec![
-            "import-python-save".into(),
-            "save.yaml".into(),
-            "--slot".into(),
-            "101".into(),
-        ],
     ] {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
@@ -769,28 +761,6 @@ fn argument_misuse_exits_two_without_launching_or_validating() {
         assert!(stdout.is_empty());
         assert!(String::from_utf8(stderr).unwrap().contains("Usage:"));
     }
-}
-
-#[test]
-fn python_import_arguments_are_explicit_and_bounded() {
-    let Command::ImportPython(arguments) = parse_command([
-        "import-python-save".into(),
-        "legacy/007.yaml".into(),
-        "--slot".into(),
-        "7".into(),
-        "--package".into(),
-        "rusted_kingdoms".into(),
-        "--allow-unchecked".into(),
-        "--replace".into(),
-    ])
-    .unwrap() else {
-        panic!("import command must select the converter");
-    };
-    assert_eq!(arguments.input, Path::new("legacy/007.yaml"));
-    assert_eq!(arguments.slot, 7);
-    assert_eq!(arguments.root.package_key(), "rusted_kingdoms");
-    assert!(arguments.allow_unchecked);
-    assert!(arguments.replace);
 }
 
 #[test]

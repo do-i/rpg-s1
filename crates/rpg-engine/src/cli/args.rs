@@ -9,7 +9,7 @@ use crate::{
     scenario_root::{DEFAULT_SCENARIO_PACKAGE_KEY, ScenarioRoot},
 };
 
-pub(crate) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n  rpg-s1 import-python-save INPUT --slot 0..100 [--package PACKAGE_KEY] [--allow-unchecked] [--replace]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT. Python import is explicit, one-way, and never scans for legacy saves.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.\n  RPG_S1_SAVE_DIR                Save directory; must not be empty. Overrides the XDG_DATA_HOME and HOME defaults.\n  RPG_S1_CONFIG_DIR              Options directory; must not be empty. Overrides the XDG_CONFIG_HOME and HOME defaults.";
+pub(crate) const USAGE: &str = "Usage:\n  rpg-s1\n  rpg-s1 play [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 record OUTPUT [PACKAGE_KEY] [--seed U64] [--timings] [DEBUG_OPTIONS]\n  rpg-s1 replay INPUT\n  rpg-s1 validate-scenario [PACKAGE_KEY] [--baseline PATH]\n  rpg-s1 map-report [PACKAGE_KEY]\n  rpg-s1 map-sweep [PACKAGE_KEY]\n  rpg-s1 dialogue-report [PACKAGE_KEY]\n  rpg-s1 dialogue-sweep [PACKAGE_KEY]\n  rpg-s1 encounter-sweep [PACKAGE_KEY]\n\nDEBUG_OPTIONS:\n  --start-map MAP_ID --start-position X,Y\n  --party-preset solo|full\n  --battle-fixture feedback|status|enemy-ai|rewards|layout-three|layout-five|spell-groups\n  --set-flag FLAG_ID\n  --unset-flag FLAG_ID\n\nScenario commands default to package `rusted_kingdoms`. PACKAGE_KEY is a portable package name, not a path. `--baseline` gates validation against a file of accepted diagnostics instead of on validity: it fails on a diagnostic the file omits and on a file entry the report no longer produces. Gameplay defaults to deterministic seed 1. --timings logs world and battle hotspot measurements every 120 frames. Any debug option starts directly in the world; map and position must be supplied together. Battle fixtures enter a focused, session-only fight and default to a safe Starting Forest position. Record refuses to overwrite OUTPUT; replay takes its package, seed, and debug options from INPUT.\n\nENVIRONMENT:\n  RPG_S1_PARTY_PRESET=solo|full  Debug party for `rpg-s1` and `play`/`record`; starts directly in the world. --party-preset wins. Ignored by replay.\n  RPG_S1_MUTE_AUDIO              Any value silences audio.\n  RPG_S1_DEBUG_COLLISION         Any value draws portal and collision outlines.\n  RPG_S1_HOT_RELOAD              Any value enables transactional scenario polling in idle World.\n  RPG_S1_SAVE_DIR                Save directory; must not be empty. Overrides the XDG_DATA_HOME and HOME defaults.\n  RPG_S1_CONFIG_DIR              Options directory; must not be empty. Overrides the XDG_CONFIG_HOME and HOME defaults.";
 
 pub(super) enum Command {
     Play(PlayArguments),
@@ -24,7 +24,6 @@ pub(super) enum Command {
     DialogueReport(ScenarioRoot),
     DialogueSweep(ScenarioRoot),
     EncounterSweep(ScenarioRoot),
-    ImportPython(ImportPythonArguments),
     Help,
 }
 
@@ -47,15 +46,6 @@ pub(crate) struct PlayArguments {
 pub(super) struct ValidateArguments {
     pub(super) root: ScenarioRoot,
     pub(super) baseline: Option<PathBuf>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct ImportPythonArguments {
-    pub(super) input: PathBuf,
-    pub(super) slot: usize,
-    pub(super) root: ScenarioRoot,
-    pub(super) allow_unchecked: bool,
-    pub(super) replace: bool,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -123,11 +113,6 @@ pub(super) fn parse_command(
             Ok(Command::Help)
         }
         [command, flag] if command == "map-sweep" && (flag == "-h" || flag == "--help") => {
-            Ok(Command::Help)
-        }
-        [command, flag]
-            if command == "import-python-save" && (flag == "-h" || flag == "--help") =>
-        {
             Ok(Command::Help)
         }
         [command, rest @ ..] if command == "validate-scenario" => {
@@ -203,9 +188,6 @@ pub(super) fn parse_command(
         [command, ..] if command == "encounter-sweep" => Err(UsageError(
             "encounter-sweep accepts at most one package key".to_owned(),
         )),
-        [command, rest @ ..] if command == "import-python-save" => {
-            parse_import_python_arguments(rest).map(Command::ImportPython)
-        }
         [command, ..] => Err(UsageError(format!("unknown command `{command}`"))),
     }
 }
@@ -489,67 +471,6 @@ pub(super) const fn battle_fixture_label(fixture: DebugBattleFixture) -> &'stati
         DebugBattleFixture::LayoutFive => "layout-five",
         DebugBattleFixture::SpellGroups => "spell-groups",
     }
-}
-
-fn parse_import_python_arguments(
-    arguments: &[String],
-) -> Result<ImportPythonArguments, UsageError> {
-    let Some(input) = arguments.first() else {
-        return Err(UsageError("import-python-save requires INPUT".to_owned()));
-    };
-    if input.starts_with('-') {
-        return Err(UsageError(
-            "import-python-save INPUT must come first".to_owned(),
-        ));
-    }
-    let mut slot = None;
-    let mut package = DEFAULT_SCENARIO_PACKAGE_KEY.to_owned();
-    let mut allow_unchecked = false;
-    let mut replace = false;
-    let mut index = 1;
-    while index < arguments.len() {
-        match arguments[index].as_str() {
-            "--slot" => {
-                index += 1;
-                let value = arguments
-                    .get(index)
-                    .ok_or_else(|| UsageError("--slot requires a value".to_owned()))?;
-                let parsed = value
-                    .parse::<usize>()
-                    .map_err(|_| UsageError("--slot must be an integer in 0..=100".to_owned()))?;
-                if parsed > 100 || slot.replace(parsed).is_some() {
-                    return Err(UsageError(
-                        "--slot must appear once with a value in 0..=100".to_owned(),
-                    ));
-                }
-            }
-            "--package" => {
-                index += 1;
-                package = arguments
-                    .get(index)
-                    .ok_or_else(|| UsageError("--package requires a value".to_owned()))?
-                    .clone();
-            }
-            "--allow-unchecked" if !allow_unchecked => allow_unchecked = true,
-            "--replace" if !replace => replace = true,
-            option => {
-                return Err(UsageError(format!(
-                    "unknown or repeated import-python-save option `{option}`"
-                )));
-            }
-        }
-        index += 1;
-    }
-    let slot = slot.ok_or_else(|| UsageError("import-python-save requires --slot".to_owned()))?;
-    let root = ScenarioRoot::try_for_package_key(package.clone())
-        .map_err(|error| UsageError(format!("invalid package key `{package}`: {error}")))?;
-    Ok(ImportPythonArguments {
-        input: PathBuf::from(input),
-        slot,
-        root,
-        allow_unchecked,
-        replace,
-    })
 }
 
 #[cfg(test)]

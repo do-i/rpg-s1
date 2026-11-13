@@ -152,7 +152,7 @@ Tile objects use Tiled's bottom-left anchor, so a default object's center is at
 interaction and collision, and collision stays after opening.
 
 Renaming an object makes it a new chest for save purposes, because names are the
-opened-box keys in native and imported Python saves. Changing only `item_box_id` keeps
+opened-box keys in saves. Changing only `item_box_id` keeps
 the opened state. Packages without `refs.item_boxes` use the older per-map YAML format.
 
 ## Signs

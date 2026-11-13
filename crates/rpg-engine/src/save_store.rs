@@ -87,10 +87,6 @@ impl SaveStore {
         Ok(())
     }
 
-    pub(crate) fn root(&self) -> &Path {
-        &self.root
-    }
-
     pub(crate) fn slot_path(&self, slot: usize) -> Result<PathBuf, SaveStoreError> {
         require_slot(slot)?;
         Ok(self.root.join(format!("{slot:03}.yaml")))

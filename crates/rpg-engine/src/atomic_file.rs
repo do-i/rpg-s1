@@ -62,14 +62,6 @@ pub(crate) enum PublishError<E> {
     NotDurable(PublishFailure<E>),
 }
 
-impl<E> PublishError<E> {
-    pub(crate) fn failure(self) -> PublishFailure<E> {
-        match self {
-            Self::NotPublished(failure) | Self::NotDurable(failure) => failure,
-        }
-    }
-}
-
 /// Where a file is published and under what policy.
 pub(crate) struct Publication<'a> {
     /// The destination's directory; it must already exist.

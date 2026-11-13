@@ -150,18 +150,6 @@ Save-directory precedence is:
 2. `$XDG_DATA_HOME/rpg-s1/saves`, when `XDG_DATA_HOME` is set; or
 3. `$HOME/.local/share/rpg-s1/saves`.
 
-To convert one save from the pinned Python version into a native slot:
-
-```sh
-cargo run -- import-python-save path/to/007.yaml --slot 7
-```
-
-The converter is explicit, one-way, and implemented in Rust. It never scans
-for legacy saves, refuses an occupied destination by default, and accepts
-`--replace` only after preserving a verified backup. Checksumless input also
-requires `--allow-unchecked`; a checksum mismatch is always rejected. Run
-`cargo run -- import-python-save --help` for the full syntax.
-
 ## Settings
 
 `assets/settings.yaml` carries the engine settings, ported from the Python
@@ -287,7 +275,7 @@ The Rust runtime currently includes:
   apothecary crafting, inventory, equipment, field spells, and teleporting;
 - deterministic turn-based party combat with rows, abilities, items, status
   effects, enemy AI, bosses, flee, rewards, progression, and game-over flow;
-- native save/load/autosave and one-way Python-save conversion; and
+- native save/load/autosave; and
 - manifest-selected scenario packages, deterministic seeds, record/replay,
   validation reports, production sweeps, and map-authoring integrations.
 

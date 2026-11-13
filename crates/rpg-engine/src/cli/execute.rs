@@ -4,10 +4,7 @@ use std::{ffi::OsString, fs, io::Write, path::Path};
 
 use super::{
     EXIT_SUCCESS, EXIT_USAGE, EXIT_VALIDATION_FAILED,
-    args::{
-        Command, ImportPythonArguments, PlayArguments, USAGE, apply_environment_debug_defaults,
-        parse_command,
-    },
+    args::{Command, PlayArguments, USAGE, apply_environment_debug_defaults, parse_command},
     packages::{select_scenario_package, selection_failure},
     report::{
         validation_report_lines, write_baseline_comparison, write_debug_log, write_dialogue_report,
@@ -20,9 +17,7 @@ use crate::{
     dialogue_sweep::{DialogueTraversalReport, build_dialogue_traversal_sweep},
     encounter_sweep::{EncounterSweepReport, build_encounter_sweep},
     input_record::{InputAutomation, InputRecord, RecordSource},
-    python_save_import::{PythonImportCatalog, convert_python_save, install_python_import},
     runtime_map_sweep::{RuntimeMapSweepReport, build_runtime_map_sweep},
-    save_store::{SaveStore, resolve_save_directory, unix_timestamp_now},
     scenario_cross_reference::ScenarioValidationReport,
     scenario_dialogue_report::{DialogueReport, build_dialogue_report},
     scenario_manifest::ManifestIdentityWindow,
@@ -236,34 +231,6 @@ where
                 result
             }
         }
-        Command::ImportPython(arguments) => match run_python_import(collection_root, &arguments) {
-            Ok(result) => {
-                let _ = writeln!(
-                    stdout,
-                    "Imported Python save into {}",
-                    result
-                        .destination
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .unwrap_or("native slot")
-                );
-                if let Some(backup) = result.backup {
-                    let _ = writeln!(
-                        stdout,
-                        "Preserved previous slot as import-backups/{}",
-                        backup
-                            .file_name()
-                            .and_then(|name| name.to_str())
-                            .unwrap_or("verified backup")
-                    );
-                }
-                EXIT_SUCCESS
-            }
-            Err(error) => {
-                let _ = writeln!(stderr, "error: {error}");
-                EXIT_VALIDATION_FAILED
-            }
-        },
     }
 }
 
@@ -348,61 +315,6 @@ fn record_source(collection_root: &Path, root: &ScenarioRoot) -> Result<RecordSo
     })
 }
 
-fn run_python_import(
-    collection_root: &Path,
-    arguments: &ImportPythonArguments,
-) -> Result<crate::python_save_import::ImportInstallResult, String> {
-    let canonical_collection = collection_root
-        .canonicalize()
-        .map_err(|_| "scenario collection is unavailable".to_owned())?;
-    let selected = collection_root.join(arguments.root.package_key());
-    let metadata = fs::symlink_metadata(&selected)
-        .map_err(|_| "selected scenario package is unavailable".to_owned())?;
-    if metadata.file_type().is_symlink() {
-        return Err("selected scenario package must not be a symbolic link".to_owned());
-    }
-    let package = selected
-        .canonicalize()
-        .map_err(|_| "selected scenario package cannot be resolved".to_owned())?;
-    if !package.starts_with(&canonical_collection) || !package.is_dir() {
-        return Err("selected scenario package resolves outside its collection".to_owned());
-    }
-    let source = fs::read(&arguments.input)
-        .map_err(|error| format!("could not read Python save input: {error}"))?;
-    let catalog = PythonImportCatalog::load(&package).map_err(|error| error.to_string())?;
-    let timestamp = unix_timestamp_now().map_err(|error| error.to_string())?;
-    let envelope = convert_python_save(&source, arguments.allow_unchecked, &catalog, timestamp)
-        .map_err(|error| error.to_string())?;
-    let save_root =
-        resolve_save_directory(|name| std::env::var_os(name)).map_err(|error| error.to_string())?;
-    let store = SaveStore::new(save_root);
-    let destination = store
-        .slot_path(arguments.slot)
-        .map_err(|error| error.to_string())?;
-    ensure_distinct_import_paths(&arguments.input, &destination)?;
-    install_python_import(
-        &store,
-        arguments.slot,
-        &envelope,
-        arguments.replace,
-        &catalog.balance,
-    )
-    .map_err(|error| error.to_string())
-}
-
-fn ensure_distinct_import_paths(input: &Path, destination: &Path) -> Result<(), String> {
-    if destination.exists()
-        && let (Ok(input), Ok(destination)) = (input.canonicalize(), destination.canonicalize())
-        && input == destination
-    {
-        return Err(
-            "Python input and native destination must be different files; choose another slot"
-                .to_owned(),
-        );
-    }
-    Ok(())
-}
-
 fn validate_selected_scenario<V>(
     collection_root: &Path,
     root: &ScenarioRoot,
@@ -421,18 +333,6 @@ where
 mod tests {
     use super::*;
     use crate::cli::tests::TempCollection;
-
-    #[test]
-    fn python_import_cannot_replace_its_own_input_path() {
-        let temporary = TempCollection::new("paths");
-        let input = temporary.0.join("007.yaml");
-        let other = temporary.0.join("008.yaml");
-        fs::write(&input, b"legacy").unwrap();
-        fs::write(&other, b"native").unwrap();
-
-        assert!(ensure_distinct_import_paths(&input, &input).is_err());
-        assert_eq!(ensure_distinct_import_paths(&input, &other), Ok(()));
-    }
 
     #[cfg(unix)]
     #[test]
