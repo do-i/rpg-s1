@@ -61,6 +61,21 @@ impl Default for UiTheme {
 }
 
 impl UiTheme {
+    /// Full-screen menu plate behind the save and options screens.
+    pub(crate) const OVERLAY_PANEL: Color = Color::srgba(0.02, 0.02, 0.08, 0.96);
+    /// The service (shop) panel; a hair off [`Self::OVERLAY_PANEL`] in every channel, kept as shipped.
+    pub(crate) const SERVICE_PANEL: Color = Color::srgba(0.025, 0.025, 0.09, 0.97);
+    /// Half-opaque black dim laid over the world while the game is paused.
+    pub(crate) const DIM_BACKDROP: Color = Color::srgba(0.0, 0.0, 0.0, 0.55);
+    /// Heavier black dim for scene transitions over the world.
+    pub(crate) const SCENE_DIM_BACKDROP: Color = Color::srgba(0.0, 0.0, 0.0, 0.85);
+    /// Near-black backdrop of the game-over screen.
+    pub(crate) const GAME_OVER_BACKDROP: Color = Color::srgba(0.015, 0.01, 0.03, 0.98);
+    /// Opaque backdrop of the credits roll.
+    pub(crate) const CREDITS_BACKDROP: Color = Color::srgba(0.01, 0.008, 0.02, 1.0);
+    /// The dialogue box plate.
+    pub(crate) const DIALOGUE_PANEL: Color = Color::srgba(0.047, 0.047, 0.118, 0.94);
+
     /// The theme with every named font size multiplied by `scale`.
     ///
     /// This is where `fonts.sizes` from `assets/settings.yaml` lands. The source keeps a
@@ -95,6 +110,32 @@ impl UiTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overlay_and_backdrop_tokens_keep_their_shipped_components() {
+        assert_eq!(UiTheme::OVERLAY_PANEL, Color::srgba(0.02, 0.02, 0.08, 0.96));
+        assert_eq!(
+            UiTheme::SERVICE_PANEL,
+            Color::srgba(0.025, 0.025, 0.09, 0.97)
+        );
+        assert_eq!(UiTheme::DIM_BACKDROP, Color::srgba(0.0, 0.0, 0.0, 0.55));
+        assert_eq!(
+            UiTheme::SCENE_DIM_BACKDROP,
+            Color::srgba(0.0, 0.0, 0.0, 0.85)
+        );
+        assert_eq!(
+            UiTheme::GAME_OVER_BACKDROP,
+            Color::srgba(0.015, 0.01, 0.03, 0.98)
+        );
+        assert_eq!(
+            UiTheme::CREDITS_BACKDROP,
+            Color::srgba(0.01, 0.008, 0.02, 1.0)
+        );
+        assert_eq!(
+            UiTheme::DIALOGUE_PANEL,
+            Color::srgba(0.047, 0.047, 0.118, 0.94)
+        );
+    }
 
     #[test]
     fn the_shipped_scale_leaves_every_size_untouched() {

@@ -24,6 +24,7 @@ use crate::{
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx},
+    ui_theme::UiTheme,
 };
 
 /// Set by the epilogue's terminal dialogue line. Declared in `manifest.yaml`.
@@ -236,7 +237,7 @@ fn enter_credits(
                 overflow: Overflow::clip(),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.01, 0.008, 0.02, 1.0)),
+            BackgroundColor(UiTheme::CREDITS_BACKDROP),
             GlobalZIndex(6_000),
             CreditsUi,
         ))

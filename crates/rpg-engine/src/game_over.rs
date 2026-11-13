@@ -86,7 +86,7 @@ fn enter_game_over(
                 row_gap: px(32),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.015, 0.01, 0.03, 0.98)),
+            BackgroundColor(UiTheme::GAME_OVER_BACKDROP),
             GlobalZIndex(6_000),
             GameOverUi,
         ))

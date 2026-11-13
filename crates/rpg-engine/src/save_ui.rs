@@ -26,6 +26,7 @@ use crate::{
     scenario_party::PartyCatalog,
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx},
+    ui_theme::UiTheme,
 };
 
 /// Slot rows drawn per load-picker page.
@@ -444,7 +445,7 @@ fn sync_title_load_overlay(
                 padding: UiRect::all(px(28)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.96)),
+            BackgroundColor(UiTheme::OVERLAY_PANEL),
             GlobalZIndex(5_000),
             Name::new("Load picker"),
             TitleLoadRoot,

@@ -1216,7 +1216,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                 column_gap: px(DIALOGUE_BOX_PADDING),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.047, 0.047, 0.118, 0.94)),
+            BackgroundColor(UiTheme::DIALOGUE_PANEL),
             BorderColor::all(theme.name_entry_border_color),
             GlobalZIndex(5_000),
             Pickable::IGNORE,
@@ -1445,7 +1445,7 @@ fn spawn_treasure_overlay(
             // forest, a 58-value pixel landed at 34 instead of the source's 22. This alpha
             // reproduces the source's *perceived* darkness instead of its numeric value, the same
             // adjustment the dialogue box already carries (0.94 for the source's 0.863).
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
+            BackgroundColor(UiTheme::SCENE_DIM_BACKDROP),
             GlobalZIndex(5_500),
             Pickable::IGNORE,
             Name::new("Treasure reveal"),

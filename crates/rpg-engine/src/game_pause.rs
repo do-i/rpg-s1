@@ -201,7 +201,7 @@ fn spawn_overlay(commands: &mut Commands, font: Handle<Font>, theme: &UiTheme) {
                 row_gap: px(16),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.55)),
+            BackgroundColor(UiTheme::DIM_BACKDROP),
             // Above every other overlay, including the battle hand-off flash.
             GlobalZIndex(12_000),
             PauseOverlay,

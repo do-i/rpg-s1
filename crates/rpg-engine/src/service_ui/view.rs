@@ -203,7 +203,7 @@ pub(super) fn sync_service_overlay(
                     } else if is_workshop(&state) {
                         Color::srgba_u8(23, 24, 30, 250)
                     } else {
-                        Color::srgba(0.025, 0.025, 0.09, 0.97)
+                        UiTheme::SERVICE_PANEL
                     }),
                     BorderColor::all(
                         if is_workshop(&state) || is_item_shop(&state) || is_core_shop(&state) {

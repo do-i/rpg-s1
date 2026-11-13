@@ -23,6 +23,7 @@ use crate::{
     persistence_status::{PersistenceStatus, persist_player_options},
     scenario_inventory::ScenarioInventory,
     scenario_root::ScenarioRoot,
+    ui_theme::UiTheme,
 };
 
 const PANEL_WIDTH: f32 = 820.0;
@@ -202,7 +203,7 @@ fn setup_options_screen(
                 padding: UiRect::all(px(28)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.02, 0.02, 0.08, 0.96)),
+            BackgroundColor(UiTheme::OVERLAY_PANEL),
             OptionsScreenEntity,
         ))
         .with_children(|root| {
