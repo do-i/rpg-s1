@@ -48,6 +48,41 @@ class CutoutTests(unittest.TestCase):
         self.assertEqual(a[620, 620], 0)      # the gap stays see-through
         self.assertEqual(a[20, 20], 0)        # field
 
+    def test_flame_tinted_field_gap_is_not_a_hole(self):
+        # field seen through a gap and tinted redder by flame glow (b/r a hair under the key's) stays
+        # see-through and must not trip the enclosed-hole check, however large the gap is
+        src, dst = f"{self.tmp}/g.jpg", f"{self.tmp}/g.png"
+        subprocess.run(["magick", "-size", "1024x1024", "xc:rgb(244,13,120)",
+                        "-fill", "rgb(60,120,60)", "-draw", "ellipse 512,512 300,380 0,360",
+                        "-fill", "rgb(238,25,103)", "-draw", "rectangle 480,440 560,560",
+                        "-quality", "95", src], check=True)
+        r = run(src, dst)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual(self.alpha(dst)[500, 520], 0)
+
+    def _shade_fails(self, draw):
+        key = np.array([244.0, 0.0, 119.0])
+        cutout.KEY[0] = key
+        n = 1024
+        out = np.zeros((n, n, 4))
+        out[300:700, 300:700] = [60, 120, 60, 255]
+        draw(out)
+        src = np.where(out[..., 3:4] > 0, out[..., :3], key)
+        return [f for f in cutout.verify(src, out, []) if "shadow-hued" in f]
+
+    def test_crimson_cloth_speckle_on_the_rim_is_not_a_shadow(self):
+        # dark red hems share the shadow hue but only speckle the edge: no failure
+        def speckle(out):
+            for i in range(300, 700, 2):
+                for x, y in ((i, 300), (i, 699), (300, i), (699, i)):
+                    out[y, x] = [91, 5, 36, 255]
+        self.assertEqual(self._shade_fails(speckle), [])
+
+    def test_solid_shadow_band_on_the_rim_still_fails(self):
+        def band(out):
+            out[690:700, 300:700] = [91, 5, 36, 255]
+        self.assertEqual(len(self._shade_fails(band)), 1)
+
     def test_enclosed_violet_pocket_is_restored(self):
         """A mauve pocket with no pure field colour in it is art, even though its hue matches the key's.
 

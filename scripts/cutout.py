@@ -293,6 +293,15 @@ def cutout(src, report):
 
 
 # ----------------------------------------------------------- verify
+SHADE_CLUMP = 96   # px of shadow-hued rim in one 32x32 block that mark a real shadow patch (cloth specks stay under ~60)
+
+
+def densest_block(mask, k=32):
+    """Most True pixels in any aligned k x k block."""
+    h, w = mask.shape
+    return int(mask[:h // k * k, :w // k * k].reshape(h // k, k, w // k, k).sum((1, 3)).max())
+
+
 def verify(src, out, report):
     """Return a list of failures. Empty list = clean."""
     fails = []
@@ -316,14 +325,24 @@ def verify(src, out, report):
         fails.append(f"{pink} visible magenta pixels remain")
     if plum > PLUM_MAX:
         fails.append(f"{plum} opaque plum px: a magenta fringe or sticker halo is still on the figure")
-    shade = int((rim & (al > 128) & shadowish(r, g, b, KEY[0])).sum()) if KEY else 0
+    shade_px = rim & (al > 128) & shadowish(r, g, b, KEY[0]) if KEY else np.zeros(al.shape, bool)
+    shade = int(shade_px.sum())
     report.append(f"check: {shade} opaque shadow-hued px")
-    if shade > 200:
+    # A leftover contact shadow is a dense patch; dark crimson or maroon cloth edges (red hoods, ragged
+    # hems) are the same hue but only speckle the rim, so count it as a shadow only when it also clumps.
+    if shade > 200 and densest_block(shade_px) > SHADE_CLUMP:
         fails.append(f"{shade} opaque shadow-hued px: a contact shadow of the field is still on the figure")
     clear = al < 128
     sr, sg, sb = src[..., 0], src[..., 1], src[..., 2]
     body = (~((sb - sg > 12) & (sr - sg > 25) & (sb >= 0.5 * hue_scale(KEY[0]) * sr) & (sb < cap * sr)) & (src.sum(-1) > 30)
             & ~shadowish(sr, sg, sb, KEY[0]))
+    # same hue guard as the cut: key-hued pixels near the key (flame-tinted field seen through a gap)
+    # are field, not body, so a gap the cut rightly left transparent is not a hole
+    skey = np.asarray(KEY[0], float)
+    kratio = skey[2] / max(skey[0], 1.0)
+    keyish = np.abs(sb / np.maximum(sr, 1.0) - kratio) < HUE_TOL
+    dkey = np.linalg.norm(src - skey, axis=-1)
+    body &= (dkey >= 45) | ~keyish
     holes = int((clear & ~outside(clear) & body).sum())
     report.append(f"check: {holes} enclosed body-colour holes")
     if holes > HOLES_MAX:
