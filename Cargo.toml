@@ -19,6 +19,9 @@ rpg-engine = { path = "crates/rpg-engine" }
 
 [profile.dev]
 opt-level = 1
+# Line tables keep file and line in backtraces; full debug info fills the build volume.
+debug = "line-tables-only"
 
 [profile.dev.package."*"]
 opt-level = 3
+debug = false
