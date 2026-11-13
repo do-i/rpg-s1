@@ -19,34 +19,23 @@ pub(in crate::field_menu) fn sync_main_menu_page(
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuMainPage>>,
 ) {
-    let show_main = state.open && state.screen == FieldMenuScreen::Main && game.is_some();
-    if !show_main {
-        for entity in &pages {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
-
-    let Ok(menu_root) = menu_roots.single() else {
+    let PageSync::Rebuild(PageRebuild { menu_root, font }) = begin_page_sync::<FieldMenuMainPage>(
+        &mut commands,
+        state.open && state.screen == FieldMenuScreen::Main && game.is_some(),
+        // The switch overlay draws sprite frames, so it also rebuilds as those sheets finish loading.
+        state.is_changed()
+            || atlases.is_changed()
+            || transport.as_ref().is_some_and(|domain| domain.is_changed())
+            || game.as_ref().is_some_and(|game| game.is_changed()),
+        &menu_roots,
+        &pages,
+        &asset_server,
+        &root,
+        &inventory,
+    ) else {
         return;
     };
     let Some(game) = game else {
-        return;
-    };
-    // The switch overlay draws sprite frames, so it also rebuilds as those sheets finish loading.
-    if !pages.is_empty()
-        && !state.is_changed()
-        && !atlases.is_changed()
-        && transport.as_ref().is_none_or(|domain| !domain.is_changed())
-        && !game.is_changed()
-    {
-        return;
-    }
-    for entity in &pages {
-        commands.entity(entity).despawn();
-    }
-
-    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
     if icons.is_none()

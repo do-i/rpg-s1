@@ -16,26 +16,20 @@ pub(in crate::field_menu) fn sync_settings_page(
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuSettingsPage>>,
 ) {
-    let show = state.open
-        && state.screen == FieldMenuScreen::Settings
-        && catalog.status() == CatalogStatus::Ready;
-    if !show {
-        for entity in &pages {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
-    let Ok(menu_root) = menu_roots.single() else {
-        return;
-    };
-    let options_changed = options.as_ref().is_some_and(|options| options.is_changed());
-    if !(pages.is_empty() || state.is_changed() || catalog.is_changed() || options_changed) {
-        return;
-    }
-    for entity in &pages {
-        commands.entity(entity).despawn();
-    }
-    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
+    let PageSync::Rebuild(PageRebuild { menu_root, font }) = begin_page_sync::<FieldMenuSettingsPage>(
+        &mut commands,
+        state.open
+            && state.screen == FieldMenuScreen::Settings
+            && catalog.status() == CatalogStatus::Ready,
+        state.is_changed()
+            || catalog.is_changed()
+            || options.as_ref().is_some_and(|options| options.is_changed()),
+        &menu_roots,
+        &pages,
+        &asset_server,
+        &root,
+        &inventory,
+    ) else {
         return;
     };
     commands.entity(menu_root).with_children(|parent| {

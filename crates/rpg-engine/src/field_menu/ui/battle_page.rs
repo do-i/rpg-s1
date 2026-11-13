@@ -19,37 +19,26 @@ pub(in crate::field_menu) fn sync_battle_page(
     menu_roots: Query<Entity, With<FieldMenuRoot>>,
     pages: Query<Entity, With<FieldMenuBattlePage>>,
 ) {
-    let show = state.open
-        && state.screen == FieldMenuScreen::Battle
-        && catalog.status() == CatalogStatus::Ready
-        && game.is_some();
-    if !show {
-        for entity in &pages {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
-    let Ok(menu_root) = menu_roots.single() else {
+    let PageSync::Rebuild(PageRebuild { menu_root, font }) = begin_page_sync::<FieldMenuBattlePage>(
+        &mut commands,
+        state.open
+            && state.screen == FieldMenuScreen::Battle
+            && catalog.status() == CatalogStatus::Ready
+            && game.is_some(),
+        state.is_changed()
+            || catalog.is_changed()
+            || game.as_ref().is_some_and(|game| game.is_changed())
+            || options.as_ref().is_some_and(|options| options.is_changed())
+            || battle_log.as_ref().is_some_and(|log| log.is_changed()),
+        &menu_roots,
+        &pages,
+        &asset_server,
+        &root,
+        &inventory,
+    ) else {
         return;
     };
     let Some(game) = game else {
-        return;
-    };
-    let options_changed = options.as_ref().is_some_and(|options| options.is_changed());
-    let log_changed = battle_log.as_ref().is_some_and(|log| log.is_changed());
-    if !(pages.is_empty()
-        || state.is_changed()
-        || catalog.is_changed()
-        || game.is_changed()
-        || options_changed
-        || log_changed)
-    {
-        return;
-    }
-    for entity in &pages {
-        commands.entity(entity).despawn();
-    }
-    let Some(font) = scenario_font(&asset_server, &root, &inventory) else {
         return;
     };
     commands.entity(menu_root).with_children(|parent| {

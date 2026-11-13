@@ -1,5 +1,53 @@
 use super::*;
 
+/// What a page system should do this frame, after the shared lifecycle checks.
+pub(in crate::field_menu) enum PageSync {
+    Skip,
+    Rebuild(PageRebuild),
+}
+
+pub(in crate::field_menu) struct PageRebuild {
+    pub menu_root: Entity,
+    pub font: Handle<Font>,
+}
+
+/// The opening every field-menu page shares: despawn when hidden, find the menu root, rebuild
+/// only when the page is missing or `changed`, despawn the old page, and load the font.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the shared page opening takes the same Bevy parameters each page already holds"
+)]
+pub(in crate::field_menu) fn begin_page_sync<P: Component>(
+    commands: &mut Commands,
+    visible: bool,
+    changed: bool,
+    menu_roots: &Query<Entity, With<FieldMenuRoot>>,
+    pages: &Query<Entity, With<P>>,
+    asset_server: &AssetServer,
+    root: &ScenarioRoot,
+    inventory: &ScenarioInventory,
+) -> PageSync {
+    if !visible {
+        for entity in pages {
+            commands.entity(entity).despawn();
+        }
+        return PageSync::Skip;
+    }
+    let Ok(menu_root) = menu_roots.single() else {
+        return PageSync::Skip;
+    };
+    if !(pages.is_empty() || changed) {
+        return PageSync::Skip;
+    }
+    for entity in pages {
+        commands.entity(entity).despawn();
+    }
+    let Some(font) = scenario_font(asset_server, root, inventory) else {
+        return PageSync::Skip;
+    };
+    PageSync::Rebuild(PageRebuild { menu_root, font })
+}
+
 pub(in crate::field_menu) fn selected_inventory_index(
     state: &FieldMenuState,
     ids: &[&str],
