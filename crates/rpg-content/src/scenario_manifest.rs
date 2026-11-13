@@ -8,7 +8,7 @@ use bevy::{asset::Asset, reflect::TypePath};
 
 use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 use crate::scenario_spatial::Position;
-use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use crate::scenario_yaml::{deserialize_present_option, deserialize_string, deserialize_strings};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
@@ -255,14 +255,6 @@ pub struct ManifestRefs {
     pub battle_backgrounds: ScenarioRelativePath,
     pub assets: ScenarioDirectoryPath,
     pub tmx: ScenarioDirectoryPath,
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 
 /// A source-authored directory reference within the active scenario package.

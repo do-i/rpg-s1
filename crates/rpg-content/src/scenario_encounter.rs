@@ -15,7 +15,7 @@
 use bevy::{asset::Asset, reflect::TypePath};
 
 use crate::scenario_class::{PositiveFinite, UnitInterval};
-use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use crate::scenario_yaml::{deserialize_optional_string, deserialize_string, deserialize_strings};
 use serde::{Deserialize, Deserializer};
 
 /// One map-keyed encounter-zone document beneath `data/encount/`.
@@ -130,13 +130,6 @@ pub struct BarrierEnemy {
     /// Required by the source loader despite the Python DTO's constructor default.
     #[serde(deserialize_with = "deserialize_string")]
     pub blocked_message: String,
-}
-
-fn deserialize_optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_string(deserializer).map(Some)
 }
 
 fn default_true() -> bool {

@@ -12,7 +12,7 @@
 
 use crate::scenario_class::UnitInterval;
 use crate::scenario_party::PartyMemberGender;
-use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use crate::scenario_yaml::{deserialize_present_option, deserialize_string, deserialize_strings};
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
@@ -657,14 +657,6 @@ where
     T: Deserialize<'de>,
 {
     Option::<T>::deserialize(deserializer)
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 
 #[cfg(test)]

@@ -14,7 +14,7 @@ use bevy::{asset::Asset, reflect::TypePath};
 
 use crate::scenario_class::{OngoingEffect, UnitInterval};
 use crate::scenario_path::ScenarioRelativePath;
-use crate::scenario_yaml::{self, deserialize_string};
+use crate::scenario_yaml::{self, deserialize_present_option, deserialize_string};
 use serde::{Deserialize, Deserializer};
 use std::num::NonZeroU32;
 
@@ -473,14 +473,6 @@ impl<'de> Deserialize<'de> for StrictString {
     {
         deserialize_string(deserializer).map(Self)
     }
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 
 fn default_sprite_scale() -> NonZeroU32 {

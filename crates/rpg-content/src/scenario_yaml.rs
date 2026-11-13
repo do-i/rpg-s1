@@ -51,6 +51,25 @@ where
         .map(|values| values.into_iter().map(|value| value.0).collect())
 }
 
+/// Deserializes a present string scalar through the strict string boundary, wrapped in `Some`.
+pub(crate) fn deserialize_optional_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserialize_string(deserializer).map(Some)
+}
+
+/// Deserializes a present value and wraps it in `Some`. Absent fields fall back to `None` through serde's `default`.
+pub(crate) fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    T::deserialize(deserializer).map(Some)
+}
+
 struct StrictString(String);
 
 impl<'de> Deserialize<'de> for StrictString {

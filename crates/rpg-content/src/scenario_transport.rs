@@ -7,7 +7,7 @@ use crate::{
     scenario_class::UnitInterval,
     scenario_path::ScenarioRelativePath,
     scenario_spatial::Position,
-    scenario_yaml::{deserialize_string, deserialize_strings},
+    scenario_yaml::{deserialize_optional_string, deserialize_string, deserialize_strings},
 };
 
 #[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
@@ -70,13 +70,6 @@ pub struct TravelAnchor {
 pub struct SailEdge {
     #[serde(deserialize_with = "deserialize_strings")]
     pub between: Vec<String>,
-}
-
-fn deserialize_optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    deserialize_string(deserializer).map(Some)
 }
 
 #[cfg(test)]

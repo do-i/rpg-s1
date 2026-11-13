@@ -13,7 +13,10 @@
 //! milestones.
 
 use crate::scenario_party::PartyRow;
-use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use crate::scenario_yaml::{
+    deserialize_optional_string, deserialize_present_option, deserialize_string,
+    deserialize_strings,
+};
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de::Error as _};
 use std::fmt;
@@ -938,21 +941,6 @@ where
     {
         T::deserialize(deserializer).map(Self::Present)
     }
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
-}
-
-fn deserialize_optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_string(deserializer).map(Some)
 }
 
 #[cfg(test)]

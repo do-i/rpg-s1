@@ -20,7 +20,10 @@ use serde::{Deserialize, Deserializer, de};
 
 use crate::scenario_condition::FlagConditions;
 use crate::scenario_spatial::{CardinalDirection, Position};
-use crate::scenario_yaml::{deserialize_string, deserialize_strings};
+use crate::scenario_yaml::{
+    deserialize_optional_string, deserialize_present_option, deserialize_string,
+    deserialize_strings,
+};
 
 /// One complete YAML document beneath `data/dialogue/`.
 #[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
@@ -330,21 +333,6 @@ impl<'de> Deserialize<'de> for ActionTrigger {
             ))
         }
     }
-}
-
-fn deserialize_optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_string(deserializer).map(Some)
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 
 #[cfg(test)]

@@ -15,13 +15,15 @@ use bevy::{
     asset::{Asset, AssetLoadError, AssetServer, Assets, Handle, LoadState, io::AssetReaderError},
     reflect::TypePath,
 };
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 use crate::scenario_class::{PositiveFinite, UnitInterval};
 use crate::scenario_condition::FlagConditions;
 use crate::scenario_path::ScenarioRelativePath;
 use crate::scenario_spatial::{CardinalDirection, Position};
-use crate::scenario_yaml::deserialize_string;
+use crate::scenario_yaml::{
+    deserialize_optional_string, deserialize_present_option, deserialize_string,
+};
 
 /// One same-stem YAML metadata document beneath `data/maps/`.
 #[derive(Asset, Clone, Debug, Deserialize, PartialEq, TypePath)]
@@ -371,21 +373,6 @@ fn default_interaction_range() -> PositiveFinite {
 
 fn one() -> NonZeroU32 {
     NonZeroU32::new(1).expect("one is non-zero")
-}
-
-fn deserialize_optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserialize_string(deserializer).map(Some)
-}
-
-fn deserialize_present_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: Deserialize<'de>,
-{
-    T::deserialize(deserializer).map(Some)
 }
 
 #[cfg(test)]
