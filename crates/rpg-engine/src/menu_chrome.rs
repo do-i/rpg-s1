@@ -355,6 +355,48 @@ pub(crate) fn selectable_card_colors(selected: bool) -> (BackgroundColor, Border
     }
 }
 
+/// A two-line selectable row: `label` over a muted `subtitle`, boxed brighter while `selected`.
+///
+/// The service and item screens differ only in the row's `min_height` and how its text is
+/// aligned, so those stay parameters.
+pub(crate) fn spawn_choice_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    label: &str,
+    subtitle: &str,
+    selected: bool,
+    min_height: f32,
+    justify_content: JustifyContent,
+) {
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                min_height: px(min_height),
+                flex_direction: FlexDirection::Column,
+                justify_content,
+                padding: UiRect::axes(px(11), px(5)),
+                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                border_radius: BorderRadius::all(px(4)),
+                ..default()
+            },
+            BackgroundColor(if selected {
+                Color::srgba_u8(72, 49, 25, 230)
+            } else {
+                Color::srgba_u8(10, 10, 14, 170)
+            }),
+            BorderColor::all(if selected {
+                status_border_active()
+            } else {
+                status_border()
+            }),
+        ))
+        .with_children(|row| {
+            spawn_status_text(row, label, font, 17.0, status_ink());
+            spawn_status_text(row, subtitle, font, 12.0, status_muted());
+        });
+}
+
 /// A plain column for a scroll list's cards, spaced `gap` apart.
 pub(crate) fn scroll_list_node(gap: f32) -> Node {
     Node {

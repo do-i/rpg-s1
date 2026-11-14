@@ -1364,30 +1364,13 @@ pub(in crate::field_menu) fn spawn_item_modal_row(
     subtitle: &str,
     selected: bool,
 ) {
-    parent
-        .spawn((
-            Node {
-                width: percent(100),
-                min_height: px(48),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::axes(px(11), px(5)),
-                border: UiRect::all(px(if selected { 2 } else { 1 })),
-                border_radius: BorderRadius::all(px(4)),
-                ..default()
-            },
-            BackgroundColor(if selected {
-                Color::srgba_u8(72, 49, 25, 230)
-            } else {
-                Color::srgba_u8(10, 10, 14, 170)
-            }),
-            BorderColor::all(if selected {
-                status_border_active()
-            } else {
-                status_border()
-            }),
-        ))
-        .with_children(|row| {
-            spawn_status_text(row, label, font, 17.0, status_ink());
-            spawn_status_text(row, subtitle, font, 12.0, status_muted());
-        });
+    crate::menu_chrome::spawn_choice_row(
+        parent,
+        font,
+        label,
+        subtitle,
+        selected,
+        48.0,
+        JustifyContent::DEFAULT,
+    );
 }
