@@ -5,10 +5,8 @@
 //! `Handle<SfxIndex>`, waiting for it to load, resolving a logical key to a package-relative asset
 //! path, and spawning the despawn-on-finish player entity.
 //!
-//! That indirection is the point. Before it, playing a sound meant a system also had to take
-//! `Res<AssetServer>`, `Res<ScenarioRoot>` and `Res<Assets<SfxIndex>>`, keep its own handle alive,
-//! and handle the not-yet-loaded case — enough friction that 23 authored cues shipped with 3 of
-//! them reachable (roadmap A-1). A message keeps the cost of adding a cue at one line.
+//! Callers therefore need no `AssetServer`, `ScenarioRoot` or `Assets<SfxIndex>` access, no handle
+//! of their own and no not-yet-loaded handling; adding a cue costs one line.
 //!
 //! Muting is not handled here: `RPG_S1_MUTE_AUDIO` sets the global volume to zero when the app is
 //! built, which covers every player uniformly.
@@ -87,12 +85,11 @@ pub(crate) mod cue {
     pub(crate) const SPELL_WIND: &str = "spell_wind";
     pub(crate) const SPELL_EARTH: &str = "spell_earth";
 
-    /// A whiff. The pinned engine plays nothing here and lets the floating MISS label carry the
-    /// beat on its own; giving it a cue is a deliberate widening, not a parity fix.
+    /// A whiff, sounded alongside the floating MISS label.
     pub(crate) const MISS: &str = "miss";
 
     /// Afflictions distinctive enough not to share the generic [`DEBUFF`] cue with every other
-    /// status. Sleep in particular is now reachable content — see `battle::enemy_ai`.
+    /// status.
     pub(crate) const STATUS_SLEEP: &str = "status_sleep";
     pub(crate) const STATUS_POISON: &str = "status_poison";
     pub(crate) const SPEED_BUFF: &str = "speed_buff";
@@ -108,9 +105,7 @@ pub(crate) mod cue {
     pub(crate) const ATK_CLAW: &str = "atk_claw";
     pub(crate) const ATK_SWORD: &str = "atk_sword";
 
-    /// The struck enemy's own reaction. Striking one used to play the party's weapon and nothing
-    /// back, while being struck played both the impact and the party's hurt — this restores the
-    /// symmetry.
+    /// The struck enemy's own reaction, the counterpart of the party's hurt cue.
     pub(crate) const ENEMY_HIT: &str = "enemy_hit";
 
     /// Field-object and transition cues.
@@ -119,7 +114,7 @@ pub(crate) mod cue {
     pub(crate) const DOOR: &str = "door";
     pub(crate) const TELEPORT: &str = "teleport";
 
-    /// Equipment and shop beats, which previously reused the plain confirm cue.
+    /// Equipment and shop beats.
     pub(crate) const EQUIP: &str = "equip";
     pub(crate) const UNEQUIP: &str = "unequip";
     pub(crate) const BUY_SELL: &str = "buy_sell";
@@ -165,10 +160,8 @@ pub(crate) mod cue {
 
 /// The four sounds every menu screen makes, as one injectable parameter.
 ///
-/// This is the port of the pinned engine's menu-SFX mixin
-/// (`engine/common/menu_sfx_mixin.py:18-30`), which every menu scene there inherits so that
-/// navigation sounds the same everywhere. A `SystemParam` is the Bevy equivalent: a screen adds
-/// `menu_sfx: MenuSfx` to its input system and calls the beat it just performed.
+/// Navigation sounds the same everywhere: a screen adds `menu_sfx: MenuSfx` to its input system
+/// and calls the beat it just performed.
 ///
 /// Keeping [`blocked`](Self::blocked) in the same place as the rest is deliberate. A menu that
 /// refuses a move needs to say so, and a screen that has the other three to hand is far more

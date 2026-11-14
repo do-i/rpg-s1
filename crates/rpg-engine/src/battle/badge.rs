@@ -1,19 +1,12 @@
 //! Persistent status-effect badges for the battle frames.
 //!
-//! The model has tracked fourteen effects since the resolver landed, but the only thing that ever
-//! drew one was the one-shot float raised when it was applied — so a player who looked away for a
-//! second could not tell who was still poisoned or silenced. This is the port of the pinned
-//! engine's badge (`battle_party_panel_renderer.py:136-151`) and its palette
-//! (`battle_renderer_constants.py:32-42`).
+//! The one-shot float raised when a status is applied disappears quickly, so a badge stays on the
+//! frame for as long as the effect lasts.
 //!
-//! Two deliberate widenings of the source:
-//!
-//! - The source palette covers nine effects and silently draws nothing for the rest. Every effect
-//!   the Rust model can carry gets a badge here, because an unrendered status is exactly the bug
-//!   this closes.
-//! - The source's modifier entry is `DEF_UP` only. The Rust model's modifier effects are
-//!   direction-agnostic — one variant covers both a rally and a weakening — so the potency picks
-//!   the sign, the same way [`super::fx::status_cue`] picks the buff or debuff sound.
+//! - Every effect the model can carry gets a badge; an unrendered status would be invisible.
+//! - Modifier effects are direction-agnostic — one variant covers both a rally and a weakening — so
+//!   the potency picks the sign, the same way [`super::fx::status_cue`] picks the buff or debuff
+//!   sound.
 
 use bevy::prelude::Color;
 

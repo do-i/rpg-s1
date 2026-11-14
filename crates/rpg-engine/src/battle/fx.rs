@@ -36,12 +36,12 @@ const SCREEN_FLASH_DURATION_SECONDS: f32 = 0.26;
 /// Fraction of the screen flash spent at full strength before it fades out.
 const SCREEN_FLASH_HOLD_FRACTION: f32 = 0.3;
 const SCREEN_FLASH_PEAK_ALPHA: f32 = 0.38;
-/// Hurt shake, ported exactly from `battle_fx.py:12-14` — a 4px swing damped to nothing over
-/// 0.22s at 22Hz. See [`shake_frame`] for what that actually looks like on screen.
+/// Hurt shake: a 4px swing damped to nothing over 0.22s at 22Hz. See [`shake_frame`] for what that
+/// actually looks like on screen.
 const SHAKE_DURATION_SECONDS: f32 = 0.22;
 const SHAKE_AMPLITUDE_PIXELS: f32 = 4.0;
 const SHAKE_FREQUENCY: f32 = 22.0;
-/// How long an attacker plays its sprite-row animation (`battle_fx.py:18`).
+/// How long an attacker plays its sprite-row animation.
 const ATTACK_DURATION_SECONDS: f32 = 0.5;
 /// How long an elemental or status overlay lingers on the struck frame.
 ///
@@ -71,8 +71,7 @@ pub(super) struct BattleFxRouter {
 
 /// Which sprite row an attacker plays while acting.
 ///
-/// The source splits exactly here: a basic attack thrusts, an ability is cast
-/// (`battle_enemy_logic.py:53,69`).
+/// A basic attack thrusts; an ability is cast.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum AttackKind {
     Thrust,
@@ -87,8 +86,7 @@ struct ActiveAttack {
 
 /// The attack animations currently playing, keyed by enemy slot.
 ///
-/// Only enemies animate: the party is drawn from static portraits, exactly as in the source, whose
-/// attack frames come from the enemy area renderer alone.
+/// Only enemies animate: the party is drawn from static portraits.
 #[derive(Debug, Default, Resource)]
 pub(super) struct BattleAttackAnimations {
     active: HashMap<usize, ActiveAttack>,
@@ -123,7 +121,7 @@ impl BattleAttackAnimations {
 /// same field would let whichever ran last win silently.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ImpactMotion {
-    /// The source's damped wobble, for a hit that landed.
+    /// The damped wobble, for a hit that landed.
     Hurt,
     /// A single deliberate step aside, for a hit that did not.
     Dodge,
@@ -286,8 +284,7 @@ pub(super) fn route_battle_fx(
                 .into_iter()
                 .map(battle_sfx),
         );
-        // The attacker's animation is keyed off the same event that reports the hit, which is
-        // where the source starts it (`battle_enemy_logic.py:53,69`).
+        // The attacker's animation is keyed off the same event that reports the hit.
         if let Some((attacker, kind)) = attack_for_event(event)
             && attacker.side == BattleSide::Enemy
         {
@@ -306,8 +303,8 @@ pub(super) fn route_battle_fx(
                 .find_map(|(marker, entity)| (marker.0 == cue.target.index).then_some(entity)),
         };
         let Some(target) = target else { continue };
-        // `fx.hit()` in the source is flash *and* shake, always together (`battle_fx.py:88-91`);
-        // re-inserting restarts a motion already running, matching its keyed-dict overwrite.
+        // A hit is flash *and* shake, always together; re-inserting restarts a motion already
+        // running.
         if let Some(motion) = cue.motion {
             commands.entity(target).insert(BattleHurtShake {
                 elapsed: 0.0,
@@ -725,11 +722,8 @@ fn cue_for_event(event: &BattleEvent) -> Option<FxCue> {
     Some(cue)
 }
 
-/// The impact cues a hit landing on `side` should make.
+/// Mix level for the slash cue, as a percentage of the authored volume.
 ///
-/// Mirrors the pinned engine, which plays two sounds when the party is struck — the physical
-/// impact and the party's own hurt cue (`battle_enemy_logic.py:55,57,82,84`) — and the swing alone
-/// when the party is the one connecting.
 /// The slash sample peaks near -9 dB while the enemy's hurt grunt it sounds alongside peaks near
 /// -2 dB, so at the normal mix the grunt buries the blade entirely. This lifts the slash level with
 /// it (+8 dB) without clipping.
@@ -753,7 +747,8 @@ const fn event_attacker(event: &BattleEvent) -> Option<CombatantKey> {
     }
 }
 
-/// The cues a landed hit makes, from the struck side's point of view.
+/// The impact cues a hit landing on `side` should make: the physical impact plus the struck
+/// side's own hurt cue.
 ///
 /// `attacker_type` flavours the impact when an enemy is the one swinging; `None` — a party attack,
 /// or a status tick with no attacker at all — keeps the generic sample. `sword` is whether a party
@@ -815,8 +810,7 @@ const fn item_spell_cue(element: ItemElement) -> Option<&'static str> {
 fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static str {
     // Sleep and poison are read before potency: both are always harmful, and both are distinctive
     // enough in play that sharing the generic debuff cue with every other affliction loses
-    // information the player can act on. Sleep is newly reachable content — nothing in the game
-    // could apply it until `battle::enemy_ai` mapped charm and allure.
+    // information the player can act on.
     match status_effect {
         StatusEffect::Sleep => return cue::STATUS_SLEEP,
         StatusEffect::Poison => return cue::STATUS_POISON,
@@ -845,12 +839,10 @@ fn status_cue(status_effect: StatusEffect, potency: StatusPotency) -> &'static s
 
 /// Maps one resolved battle event to the SFX cues it should fire, in sounding order.
 ///
-/// This is the port of the pinned `play_battle_action` dispatch
-/// (`engine/audio/sfx_manager.py:65-91`) together with the impact and death cues the source plays
-/// at resolution time. It is a pure function so the routing can be asserted without an audio
-/// device; `route_battle_fx` writes the results and the cue service collapses duplicates.
+/// It is a pure function so the routing can be asserted without an audio device;
+/// `route_battle_fx` writes the results and the cue service collapses duplicates.
 /// Appends the death cue when a killing blow felled an enemy. The party falling is covered by the
-/// hurt cue that already sounded, matching the source, which has no party-death sample.
+/// hurt cue that already sounded; there is no party-death sample.
 fn push_knockout(knocked_out: bool, target: CombatantKey, cues: &mut Vec<&'static str>) {
     if knocked_out && target.side == BattleSide::Enemy {
         cues.push(cue::ENEMY_DEATH);
@@ -864,9 +856,8 @@ fn sfx_cues_for_event(
 ) -> Vec<&'static str> {
     let mut cues: Vec<&'static str> = Vec::new();
     match *event {
-        // The pinned engine plays no cue on a whiff and lets the floating MISS label carry it
-        // alone. Giving the whiff its own sample is a deliberate widening: a miss is the one
-        // battle outcome that otherwise makes no sound at all.
+        // A whiff has its own sample: a miss is the one battle outcome that would otherwise make
+        // no sound at all.
         BattleEvent::Miss { .. } => cues.push(cue::MISS),
         BattleEvent::Damage {
             action,
@@ -948,11 +939,10 @@ fn overlay_frame(elapsed: f32, duration: f32) -> (f32, bool) {
     (1.0 - progress, elapsed >= duration)
 }
 
-/// A damped sine, truncated to whole pixels the way the source's `int()` does
-/// (`battle_fx.py:50-53`).
+/// A damped sine, truncated to whole pixels.
 ///
 /// `amplitude_scale` is the critical's only change to the motion: the frequency and the decay
-/// envelope stay exactly as the source pins them, so a crit is the same wobble swung wider rather
+/// envelope stay fixed, so a crit is the same wobble swung wider rather
 /// than a different wobble.
 fn shake_frame(elapsed: f32, amplitude_scale: f32) -> (f32, bool) {
     let expired = elapsed >= SHAKE_DURATION_SECONDS;
@@ -996,7 +986,7 @@ fn attack_progress(elapsed: f32) -> f32 {
 /// Only damage landing on the party shakes the whole canvas; hits the party
 /// deals out already read clearly from the enemy's own frame flash.
 ///
-/// Keyed off the hurt motion rather than the overlay, because a status landing now paints an
+/// Keyed off the hurt motion rather than the overlay, because a status landing paints an
 /// overlay too and must not wash the screen for what is not damage.
 fn triggers_screen_flash(cue: &FxCue) -> bool {
     cue.motion == Some(ImpactMotion::Hurt) && cue.target.side == BattleSide::Party
@@ -1040,8 +1030,8 @@ mod tests {
 
     /// Pins the audio dispatch: which cues each resolved event makes, and in what order.
     ///
-    /// The pinned engine plays a swing when the party connects and an impact plus a hurt cue when
-    /// the party is struck, so the two directions are deliberately asymmetric.
+    /// A swing sounds when the party connects and an impact plus a hurt cue when the party is
+    /// struck, so the two directions are deliberately asymmetric.
     #[test]
     fn every_battle_event_routes_to_its_authored_sfx_cues() {
         let party_hits_enemy = BattleAction::Physical {
@@ -1053,8 +1043,7 @@ mod tests {
             target: CombatantKey::party(0),
         };
 
-        // A whiff has its own cue. The pinned engine is silent here and lets the floating label
-        // carry it; sounding the miss is a deliberate widening, recorded in `cue::MISS`.
+        // A whiff has its own cue, recorded in `cue::MISS`.
         assert_eq!(
             sfx_cues_for_event(
                 &BattleEvent::Miss {
@@ -1410,14 +1399,12 @@ mod tests {
         );
     }
 
-    /// Pins the shape of the ported shake, including the one part of it that surprises.
+    /// Pins the shape of the shake, including the one part of it that surprises.
     ///
-    /// The source is a damped 22Hz sine over 0.22s at 4px, truncated to whole pixels
-    /// (`battle_fx.py:44-53`). Because 0.22s is only three quarters of a 22Hz cycle and the decay
+    /// The shake is a damped 22Hz sine over 0.22s at 4px, truncated to whole pixels. Because 0.22s is only three quarters of a 22Hz cycle and the decay
     /// is linear, the return swing peaks below one pixel and truncation eats it: what actually
-    /// reaches the screen is a single sideways punch that snaps back. That is the source's
-    /// behavior, so it is this port's behavior, and this test exists so a later reader does not
-    /// "fix" it into a two-sided wobble without deciding to diverge on purpose.
+    /// reaches the screen is a single sideways punch that snaps back. This test exists so a later
+    /// reader does not "fix" it into a two-sided wobble by accident.
     #[test]
     fn the_hurt_shake_punches_out_once_and_snaps_back_to_zero() {
         assert_eq!(shake_frame(0.0, 1.0), (0.0, false));
@@ -1436,7 +1423,7 @@ mod tests {
                 .all(|&offset| (0.0..=SHAKE_AMPLITUDE_PIXELS).contains(&offset)),
             "the counter-swing decays below a pixel and truncates away: {sampled:?}"
         );
-        // Whole pixels only, like the source's int().
+        // Whole pixels only.
         assert!(sampled.iter().all(|&offset| offset == offset.trunc()));
         // And it does come back on its own, well before the timer runs out.
         assert_eq!(shake_frame(0.16, 1.0).0, 0.0);
@@ -1446,8 +1433,7 @@ mod tests {
         assert_eq!(shake_frame(9.0, 1.0), (0.0, true));
     }
 
-    /// Every event that hit-flashes must also shake: the source calls them together as `fx.hit()`,
-    /// and a flash without a shake is the half-effect this task exists to finish.
+    /// Every event that hit-flashes must also shake; a flash without a shake is a half-effect.
     #[test]
     fn every_flashing_cue_is_also_a_shaking_one() {
         let action = BattleAction::Physical {
@@ -1623,8 +1609,8 @@ mod tests {
         assert_eq!(screen_flash_frame(9.0), (0.0, true));
     }
 
-    /// The float and the frame flash are spawned into the struck frame, so they inherit the same
-    /// trap that hid the status badges: a `GlobalZIndex` beneath [`super::ui::BATTLE_ROOT_Z`]
+    /// The float and the frame flash are spawned into the struck frame, so they inherit the
+    /// stacking trap: a `GlobalZIndex` beneath [`super::ui::BATTLE_ROOT_Z`]
     /// leaves the node laid out and coloured exactly as intended, and draws it behind the battle
     /// screen. The float still has to leave the frame — it is wider than the card it rises from —
     /// so it goes above the root rather than local.
@@ -1780,10 +1766,6 @@ mod tests {
         assert_eq!(health, 35);
     }
 
-    // ---------------------------------------------------------------------
-    // B4.8 battle-effects polish
-    // ---------------------------------------------------------------------
-
     #[test]
     fn every_element_marks_the_frame_in_its_own_colour() {
         let tints = [
@@ -1875,7 +1857,7 @@ mod tests {
 
     #[test]
     fn a_critical_shake_swings_wider_on_the_sources_own_envelope() {
-        // Scaling amplitude alone keeps the pinned 22Hz frequency and linear decay intact.
+        // Scaling amplitude alone keeps the 22Hz frequency and linear decay intact.
         for step in 1..22 {
             let elapsed = step as f32 * 0.01;
             let normal = shake_frame(elapsed, 1.0).0;
