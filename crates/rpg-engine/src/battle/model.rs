@@ -547,6 +547,10 @@ pub(super) struct BattleState {
     /// When an auto member's resolved action continues on its own, measured on the app clock.
     /// Confirm still skips the pause.
     pub(super) auto_continue_at: Option<std::time::Duration>,
+    /// Scenario tuning for auto-battle healing, copied from the balance when the battle opens.
+    pub(super) party_ai: rpg_content::scenario_balance::PartyAiBalance,
+    /// Scenario tuning for damage-over-time statuses, copied the same way.
+    pub(super) status_damage: rpg_content::scenario_balance::StatusDamageBalance,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

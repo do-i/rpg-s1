@@ -202,6 +202,8 @@ pub(super) fn state_with(combatants: Vec<BattleCombatant>) -> BattleState {
         flee_outcome: None,
         auto_suspended: false,
         auto_continue_at: None,
+        party_ai: Default::default(),
+        status_damage: Default::default(),
     }
 }
 
@@ -1834,6 +1836,8 @@ fn damage_clamps_to_zero_and_turn_advance_skips_ko_actors() {
         flee_outcome: None,
         auto_suspended: false,
         auto_continue_at: None,
+        party_ai: Default::default(),
+        status_damage: Default::default(),
     };
     state.skip_knocked_out();
     assert_eq!(state.active_key(), Some(CombatantKey::party(1)));
@@ -1867,6 +1871,8 @@ fn victory_and_defeat_require_every_member_of_one_side_to_be_ko() {
         flee_outcome: None,
         auto_suspended: false,
         auto_continue_at: None,
+        party_ai: Default::default(),
+        status_damage: Default::default(),
     };
     state.assess_result();
     assert_eq!(state.phase, BattlePhase::Advance);
@@ -1907,6 +1913,8 @@ fn deterministic_basic_battle_transcript_is_stable() {
             flee_outcome: None,
             auto_suspended: false,
             auto_continue_at: None,
+            party_ai: Default::default(),
+            status_damage: Default::default(),
         };
         state.combatants[0].attack = 14;
         state.combatants[1].defense = 2;
@@ -1973,6 +1981,38 @@ mod party_ai_tests {
                 })
             );
         }
+    }
+
+    #[test]
+    fn heal_threshold_follows_the_authored_base_and_span() {
+        use rpg_content::{scenario_balance::PartyAiBalance, scenario_class::UnitInterval};
+        fn healed_seeds(base: f64, span: u32) -> usize {
+            let mut half = actor(BattleSide::Party, 1, 5, 100);
+            half.health = 50;
+            let mut state = state_with(vec![cleric(40), half, actor(BattleSide::Enemy, 0, 5, 30)]);
+            state.party_ai = PartyAiBalance {
+                heal_threshold_base: UnitInterval::new(base).unwrap(),
+                heal_threshold_span_percent: span,
+            };
+            let heal = Some(AutoAction::Ability {
+                index: 0,
+                targets: vec![CombatantKey::party(1)],
+            });
+            plans(&state, AutoCommand::Smart, &[])
+                .into_iter()
+                .filter(|plan| *plan == heal)
+                .count()
+        }
+        // A half-health ally is always wounded above 0.5 and never below it.
+        assert_eq!(healed_seeds(0.9, 0), 60);
+        assert_eq!(healed_seeds(0.1, 0), 0);
+        // The default window of 0.40..=0.60 straddles 0.5, so the jitter decides.
+        let default = PartyAiBalance::default();
+        let jittered = healed_seeds(
+            default.heal_threshold_base.get(),
+            default.heal_threshold_span_percent,
+        );
+        assert!(jittered > 0 && jittered < 60, "{jittered}");
     }
 
     #[test]
@@ -2338,6 +2378,49 @@ fn burn_damage_from_extreme_attack_saturates_instead_of_wrapping() {
             .map(|status| status.potency)
     });
     assert_eq!(burned, Some(StatusPotency::DamagePerTurn(u32::MAX / 10)));
+}
+
+#[test]
+fn burn_damage_follows_the_authored_attack_divisor() {
+    use super::status::StatusPotency;
+    use rpg_content::scenario_balance::{PositiveInteger, StatusDamageBalance};
+    let burn_damage = |divisor: Option<u32>| {
+        (0..200_u64).find_map(|seed| {
+            let mut caster = actor(BattleSide::Party, 0, 1, 40);
+            caster.attack = 100;
+            caster.mana = 30;
+            caster.max_mana = 30;
+            caster.abilities = vec![ability("fireball")];
+            let target = actor(BattleSide::Enemy, 0, 1, 1000);
+            let mut state = state_with(vec![caster, target]);
+            if let Some(divisor) = divisor {
+                state.status_damage = StatusDamageBalance {
+                    burn_attack_divisor: PositiveInteger::new(divisor).unwrap(),
+                };
+            }
+            resolve_ability(
+                &mut state,
+                CombatantKey::party(0),
+                0,
+                &[CombatantKey::enemy(0)],
+                &mut GameplayRng::from_seed(seed),
+            )
+            .unwrap();
+            state
+                .actor(CombatantKey::enemy(0))
+                .unwrap()
+                .status_effects
+                .iter()
+                .find(|status| status.effect == StatusEffect::Burn)
+                .map(|status| status.potency)
+        })
+    };
+    assert_eq!(burn_damage(None), Some(StatusPotency::DamagePerTurn(10)));
+    assert_eq!(burn_damage(Some(5)), Some(StatusPotency::DamagePerTurn(20)));
+    assert_eq!(
+        burn_damage(Some(1000)),
+        Some(StatusPotency::DamagePerTurn(1))
+    );
 }
 
 #[test]

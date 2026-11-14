@@ -340,12 +340,18 @@ fn enter_battle(
     game: Res<GameState>,
     entry: Option<Res<BattleEntry>>,
     debug: Option<Res<DebugLaunchConfig>>,
+    balances: Res<Assets<BalanceData>>,
+    active: Res<ActiveNewGameInputs>,
     mut images: ResMut<Assets<Image>>,
 ) {
     let Some(entry) = entry else {
         return;
     };
     let mut state = BattleState::from_entry(&entry);
+    if let Some(balance) = active.balance(&balances) {
+        state.party_ai = balance.party_ai;
+        state.status_damage = balance.status_damage;
+    }
     apply_layout_review_statuses(
         &mut state,
         debug.as_ref().and_then(|debug| debug.battle_fixture),

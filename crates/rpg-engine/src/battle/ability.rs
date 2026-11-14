@@ -440,8 +440,9 @@ fn apply_side_effects(
                 duration_turns,
                 ..
             } => {
+                let divisor = state.status_damage.burn_attack_divisor.get();
                 let damage = state.actor(source).map_or(1, |actor| {
-                    (u32::try_from(actor.attack.max(0)).unwrap_or(u32::MAX) / 10).max(1)
+                    (u32::try_from(actor.attack.max(0)).unwrap_or(u32::MAX) / divisor).max(1)
                 });
                 (
                     chance.get(),

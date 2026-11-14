@@ -58,6 +58,8 @@ impl BattleState {
             flee_outcome: None,
             auto_suspended: false,
             auto_continue_at: None,
+            party_ai: Default::default(),
+            status_damage: Default::default(),
         }
     }
 

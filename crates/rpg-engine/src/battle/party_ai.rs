@@ -153,7 +153,9 @@ fn heal(
     rng: &mut GameplayRng,
 ) -> Option<AutoAction> {
     // A little jitter keeps the healer from topping up at exactly the same HP every time.
-    let threshold = 0.4 + (rng.below(21)) as f64 / 100.0;
+    let tuning = state.party_ai;
+    let threshold = tuning.heal_threshold_base.get()
+        + (rng.below(u64::from(tuning.heal_threshold_span_percent) + 1)) as f64 / 100.0;
     let wounded = living(state, BattleSide::Party)
         .filter(|ally| ratio(ally.health, ally.max_health) < threshold)
         .collect::<Vec<_>>();
