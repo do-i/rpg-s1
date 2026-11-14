@@ -207,153 +207,313 @@ pub(super) fn track_catalog_load(
     {
         return;
     }
-    for (path, handle) in &load.items {
-        if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
+    let field_handle = load.field_use.as_ref().expect("checked above");
+    let quest_handle = load.quests.as_ref().expect("checked above");
+    if let Some(failure) = first_load_failure(&asset_server, &load, field_handle, quest_handle) {
+        catalog.status = CatalogStatus::Failed;
+        catalog.failure = Some(failure);
+        return;
+    }
+    let assets = CatalogAssets {
+        items: &item_assets,
+        field_uses: &field_assets,
+        classes: &class_assets,
+        maps: &map_assets,
+        tmx: &tmx_assets,
+        recipes: &recipe_assets,
+        quests: &quest_assets,
+        party: &party_assets,
+    };
+    if !all_loaded(&load, &assets, field_handle, quest_handle) {
+        return;
+    }
+    match build_catalog_parts(&load, &assets, field_handle, quest_handle) {
+        Ok(parts) => publish_catalog(&mut catalog, parts),
+        Err(failure) => {
             catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("{path}: {error}"));
-            return;
+            catalog.failure = Some(failure);
         }
     }
-    for (path, handle) in &load.classes {
+}
+
+/// Borrowed views of every asset collection the catalog is built from.
+struct CatalogAssets<'a> {
+    items: &'a Assets<ItemCatalogFile>,
+    field_uses: &'a Assets<FieldUseCatalogFile>,
+    classes: &'a Assets<ClassDefinition>,
+    maps: &'a Assets<MapMetadata>,
+    tmx: &'a Assets<TmxGroundAsset>,
+    recipes: &'a Assets<RecipeCatalogFile>,
+    quests: &'a Assets<QuestCatalogFile>,
+    party: &'a Assets<PartyCatalog>,
+}
+
+/// Every catalog field built from the loaded assets, held until all fallible steps succeed so a
+/// failure never leaves a partially published catalog.
+struct CatalogParts {
+    items: BTreeMap<String, ItemDefinition>,
+    item_order: Vec<String>,
+    field_uses: BTreeMap<String, FieldUseDefinition>,
+    classes: BTreeMap<String, ClassDefinition>,
+    member_genders: BTreeMap<String, PartyMemberGender>,
+    warp_destinations: Vec<WarpDestination>,
+    maps: BTreeMap<String, MapMetadata>,
+    recipes: Vec<RecipeDefinition>,
+    quests: Vec<QuestDefinition>,
+}
+
+/// The failure text of the first failed load, scanning kinds in this order; first failure wins.
+fn first_load_failure(
+    asset_server: &AssetServer,
+    load: &FieldMenuCatalogLoad,
+    field_handle: &Handle<FieldUseCatalogFile>,
+    quest_handle: &Handle<QuestCatalogFile>,
+) -> Option<String> {
+    item_load_failure(asset_server, &load.items)
+        .or_else(|| class_load_failure(asset_server, &load.classes))
+        .or_else(|| map_load_failure(asset_server, &load.maps))
+        .or_else(|| service_map_load_failure(asset_server, &load.service_maps))
+        .or_else(|| field_use_load_failure(asset_server, field_handle))
+        .or_else(|| recipe_load_failure(asset_server, &load.recipes))
+        .or_else(|| quest_load_failure(asset_server, quest_handle))
+        .or_else(|| party_load_failure(asset_server, load.party.as_ref()))
+}
+
+fn item_load_failure(
+    asset_server: &AssetServer,
+    items: &[(String, Handle<ItemCatalogFile>)],
+) -> Option<String> {
+    for (path, handle) in items {
         if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("{path}: {error}"));
-            return;
+            return Some(format!("{path}: {error}"));
         }
     }
-    for (stem, metadata, tmx) in &load.maps {
+    None
+}
+
+fn class_load_failure(
+    asset_server: &AssetServer,
+    classes: &[(String, Handle<ClassDefinition>)],
+) -> Option<String> {
+    for (path, handle) in classes {
+        if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
+            return Some(format!("{path}: {error}"));
+        }
+    }
+    None
+}
+
+fn map_load_failure(
+    asset_server: &AssetServer,
+    maps: &[(String, Handle<MapMetadata>, Handle<TmxGroundAsset>)],
+) -> Option<String> {
+    for (stem, metadata, tmx) in maps {
         if let LoadState::Failed(error) = asset_server.load_state(metadata.id()) {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("map metadata for `{stem}`: {error}"));
-            return;
+            return Some(format!("map metadata for `{stem}`: {error}"));
         }
         if let LoadState::Failed(error) = asset_server.load_state(tmx.id()) {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("map TMX for `{stem}`: {error}"));
-            return;
+            return Some(format!("map TMX for `{stem}`: {error}"));
         }
     }
-    for (stem, metadata) in &load.service_maps {
+    None
+}
+
+fn service_map_load_failure(
+    asset_server: &AssetServer,
+    service_maps: &[(String, Handle<MapMetadata>)],
+) -> Option<String> {
+    for (stem, metadata) in service_maps {
         if let LoadState::Failed(error) = asset_server.load_state(metadata.id()) {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("map metadata for `{stem}`: {error}"));
-            return;
+            return Some(format!("map metadata for `{stem}`: {error}"));
         }
     }
-    let field_handle = load.field_use.as_ref().expect("checked above");
+    None
+}
+
+fn field_use_load_failure(
+    asset_server: &AssetServer,
+    field_handle: &Handle<FieldUseCatalogFile>,
+) -> Option<String> {
     if let LoadState::Failed(error) = asset_server.load_state(field_handle.id()) {
-        catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("field-use catalog: {error}"));
-        return;
+        return Some(format!("field-use catalog: {error}"));
     }
-    for (path, handle) in &load.recipes {
+    None
+}
+
+fn recipe_load_failure(
+    asset_server: &AssetServer,
+    recipes: &[(String, Handle<RecipeCatalogFile>)],
+) -> Option<String> {
+    for (path, handle) in recipes {
         if let LoadState::Failed(error) = asset_server.load_state(handle.id()) {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(format!("{path}: {error}"));
-            return;
+            return Some(format!("{path}: {error}"));
         }
     }
-    let quest_handle = load.quests.as_ref().expect("checked above");
+    None
+}
+
+fn quest_load_failure(
+    asset_server: &AssetServer,
+    quest_handle: &Handle<QuestCatalogFile>,
+) -> Option<String> {
     if let LoadState::Failed(error) = asset_server.load_state(quest_handle.id()) {
-        catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("quest catalog: {error}"));
-        return;
+        return Some(format!("quest catalog: {error}"));
     }
-    if let Some(party_handle) = &load.party
+    None
+}
+
+fn party_load_failure(
+    asset_server: &AssetServer,
+    party_handle: Option<&Handle<PartyCatalog>>,
+) -> Option<String> {
+    if let Some(party_handle) = party_handle
         && let LoadState::Failed(error) = asset_server.load_state(party_handle.id())
     {
-        catalog.status = CatalogStatus::Failed;
-        catalog.failure = Some(format!("party catalog: {error}"));
-        return;
+        return Some(format!("party catalog: {error}"));
     }
-    if load
+    None
+}
+
+/// Whether every requested asset has arrived. This order (field-use right after classes) differs
+/// from [`first_load_failure`]'s on purpose: both are kept as they were authored, so do not unify
+/// them.
+fn all_loaded(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+    field_handle: &Handle<FieldUseCatalogFile>,
+    quest_handle: &Handle<QuestCatalogFile>,
+) -> bool {
+    !(load
         .items
         .iter()
-        .any(|(_, handle)| item_assets.get(handle).is_none())
+        .any(|(_, handle)| assets.items.get(handle).is_none())
         || load
             .classes
             .iter()
-            .any(|(_, handle)| class_assets.get(handle).is_none())
-        || field_assets.get(field_handle).is_none()
+            .any(|(_, handle)| assets.classes.get(handle).is_none())
+        || assets.field_uses.get(field_handle).is_none()
         || load.maps.iter().any(|(_, metadata, tmx)| {
-            map_assets.get(metadata).is_none() || tmx_assets.get(tmx).is_none()
+            assets.maps.get(metadata).is_none() || assets.tmx.get(tmx).is_none()
         })
         || load
             .service_maps
             .iter()
-            .any(|(_, metadata)| map_assets.get(metadata).is_none())
+            .any(|(_, metadata)| assets.maps.get(metadata).is_none())
         || load
             .recipes
             .iter()
-            .any(|(_, handle)| recipe_assets.get(handle).is_none())
-        || quest_assets.get(quest_handle).is_none()
+            .any(|(_, handle)| assets.recipes.get(handle).is_none())
+        || assets.quests.get(quest_handle).is_none()
         || load
             .party
             .as_ref()
-            .is_some_and(|handle| party_assets.get(handle).is_none())
-    {
-        return;
-    }
+            .is_some_and(|handle| assets.party.get(handle).is_none()))
+}
 
+/// Builds every catalog field, in order; the only fallible step is the warp destination list.
+fn build_catalog_parts(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+    field_handle: &Handle<FieldUseCatalogFile>,
+    quest_handle: &Handle<QuestCatalogFile>,
+) -> Result<CatalogParts, String> {
+    let (items, item_order) = build_items(load, assets);
+    let field_uses = build_field_uses(assets, field_handle);
+    let classes = build_classes(load, assets);
+    let (maps, warp_destinations) = build_maps_and_warp_destinations(load, assets)?;
+    Ok(CatalogParts {
+        items,
+        item_order,
+        field_uses,
+        classes,
+        member_genders: build_member_genders(load, assets),
+        warp_destinations,
+        maps,
+        recipes: build_recipes(load, assets),
+        quests: build_quests(assets, quest_handle),
+    })
+}
+
+fn build_items(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+) -> (BTreeMap<String, ItemDefinition>, Vec<String>) {
     let mut items = BTreeMap::new();
     let mut item_order = Vec::new();
     for (_, handle) in &load.items {
-        for item in item_assets.get(handle).expect("all checked").entries() {
+        for item in assets.items.get(handle).expect("all checked").entries() {
             item_order.push(item.id().to_owned());
             items.insert(item.id().to_owned(), item.clone());
         }
     }
     crate::forge::expand_catalog(&mut items, &mut item_order);
-    let field_uses = field_assets
+    (items, item_order)
+}
+
+fn build_field_uses(
+    assets: &CatalogAssets,
+    field_handle: &Handle<FieldUseCatalogFile>,
+) -> BTreeMap<String, FieldUseDefinition> {
+    assets
+        .field_uses
         .get(field_handle)
         .expect("checked")
         .entries()
         .iter()
         .map(|entry| (entry.id().to_owned(), entry.clone()))
-        .collect();
-    let classes = load
-        .classes
+        .collect()
+}
+
+fn build_classes(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+) -> BTreeMap<String, ClassDefinition> {
+    load.classes
         .iter()
         .map(|(_, handle)| {
-            let class = class_assets.get(handle).expect("all checked").clone();
+            let class = assets.classes.get(handle).expect("all checked").clone();
             (class.class_id.clone(), class)
         })
-        .collect();
+        .collect()
+}
+
+/// Map metadata keyed by effective id (TMX-backed maps, then service maps), plus the warp
+/// destinations computed from the TMX-backed maps' portals.
+fn build_maps_and_warp_destinations(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+) -> Result<(BTreeMap<String, MapMetadata>, Vec<WarpDestination>), String> {
     let mut maps = BTreeMap::new();
     let mut warp_sources = Vec::with_capacity(load.maps.len());
     for (stem, metadata_handle, tmx_handle) in &load.maps {
-        let metadata = map_assets.get(metadata_handle).expect("all checked");
+        let metadata = assets.maps.get(metadata_handle).expect("all checked");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
-        let tmx = tmx_assets.get(tmx_handle).expect("all checked");
+        let tmx = assets.tmx.get(tmx_handle).expect("all checked");
         // A malformed `portals` layer is a TMX-authoring concern outside this catalog's scope;
         // treat it as "no outgoing portals from this source" rather than failing catalog load.
         let portals = runtime_portals(tmx.document()).unwrap_or_default();
         warp_sources.push((stem.as_str(), metadata, portals));
     }
     for (stem, metadata_handle) in &load.service_maps {
-        let metadata = map_assets.get(metadata_handle).expect("all checked");
+        let metadata = assets.maps.get(metadata_handle).expect("all checked");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
     }
     let warp_sources_ref: Vec<(&str, &MapMetadata, &[RuntimePortal])> = warp_sources
         .iter()
         .map(|(stem, metadata, portals)| (*stem, *metadata, portals.as_slice()))
         .collect();
-    let warp_destinations = match compute_warp_destinations(&warp_sources_ref) {
-        Ok(destinations) => destinations,
-        Err(error) => {
-            catalog.status = CatalogStatus::Failed;
-            catalog.failure = Some(error.to_string());
-            return;
-        }
-    };
-    catalog.items = items;
-    catalog.item_order = item_order;
-    catalog.field_uses = field_uses;
-    catalog.classes = classes;
-    catalog.member_genders = load
-        .party
+    let warp_destinations =
+        compute_warp_destinations(&warp_sources_ref).map_err(|error| error.to_string())?;
+    Ok((maps, warp_destinations))
+}
+
+fn build_member_genders(
+    load: &FieldMenuCatalogLoad,
+    assets: &CatalogAssets,
+) -> BTreeMap<String, PartyMemberGender> {
+    load.party
         .as_ref()
-        .and_then(|handle| party_assets.get(handle))
+        .and_then(|handle| assets.party.get(handle))
         .map(|party| {
             party
                 .party
@@ -361,26 +521,59 @@ pub(super) fn track_catalog_load(
                 .map(|member| (member.data().id.clone(), member.data().gender))
                 .collect()
         })
-        .unwrap_or_default();
-    catalog.warp_destinations = warp_destinations;
-    catalog.maps = maps;
-    catalog.recipes = load
-        .recipes
+        .unwrap_or_default()
+}
+
+fn build_recipes(load: &FieldMenuCatalogLoad, assets: &CatalogAssets) -> Vec<RecipeDefinition> {
+    load.recipes
         .iter()
         .flat_map(|(_, handle)| {
-            recipe_assets
+            assets
+                .recipes
                 .get(handle)
                 .expect("checked")
                 .entries()
                 .iter()
                 .cloned()
         })
-        .collect();
-    catalog.quests = quest_assets
+        .collect()
+}
+
+fn build_quests(
+    assets: &CatalogAssets,
+    quest_handle: &Handle<QuestCatalogFile>,
+) -> Vec<QuestDefinition> {
+    assets
+        .quests
         .get(quest_handle)
         .expect("checked")
         .entries()
-        .to_vec();
+        .to_vec()
+}
+
+/// Publishes the built parts in the original assignment order, clearing the failure and marking
+/// the catalog ready last.
+fn publish_catalog(catalog: &mut FieldMenuCatalog, parts: CatalogParts) {
+    let CatalogParts {
+        items,
+        item_order,
+        field_uses,
+        classes,
+        member_genders,
+        warp_destinations,
+        maps,
+        recipes,
+        quests,
+    } = parts;
+    catalog.items = items;
+    catalog.item_order = item_order;
+    catalog.field_uses = field_uses;
+    catalog.classes = classes;
+    catalog.member_genders = member_genders;
+    catalog.warp_destinations = warp_destinations;
+    catalog.maps = maps;
+    catalog.recipes = recipes;
+    catalog.quests = quests;
     catalog.failure = None;
     catalog.status = CatalogStatus::Ready;
 }
