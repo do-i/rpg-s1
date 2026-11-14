@@ -3,8 +3,8 @@
 //! Unlike [`crate::scenario_cross_reference::validate_scenario_directory`], this walks each
 //! map's TMX `portals` object layer (an XML edge outside the strict YAML validator) so the report
 //! can describe what a map actually connects to: its same-stem TMX (or
-//! numbered-segment TMX family, mirroring the pinned Python `_is_submap`/multi-segment naming
-//! convention from `engine/world/warp_logic.py`), its NPCs and their dialogue ids, and the
+//! numbered-segment TMX family, following the multi-segment naming
+//! convention that the warp destination list also uses), its NPCs and their dialogue ids, and the
 //! portal targets authored in its TMX. Every finding here is informational: this module never
 //! fails the process, it only describes what is present and what is dangling.
 
@@ -28,7 +28,7 @@ use crate::{
 
 /// True when `candidate` names a numbered TMX segment of `parent`: `parent` followed by `_` and
 /// one or more ASCII digits, e.g. `zone_05_mountain_foothills_02` under
-/// `zone_05_mountain_foothills`. Deliberately narrower than Python's general `_is_submap` (which
+/// `zone_05_mountain_foothills`. Deliberately narrower than the general submap rule (which
 /// also matches worded interiors like `..._shop_01`) so only the multi-segment convention this
 /// report exists to describe is recognized.
 pub(crate) fn is_numeric_tmx_segment(parent: &str, candidate: &str) -> bool {

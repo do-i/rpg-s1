@@ -15,7 +15,7 @@ use bevy::prelude::Resource;
 ///
 /// `session_start` is intentionally in-memory only.  A new game or restored save will call
 /// [`Self::start_session`] with a wall-clock sample, while save handling will call
-/// [`Self::commit_session`].  Queries expose committed time only, matching the Python source.
+/// [`Self::commit_session`].  Queries expose committed time only.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Resource)]
 pub struct Playtime {
     total_seconds: u64,

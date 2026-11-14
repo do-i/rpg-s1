@@ -19,7 +19,7 @@ pub(crate) const HOT_RELOAD: &str = "RPG_S1_HOT_RELOAD";
 /// TEMPORARY v2 status-pose review switch. Read as a value: `0` is off, any other value is on.
 pub(crate) const STATUS_TEST: &str = "RPG_S1_STATUS_TEST";
 
-/// Test-only: directory that receives a copy of the persistence fixture YAML for the RF-10 checklist.
+/// Test-only: directory that receives a copy of the persistence fixture YAML for the persistence export checklist.
 #[cfg(test)]
 pub(crate) const RF10_EXPORT: &str = "RPG_S1_RF10_EXPORT";
 /// Test-only: phase name a re-run persistence test child reads to pick its step.

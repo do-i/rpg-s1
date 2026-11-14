@@ -54,8 +54,8 @@ fn roll_height(body_lines: usize) -> f32 {
 }
 
 /// Where the roll stops: far enough for the last line to clear the top of the screen, and no
-/// further. A fixed constant here used to overshoot the body by hundreds of pixels, which is what
-/// left the player watching a blank screen scroll for five seconds and then hold there forever.
+/// further. A fixed constant would overshoot the body by hundreds of pixels, leaving
+/// the player watching a blank screen scroll and then hold there forever.
 fn end_offset(body_lines: usize) -> f32 {
     -roll_height(body_lines)
 }

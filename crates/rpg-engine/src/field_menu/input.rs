@@ -190,7 +190,7 @@ pub(super) fn handle_field_menu_input(
             }
         }
         // Browsing is the whole screen. Deliberately no Confirm arm: the recipe book is a
-        // reference, and crafting stays with the apothecary service (roadmap B4.4).
+        // reference, and crafting stays with the apothecary service.
         FieldMenuScreen::Recipes => {
             if state.mode == FieldMenuMode::Browse
                 && let Some(delta) = input.vertical

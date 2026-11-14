@@ -50,7 +50,7 @@ pub(crate) struct ScenarioInventory {
     pub(crate) party: Option<ScenarioRelativePath>,
     /// Walk-cycle TSX per party member, in authored `party.yaml` order.
     ///
-    /// The protagonist uses the explicit manifest sprite. Companions retain the source's
+    /// The protagonist uses the explicit manifest sprite. Companions use the
     /// `{NN}_{id}_walk.tsx` / `{id}_walk.tsx` convention; absent sheets are omitted.
     pub(crate) party_sprites: Vec<(String, ScenarioRelativePath)>,
     pub(crate) protagonist_sprite_variants: Vec<ManifestSpriteVariant>,

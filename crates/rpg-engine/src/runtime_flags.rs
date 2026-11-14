@@ -3,8 +3,8 @@
 //! Scenario catalogs own authored flag identifiers and [`FlagConditions`]; this resource owns
 //! only the active membership set for one game session. A `BTreeSet` makes observable ordering
 //! deterministic for later save and replay work without assigning any quest or dialogue rules
-//! here. The source bootstrap list can seed this state, while new-game construction itself stays
-//! with M3.09.
+//! here. The bootstrap flag list can seed this state, while new-game construction itself stays
+//! in the new-game builder.
 
 use bevy::prelude::Resource;
 use std::collections::BTreeSet;

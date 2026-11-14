@@ -8,10 +8,10 @@ use bevy::prelude::*;
 
 use crate::tsx_atlas_asset::TsxAtlasAsset;
 
-/// The idle Down frame used by the source for dialogue portraits: row 2, frame 0.
+/// The idle Down frame used for dialogue portraits: row 2, frame 0.
 pub(crate) const DIALOGUE_PORTRAIT_SOURCE_FRAME: usize = 18;
 
-/// `PORTRAIT_HEAD_TOP_RATIO` in the pinned source's `engine/world/sprite_sheet.py`.
+/// Fraction of the frame height skipped above the head.
 const DIALOGUE_PORTRAIT_TOP_RATIO: f32 = 10.0 / 64.0;
 
 /// One shoulder-up portrait selected from a larger sprite sheet.
@@ -33,7 +33,7 @@ impl DialoguePortrait {
 
 /// Crops a speaker's head and shoulders out of one walking-sheet frame.
 ///
-/// This reproduces the source's `get_portrait` integer truncation: the middle half of the frame
+/// The crop uses integer truncation: the middle half of the frame
 /// horizontally and the upper half beginning slightly below the frame edge.
 pub(crate) fn dialogue_portrait_crop(frame: Rect) -> Rect {
     let width = frame.width();

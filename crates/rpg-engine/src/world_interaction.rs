@@ -135,7 +135,7 @@ struct DialogueRequest {
 
 /// The contents of a treasure box the player just opened, ready to display.
 ///
-/// The source shows this as its own centered modal scene (`engine/world/item_box_scene.py`)
+/// This is shown as its own centered modal scene
 /// rather than as a line of world dialogue, which is why this is a separate state from
 /// `session` instead of another `DialogueSession::message`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -194,10 +194,10 @@ struct WorldDialogueChoices;
 
 /// The `>` gutter beside the choice list, drawn in its own fixed-width column.
 ///
-/// The marker used to be a `">"`/`" "` prefix inside the choice text itself, but the scenario font
-/// is proportional: `>` and a space are not the same width, so every label shifted sideways as the
-/// selection moved. `engine/title/menu_renderer.py` avoids this by laying the text out at
-/// `x + cursor_width` regardless of which row is selected, and this column is the same idea.
+/// The marker is not a `">"`/`" "` prefix inside the choice text itself: the scenario font
+/// is proportional, so `>` and a space are not the same width and every label would shift
+/// sideways as the selection moved. Laying the text out at `x + cursor_width` regardless of
+/// which row is selected avoids this, and this column is the same idea.
 #[derive(Component)]
 struct WorldDialogueChoiceCursors;
 
@@ -295,7 +295,7 @@ fn request_npc_dialogue(
                 InteractionTarget::Dialogue {
                     id: sign.dialogue_id().to_owned(),
                     speaker: None,
-                    // A sign has no sprite sheet, so the source passes no portrait either.
+                    // A sign has no sprite sheet, so no portrait is passed either.
                     portrait: None,
                 },
             )
@@ -366,14 +366,11 @@ fn request_npc_dialogue(
         handle: asset_server.load(scenario_root.resolve(&logical)),
     });
     // The interaction sound plays once `resolve_dialogue_request` confirms a session actually
-    // opens, not here. The pinned Python engine only creates its dialogue overlay after
-    // `DialogueEngine.resolve` returns a match (`engine/world/world_map_scene.py::_try_interact`),
-    // so a target whose dialogue document is missing (e.g. the two painted `zone_03_marshland`
-    // sign tiles — no `sign_zone_03_marshland` document exists in either repository) or whose
-    // entries don't match the current
-    // flags never makes a sound in the original. Queuing the sound eagerly here, before the async
-    // load even resolves, used to make a missing sign click and then show nothing — this player
-    // audible difference is why W12.3 acceptance required an explicit parity decision.
+    // opens, not here. The dialogue overlay is only created once `DialogueEngine.resolve`
+    // returns a match, so a target whose dialogue document is missing or whose
+    // entries don't match the current flags never makes a sound. Queuing the sound eagerly
+    // here, before the async load even resolves, would make a missing sign click and then show
+    // nothing.
     state.failure = None;
 }
 
@@ -450,8 +447,8 @@ struct ItemBoxOutcome {
     opened: bool,
 }
 
-/// The source's fallback when an id resolves to no catalog entry: `hi_potion` reads
-/// `Hi Potion` rather than leaking the identifier (`item_box_scene.py::_name_for`).
+/// The fallback when an id resolves to no catalog entry: `hi_potion` reads
+/// `Hi Potion` rather than leaking the identifier.
 fn humanize_item_id(id: &str) -> String {
     id.split('_')
         .filter(|word| !word.is_empty())
@@ -487,7 +484,7 @@ fn open_item_box(
     }
 
     // The lid comes off before anything is granted, so a rigged box wounds the party even when
-    // it turns out to hold nothing (roadmap B4.2).
+    // it turns out to hold nothing.
     let mut rows = match item_box.trap() {
         Some(trap) => vec![TreasureRow::message(spring_trap(trap, game, catalog))],
         None => Vec::new(),
@@ -534,8 +531,8 @@ fn open_item_box(
     }
     game.opened_boxes_mut().record(key);
     if grants.is_empty() {
-        // A chest authored with no loot at all. The source still opens its modal and prints one
-        // placeholder row rather than a sentence (`item_box_scene.py::_build_lines`).
+        // A chest authored with no loot at all still opens its modal and prints one
+        // placeholder row rather than a sentence.
         grants.push(TreasureRow::message("(empty)"));
     }
     rows.extend(grants);
@@ -722,7 +719,7 @@ pub(crate) fn drive_dialogue_session(
                 }
             };
             // Validate the transition boundary before applying its sibling flags or rewards. A
-            // failed arrival must not leave an ending flag committed on the source map.
+            // failed arrival must not leave an ending flag committed on the departure map.
             if arrival.is_some() && world_transition.input_locked() {
                 state.failure = Some(DialogueActionError::TransitionBusy.to_string());
                 continue;
@@ -1235,19 +1232,18 @@ fn set_text_if_changed(text: &mut Mut<Text>, value: &str) {
     }
 }
 
-/// Box geometry from `engine/dialogue/dialogue_scene.py`.
+/// Box geometry.
 ///
-/// The source sizes the box from the screen -- `box_w = screen_w - BOX_MARGIN * 2` -- so it always
-/// spans the display. The port had `width: px(920)` hardcoded, which left 340 px of the 1280 px
-/// canvas empty to the right of every conversation.
+/// The box is sized from the screen -- `box_w = screen_w - BOX_MARGIN * 2` -- so it always
+/// spans the display; a hardcoded width would leave canvas empty to the right of every
+/// conversation.
 const DIALOGUE_BOX_MARGIN: f32 = 20.0;
 const DIALOGUE_BOX_HEIGHT: f32 = 180.0;
 const DIALOGUE_BOX_PADDING: f32 = 16.0;
 const DIALOGUE_PORTRAIT_SIZE: f32 = 96.0;
-/// The source's speaker plate straddles the box's top border rather than sitting inside it.
+/// The speaker plate straddles the box's top border rather than sitting inside it.
 const DIALOGUE_PLATE_HEIGHT: f32 = 30.0;
-/// Width of the choice-list marker column, mirroring `_CURSOR_PAD` in the source's menu renderer:
-/// wide enough for `>` plus the gap that separates it from the label.
+/// Width of the choice-list marker column, wide enough for `>` plus the gap that separates it from the label.
 const DIALOGUE_CHOICE_CURSOR_WIDTH: f32 = 18.0;
 
 fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle<Font>) {
@@ -1261,7 +1257,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                 right: px(DIALOGUE_BOX_MARGIN),
                 bottom: px(DIALOGUE_BOX_MARGIN),
                 height: px(DIALOGUE_BOX_HEIGHT),
-                // pygame draws the box's 2 px border *inside* the rect, so the source's contents
+                // The box's 2 px border sits *inside* the rect, so the contents
                 // start `BOX_PAD` from the box edge. Bevy lays padding out inside the border, so
                 // the border's width comes out of the padding to land on the same pixels.
                 padding: UiRect::all(px(DIALOGUE_BOX_PADDING - 2.0)),
@@ -1279,14 +1275,14 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
         ))
         .with_children(|panel| {
             // Name plate: absolutely placed so it can hang over the box's own top border, which
-            // is where the source draws it.
+            // is where it belongs.
             panel
                 .spawn((
                     Node {
                         position_type: PositionType::Absolute,
                         // Absolute children sit inside the parent's border, so these insets are
                         // measured from there: 14 px in and half a plate up puts the plate on the
-                        // box's top border exactly where the source draws it.
+                        // box's top border exactly.
                         left: px(14.0 - 2.0),
                         top: px(-(DIALOGUE_PLATE_HEIGHT / 2.0 + 2.0)),
                         height: px(DIALOGUE_PLATE_HEIGHT),
@@ -1309,7 +1305,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
                     TextColor(Color::srgb_u8(235, 210, 140)),
                     WorldDialogueSpeaker,
                 ));
-            // The source draws the portrait's frame whether or not a speaker has a sprite, so a
+            // The portrait's frame is drawn whether or not a speaker has a sprite, so a
             // sign's dialogue keeps the same text column as an NPC's.
             panel
                 .spawn((
@@ -1437,8 +1433,7 @@ fn spawn_dialogue_overlay(commands: &mut Commands, theme: &UiTheme, font: Handle
         });
 }
 
-/// Panel geometry, copied from `engine/world/item_box_scene.py` so the modal keeps the source's
-/// proportions: a fixed-width panel whose height grows one row at a time.
+/// Panel geometry: a fixed-width panel whose height grows one row at a time.
 const TREASURE_MODAL_WIDTH: f32 = 520.0;
 const TREASURE_ROW_HEIGHT: f32 = 30.0;
 const TREASURE_TITLE_HEIGHT: f32 = 42.0;
@@ -1502,11 +1497,11 @@ fn spawn_treasure_overlay(
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            // The source dims with a straight sRGB blend at alpha 160/255 (0.627). Bevy composites
+            // The reference dim is a straight sRGB blend at alpha 160/255 (0.627). Bevy composites
             // in linear space, where that same alpha reads visibly lighter -- measured on the
-            // forest, a 58-value pixel landed at 34 instead of the source's 22. This alpha
-            // reproduces the source's *perceived* darkness instead of its numeric value, the same
-            // adjustment the dialogue box already carries (0.94 for the source's 0.863).
+            // forest, a 58-value pixel landed at 34 instead of 22. This alpha
+            // reproduces the *perceived* darkness instead of its numeric value, the same
+            // adjustment the dialogue box already carries (0.94 for 0.863).
             BackgroundColor(UiTheme::SCENE_DIM_BACKDROP),
             GlobalZIndex(5_500),
             Pickable::IGNORE,
@@ -2159,21 +2154,16 @@ mod tests {
         }
     }
 
-    /// Regression for the behavior delta found during W12.3 acceptance: the pinned Python
-    /// engine's `DialogueEngine.resolve` returns `None` for a missing dialogue document
-    /// (`load_yaml_optional_cached`), and `world_map_scene.py::_try_interact` only opens its
-    /// dialogue overlay — the only place a sound is tied to interaction — once `resolve` returns a
-    /// match. A missing sign document is therefore a fully silent no-op in the original. Marshland
-    /// paints two sign tiles whose dialogue (`sign_zone_03_marshland`) exists in neither
-    /// repository. Before this fix, `request_npc_dialogue` queued the "confirm" interaction sound
-    /// the instant a sign was selected as a target, before the async asset load even had a chance
-    /// to fail — so a missing sign clicked and then showed nothing, unlike the source.
+    /// Regression: `DialogueEngine.resolve` returns `None` for a missing dialogue document, and
+    /// the dialogue overlay — the only place a sound is tied to interaction — only opens once
+    /// `resolve` returns a match. A missing sign document is therefore a fully silent no-op.
+    /// `request_npc_dialogue` must not queue the "confirm" interaction sound the instant a sign
+    /// is selected as a target, before the async asset load even had a chance to fail, or a
+    /// missing sign would click and then show nothing.
     #[test]
     fn interacting_with_a_missing_sign_dialogue_stays_fully_silent() {
-        // The id is deliberately invented. This used to name `sign_zone_03_marshland`, a board
-        // the marshland really did paint with no dialogue behind it, but that gap is authored now
-        // (roadmap B1.3) — and the behaviour under test belongs to the engine, not to whichever
-        // sign happens to be unfinished this week.
+        // The id is deliberately invented: the behaviour under test belongs to the engine, not
+        // to whichever shipped sign happens to be unfinished.
         let mut app = interaction_app("zone_03_marshland", Position::new(5, 5));
         app.world_mut().spawn(WorldSign::for_test(
             "marsh_sign",
@@ -2651,7 +2641,7 @@ mod tests {
 
     #[test]
     fn a_frame_whose_size_does_not_halve_evenly_truncates_like_the_source() {
-        // 33 px: the source's `int(33 * 0.5)` is 16, and `33 // 4` is 8.
+        // 33 px: `int(33 * 0.5)` is 16, and `33 // 4` is 8.
         let head = dialogue_portrait_crop(Rect::new(0.0, 0.0, 33.0, 33.0));
 
         assert_eq!(head.width(), 16.0);

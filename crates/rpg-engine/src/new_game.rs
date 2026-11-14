@@ -1,10 +1,10 @@
 //! Pure construction of a new runtime session from loaded scenario data.
 //!
-//! The pinned Python flow calls `from_new_game` only after name entry confirms. This module
-//! deliberately stops at the equivalent data boundary: it accepts typed, already loaded
-//! manifest, party, and balance inputs and returns one complete [`GameState`]. M3.13 owns the
-//! confirmed-name handoff and atomic insertion into the Bevy world; constructing or installing
-//! a default-name session while merely entering the name screen would change source behavior.
+//! A session is built only after name entry confirms. This module
+//! deliberately stops at that data boundary: it accepts typed, already loaded
+//! manifest, party, and balance inputs and returns one complete [`GameState`]. The
+//! confirmed-name handoff owns atomic insertion into the Bevy world; constructing or installing
+//! a default-name session while merely entering the name screen would be wrong.
 
 use std::{error::Error, fmt, time::Duration};
 
@@ -35,11 +35,11 @@ pub struct NewGameScenario<'a> {
     pub party: &'a PartyCatalog,
     pub balance: &'a BalanceData,
     /// Class data for the manifest-selected protagonist, needed to derive its first EXP
-    /// threshold the way the source does when it attaches class data on construction.
+    /// threshold when class data is attached on construction.
     pub protagonist_class: &'a ClassDefinition,
 }
 
-/// Builds the source-compatible state that name confirmation will install.
+/// Builds the state that name confirmation will install.
 ///
 /// Only the manifest-selected protagonist joins the initial party. The repository and opened-box
 /// set begin empty, the initial facing is down, and playtime starts a zero-total session at the
@@ -528,11 +528,9 @@ mod tests {
         );
         assert_eq!(state.map().position(), Position::new(14, 5));
         assert_eq!(state.map().facing(), CardinalDirection::Down);
-        // One bootstrap flag, where the pinned manifest had two. The second was
-        // `aric_teleport_unlocked`, and the source's own comment called it a DEBUG line that
-        // "should instead be set by a mid-game story event; remove this line to restore the
-        // intended mid-game unlock". The port removed it, and `ardel_shrine_keeper.yaml` now
-        // grants the skill in dialogue, so a new game starts without Teleport as intended.
+        // One bootstrap flag. `aric_teleport_unlocked` is deliberately absent:
+        // `ardel_shrine_keeper.yaml` grants the skill in dialogue, so a new game starts
+        // without Teleport.
         assert_eq!(
             state.flags().iter().collect::<Vec<_>>(),
             ["story_quest_started"]

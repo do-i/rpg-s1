@@ -528,7 +528,7 @@ fn check_signs(
 /// walks the map's item boxes (no interaction simulation).
 ///
 /// A TMX with no same-stem metadata YAML has no NPCs or item boxes to sweep; that is expected for
-/// the pinned corpus's numbered cave/segment/placeholder maps and is not itself a finding.
+/// the shipped scenario's numbered cave/segment/placeholder maps and is not itself a finding.
 fn check_npcs_and_boxes(
     document: &TmxMapDocument,
     stem: &str,
@@ -1293,10 +1293,9 @@ item_boxes:
     /// regressions in the sweep pipeline itself, not to bless the count — a real change in either
     /// direction (new findings, or findings that silently stop firing) is worth investigating.
     ///
-    /// The sweep is fully clean as of roadmap B1.3. The two findings it used to carry were both
-    /// signs the player could walk up to and interact with that had no dialogue behind them —
-    /// `zone_03_marshland` (two of them) and `zone_06_mountain_pass_01` — which is exactly the
-    /// unfurnished-zone problem B1.3 exists to close. Both boards are now authored.
+    /// The sweep is fully clean. A sign the player can walk up to and interact with must have
+    /// dialogue behind it, and the boards in `zone_03_marshland` (two of them) and
+    /// `zone_06_mountain_pass_01` are authored.
     #[test]
     fn the_shipped_scenario_matches_the_known_finding_inventory() {
         let root = crate::test_support::scenario_package_dir();
@@ -1311,7 +1310,7 @@ item_boxes:
         assert_eq!(report.category_count(SweepCategory::Portal), 0);
         assert_eq!(report.category_count(SweepCategory::Object), 0);
 
-        // The two boards that used to be silent now carry text, and their maps sweep clean.
+        // Both boards carry text, and their maps sweep clean.
         for id in ["zone_03_marshland", "zone_06_mountain_pass_01"] {
             assert!(
                 findings(entry(&report, id), SweepCategory::Object).is_empty(),

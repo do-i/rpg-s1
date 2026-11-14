@@ -1,12 +1,12 @@
 //! Flag-derived runtime quest status.
 //!
-//! The pinned Python game has no quest-progress store or objective counters. Its read-only quest
+//! There is no quest-progress store or objective counters. The read-only quest
 //! board derives status directly from each immutable [`QuestDefinition`]'s two flag ids. Keeping
 //! that query pure leaves [`RuntimeFlags`] as the only mutable source of truth.
 
 use crate::{runtime_flags::RuntimeFlags, scenario_quest::QuestDefinition};
 
-/// The three quest-board lifecycle states exposed by the pinned game.
+/// The three quest-board lifecycle states exposed by the game.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum QuestStatus {
     Inactive,
@@ -16,7 +16,7 @@ pub enum QuestStatus {
 
 /// Derives one quest's current status without changing flags or catalog data.
 ///
-/// Completion takes precedence, matching Python when only the completion flag or both flags are
+/// Completion takes precedence, also when only the completion flag or both flags are
 /// active.
 pub fn quest_status(quest: &QuestDefinition, flags: &RuntimeFlags) -> QuestStatus {
     if flags.is_set(&quest.completed_flag) {

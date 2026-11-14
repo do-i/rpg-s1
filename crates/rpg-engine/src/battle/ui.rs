@@ -46,7 +46,7 @@ mod deck;
 
 const LPC_COLUMNS: u32 = 9;
 /// LPC row layout, shared by every authored `*_battle.tsx` sheet: row 2 is spellcast-facing-down
-/// over 7 frames, row 6 is thrust-facing-down over 8 (`battle_enemy_area_renderer.py:44-49`). The
+/// over 7 frames, row 6 is thrust-facing-down over 8. The
 /// idle pose is the first frame of the spellcast row.
 const SPELLCAST_ROW: u32 = 2;
 const SPELLCAST_FRAMES: u32 = 7;
@@ -80,8 +80,7 @@ const STATUS_ICON_SIZE: f32 = 24.0;
 /// Where a combatant's badge stack sits on its card.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum BadgeAnchor {
-    /// Pinned into the top-right corner of the frame it annotates, stacked downwards — the
-    /// source's placement (`battle_party_panel_renderer.py:141-151`).
+    /// Pinned into the top-right corner of the frame it annotates, stacked downwards.
     FrameCorner,
     /// Centered along the sprite tile's top edge, scaled to its displayed width.
     SpriteTopCenter { sprite_size: f32 },
@@ -1437,7 +1436,7 @@ fn battle_row_active() -> Color {
     Color::srgba_u8(79, 51, 38, 230)
 }
 
-/// The targeting reticle, `C_TARGET` in the source (`battle_party_panel_renderer.py:25`).
+/// The targeting reticle colour.
 fn battle_target() -> Color {
     Color::srgb_u8(204, 170, 255)
 }
@@ -1473,7 +1472,7 @@ fn battle_mana() -> Color {
 /// The sheet tile an enemy shows this frame.
 ///
 /// An idle enemy holds the resting pose; a mid-action one steps through its row, holding the last
-/// frame at the end rather than wrapping (`battle_enemy_area_renderer.py:200-207`).
+/// frame at the end rather than wrapping.
 fn enemy_sprite_tile(animation: Option<(AttackKind, f32)>) -> u32 {
     let Some((kind, progress)) = animation else {
         return BATTLE_IDLE_TILE;
@@ -1620,7 +1619,7 @@ fn position_enemy_cards(
 }
 
 /// Idle breathing, held flat while an enemy is mid-swing so the squash does not fight the attack
-/// frames — the same suspension the source applies (`battle_enemy_area_renderer.py:120-124`).
+/// frames — the same suspension the attack animation expects.
 fn animate_enemy_breathing(
     time: Res<Time>,
     attacks: Option<Res<super::fx::BattleAttackAnimations>>,
@@ -1864,8 +1863,7 @@ fn handle_battle_input(
                 };
                 state.message = "Action cancelled.".to_owned();
             } else {
-                // Enemies stand in a row, so Left/Right cycle the same pool Up/Down do
-                // (`battle_input.py:106-109`).
+                // Enemies stand in a row, so Left/Right cycle the same pool Up/Down do.
                 if let Some(movement) = target_navigation(&actions)
                     && let Some(target) = state.target.as_mut()
                 {
@@ -2004,14 +2002,14 @@ fn request_battle_bgm_fade(
     }
 }
 
-/// Confirm, or Right — the pinned engine accepts both on the command and sub-menus
-/// (`battle_input.py:80,93`). Target selection is deliberately excluded: there Right steps the
+/// Confirm, or Right — both are accepted on the command and sub-menus.
+/// Target selection is deliberately excluded: there Right steps the
 /// pool instead.
 fn confirm_pressed(actions: &ActionState) -> bool {
     actions.just_pressed(AppAction::Confirm) || actions.just_pressed(AppAction::Right)
 }
 
-/// Back, or Left — Left backs out of a sub-menu in the pinned engine (`battle_input.py:85`).
+/// Back, or Left — Left backs out of a sub-menu.
 fn cancel_pressed(actions: &ActionState) -> bool {
     actions.just_pressed(AppAction::Back) || actions.just_pressed(AppAction::Left)
 }
@@ -2317,8 +2315,7 @@ fn attempt_flee(
         FleeOutcome::Failed => "Couldn't escape! Press Enter.".to_owned(),
         FleeOutcome::Blocked => "Can't escape from a boss! Press Enter.".to_owned(),
     };
-    // The pinned engine splits these: getting away plays the escape cue, a failed or boss-blocked
-    // attempt plays the refusal (`battle_scene.py:246`).
+    // Getting away plays the escape cue; a failed or boss-blocked attempt plays the refusal.
     match outcome {
         FleeOutcome::Success => menu_sfx.play(cue::FLEE),
         FleeOutcome::Failed | FleeOutcome::Blocked => menu_sfx.blocked(),
@@ -2356,7 +2353,7 @@ fn sync_party_cards(
         let is_active = active == Some(key) && actor.is_alive();
         background.0 = Color::srgb_u8(30, 30, 38);
         // A heal or a revive picks its target from these cards, so the reticle has to land on the
-        // member the way it lands on an enemy sprite (`battle_party_panel_renderer.py:80-82`).
+        // member the way it lands on an enemy sprite.
         border.set_all(if selected_target == Some(key) {
             battle_target()
         } else if is_active {
@@ -3013,13 +3010,13 @@ mod tests {
     fn right_confirms_and_left_cancels_outside_target_selection() {
         use crate::input_record::NormalizedAction as Key;
 
-        // `battle_input.py:80,93` — Right is a second confirm on the command and sub-menus.
+        // Right is a second confirm on the command and sub-menus.
         assert!(confirm_pressed(&actions_from(&[Key::Confirm])));
         assert!(confirm_pressed(&actions_from(&[Key::MenuRight])));
         assert!(!confirm_pressed(&actions_from(&[Key::MenuLeft])));
         assert!(!confirm_pressed(&actions_from(&[])));
 
-        // `battle_input.py:85` — Left backs out of a sub-menu the way ESC does.
+        // Left backs out of a sub-menu the way ESC does.
         assert!(cancel_pressed(&actions_from(&[Key::Back])));
         assert!(cancel_pressed(&actions_from(&[Key::MenuLeft])));
         assert!(!cancel_pressed(&actions_from(&[Key::MenuRight])));
@@ -3030,8 +3027,7 @@ mod tests {
     fn target_selection_cycles_horizontally_without_confirming() {
         use crate::input_record::NormalizedAction as Key;
 
-        // Enemies stand in a row, so Left/Right walk it just as Up/Down do
-        // (`battle_input.py:106-109`).
+        // Enemies stand in a row, so Left/Right walk it just as Up/Down do.
         assert_eq!(target_navigation(&actions_from(&[Key::MenuLeft])), Some(-1));
         assert_eq!(target_navigation(&actions_from(&[Key::MenuRight])), Some(1));
         assert_eq!(target_navigation(&actions_from(&[Key::MenuUp])), Some(-1));
@@ -3174,7 +3170,7 @@ mod tests {
         }
     }
 
-    /// The defect RK-BTL-011 recorded: every badge resolved, coloured and un-hid correctly, and
+    /// The defect: every badge resolved, coloured and un-hid correctly, and
     /// not one of them reached the screen.
     ///
     /// The stack claimed `GlobalZIndex(15)` to sit above the portrait it overlaps, which reads as

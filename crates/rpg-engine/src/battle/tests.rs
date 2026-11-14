@@ -1315,7 +1315,7 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
     .unwrap();
     let member = game.party().member("aric").unwrap();
     assert_eq!((member.level(), member.experience()), (2, 400));
-    // 35, not the source's 59: B3.1 divides post-growth CON in the per-level HP gain.
+    // 35, not 59: the per-level HP gain divides post-growth CON.
     assert_eq!((member.health(), member.mana()), (35, 24));
     assert_eq!(
         (
@@ -1335,9 +1335,8 @@ fn reward_application_is_atomic_one_time_and_sets_only_a_defeated_boss_flag() {
         game.repository().item_tags("mc_s").collect::<Vec<_>>(),
         ["magic_core"]
     );
-    // B3.2: combat now pays gold. This enemy has no authored `gp`, so it yields the
-    // EXP-derived default, and the reward is actually credited to the party wallet -- the
-    // downstream `if gp_gained > 0` branch was dead in both engines until this row.
+    // Combat pays gold. This enemy has no authored `gp`, so it yields the
+    // EXP-derived default, and the reward is credited to the party wallet.
     assert_eq!(rewards.gp_gained, 12);
     assert_eq!(game.repository().gp(), 12);
     assert_eq!(rewards.total_experience, 400);
@@ -1390,7 +1389,7 @@ fn configured_boss_flag_is_ignored_for_a_regular_enemy_victory() {
     assert!(!game.flags().is_set("should_not_set"));
 }
 
-/// B1.5: a scripted battle reports its own outcome, and reaching rewards is that outcome.
+/// A scripted battle reports its own outcome, and reaching rewards is that outcome.
 ///
 /// Unlike the zone boss flag above these are not gated on a boss dying, because an authored duel
 /// may name any enemy — and unlike the branch's own `set_flag` they are committed here rather
@@ -1559,12 +1558,6 @@ fn full_battle_parity_transcript_is_pinned_without_python_installed() {
         ]
     );
 }
-
-// `full_battle_parity_transcript_matches_the_pinned_python_oracle` lived here until the Python
-// checkout was retired. It ran the source engine through the same battle and compared transcripts.
-// The transcript itself is still pinned, by
-// `full_battle_parity_transcript_is_pinned_without_python_installed` above, which asserts the
-// exact same six lines with no Python involved -- so the coverage this file provides is unchanged.
 
 #[test]
 fn reward_application_rolls_back_every_change_when_a_later_member_is_invalid() {

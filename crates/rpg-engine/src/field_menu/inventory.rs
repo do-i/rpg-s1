@@ -87,8 +87,7 @@ pub(super) fn handle_input(
             if let Some(delta) = input.vertical {
                 state.selected = wrapped_or_zero(state.selected, ids.len(), delta);
             }
-            // Python opens the manage modal with M; here M closes the whole field menu, so the
-            // show/hide manager takes H instead.
+            // M closes the whole field menu, so the show/hide manager takes H instead.
             if input.keys.just_pressed(KeyCode::KeyH) {
                 if manage_ids(game, catalog).is_empty() {
                     state.message = "The pouch is empty.".to_owned();
@@ -119,8 +118,8 @@ pub(super) fn handle_input(
                         state.mode = FieldMenuMode::ItemEquipTarget;
                         state.selected = first_equipper(game, catalog, &id);
                     }
-                    // A party-wide item never reaches the target picker: the source branches on
-                    // the effect's target before offering one, and routing a Tent through the
+                    // A party-wide item never reaches the target picker: the effect's target is checked
+                    // before offering one, and routing a Tent through the
                     // picker is what made it unusable -- every member was an invalid target.
                     0 if targets_whole_party(catalog, &id) => {
                         if engine.use_aoe_confirm {

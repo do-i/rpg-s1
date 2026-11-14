@@ -155,7 +155,7 @@ pub(crate) enum RebindError {
     /// other way gives the input up, but the last binding of an action is never taken, because a
     /// player who loses every Confirm key cannot reach the options screen to undo it.
     WouldUnbind { owner: BindingTarget },
-    /// The input is outside the port's bindable set, so it could not be written to the file.
+    /// The input is outside the bindable set, so it could not be written to the file.
     Unbindable,
 }
 

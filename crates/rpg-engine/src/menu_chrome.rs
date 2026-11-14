@@ -539,7 +539,7 @@ const MAP_ID_CATEGORIES: [&str; 4] = ["town", "port", "zone", "dungeon"];
 
 /// Renders a stored map id as a readable place name.
 ///
-/// Saves record the raw map id (`town_02_millhaven`), which is what the slot lists used to show.
+/// Saves record the raw map id (`town_02_millhaven`), which is not a readable name for a slot list.
 /// Grouping prefixes and ordering numbers are authoring structure, not part of the place's name,
 /// so they are dropped and the rest is title-cased.
 pub(crate) fn location_display_name(raw: &str) -> String {

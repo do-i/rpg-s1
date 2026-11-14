@@ -339,7 +339,7 @@ fn restore_late_assets(world: &mut World) {
     }
 }
 
-/// The generation retained alongside RF-02's dormant World bundles. Strong handles keep
+/// The generation retained alongside the dormant World bundles. Strong handles keep
 /// replaced TSX layouts and images alive until the candidate commits or is rolled back.
 #[derive(Default)]
 pub(super) struct ReloadSnapshot {

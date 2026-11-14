@@ -64,7 +64,7 @@ impl fmt::Display for EncounterCatalogError {
 
 impl Error for EncounterCatalogError {}
 
-/// Indexed immutable enemy definitions loaded from the source rank streams.
+/// Indexed immutable enemy definitions loaded from the rank-stream YAML files.
 #[derive(Clone, Debug, Default, PartialEq, Resource)]
 pub struct EnemyCatalog(BTreeMap<String, EnemyDefinition>);
 
@@ -228,7 +228,7 @@ fn party_encounter_modifiers_for<'a>(
         }
     }
     if has_rogue {
-        // Pinned Python behavior: the party-wide Rogue passive reduces encounter cadence by 20%.
+        // The party-wide Rogue passive reduces encounter cadence by 20%.
         modifiers.interval_multiplier /= 0.8;
     }
     modifiers
@@ -300,7 +300,7 @@ pub struct BattleParticipant {
     pub immunities: Vec<crate::scenario_enemy::EnemyImmunity>,
     pub behavior: Option<crate::scenario_enemy::EnemyBehavior>,
     pub experience_yield: u32,
-    /// Gold this combatant pays out on defeat (B3.2); always zero for party members.
+    /// Gold this combatant pays out on defeat; always zero for party members.
     pub gold_yield: u32,
     pub enemy_size: Option<EnemySize>,
     pub sprite_id: String,
@@ -578,7 +578,7 @@ fn is_sword(item: &crate::scenario_item::ItemDefinition) -> bool {
     )
 }
 
-/// B3.2: an enemy's gold is its authored `gp` when present, otherwise a percentage of its EXP
+/// An enemy's gold is its authored `gp` when present, otherwise a percentage of its EXP
 /// yield. Deriving the default keeps 108 enemies consistent without hand-authoring each one.
 fn enemy_gold_yield(enemy: &EnemyDefinition, gp_per_exp_percent: u32) -> u32 {
     enemy.gold.map_or_else(
@@ -639,8 +639,8 @@ mod tests {
         .unwrap()
     }
 
-    /// B3.2. Combat paid no gold in either engine -- `gp_gained` was hardcoded to zero and the
-    /// magic-core exchange was the only faucet. Enemies now yield gold, derived from EXP by
+    /// Combat pays gold rather than leaving the magic-core exchange as the only faucet.
+    /// Enemies yield gold, derived from EXP by
     /// default so all 108 stay consistent, with an authored `gp` overriding it for the thief,
     /// bandit and pirate archetypes that should carry coin.
     #[test]
@@ -761,9 +761,8 @@ mod tests {
 
     #[test]
     fn fixed_seed_reproduces_the_pinned_python_formation_fixture() {
-        // The port's versioned SplitMix64 stream intentionally differs from Python's MT19937.
-        // Seed 7 is the Rust fixture seed for the formation bucket trace captured from Python
-        // random.Random(42): pair, single, single, single, pair.
+        // The versioned SplitMix64 stream is the project's own; seed 7 yields the formation
+        // bucket trace pair, single, single, single, pair.
         let entries = zone().entries;
         let mut rng = GameplayRng::from_seed(7);
         let picked = (0..5)
@@ -929,7 +928,7 @@ mod tests {
         }
     }
 
-    /// Roadmap B1.2. The Marshal's Camp is the only scripted battle in the shipped scenario and
+    /// The Marshal's Camp is the only scripted battle in the shipped scenario and
     /// the only thing between zone 9 and the final stronghold, so it is worth pinning against
     /// the real content rather than a fixture: the duel has to name an enemy the catalog has,
     /// that enemy has to resolve its boss move set, and the camp's zone has to be able to frame
@@ -962,7 +961,7 @@ mod tests {
             "both refusal branches fight, and nothing else does"
         );
 
-        // B1.5: the two branches that fight must not resolve the stand up front. Everything the
+        // The two branches that fight must not resolve the stand up front. Everything the
         // world reads off this scene -- the gate NPC leaving, the grave marker appearing -- has
         // to wait for the fight to actually be won, or fleeing opens the road exactly like
         // winning does.

@@ -162,8 +162,7 @@ impl WorldNpc {
         self.position
     }
 
-    /// The pixel position the source uses for interaction facing/range checks
-    /// (`Npc.pixel_position` in `engine/world/npc.py`, i.e. `(self._px, self._py)`). Since
+    /// The pixel position used for interaction facing/range checks. Since
     /// `top_left` already stores that same uncentered origin (see the type doc), this is just
     /// `top_left` — no compensating offset needed.
     pub(crate) fn source_pixel_position(&self) -> Vec2 {
@@ -653,13 +652,12 @@ fn tile_from_top_left(top_left: Vec2) -> Position {
 }
 
 /// An NPC's sprite top-left for an authored tile: the *plain* tile corner, `tile * TILE_SIZE`,
-/// with no collision centering. This matches the source's `Npc.__init__` (`engine/world/npc.py`):
-/// `_origin_px = tile_x * tile_size; _origin_py = tile_y * tile_size`, blitted directly as the
-/// sprite's top-left in `Npc.render`. This is deliberately *not* the player/enemy formula
+/// with no collision centering. The sprite is blitted directly at that
+/// corner. This is deliberately *not* the player/enemy formula
 /// (`world_player::character_top_left`, `world_encounter::simulation::enemy_top_left`), which centers the
-/// collision box on the tile instead — the source's player and NPC classes use two different
-/// placement conventions, and porting the player's formula onto NPCs was the original bug (NPCs
-/// rendering a tile too high/left).
+/// collision box on the tile instead — players and NPCs use two different
+/// placement conventions, and applying the player's formula to NPCs would render them a tile
+/// too high/left.
 fn character_top_left(position: Position) -> Vec2 {
     Vec2::new(
         position.x as f32 * TILE_SIZE as f32,
@@ -1007,7 +1005,7 @@ mod tests {
     /// Harborgate town NPCs carry a `present:` clause at all — the production spawn set is the
     /// full authored roster under every flag state. This fixture proves the exact ids, positions,
     /// and dialogue references `world_actor::present_npcs` resolves, and that the set is stable
-    /// across fresh, Act II, and Act III flags (i.e. no accidental gating slipped into the port).
+    /// across fresh, Act II, and Act III flags (i.e. no accidental gating).
     #[test]
     fn presence_conditions_keep_the_full_harborgate_town_roster_present_across_story_flags() {
         let metadata = harborgate_metadata();
@@ -1383,7 +1381,7 @@ mod tests {
         assert!(actor.top_left.x > start.x);
         assert!(actor.top_left.x < start.x + TILE_SIZE as f32);
         assert_eq!(actor.top_left.y, start.y);
-        // Occupied tile is `origin + (1, 1)` under the source-matching convention (see the
+        // Occupied tile is `origin + (1, 1)` under the NPC placement convention (see the
         // `WorldNpc` type doc); the tiny sub-tile move here doesn't cross into a new one.
         assert_eq!(actor.position, Position::new(5, 5));
         assert_eq!(actor.facing, CardinalDirection::Right);
@@ -1465,13 +1463,12 @@ mod tests {
         ));
     }
 
-    /// Pins the source placement convention documented on `WorldNpc`
-    /// (`engine/world/npc.py::Npc.__init__`/`render`/`collision_rect`) against the exact pixel
-    /// values the Python engine computes for an authored NPC tile, verifying render, collision,
+    /// Pins the placement convention documented on `WorldNpc` against the exact pixel
+    /// values for an authored NPC tile, verifying render, collision,
     /// and interaction geometry all agree. This is the regression test for the "NPCs render one
-    /// cell too high" bug: `character_top_left` used to apply the player's collision-centered
-    /// formula to NPCs (`tile*32 - 16, tile*32 - 34`), which shifted the drawn sprite up/left of
-    /// the source.
+    /// cell too high" bug: applying the player's collision-centered
+    /// formula to NPCs (`tile*32 - 16, tile*32 - 34`) shifts the drawn sprite up/left of
+    /// the authored tile.
     #[test]
     fn npc_top_left_render_and_collision_match_source_pixel_values() {
         let tile = Position::new(6, 9);
@@ -1482,7 +1479,7 @@ mod tests {
         assert_eq!(top_left, Vec2::new(6.0 * 32.0, 9.0 * 32.0));
 
         // `Npc.render` blits the scaled 64x64 sprite's top-left at `(_px, _py)`, so the sprite
-        // center — what the port's `Transform` uses — is the top-left plus half the sprite size.
+        // center — what the `Transform` uses — is the top-left plus half the sprite size.
         let render_center = top_left + Vec2::splat(CHARACTER_SPRITE_SIZE / 2.0);
         assert_eq!(render_center, top_left + Vec2::new(32.0, 32.0));
 
@@ -1519,7 +1516,7 @@ mod tests {
         assert_eq!(npc.source_pixel_position(), top_left);
 
         // `tile_from_top_left` — the tile the collision box occupies — lands one tile southeast
-        // of the authored anchor for an unmoved NPC, matching the source's own geometry (the
+        // of the authored anchor for an unmoved NPC, as the collision geometry implies (the
         // collision rect's center sits near `_px + 32, _py + 50`). `WorldNpc::position` is seeded
         // with exactly this value at spawn, so it agrees with what wander recomputes later.
         assert_eq!(npc.tile_position(), Position::new(tile.x + 1, tile.y + 1));

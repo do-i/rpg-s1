@@ -4,7 +4,7 @@
 //! It neither proves that an id names a loaded scenario map nor performs a transition: catalog
 //! validation, portal success, movement, rendering, new-game assembly, and save envelopes each
 //! have later owners. A map id is nevertheless nonempty at this boundary, while `None` expresses
-//! the legitimate pre-new-game state without using Python's ambiguous empty-string sentinel.
+//! the legitimate pre-new-game state without an ambiguous empty-string sentinel.
 
 use bevy::prelude::Resource;
 use std::{collections::BTreeSet, fmt};
@@ -112,8 +112,8 @@ impl RuntimeMapState {
 
     /// Commits a completed map transition.
     ///
-    /// The previous current map becomes visited, including a same-id transition, matching the
-    /// pinned Python `MapState.move_to` behavior. The arrival itself is not visited until it is
+    /// The previous current map becomes visited, including a same-id transition, so the
+    /// history records every departure. The arrival itself is not visited until it is
     /// later departed. Repeated history insertions are idempotent.
     pub fn move_to(&mut self, map_id: RuntimeMapId, position: Position, facing: CardinalDirection) {
         if let Some(previous) = self.current.replace(map_id) {

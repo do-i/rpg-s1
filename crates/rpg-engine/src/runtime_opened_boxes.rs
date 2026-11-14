@@ -3,7 +3,7 @@
 //! Source box ids are unique only inside their map, so each opened identity is a typed
 //! `(map_id, box_id)` pair rather than a bare id. This resource records membership only:
 //! map loading, presence conditions, interaction, loot granting, presentation, catalog checks,
-//! and serialization are deliberately owned by later milestones.
+//! and serialization are deliberately left to other modules.
 
 use bevy::prelude::Resource;
 use std::{collections::BTreeSet, fmt};

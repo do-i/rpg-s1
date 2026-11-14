@@ -84,9 +84,8 @@ impl ActionState {
 
     /// Resolves same-frame menu navigation to one movement.
     ///
-    /// The Python menu consumes key-down events in platform arrival order, so pressing Up and
-    /// Down in one frame has no source-defined simultaneous-key outcome. The Rust port fixes
-    /// that ambiguity: Up wins. This prevents a conflicting pair from taking two menu steps and
+    /// Key-down events arrive in platform order, so pressing Up and
+    /// Down in one frame has no natural simultaneous-key outcome. Up wins. This prevents a conflicting pair from taking two menu steps and
     /// keeps the result independent of platform event ordering.
     ///
     /// A held direction also steps here once it starts repeating; see [`MenuRepeat`].
@@ -96,17 +95,17 @@ impl ActionState {
 
     /// Resolves same-frame horizontal menu navigation to one movement.
     ///
-    /// The pinned engine's battle target picker treats Left as "previous" and Right as "next"
-    /// alongside Up/Down (`battle_input.py:106-109`). Left wins a conflicting pair for the same
+    /// The battle target picker treats Left as "previous" and Right as "next"
+    /// alongside Up/Down. Left wins a conflicting pair for the same
     /// reason Up does above: one keypress pair must never take two steps.
     pub(crate) fn menu_navigation_horizontal(&self) -> Option<isize> {
         self.navigation_step(AppAction::Left, AppAction::Right)
     }
 
-    /// Resolves the currently held source-compatible eight-way movement input.
+    /// Resolves the currently held eight-way movement input.
     ///
     /// World movement is continuous, so held directions remain active every frame. The vector
-    /// uses every held direction exactly as Python's summed key state does; opposites cancel.
+    /// uses every held direction as a summed key state; opposites cancel.
     pub(crate) fn movement(&self) -> Option<crate::scenario_spatial::EightWayDirection> {
         use crate::scenario_spatial::EightWayDirection;
 
@@ -826,7 +825,7 @@ mod tests {
 
     #[test]
     fn stick_direction_flips_the_gamepad_y_axis_to_screen_space() {
-        // A gamepad reports +Y as up; the port's movement vector reports +1 as down.
+        // A gamepad reports +Y as up; the movement vector reports +1 as down.
         assert_eq!(
             StickDirection::from_stick(Vec2::new(0.0, 1.0)),
             StickDirection {

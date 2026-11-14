@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn unlisted_keys_and_unknown_names_are_rejected() {
-        // A real `KeyCode` the port deliberately does not offer.
+        // A real `KeyCode` that is deliberately not offered.
         assert_eq!(key_name(KeyCode::MediaPlayPause), None);
         assert_eq!(key_from_name("MediaPlayPause"), None);
         assert_eq!(

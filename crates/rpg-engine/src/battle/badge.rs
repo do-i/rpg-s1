@@ -117,7 +117,7 @@ pub(super) fn badge_for(status: ActiveStatus) -> Option<StatusBadge> {
 
 /// Every badge a combatant should wear, in application order, capped at [`MAX_BADGES`].
 ///
-/// Application order is what the source shows — it draws `status_effects[0]` — so the oldest
+/// Badges follow application order — `status_effects[0]` is drawn first — so the oldest
 /// affliction stays put instead of the row reshuffling every time something else lands.
 pub(super) fn badges(statuses: &[ActiveStatus]) -> Vec<StatusBadge> {
     statuses
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn the_source_palette_is_reproduced_exactly() {
-        // `battle_renderer_constants.py:32-42`, verbatim.
+        // The palette is fixed; any change here is deliberate.
         for (effect, label, fill, ink) in [
             (StatusEffect::Poison, "PSN", (51, 102, 51), (170, 255, 170)),
             (StatusEffect::Sleep, "zzz", (68, 68, 170), (204, 204, 255)),

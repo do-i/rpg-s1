@@ -98,7 +98,7 @@ impl RuntimePortal {
     }
 
     /// The portal's source-pixel rectangle, e.g. for the `RPG_S1_DEBUG_COLLISION` overlay
-    /// (`world_debug_overlay`), which mirrors the source's `_render_portal_debug`.
+    /// (`world_debug_overlay`), which draws the same rectangle.
     pub(crate) const fn bounds(&self) -> PortalBounds {
         self.bounds
     }
@@ -122,7 +122,7 @@ pub(crate) struct PortalBounds {
 }
 
 impl PortalBounds {
-    /// Mirrors the source's `Portal.is_triggered_by` (`engine/world/portal_data.py`): the player's
+    /// The player's
     /// live pixel collision rect against this portal's pixel rect, inclusive on all four edges —
     /// so a zero-size point portal (`width`/`height` both 0) still triggers on exact touch.
     fn is_triggered_by(self, rect: CharacterCollisionRect) -> bool {
@@ -470,9 +470,8 @@ fn detect_portal_entry(
     let Ok(portals) = runtime_portals(map.document()) else {
         return;
     };
-    // Prefer the player's live smoothly-moved pixel collision rect, matching the source's
-    // per-frame `Portal.is_triggered_by(col.x, col.y, COLLISION_W, COLLISION_H)` check against the
-    // player's actual position. The tile-derived fallback (same formula as
+    // Prefer the player's live smoothly-moved pixel collision rect, checked every frame against
+    // the player's actual position. The tile-derived fallback (same formula as
     // `WorldPlayerMotion::from_tile`) only applies in the narrow window before the World player
     // entity has spawned, which `TransitionPhase::Idle` above should already rule out in practice.
     let player_rect = players
@@ -963,9 +962,9 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         assert_eq!(returns[0].target_position(), Position::new(24, 4));
     }
 
-    /// Roadmap B1.2. The camp is not optional scenery: it was inserted *into* the road, so
-    /// zone 9 no longer reaches the stronghold directly and the stronghold no longer reaches
-    /// zone 9. Every run now passes the Cinder Marshal.
+    /// The camp is not optional scenery: it sits *in* the road, so
+    /// zone 9 does not reach the stronghold directly and the stronghold does not reach
+    /// zone 9. Every run passes the Cinder Marshal.
     #[test]
     fn the_marshal_camp_sits_between_the_volcanic_region_and_the_final_stronghold() {
         const VOLCANIC: &str =
@@ -1257,7 +1256,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             ]
         );
 
-        // The W12.2 boundary is reversible: the plains' Marshland exit lands back on
+        // The plains-to-Marshland boundary is reversible: the plains' Marshland exit lands back on
         // this same portal's return position.
         assert_reversible_link(
             "zone_03_marshland",
@@ -1271,9 +1270,9 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             .unwrap();
         assert_eq!(plains_to_marshland.target_position(), Position::new(40, 1));
 
-        // The W12.4 boundary (Ancient Ruins) only needs to parse here; the destination
-        // map is out of this wave's scope and asserting a reverse link would be a false
-        // claim about content this wave does not own.
+        // The Ancient Ruins boundary only needs to parse here; the destination
+        // map is out of this test's scope and asserting a reverse link would be a false
+        // claim about content it does not own.
         assert!(
             portals
                 .iter()
@@ -1768,8 +1767,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
         );
     }
 
-    /// Pins `PortalBounds::is_triggered_by` against the source's `Portal.is_triggered_by`
-    /// (`engine/world/portal_data.py`): edges are inclusive, and a zero-size point portal (a
+    /// Pins `PortalBounds::is_triggered_by`: edges are inclusive, and a zero-size point portal (a
     /// Tiled point object, `width`/`height` both 0) still triggers on exact touch.
     #[test]
     fn portal_trigger_matches_source_inclusive_edge_and_point_portal_semantics() {
@@ -1790,7 +1788,7 @@ with TemporaryDirectory(prefix="rpg-editor-runtime-test-") as directory:
             width: 20.0,
             height: 20.0,
         };
-        // Rect's left edge lands exactly on the portal's right edge (x = 70): the source's
+        // Rect's left edge lands exactly on the portal's right edge (x = 70): the
         // `<=`/`>=` comparison counts this as a trigger, unlike a strict-inequality tile-box test.
         assert!(portal.is_triggered_by(rect(70.0, 55.0, 10.0, 10.0)));
         // Symmetric case on the portal's left edge (x = 50).

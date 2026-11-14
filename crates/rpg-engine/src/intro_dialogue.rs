@@ -1,7 +1,7 @@
 //! Manifest-selected introductory cutscene presentation and linear progression.
 //!
-//! This slice renders complete authored lines immediately. Typewriter timing remains owned by a
-//! later milestone; cancellation and completion hand off to the installed game flow.
+//! This slice renders complete authored lines immediately. Typewriter timing is not applied here;
+//! cancellation and completion hand off to the installed game flow.
 
 use std::borrow::Cow;
 
@@ -80,7 +80,7 @@ impl Plugin for IntroDialoguePlugin {
     }
 }
 
-/// Typed handoff consumed by M3.15 and M3.16 without applying effects in this screen.
+/// Typed handoff consumed by the game-flow handoff without applying effects in this screen.
 #[derive(Clone, Debug, Eq, Message, PartialEq)]
 pub(crate) struct IntroDialogueCompleted {
     on_complete: DialogueActions,
@@ -339,7 +339,7 @@ fn advance_intro_dialogue(
     }
 }
 
-/// Like Python's `DialogueScene`, Back closes the overlay without dispatching authored
+/// Back closes the overlay without dispatching authored
 /// completion actions. It is ordered before progression and takes precedence over Confirm.
 fn cancel_intro_dialogue(
     actions: Res<ActionState>,

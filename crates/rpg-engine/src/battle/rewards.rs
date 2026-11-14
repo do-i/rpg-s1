@@ -113,8 +113,7 @@ pub(super) fn calculate_rewards(
         .filter(|actor| actor.key.side == BattleSide::Enemy)
         .map(|actor| actor.experience_yield)
         .fold(0_u32, u32::saturating_add);
-    // B3.2: every defeated enemy pays gold. Both engines shipped `gp_gained: 0` with a dead
-    // `if gp_gained > 0` branch downstream; this is what finally feeds it.
+    // Every defeated enemy pays gold, which feeds the `if gp_gained > 0` branch downstream.
     let gp_gained = state
         .combatants
         .iter()

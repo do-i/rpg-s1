@@ -1,10 +1,10 @@
 //! Durable publication of a fully written and re-verified file.
 //!
-//! The save store, the options store, and the Python importer's slot backup all publish the same
-//! way: write a uniquely named temporary file beside the destination with exclusive creation, sync
-//! it, read it back for the caller's own verification, publish it in one directory operation, and
-//! sync the directory. Each caller keeps its own validation, naming, and policy rules; this module
-//! owns only the filesystem sequence and reports which side of publication a failure fell on.
+//! The save store and the options store publish the same way: write a uniquely named temporary
+//! file beside the destination with exclusive creation, sync it, read it back for the caller's own
+//! verification, publish it in one directory operation, and sync the directory. Each caller keeps
+//! its own validation, naming, and policy rules; this module owns only the filesystem sequence and
+//! reports which side of publication a failure fell on.
 
 use std::{
     fs::{self, File, OpenOptions},

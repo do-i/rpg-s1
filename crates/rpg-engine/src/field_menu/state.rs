@@ -15,7 +15,7 @@ pub(super) enum FieldMenuScreen {
     Equipment,
     Spells,
     Quests,
-    /// Read-only recipe book. Crafting stays with the apothecary service (roadmap B4.4).
+    /// Read-only recipe book. Crafting stays with the apothecary service.
     Recipes,
     Save,
     /// Per-member Manual/Auto tactics and the auto default command.

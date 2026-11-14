@@ -258,7 +258,7 @@ pub(crate) struct WarpDestination {
 }
 
 /// A visited, warp-reachable map (top-level, with a known incoming-portal landing tile) whose map
-/// data has no `warp_order`. Mirrors `engine/world/warp_logic.py::_map_order`: the teleport list
+/// data has no `warp_order`. The teleport list
 /// ordering is data-driven, so this is a scenario-authoring bug surfaced as a load failure rather
 /// than silently dropping the destination or defaulting its position in the list.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -281,19 +281,19 @@ impl fmt::Display for WarpOrderError {
 impl Error for WarpOrderError {}
 
 /// Resolves the visited-map teleport destination list from every loaded map's metadata and
-/// portals, matching `engine/world/warp_logic.py::warp_destinations` (minus the caller's
+/// portals, (minus the caller's
 /// visited/current filter, applied later by [`FieldMenuCatalog::eligible_warp_destinations`]):
 ///
 /// - A destination is a `source` that is not a *submap* of another `source` — one whose id is
 ///   some other source's id followed by `_` (interiors like `..._shop_01`, and numbered segments
-///   like `..._02`, both use this convention; see `warp_logic._is_submap`). Note this is checked
-///   only against the *other loaded sources*, matching Python's check against every map id that
+///   like `..._02`, both use this convention). Note this is checked
+///   only against the *other loaded sources*, i.e. every map id that
 ///   actually has its own TMX — a segment whose bare parent id has no TMX of its own (e.g. the
-///   pinned scenario's `zone_05_mountain_foothills_01/02/03`, which have no
+///   shipped scenario's `zone_05_mountain_foothills_01/02/03`, which have no
 ///   `zone_05_mountain_foothills.tmx`) is therefore *not* excluded as a submap.
 /// - Its landing tile comes from the scenario-wide incoming-portal index: every portal in every
-///   `source` targeting it, preferring a non-submap source, tied broken by source id
-///   (`warp_logic.build_landing_index`). A destination with no incoming portal at all is dropped
+///   `source` targeting it, preferring a non-submap source, tied broken by source id.
+///   A destination with no incoming portal at all is dropped
 ///   (nowhere to land).
 /// - It is categorized `town` when its map data has an `inn` or `shop` block, `world` otherwise.
 /// - It must declare `warp_order`; see [`WarpOrderError`].
@@ -889,12 +889,12 @@ pub(crate) fn derived_stats(member: &RuntimeMember, catalog: &FieldMenuCatalog) 
     totals
 }
 
-/// Battle defense for a party member (B3.1).
+/// Battle defense for a party member.
 ///
-/// The source sets DEF to the equipment-inclusive CON total, but party CON starts at 28 and
+/// Using the equipment-inclusive CON total as DEF fails because party CON starts at 28 and
 /// reaches ~95 while enemy ATK spans 9..88, so `max(1, atk - def)` pinned every incoming
 /// physical hit to the floor for the whole campaign — no armor value changed any outcome.
-/// Equipment CON is now the dominant term and innate CON a divided contribution, which puts
+/// Equipment CON is the dominant term and innate CON a divided contribution, which puts
 /// armor choice back in control of survivability. Enemy DEF is authored directly and is
 /// deliberately left alone.
 pub(crate) fn battle_defense(
@@ -977,7 +977,7 @@ fn add_item_stats(totals: &mut DerivedStats, item: &ItemDefinition) {
             } = value.stats;
             add(None, dex, Some(con), intelligence);
         }
-        // B3.6: accessories now contribute attributes. The encounter and ability-block shapes
+        // Accessories contribute attributes. The encounter and ability-block shapes
         // still grant no stats -- they act through the spawner and the boss move set instead.
         ItemDefinition::Accessory(value) => {
             if let AccessoryStats::Attribute(stats) = &value.stats {
@@ -1269,9 +1269,8 @@ pub(crate) fn cast_party_heal(
 
 /// True when an item's field effect covers the whole party instead of one chosen member.
 ///
-/// The source branches on this before it ever offers a target picker
-/// (`engine/item/item_scene.py::_begin_use`), which is why the port must ask the same question
-/// first: routing a Tent through the picker is what made it unusable.
+/// Whole-party items are decided before a target picker is ever offered, which is why the
+/// same question must be asked first: routing a Tent through the picker is what made it unusable.
 pub(crate) fn targets_whole_party(catalog: &FieldMenuCatalog, item_id: &str) -> bool {
     matches!(
         catalog.field_use(item_id),
@@ -1493,7 +1492,7 @@ pub(crate) mod tests {
         tmx_header::parse_tmx_map_document,
     };
 
-    /// Parses one real scenario map's metadata and outgoing portals, for warp-destination parity
+    /// Parses one real scenario map's metadata and outgoing portals, for warp-destination
     /// fixtures that compute against actual shipped `rusted_kingdoms` data.
     fn parsed_map(stem: &str, tmx: &str, yaml: &str) -> (MapMetadata, Vec<RuntimePortal>) {
         let metadata: MapMetadata = scenario_yaml::from_str(yaml).unwrap();
@@ -1503,7 +1502,7 @@ pub(crate) mod tests {
         (metadata, portals)
     }
 
-    /// B3.1 regression. The source sets battle DEF to the equipment-inclusive CON total, so a
+    /// Regression: with battle DEF set to the equipment-inclusive CON total, a
     /// level-1 Aric fielded 31 DEF against zone-1 enemies whose ATK tops out at 11: every hit in
     /// the game landed on the `max(1, atk - def)` floor, and no armor value changed any outcome
     /// at any point in the campaign. This pins the replacement -- equipment CON dominates, innate
@@ -1536,14 +1535,14 @@ pub(crate) mod tests {
         assert_eq!((goblin_attack - i64::from(starting)).max(1), 2);
         assert_eq!((goblin_attack - i64::from(upgraded)).max(1), 1);
 
-        // The rule the port replaced: raw CON, which already exceeds the strongest enemy in the
+        // The rejected rule: raw CON, which already exceeds the strongest enemy in the
         // game (Hearth Effigy, ATK 88) by level 22 and exceeds a Goblin from the first battle.
         let source_defense = i64::from(derived_stats(member, &catalog).constitution);
         assert_eq!(source_defense, 35);
         assert_eq!((goblin_attack - source_defense).max(1), 1);
     }
 
-    /// B3.6 regression. `AccessoryStats` shipped with only the encounter and ability-block
+    /// Regression: `AccessoryStats` once shipped with only the encounter and ability-block
     /// shapes, so `add_item_stats` matched accessories to a no-op and the slot could not change
     /// a single number. Two of the three shipped accessories were rogue-only on top of that,
     /// leaving four of five classes with one accessory that did nothing.
@@ -1990,8 +1989,8 @@ pub(crate) mod tests {
     #[test]
     fn production_catalog_addresses_all_current_items_classes_and_field_effects() {
         let catalog = catalog();
-        // 176 + 24 Act 3-4 equipment (B3.3/B3.4) + Revival Herb (B3.5) + 7 accessories (B3.6),
-        // less the Mimic Key that B4.2 cut, plus the Ivory Blossom crafting material and the
+        // 176 + 24 Act 3-4 equipment + Revival Herb + 7 accessories,
+        // less the Mimic Key, plus the Ivory Blossom crafting material and the
         // Hush Powder silencing throw, plus Jep's four leather armors.
         // The forge's generated `+N` variants are not authored items.
         let authored = |ids: &mut dyn Iterator<Item = &String>| {
@@ -2208,7 +2207,7 @@ pub(crate) mod tests {
         let mut game = game([]);
         let _outcome = game.repository_mut().add_item("steel_axe", 1).unwrap();
         let _outcome = game.repository_mut().add_item("dagger", 1).unwrap();
-        // The source totals below were pinned with the vest on; this catalog sets no genders.
+        // The totals below assume the vest is worn; this catalog sets no genders.
         let _displaced = game
             .party_mut()
             .member_mut("aric")
@@ -2558,12 +2557,11 @@ pub(crate) mod tests {
     #[test]
     fn warp_destinations_do_not_treat_numbered_zone_segments_as_submaps_of_each_other() {
         // `zone_05_mountain_foothills_01/02/03` are numbered segments of the conceptual zone
-        // `zone_05_mountain_foothills`, but that parent id has no `.tmx` of its own in the pinned
-        // scenario — only `data/maps/zone_05_mountain_foothills.yaml`. `_is_submap`
-        // checks each candidate's prefix against `all_ids`, built from `media/maps/*.tmx` stems
-        // only (warp_logic.py:68-78, 152), so a parent id with no TMX never enters that set and
-        // its segments are *not* submaps of one another under the literal algorithm — confirmed
-        // by running the pinned `warp_logic.py` against this scenario copy. Both are therefore
+        // `zone_05_mountain_foothills`, but that parent id has no `.tmx` of its own in the shipped
+        // scenario — only `data/maps/zone_05_mountain_foothills.yaml`. The submap check
+        // tests each candidate's prefix against the ids built from `media/maps/*.tmx` stems
+        // only, so a parent id with no TMX never enters that set and
+        // its segments are *not* submaps of one another. Both are therefore
         // independent, real warp destinations.
         let segment_02 = parsed_map(
             "zone_05_mountain_foothills_02",
@@ -2617,13 +2615,12 @@ pub(crate) mod tests {
 
     #[test]
     fn warp_destinations_surface_a_missing_warp_order_as_a_scenario_error_not_a_silent_drop() {
-        // The pinned scenario has no `data/maps/zone_05_mountain_foothills_01.yaml` at all
-        // (confirmed against both this repository and the upstream Python source directory) even
-        // though its TMX is real, it has a genuine incoming portal from
+        // The shipped scenario has no `data/maps/zone_05_mountain_foothills_01.yaml` at all
+        // even though its TMX is real, it has a genuine incoming portal from
         // `zone_04_ancient_ruins_03_sanctum`, and (per the sibling-segments test above) it is not
-        // excluded as a submap. Under `warp_logic.py::_map_order` a qualifying destination with
-        // no `warp_order` raises rather than being defaulted or dropped
-        // (warp_logic.py:124-139); this is the same scenario-data gap, and this test's
+        // excluded as a submap. A qualifying destination with
+        // no `warp_order` raises rather than being defaulted or dropped;
+        // this is that scenario-data gap, and this test's
         // hand-authored metadata (only `name`, standing in for the missing file) isolates that
         // one behavior.
         let sanctum = parsed_map(

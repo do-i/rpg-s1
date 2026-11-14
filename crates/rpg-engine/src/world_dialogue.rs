@@ -137,9 +137,9 @@ impl DialogueSession {
 
     /// Whether the next confirm closes this dialogue run and applies its completion actions.
     ///
-    /// The final line used to carry the same "continue" hint as an intermediate page. That made
-    /// reward dialogue look complete before the confirm that actually commits its flags and
-    /// gifts. Keep the source's explicit final acknowledgement, but let the renderer name it as
+    /// The final line must not carry the same "continue" hint as an intermediate page, or
+    /// reward dialogue looks complete before the confirm that actually commits its flags and
+    /// gifts. The final acknowledgement stays explicit, and the renderer names it as
     /// a finish action.
     pub(crate) fn finishes_on_confirm(&self) -> bool {
         if self.phase != DialoguePhase::Ready {
@@ -226,9 +226,8 @@ impl DialogueSession {
 
     /// Advances the typewriter at the configured reveal rate.
     ///
-    /// `speed` comes from `dialogue.text_speed` in `assets/settings.yaml`. The source's
-    /// `very_fast` is a rate of zero meaning *instant*, not stalled, so it completes the line in
-    /// one tick (`dialogue_scene.py::_advance` sets `_line_done` immediately when the speed is 0).
+    /// `speed` comes from `dialogue.text_speed` in `assets/settings.yaml`. `very_fast` is a rate of
+    /// zero meaning *instant*, not stalled, so it completes the line in one tick.
     pub(crate) fn tick(&mut self, delta_seconds: f32, speed: TextSpeed) {
         if self.phase != DialoguePhase::Typing {
             return;
@@ -620,7 +619,7 @@ mod tests {
         assert_eq!(line(TextSpeed::Slow, 0.1).0, "Ab");
         assert_eq!(line(TextSpeed::Fast, 0.1).0, "Abcdef");
 
-        // `very_fast` is the source's rate of 0, which means instant rather than stalled.
+        // `very_fast` is a rate of 0, which means instant rather than stalled.
         let (text, phase) = line(TextSpeed::VeryFast, 0.0);
         assert_eq!(text, "Abcdefghij");
         assert_eq!(
@@ -2024,8 +2023,8 @@ mod tests {
         // Entry [4] (the unconditional "Want a genuine relic?" flavor line) is dead for exactly
         // the reason `harborgate_fishwife`'s trailing entry is: the sq_crew_started/_relayed/_done
         // ladder plus the excludes-started first-meeting entry already partition every state under
-        // first-match, so nothing ever falls through to it. W12.4 is where this inherited entry
-        // became documented-accepted.
+        // first-match, so nothing ever falls through to it. This inherited entry is
+        // documented-accepted.
         let relevant_flags = ["sq_crew_started", "sq_crew_relayed", "sq_crew_done"];
         for mask in 0..(1 << relevant_flags.len()) {
             let flags = RuntimeFlags::from_bootstrap(
@@ -2380,7 +2379,7 @@ mod tests {
 
         // The post-unlock branch only requires the flag itself, not Act II — it stays
         // reachable even if a save somehow carries the sail flag without the story flag
-        // (defensive: flags are independent bits, and the source imposes no such invariant).
+        // (defensive: flags are independent bits, and no invariant ties them together).
         let sail_only_flags = RuntimeFlags::from_bootstrap(["transport_sail_unlocked"]);
         let mut session = DialogueSession::resolve(
             "port_master_intro",

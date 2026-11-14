@@ -1,6 +1,6 @@
 //! Player-set options, persisted in the XDG config directory, apart from the asset tree and saves.
 //! Bindings belong to the player, not a save slot, and `assets/settings.yaml` carries only
-//! source-parity keys, so rebindings cannot go there.
+//! shipped defaults, so rebindings cannot go there.
 
 use std::{
     collections::BTreeMap,

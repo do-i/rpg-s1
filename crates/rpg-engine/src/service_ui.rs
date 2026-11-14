@@ -774,7 +774,7 @@ fn is_equipment(item: &ItemDefinition) -> bool {
     )
 }
 
-/// Cycles the sell filter through `All → tag → … → All` (`item_shop_scene.py:121-133`).
+/// Cycles the sell filter through `All → tag → … → All`.
 fn cycle_sell_tag(state: &mut ServiceUiState, catalog: &FieldMenuCatalog, game: &GameState) {
     let tags = sellable_tags(catalog, game);
     if tags.is_empty() {
@@ -893,7 +893,7 @@ fn execute_pending(
     }
 }
 
-/// Pushes the party picker when a purchase is wearable by somebody (`item_shop_scene.py:355-359`).
+/// Pushes the party picker when a purchase is wearable by somebody.
 fn offer_equip_after_purchase(
     state: &mut ServiceUiState,
     catalog: &FieldMenuCatalog,
@@ -1206,7 +1206,7 @@ mod tests {
 
     #[test]
     fn quantity_controls_clamp_at_both_ends() {
-        // Item shop: coarse steps saturate rather than roll over (`quantity_picker.py:_adjust`).
+        // Item shop: coarse steps saturate rather than roll over.
         assert_eq!(adjust_quantity(1, -1, 9, false), 1);
         assert_eq!(adjust_quantity(1, 5, 9, false), 6);
         assert_eq!(adjust_quantity(6, 5, 9, false), 9);

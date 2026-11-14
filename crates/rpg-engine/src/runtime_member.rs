@@ -2,12 +2,11 @@
 //!
 //! [`PartyMember`] remains the immutable scenario definition for portraits, recruitment,
 //! authored join conditions, and initial values. This type copies only session state that the
-//! pinned Python `MemberState` mutates or saves, plus stable identity/class linkage used to find
+//! the runtime mutates or saves, plus stable identity/class linkage used to find
 //! immutable class data. It deliberately does not cache class growth, abilities, equipment
 //! compatibility, item definitions, or inventory ownership.
 //!
-//! The Python runtime represents an empty equipment slot with `""`; runtime Rust state uses
-//! `Option<String>` so absence cannot be confused with an item id. Initial catalog values are
+//! An empty equipment slot is `Option<String>` rather than an empty string, so absence cannot be confused with an item id. Initial catalog values are
 //! validated rather than silently clamped. Later mutations clamp HP, MP, and EXP at their source
 //! bounds. Level thresholds/growth and serialization remain later systems.
 
@@ -299,7 +298,7 @@ impl RuntimeMember {
         self.status_effects.remove(&status)
     }
 
-    /// Applies the pinned inn's full-party recovery semantics, including knocked-out members.
+    /// Applies the inn's full-party recovery semantics, including knocked-out members.
     pub(crate) fn recover_at_inn(&mut self) {
         self.health = self.max_health;
         self.mana = self.max_mana;
@@ -327,7 +326,7 @@ impl RuntimeMember {
         self.health - before
     }
 
-    /// Revives a knocked-out member to the source-authored fraction of maximum health.
+    /// Revives a knocked-out member to the authored fraction of maximum health.
     pub(crate) fn revive(&mut self, fraction: f64) -> u32 {
         if !self.is_knocked_out() {
             return 0;
@@ -413,7 +412,7 @@ impl RuntimeMember {
             self.stats.dexterity = self.stats.dexterity.saturating_add(dexterity);
             self.stats.constitution = self.stats.constitution.saturating_add(constitution);
             self.stats.intelligence = self.stats.intelligence.saturating_add(intelligence);
-            // B3.1: the source adds raw CON here, which inflates HP far past any enemy's
+            // Adding raw CON here would inflate HP far past any enemy's
             // reach. Dividing keeps CON meaningful without outrunning the damage scale.
             let health = (self.stats.constitution / progression.hp_growth_con_divisor.get())
                 .saturating_add(6);
@@ -450,8 +449,8 @@ impl RuntimeMember {
 
     /// Replaces one slot after a caller has validated inventory ownership and compatibility.
     ///
-    /// Those transactional checks belong to M6; this value-level operation rejects the Python
-    /// empty-string sentinel and returns the displaced item id for that later transaction.
+    /// Those transactional checks belong to the caller; this value-level operation rejects an
+    /// empty-string item id and returns the displaced item id for that later transaction.
     pub fn equip(
         &mut self,
         slot: EquipmentSlot,
@@ -600,7 +599,7 @@ fn validate_member_numbers(
     Ok(())
 }
 
-/// Mutable base stats saved by the Python runtime. Equipment-derived totals remain computed.
+/// Mutable base stats saved with the member. Equipment-derived totals remain computed.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuntimeMemberStats {
     strength: u32,
@@ -996,10 +995,9 @@ mod tests {
             ),
             (2, 2, 3, 1)
         );
-        // Stat growth and the MP gain (`int + 6`) still match the source exactly. The HP gain
-        // deliberately does not: B3.1 divides post-growth CON, so this is `31 / 4 + 6 = 13`
-        // where the source's `con + 6` gives 37. See the accepted difference in the parity
-        // checklist -- raw CON inflated level-22 HP to ~1,280 against an 88-ATK final boss.
+        // The MP gain is `int + 6`. The HP gain divides post-growth CON, so this is
+        // `31 / 4 + 6 = 13` rather than `con + 6 = 37`: raw CON would inflate level-22 HP to
+        // ~1,280 against an 88-ATK final boss.
         assert_eq!((level.health, level.mana), (13, 12));
         assert_eq!((member.max_health(), member.max_mana()), (35, 24));
         assert_eq!((member.health(), member.mana()), (35, 24));

@@ -149,7 +149,7 @@ impl OptionsScreen {
         self.rows[self.selected]
     }
 
-    /// Moves the highlight, wrapping at both ends the way every other menu in the port does.
+    /// Moves the highlight, wrapping at both ends the way every other menu does.
     pub(crate) fn navigate(&mut self, delta: isize) {
         if self.capturing.is_some() {
             return;

@@ -6,8 +6,7 @@
 //!
 //! A map transition only stops and replaces the currently playing loop once the destination's
 //! metadata is loaded *and* names a `bgm` key. A map with no `bgm` field at all (e.g.
-//! `zone_03_marshland`) leaves whatever was already playing running, matching the pinned Python
-//! engine's `if bgm_key: bgm_manager.play_key(bgm_key)` guard (`engine/world/world_map_init.py`) —
+//! `zone_03_marshland`) leaves whatever was already playing running —
 //! it never stops on a silent map, only when it has somewhere new to send the loop.
 
 use std::{error::Error, fmt};
@@ -237,13 +236,11 @@ fn drive_world_audio(
         .is_none_or(|request| request.map_id != map_id)
     {
         // A new map is current. Only *load* its metadata here — do not touch any already-playing
-        // loop yet. The pinned Python engine (`engine/world/world_map_init.py`) only calls
-        // `bgm_manager.play_key` when the destination map authors a `bgm` key at all
-        // (`if bgm_key: bgm_manager.play_key(bgm_key)`); a map with no `bgm` field at all (e.g.
-        // `zone_03_marshland`) leaves whatever track was already playing running, untouched.
-        // Stopping playback unconditionally on every map change — as this system used to, before
-        // it knew whether the destination even named a track — would silence music the pinned
-        // source keeps playing across such a boundary.
+        // loop yet. Playback only changes when the destination map authors a `bgm` key; a map
+        // with no `bgm` field at all (e.g. `zone_03_marshland`) leaves whatever track was
+        // already playing running, untouched. Stopping playback unconditionally on every map
+        // change, before knowing whether the destination even names a track, would silence
+        // music that should keep playing across such a boundary.
         let metadata_path = match assets.inventory.map_metadata_path(map_id) {
             Some(path) => path,
             None => {
@@ -736,13 +733,10 @@ mod tests {
         );
     }
 
-    /// Regression for a real runtime divergence found while fixturing W12.3 (Marshland has no
-    /// `bgm` field at all, unlike every W12.1/W12.2 map). The pinned Python engine only calls
-    /// `bgm_manager.play_key` when the destination names a `bgm` key
-    /// (`engine/world/world_map_init.py`); a silent map leaves whatever was already playing
-    /// running. Before this fix, `drive_world_audio` stopped the previous loop unconditionally on
-    /// every map change, before it even knew whether the destination had a track to switch to —
-    /// so stepping onto a `bgm`-less map cut the music instead of leaving it alone.
+    /// Regression (Marshland has no `bgm` field at all, unlike the town maps). Playback only
+    /// changes when the destination names a `bgm` key; a silent map leaves whatever was already
+    /// playing running. `drive_world_audio` must not stop the previous loop before it knows the
+    /// destination has a track to switch to, or stepping onto a `bgm`-less map cuts the music.
     #[test]
     fn a_map_with_no_authored_bgm_leaves_the_previous_track_playing() {
         let package = TestPackage::with_maps(

@@ -1135,7 +1135,7 @@ fn watcher_checks_new_audio_reference_before_publishing_same_map_metadata() {
     );
     let mut app = hot_app(&fixture);
     let entities = active_entities(app.world_mut());
-    // The key resolves, but its dependency is missing; this used to enter World and fail later.
+    // The key resolves, but its dependency is missing; it must fail here rather than enter World and fail later.
     fixture.write(
         "data/maps/source.yaml",
         b"id: source\nname: Sound test\nbgm: world.field\n",

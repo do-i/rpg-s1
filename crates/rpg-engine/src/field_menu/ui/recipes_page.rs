@@ -1,4 +1,4 @@
-//! The field recipe book (roadmap B4.4).
+//! The field recipe book.
 //!
 //! A reference screen, not a workshop: it reads the production recipe catalog and the live
 //! inventory, and offers no way to spend anything. Crafting stays with the apothecary service,

@@ -71,7 +71,7 @@ pub(crate) struct WorldPlayer;
 /// Continuous source-pixel position for the player's 64x64 sprite.
 ///
 /// [`GameState`] retains the containing tile for saves and tile-authored interactions, while
-/// movement and collision use this top-left pixel coordinate and the source's feet-aligned
+/// movement and collision use this top-left pixel coordinate and the feet-aligned
 /// 20x18 collision rectangle.
 #[derive(Clone, Copy, Component, Debug, PartialEq)]
 pub(crate) struct WorldPlayerMotion {
@@ -145,7 +145,7 @@ impl CharacterCollisionRect {
 ///
 /// Idle is represented by the direction's animation-owner tile. Walk frames retain the exact
 /// TSX tile IDs and per-frame durations; the next-frame cursor survives an idle reset so separate
-/// one-tile taps advance through the cycle like the pinned Python controller.
+/// one-tile taps advance through the cycle.
 #[derive(Component, Debug)]
 pub(crate) struct WorldPlayerAnimation {
     layout: CardinalCharacterAtlas,

@@ -225,7 +225,7 @@ fn the_enemy_just_defeated_is_restored_hidden_from_its_first_frame() {
             .map(|(enemy, transform)| (enemy.encounter_id.clone(), transform.scale))
             .collect::<Vec<_>>();
         if !spawned.is_empty() {
-            // The very first frame the enemies exist is the one that used to flash.
+            // The very first frame the enemies exist is the one that must not flash.
             assert!(
                 spawned.contains(&("defeated".to_owned(), Vec3::ZERO)),
                 "{spawned:?}"
@@ -311,7 +311,7 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         "{:?}",
         app.world().resource::<WorldEncounterState>().failure()
     );
-    // 107 before roadmap B1.2 added the Cinder Marshal; 105 after three duplicate variants retired.
+    // The shipped enemy count, including the Cinder Marshal.
     assert_eq!(app.world().resource::<EnemyCatalog>().len(), 105);
     let expected_party_stats = {
         let world = app.world();
@@ -323,7 +323,7 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
             .unwrap();
         derived_stats(member, world.resource::<FieldMenuCatalog>())
     };
-    // B3.1: battle DEF is no longer the CON total. It is equipment CON plus a divided
+    // Battle DEF is not the CON total. It is equipment CON plus a divided
     // innate share, so armor -- not the level curve -- drives survivability.
     let expected_party_defense = {
         let world = app.world();
@@ -655,17 +655,14 @@ fn production_open_plains_and_caves_spawn_encounters_and_treasure() {
     }
 }
 
-/// Covers W12.3's `zone_03_marshland` encounters end to end: the 18 authored `spawn_tile`
+/// Covers the `zone_03_marshland` encounters end to end: the 18 authored `spawn_tile`
 /// entries plus the boss spawn from `data/encount/zone_03_marshland.yaml` and the TMX
 /// `spawn_tile`/`boss_enemy` layers, a full respawn round-trip through a neighboring town with
 /// no encounter zone at all (`town_03_harborgate`, which has no `data/encount/*.yaml`), and
-/// the boss contact battle handoff. Marshland is also the first map in wave order with no
-/// `bgm:` field at all (`data/maps/zone_03_marshland.yaml` is two lines: `name` and
-/// `warp_order`, byte-identical to the pinned source) — `return_context.world_bgm_key` must
-/// come back `None`, matching `world_encounter::build_battle_entry`'s direct
-/// `metadata.bgm.clone()` and `world_audio`'s "no authored bgm leaves the previous track
-/// playing" behavior (see `world_audio::tests`), not a `zone.marshland` key that exists in
-/// neither the map metadata nor the BGM index.
+/// the boss contact battle handoff. `return_context.world_bgm_key` must come back as the
+/// `bgm:` key from the map metadata (`world_encounter::build_battle_entry` copies
+/// `metadata.bgm.clone()` directly), not a `zone.marshland` key that exists in neither the map
+/// metadata nor the BGM index.
 #[test]
 fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_handoff() {
     let mut app = headless_title_app_with_asset_base(
@@ -747,7 +744,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
             .unwrap();
         derived_stats(member, world.resource::<FieldMenuCatalog>())
     };
-    // B3.1: battle DEF is no longer the CON total. It is equipment CON plus a divided
+    // Battle DEF is not the CON total. It is equipment CON plus a divided
     // innate share, so armor -- not the level curve -- drives survivability.
     let expected_party_defense = {
         let world = app.world();
@@ -780,7 +777,7 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
 
     // Walk into a neighboring map with no `data/encount/*.yaml` at all
     // (`town_03_harborgate`) and confirm every enemy despawns and the zone goes to
-    // `NoEncounters`, exactly like the W12.1/W12.2 town fixtures.
+    // `NoEncounters`, exactly like the town fixtures.
     app.world_mut()
         .resource_mut::<GameState>()
         .map_mut()
@@ -866,16 +863,15 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
     );
     assert_eq!(entry.return_context.map_id, "zone_03_marshland");
     assert_eq!(entry.return_context.position, boss_position);
-    // This was `None` until roadmap B1.3: the marshland declared no BGM, so returning from a
-    // battle restored nothing and the map went on playing whichever town track the player
-    // had walked in from.
+    // The marshland declares a BGM, so returning from a battle restores its track rather than
+    // leaving whichever town track the player walked in from.
     assert_eq!(
         entry.return_context.world_bgm_key.as_deref(),
         Some("zone.marsh")
     );
 }
 
-/// Covers W12.4's three Ancient Ruins maps through the production loaders. The map changes
+/// Covers the three Ancient Ruins maps through the production loaders. The map changes
 /// prove each TMX and optional metadata document publishes into the actor/object/encounter
 /// systems, while the sanctum checks the first production barrier rule and the complete
 /// Skeleton Knight boss handoff.
@@ -1252,8 +1248,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         "zone_04_ancient_ruins_03_sanctum"
     );
     assert_eq!(entry.return_context.position, boss_position);
-    // The whole Ancient Ruins arc declared no BGM until roadmap B1.3, so all three of its
-    // maps returned from battle with nothing to restore.
+    // The Ancient Ruins arc declares a BGM, so all three of its maps restore it after battle.
     assert_eq!(
         entry.return_context.world_bgm_key.as_deref(),
         Some("zone.ruins")

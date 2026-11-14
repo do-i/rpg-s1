@@ -1,6 +1,6 @@
 //! Renderer-independent atlas slicing for the engine's four-direction character profile.
 //!
-//! The pinned Python renderer indexes sheet rows in `Up`, `Left`, `Down`, `Right` order.
+//! Sheet rows are indexed in `Up`, `Left`, `Down`, `Right` order.
 //! A scenario protagonist using this profile attaches the corresponding walk animations to tiles
 //! `0`, `9`, `18`, and `27`; those owner tiles are the idle/base frames at column zero of each
 //! row. This adapter validates that engine/content contract before exposing frame rectangles.
@@ -20,9 +20,8 @@ const CARDINAL_ANIMATION_OWNERS: [u32; 4] = [0, 9, 18, 27];
 /// Per-frame duration used when a sheet declares no `<animation>` blocks.
 ///
 /// Only the protagonist sheet in the shipped scenario authors animations; the four recruit sheets
-/// are bare tilesets of identical geometry. Python never read the animation blocks at all — its
-/// `SpriteSheet` slices by `tilewidth`/`tileheight`/`columns` — so the recruits animate there and
-/// would fail strict validation here. This is the cadence every authored frame uses.
+/// are bare tilesets of identical geometry. Slicing by `tilewidth`/`tileheight`/`columns` needs no animation blocks, so
+/// the recruits fall back to that geometry rather than failing strict validation. This is the cadence every authored frame uses.
 const CARDINAL_FALLBACK_FRAME_MS: u32 = 100;
 
 /// One tileset-local frame and its pixel rectangle within the atlas image.
@@ -123,7 +122,7 @@ impl CardinalCharacterAtlas {
             CHARACTER_IMAGE_HEIGHT,
         )?;
 
-        // A sheet that authors nothing gets the geometric cycle Python would have sliced; a sheet
+        // A sheet that authors nothing gets the geometric cycle sliced from the tileset; a sheet
         // that authors something must author all four cardinal owners.
         let directional_walk_frames = if metadata.animations().is_empty() {
             std::array::from_fn(|index| {

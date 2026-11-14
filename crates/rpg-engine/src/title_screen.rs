@@ -618,10 +618,8 @@ mod tests {
         let theme = UiTheme::default();
 
         assert_eq!(theme.clear_color, Color::srgb_u8(10, 10, 30));
-        // The plate honours `title_scene.py`'s "50%-opacity box" comment rather than the 11% its
-        // code actually draws, and the menu palette is a deliberate readability divergence from
-        // the source. Both are recorded under "Approved accepted differences" in the parity
-        // checklist; see [`UiTheme::default`] for the measurement behind the colours.
+        // The plate is a 50%-opacity box, and the menu palette is a deliberate readability choice;
+        // see [`UiTheme::default`] for the measurement behind the colours.
         assert_eq!(theme.panel_color, Color::srgba(0.0, 0.0, 0.0, 0.5));
         assert_eq!(theme.menu_normal_color, Color::srgb_u8(195, 186, 168));
         assert_eq!(theme.menu_selected_color, Color::srgb_u8(255, 209, 102));

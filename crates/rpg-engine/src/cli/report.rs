@@ -419,7 +419,7 @@ pub(super) fn write_map_sweep_report(
 }
 
 /// Renders the informational `dialogue-report` output: every dialogue's entries with their
-/// requires/excludes condition, reachability under the pinned Python engine's first-match rule,
+/// requires/excludes condition, reachability under the first-match rule,
 /// line count, and side-effect inventory, followed by a summary footer. The two documented-dead
 /// `ardel_fisherman` flavor entries are called out as accepted rather than as findings.
 pub(super) fn write_dialogue_report(

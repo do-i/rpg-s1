@@ -30,12 +30,10 @@ impl Default for UiTheme {
     fn default() -> Self {
         Self {
             clear_color: Color::srgb_u8(10, 10, 30),
-            // The source *intends* a half-opaque plate -- `title_scene.py` says "with a
-            // 50%-opacity box" directly above `pygame.draw.rect(box_surf, (0, 0, 0, 28), ...)`,
-            // and 28/255 is 11%, not 50%. The port inherited the 11% and with it the source's
-            // unreadable menu: the box lands on the bottom-centre of `title_lost_flame.webp`,
-            // which is the pale warm glow at the path's vanishing point, so warm menu text had
-            // almost nothing to sit against. This honours the comment over the constant.
+            // A half-opaque plate: an 11% (28/255) plate leaves the menu
+            // unreadable, because the box lands on the bottom-centre of `title_lost_flame.webp`,
+            // which is the pale warm glow at the path's vanishing point, so warm menu text would have
+            // almost nothing to sit against.
             panel_color: Color::srgba(0.0, 0.0, 0.0, 0.5),
             // Weathered parchment, lit ember, cold ash -- the title art's own three notes. Read
             // against the plate above the pale glow these hold roughly 3.3:1, 4.4:1 and 1.7:1,

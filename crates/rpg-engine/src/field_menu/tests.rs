@@ -1229,8 +1229,8 @@ fn the_deck_behind_the_switch_overlay_stays_on_the_character_command() {
 
 #[test]
 fn main_page_matches_the_source_command_deck_structure() {
-    // The first eight are the source deck in source order. `Recipes` is appended rather than
-    // inserted (roadmap B4.4) so every index the deck constants pin stays where it was.
+    // The first eight are the original deck in order. `Recipes` is appended rather than
+    // inserted so every index the deck constants pin stays where it was.
     assert_eq!(
         MAIN_COMMANDS.map(|command| command.label),
         [
@@ -1653,7 +1653,7 @@ fn an_unsealed_recipe_shows_its_ingredients_against_what_the_party_carries() {
     }
 }
 
-/// The acceptance condition for roadmap B4.4: the book is a reference, not a second workshop.
+/// The acceptance condition for the recipe book: the book is a reference, not a second workshop.
 #[test]
 fn confirming_in_the_recipe_book_never_crafts_anything() {
     use crate::action_input::ActionInputPlugin;

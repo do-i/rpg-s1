@@ -1,8 +1,8 @@
 //! Manifest-driven rendering and text editing for the new-game name entry screen.
 //!
 //! Input is contextual: this screen consumes ordered [`KeyboardInput`] messages directly rather
-//! than the shell action map, where Space also means Confirm. The pinned Python screen has no
-//! cancel action; Escape-to-Title is the additional behavior required by the Rust port plan.
+//! than the shell action map, where Space also means Confirm. The screen has no
+//! cancel action of its own; Escape returns to the Title screen.
 
 use bevy::{
     ecs::system::SystemParam,
@@ -59,7 +59,7 @@ pub(crate) struct NameEntryDraft {
     default_name: String,
 }
 
-/// Confirmed normalized protagonist name consumed by M3.13.
+/// Confirmed normalized protagonist name consumed by the new-game flow.
 #[derive(Clone, Debug, Eq, Message, PartialEq)]
 pub(crate) struct NameEntryConfirmed {
     name: String,
@@ -215,8 +215,8 @@ fn handle_name_entry_keyboard(
 
 /// Appends one scalar at a time so a multi-scalar platform text event cannot cross the cap.
 ///
-/// Python checks its length only before appending an entire `TEXTINPUT` payload, so a dead-key
-/// event carrying multiple scalars can exceed 12 there. Rust deliberately keeps the invariant
+/// Checking the length only before appending an entire text payload would let a dead-key
+/// event carrying multiple scalars exceed 12. The invariant is kept
 /// strict for every event and counts Unicode scalar values rather than UTF-8 bytes.
 fn append_name_text(name: &mut String, text: &str) {
     let remaining = NAME_MAX_LENGTH.saturating_sub(name.chars().count());

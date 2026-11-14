@@ -1,13 +1,13 @@
 //! Mutable GP and shared item-count state for one game session.
 //!
-//! The pinned Python repository stores every item kind in one dictionary. Consumables,
+//! The repository stores every item kind in one collection. Consumables,
 //! equipment, materials, key items, and magic cores therefore remain one shared collection here;
 //! catalog definitions and later tags decide how menus and services classify them.
 //!
-//! Additions retain the source's cap-and-clip behavior, but return [`AdditionOutcome`] so lost
-//! overflow is observable without relying on a log message. Unlike Python's `remove_item`, an
+//! Additions cap and clip the stack, but return [`AdditionOutcome`] so lost
+//! overflow is observable without relying on a log message. An
 //! oversized removal is rejected without deleting the stack. This stricter boundary prevents a
-//! caller error from silently consuming more items than requested. M7 persists locks, tags,
+//! caller error from silently consuming more items than requested. The save layer persists locks, tags,
 //! loot identity, and latest-loot-batch metadata; the explicit Hide command remains session-only.
 
 use std::{

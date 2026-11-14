@@ -543,7 +543,7 @@ pub(in crate::field_menu) fn spawn_quest_meta_row(
 
 /// Draws the three flag-derived board states with the current one lit.
 ///
-/// The pinned game keeps no objective counters, so this track is the only progress the quest data
+/// The game keeps no objective counters, so this track is the only progress the quest data
 /// can honestly show.
 pub(in crate::field_menu) fn spawn_quest_track(
     parent: &mut ChildSpawnerCommands<'_>,

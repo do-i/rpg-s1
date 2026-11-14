@@ -26,7 +26,7 @@ use crate::{
     scenario_yaml,
 };
 
-/// Enumeration gives up beyond this many referenced flags per document; the pinned corpus's
+/// Enumeration gives up beyond this many referenced flags per document; the shipped scenario's
 /// worst case is 5 flags (32 states), so this leaves ample headroom while keeping the exhaustive
 /// search bounded (2^16 = 65536 states per document, times a handful of entries each).
 const MAX_ENUMERATED_FLAGS: usize = 16;
@@ -197,12 +197,11 @@ impl DialogueReachability {
 pub(crate) struct EffectsSummary {
     pub(crate) set_flags: Vec<String>,
     pub(crate) unset_flags: Vec<String>,
-    /// Flags among `set_flags`/`unset_flags` that follow the source's `unlock` sugar convention
+    /// Flags among `set_flags`/`unset_flags` that follow the `unlock` sugar convention
     /// `<kind>_<id>_unlocked` for kind in {recipe, spell, location, transport}: reported as
-    /// `(kind, id)`. The pinned corpus always spells these as a direct `set_flag`; the schema has
-    /// no separate raw `unlock` action because no pinned document uses one (confirmed against
-    /// both the Rust and Python corpora), so this is purely an informational classification of
-    /// `set_flag` values that happen to follow the convention Python's `unlock` sugar expands to.
+    /// `(kind, id)`. The shipped scenario always spells these as a direct `set_flag`; the schema has
+    /// no separate raw `unlock` action because no document uses one, so this is purely an
+    /// informational classification of `set_flag` values that happen to follow the convention.
     pub(crate) unlock_flags: Vec<(String, String)>,
     pub(crate) give_items: Vec<(String, u32)>,
     pub(crate) join_party: Option<String>,
@@ -227,8 +226,7 @@ impl EffectsSummary {
     }
 }
 
-/// The four naming-convention unlock kinds recognized by the pinned Python `unlock` sugar
-/// (`engine/dialogue/dialogue_engine.py`'s `UNLOCK_KINDS`).
+/// The four naming-convention unlock kinds recognized by the `unlock` sugar convention.
 const UNLOCK_KINDS: &[&str] = &["recipe", "spell", "location", "transport"];
 
 fn classify_unlock_flag(flag: &str) -> Option<(String, String)> {
@@ -891,7 +889,7 @@ entries:
     /// Pins the exact reachability findings against the shipped scenario. `ardel_fisherman`,
     /// `millhaven_carter`, `harborgate_fishwife`, and `ruinwatch_digger` are the only dialogues
     /// currently accepted as inherited dead content, so they are the only ones this report accepts
-    /// as documented; the other three carry the identical pinned-source dead trailing-entry pattern
+    /// as documented; the other three carry the identical inherited dead trailing-entry pattern
     /// (see the module doc comment) and surface as new findings until the
     /// wave that reaches them documents them too. This test exists to catch regressions in the
     /// reachability algorithm itself, not to bless the count — a real drop in findings (fewer
@@ -901,11 +899,10 @@ entries:
         let root = crate::test_support::scenario_package_dir();
         let report = build_dialogue_report(&root);
         assert!(report.load_error.is_none());
-        // 101 before roadmap B1.3, plus the two sign boards and six zone NPCs it authored, plus
-        // B1.2's marshal camp: its field standard, the duel, and its two aftermath documents,
-        // plus B3.7's three late-town apothecaries, plus the three companion conversations in
-        // the staged Ardel epilogue, plus M14.06's nine stationary Zone 1-9 flavor NPCs, plus the
-        // Ruinwatch smith's forge conversation.
+        // The count covers the sign boards and zone NPCs, the marshal camp (its field standard,
+        // the duel, and its two aftermath documents), the three late-town apothecaries, the three
+        // companion conversations in the staged Ardel epilogue, the nine stationary Zone 1-9
+        // flavor NPCs, and the Ruinwatch smith's forge conversation.
         assert_eq!(report.documents.len(), 151);
         assert!(!report.documents.iter().any(|doc| doc.too_many_flags));
 
@@ -927,8 +924,7 @@ entries:
             }
         }
 
-        // W12.5-6-DIALOG revived all three of the former new findings, so the shipped scenario now
-        // has none. `ashenveil_ashgatherer` and `frostholm_courtier` gained a `sq_*_met` state that
+        // The shipped scenario has no new dead entries. `ashenveil_ashgatherer` and `frostholm_courtier` gained a `sq_*_met` state that
         // gives their trailing flavor its own first conversation, `frostholm_courtier`'s Act IV
         // entry was hoisted above the quest chain, and `elder_intro`'s duplicate reward entry
         // became the epilogue line the elder never had.

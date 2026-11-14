@@ -34,7 +34,7 @@ pub(crate) enum DebugPartyPreset {
     Full,
 }
 
-/// Focused, session-only battle setups used for the remaining manual parity observations.
+/// Focused, session-only battle setups used for manual observation of battle feedback and status effects.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DebugBattleFixture {

@@ -12,7 +12,7 @@ use std::{
 
 /// Lists the files directly within `dir`, refusing to follow it outside `canonical_root`.
 /// Every directory the report commands read (`data/maps`, `media/maps`, `data/dialogue`,
-/// `data/items`) is flat in the pinned scenario corpus, so this deliberately does not recurse.
+/// `data/items`) is flat in the shipped scenario, so this deliberately does not recurse.
 pub(crate) fn safe_read_dir(dir: &Path, canonical_root: Option<&Path>) -> Option<Vec<PathBuf>> {
     let canonical_root = canonical_root?;
     let canonical_dir = dir.canonicalize().ok()?;
