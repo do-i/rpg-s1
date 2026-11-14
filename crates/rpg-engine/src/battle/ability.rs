@@ -25,7 +25,7 @@ pub(super) enum ElementalAffinity {
         not(test),
         expect(
             dead_code,
-            reason = "the current scenario has no authored elemental resistance entries"
+            reason = "kept on purpose for a future resistance feature: the enemy schema has no resistance key yet, and affinity is decided by enemy type alone"
         )
     )]
     Resistant,
