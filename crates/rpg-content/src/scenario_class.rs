@@ -561,66 +561,31 @@ impl<'de> Deserialize<'de> for Ability {
 }
 
 impl AbilityDocument {
-    fn into_ability(self) -> Result<Ability, String> {
-        let Self {
-            id,
-            name,
-            unlock_level,
-            unlock_flag,
-            ability_type,
-            attack_range,
-            damage_coeff,
-            effect,
-            element,
-            description,
-            mp_cost,
-            battle_only,
-            guaranteed_crit,
-            heal_coeff,
-            heal_pct,
-            hits,
-            instant_kill_blocked_by,
-            instant_kill_chance,
-            revive_hp_pct,
-            side_effects,
-            spell_coeff,
-            steal_chance,
-            target,
-            warp,
-        } = self;
-
-        let fields = AbilityFields {
-            attack_range,
-            damage_coeff,
-            effect,
-            element,
-            guaranteed_crit,
-            heal_coeff,
-            heal_pct,
-            hits,
-            instant_kill_blocked_by,
-            instant_kill_chance,
-            revive_hp_pct,
-            side_effects,
-            spell_coeff,
-            steal_chance,
-            target,
-            warp,
-        };
+    fn into_ability(mut self) -> Result<Ability, String> {
         // MP is Mental Points: focus, not just magic. Every ability, physical arts included,
         // draws on it; a plain Attack is the free action.
-        if mp_cost == 0 {
+        if self.mp_cost == 0 {
             return Err(format!(
-                "ability `{id}`: every ability must have a non-zero `mp_cost`"
+                "ability `{}`: every ability must have a non-zero `mp_cost`",
+                self.id
             ));
         }
-        let kind = match ability_type {
-            AbilityType::Physical => fields.into_physical()?,
-            AbilityType::Spell => fields.into_spell()?,
-            AbilityType::Heal => fields.into_heal()?,
-            AbilityType::Buff => fields.into_buff()?,
-            AbilityType::Debuff => fields.into_debuff()?,
-            AbilityType::Utility => fields.into_utility()?,
+        // Lift the kind-independent fields out so the kind-specific fields stay in `self`
+        // and are consumed in place by `into_*`, with each field named only in the document.
+        let id = std::mem::take(&mut self.id);
+        let name = std::mem::take(&mut self.name);
+        let unlock_flag = self.unlock_flag.take();
+        let description = std::mem::take(&mut self.description);
+        let unlock_level = self.unlock_level;
+        let mp_cost = self.mp_cost;
+        let battle_only = std::mem::take(&mut self.battle_only);
+        let kind = match self.ability_type {
+            AbilityType::Physical => self.into_physical()?,
+            AbilityType::Spell => self.into_spell()?,
+            AbilityType::Heal => self.into_heal()?,
+            AbilityType::Buff => self.into_buff()?,
+            AbilityType::Debuff => self.into_debuff()?,
+            AbilityType::Utility => self.into_utility()?,
         };
 
         Ok(Ability {
@@ -636,26 +601,7 @@ impl AbilityDocument {
     }
 }
 
-struct AbilityFields {
-    attack_range: OptionalField<AttackRange>,
-    damage_coeff: OptionalField<PositiveFinite>,
-    effect: OptionalField<AbilityEffectDocument>,
-    element: OptionalField<AbilityElement>,
-    guaranteed_crit: OptionalField<bool>,
-    heal_coeff: OptionalField<PositiveFinite>,
-    heal_pct: OptionalField<UnitInterval>,
-    hits: OptionalField<NonZeroU32>,
-    instant_kill_blocked_by: OptionalField<Vec<InstantKillBlocker>>,
-    instant_kill_chance: OptionalField<UnitInterval>,
-    revive_hp_pct: OptionalField<UnitInterval>,
-    side_effects: OptionalField<Vec<AbilitySideEffect>>,
-    spell_coeff: OptionalField<PositiveFinite>,
-    steal_chance: OptionalField<UnitInterval>,
-    target: OptionalField<AbilityTarget>,
-    warp: OptionalField<WarpMode>,
-}
-
-impl AbilityFields {
+impl AbilityDocument {
     fn into_physical(self) -> Result<AbilityKind, String> {
         reject_present(
             "physical",
