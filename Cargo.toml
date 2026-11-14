@@ -32,6 +32,15 @@ workspace = true
 [dependencies]
 rpg-engine = { path = "crates/rpg-engine" }
 
+# Release builds link as one optimisation unit: thin LTO with a single codegen unit removes dead
+# code across crates (smaller binary, a few percent less main-schedule time), at the cost of a
+# longer release build. Symbols are stripped to shrink the binary; panic messages keep file and
+# line, but backtraces show addresses instead of function names.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
 [profile.dev]
 opt-level = 1
 # Line tables keep file and line in backtraces; full debug info fills the build volume.
