@@ -23,6 +23,7 @@ use crate::{
     scenario_encounter::EncounterZone,
     scenario_root::ScenarioRoot,
     scenario_spatial::{CardinalDirection, Position},
+    world_publication::WorldLayerState,
 };
 use crate::{
     encounter::BuildBattleError,

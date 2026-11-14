@@ -23,6 +23,7 @@ use crate::{
     tile_coordinates::TILE_SIZE,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     tsx_atlas_asset::TsxAtlasAsset,
+    world_publication::WorldLayerState,
 };
 
 use super::{
@@ -59,8 +60,7 @@ pub(super) fn request_active_encounter_assets(
         return;
     };
     let Some(metadata_path) = inventory.map_metadata_path(map_id) else {
-        state.status = WorldEncounterStatus::Failed;
-        state.failure = Some(format!("invalid encounter map id `{map_id}`"));
+        fail_encounter(&mut state, format!("invalid encounter map id `{map_id}`"));
         return;
     };
     state.map_id = Some(map_id.to_owned());

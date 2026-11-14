@@ -23,6 +23,7 @@ use crate::{
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset, world_entity_y_z},
     tmx_header::TmxMapDocument,
     tsx_atlas_asset::TsxAtlasAsset,
+    world_publication::WorldLayerState,
 };
 
 pub(crate) struct WorldObjectPlugin;
@@ -53,7 +54,7 @@ impl Plugin for WorldObjectPlugin {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-enum WorldObjectStatus {
+pub(crate) enum WorldObjectStatus {
     #[default]
     Idle,
     Loading,
@@ -73,28 +74,35 @@ pub(crate) struct WorldObjectState {
     failure: Option<String>,
 }
 
-impl WorldObjectState {
-    fn fail(&mut self, reason: impl Into<String>) {
-        self.status = WorldObjectStatus::Failed;
-        self.failure = Some(reason.into());
+impl WorldLayerState for WorldObjectState {
+    type Status = WorldObjectStatus;
+    type Failure = String;
+    const SPAWNED: Self::Status = WorldObjectStatus::Spawned;
+    const FAILED: Self::Status = WorldObjectStatus::Failed;
+
+    fn layer_map_id(&self) -> Option<&str> {
+        self.map_id.as_deref()
     }
 
+    fn layer_status(&self) -> Self::Status {
+        self.status
+    }
+
+    fn layer_failure(&self) -> Option<&Self::Failure> {
+        self.failure.as_ref()
+    }
+
+    fn layer_status_and_failure_mut(&mut self) -> (&mut Self::Status, &mut Option<Self::Failure>) {
+        (&mut self.status, &mut self.failure)
+    }
+}
+
+impl WorldObjectState {
     pub(crate) fn publication_status(
         &self,
         map_id: &str,
     ) -> crate::world_publication::PublicationStatus {
-        use crate::world_publication::PublicationStatus;
-        if self.map_id.as_deref() != Some(map_id) {
-            return PublicationStatus::Pending;
-        }
-        if let Some(reason) = &self.failure {
-            return PublicationStatus::Failed(reason.clone());
-        }
-        if self.is_spawned_for(map_id) {
-            PublicationStatus::Ready
-        } else {
-            PublicationStatus::Pending
-        }
+        self.map_gated_publication(map_id)
     }
 
     pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
@@ -106,9 +114,33 @@ impl WorldObjectState {
             .chain(self.definitions.iter().map(|h| h.id().untyped()))
             .collect()
     }
+}
 
-    pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
-        self.map_id.as_deref() == Some(map_id) && self.status == WorldObjectStatus::Spawned
+#[cfg(test)]
+impl crate::world_publication::PublicationFixture for WorldObjectState {
+    const FAILURE: &'static str = "object metadata path is invalid";
+
+    fn failure_reason() -> String {
+        Self::FAILURE.to_owned()
+    }
+
+    fn loading(map_id: &str) -> Self {
+        Self {
+            map_id: Some(map_id.to_owned()),
+            status: WorldObjectStatus::Loading,
+            ..Self::default()
+        }
+    }
+
+    fn spawned(map_id: &str) -> Self {
+        Self {
+            status: WorldObjectStatus::Spawned,
+            ..Self::loading(map_id)
+        }
+    }
+
+    fn probe_status(&self, map_id: &str) -> crate::world_publication::PublicationStatus {
+        self.publication_status(map_id)
     }
 }
 

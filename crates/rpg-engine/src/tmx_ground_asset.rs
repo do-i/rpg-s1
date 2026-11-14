@@ -33,6 +33,7 @@ use crate::{
         parse_tmx_map_document,
     },
     tsx_atlas_asset::{TsxAtlasAsset, TsxAtlasTileError},
+    world_publication::WorldLayerState,
 };
 
 #[cfg(test)]
@@ -89,25 +90,36 @@ pub(crate) struct StaticMapRenderState {
     failure: Option<String>,
 }
 
-impl StaticMapRenderState {
-    fn fail(&mut self, reason: impl Into<String>) {
-        self.status = StaticMapRenderStatus::Failed;
-        self.failure = Some(reason.into());
+impl WorldLayerState for StaticMapRenderState {
+    type Status = StaticMapRenderStatus;
+    type Failure = String;
+    const SPAWNED: Self::Status = StaticMapRenderStatus::Spawned;
+    const FAILED: Self::Status = StaticMapRenderStatus::Failed;
+
+    fn layer_map_id(&self) -> Option<&str> {
+        self.map_id.as_deref()
     }
 
+    fn layer_status(&self) -> Self::Status {
+        self.status
+    }
+
+    fn layer_failure(&self) -> Option<&Self::Failure> {
+        self.failure.as_ref()
+    }
+
+    fn layer_status_and_failure_mut(&mut self) -> (&mut Self::Status, &mut Option<Self::Failure>) {
+        (&mut self.status, &mut self.failure)
+    }
+}
+
+impl StaticMapRenderState {
+    /// Not map-gated: a failure recorded before any map id (missing current map) still fails.
     pub(crate) fn publication_status(
         &self,
         map_id: &str,
     ) -> crate::world_publication::PublicationStatus {
-        use crate::world_publication::PublicationStatus;
-        if let Some(reason) = &self.failure {
-            return PublicationStatus::Failed(reason.clone());
-        }
-        if self.is_spawned_for(map_id) {
-            PublicationStatus::Ready
-        } else {
-            PublicationStatus::Pending
-        }
+        self.publication_from(self.is_spawned_for(map_id))
     }
 
     pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
@@ -117,9 +129,33 @@ impl StaticMapRenderState {
     pub(crate) fn map<'a>(&self, maps: &'a Assets<TmxGroundAsset>) -> Option<&'a TmxGroundAsset> {
         maps.get(self.handle.as_ref()?)
     }
+}
 
-    pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
-        self.map_id.as_deref() == Some(map_id) && self.status == StaticMapRenderStatus::Spawned
+#[cfg(test)]
+impl crate::world_publication::PublicationFixture for StaticMapRenderState {
+    const FAILURE: &'static str = "map path is invalid";
+
+    fn failure_reason() -> String {
+        Self::FAILURE.to_owned()
+    }
+
+    fn loading(map_id: &str) -> Self {
+        Self {
+            map_id: Some(map_id.to_owned()),
+            status: StaticMapRenderStatus::Loading,
+            ..Self::default()
+        }
+    }
+
+    fn spawned(map_id: &str) -> Self {
+        Self {
+            status: StaticMapRenderStatus::Spawned,
+            ..Self::loading(map_id)
+        }
+    }
+
+    fn probe_status(&self, map_id: &str) -> crate::world_publication::PublicationStatus {
+        self.publication_status(map_id)
     }
 }
 

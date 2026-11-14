@@ -22,6 +22,7 @@ use crate::{
     scenario_spatial::cardinal_character_atlas::CardinalCharacterAtlas,
     tmx_ground_asset::world_entity_y_z,
     tsx_atlas_asset::TsxAtlasAsset,
+    world_publication::WorldLayerState,
 };
 
 const MAP_TILE_WIDTH: u32 = 32;
@@ -267,28 +268,71 @@ impl WorldPlayerSpawnState {
         self.failure.as_ref()
     }
 
+    /// Not map-gated, and Ready also needs the loaded sheet to be the controlled member's.
     pub(crate) fn publication_status(
         &self,
         map_id: &str,
         controlled_member: &str,
     ) -> crate::world_publication::PublicationStatus {
-        use crate::world_publication::PublicationStatus;
-        if let Some(failure) = self.failure() {
-            return PublicationStatus::Failed(failure.to_string());
-        }
-        if self.is_spawned_for(map_id) && self.member_id.as_deref() == Some(controlled_member) {
-            PublicationStatus::Ready
-        } else {
-            PublicationStatus::Pending
-        }
+        self.publication_from(
+            self.is_spawned_for(map_id) && self.member_id.as_deref() == Some(controlled_member),
+        )
     }
 
     pub(crate) fn asset_ids(&self) -> Vec<bevy::asset::UntypedAssetId> {
         self.atlas.iter().map(|h| h.id().untyped()).collect()
     }
+}
 
-    pub(crate) fn is_spawned_for(&self, map_id: &str) -> bool {
-        self.map_id.as_deref() == Some(map_id) && self.status == WorldPlayerSpawnStatus::Spawned
+impl WorldLayerState for WorldPlayerSpawnState {
+    type Status = WorldPlayerSpawnStatus;
+    type Failure = WorldPlayerSpawnFailure;
+    const SPAWNED: Self::Status = WorldPlayerSpawnStatus::Spawned;
+    const FAILED: Self::Status = WorldPlayerSpawnStatus::Failed;
+
+    fn layer_map_id(&self) -> Option<&str> {
+        self.map_id.as_deref()
+    }
+
+    fn layer_status(&self) -> Self::Status {
+        self.status
+    }
+
+    fn layer_failure(&self) -> Option<&Self::Failure> {
+        self.failure()
+    }
+
+    fn layer_status_and_failure_mut(&mut self) -> (&mut Self::Status, &mut Option<Self::Failure>) {
+        (&mut self.status, &mut self.failure)
+    }
+}
+
+#[cfg(test)]
+impl crate::world_publication::PublicationFixture for WorldPlayerSpawnState {
+    const FAILURE: &'static str = "game state has no current map for the World player";
+
+    fn failure_reason() -> WorldPlayerSpawnFailure {
+        WorldPlayerSpawnFailure::MissingCurrentMap
+    }
+
+    fn loading(map_id: &str) -> Self {
+        Self {
+            map_id: Some(map_id.to_owned()),
+            member_id: Some("hero".to_owned()),
+            status: WorldPlayerSpawnStatus::Loading,
+            ..Self::default()
+        }
+    }
+
+    fn spawned(map_id: &str) -> Self {
+        Self {
+            status: WorldPlayerSpawnStatus::Spawned,
+            ..Self::loading(map_id)
+        }
+    }
+
+    fn probe_status(&self, map_id: &str) -> crate::world_publication::PublicationStatus {
+        self.publication_status(map_id, "hero")
     }
 }
 
@@ -550,8 +594,7 @@ fn update_world_player_y_order(mut players: Query<&mut Transform, With<WorldPlay
 }
 
 fn fail_spawn(state: &mut WorldPlayerSpawnState, failure: WorldPlayerSpawnFailure) {
-    state.status = WorldPlayerSpawnStatus::Failed;
-    state.failure = Some(failure);
+    state.fail(failure);
 }
 
 fn cleanup_world_player(

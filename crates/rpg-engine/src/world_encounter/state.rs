@@ -14,6 +14,7 @@ use crate::{
     scenario_spatial::{CardinalDirection, Position},
     tsx_atlas_asset::TsxAtlasAsset,
     world_player::CharacterCollisionRect,
+    world_publication::WorldLayerState,
 };
 
 use super::{handoff::BattleTransition, simulation::enemy_collision_rect};
@@ -50,20 +51,14 @@ impl WorldEncounterState {
         &self,
         map_id: &str,
     ) -> crate::world_publication::PublicationStatus {
-        use crate::world_publication::PublicationStatus;
-        if let Some(reason) = &self.failure {
-            return PublicationStatus::Failed(reason.clone());
-        }
-        if self.map_id.as_deref() == Some(map_id)
-            && matches!(
-                self.status,
-                WorldEncounterStatus::Spawned | WorldEncounterStatus::NoEncounters
-            )
-        {
-            PublicationStatus::Ready
-        } else {
-            PublicationStatus::Pending
-        }
+        // Not map-gated, and a map with no encounters is Ready without being spawned.
+        self.publication_from(
+            self.map_id.as_deref() == Some(map_id)
+                && matches!(
+                    self.status,
+                    WorldEncounterStatus::Spawned | WorldEncounterStatus::NoEncounters
+                ),
+        )
     }
 
     /// Whether `map_id` has wandering enemies, or `None` while its encounters are unresolved.
@@ -99,6 +94,57 @@ impl WorldEncounterState {
     #[cfg(test)]
     pub(crate) fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
+    }
+}
+
+impl WorldLayerState for WorldEncounterState {
+    type Status = WorldEncounterStatus;
+    type Failure = String;
+    const SPAWNED: Self::Status = WorldEncounterStatus::Spawned;
+    const FAILED: Self::Status = WorldEncounterStatus::Failed;
+
+    fn layer_map_id(&self) -> Option<&str> {
+        self.map_id.as_deref()
+    }
+
+    fn layer_status(&self) -> Self::Status {
+        self.status
+    }
+
+    fn layer_failure(&self) -> Option<&Self::Failure> {
+        self.failure.as_ref()
+    }
+
+    fn layer_status_and_failure_mut(&mut self) -> (&mut Self::Status, &mut Option<Self::Failure>) {
+        (&mut self.status, &mut self.failure)
+    }
+}
+
+#[cfg(test)]
+impl crate::world_publication::PublicationFixture for WorldEncounterState {
+    const FAILURE: &'static str = "invalid encounter map id `map_a`";
+
+    fn failure_reason() -> String {
+        Self::FAILURE.to_owned()
+    }
+
+    fn loading(map_id: &str) -> Self {
+        Self {
+            map_id: Some(map_id.to_owned()),
+            status: WorldEncounterStatus::Loading,
+            ..Self::default()
+        }
+    }
+
+    fn spawned(map_id: &str) -> Self {
+        Self {
+            status: WorldEncounterStatus::Spawned,
+            ..Self::loading(map_id)
+        }
+    }
+
+    fn probe_status(&self, map_id: &str) -> crate::world_publication::PublicationStatus {
+        self.publication_status(map_id)
     }
 }
 
@@ -207,8 +253,7 @@ pub(super) fn reset_world_encounters(
 }
 
 pub(super) fn fail_encounter(state: &mut WorldEncounterState, failure: String) {
-    state.status = WorldEncounterStatus::Failed;
-    state.failure = Some(failure);
+    state.fail(failure);
 }
 
 pub(super) fn cleanup_world_encounters(
