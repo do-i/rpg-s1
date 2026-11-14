@@ -36,6 +36,24 @@ use super::{
 
 pub(super) const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
 
+/// The encounter-load failure for the first pending spawn whose formation names no enemy.
+///
+/// An authored `formation: []` parses and stays drawable, so it is refused here, after the
+/// formations are picked and before any sprite is requested, without changing the draws.
+fn empty_formation_failure(pending: &[PendingWorldEnemy]) -> Option<String> {
+    pending
+        .iter()
+        .find(|enemy| enemy.formation.is_empty())
+        .map(|enemy| format!("spawn `{}` has an empty formation", enemy.encounter_id))
+}
+
+/// The sprite sheet path for a world enemy, or the encounter-load failure when the enemy id
+/// cannot form a scenario-relative path (for example one containing `:` or `\`).
+fn enemy_sprite_path(sprite_id: &str) -> Result<ScenarioRelativePath, String> {
+    ScenarioRelativePath::try_from(format!("media/sprites/enemies/{sprite_id}.tsx").as_str())
+        .map_err(|error| format!("enemy `{sprite_id}` cannot name a sprite path: {error}"))
+}
+
 pub(super) fn request_active_encounter_assets(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -371,6 +389,10 @@ pub(super) fn drive_active_encounter_assets(
                 }
             }
         }
+        if let Some(failure) = empty_formation_failure(&state.pending) {
+            fail_encounter(&mut state, failure);
+            return;
+        }
         let sprite_ids = state
             .pending
             .iter()
@@ -384,10 +406,13 @@ pub(super) fn drive_active_encounter_assets(
                 );
                 return;
             }
-            let path = ScenarioRelativePath::try_from(
-                format!("media/sprites/enemies/{sprite_id}.tsx").as_str(),
-            )
-            .expect("validated enemy id produced a scenario-relative sprite path");
+            let path = match enemy_sprite_path(&sprite_id) {
+                Ok(path) => path,
+                Err(failure) => {
+                    fail_encounter(&mut state, failure);
+                    return;
+                }
+            };
             state
                 .sprite_handles
                 .entry(sprite_id.clone())
@@ -508,4 +533,62 @@ pub(super) fn boss_spawn_tile(map: &TmxGroundAsset) -> Option<Position> {
         (object.x() / f64::from(TILE_SIZE)).floor() as i32,
         (object.y() / f64::from(TILE_SIZE)).floor() as i32,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gameplay_rng::GameplayRng;
+
+    const ZONE: &str = "id: fixture_zone\nname: Fixture\ndensity: 0.5\nbackground: fixture-bg\nentries:\n  - formation: []\n    weight: 1\n    chase_range: 0\n";
+
+    fn pending(encounter_id: &str, formation: Vec<String>) -> PendingWorldEnemy {
+        PendingWorldEnemy {
+            encounter_id: encounter_id.to_owned(),
+            formation,
+            origin: Position::new(0, 0),
+            boss: false,
+            chase_range: 0,
+            position: Position::new(0, 0),
+            facing: CardinalDirection::Down,
+            active: true,
+        }
+    }
+
+    /// `formation: []` with a positive weight parses and is drawn like any other entry; the load
+    /// must fail on it before sprites are requested instead of panicking when it publishes.
+    #[test]
+    fn an_empty_authored_formation_fails_the_encounter_load_and_valid_ones_pass() {
+        let zone: EncounterZone = crate::scenario_yaml::from_str(ZONE).unwrap();
+        let mut rng = GameplayRng::from_seed(7);
+        let drawn = pick_weighted_formation(&zone.entries, &mut rng)
+            .expect("the only entry has a positive weight");
+        let spawns = vec![
+            pending("fixture_zone:spawn:0", vec!["moss_hare".to_owned()]),
+            pending("fixture_zone:spawn:1", drawn.enemy_ids.clone()),
+        ];
+
+        assert_eq!(
+            empty_formation_failure(&spawns).as_deref(),
+            Some("spawn `fixture_zone:spawn:1` has an empty formation")
+        );
+        assert_eq!(empty_formation_failure(&spawns[..1]), None);
+    }
+
+    /// Enemy ids are free text, so one can fail to form its sprite path; that must fail the
+    /// encounter load rather than panic, while an ordinary id keeps its exact path.
+    #[test]
+    fn an_enemy_id_that_cannot_form_a_sprite_path_fails_the_encounter_load() {
+        assert_eq!(
+            enemy_sprite_path("moss_hare").unwrap().as_str(),
+            "media/sprites/enemies/moss_hare.tsx"
+        );
+        assert_eq!(
+            enemy_sprite_path("orc:raider").unwrap_err(),
+            format!(
+                "enemy `orc:raider` cannot name a sprite path: {}",
+                ScenarioRelativePath::try_from("media/sprites/enemies/orc:raider.tsx").unwrap_err()
+            )
+        );
+    }
 }

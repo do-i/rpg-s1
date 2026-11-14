@@ -205,6 +205,11 @@ fn read_tmx_ids(directory: &Path) -> Result<Vec<String>, String> {
         let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
             return Err("TMX filename is not portable UTF-8".to_owned());
         };
+        if ScenarioRelativePath::try_from(format!("{stem}.tmx").as_str()).is_err() {
+            return Err(format!(
+                "TMX filename `{stem}.tmx` does not form a scenario-relative map path"
+            ));
+        }
         ids.push(stem.to_owned());
     }
     ids.sort();
@@ -226,5 +231,36 @@ mod tests {
         assert!(!report.is_valid());
         assert!(report.entries.is_empty());
         assert!(report.load_error.unwrap().contains("manifest.yaml"));
+    }
+
+    /// A TMX filename such as `a:b.tmx` is a legal file but no scenario-relative map path; the
+    /// sweep must report it as a load error instead of panicking while it builds the map paths.
+    #[test]
+    fn a_tmx_filename_that_cannot_form_a_map_path_is_a_bounded_load_error() {
+        let package = std::env::temp_dir().join(format!(
+            "rpg-runtime-map-sweep-{}/scenarios/fixture",
+            std::process::id()
+        ));
+        fs::create_dir_all(package.join("media/maps")).unwrap();
+        fs::write(
+            package.join("manifest.yaml"),
+            include_str!("../../../tests/fixtures/rusted-kingdoms-manifest-complete.yaml"),
+        )
+        .unwrap();
+        fs::write(package.join("media/maps/a:b.tmx"), "").unwrap();
+
+        let report = build_runtime_map_sweep(
+            package.parent().unwrap().parent().unwrap(),
+            &ScenarioRoot::try_for_package_key("fixture").unwrap(),
+            &package,
+        );
+        fs::remove_dir_all(package.parent().unwrap().parent().unwrap()).unwrap();
+
+        assert!(!report.is_valid());
+        assert!(report.entries.is_empty());
+        assert_eq!(
+            report.load_error.as_deref(),
+            Some("TMX filename `a:b.tmx` does not form a scenario-relative map path")
+        );
     }
 }

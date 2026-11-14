@@ -148,11 +148,19 @@ fn foothills_equipment_caches_keep_their_rewards_and_opened_state_after_reload()
         );
         let mut game = fresh_game();
         let initial = game.repository().item_count(item);
-        assert!(open_item_box(&chest, &mut game, &catalog).opened);
+        assert!(
+            open_item_box(&chest, &mut game, &catalog)
+                .expect("valid loot opens")
+                .opened
+        );
         assert_eq!(game.repository().item_count(item), initial + 1);
         save(&store, index + 1, &game);
         let mut restored = load(&store, index + 1);
-        assert!(!open_item_box(&chest, &mut restored, &catalog).opened);
+        assert!(
+            !open_item_box(&chest, &mut restored, &catalog)
+                .expect("valid loot opens")
+                .opened
+        );
         assert_eq!(restored.repository().item_count(item), initial + 1);
     }
 }

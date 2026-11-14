@@ -295,7 +295,14 @@ fn request_npc_dialogue(
         return;
     };
     if let InteractionTarget::Box(item_box) = target {
-        let outcome = open_item_box(item_box, &mut game, &catalog);
+        let outcome = match open_item_box(item_box, &mut game, &catalog) {
+            Ok(outcome) => outcome,
+            Err(failure) => {
+                state.pending_sounds.push(InteractionSound::Blocked);
+                state.failure = Some(failure);
+                return;
+            }
+        };
         state.pending_sounds.push(if outcome.opened {
             InteractionSound::Box
         } else {
@@ -445,35 +452,38 @@ fn open_item_box(
     item_box: &WorldItemBox,
     game: &mut GameState,
     catalog: &FieldMenuCatalog,
-) -> ItemBoxOutcome {
+) -> Result<ItemBoxOutcome, String> {
     let key = item_box.key();
     if game.opened_boxes().contains(&key) {
-        return ItemBoxOutcome {
+        return Ok(ItemBoxOutcome {
             message: "This treasure box is already open.".to_owned(),
             rows: Vec::new(),
             opened: false,
-        };
+        });
     }
 
-    // The lid comes off before anything is granted, so a rigged box wounds the party even when
-    // it turns out to hold nothing.
-    let mut rows = match item_box.trap() {
-        Some(trap) => vec![TreasureRow::message(spring_trap(trap, game, catalog))],
-        None => Vec::new(),
-    };
-
+    // Stage the grants on a copy first so invalid authored loot (an empty item id) refuses the
+    // box before the trap springs or anything is granted. The copy is only touched by the
+    // repository and the trap only by the party, so publishing it after the trap leaves valid
+    // loot with exactly the effects and order it had when grants followed the trap directly.
+    let mut repository = game.repository().clone();
     let mut grants = Vec::new();
     let batch = (!item_box.loot().items.is_empty() || !item_box.loot().magic_cores.is_empty())
-        .then(|| game.repository_mut().start_loot_batch());
+        .then(|| repository.start_loot_batch());
     for item in &item_box.loot().items {
-        let _outcome = game
-            .repository_mut()
+        let _outcome = repository
             .add_item_in_batch(
                 &item.id,
                 item.qty.get(),
                 batch.expect("nonempty item-box loot started a batch"),
             )
-            .expect("validated item-box loot uses a current batch");
+            .map_err(|error| {
+                format!(
+                    "item box `{}` on map `{}` has invalid loot: {error}",
+                    item_box.id(),
+                    key.map_id().as_str()
+                )
+            })?;
         grants.push(TreasureRow::item(
             &item.id,
             format!("{} ×{}", loot_display_name(catalog, &item.id), item.qty),
@@ -488,8 +498,7 @@ fn open_item_box(
             MagicCoreSize::Xl => "xl",
         };
         let id = format!("mc_{size}");
-        let _outcome = game
-            .repository_mut()
+        let _outcome = repository
             .add_item_in_batch(
                 &id,
                 core.qty.get(),
@@ -501,6 +510,14 @@ fn open_item_box(
             format!("{} ×{}", loot_display_name(catalog, &id), core.qty),
         ));
     }
+
+    // The lid comes off before anything is granted, so a rigged box wounds the party even when
+    // it turns out to hold nothing.
+    let mut rows = match item_box.trap() {
+        Some(trap) => vec![TreasureRow::message(spring_trap(trap, game, catalog))],
+        None => Vec::new(),
+    };
+    *game.repository_mut() = repository;
     game.opened_boxes_mut().record(key);
     if grants.is_empty() {
         // A chest authored with no loot at all still opens its modal and prints one
@@ -508,11 +525,11 @@ fn open_item_box(
         grants.push(TreasureRow::message("(empty)"));
     }
     rows.extend(grants);
-    ItemBoxOutcome {
+    Ok(ItemBoxOutcome {
         message: String::new(),
         rows,
         opened: true,
-    }
+    })
 }
 
 /// The first conscious member whose class carries `chest_trap_detect`, by party order.
@@ -1775,8 +1792,8 @@ mod tests {
             source.loot.clone(),
             source.trap,
         );
-        let first = open_item_box(&item_box, &mut game, &catalog);
-        let second = open_item_box(&item_box, &mut game, &catalog);
+        let first = open_item_box(&item_box, &mut game, &catalog).expect("valid loot opens");
+        let second = open_item_box(&item_box, &mut game, &catalog).expect("valid loot opens");
         assert!(!game.opened_boxes().contains(&other.key()));
 
         assert!(first.opened);
@@ -1809,7 +1826,11 @@ mod tests {
         assert_eq!(game.repository().item_count("antidote"), 1);
         assert!(game.opened_boxes().contains(&item_box.key()));
         assert_eq!(game.opened_boxes().iter().count(), 1);
-        assert!(open_item_box(&other, &mut game, &catalog).opened);
+        assert!(
+            open_item_box(&other, &mut game, &catalog)
+                .expect("valid loot opens")
+                .opened
+        );
         assert!(game.opened_boxes().contains(&other.key()));
         assert!(game.opened_boxes().contains(&item_box.key()));
     }
@@ -1883,7 +1904,8 @@ mod tests {
             "the trap must be survivable for this fixture: {before:?}"
         );
 
-        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog);
+        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog)
+            .expect("valid loot opens");
 
         assert!(outcome.opened, "a trap does not keep the lid shut");
         assert_eq!(
@@ -1916,7 +1938,8 @@ mod tests {
             .map(|member| (member.id().to_owned(), member.health()))
             .collect::<Vec<_>>();
 
-        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog);
+        let outcome = open_item_box(&trapped_box("needle_chest", 9), &mut game, &catalog)
+            .expect("valid loot opens");
 
         assert_eq!(
             outcome
@@ -1948,7 +1971,8 @@ mod tests {
             .map(|member| member.id().to_owned())
             .collect::<Vec<_>>();
 
-        let outcome = open_item_box(&trapped_box("crusher_chest", 9_999), &mut game, &catalog);
+        let outcome = open_item_box(&trapped_box("crusher_chest", 9_999), &mut game, &catalog)
+            .expect("valid loot opens");
 
         assert!(outcome.opened);
         for id in &ids {
@@ -1964,10 +1988,49 @@ mod tests {
             &trapped_box("second_crusher_chest", 9_999),
             &mut game,
             &catalog,
-        );
+        )
+        .expect("valid loot opens");
         assert_eq!(
             again.rows.first().map(|row| row.text.as_str()),
             Some("A trap springs from the lid, but the party is too battered to bruise.")
+        );
+    }
+
+    /// An empty loot id parses but no repository can hold it; the box must refuse to open before
+    /// its trap springs or any of its valid loot is granted, instead of panicking.
+    #[test]
+    fn a_chest_with_an_empty_loot_id_refuses_to_open_and_changes_nothing() {
+        let (mut game, catalog, _balance) = trap_session();
+        let definitions: crate::scenario_item_box::ItemBoxCatalog = scenario_yaml::from_str(
+            "item_boxes:\n  bad_chest:\n    loot:\n      items:\n        - id: potion\n        - id: \"\"\n      magic_cores:\n        - size: s\n    trap:\n      damage: 9\n",
+        )
+        .unwrap();
+        let source = &definitions.item_boxes["bad_chest"];
+        let item_box = WorldItemBox::for_test(
+            RuntimeMapId::try_new("zone_07_sunken_cave").unwrap(),
+            "bad_chest_01",
+            Position::new(4, 4),
+            source.loot.clone(),
+            source.trap,
+        );
+        let before = game.clone();
+
+        let failure = open_item_box(&item_box, &mut game, &catalog)
+            .expect_err("an empty loot id must refuse the box");
+
+        assert_eq!(
+            failure,
+            "item box `bad_chest_01` on map `zone_07_sunken_cave` has invalid loot: \
+             repository item id must not be empty"
+        );
+        assert!(!game.opened_boxes().contains(&item_box.key()));
+        assert_eq!(
+            game.repository().item_count("potion"),
+            before.repository().item_count("potion")
+        );
+        assert_eq!(
+            game, before,
+            "no trap, grant, batch or RNG draw may leak out"
         );
     }
 

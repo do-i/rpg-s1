@@ -7,13 +7,15 @@ use bevy::{asset::LoadState, ecs::schedule::ApplyDeferred, prelude::*};
 use crate::{
     app_state::AppState,
     game_state::GameState,
+    runtime_flags::RuntimeFlags,
     runtime_map::RuntimeMapId,
     runtime_opened_boxes::OpenedBoxKey,
     scenario_inventory::ScenarioInventory,
     scenario_item_box::{ItemBoxCatalog, item_box_placements},
     scenario_manifest::{Manifest, ManifestSigns},
     scenario_map::{
-        ItemBoxLoot, ItemBoxTrap, MapMetadata, OptionalMapMetadata, optional_map_metadata,
+        ItemBoxLoot, ItemBoxMetadata, ItemBoxTrap, MapMetadata, OptionalMapMetadata,
+        optional_map_metadata,
     },
     scenario_path::ScenarioRelativePath,
     scenario_root::{SCENARIO_MANIFEST_PATH, ScenarioRoot},
@@ -376,6 +378,27 @@ fn drive_world_object_load(
         return;
     }
 
+    let map_id_value = RuntimeMapId::try_new(map_id.to_owned())
+        .expect("GameState current map id is validated nonempty");
+    // Legacy metadata boxes carry their own ids; resolve every key before publishing any sign
+    // or chest so an empty authored id fails the layer instead of panicking mid-spawn.
+    let legacy_boxes = if state
+        .definitions
+        .as_ref()
+        .and_then(|handle| definitions.get(handle))
+        .is_none()
+    {
+        match legacy_box_keys(&map_id_value, metadata, game.flags()) {
+            Ok(boxes) => boxes,
+            Err(failure) => {
+                state.fail(failure);
+                return;
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
     for (index, position) in sign_tiles(map.document(), &manifest.signs)
         .into_iter()
         .enumerate()
@@ -389,8 +412,6 @@ fn drive_world_object_load(
             },
         ));
     }
-    let map_id_value = RuntimeMapId::try_new(map_id.to_owned())
-        .expect("GameState current map id is validated nonempty");
     let box_atlas = state
         .box_atlas
         .as_ref()
@@ -466,15 +487,8 @@ fn drive_world_object_load(
         }
         commands.spawn_batch(resolved);
     } else {
-        for item_box in metadata
-            .item_boxes
-            .iter()
-            .filter(|item_box| game.flags().satisfies(&item_box.present))
-        {
-            let opened = game.opened_boxes().contains(
-                &OpenedBoxKey::try_new(map_id_value.clone(), item_box.id.clone())
-                    .expect("source box id is nonempty"),
-            );
+        for (item_box, key) in legacy_boxes {
+            let opened = game.opened_boxes().contains(&key);
             let sprite = box_atlas
                 .and_then(|atlas| atlas.sprite_for_tile(u32::from(opened)).ok())
                 .unwrap_or_else(|| {
@@ -496,6 +510,32 @@ fn drive_world_object_load(
         }
     }
     state.status = WorldObjectStatus::Spawned;
+}
+
+/// The present legacy metadata boxes with their opened-box keys, in authored order, or the
+/// layer failure for the first one whose authored id cannot form a key.
+fn legacy_box_keys<'a>(
+    map_id: &RuntimeMapId,
+    metadata: &'a MapMetadata,
+    flags: &RuntimeFlags,
+) -> Result<Vec<(&'a ItemBoxMetadata, OpenedBoxKey)>, String> {
+    metadata
+        .item_boxes
+        .iter()
+        .filter(|item_box| flags.satisfies(&item_box.present))
+        .map(|item_box| {
+            OpenedBoxKey::try_new(map_id.clone(), item_box.id.clone())
+                .map(|key| (item_box, key))
+                .map_err(|_| {
+                    format!(
+                        "item-box at ({}, {}) on map `{}` has an empty id",
+                        item_box.position.x,
+                        item_box.position.y,
+                        map_id.as_str()
+                    )
+                })
+        })
+        .collect()
 }
 
 /// A board can override the map's shared message without depending on sign discovery order.
@@ -599,6 +639,34 @@ fn cleanup_world_objects(
 mod tests {
     use super::*;
     use crate::{scenario_path::ScenarioRelativePath, tmx_header::parse_tmx_map_document};
+
+    /// An empty legacy box id parses but cannot key an opened box; the layer must fail before
+    /// anything is published instead of panicking while it spawns chests.
+    #[test]
+    fn legacy_box_keys_fail_the_layer_on_an_empty_box_id_and_keep_valid_boxes_in_order() {
+        let map_id = RuntimeMapId::try_new("legacy_map").unwrap();
+        let flags = RuntimeFlags::default();
+        let valid: MapMetadata = crate::scenario_yaml::from_str(
+            "id: legacy_map\nname: Legacy\nitem_boxes:\n  - id: first_box\n    position: [0, 1]\n  - id: second_box\n    position: [2, 3]\n",
+        )
+        .unwrap();
+        let keys = legacy_box_keys(&map_id, &valid, &flags).expect("valid ids form keys");
+        assert_eq!(
+            keys.iter()
+                .map(|(item_box, key)| (item_box.id.as_str(), key.box_id()))
+                .collect::<Vec<_>>(),
+            [("first_box", "first_box"), ("second_box", "second_box")]
+        );
+
+        let empty: MapMetadata = crate::scenario_yaml::from_str(
+            "id: legacy_map\nname: Legacy\nitem_boxes:\n  - id: first_box\n    position: [0, 1]\n  - id: \"\"\n    position: [3, 4]\n",
+        )
+        .unwrap();
+        assert_eq!(
+            legacy_box_keys(&map_id, &empty, &flags).unwrap_err(),
+            "item-box at (3, 4) on map `legacy_map` has an empty id"
+        );
+    }
 
     #[test]
     fn sign_dialogue_prefers_its_position_and_preserves_the_map_fallback() {
