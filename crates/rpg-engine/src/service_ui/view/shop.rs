@@ -11,8 +11,16 @@ pub(super) const HEIGHT: f32 = 746.0;
 const STOCK_WIDTH: f32 = 360.0;
 const COUNTER_WIDTH: f32 = 474.0;
 const PARTY_WIDTH: f32 = 362.0;
-const VISIBLE_ROWS: usize = 7;
-const CARD_HEIGHT: f32 = 64.0;
+const STOCK_VISIBLE_ROWS: usize = 7;
+const STOCK_CARD_HEIGHT: f32 = 64.0;
+/// Inner width of the stock list inside the stock panel.
+const STOCK_LIST_WIDTH: f32 = 348.0;
+/// Height of the stock and counter panels' title rows.
+const PANEL_HEADING_HEIGHT: f32 = 24.0;
+/// The keeper face (or its placeholder frame) at the left of the header.
+const HEADER_FACE_SIZE: f32 = 52.0;
+/// Height of the header content row: the ember accent bar and the centred mode pills share it.
+const HEADER_CONTENT_HEIGHT: f32 = 53.0;
 
 #[derive(Default)]
 pub(super) struct Portraits(BTreeMap<String, Handle<Image>>);
@@ -71,19 +79,19 @@ pub(super) fn spawn_header(
                 header.spawn((
                     face.image_node(),
                     Node {
-                        width: px(52),
-                        height: px(52),
+                        width: px(HEADER_FACE_SIZE),
+                        height: px(HEADER_FACE_SIZE),
                         flex_shrink: 0.0,
                         ..default()
                     },
                 ));
             } else {
-                spawn_keeper_frame(header, font, 52.0, None);
+                spawn_keeper_frame(header, font, HEADER_FACE_SIZE, None);
             }
             header.spawn((
                 Node {
                     width: px(4),
-                    height: px(53),
+                    height: px(HEADER_CONTENT_HEIGHT),
                     flex_shrink: 0.0,
                     ..default()
                 },
@@ -130,7 +138,7 @@ pub(super) fn spawn_header(
                         left: px(0),
                         top: px(0),
                         width: percent(100),
-                        height: px(53),
+                        height: px(HEADER_CONTENT_HEIGHT),
                         align_items: AlignItems::Center,
                         justify_content: JustifyContent::Center,
                         column_gap: px(16),
@@ -292,7 +300,7 @@ pub(super) fn spawn_page(
                         panel
                             .spawn(Node {
                                 width: percent(100),
-                                height: px(24),
+                                height: px(PANEL_HEADING_HEIGHT),
                                 flex_shrink: 0.0,
                                 justify_content: JustifyContent::SpaceBetween,
                                 align_items: AlignItems::Center,
@@ -338,7 +346,7 @@ pub(super) fn spawn_page(
                             "shop-items",
                             state.selected,
                             row_count,
-                            VISIBLE_ROWS,
+                            STOCK_VISIBLE_ROWS,
                         );
                         spawn_scroll_list(
                             panel,
@@ -347,7 +355,7 @@ pub(super) fn spawn_page(
                                 flex_grow: 1.0,
                                 flex_shrink: 1.0,
                                 min_height: px(0),
-                                width: px(348),
+                                width: px(STOCK_LIST_WIDTH),
                                 margin: UiRect::top(px(39)),
                                 ..scroll_list_node(4.0)
                             },
@@ -459,8 +467,8 @@ fn spawn_stock_card(
         .spawn((
             Node {
                 width: percent(100),
-                height: px(CARD_HEIGHT),
-                min_height: px(CARD_HEIGHT),
+                height: px(STOCK_CARD_HEIGHT),
+                min_height: px(STOCK_CARD_HEIGHT),
                 flex_shrink: 0.0,
                 align_items: AlignItems::Center,
                 padding: UiRect::axes(px(8), px(4)),
@@ -540,7 +548,7 @@ fn spawn_counter(
                 .spawn((
                     Node {
                         width: percent(100),
-                        height: px(24),
+                        height: px(PANEL_HEADING_HEIGHT),
                         flex_shrink: 0.0,
                         margin: UiRect::bottom(px(12)),
                         border: UiRect::bottom(px(1)),

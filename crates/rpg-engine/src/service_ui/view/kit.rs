@@ -2,6 +2,11 @@
 
 use super::*;
 
+/// Border width of a service card or panel that holds the cursor or is the chosen option.
+pub(super) const SELECTED_BORDER: f32 = 2.0;
+/// Border width of the same card when it does not.
+pub(super) const IDLE_BORDER: f32 = 1.0;
+
 /// The words and wallet on a workspace header; everything else about the header is common.
 pub(super) struct HeaderSpec<'a> {
     pub(super) name: &'a str,

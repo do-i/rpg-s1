@@ -5,6 +5,7 @@
 //! It stays empty until the piece list holds focus.
 
 use super::hints::WORKSHOP_HINTS;
+use super::kit::{IDLE_BORDER, SELECTED_BORDER};
 use super::*;
 use crate::{
     forge::{
@@ -17,8 +18,10 @@ use crate::{
 
 const TYPE_WIDTH: f32 = 180.0;
 const DETAIL_WIDTH: f32 = 600.0;
-const VISIBLE_ROWS: usize = 5;
-const CARD_HEIGHT: f32 = 80.0;
+const PIECE_VISIBLE_ROWS: usize = 5;
+const PIECE_CARD_HEIGHT: f32 = 80.0;
+/// Gap between stacked cards in the type column and in the piece column.
+const CARD_GAP: f32 = 8.0;
 const SLOT_ICON_SIZE: f32 = 44.0;
 
 /// The equipment-slot artwork drawn on each type card, in [`ForgeType::ALL`] order.
@@ -134,7 +137,7 @@ fn spawn_types(
                     flex_grow: 1.0,
                     min_height: px(0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(8),
+                    row_gap: px(CARD_GAP),
                     ..default()
                 })
                 .with_children(|list| {
@@ -150,7 +153,11 @@ fn spawn_types(
                                 align_items: AlignItems::Center,
                                 column_gap: px(8),
                                 padding: UiRect::horizontal(px(12)),
-                                border: UiRect::all(px(if current { 2 } else { 1 })),
+                                border: UiRect::all(px(if current {
+                                    SELECTED_BORDER
+                                } else {
+                                    IDLE_BORDER
+                                })),
                                 border_radius: BorderRadius::all(px(4)),
                                 ..default()
                             },
@@ -259,7 +266,7 @@ fn spawn_pieces(
             }
             let window = state
                 .scroll
-                .window("forge", selected, listed.len(), VISIBLE_ROWS);
+                .window("forge", selected, listed.len(), PIECE_VISIBLE_ROWS);
             spawn_scroll_list(
                 panel,
                 window,
@@ -268,7 +275,7 @@ fn spawn_pieces(
                     flex_direction: FlexDirection::Column,
                     flex_grow: 1.0,
                     min_height: px(0),
-                    row_gap: px(8),
+                    row_gap: px(CARD_GAP),
                     ..default()
                 },
                 |cards| {
@@ -282,12 +289,16 @@ fn spawn_pieces(
                             .spawn((
                                 Node {
                                     width: percent(100),
-                                    height: px(CARD_HEIGHT),
+                                    height: px(PIECE_CARD_HEIGHT),
                                     flex_shrink: 0.0,
                                     align_items: AlignItems::Center,
                                     column_gap: px(12),
                                     padding: UiRect::horizontal(px(10)),
-                                    border: UiRect::all(px(if current { 2 } else { 1 })),
+                                    border: UiRect::all(px(if current {
+                                        SELECTED_BORDER
+                                    } else {
+                                        IDLE_BORDER
+                                    })),
                                     border_radius: BorderRadius::all(px(4)),
                                     ..default()
                                 },

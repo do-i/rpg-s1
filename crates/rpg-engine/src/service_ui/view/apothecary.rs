@@ -1,12 +1,18 @@
 //! The apothecary's illustrated, live recipe workspace.
 
 use super::hints::WORKSHOP_HINTS;
+use super::kit::{IDLE_BORDER, SELECTED_BORDER};
 use super::*;
 use crate::{
     item_images::{ITEM_IMAGE_SIZE, spawn_item_image},
     service_domain::{RecipeAvailability, recipe_availability, recipe_input_requirements},
     service_ui::apothecary::{ApothecaryControl, VISIBLE_RECIPES, recipe_rows},
 };
+
+const RECIPE_LIST_WIDTH: f32 = 420.0;
+/// Recipe cards grow with their text between these heights.
+const RECIPE_CARD_MIN_HEIGHT: f32 = 72.0;
+const RECIPE_CARD_MAX_HEIGHT: f32 = 100.0;
 
 pub(super) fn spawn_header(
     parent: &mut ChildSpawnerCommands<'_>,
@@ -43,7 +49,7 @@ pub(super) fn spawn_page(
             columns,
             "Apothecary",
             Node {
-                width: px(420),
+                width: px(RECIPE_LIST_WIDTH),
                 flex_shrink: 0.0,
                 ..default()
             },
@@ -236,14 +242,18 @@ fn spawn_recipe_card(
                 width: percent(100),
                 flex_grow: 1.0,
                 flex_basis: px(0),
-                min_height: px(72),
-                max_height: px(100),
+                min_height: px(RECIPE_CARD_MIN_HEIGHT),
+                max_height: px(RECIPE_CARD_MAX_HEIGHT),
                 align_items: AlignItems::Center,
                 padding: UiRect::axes(
                     px(if selected { 9 } else { 10 }),
                     px(if selected { 7 } else { 8 }),
                 ),
-                border: UiRect::all(px(if selected { 2 } else { 1 })),
+                border: UiRect::all(px(if selected {
+                    SELECTED_BORDER
+                } else {
+                    IDLE_BORDER
+                })),
                 border_radius: BorderRadius::all(px(4)),
                 ..default()
             },

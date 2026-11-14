@@ -1,6 +1,7 @@
 //! Illustrated exchange routes with separate quantity and confirmation dialogs.
 
 use super::hints::BUTTON_HINTS;
+use super::kit::{IDLE_BORDER, SELECTED_BORDER};
 use super::*;
 use crate::{
     service_domain::{CORE_RANK_UP_COST, next_core_id, sale_value},
@@ -12,6 +13,22 @@ pub(super) const HEIGHT: f32 = 712.0;
 const LIST_WIDTH: f32 = 438.0;
 const QUANTITY_WIDTH: f32 = 166.0;
 const QUANTITY_HEIGHT: f32 = 128.0;
+/// Gap between the list and detail columns; the heading row above them uses the same gap so
+/// each heading sits over its column.
+const PAGE_COLUMN_GAP: f32 = 20.0;
+/// Height of the illustrated route graph in the detail column.
+const GRAPH_HEIGHT: f32 = 369.0;
+/// Width of the "you give" column at the left of the route graph.
+const GRAPH_SOURCE_WIDTH: f32 = 174.0;
+/// Left edge of the vertical spine and of the route arrows that branch from it.
+const ROUTE_SPINE_X: f32 = 204.0;
+/// Quantity and review dialog frame.
+const DIALOG_WIDTH: f32 = 620.0;
+const DIALOG_MIN_HEIGHT: f32 = 464.0;
+/// Gap between the buttons at the foot of either dialog.
+const DIALOG_BUTTON_GAP: f32 = 14.0;
+/// Width of the source and target columns in the review dialog's exchange diagram.
+const EXCHANGE_COLUMN_WIDTH: f32 = 190.0;
 
 fn background() -> Color {
     Color::srgb_u8(20, 21, 26)
@@ -114,7 +131,7 @@ pub(super) fn spawn_page(
         .with_children(|body| {
             body.spawn(Node {
                 width: percent(100),
-                column_gap: px(20),
+                column_gap: px(PAGE_COLUMN_GAP),
                 ..default()
             })
             .with_children(|headings| {
@@ -133,7 +150,7 @@ pub(super) fn spawn_page(
                 width: percent(100),
                 flex_grow: 1.0,
                 min_height: px(0),
-                column_gap: px(20),
+                column_gap: px(PAGE_COLUMN_GAP),
                 ..default()
             })
             .with_children(|columns| {
@@ -182,7 +199,11 @@ fn spawn_list(
                             padding: UiRect::axes(px(6), px(6)),
                             align_items: AlignItems::Center,
                             column_gap: px(10),
-                            border: UiRect::all(px(if chosen { 2 } else { 1 })),
+                            border: UiRect::all(px(if chosen {
+                                SELECTED_BORDER
+                            } else {
+                                IDLE_BORDER
+                            })),
                             border_radius: BorderRadius::all(px(4)),
                             ..default()
                         },
@@ -251,7 +272,11 @@ fn spawn_detail(
                 height: percent(100),
                 min_width: px(0),
                 padding: UiRect::all(px(24)),
-                border: UiRect::all(px(if focused { 2 } else { 1 })),
+                border: UiRect::all(px(if focused {
+                    SELECTED_BORDER
+                } else {
+                    IDLE_BORDER
+                })),
                 flex_direction: FlexDirection::Column,
                 row_gap: px(8),
                 border_radius: BorderRadius::all(px(5)),
@@ -280,7 +305,7 @@ fn spawn_detail(
             detail
                 .spawn(Node {
                     width: percent(100),
-                    height: px(369),
+                    height: px(GRAPH_HEIGHT),
                     flex_shrink: 0.0,
                     margin: UiRect::top(px(16)),
                     ..default()
@@ -291,7 +316,7 @@ fn spawn_detail(
                             position_type: PositionType::Absolute,
                             left: px(0),
                             top: px(52),
-                            width: px(174),
+                            width: px(GRAPH_SOURCE_WIDTH),
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
                             row_gap: px(12),
@@ -327,7 +352,7 @@ fn spawn_detail(
                     graph.spawn((
                         Node {
                             position_type: PositionType::Absolute,
-                            left: px(204),
+                            left: px(ROUTE_SPINE_X),
                             top: px(82),
                             width: px(2),
                             height: px(205),
@@ -362,7 +387,7 @@ fn spawn_route(
         parent,
         Node {
             position_type: PositionType::Absolute,
-            left: px(204),
+            left: px(ROUTE_SPINE_X),
             top: px(top + 81.0),
             width: px(96),
             height: px(if chosen { 3 } else { 2 }),
@@ -385,7 +410,7 @@ fn spawn_route(
                     top: px(12),
                     bottom: px(6),
                 },
-                border: UiRect::all(px(if chosen { 2 } else { 1 })),
+                border: UiRect::all(px(if chosen { SELECTED_BORDER } else { IDLE_BORDER })),
                 border_radius: BorderRadius::all(px(5)),
                 flex_direction: FlexDirection::Column,
                 ..default()
@@ -600,8 +625,8 @@ fn spawn_dialog(
             overlay
                 .spawn((
                     Node {
-                        width: px(620),
-                        min_height: px(464),
+                        width: px(DIALOG_WIDTH),
+                        min_height: px(DIALOG_MIN_HEIGHT),
                         padding: UiRect::all(px(26)),
                         border: UiRect::all(px(1)),
                         border_radius: BorderRadius::all(px(8)),
@@ -799,7 +824,7 @@ pub(super) fn spawn_quantity_dialog(
         dialog
             .spawn(Node {
                 width: percent(100),
-                column_gap: px(14),
+                column_gap: px(DIALOG_BUTTON_GAP),
                 ..default()
             })
             .with_children(|buttons| {
@@ -899,7 +924,7 @@ pub(super) fn spawn_review(
             .with_children(|exchange| {
                 exchange
                     .spawn(Node {
-                        width: px(190),
+                        width: px(EXCHANGE_COLUMN_WIDTH),
                         align_items: AlignItems::Center,
                         flex_direction: FlexDirection::Column,
                         row_gap: px(10),
@@ -936,7 +961,7 @@ pub(super) fn spawn_review(
                 );
                 exchange
                     .spawn(Node {
-                        width: px(190),
+                        width: px(EXCHANGE_COLUMN_WIDTH),
                         align_items: AlignItems::Center,
                         flex_direction: FlexDirection::Column,
                         row_gap: px(10),
@@ -996,7 +1021,7 @@ pub(super) fn spawn_review(
         dialog
             .spawn(Node {
                 width: percent(100),
-                column_gap: px(14),
+                column_gap: px(DIALOG_BUTTON_GAP),
                 ..default()
             })
             .with_children(|buttons| {
