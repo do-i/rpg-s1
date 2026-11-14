@@ -1,7 +1,7 @@
-//! Source-authored item catalog schemas.
+//! Authored item catalog schemas.
 //!
-//! The pinned `0897035` scenario has twelve list-root item metadata files plus the separate
-//! list-root `field_use.yaml` dispatch catalog. Metadata records are classified by their nine
+//! Item metadata lives in list-root files, plus the separate list-root `field_use.yaml`
+//! dispatch catalog. Metadata records are classified by their nine
 //! authored `type` discriminants. Consumable, key-item, accessory, and field-use effects are
 //! further classified by closed field signatures so unrelated values cannot be combined in a
 //! bag of optional fields.
@@ -29,7 +29,7 @@ impl ItemCatalogFile {
     }
 }
 
-/// The nine metadata item types exercised by the pinned scenario.
+/// The nine metadata item types.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ItemDefinition {
@@ -300,7 +300,7 @@ pub struct InflictEffect {
     pub target: ThrowTarget,
 }
 
-/// The two key-item effect shapes in the pinned file.
+/// The two key-item effect shapes.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum KeyItemEffect {
@@ -381,8 +381,8 @@ pub struct BodyStats {
 pub enum AccessoryStats {
     Encounter(EncounterModifierStats),
     AbilityBlock(AbilityBlockStats),
-    /// B3.6: accessories that grant plain attributes. The source shipped only the encounter and
-    /// ability-block shapes, so the slot could never affect a stat.
+    /// Accessories that grant plain attributes, so the slot can affect a stat directly rather
+    /// than only through the encounter and ability-block shapes.
     Attribute(AccessoryAttributeStats),
 }
 
@@ -537,7 +537,7 @@ impl FieldUseCatalogFile {
     }
 }
 
-/// Field-menu/battle dispatch variants. Missing `consumable` means `true`, matching Python.
+/// Field-menu/battle dispatch variants. Missing `consumable` means `true`.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(tag = "effect", rename_all = "snake_case", deny_unknown_fields)]
 pub enum FieldUseDefinition {
@@ -561,7 +561,7 @@ pub enum FieldUseDefinition {
         #[serde(deserialize_with = "deserialize_string")]
         id: String,
         target: FullRecoveryTarget,
-        /// Omission means no statuses are cured, matching the Python field-effect loader.
+        /// Omission means no statuses are cured.
         #[serde(default)]
         cures: Vec<ItemStatus>,
         #[serde(default = "default_consumable")]
@@ -1086,8 +1086,8 @@ mod tests {
             ("key_items.yaml", 2),
             ("magic_cores.yaml", 5),
             ("materials.yaml", 120),
-            // Two files the port added that the pinned corpus had no counterpart for: repairs for
-            // dangling enemy-drop ids the source shipped pointing at nothing.
+            // Two migration files hold items that enemy drop tables reference, so no drop id
+            // dangles.
             ("migration_endgame_drops.yaml", 3),
             ("migration_zone1_drops.yaml", 4),
             ("shields.yaml", 12),

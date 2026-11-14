@@ -16,7 +16,7 @@ macro_rules! scenario_asset {
 
 /// Expands to an absolute path to one file in the shipped Rusted Kingdoms scenario package.
 ///
-/// `include_str!`/`include_bytes!` need a literal path, so pinned content routes through this
+/// `include_str!`/`include_bytes!` need a literal path, so shipped content routes through this
 /// macro to keep the package location defined once for the crate.
 ///
 /// Anchored at `CARGO_MANIFEST_DIR` rather than a `../`-relative path, because `include_str!`

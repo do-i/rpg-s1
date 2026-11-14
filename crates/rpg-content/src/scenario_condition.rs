@@ -1,9 +1,9 @@
-//! Shared source-authored flag conditions.
+//! Shared authored flag conditions.
 //!
-//! The pinned `0897035` corpus contains these fields in dialogue-entry conditions and NPC
-//! `present` mappings. Both consumers use the same rule: every `requires` flag must be set and
-//! no `excludes` flag may be set. Missing fields are empty lists. The source uses string lists
-//! only; scalar shorthand and null are not accepted compatibility forms.
+//! These fields appear in dialogue-entry conditions and NPC `present` mappings. Both consumers
+//! use the same rule: every `requires` flag must be set and no `excludes` flag may be set.
+//! Missing fields are empty lists. Only string lists are accepted; scalar shorthand and null
+//! are rejected.
 //!
 //! Enemy move mappings also use the key `condition`, but their HP/turn rules are a distinct
 //! schema and deliberately do not use this type.
@@ -12,8 +12,7 @@ use serde::Deserialize;
 
 /// A conjunction of required flags and excluded flags.
 ///
-/// Vectors preserve source ordering and duplicate entries exactly. The pinned corpus has no
-/// duplicates, and duplicates do not change membership-based evaluation semantics.
+/// Vectors preserve authored ordering and duplicate entries exactly. Duplicates do not change membership-based evaluation semantics.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct FlagConditions {
@@ -35,7 +34,7 @@ impl FlagConditions {
     /// Returns whether this condition matches the supplied flag-membership lookup.
     ///
     /// Required flags use AND semantics. A single set excluded flag rejects the condition.
-    /// Empty lists therefore make no restriction, matching Python's `all`/`not any` rules.
+    /// Empty lists therefore make no restriction (`all` / `not any` semantics).
     pub fn is_satisfied_by(&self, mut has_flag: impl FnMut(&str) -> bool) -> bool {
         self.requires.iter().all(|flag| has_flag(flag))
             && self.excludes.iter().all(|flag| !has_flag(flag))

@@ -1,7 +1,7 @@
-//! Source-authored enemy and boss move-set schemas.
+//! Authored enemy and boss move-set schemas.
 //!
-//! The pinned `0897035` scenario has eight YAML multi-document rank streams containing 106
-//! enemies and nine mapping-root boss move sets. Rank-stream enemies always carry explicit
+//! Enemies live in YAML multi-document rank streams; boss move sets are mapping-root files.
+//! Rank-stream enemies always carry explicit
 //! identity; an enemy's battle sprite identity is that same `id`. Boss move sets are id-less and
 //! use their referenced filename stem as identity.
 //!
@@ -60,7 +60,7 @@ pub struct EnemyDefinition {
 }
 
 impl EnemyDefinition {
-    /// Enemy battler assets are keyed by the source enemy id; there is no separate sprite field.
+    /// Enemy battler assets are keyed by the enemy id; there is no separate sprite field.
     pub fn sprite_id(&self) -> &str {
         &self.id
     }
@@ -228,7 +228,7 @@ pub enum EnemySize {
     Small,
     Medium,
     Large,
-    /// Accepted by the pinned Python validator and battle layout table, though current boss
+    /// Accepted by the validator and battle layout table, though current boss
     /// records author `large`.
     Boss,
 }
@@ -386,7 +386,7 @@ pub enum AbilityHitOutcome {
     HpTo1,
 }
 
-/// The source default for a wholly absent `drops` mapping is no drops. If the mapping is
+/// The default for a wholly absent `drops` mapping is no drops. If the mapping is
 /// authored, both current list fields remain required rather than receiving blanket defaults.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]

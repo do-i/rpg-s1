@@ -782,7 +782,7 @@ fn scan_tmx_map_document(
     }
 }
 
-/// Test-only tolerant scan used by pinned corpus audits that must inventory external references
+/// Test-only tolerant scan used by shipped-content audits that must inventory external references
 /// even in the one map that also contains an unsupported inline tileset.
 #[cfg(test)]
 pub fn scan_tmx_external_tilesets_for_test(
@@ -1024,7 +1024,7 @@ fn validate_portal_properties(
     object: &TmxRectangleObject,
     offset: u64,
 ) -> Result<(), TmxMapDocumentError> {
-    // The pinned corpus contains seven editor markers in the `portals` group with no properties;
+    // Editor markers in the `portals` group carry no properties and are skipped;
     // property-bearing entries are the runtime portals and must have the exact domain schema.
     if object.properties.is_empty() {
         return Ok(());
@@ -3251,11 +3251,8 @@ mod tests {
 
         assert_eq!(files.len(), 89);
         assert_eq!(parsed_documents, 89);
-        // Zero, where the pinned corpus had one. Both that inline tileset and the seventeenth
-        // distinct source below belonged to the source's `sample_01.tmx` — a sample rather than a
-        // game map, which the port never migrated. Every shipped map references its tilesets
-        // externally, so the parser's inline branch now has no production exercise; keep the
-        // count asserted so that reappearing is a decision rather than a surprise.
+        // Zero: every shipped map references its tilesets externally, so the parser's inline
+        // branch has no production exercise; keep the count asserted so that reappearing is a decision rather than a surprise.
         assert_eq!(inline_tilesets, 0);
         // 322 and 16 until 2026-10-09, when the eight Astral Pixels tilesets were replaced by the
         // single project-authored `interior.tsx`; each map that listed several now lists one.

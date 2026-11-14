@@ -540,12 +540,6 @@ fn rust_validator_preserves_the_python_parity_matrix_without_python_installed() 
     }
 }
 
-// `compares_invented_parity_cases_with_the_pinned_python_validator` lived here until the
-// Python checkout was retired. It ran the source's own validator over each invented parity
-// case and compared verdicts. The cases themselves are unaffected and still run above in
-// `validate_rust_parity_case`; only the second opinion is gone, which is the point of no
-// longer depending on the Python engine.
-
 #[test]
 fn production_validator_aggregates_wrong_namespace_flag_and_path_errors() {
     let fixture = InventedScenario::new();
@@ -771,7 +765,7 @@ entries:
     assert_eq!(finding.message, "unknown enemy id `absent_marshal`");
 }
 
-/// The source documents `start_battle` as `npc`-only: a cutscene plays with no world behind
+/// `start_battle` is valid in `npc` documents only: a cutscene plays with no world behind
 /// it, so there is nowhere to return the player to when the fight ends.
 #[test]
 fn a_start_battle_inside_a_cutscene_is_rejected_even_when_the_enemy_exists() {
@@ -1060,9 +1054,8 @@ fn the_shipped_scenario_matches_the_known_diagnostic_inventory() {
 fn audits_the_complete_shipped_scenario_with_the_production_validator() {
     let report = validate_scenario_directory(&ScenarioRoot::default(), scenario_package_dir());
     // The authored id, not the package directory name: the package directory and the id its
-    // manifest declares are allowed to differ, and here they do -- the id is inherited from
-    // the source. Pinned so that changing it becomes a deliberate act rather than a silent
-    // one.
+    // manifest declares are allowed to differ, and here they do. The id is asserted so that
+    // changing it becomes a deliberate act rather than a silent one.
     assert_eq!(report.scenario_id.as_deref(), Some("my_rpg_story"));
     assert_eq!(
         report.scenario_name.as_deref(),
@@ -1094,15 +1087,9 @@ fn audits_the_complete_shipped_scenario_with_the_production_validator() {
         .warnings()
         .map(ToString::to_string)
         .collect::<Vec<_>>();
-    // Four, where the pinned scenario produced thirty-eight. The port repaired thirty-four of
-    // them -- missing drop items, the stranded `zone_05_mountain_foothills` metadata, the
-    // undefined `transport_warp_unlocked`, the `title.cursor_icon` and `zone.open_plains`
-    // references -- and the detailed accounting of each pinned defect that used to live here
-    // went with the checkout it described.
-    //
-    // What survives is inherited and deliberate: the Sorcerer's four ultimate-ability unlock
+    // Four known errors remain: the Sorcerer's four ultimate-ability unlock
     // flags are consumed by `data/classes/sorcerer.yaml` and produced by nothing. Repairing
-    // that is a content decision, not a port defect, so it is pinned here and mirrored by
+    // that is a content decision, so the count is asserted here and mirrored by
     // the package's own `validation-baseline.txt`, which CI gates against.
     assert_eq!(errors.len(), 4, "shipped diagnostics changed:\n{errors:#?}");
     assert_eq!(

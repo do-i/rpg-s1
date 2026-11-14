@@ -2,14 +2,14 @@
 //!
 //! This is the production validation boundary for the typed M2 scenario schemas. It deliberately
 //! keeps host paths private: diagnostics identify the selected [`ScenarioRoot`] package and a
-//! stable scenario-relative `file#field` location. The pinned Python validator is the behavioral
-//! baseline, while additional checks (AI references, audio, derived assets, and all typed catalog
-//! edges) implement the strict direct-authoring policy shared by loading and validation.
+//! stable scenario-relative `file#field` location. Checks cover AI references, audio, derived
+//! assets, and all typed catalog edges, under the strict direct-authoring policy shared by
+//! loading and validation.
 //!
 //! No catalog is reparsed into generic YAML. TMX portal links and TSX image references are the
-//! only relevant source edges not modeled here: their typed XML parsing belongs to the TMX/TSX
+//! only relevant edges not modeled here: their typed XML parsing belongs to the TMX/TSX
 //! adapter, so this layer checks same-stem TMX presence without an ad-hoc XML scanner.
-//! The pinned quest schema contains flag-backed board rows rather than objective/reward records;
+//! The quest schema contains flag-backed board rows rather than objective/reward records;
 //! those flag edges are therefore the complete current quest reference surface.
 
 mod audio;

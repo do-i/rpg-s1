@@ -1,10 +1,10 @@
 //! Source-authored scenario-wide balance constants.
 //!
-//! The pinned `0897035` scenario has one mapping-root `data/balance.yaml` document with five
-//! required groups and eleven required scalar fields. Python's `BalanceData.load` rejects a
-//! missing or null value for every one of them. Its older module constants are only fallbacks
-//! when no `BalanceData` is injected, so [`BalanceData::default`] records that complete fallback
-//! set without making any source YAML field optional. Runtime formulas and tuning are deferred.
+//! `data/balance.yaml` is one mapping-root document with five required groups and eleven
+//! required scalar fields; a missing or null value for any of them is rejected.
+//! [`BalanceData::default`] records the complete built-in fallback set for callers that have
+//! no scenario balance loaded, without making any YAML field optional. Runtime formulas and
+//! tuning live elsewhere.
 
 use bevy::{asset::Asset, reflect::TypePath};
 
@@ -68,8 +68,8 @@ impl Default for BalanceData {
 pub struct ProgressionBalance {
     pub level_cap: PositiveInteger,
     pub exp_cap: PositiveInteger,
-    /// Divides post-growth CON before the flat bonus in the per-level HP gain (B3.1). The source
-    /// adds raw CON, which inflates level-22 HP to ~1,280 against a 78-ATK final boss; dividing
+    /// Divides post-growth CON before the flat bonus in the per-level HP gain. Adding raw
+    /// CON would inflate level-22 HP to ~1,280 against a 78-ATK final boss; dividing
     /// lands it near 420, the scale the shipped potion ladder was authored for. Defaults so a
     /// scenario predating the field still loads.
     #[serde(default = "default_hp_growth_con_divisor")]
@@ -93,7 +93,7 @@ pub struct BattleBalance {
     pub flee_base_chance: UnitInterval,
     pub flee_rogue_dex_bonus: UnitInterval,
     /// Divides a party member's innate CON when deriving battle defense, so equipment CON is the
-    /// dominant term (B3.1). The source uses raw CON, which exceeds every enemy ATK in the game
+    /// dominant term. Raw CON would exceed every enemy ATK in the game
     /// and pins all incoming physical damage to the `max(1)` floor. Defaults as above.
     #[serde(default = "default_party_defense_con_divisor")]
     pub party_defense_con_divisor: PositiveInteger,
@@ -187,7 +187,7 @@ fn default_field_seconds_per_tick() -> PositiveFinite {
 }
 
 /// A positive integer scalar, including the underscore-separated YAML integer spelling used by
-/// the source balance file. `serde_yaml_ng` presents that legal YAML spelling as text, so this
+/// the balance file. `serde_yaml_ng` presents that legal YAML spelling as text, so this
 /// visitor accepts only an underscore-containing all-digit spelling in `visit_str`. (Its Serde
 /// interface cannot distinguish that parser representation from an equivalently quoted scalar.)
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

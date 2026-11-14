@@ -1,11 +1,11 @@
-//! Source-authored map metadata schemas.
+//! Authored map metadata schemas.
 //!
-//! The pinned `0897035` scenario contains 43 mapping-root files beneath `data/maps/`.
-//! Metadata is found by the TMX filename stem; it does not contain a TMX path. Sixteen field-map
-//! files omit `id`, in which case the filename stem is the effective identity. Signs are not
-//! represented here because Python discovers them from configured tiles painted into TMX.
+//! Each file beneath `data/maps/` is a mapping root. Metadata is found by the TMX filename stem;
+//! it does not contain a TMX path. A file may omit `id`, in which case the filename stem is the
+//! effective identity. Signs are not represented here because they come from configured tiles
+//! painted into the TMX.
 //!
-//! NPC defaults are compatibility rules observed in `engine/world/npc_loader.py`: dialogue falls
+//! NPC defaults: dialogue falls
 //! back to the NPC id, facing defaults to down, presence conditions are empty, animation defaults
 //! to still at speed 1.0 with wander range 2, and interaction range defaults to 1.5 tiles.
 
@@ -70,8 +70,7 @@ impl MapMetadata {
 
     /// Metadata for a `data/maps/<id>.yaml` that legitimately does not exist (a TMX-only map).
     ///
-    /// Mirrors the pinned Python engine's `load_yaml_optional(path) or {}`
-    /// (`engine/world/world_map_init.py`): a missing per-map YAML is a valid runtime state, not a
+    /// A missing per-map YAML is a valid runtime state, not a
     /// load failure, and behaves as an empty map — no name override, no NPCs, no services, no
     /// item boxes, and no `enemy_spawn` override (regular callers still fall back to the
     /// encounter zone's own spawn frequency).
@@ -95,7 +94,7 @@ impl MapMetadata {
 
 /// True when a `Handle<MapMetadata>` load failure is exactly a missing `data/maps/<id>.yaml`
 /// file, as opposed to a real I/O or parse error. Callers loading per-map metadata (which the
-/// pinned engine treats as optional, see [`MapMetadata::empty`]) use this to distinguish "no such
+/// are optional, see [`MapMetadata::empty`]) use this to distinguish "no such
 /// file" from a genuine failure that must still surface as a fatal load error.
 pub fn optional_scenario_asset_is_missing(error: &AssetLoadError) -> bool {
     matches!(
@@ -144,7 +143,7 @@ pub struct ShopMetadata {
     pub items: Vec<ShopItem>,
 }
 
-/// The three closed shop-row signatures authored in the pinned map corpus.
+/// The three closed shop-row signatures accepted in map metadata.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ShopItem {
@@ -213,7 +212,7 @@ pub struct NpcMetadata {
     pub id: String,
     #[serde(deserialize_with = "deserialize_string")]
     pub name: String,
-    /// Dialogue catalog id. Explicit source paths are not used by the pinned map corpus.
+    /// Dialogue catalog id. Explicit file paths are not used.
     #[serde(default, deserialize_with = "deserialize_optional_string")]
     pub dialogue: Option<String>,
     pub position: Position,
@@ -286,7 +285,7 @@ pub enum NpcAnimationMode {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-/// Compatibility schema for the original per-map YAML chest placements.
+/// Schema for the per-map YAML chest placements.
 pub struct ItemBoxMetadata {
     #[serde(deserialize_with = "deserialize_string")]
     pub id: String,

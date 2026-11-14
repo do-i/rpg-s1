@@ -53,7 +53,7 @@ pub struct CutsceneDialogue {
     pub on_complete: DialogueActions,
 }
 
-/// The only cutscene discriminant authored by the pinned scenario.
+/// The only cutscene discriminant.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum CutsceneKind {
@@ -67,7 +67,7 @@ pub struct EntryDialogue {
     /// Authored identity. Missing values use the containing filename stem.
     #[serde(default, deserialize_with = "deserialize_optional_string")]
     pub id: Option<String>,
-    /// Missing in the pinned inn, item-shop, and port-master documents.
+    /// May be missing, as in the inn, item-shop, and port-master documents.
     #[serde(
         default,
         rename = "type",
@@ -77,7 +77,7 @@ pub struct EntryDialogue {
     pub entries: Vec<DialogueEntry>,
 }
 
-/// Closed entry-document kinds present in the pinned corpus.
+/// Closed entry-document kinds.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryDialogueKind {
@@ -131,10 +131,10 @@ pub struct DialogueLinePool {
     pub lines: Vec<String>,
 }
 
-/// Completion effects recognized in the pinned dialogue corpus.
+/// Completion effects recognized in dialogue documents.
 ///
 /// Missing fields mean no effect. Runtime application, idempotency, and reference validation
-/// belong to later milestones; this type only preserves the strict source wire values.
+/// live elsewhere; this type only preserves the strict authored wire values.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DialogueActions {
@@ -161,12 +161,9 @@ pub struct DialogueActions {
     pub open_transport: Option<DialogueTransportMode>,
     /// A scripted battle against one named enemy, fought as soon as the branch closes.
     ///
-    /// The source wire form is a bare enemy id (`start_battle: cinder_marshal`), and the source
-    /// documents it as `npc`-only — a cutscene has no world to return to, so
-    /// `scenario_cross_reference` rejects it there rather than letting it load and strand the
-    /// player. The pinned Python engine parses the key and hands it back to its caller
-    /// (`dialogue_engine.py:119`); no caller ever read it, so the runtime behaviour below is this
-    /// port's, not a transcription.
+    /// The wire form is a bare enemy id (`start_battle: cinder_marshal`), valid in `npc`
+    /// documents only — a cutscene has no world to return to, so `scenario_cross_reference`
+    /// rejects it there rather than letting it load and strand the player.
     #[serde(default, deserialize_with = "deserialize_present_option")]
     pub start_battle: Option<StartBattleAction>,
 }
@@ -224,7 +221,7 @@ pub struct StartBattleOutcome {
     pub on_victory: Option<SetFlagAction>,
 }
 
-/// The source permits one flag string or an ordered list of flag strings.
+/// Either one flag string or an ordered list of flag strings.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum SetFlagAction {
@@ -258,17 +255,17 @@ pub struct DialogueItemGrant {
     pub qty: NonZeroU32,
     /// Optional repository tags applied when this authored gift is received.
     ///
-    /// This is a native content extension: the pinned source only authored `id` and `qty`.
+    /// Optional: a gift needs only `id` and `qty`.
     #[serde(default, deserialize_with = "deserialize_strings")]
     pub tags: Vec<String>,
     /// Protects the resulting stack from sale and discard until the player unlocks it.
     ///
-    /// This is a native content extension; omission preserves the source's unlocked default.
+    /// Optional; omission leaves the stack unlocked.
     #[serde(default)]
     pub locked: bool,
 }
 
-/// A source-authored map transition after dialogue completion.
+/// An authored map transition after dialogue completion.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DialogueTransition {
@@ -276,14 +273,14 @@ pub struct DialogueTransition {
     pub map: String,
     pub position: Position,
     pub fade: DialogueFade,
-    /// Optional arrival facing for field-dialogue transitions. The pinned intro omits this and
-    /// retains the protagonist's current facing; authored field arrivals can point the player at
+    /// Optional arrival facing for field-dialogue transitions. When omitted (as in the intro), the
+    /// transition retains the protagonist's current facing; authored field arrivals can point the player at
     /// the next interaction instead of leaving an ambiguous scene.
     #[serde(default)]
     pub facing: Option<CardinalDirection>,
 }
 
-/// The sole dialogue-transition fade value in the pinned corpus.
+/// The sole dialogue-transition fade value.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum DialogueFade {
@@ -308,7 +305,7 @@ pub enum DialogueTransportMode {
     Fly,
 }
 
-/// A presence-only action whose pinned source spelling must be `true`.
+/// A presence-only action whose authored spelling must be `true`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ActionTrigger;
 

@@ -12,8 +12,8 @@ use crate::scenario_path::{ScenarioRelativePath, ScenarioRelativePathError};
 /// A catalog namespace with one identity policy.
 ///
 /// `Npcs` and `ItemBoxes` are scoped by containing map, while BGM uses qualified
-/// `category.event` keys and SFX uses unqualified event keys because that is how the Python
-/// managers address them. The manifest and balance file are singletons and therefore have no
+/// `category.event` keys and SFX uses unqualified event keys because that is how the audio
+/// lookups address them. The manifest and balance file are singletons and therefore have no
 /// duplicate-id namespace.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CatalogNamespace {

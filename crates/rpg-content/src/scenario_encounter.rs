@@ -22,7 +22,7 @@ pub struct EncounterZone {
     pub id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_string")]
     pub name: String,
-    /// Per-tick spawn probability, constrained by the source DTO's documented `0..=1` range.
+    /// Per-tick spawn probability, constrained to the `0..=1` range.
     pub density: UnitInterval,
     #[serde(default)]
     pub entries: Vec<EncounterFormation>,
@@ -60,13 +60,13 @@ impl EncounterZone {
 pub struct EncounterFormation {
     #[serde(rename = "formation", deserialize_with = "deserialize_strings")]
     pub enemy_ids: Vec<String>,
-    /// Zero is retained because the pinned Python resolver explicitly treats it as unselectable.
+    /// Zero is retained: a zero-weight formation is valid but unselectable.
     pub weight: u32,
-    /// Required by the source loader even though the Python DTO has a constructor default.
+    /// Required; there is no default.
     pub chase_range: u32,
 }
 
-/// Effective boss configuration after applying source-loader defaults.
+/// Effective boss configuration after applying the field defaults.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncounterBoss {
     pub enemy_id: String,
@@ -99,7 +99,7 @@ struct BossDocument {
     name: Option<String>,
     #[serde(default = "default_true")]
     once: bool,
-    /// The Python loader explicitly normalizes a missing or null mapping to an empty mapping.
+    /// A missing or null mapping is treated as an empty mapping.
     #[serde(default)]
     on_complete: Option<BossCompletion>,
 }
@@ -108,7 +108,7 @@ struct BossDocument {
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BossCompletion {
-    /// Empty means there is no completion flag, matching the Python loader default.
+    /// Empty (the default) means there is no completion flag.
     #[serde(default, deserialize_with = "deserialize_string")]
     pub set_flag: String,
 }
@@ -119,10 +119,10 @@ pub struct BossCompletion {
 pub struct BarrierEnemy {
     #[serde(rename = "id", deserialize_with = "deserialize_string")]
     pub enemy_id: String,
-    /// Missing becomes empty because that is the source loader's effective default.
+    /// Missing becomes empty (the default).
     #[serde(default, deserialize_with = "deserialize_string")]
     pub requires_item: String,
-    /// Required by the source loader despite the Python DTO's constructor default.
+    /// Required; there is no default.
     #[serde(deserialize_with = "deserialize_string")]
     pub blocked_message: String,
 }
@@ -312,10 +312,9 @@ mod tests {
             assert!(!zone.background.is_empty());
             // A zone that lists formations must be able to roll one; zero total weight would
             // make every entry unreachable. A zone with no formations at all is a different
-            // thing entirely and legitimate: the port authors deliberately silent zones (the
+            // thing entirely and legitimate: the scenario authors deliberately silent zones (the
             // Ardel epilogue, the Marshal's camp, the Hearth core) that exist only to give a
             // scripted battle its backdrop, and they declare that silence with `density: 0.0`.
-            // The pinned corpus had none of those, which is why this used to be unconditional.
             if zone.entries.is_empty() {
                 assert_eq!(
                     zone.density.get(),

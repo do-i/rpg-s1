@@ -1,12 +1,11 @@
-//! Source-authored class and ability schemas.
+//! Authored class and ability schemas.
 //!
-//! The pinned `0897035` corpus contains five mapping-root class files and 42 abilities. Class
-//! records share one closed shape, except that only the rogue declares `passive_bonuses`.
+//! Classes are mapping-root files. Class records share one closed shape, except that only the rogue declares `passive_bonuses`.
 //! Abilities use six top-level `type` values and several field-signature variants beneath those
 //! values. [`AbilityKind`] retains those signatures instead of storing a bag of optional fields.
 //!
 //! Ability `target` is the authored battle/field target vocabulary. Buffs and debuffs in the
-//! pinned data intentionally omit that top-level field and put their target in nested effect
+//! authored data intentionally omit that top-level field and put their target in nested effect
 //! mappings such as [`BuffEffect`] and [`StatModifierEffect`].
 //! The field-menu teleport is represented by [`UtilityAbility::Warp`], preserving its authored
 //! `warp: select` marker. Runtime field/battle filtering and effect behavior belong to later
@@ -45,7 +44,7 @@ pub struct ClassDefinition {
     pub abilities: Vec<Ability>,
 }
 
-/// Ten-level repeating stat-growth tables consumed by the pinned level-up logic.
+/// Ten-level repeating stat-growth tables consumed by the level-up logic.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ClassStatGrowth {
@@ -57,7 +56,7 @@ pub struct ClassStatGrowth {
     pub intelligence: [u32; 10],
 }
 
-/// The fixed equipment-slot compatibility mappings in every pinned class.
+/// The fixed equipment-slot compatibility mappings in every class.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ClassEquipmentSlots {
@@ -73,7 +72,7 @@ pub struct ClassEquipmentSlots {
     pub accessory: Vec<String>,
 }
 
-/// Optional class-wide bonuses. When the block is present, all three pinned fields are required.
+/// Optional class-wide bonuses. When the block is present, all three fields are required.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ClassPassiveBonuses {
@@ -82,7 +81,7 @@ pub struct ClassPassiveBonuses {
     pub chest_trap_detect: bool,
 }
 
-/// Experience formulas authored by the pinned class corpus.
+/// Experience formulas authored in class files.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ExperienceCurve {

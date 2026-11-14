@@ -16,7 +16,7 @@ use crate::{
 
 /// Which document kind an `on_complete` / `on_select` block was authored in.
 ///
-/// Only `start_battle` cares: the source documents it as `npc`-only.
+/// Only `start_battle` cares: it is valid in `npc` documents only.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DialogueActionContext {
     Cutscene,

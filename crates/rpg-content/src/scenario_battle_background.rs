@@ -1,10 +1,10 @@
-//! Source-authored battle-background ground-placement schemas.
+//! Authored battle-background ground-placement schemas.
 //!
-//! The pinned `0897035` scenario has one sequence-root `data/battle_backgrounds.yaml` catalog
-//! with thirteen records. Each record identifies a battle background and its rectangular visible
-//! ground area in that background image's pixel coordinate space. The Python loader derives the
-//! image bounds from an optional `-<width>x<height>` suffix on the id and rejects rectangles that
-//! leave those bounds. It does not define defaults, load assets, or render from this catalog.
+//! `data/battle_backgrounds.yaml` is one sequence-root catalog. Each record identifies a battle
+//! background and its rectangular visible ground area in that background image's pixel
+//! coordinate space. The image bounds are derived from an optional `-<width>x<height>` suffix
+//! on the id, and rectangles that leave those bounds are rejected. The catalog defines no
+//! defaults, loads no assets, and renders nothing.
 
 use std::fmt;
 
@@ -15,8 +15,8 @@ use crate::scenario_yaml::deserialize_string;
 
 /// The sequence-root battle-background catalog selected by `manifest.refs.battle_backgrounds`.
 ///
-/// Order and duplicate ids are retained as authored. The Python runtime later indexes records by
-/// id; lookup, encounter cross-reference checks, and rendering remain separate concerns.
+/// Order and duplicate ids are retained as authored. Consumers index records by id;
+/// lookup, encounter cross-reference checks, and rendering remain separate concerns.
 #[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 #[serde(transparent)]
 pub struct BattleBackgroundCatalog(pub Vec<BattleBackground>);
@@ -31,9 +31,9 @@ pub struct BattleBackground {
 
 /// A rectangle in a battle background image's native pixel coordinate space.
 ///
-/// Python accepts signed integer components until the id encodes a canvas size, at which point
+/// Components are signed integers until the id encodes a canvas size, at which point
 /// [`BattleBackground`] rejects negative origins and overshoot. Zero or negative extents without
-/// such a suffix are retained because the source loader does not otherwise constrain them.
+/// such a suffix are retained because nothing else constrains them.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GroundRect {
     pub x: i32,
@@ -102,7 +102,7 @@ impl<'de> Deserialize<'de> for BattleBackground {
 }
 
 impl BattleBackground {
-    /// Returns the dimensions encoded by the source id suffix, when it has one.
+    /// Returns the dimensions encoded by the id suffix, when it has one.
     pub fn encoded_canvas_size(&self) -> Option<(u32, u32)> {
         let suffix = self.id.rsplit_once('-')?.1;
         let (width, height) = suffix.split_once('x')?;

@@ -1,6 +1,6 @@
 //! Scenario YAML deserialization boundary.
 //!
-//! Typed scenario schemas use this helper to deserialize source-authored YAML documents. File
+//! Typed scenario schemas use this helper to deserialize authored YAML documents. File
 //! access, schema validation, and multi-document streams are layered on separately.
 
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};

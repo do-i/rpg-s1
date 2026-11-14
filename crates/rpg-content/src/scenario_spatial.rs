@@ -1,13 +1,12 @@
-//! Shared spatial values used by source-authored scenario schemas.
+//! Shared spatial values used by authored scenario schemas.
 //!
-//! Rusted Kingdoms writes every authored tile coordinate as a two-element YAML sequence,
-//! `[x, y]`. The pinned corpus has non-negative map coordinates, while Python's `Position`
-//! value object and its tests intentionally permit negative coordinates, so this shared value
-//! preserves the complete signed `i32` domain and leaves map-bound validation to map loading.
+//! Every authored tile coordinate is a two-element YAML sequence, `[x, y]`. Authored maps use
+//! non-negative coordinates, but this shared value preserves the complete signed `i32` domain
+//! and leaves map-bound validation to map loading.
 //!
-//! Authored NPC `default_facing` values are lowercase cardinal strings. The Python field
-//! renderer also accepts simultaneous horizontal and vertical input, which creates eight
-//! movement vectors but still renders with a cardinal facing. Keeping [`CardinalDirection`]
+//! Authored NPC `default_facing` values are lowercase cardinal strings. Field movement also
+//! accepts simultaneous horizontal and vertical input, which creates eight movement vectors
+//! but still renders with a cardinal facing. Keeping [`CardinalDirection`]
 //! and [`EightWayDirection`] distinct prevents a diagonal movement value from being accepted
 //! accidentally where a sprite-facing value is required.
 
@@ -40,7 +39,7 @@ impl From<Position> for [i32; 2] {
     }
 }
 
-/// One of the four sprite-facing and cardinal movement directions used by the source.
+/// One of the four sprite-facing and cardinal movement directions.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CardinalDirection {

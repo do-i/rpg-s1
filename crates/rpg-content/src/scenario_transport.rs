@@ -1,4 +1,4 @@
-//! Strict source-authored catalog for the Ember Atlas transport overlay.
+//! Strict authored catalog for the Ember Atlas transport overlay.
 
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::Deserialize;

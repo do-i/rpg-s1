@@ -1,15 +1,14 @@
-//! Source-authored apothecary recipe schemas.
+//! Authored apothecary recipe schemas.
 //!
-//! The pinned `0897035` Rusted Kingdoms scenario has one list-root recipe catalog:
-//! `data/recipe/all_recipe.yaml`. It currently contains eleven recipes: ten ordinary outputs and
-//! one `unique_output` recipe. A recipe is an ordered output, optional ordered item and magic-core
-//! ingredient lists, a GP cost, and an optional unlock-flag id. The catalog filename is its
-//! location only; recipe identity always comes from the required `id` field.
+//! A scenario has one list-root recipe catalog: `data/recipe/all_recipe.yaml`. A recipe is an
+//! ordered output, optional ordered item and magic-core ingredient lists, a GP cost, and an
+//! optional unlock-flag id. The catalog filename is its location only; recipe identity always
+//! comes from the required `id` field.
 //!
-//! The Python apothecary treats absent `unique_output` as false, absent `inputs`/ingredient lists
-//! as empty, and an absent output quantity as one. It treats an absent or null `unlock_flag` as
-//! unlocked. This module records those data-loading defaults only; availability, ownership,
-//! crafting, catalog uniqueness, and cross-reference validation belong to later milestones.
+//! An absent `unique_output` is false, absent `inputs`/ingredient lists are empty, and an
+//! absent output quantity is one. An absent or null `unlock_flag` means unlocked. This module
+//! records those data-loading defaults only; availability, ownership, crafting, catalog
+//! uniqueness, and cross-reference validation live elsewhere.
 
 use bevy::{asset::Asset, reflect::TypePath};
 
@@ -28,7 +27,7 @@ impl RecipeCatalogFile {
     }
 }
 
-/// One source-authored recipe. Item ids and unlock flags remain logical identifiers until the
+/// One authored recipe. Item ids and unlock flags remain logical identifiers until the
 /// dedicated catalog cross-reference validation task.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -38,10 +37,10 @@ pub struct RecipeDefinition {
     #[serde(deserialize_with = "deserialize_string")]
     pub scroll_name: String,
     pub output: RecipeOutput,
-    /// `false` is the Python default and denotes a repeatable ordinary recipe.
+    /// `false` is the default and denotes a repeatable ordinary recipe.
     #[serde(default)]
     pub unique_output: bool,
-    /// Missing inputs are an empty ingredient set in the Python apothecary.
+    /// Missing inputs are an empty ingredient set.
     #[serde(default)]
     pub inputs: RecipeInputs,
     /// GP is non-negative; zero is a meaningful free-recipe cost.

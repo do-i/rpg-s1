@@ -1,8 +1,8 @@
 //! Typed schema slices for the scenario manifest.
 //!
-//! Each milestone adds only the source fields it owns. Serde's default unknown-field
-//! behavior is intentional: a partial schema must be able to load the pinned complete
-//! manifest while its other sections are introduced by later milestones.
+//! Each slice models only the manifest fields it owns. Serde's default unknown-field
+//! behavior is intentional: a partial schema must be able to load the complete manifest
+//! while ignoring the sections owned by other slices.
 
 use bevy::{asset::Asset, reflect::TypePath};
 
@@ -12,13 +12,12 @@ use crate::scenario_yaml::{deserialize_present_option, deserialize_string, deser
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
-/// The complete known manifest schema for the pinned Rusted Kingdoms source snapshot.
+/// The complete known manifest schema.
 ///
-/// This composes the existing leaf types from M2.03 through M2.07 without duplicating their
-/// nested field schemas. It intentionally does not flatten the partial adapters: Serde flatten
+/// This composes the leaf types below without duplicating their nested field schemas. It intentionally does not flatten the partial adapters: Serde flatten
 /// loses the parent segment of a missing nested field, which would make required-field errors
-/// report `cursor_icon` instead of `title.cursor_icon`. Strict unknown-field rejection is added
-/// once every pinned field has an owner.
+/// report `cursor_icon` instead of `title.cursor_icon`. Unknown fields are ignored rather than
+/// rejected.
 #[derive(Asset, Clone, Debug, Deserialize, Eq, PartialEq, TypePath)]
 pub struct Manifest {
     #[serde(deserialize_with = "deserialize_string")]
@@ -60,8 +59,8 @@ pub struct ManifestSigns {
 /// The manifest fields that identify scenario content and label its game window.
 ///
 /// `id` and `version` are content identity rather than the selected package key. The fields are
-/// source-authored strings so their exact values remain available
-/// to save, cache, recording, and UI systems that are added later.
+/// authored strings so their exact values remain available
+/// to save, cache, recording, and UI systems.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestIdentityWindow {
     #[serde(deserialize_with = "deserialize_string")]
@@ -125,7 +124,7 @@ pub struct ManifestServiceSprites {
     pub item_box: ManifestServiceSprite,
 }
 
-/// Apothecary presentation assets, including its source-authored lock-status icons.
+/// Apothecary presentation assets, including its authored lock-status icons.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestApothecary {
     pub sprite: ScenarioRelativePath,
@@ -133,7 +132,7 @@ pub struct ManifestApothecary {
     pub icons: Option<ManifestApothecaryIcons>,
 }
 
-/// The three source-authored apothecary icon states.
+/// The three authored apothecary icon states.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestApothecaryIcons {
     pub locked: ScenarioRelativePath,
@@ -159,7 +158,7 @@ pub struct ManifestProtagonistStart {
     pub start: ManifestStart,
 }
 
-/// The source-authored identity and field-sprite selection for the protagonist.
+/// The authored identity and field-sprite selection for the protagonist.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestProtagonist {
     #[serde(deserialize_with = "deserialize_string")]
@@ -231,10 +230,10 @@ pub struct ManifestFlagsRefs {
     pub refs: ManifestRefs,
 }
 
-/// Every source-authored manifest reference.
+/// Every authored manifest reference.
 ///
-/// The pinned manifest marks catalog roots with a trailing slash. `ScenarioDirectoryPath`
-/// consumes that source-only marker and retains the normalized, scenario-contained path, while
+/// The manifest marks catalog roots with a trailing slash. `ScenarioDirectoryPath`
+/// consumes that manifest-only marker and retains the normalized, scenario-contained path, while
 /// file references remain ordinary [`ScenarioRelativePath`] values.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct ManifestRefs {
@@ -257,12 +256,12 @@ pub struct ManifestRefs {
     pub tmx: ScenarioDirectoryPath,
 }
 
-/// A source-authored directory reference within the active scenario package.
+/// An authored directory reference within the active scenario package.
 ///
-/// Source manifests use a trailing slash to distinguish catalog roots from single-file refs.
+/// Manifests use a trailing slash to distinguish catalog roots from single-file refs.
 /// The separator is accepted at this adapter boundary only; the stored value is a validated,
 /// normalized [`ScenarioRelativePath`]. This keeps the package path policy strict while preserving
-/// the pinned manifest spelling.
+/// the authored manifest spelling.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScenarioDirectoryPath(ScenarioRelativePath);
 

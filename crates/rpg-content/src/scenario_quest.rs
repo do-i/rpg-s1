@@ -38,7 +38,7 @@ impl<'de> Deserialize<'de> for QuestCatalogFile {
     }
 }
 
-/// One source-authored quest-board row.
+/// One authored quest-board row.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct QuestDefinition {
@@ -61,7 +61,7 @@ pub struct QuestDefinition {
     pub completed_flag: String,
 }
 
-/// The complete quest-kind vocabulary in the pinned corpus.
+/// The complete quest-kind vocabulary.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum QuestKind {

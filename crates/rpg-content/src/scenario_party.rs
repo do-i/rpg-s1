@@ -1,10 +1,10 @@
 //! Source-authored party catalog schema.
 //!
-//! The pinned `0897035` `data/party.yaml` contains one protagonist record and four recruit
-//! records. Every member has the same required identity, join, initial-stat, equipment, and
-//! ability fields. The protagonist omits `recruit`; every non-protagonist requires it. That
-//! relationship is represented by [`PartyMember`] instead of retaining a boolean plus an
-//! independently optional block that could describe an impossible source record.
+//! `data/party.yaml` holds one protagonist record and any number of recruit records. Every
+//! member has the same required identity, join, initial-stat, equipment, and ability fields.
+//! The protagonist omits `recruit`; every non-protagonist requires it. That relationship is
+//! represented by [`PartyMember`] instead of retaining a boolean plus an independently
+//! optional block that could describe an impossible record.
 //!
 //! The `join.condition` field is one required flag identifier, not the shared
 //! [`crate::scenario_condition::FlagConditions`] `requires`/`excludes` mapping. Portraits are
@@ -26,12 +26,12 @@ pub struct PartyCatalog {
     pub party: Vec<PartyMember>,
 }
 
-/// One source-authored party definition, classified by its recruitment shape.
+/// One authored party definition,classified by its recruitment shape.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PartyMember {
-    /// The player-named initial member. Source data has `protagonist: true` and no `recruit`.
+    /// The player-named initial member. The YAML has `protagonist: true` and no `recruit`.
     Protagonist(PartyMemberData),
-    /// A story recruit. Source data has `protagonist: false` and a required `recruit` block.
+    /// A story recruit. The YAML has `protagonist: false` and a required `recruit` block.
     Recruit {
         member: PartyMemberData,
         recruit: PartyRecruit,
@@ -54,7 +54,7 @@ impl PartyMember {
         }
     }
 
-    /// Returns whether this is the source protagonist variant.
+    /// Returns whether this is the protagonist variant.
     pub fn is_protagonist(&self) -> bool {
         matches!(self, Self::Protagonist(_))
     }

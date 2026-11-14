@@ -1,11 +1,11 @@
-//! Source-authored background-music and sound-effect index schemas.
+//! Authored background-music and sound-effect index schemas.
 //!
-//! The pinned Rusted Kingdoms scenario keeps its two indexes at
+//! A scenario keeps its two indexes at
 //! `data/audio/bgm_index.yaml` and `data/audio/sfx_index.yaml`. Both are mapping-root
 //! documents whose category and event names are authored strings and whose values are paths
 //! relative to the scenario's `media/audio` directory. This module validates and resolves that
-//! data only; audio playback, Bevy loading, volume, looping, and existence checks remain in
-//! later tasks.
+//! data only; audio playback, Bevy loading, volume, looping, and existence checks live
+//! elsewhere.
 
 use bevy::{asset::Asset, reflect::TypePath};
 use serde::{Deserialize, Deserializer, de::MapAccess};
@@ -16,13 +16,13 @@ use crate::{scenario_path::ScenarioRelativePath, scenario_root::ScenarioRoot, sc
 pub const BGM_INDEX_PATH: &str = "data/audio/bgm_index.yaml";
 /// Scenario-relative location of the sound-effect index.
 pub const SFX_INDEX_PATH: &str = "data/audio/sfx_index.yaml";
-/// Base directory for the paths contained by both source index files.
+/// Base directory for the paths contained by both index files.
 pub const AUDIO_ASSET_ROOT: &str = "media/audio";
 
 /// A lossless category-indexed BGM catalog.
 ///
 /// Categories and entries retain YAML encounter order. BGM logical keys are category-qualified
-/// (`battle.normal`), exactly as Python's `BgmManager` creates them.
+/// (`battle.normal`).
 #[derive(Asset, Clone, Debug, Eq, PartialEq, TypePath)]
 pub struct BgmIndex {
     pub categories: Vec<AudioCategory>,
@@ -30,9 +30,9 @@ pub struct BgmIndex {
 
 /// A lossless category-indexed SFX catalog.
 ///
-/// Python's `SfxManager` looks up SFX by the unqualified event name. If a future source catalog
-/// repeats a name in a later category, its last occurrence wins, matching Python assignment
-/// order. Duplicate reporting belongs to M2.24.
+/// SFX are looked up by the unqualified event name. If a catalog repeats a name in a later
+/// category, its last occurrence wins (assignment order). Duplicate reporting belongs to the
+/// duplicate-id validator.
 #[derive(Asset, Clone, Debug, Eq, PartialEq, TypePath)]
 pub struct SfxIndex {
     pub categories: Vec<AudioCategory>,
@@ -53,7 +53,7 @@ pub struct AudioEntry {
 }
 
 impl BgmIndex {
-    /// Finds a BGM path by its Python-compatible `category.event` logical key.
+    /// Finds a BGM path by its `category.event` logical key.
     pub fn path_for_key(&self, key: &str) -> Option<&ScenarioRelativePath> {
         let (category_id, entry_id) = key.split_once('.')?;
         self.categories
@@ -78,7 +78,7 @@ impl BgmIndex {
 }
 
 impl SfxIndex {
-    /// Finds an SFX path by its unqualified Python-compatible event key.
+    /// Finds an SFX path by its unqualified event key.
     pub fn path_for_key(&self, key: &str) -> Option<&ScenarioRelativePath> {
         let mut effective_categories = Vec::new();
         for category in &self.categories {
@@ -388,9 +388,8 @@ mod tests {
             scenario_yaml::from_str(&sfx_document).expect("shipped SFX index should load");
         let scenario_root = ScenarioRoot::default();
 
-        // Four, not the pinned corpus's five. The source carried an `overworld:` group whose
-        // four tracks no map, scene or catalog ever named; the port dissolved it and reassigned
-        // those tracks to reachable zone keys rather than shipping unreachable audio.
+        // Four categories: there is no `overworld:` group, because tracks no map, scene or
+        // catalog names are unreachable; those tracks are assigned to zone keys instead.
         assert_eq!(bgm.categories.len(), 4);
         assert_eq!(
             bgm.categories

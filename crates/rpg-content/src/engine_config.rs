@@ -1,16 +1,16 @@
-//! Engine-level settings read from `assets/settings.yaml`. Only keys the port consumes are modelled.
+//! Engine-level settings read from `assets/settings.yaml`. Only keys the game consumes are modelled.
 //! Settings governed elsewhere are not read here: display (fixed canvas size), tile size (from each
 //! map's TMX header), save directory (platform convention), audio, debug switches, collision and
 //! enemy spawn interval.
 //!
-//! A missing file, block, or key falls back to the value the port already used, so the game runs
+//! A missing file, block, or key falls back to the built-in default, so the game runs
 //! without a settings file rather than refusing to start over a display preference.
 
 use serde::Deserialize;
 
 use crate::scenario_yaml;
 
-/// The source's three typewriter speeds (`dialogue_scene.py::TEXT_SPEEDS`).
+/// The three typewriter speeds.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TextSpeed {
@@ -21,7 +21,7 @@ pub enum TextSpeed {
 }
 
 impl TextSpeed {
-    /// Characters revealed per second, or `None` for the source's instant reveal.
+    /// Characters revealed per second, or `None` for an instant reveal.
     pub const fn chars_per_second(self) -> Option<f32> {
         match self {
             Self::Slow => Some(20.0),
@@ -31,7 +31,7 @@ impl TextSpeed {
     }
 }
 
-/// The source's four named font sizes (`fonts.sizes`).
+/// The four named font sizes (`fonts.sizes`).
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FontSizes {
@@ -41,7 +41,7 @@ pub struct FontSizes {
     pub xlarge: f32,
 }
 
-/// The source's shipped values, which are also the port's baseline.
+/// The shipped values, which are also the built-in defaults.
 impl Default for FontSizes {
     fn default() -> Self {
         Self {
@@ -56,7 +56,7 @@ impl Default for FontSizes {
 impl FontSizes {
     /// How far this type scale departs from the shipped one.
     ///
-    /// The port has named type roles on `UiTheme` rather than the source's four-entry palette, so
+    /// `UiTheme` has named type roles rather than a fixed-size palette, so
     /// the setting is honored as a multiplier on those roles. At the shipped sizes this is exactly
     /// `1.0` and no text moves.
     pub fn scale(self) -> f32 {
@@ -109,7 +109,7 @@ struct FontSettings {
     sizes: FontSizes,
 }
 
-/// The settings file's shape, mirroring the source's block names.
+/// The settings file's shape: one struct per top-level block.
 #[derive(Clone, Copy, Debug, Default, Deserialize)]
 #[serde(default)]
 struct SettingsDocument {
@@ -165,8 +165,8 @@ impl EngineConfig {
 
     /// Parses settings text, falling back to the defaults for anything it does not set.
     ///
-    /// Unknown keys are ignored rather than rejected: the shipped file carries the source's full
-    /// block set so it stays diffable against the original, and only the consumed subset is read.
+    /// Unknown keys are ignored rather than rejected: the shipped file carries blocks this
+    /// game does not consume, and only the consumed subset is read.
     pub fn from_yaml(contents: &str) -> Result<Self, EngineConfigError> {
         let document = scenario_yaml::from_str::<Option<SettingsDocument>>(contents)
             .map_err(|error| EngineConfigError(error.to_string()))?
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn a_block_the_port_does_not_consume_is_ignored_not_rejected() {
-        // The shipped file keeps the source's full block set so the two stay diffable.
+        // The shipped file carries blocks this game does not consume.
         let config = EngineConfig::from_yaml(
             "display:\n  screen_width: 1280\nsaves:\n  dir: ~/user_save_data\n\
              debug:\n  collision: true\ndialogue:\n  text_speed: very_fast\n",

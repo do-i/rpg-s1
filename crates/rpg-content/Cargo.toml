@@ -3,7 +3,7 @@ name = "rpg-content"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.97"
-description = "Scenario package boundaries and source-compatible content types for rpg-s1"
+description = "Scenario package boundaries, schemas, parsing and validation for rpg-s1"
 
 [lints]
 workspace = true
