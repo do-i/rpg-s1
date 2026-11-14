@@ -38,6 +38,50 @@ const MAP_HEIGHT: f32 = 548.0;
 const DESTINATION_ROWS: usize = 8;
 const PANEL_WIDTH: f32 = 370.0;
 
+// Ember Atlas palette, in on-screen order. Each value is pinned by
+// `atlas_palette_pins_exact_components`; change one only deliberately.
+const ATLAS_BACKGROUND: Color = Color::srgba(0.025, 0.015, 0.01, 0.985);
+const MAP_FRAME_BORDER: Color = Color::srgb_u8(151, 89, 38);
+const MAP_BACKGROUND: Color = Color::srgb_u8(52, 32, 18);
+const MAP_SHADOW: Color = Color::srgba(0.0, 0.0, 0.0, 0.7);
+const FOOTER_TEXT: Color = Color::srgb_u8(205, 188, 151);
+const CURRENT_MARKER: Color = Color::srgb_u8(255, 220, 126);
+const REGION_MARKER: Color = Color::srgb_u8(224, 171, 84);
+const MARKER_FILL: Color = Color::srgba(0.055, 0.025, 0.012, 0.92);
+const SELECTED_LABEL_FILL: Color = Color::srgba(0.08, 0.035, 0.015, 0.94);
+const LABEL_FILL: Color = Color::srgba(0.07, 0.045, 0.025, 0.82);
+const LABEL_TEXT: Color = Color::srgb_u8(244, 224, 182);
+const PANEL_FILL: Color = Color::srgba(0.085, 0.045, 0.022, 0.97);
+const PANEL_BORDER: Color = Color::srgb_u8(137, 76, 33);
+const PANEL_SHADOW: Color = Color::srgba(0.0, 0.0, 0.0, 0.65);
+const PANEL_HEADING_TEXT: Color = Color::srgb_u8(244, 192, 104);
+const PANEL_COUNT_TEXT: Color = Color::srgb_u8(166, 143, 108);
+const EMPTY_NOTICE_FILL: Color = Color::srgba(0.15, 0.09, 0.04, 0.7);
+const EMPTY_NOTICE_BORDER: Color = Color::srgb_u8(98, 71, 44);
+const EMPTY_NOTICE_TEXT: Color = Color::srgb_u8(196, 177, 143);
+const ROW_FILL: Color = Color::srgba(0.14, 0.08, 0.035, 0.72);
+const ROW_BORDER: Color = Color::srgb_u8(96, 67, 40);
+const ROW_UNAVAILABLE_BAR: Color = Color::srgb_u8(101, 87, 68);
+const ROW_SELECTED_NAME_TEXT: Color = Color::srgb_u8(255, 232, 183);
+const ROW_NAME_TEXT: Color = Color::srgb_u8(221, 207, 176);
+const ROW_UNAVAILABLE_TEXT: Color = Color::srgb_u8(139, 126, 103);
+const ROW_REGION_TEXT: Color = Color::srgb_u8(151, 132, 99);
+const DETAILS_FILL: Color = Color::srgba(0.045, 0.025, 0.014, 0.82);
+const DETAILS_TEXT: Color = Color::srgb_u8(205, 190, 154);
+const TITLE_TEXT: Color = Color::srgb_u8(246, 184, 88);
+const SUBTITLE_TEXT: Color = Color::srgb_u8(184, 151, 103);
+const TAB_FILL: Color = Color::srgba(0.10, 0.06, 0.03, 0.82);
+const TAB_BORDER: Color = Color::srgb_u8(105, 75, 45);
+const TAB_TEXT: Color = Color::srgb_u8(219, 200, 164);
+const TAB_LOCKED_TEXT: Color = Color::srgb_u8(126, 111, 88);
+const TOKEN_FILL: Color = Color::srgba(0.06, 0.025, 0.01, 0.92);
+const WAYPOINT_FILL: Color = Color::srgba(0.05, 0.02, 0.01, 0.94);
+const ROUTE_CASING: Color = Color::srgba(0.055, 0.018, 0.008, 0.88);
+const SAIL_ACCENT: Color = Color::srgb_u8(77, 205, 211);
+const FLY_ACCENT: Color = Color::srgb_u8(247, 188, 72);
+const WARP_ACCENT: Color = Color::srgb_u8(193, 139, 255);
+const CLOSED_ACCENT: Color = Color::srgb_u8(180, 160, 120);
+
 pub(crate) struct TransportUiPlugin;
 
 impl Plugin for TransportUiPlugin {
@@ -618,7 +662,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                 row_gap: px(10),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.025, 0.015, 0.01, 0.985)),
+            BackgroundColor(ATLAS_BACKGROUND),
             GlobalZIndex(8_000),
             Pickable::IGNORE,
             TransportRoot,
@@ -645,15 +689,9 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                             ..default()
                         },
                         ImageNode::new(map_image).with_mode(NodeImageMode::Stretch),
-                        BorderColor::all(Color::srgb_u8(151, 89, 38)),
-                        BackgroundColor(Color::srgb_u8(52, 32, 18)),
-                        BoxShadow::new(
-                            Color::srgba(0.0, 0.0, 0.0, 0.7),
-                            px(0),
-                            px(4),
-                            px(0),
-                            px(10),
-                        ),
+                        BorderColor::all(MAP_FRAME_BORDER),
+                        BackgroundColor(MAP_BACKGROUND),
+                        BoxShadow::new(MAP_SHADOW, px(0), px(4), px(0), px(10)),
                     ))
                     .with_children(|map| {
                         spawn_route_preview(map, &state, &domain, &game, selected);
@@ -680,7 +718,7 @@ fn sync_transport_overlay(mut commands: Commands, params: TransportOverlayParams
                     font_size: FontSize::Px(17.0),
                     ..default()
                 },
-                TextColor(Color::srgb_u8(205, 188, 151)),
+                TextColor(FOOTER_TEXT),
                 TextShadow {
                     offset: Vec2::new(1.0, 1.0),
                     color: Color::BLACK,
@@ -704,9 +742,9 @@ fn spawn_region_marker(
     let marker_color = if selected {
         accent
     } else if current {
-        Color::srgb_u8(255, 220, 126)
+        CURRENT_MARKER
     } else {
-        Color::srgb_u8(224, 171, 84)
+        REGION_MARKER
     };
     let base_size = if selected {
         30.0
@@ -730,7 +768,7 @@ fn spawn_region_marker(
         },
         UiTransform::from_xy(percent(-50), percent(-50)),
         BorderColor::all(marker_color),
-        BackgroundColor(Color::srgba(0.055, 0.025, 0.012, 0.92)),
+        BackgroundColor(MARKER_FILL),
         Outline::new(
             px(if selected { 3 } else { 1 }),
             px(1),
@@ -771,9 +809,9 @@ fn spawn_region_marker(
         },
         UiTransform::from_xy(percent(-50), px(label_offset)),
         BackgroundColor(if selected {
-            Color::srgba(0.08, 0.035, 0.015, 0.94)
+            SELECTED_LABEL_FILL
         } else {
-            Color::srgba(0.07, 0.045, 0.025, 0.82)
+            LABEL_FILL
         }),
         BorderColor::all(marker_color.with_alpha(if selected { 0.9 } else { 0.55 })),
         Text::new(label),
@@ -782,11 +820,7 @@ fn spawn_region_marker(
             font_size: FontSize::Px(if selected || current { 15.0 } else { 13.0 }),
             ..default()
         },
-        TextColor(if selected {
-            accent
-        } else {
-            Color::srgb_u8(244, 224, 182)
-        }),
+        TextColor(if selected { accent } else { LABEL_TEXT }),
         TextShadow {
             offset: Vec2::new(1.0, 1.0),
             color: Color::BLACK,
@@ -815,15 +849,9 @@ fn spawn_destination_panel(
             border_radius: BorderRadius::all(px(8)),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.085, 0.045, 0.022, 0.97)),
-        BorderColor::all(Color::srgb_u8(137, 76, 33)),
-        BoxShadow::new(
-            Color::srgba(0.0, 0.0, 0.0, 0.65),
-            px(0),
-            px(4),
-            px(0),
-            px(10),
-        ),
+        BackgroundColor(PANEL_FILL),
+        BorderColor::all(PANEL_BORDER),
+        BoxShadow::new(PANEL_SHADOW, px(0), px(4), px(0), px(10)),
     ))
     .with_children(|panel| {
         panel
@@ -842,7 +870,7 @@ fn spawn_destination_panel(
                         font_size: FontSize::Px(19.0),
                         ..default()
                     },
-                    TextColor(Color::srgb_u8(244, 192, 104)),
+                    TextColor(PANEL_HEADING_TEXT),
                 ));
                 heading.spawn((
                     Text::new(destination_count_copy(window.first, rows.len())),
@@ -851,7 +879,7 @@ fn spawn_destination_panel(
                         font_size: FontSize::Px(12.0),
                         ..default()
                     },
-                    TextColor(Color::srgb_u8(166, 143, 108)),
+                    TextColor(PANEL_COUNT_TEXT),
                 ));
             });
 
@@ -868,8 +896,8 @@ fn spawn_destination_panel(
                         border_radius: BorderRadius::all(px(5)),
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.15, 0.09, 0.04, 0.7)),
-                    BorderColor::all(Color::srgb_u8(98, 71, 44)),
+                    BackgroundColor(EMPTY_NOTICE_FILL),
+                    BorderColor::all(EMPTY_NOTICE_BORDER),
                 ))
                 .with_children(|empty| {
                     empty.spawn((
@@ -883,7 +911,7 @@ fn spawn_destination_panel(
                             font_size: FontSize::Px(16.0),
                             ..default()
                         },
-                        TextColor(Color::srgb_u8(196, 177, 143)),
+                        TextColor(EMPTY_NOTICE_TEXT),
                         TextLayout::justify(Justify::Center),
                     ));
                 });
@@ -938,13 +966,9 @@ fn spawn_destination_row(
             BackgroundColor(if selected {
                 accent.with_alpha(0.18)
             } else {
-                Color::srgba(0.14, 0.08, 0.035, 0.72)
+                ROW_FILL
             }),
-            BorderColor::all(if selected {
-                accent
-            } else {
-                Color::srgb_u8(96, 67, 40)
-            }),
+            BorderColor::all(if selected { accent } else { ROW_BORDER }),
         ))
         .with_children(|row| {
             row.spawn((
@@ -962,7 +986,7 @@ fn spawn_destination_row(
                         accent.with_alpha(0.55)
                     }
                 } else {
-                    Color::srgb_u8(101, 87, 68)
+                    ROW_UNAVAILABLE_BAR
                 }),
             ));
             row.spawn((
@@ -974,12 +998,12 @@ fn spawn_destination_row(
                 },
                 TextColor(if available {
                     if selected {
-                        Color::srgb_u8(255, 232, 183)
+                        ROW_SELECTED_NAME_TEXT
                     } else {
-                        Color::srgb_u8(221, 207, 176)
+                        ROW_NAME_TEXT
                     }
                 } else {
-                    Color::srgb_u8(139, 126, 103)
+                    ROW_UNAVAILABLE_TEXT
                 }),
             ));
             row.spawn(Node {
@@ -999,7 +1023,7 @@ fn spawn_destination_row(
                 TextColor(if selected && available {
                     accent
                 } else {
-                    Color::srgb_u8(151, 132, 99)
+                    ROW_REGION_TEXT
                 }),
             ));
         });
@@ -1026,7 +1050,7 @@ fn spawn_route_details(
                 border_radius: BorderRadius::all(px(5)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.045, 0.025, 0.014, 0.82)),
+            BackgroundColor(DETAILS_FILL),
             BorderColor::all(accent.with_alpha(0.5)),
         ))
         .with_children(|details| {
@@ -1046,7 +1070,7 @@ fn spawn_route_details(
                     font_size: FontSize::Px(15.0),
                     ..default()
                 },
-                TextColor(Color::srgb_u8(205, 190, 154)),
+                TextColor(DETAILS_TEXT),
             ));
         });
 }
@@ -1136,7 +1160,7 @@ fn spawn_atlas_header(
                             font_size: FontSize::Px(28.0),
                             ..default()
                         },
-                        TextColor(Color::srgb_u8(246, 184, 88)),
+                        TextColor(TITLE_TEXT),
                         TextShadow {
                             offset: Vec2::new(1.0, 2.0),
                             color: Color::BLACK,
@@ -1149,7 +1173,7 @@ fn spawn_atlas_header(
                             font_size: FontSize::Px(13.0),
                             ..default()
                         },
-                        TextColor(Color::srgb_u8(184, 151, 103)),
+                        TextColor(SUBTITLE_TEXT),
                     ));
                 });
             header
@@ -1181,13 +1205,9 @@ fn spawn_atlas_header(
                             BackgroundColor(if selected {
                                 accent.with_alpha(0.22)
                             } else {
-                                Color::srgba(0.10, 0.06, 0.03, 0.82)
+                                TAB_FILL
                             }),
-                            BorderColor::all(if selected {
-                                accent
-                            } else {
-                                Color::srgb_u8(105, 75, 45)
-                            }),
+                            BorderColor::all(if selected { accent } else { TAB_BORDER }),
                         ))
                         .with_children(|tab| {
                             tab.spawn((
@@ -1202,13 +1222,9 @@ fn spawn_atlas_header(
                                     ..default()
                                 },
                                 TextColor(if unlocked {
-                                    if selected {
-                                        accent
-                                    } else {
-                                        Color::srgb_u8(219, 200, 164)
-                                    }
+                                    if selected { accent } else { TAB_TEXT }
                                 } else {
-                                    Color::srgb_u8(126, 111, 88)
+                                    TAB_LOCKED_TEXT
                                 }),
                             ));
                         });
@@ -1407,7 +1423,7 @@ fn spawn_animation_token(map: &mut ChildSpawnerCommands, mode: TravelMode, x: f3
             rotation,
             ..default()
         },
-        BackgroundColor(Color::srgba(0.06, 0.025, 0.01, 0.92)),
+        BackgroundColor(TOKEN_FILL),
         BorderColor::all(accent),
         Outline::new(px(3), px(1), accent.with_alpha(0.35)),
     ));
@@ -1427,7 +1443,7 @@ fn spawn_route_waypoint(map: &mut ChildSpawnerCommands, point: (f32, f32), mode:
             ..default()
         },
         UiTransform::from_xy(percent(-50), percent(-50)),
-        BackgroundColor(Color::srgba(0.05, 0.02, 0.01, 0.94)),
+        BackgroundColor(WAYPOINT_FILL),
         BorderColor::all(accent),
     ));
 }
@@ -1445,7 +1461,7 @@ fn spawn_line(map: &mut ChildSpawnerCommands, from: (f32, f32), to: (f32, f32), 
     let midpoint_y = (from.1 + to.1) * MAP_HEIGHT * 0.5;
     let rotation = Rot2::radians(dy.atan2(dx));
     for (thickness, color) in [
-        (8.0, Color::srgba(0.055, 0.018, 0.008, 0.88)),
+        (8.0, ROUTE_CASING),
         (3.0, mode_accent(mode).with_alpha(0.92)),
     ] {
         map.spawn((
@@ -1466,10 +1482,10 @@ fn spawn_line(map: &mut ChildSpawnerCommands, from: (f32, f32), to: (f32, f32), 
 
 fn mode_accent(mode: TravelMode) -> Color {
     match mode {
-        TravelMode::Sail => Color::srgb_u8(77, 205, 211),
-        TravelMode::Fly => Color::srgb_u8(247, 188, 72),
-        TravelMode::Warp => Color::srgb_u8(193, 139, 255),
-        TravelMode::Closed => Color::srgb_u8(180, 160, 120),
+        TravelMode::Sail => SAIL_ACCENT,
+        TravelMode::Fly => FLY_ACCENT,
+        TravelMode::Warp => WARP_ACCENT,
+        TravelMode::Closed => CLOSED_ACCENT,
     }
 }
 
@@ -1477,6 +1493,51 @@ fn mode_accent(mode: TravelMode) -> Color {
 mod tests {
     use super::*;
     use crate::{input_record::NormalizedAction, save_data::tests::fixture_game, sfx_cue::PlaySfx};
+
+    #[test]
+    fn atlas_palette_pins_exact_components() {
+        assert_eq!(ATLAS_BACKGROUND, Color::srgba(0.025, 0.015, 0.01, 0.985));
+        assert_eq!(MAP_FRAME_BORDER, Color::srgb_u8(151, 89, 38));
+        assert_eq!(MAP_BACKGROUND, Color::srgb_u8(52, 32, 18));
+        assert_eq!(MAP_SHADOW, Color::srgba(0.0, 0.0, 0.0, 0.7));
+        assert_eq!(FOOTER_TEXT, Color::srgb_u8(205, 188, 151));
+        assert_eq!(CURRENT_MARKER, Color::srgb_u8(255, 220, 126));
+        assert_eq!(REGION_MARKER, Color::srgb_u8(224, 171, 84));
+        assert_eq!(MARKER_FILL, Color::srgba(0.055, 0.025, 0.012, 0.92));
+        assert_eq!(SELECTED_LABEL_FILL, Color::srgba(0.08, 0.035, 0.015, 0.94));
+        assert_eq!(LABEL_FILL, Color::srgba(0.07, 0.045, 0.025, 0.82));
+        assert_eq!(LABEL_TEXT, Color::srgb_u8(244, 224, 182));
+        assert_eq!(PANEL_FILL, Color::srgba(0.085, 0.045, 0.022, 0.97));
+        assert_eq!(PANEL_BORDER, Color::srgb_u8(137, 76, 33));
+        assert_eq!(PANEL_SHADOW, Color::srgba(0.0, 0.0, 0.0, 0.65));
+        assert_eq!(PANEL_HEADING_TEXT, Color::srgb_u8(244, 192, 104));
+        assert_eq!(PANEL_COUNT_TEXT, Color::srgb_u8(166, 143, 108));
+        assert_eq!(EMPTY_NOTICE_FILL, Color::srgba(0.15, 0.09, 0.04, 0.7));
+        assert_eq!(EMPTY_NOTICE_BORDER, Color::srgb_u8(98, 71, 44));
+        assert_eq!(EMPTY_NOTICE_TEXT, Color::srgb_u8(196, 177, 143));
+        assert_eq!(ROW_FILL, Color::srgba(0.14, 0.08, 0.035, 0.72));
+        assert_eq!(ROW_BORDER, Color::srgb_u8(96, 67, 40));
+        assert_eq!(ROW_UNAVAILABLE_BAR, Color::srgb_u8(101, 87, 68));
+        assert_eq!(ROW_SELECTED_NAME_TEXT, Color::srgb_u8(255, 232, 183));
+        assert_eq!(ROW_NAME_TEXT, Color::srgb_u8(221, 207, 176));
+        assert_eq!(ROW_UNAVAILABLE_TEXT, Color::srgb_u8(139, 126, 103));
+        assert_eq!(ROW_REGION_TEXT, Color::srgb_u8(151, 132, 99));
+        assert_eq!(DETAILS_FILL, Color::srgba(0.045, 0.025, 0.014, 0.82));
+        assert_eq!(DETAILS_TEXT, Color::srgb_u8(205, 190, 154));
+        assert_eq!(TITLE_TEXT, Color::srgb_u8(246, 184, 88));
+        assert_eq!(SUBTITLE_TEXT, Color::srgb_u8(184, 151, 103));
+        assert_eq!(TAB_FILL, Color::srgba(0.10, 0.06, 0.03, 0.82));
+        assert_eq!(TAB_BORDER, Color::srgb_u8(105, 75, 45));
+        assert_eq!(TAB_TEXT, Color::srgb_u8(219, 200, 164));
+        assert_eq!(TAB_LOCKED_TEXT, Color::srgb_u8(126, 111, 88));
+        assert_eq!(TOKEN_FILL, Color::srgba(0.06, 0.025, 0.01, 0.92));
+        assert_eq!(WAYPOINT_FILL, Color::srgba(0.05, 0.02, 0.01, 0.94));
+        assert_eq!(ROUTE_CASING, Color::srgba(0.055, 0.018, 0.008, 0.88));
+        assert_eq!(SAIL_ACCENT, Color::srgb_u8(77, 205, 211));
+        assert_eq!(FLY_ACCENT, Color::srgb_u8(247, 188, 72));
+        assert_eq!(WARP_ACCENT, Color::srgb_u8(193, 139, 255));
+        assert_eq!(CLOSED_ACCENT, Color::srgb_u8(180, 160, 120));
+    }
 
     fn production_domain() -> TransportDomain {
         let catalog =
