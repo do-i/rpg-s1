@@ -272,6 +272,8 @@ pub(crate) enum ScriptStep {
     Measure(u64),
     /// `dump_text`: print every text on screen, for authoring a `wait_text`.
     DumpText,
+    /// `snapshot LABEL`: record one row of entity, loaded-asset and resident-memory counts.
+    Snapshot(String),
 }
 
 /// A parsed measurement input script, one step per non-empty, non-comment line.
@@ -345,6 +347,9 @@ fn parse_script_step(line: &str) -> Result<ScriptStep, String> {
         }
         "measure" => frames(rest).map(ScriptStep::Measure),
         "dump_text" if rest.is_empty() => Ok(ScriptStep::DumpText),
+        "snapshot" if !rest.is_empty() && !rest.contains(',') => {
+            Ok(ScriptStep::Snapshot(rest.to_owned()))
+        }
         _ => Err("unknown or incomplete step".to_owned()),
     }
 }
@@ -390,6 +395,8 @@ pub(crate) struct ScriptedInput {
     pub(crate) trace: Vec<ScriptTraceEntry>,
     pub(crate) failure: Option<String>,
     pub(crate) measure_request: Option<u64>,
+    /// Labels of `snapshot` steps reached this frame, drained by the measurement mode.
+    pub(crate) snapshot_requests: Vec<String>,
 }
 
 impl ScriptedInput {
@@ -403,6 +410,7 @@ impl ScriptedInput {
             trace: Vec::new(),
             failure: None,
             measure_request: None,
+            snapshot_requests: Vec::new(),
         }
     }
 
@@ -468,6 +476,10 @@ impl ScriptedInput {
                     for text in &view.texts {
                         println!("Perf text: {text}");
                     }
+                    Ok(StepOutcome::Done)
+                }
+                ScriptStep::Snapshot(label) => {
+                    self.snapshot_requests.push(label.clone());
                     Ok(StepOutcome::Done)
                 }
             };
@@ -1049,7 +1061,8 @@ mod tests {
              hold 20 move_left\n\
              wait_text PARTY COMMAND DECK\n\
              wait 5\n\
-             dump_text\n",
+             dump_text\n\
+             snapshot arrive 3 ardel\n",
         )
         .unwrap();
         let steps: Vec<_> = script
@@ -1071,6 +1084,7 @@ mod tests {
                 (8, ScriptStep::WaitText("PARTY COMMAND DECK".to_owned())),
                 (9, ScriptStep::WaitFrames(5)),
                 (10, ScriptStep::DumpText),
+                (11, ScriptStep::Snapshot("arrive 3 ardel".to_owned())),
             ]
         );
 
@@ -1091,6 +1105,8 @@ mod tests {
             ("measure 5\npress jump\n", "unknown action `jump`"),
             ("measure 5\nhold 3\n", "at least one action is required"),
             ("measure 5\nteleport\n", "unknown or incomplete step"),
+            ("measure 5\nsnapshot\n", "unknown or incomplete step"),
+            ("measure 5\nsnapshot a,b\n", "unknown or incomplete step"),
         ] {
             let message = InputScript::parse(document).unwrap_err();
             assert!(message.contains(error), "{document:?}: {message}");

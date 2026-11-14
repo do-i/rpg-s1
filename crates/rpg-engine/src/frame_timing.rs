@@ -17,13 +17,19 @@ use std::{
 
 use bevy::{
     app::MainScheduleOrder,
+    audio::AudioSource,
     ecs::schedule::ScheduleLabel,
     prelude::*,
     render::{Render, RenderApp, RenderSystems, renderer::RenderAdapterInfo},
     winit::{UpdateMode, WinitSettings},
 };
 
-use crate::input_record::{ScriptTraceEntry, ScriptedInput};
+use crate::{
+    input_record::{ScriptTraceEntry, ScriptedInput},
+    scenario_map::MapMetadata,
+    tmx_ground_asset::TmxGroundAsset,
+    tsx_atlas_asset::TsxAtlasAsset,
+};
 
 const REPORT_EVERY_FRAMES: u64 = 120;
 
@@ -236,7 +242,75 @@ pub(crate) struct PerfRun {
     interval: Option<Duration>,
     first_frame: Option<Duration>,
     window: Option<MeasureWindow>,
+    snapshots: Vec<SnapshotRow>,
     finished: bool,
+}
+
+/// One `snapshot` script step: what the process held when the destination had settled.
+///
+/// Only counts and numbers are stored, never asset handles, so taking a snapshot cannot keep
+/// anything alive.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SnapshotRow {
+    label: String,
+    frame: u64,
+    entities: u32,
+    /// `Assets<T>::len()` for each relevant asset type, in [`SNAPSHOT_ASSET_COLUMNS`] order.
+    assets: [usize; SNAPSHOT_ASSET_COLUMNS.len()],
+    rss_kib: Option<u64>,
+}
+
+const SNAPSHOT_ASSET_COLUMNS: [&str; 7] = [
+    "images",
+    "atlas_layouts",
+    "tsx_atlases",
+    "tmx_maps",
+    "map_metadata",
+    "audio_sources",
+    "fonts",
+];
+
+impl SnapshotRow {
+    fn csv_header() -> String {
+        format!(
+            "label,frame,entities,{},rss_kib\n",
+            SNAPSHOT_ASSET_COLUMNS.join(",")
+        )
+    }
+
+    fn csv_line(&self) -> String {
+        let assets: Vec<String> = self.assets.iter().map(usize::to_string).collect();
+        format!(
+            "{},{},{},{},{}\n",
+            self.label,
+            self.frame,
+            self.entities,
+            assets.join(","),
+            self.rss_kib.map_or_else(String::new, |kib| kib.to_string())
+        )
+    }
+}
+
+fn loaded_assets<A: Asset>(world: &World) -> usize {
+    world.get_resource::<Assets<A>>().map_or(0, Assets::len)
+}
+
+fn take_snapshot(world: &World, label: String, frame: u64) -> SnapshotRow {
+    SnapshotRow {
+        label,
+        frame,
+        entities: world.entity_count(),
+        assets: [
+            loaded_assets::<Image>(world),
+            loaded_assets::<TextureAtlasLayout>(world),
+            loaded_assets::<TsxAtlasAsset>(world),
+            loaded_assets::<TmxGroundAsset>(world),
+            loaded_assets::<MapMetadata>(world),
+            loaded_assets::<AudioSource>(world),
+            loaded_assets::<Font>(world),
+        ],
+        rss_kib: process_memory().map(|(_, current)| current),
+    }
 }
 
 impl PerfRun {
@@ -252,6 +326,7 @@ impl PerfRun {
             interval: None,
             first_frame: None,
             window: None,
+            snapshots: Vec::new(),
             finished: false,
         }
     }
@@ -320,10 +395,22 @@ fn finish_perf_frame(world: &mut World) {
         return;
     }
     let entities = world.entity_count();
-    let (request, failure) = world
+    let (request, failure, snapshot_labels, script_done) = world
         .get_resource_mut::<ScriptedInput>()
-        .map(|mut script| (script.measure_request.take(), script.failure.clone()))
+        .map(|mut script| {
+            (
+                script.measure_request.take(),
+                script.failure.clone(),
+                std::mem::take(&mut script.snapshot_requests),
+                script.remaining_steps() == 0,
+            )
+        })
         .unwrap_or_default();
+    let frame_number = world.resource::<PerfRun>().frame;
+    let rows: Vec<SnapshotRow> = snapshot_labels
+        .into_iter()
+        .map(|label| take_snapshot(world, label, frame_number))
+        .collect();
 
     let mut perf = world.resource_mut::<PerfRun>();
     let main = perf
@@ -331,36 +418,41 @@ fn finish_perf_frame(world: &mut World) {
         .map_or(Duration::ZERO, |started| ended - started);
     let interval = perf.interval;
     let frame = perf.frame;
-    let complete = match perf.window.as_mut() {
-        Some(window) => {
-            window.main.push(main);
-            if let Some(interval) = interval {
-                window.interval.push(interval);
-            }
-            window.entities.push(entities);
-            window.main.len() as u64 >= window.frames
-        }
-        None => {
-            if let Some(frames) = request {
-                perf.window = Some(MeasureWindow {
-                    frames,
-                    first_frame: frame + 1,
-                    opened: ended,
-                    cpu_ticks: process_cpu_ticks(),
-                    main: Vec::with_capacity(frames as usize),
-                    interval: Vec::with_capacity(frames as usize),
-                    entities: Vec::with_capacity(frames as usize),
-                });
-                world
-                    .resource::<RenderSpanLog>()
-                    .with(|spans| spans.recording = true);
-                if let Some(history) = world.resource_mut::<FrameTimings>().history.as_mut() {
-                    history.clear();
+    perf.snapshots.extend(rows);
+    // A snapshot run ends with its script rather than with a fixed window, so its length does not
+    // have to be guessed in frames.
+    let snapshot_run_done = script_done && !perf.snapshots.is_empty();
+    let complete = snapshot_run_done
+        || match perf.window.as_mut() {
+            Some(window) => {
+                window.main.push(main);
+                if let Some(interval) = interval {
+                    window.interval.push(interval);
                 }
+                window.entities.push(entities);
+                window.main.len() as u64 >= window.frames
             }
-            false
-        }
-    };
+            None => {
+                if let Some(frames) = request {
+                    perf.window = Some(MeasureWindow {
+                        frames,
+                        first_frame: frame + 1,
+                        opened: ended,
+                        cpu_ticks: process_cpu_ticks(),
+                        main: Vec::with_capacity(frames as usize),
+                        interval: Vec::with_capacity(frames as usize),
+                        entities: Vec::with_capacity(frames as usize),
+                    });
+                    world
+                        .resource::<RenderSpanLog>()
+                        .with(|spans| spans.recording = true);
+                    if let Some(history) = world.resource_mut::<FrameTimings>().history.as_mut() {
+                        history.clear();
+                    }
+                }
+                false
+            }
+        };
     if complete || failure.is_some() {
         let status = failure.map_or_else(|| "ok".to_owned(), |error| format!("FAIL: {error}"));
         write_perf_report(world, status);
@@ -483,6 +575,14 @@ fn write_perf_report(world: &mut World, mut status: String) {
         }
         written =
             written.and_then(|()| fs::write(perf.report.with_extension("frames.csv"), frames));
+    }
+    if !perf.snapshots.is_empty() {
+        let mut snapshots = SnapshotRow::csv_header();
+        for row in &perf.snapshots {
+            snapshots.push_str(&row.csv_line());
+        }
+        written = written
+            .and_then(|()| fs::write(perf.report.with_extension("snapshots.csv"), snapshots));
     }
     let mut render = String::from("span,render_us\n");
     for (index, span) in render_samples.iter().enumerate() {
@@ -656,6 +756,48 @@ impl PerfReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn snapshot_rows_render_one_csv_line_matching_the_header() {
+        let row = SnapshotRow {
+            label: "arrive 3 town_01_ardel".to_owned(),
+            frame: 912,
+            entities: 1500,
+            assets: [60, 20, 8, 3, 3, 2, 1],
+            rss_kib: Some(480_000),
+        };
+        assert_eq!(
+            SnapshotRow::csv_header(),
+            "label,frame,entities,images,atlas_layouts,tsx_atlases,tmx_maps,map_metadata,audio_sources,fonts,rss_kib\n"
+        );
+        assert_eq!(
+            row.csv_line(),
+            "arrive 3 town_01_ardel,912,1500,60,20,8,3,3,2,1,480000\n"
+        );
+        let unreadable = SnapshotRow {
+            rss_kib: None,
+            ..row
+        };
+        assert!(unreadable.csv_line().ends_with(",1,\n"));
+    }
+
+    #[test]
+    fn snapshot_counts_come_from_the_asset_stores_without_holding_handles() {
+        let mut app = App::new();
+        app.add_plugins(AssetPlugin::default())
+            .init_asset::<Image>();
+        let handle = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default());
+        let counted = take_snapshot(app.world(), "one".to_owned(), 1);
+        assert_eq!(counted.assets[0], 1);
+        assert_eq!(counted.assets[6], 0, "missing stores count as zero");
+        drop(handle);
+        app.update();
+        let released = take_snapshot(app.world(), "none".to_owned(), 2);
+        assert_eq!(released.assets[0], 0, "a snapshot keeps no handle alive");
+    }
 
     #[test]
     fn measurement_guard_records_each_system_without_changing_its_result() {

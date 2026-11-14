@@ -32,6 +32,12 @@ What the reported numbers include (all over the measurement window only, except 
   main-schedule frame: app construction, renderer and window creation, and the Startup schedules.
   The startup window then covers frames 2-301: pipeline compilation and the title's asset loads.
 
+The leak-check workloads are different: a `snapshot LABEL` script step records, after each settled
+map arrival, the ECS entity count, `Assets<T>::len()` for the relevant asset types and the
+current resident memory (VmRSS) into `report.snapshots.csv`; the run ends with its script. The
+summary prints that table per run and the least-squares RSS slope. They verify that every scripted
+arrival was recorded. They measure retention, not speed, so their timing columns mean little.
+
 Percentiles are nearest-rank, so each is a frame time that actually occurred. Measurements are only
 comparable between runs on the same machine, build profile, pacing cap and seed; the header prints
 all of them. Raw data stays under temp/ (gitignored).
@@ -57,6 +63,83 @@ RUN_TIMEOUT_SECONDS = 300
 # The map with the most NPCs in the shipped scenario data: town_02_millhaven, town_04_frostholm and
 # town_01_ardel tie at six; Frostholm is the largest of the three (61x35 tiles).
 DENSE_NPC_MAP = "town_04_frostholm"
+
+# leak-check: how many map arrivals the script makes and how many frames each destination gets
+# to settle before its snapshot. Each loop walks one short hop through a portal, lands the player
+# a short walk from the return portal, and walks back; the holds are tuned to the shipped maps
+# and are verified by the arrivals the run must record.
+LEAK_CHECK_CROSSINGS = 20
+LEAK_CHECK_SETTLE_FRAMES = 120
+LEAK_CHECK_LOOPS = {
+    # name: (start map, start position, legs); crossing N takes leg (N-1) mod len(legs), each leg
+    # being the walking steps that reach a portal and the map they arrive on.
+    "leak-check": (
+        "zone_01_starting_forest",
+        "29,1",
+        [(["hold 20 move_up"], "town_01_ardel"), (["hold 15 move_down"], "zone_01_starting_forest")],
+    ),
+    "leak-check-house": (
+        "town_01_ardel",
+        "3,5",
+        [(["hold 15 move_up"], "town_01_ardel_house_01"), (["hold 12 move_down"], "town_01_ardel")],
+    ),
+    # Three distinct maps in six crossings: Ardel -> house -> Ardel -> shop -> Ardel -> house ->
+    # Ardel. A portal lands the player on the tile just inside it, and the player walks 10 px
+    # per frame at the 30 Hz cap.
+    "leak-check-chain": (
+        "town_01_ardel",
+        "3,5",
+        [
+            (["hold 15 move_up"], "town_01_ardel_house_01"),
+            (["hold 12 move_down"], "town_01_ardel"),
+            (["hold 38 move_right", "hold 8 move_up"], "town_01_ardel_shop_01"),
+            (["hold 12 move_down"], "town_01_ardel"),
+            (
+                ["hold 3 move_down", "hold 38 move_left", "hold 15 move_up"],
+                "town_01_ardel_house_01",
+            ),
+            (["hold 12 move_down"], "town_01_ardel"),
+        ],
+    ),
+}
+
+
+def leak_check_script(start: str, legs: list, crossings: int) -> str:
+    """Crosses a map boundary `crossings` times and snapshots after each settled arrival."""
+    lines = [
+        "wait_state World",
+        f"wait_map {start}",
+        f"wait {LEAK_CHECK_SETTLE_FRAMES}",
+        # The window is only required by the script format; a snapshot run ends with its script.
+        "measure 200000",
+        f"snapshot start {start}",
+    ]
+    for crossing in range(1, crossings + 1):
+        steps, destination = legs[(crossing - 1) % len(legs)]
+        lines += [
+            *steps,
+            f"wait_map {destination}",
+            "wait_state World",
+            f"wait {LEAK_CHECK_SETTLE_FRAMES}",
+            f"snapshot arrive {crossing:02d} {destination}",
+        ]
+    return "\n".join(lines) + "\n"
+
+
+def leak_check_workload(name: str, crossings: int) -> dict:
+    start, position, legs = LEAK_CHECK_LOOPS[name]
+    maps = " -> ".join(dict.fromkeys([start, *(destination for _, destination in legs)]))
+    return {
+        "about": f"{crossings} portal crossings through {maps}; entity count, loaded assets per "
+        "type and current RSS are recorded after each settled arrival (report.snapshots.csv); a "
+        "debug session, so no autosave",
+        "args": ["--start-map", start, "--start-position", position],
+        "script": leak_check_script(start, legs, crossings),
+        "expect_autosave": None,
+        "expect_snapshots": crossings + 1,
+        "timeout_s": 120 + 12 * crossings,
+    }
+
 
 WORKLOADS: dict[str, dict] = {
     "startup": {
@@ -220,6 +303,10 @@ wait_state World
     },
 }
 
+for _name in LEAK_CHECK_LOOPS:
+    WORKLOADS[_name] = leak_check_workload(_name, LEAK_CHECK_CROSSINGS)
+WORKLOADS["leak-check-long"] = leak_check_workload("leak-check", 3 * LEAK_CHECK_CROSSINGS)
+
 # Metrics shown per run and given a noise band, as (report key, field) pairs.
 METRICS = [
     ("main_ms", "median"),
@@ -299,6 +386,19 @@ def check_workload(name: str, workload: dict, report: dict, save_dir: Path) -> l
         counts = dict(part.split("=", 1) for part in entities.split()) if "=" in entities else {}
         if not counts or counts["min"] == counts["max"]:
             problems.append("no effect entities were spawned during the window")
+    if "expect_snapshots" in workload:
+        rows = read_snapshots(save_dir.parent / "report.snapshots.csv")
+        expected = workload["expect_snapshots"]
+        if len(rows) != expected:
+            problems.append(f"{len(rows)} snapshots were recorded, expected {expected}")
+        arrivals = [row["label"] for row in rows if row["label"].startswith("arrive ")]
+        wanted = [
+            line.split(" ", 1)[1]
+            for line in script_steps
+            if line.startswith("snapshot arrive ")
+        ]
+        if arrivals != wanted:
+            problems.append("the arrivals recorded are not the arrivals scripted")
     if "expect_autosave" in workload:
         autosave = save_dir / "000.yaml"
         expected = workload["expect_autosave"]
@@ -311,6 +411,57 @@ def check_workload(name: str, workload: dict, report: dict, save_dir: Path) -> l
                 problems.append(f"autosave slot 0 does not record arrival on {expected}")
     del name
     return problems
+
+
+def read_snapshots(path: Path) -> list[dict]:
+    """Rows of a `.snapshots.csv`: label plus every numeric column as an int (empty RSS -> None)."""
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    header = lines[0].split(",")
+    rows = []
+    for line in lines[1:]:
+        values = line.split(",")
+        row: dict = {"label": values[0]}
+        for name, value in zip(header[1:], values[1:]):
+            row[name] = int(value) if value else None
+        rows.append(row)
+    return rows
+
+
+def slope(values: list[float]) -> float:
+    """Least-squares slope per index."""
+    count = len(values)
+    if count < 2:
+        return 0.0
+    mean_x = (count - 1) / 2
+    mean_y = sum(values) / count
+    numerator = sum((x - mean_x) * (y - mean_y) for x, y in enumerate(values))
+    return numerator / sum((x - mean_x) ** 2 for x in range(count))
+
+
+def snapshot_table(rows: list[dict]) -> list[str]:
+    """The per-arrival table, plus the RSS slope per transition over the arrivals."""
+    if not rows:
+        return []
+    columns = [name for name in rows[0] if name not in ("label", "frame")]
+    widths = {name: max(len(name), 7) for name in columns}
+    label_width = max(len(row["label"]) for row in rows)
+    lines = [
+        f"{'label':<{label_width}}"
+        + "".join(f" {name:>{widths[name]}}" for name in columns)
+    ]
+    for row in rows:
+        lines.append(
+            f"{row['label']:<{label_width}}"
+            + "".join(
+                f" {'n/a' if row[name] is None else row[name]:>{widths[name]}}" for name in columns
+            )
+        )
+    rss = [row["rss_kib"] for row in rows if row["rss_kib"] is not None]
+    if len(rss) >= 2:
+        lines.append(f"rss slope: {slope(rss):.1f} KiB per snapshot over {len(rss)} snapshots")
+    return lines
 
 
 def command_output(command: list[str]) -> str:
@@ -362,7 +513,7 @@ def run_once(name: str, workload: dict, run_dir: Path, seed: int, binary: Path) 
     load = load_average()
     command = [
         "timeout",
-        str(RUN_TIMEOUT_SECONDS),
+        str(workload.get("timeout_s", RUN_TIMEOUT_SECONDS)),
         "xvfb-run",
         "-a",
         "-s",
@@ -441,6 +592,12 @@ def summarize(name: str, workload: dict, reports: list[dict], seed: int, out: Pa
         + "".join(f"{report['load_average'].split()[0]:>11}" for report in reports)
     )
     lines.append("")
+    if workload.get("expect_snapshots"):
+        for index in range(1, len(reports) + 1):
+            lines.append("")
+            lines.append(f"run {index} snapshots:")
+            lines += snapshot_table(read_snapshots(out / f"run-{index}" / "report.snapshots.csv"))
+        lines.append("")
     for index, report in enumerate(reports, start=1):
         verdict = "verified" if not report["problems"] else "FAILED: " + "; ".join(report["problems"])
         lines.append(f"run {index}: {verdict}")
