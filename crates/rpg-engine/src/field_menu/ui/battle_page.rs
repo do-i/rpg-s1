@@ -301,17 +301,100 @@ fn spawn_battle_member_row(
     selected: bool,
 ) {
     let tactics = member.tactics();
+    spawn_battle_row(
+        parent,
+        font,
+        BattleRowShape {
+            sizing: Node {
+                min_height: px(54),
+                padding: UiRect::axes(px(10), px(6)),
+                ..default()
+            },
+            name_size: 17.0,
+            subtitle_size: 12.0,
+        },
+        BattleRowText {
+            name: member.name().to_string(),
+            subtitle: format!(
+                "LV {}   {}",
+                member.level(),
+                class_name(member.class_id(), catalog).to_uppercase()
+            ),
+            chip: choice_label(tactics.auto_command()).to_uppercase(),
+            teal: tactics.auto,
+        },
+        selected,
+    );
+}
+
+/// One battle-wide setting under the party list, styled like a member row.
+fn spawn_battle_setting_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    name: &str,
+    subtitle: &str,
+    value: &str,
+    active: bool,
+    selected: bool,
+) {
+    spawn_battle_row(
+        parent,
+        font,
+        BattleRowShape {
+            sizing: Node {
+                // Fixed, not a minimum: the two text lines plus the selected 2px border would
+                // otherwise overflow 46px and the row would grow under the cursor.
+                height: px(46),
+                flex_shrink: 0.0,
+                padding: UiRect::axes(px(10), px(3)),
+                ..default()
+            },
+            name_size: 16.0,
+            subtitle_size: 11.0,
+        },
+        BattleRowText {
+            name: name.to_string(),
+            subtitle: subtitle.to_string(),
+            chip: value.to_uppercase(),
+            teal: active,
+        },
+        selected,
+    );
+}
+
+/// What differs between a member row and a setting row: the height rules and padding, and
+/// the two text sizes.
+struct BattleRowShape {
+    sizing: Node,
+    name_size: f32,
+    subtitle_size: f32,
+}
+
+/// A row's words and whether its chip is teal (automatic) rather than gold (manual).
+struct BattleRowText {
+    name: String,
+    subtitle: String,
+    chip: String,
+    teal: bool,
+}
+
+/// The shared row: name over subtitle on the left, a chip with the current value on the right.
+fn spawn_battle_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    shape: BattleRowShape,
+    text: BattleRowText,
+    selected: bool,
+) {
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(54),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             column_gap: px(10),
-            padding: UiRect::axes(px(10), px(6)),
             border: UiRect::all(px(if selected { 2 } else { 1 })),
             border_radius: BorderRadius::all(px(4)),
-            ..default()
+            ..shape.sizing
         },
         selectable_card_colors(selected),
         BattleTacticsRow,
@@ -326,20 +409,16 @@ fn spawn_battle_member_row(
             ..default()
         })
         .with_children(|copy| {
-            spawn_status_text(copy, member.name(), font, 17.0, status_ink());
+            spawn_status_text(copy, text.name, font, shape.name_size, status_ink());
             spawn_status_text(
                 copy,
-                format!(
-                    "LV {}   {}",
-                    member.level(),
-                    class_name(member.class_id(), catalog).to_uppercase()
-                ),
+                text.subtitle,
                 font,
-                12.0,
+                shape.subtitle_size,
                 status_faint(),
             );
         });
-        let color = if tactics.auto {
+        let color = if text.teal {
             status_teal()
         } else {
             status_gold()
@@ -357,73 +436,7 @@ fn spawn_battle_member_row(
             BorderColor::all(color),
         ))
         .with_children(|chip| {
-            spawn_status_text(
-                chip,
-                choice_label(tactics.auto_command()).to_uppercase(),
-                font,
-                13.0,
-                color,
-            );
-        });
-    });
-}
-
-/// One battle-wide setting under the party list, styled like a member row.
-fn spawn_battle_setting_row(
-    parent: &mut ChildSpawnerCommands<'_>,
-    font: &Handle<Font>,
-    name: &str,
-    subtitle: &str,
-    value: &str,
-    active: bool,
-    selected: bool,
-) {
-    let mut row = parent.spawn((
-        Node {
-            width: percent(100),
-            // Fixed, not a minimum: the two text lines plus the selected 2px border would
-            // otherwise overflow 46px and the row would grow under the cursor.
-            height: px(46),
-            flex_shrink: 0.0,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            column_gap: px(10),
-            padding: UiRect::axes(px(10), px(3)),
-            border: UiRect::all(px(if selected { 2 } else { 1 })),
-            border_radius: BorderRadius::all(px(4)),
-            ..default()
-        },
-        selectable_card_colors(selected),
-        BattleTacticsRow,
-    ));
-    if selected {
-        row.insert(SelectedBattleTacticsRow);
-    }
-    row.with_children(|row| {
-        row.spawn(Node {
-            flex_grow: 1.0,
-            flex_direction: FlexDirection::Column,
-            ..default()
-        })
-        .with_children(|copy| {
-            spawn_status_text(copy, name, font, 16.0, status_ink());
-            spawn_status_text(copy, subtitle, font, 11.0, status_faint());
-        });
-        let color = if active { status_teal() } else { status_gold() };
-        row.spawn((
-            Node {
-                min_width: px(130),
-                justify_content: JustifyContent::Center,
-                padding: UiRect::axes(px(10), px(3)),
-                border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(9)),
-                ..default()
-            },
-            BackgroundColor(Color::srgba_u8(10, 10, 14, 170)),
-            BorderColor::all(color),
-        ))
-        .with_children(|chip| {
-            spawn_status_text(chip, value.to_uppercase(), font, 13.0, color);
+            spawn_status_text(chip, text.chip, font, 13.0, color);
         });
     });
 }

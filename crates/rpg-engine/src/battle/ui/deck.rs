@@ -653,6 +653,38 @@ fn target_label(ability: &Ability) -> &'static str {
     }
 }
 
+/// The shared shell of every picker row; callers fill in the contents.
+fn spawn_picker_row<'a>(
+    parent: &'a mut ChildSpawnerCommands<'_>,
+    index: usize,
+    selected: bool,
+) -> EntityCommands<'a> {
+    parent.spawn((
+        row_node(),
+        BackgroundColor(if selected {
+            battle_row_active()
+        } else {
+            battle_row()
+        }),
+        BorderColor::all(if selected {
+            battle_border_active()
+        } else {
+            battle_row_border()
+        }),
+        PickerRow(index),
+    ))
+}
+
+/// The square, non-shrinking box an icon sits in at the start of a picker row.
+fn picker_icon_node(size: f32) -> Node {
+    Node {
+        width: px(size),
+        height: px(size),
+        flex_shrink: 0.0,
+        ..default()
+    }
+}
+
 fn spawn_ability_row(
     parent: &mut ChildSpawnerCommands<'_>,
     ability: &Ability,
@@ -661,92 +693,72 @@ fn spawn_ability_row(
     affordable: bool,
     font: &Handle<Font>,
 ) {
-    parent
-        .spawn((
-            row_node(),
-            BackgroundColor(if selected {
-                battle_row_active()
-            } else {
-                battle_row()
-            }),
-            BorderColor::all(if selected {
-                battle_border_active()
-            } else {
-                battle_row_border()
-            }),
-            PickerRow(index),
-        ))
-        .with_children(|row| {
-            row.spawn((
-                SpellIcon::new(&ability.id),
-                Node {
-                    width: px(ABILITY_ICON_SIZE),
-                    height: px(ABILITY_ICON_SIZE),
-                    flex_shrink: 0.0,
-                    ..default()
+    spawn_picker_row(parent, index, selected).with_children(|row| {
+        row.spawn((
+            SpellIcon::new(&ability.id),
+            picker_icon_node(ABILITY_ICON_SIZE),
+        ));
+        row.spawn(Node {
+            flex_grow: 1.0,
+            flex_basis: px(0),
+            min_width: px(0),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        })
+        .with_children(|label| {
+            spawn_battle_text(
+                label,
+                &ability.name,
+                font,
+                18.0,
+                if affordable {
+                    battle_ink()
+                } else {
+                    battle_ink().with_alpha(0.55)
                 },
-            ));
-            row.spawn(Node {
-                flex_grow: 1.0,
-                flex_basis: px(0),
-                min_width: px(0),
-                flex_direction: FlexDirection::Column,
-                ..default()
-            })
-            .with_children(|label| {
-                spawn_battle_text(
-                    label,
-                    &ability.name,
-                    font,
-                    18.0,
-                    if affordable {
-                        battle_ink()
-                    } else {
-                        battle_ink().with_alpha(0.55)
-                    },
-                    Justify::Left,
-                )
-                .insert(TextLayout::new(Justify::Left, LineBreak::NoWrap));
-                spawn_battle_text(
-                    label,
-                    target_label(ability),
-                    font,
-                    12.0,
-                    Color::srgb_u8(170, 160, 142),
-                    Justify::Left,
-                );
-            });
-            row.spawn(Node {
-                width: px(50),
-                flex_shrink: 0.0,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::FlexEnd,
-                column_gap: px(3),
-                ..default()
-            })
-            .with_children(|mp| {
-                spawn_battle_text(
-                    mp,
-                    "MP",
-                    font,
-                    16.0,
-                    Color::srgb_u8(170, 160, 142),
-                    Justify::Right,
-                );
-                spawn_battle_text(
-                    mp,
-                    ability.mp_cost.to_string(),
-                    font,
-                    20.0,
-                    if affordable {
-                        battle_teal()
-                    } else {
-                        battle_ember()
-                    },
-                    Justify::Right,
-                );
-            });
+                Justify::Left,
+            )
+            .insert(TextLayout::new(Justify::Left, LineBreak::NoWrap));
+            spawn_battle_text(
+                label,
+                target_label(ability),
+                font,
+                12.0,
+                Color::srgb_u8(170, 160, 142),
+                Justify::Left,
+            );
         });
+        row.spawn(Node {
+            width: px(50),
+            flex_shrink: 0.0,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::FlexEnd,
+            column_gap: px(3),
+            ..default()
+        })
+        .with_children(|mp| {
+            spawn_battle_text(
+                mp,
+                "MP",
+                font,
+                16.0,
+                Color::srgb_u8(170, 160, 142),
+                Justify::Right,
+            );
+            spawn_battle_text(
+                mp,
+                ability.mp_cost.to_string(),
+                font,
+                20.0,
+                if affordable {
+                    battle_teal()
+                } else {
+                    battle_ember()
+                },
+                Justify::Right,
+            );
+        });
+    });
 }
 
 fn spawn_item_row(
@@ -756,46 +768,24 @@ fn spawn_item_row(
     selected: bool,
     font: &Handle<Font>,
 ) {
-    parent
-        .spawn((
-            row_node(),
-            BackgroundColor(if selected {
-                battle_row_active()
-            } else {
-                battle_row()
-            }),
-            BorderColor::all(if selected {
-                battle_border_active()
-            } else {
-                battle_row_border()
-            }),
-            PickerRow(index),
-        ))
-        .with_children(|row| {
-            row.spawn((
-                crate::item_images::ItemIcon::new(&item.id),
-                Node {
-                    width: px(36),
-                    height: px(36),
-                    flex_shrink: 0.0,
-                    ..default()
-                },
-            ));
-            spawn_battle_text(row, &item.name, font, 16.0, battle_ink(), Justify::Left).insert(
-                Node {
-                    flex_grow: 1.0,
-                    ..default()
-                },
-            );
-            spawn_battle_text(
-                row,
-                format!("×{}", item.quantity),
-                font,
-                16.0,
-                battle_ink(),
-                Justify::Right,
-            );
+    spawn_picker_row(parent, index, selected).with_children(|row| {
+        row.spawn((
+            crate::item_images::ItemIcon::new(&item.id),
+            picker_icon_node(36.0),
+        ));
+        spawn_battle_text(row, &item.name, font, 16.0, battle_ink(), Justify::Left).insert(Node {
+            flex_grow: 1.0,
+            ..default()
         });
+        spawn_battle_text(
+            row,
+            format!("×{}", item.quantity),
+            font,
+            16.0,
+            battle_ink(),
+            Justify::Right,
+        );
+    });
 }
 
 #[derive(SystemParam)]
