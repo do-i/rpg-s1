@@ -304,7 +304,7 @@ pub(in crate::field_menu) fn render_items(
                 let id = state
                     .pending_id
                     .as_deref()
-                    .expect("item actions require an item");
+                    .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                 let (label, _) = item_action_row(index, game, catalog, id);
                 format!(
                     "{} {label}",

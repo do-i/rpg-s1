@@ -195,7 +195,9 @@ pub(super) fn wander_enemy(
         }
         return false;
     }
-    let target = enemy.wander_target.expect("checked above");
+    let target = enemy
+        .wander_target
+        .expect("the wander_target.is_none() branch returned");
     let toward_target = target - enemy.top_left;
     let distance = toward_target.abs().max_element();
     let move_distance = ENEMY_MOVE_SPEED_PIXELS_PER_SECOND * delta;

@@ -253,7 +253,7 @@ pub(super) fn apply_battle_choice(
             let member = game
                 .party_mut()
                 .member_mut(&member_id)
-                .expect("found above");
+                .expect("member_at returned this id in the same call");
             member.set_tactics(member.tactics().with_choice(choice));
             false
         }

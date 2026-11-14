@@ -49,7 +49,7 @@ pub(super) fn handle_input(
                 let id = state
                     .pending_id
                     .clone()
-                    .expect("a party-wide confirm requires an item");
+                    .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                 apply_party_item(state, game, catalog, &id);
             }
         }
@@ -111,7 +111,7 @@ pub(super) fn handle_input(
                 let id = state
                     .pending_id
                     .clone()
-                    .expect("item action requires an item");
+                    .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                 match state.selected {
                     // Equipment swaps Use for Equip, which hands the item to a party member.
                     0 if catalog.item(&id).is_some_and(is_equipment) => {
@@ -160,10 +160,9 @@ pub(super) fn handle_input(
             }
         }
         FieldMenuMode::ItemTags => {
-            let id = state
-                .pending_id
-                .clone()
-                .expect("the tag editor requires an item");
+            let id = state.pending_id.clone().expect(
+                "this mode is only entered after pending_id is set (ItemList/SpellList confirm)",
+            );
             let rows = tag_editor_rows(game, &id);
             if let Some(delta) = input.vertical {
                 state.selected = wrapped(state.selected, rows.len(), delta);
@@ -184,10 +183,9 @@ pub(super) fn handle_input(
             }
         }
         FieldMenuMode::ItemNewTag => {
-            let id = state
-                .pending_id
-                .clone()
-                .expect("the tag editor requires an item");
+            let id = state.pending_id.clone().expect(
+                "this mode is only entered after pending_id is set (ItemList/SpellList confirm)",
+            );
             for key in &input.typed {
                 match key.key_code {
                     KeyCode::Backspace => {
@@ -227,7 +225,7 @@ pub(super) fn handle_input(
             let id = state
                 .pending_id
                 .as_deref()
-                .expect("discard requires item")
+                .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)")
                 .to_owned();
             let max = game.repository().item_count(&id).max(1);
             if let Some(delta) = input.vertical {
@@ -260,7 +258,7 @@ pub(super) fn handle_input(
                 let item_id = state
                     .pending_id
                     .clone()
-                    .expect("equipping from the pouch requires an item");
+                    .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                 equip_from_pouch(state, game, catalog, menu_sfx, &member_id, &item_id);
             }
         }
@@ -275,7 +273,7 @@ pub(super) fn handle_input(
                 let item_id = state
                     .pending_id
                     .clone()
-                    .expect("item targeting requires item");
+                    .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                 match use_field_item(game, catalog, &item_id, &target_id) {
                     Ok(changed) => {
                         state.return_to_list();

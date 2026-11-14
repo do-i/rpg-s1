@@ -235,7 +235,10 @@ pub(crate) fn track_new_game_inputs(
         active.failure = None;
         return;
     }
-    let handles = active.handles.as_ref().expect("set above");
+    let handles = active
+        .handles
+        .as_ref()
+        .expect("set on an earlier frame; cleared only by a full state reset");
     if let LoadState::Failed(error) = asset_server.load_state(handles.party.id()) {
         active.failure = Some(NewGameInputsLoadFailure::new(
             root,

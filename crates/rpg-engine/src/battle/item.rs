@@ -108,7 +108,9 @@ pub(super) fn resolve_item(
         ConsumableEffect::RestoreHp(effect) => {
             let amount = state
                 .actor_mut(target)
-                .expect("validated item target")
+                .expect(
+                    "resolve_item rejected a missing target above; combatants are never removed",
+                )
                 .apply_heal(effect.restore_hp.get());
             events.push(BattleEvent::Heal {
                 source,
@@ -120,7 +122,9 @@ pub(super) fn resolve_item(
         ConsumableEffect::RestoreMp(effect) => {
             let amount = state
                 .actor_mut(target)
-                .expect("validated item target")
+                .expect(
+                    "resolve_item rejected a missing target above; combatants are never removed",
+                )
                 .restore_mana(effect.restore_mp.get());
             events.push(BattleEvent::ManaRestored {
                 source,
@@ -129,7 +133,9 @@ pub(super) fn resolve_item(
             });
         }
         ConsumableEffect::FullRecovery(_) => {
-            let actor = state.actor_mut(target).expect("validated item target");
+            let actor = state.actor_mut(target).expect(
+                "resolve_item rejected a missing target above; combatants are never removed",
+            );
             let health = actor.apply_heal(actor.max_health);
             let mana = actor.restore_mana(actor.max_mana);
             events.push(BattleEvent::Heal {
@@ -147,7 +153,9 @@ pub(super) fn resolve_item(
         ConsumableEffect::Revive(effect) => {
             let amount = state
                 .actor_mut(target)
-                .expect("validated item target")
+                .expect(
+                    "resolve_item rejected a missing target above; combatants are never removed",
+                )
                 .revive(effect.revive_hp_pct.get());
             events.push(BattleEvent::Heal {
                 source,
@@ -161,7 +169,7 @@ pub(super) fn resolve_item(
                 let status = StatusEffect::from(*status);
                 if state
                     .actor_mut(target)
-                    .expect("validated item target")
+                    .expect("resolve_item rejected a missing target above; combatants are never removed")
                     .remove_status(status)
                 {
                     events.push(BattleEvent::StatusCured {
@@ -173,7 +181,9 @@ pub(super) fn resolve_item(
             }
         }
         ConsumableEffect::Throw(effect) => {
-            let defender = state.actor(target).cloned().expect("validated item target");
+            let defender = state.actor(target).cloned().expect(
+                "resolve_item rejected a missing target above; combatants are never removed",
+            );
             let vulnerable = effect
                 .bonus_vs
                 .as_deref()
@@ -190,7 +200,9 @@ pub(super) fn resolve_item(
                 .min(defender.health);
             state
                 .actor_mut(target)
-                .expect("validated item target")
+                .expect(
+                    "resolve_item rejected a missing target above; combatants are never removed",
+                )
                 .apply_resolved_damage(amount);
             if let Some(actor) = state.actor_mut(target) {
                 actor.mark_rough_kill();
@@ -204,7 +216,9 @@ pub(super) fn resolve_item(
             });
         }
         ConsumableEffect::Inflict(effect) => {
-            let defender = state.actor(target).cloned().expect("validated item target");
+            let defender = state.actor(target).cloned().expect(
+                "resolve_item rejected a missing target above; combatants are never removed",
+            );
             let effect_kind = StatusEffect::from(effect.inflict);
             let turns = effect.duration_turns.get();
             let status = if effect_kind == StatusEffect::Poison {
@@ -218,7 +232,9 @@ pub(super) fn resolve_item(
             };
             if state
                 .actor_mut(target)
-                .expect("validated item target")
+                .expect(
+                    "resolve_item rejected a missing target above; combatants are never removed",
+                )
                 .add_status(status)
             {
                 events.push(BattleEvent::StatusApplied {

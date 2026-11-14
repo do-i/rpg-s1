@@ -44,7 +44,7 @@ impl<B: Bundle + bevy::ecs::bundle::BundleFromComponents> Stored<B> {
                     let bundle = world
                         .entity_mut(entity)
                         .take::<B>()
-                        .expect("complete World entity bundle");
+                        .expect("query filter matches only entities carrying the whole bundle");
                     (entity, bundle)
                 })
                 .collect(),

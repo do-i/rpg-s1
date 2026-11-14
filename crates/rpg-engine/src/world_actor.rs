@@ -515,7 +515,9 @@ fn update_wander(
         }
         return;
     }
-    let target = actor.wander_target.expect("checked above");
+    let target = actor
+        .wander_target
+        .expect("the wander_target.is_none() branch returned");
     let delta_to_target = target - actor.top_left;
     let distance = delta_to_target.abs().max_element();
     let next = if distance <= WANDER_PIXELS_PER_SECOND * delta {

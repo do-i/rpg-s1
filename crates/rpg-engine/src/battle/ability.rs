@@ -205,12 +205,12 @@ pub(super) fn resolve_ability(
                         );
                         state
                             .actor_mut(target)
-                            .expect("validated target")
+                            .expect("target was looked up or plan-checked above; combatants are never removed")
                             .apply_heal(raw)
                     }
                     HealingMethod::Revive { hp_percent } => state
                         .actor_mut(target)
-                        .expect("validated target")
+                        .expect("target was looked up or plan-checked above; combatants are never removed")
                         .revive(hp_percent.get()),
                 };
                 events.push(BattleEvent::Heal {
@@ -229,7 +229,9 @@ pub(super) fn resolve_ability(
             AbilityKind::Utility(UtilityAbility::RemoveStatus { .. }) => {
                 if state
                     .actor_mut(target)
-                    .expect("validated target")
+                    .expect(
+                        "target was looked up or plan-checked above; combatants are never removed",
+                    )
                     .clear_statuses()
                     > 0
                 {
@@ -288,7 +290,7 @@ fn resolve_spell(
         .min(target_actor.health);
     state
         .actor_mut(target)
-        .expect("validated target")
+        .expect("target was looked up or plan-checked above; combatants are never removed")
         .apply_resolved_damage(amount);
     if let Some(actor) = state.actor_mut(target) {
         actor.mark_rough_kill();
@@ -402,7 +404,7 @@ fn resolve_physical_ability(
         amount = amount.min(defender.health);
         state
             .actor_mut(target)
-            .expect("validated target")
+            .expect("target was looked up or plan-checked above; combatants are never removed")
             .apply_resolved_damage(amount);
         if critical && let Some(actor) = state.actor_mut(target) {
             actor.mark_rough_kill();

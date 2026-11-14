@@ -289,7 +289,7 @@ pub(super) fn spawn_panels(
     let background = asset_server.load(
         root.resolve(
             &ScenarioRelativePath::try_from("media/images/ui/battle_spell_groups.png")
-                .expect("static UI path"),
+                .expect("literal path is scenario-relative"),
         ),
     );
     parent

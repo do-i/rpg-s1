@@ -959,7 +959,7 @@ pub(in crate::field_menu) fn spawn_item_modal(
                             let id = state
                                 .pending_id
                                 .as_deref()
-                                .expect("item actions require an item");
+                                .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)");
                             for index in 0..ITEM_ACTIONS.len() {
                                 let (label, subtitle) = item_action_row(index, game, catalog, id);
                                 spawn_item_modal_row(

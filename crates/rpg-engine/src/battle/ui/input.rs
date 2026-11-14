@@ -200,7 +200,8 @@ fn auto_command_phase(
     input: &PhaseInput,
     menu_sfx: &mut MenuSfx,
 ) {
-    let command = active_auto_command(state, game).expect("guarded above");
+    let command = active_auto_command(state, game)
+        .expect("dispatcher match guard calls this only when active_auto_command is Some");
     run_auto_turn(
         state,
         command,

@@ -267,7 +267,12 @@ fn drive_world_audio(
         return;
     }
 
-    if state.request.as_ref().expect("checked above").resolved {
+    if state
+        .request
+        .as_ref()
+        .expect("request is set above; only fail() clears it and returns")
+        .resolved
+    {
         if let Some(player) = state.player {
             if logical_players.get(player).is_ok() {
                 // If an unrelated state or system introduced another BGM, retire it while
@@ -307,7 +312,10 @@ fn drive_world_audio(
         return;
     }
 
-    let request = state.request.as_ref().expect("checked above");
+    let request = state
+        .request
+        .as_ref()
+        .expect("request is set above; only fail() clears it and returns");
     if matches!(
         assets.server.load_state(request.metadata.id()),
         LoadState::Failed(_)
@@ -362,7 +370,11 @@ fn drive_world_audio(
         // already playing (see the comment on the map-change branch above). The observable status
         // reflects reality — if a previous map's track is still looping, that is `Playing`, not
         // `Silent`; `Silent` is reserved for when nothing is actually playing.
-        state.request.as_mut().expect("checked above").resolved = true;
+        state
+            .request
+            .as_mut()
+            .expect("request is set above; only fail() clears it and returns")
+            .resolved = true;
         state.failure = None;
         state.status = match state.player {
             Some(player) if logical_players.get(player).is_ok() => WorldBgmStatus::Playing,
@@ -423,7 +435,11 @@ fn drive_world_audio(
         state.fade_in_on_spawn = false;
     }
     state.player = Some(player);
-    state.request.as_mut().expect("checked above").resolved = true;
+    state
+        .request
+        .as_mut()
+        .expect("request is set above; only fail() clears it and returns")
+        .resolved = true;
     state.status = WorldBgmStatus::Playing;
     state.failure = None;
 }

@@ -349,7 +349,10 @@ fn drive_world_object_load(
             state.definitions = Some(asset_server.load(scenario_root.resolve(path)));
             return;
         }
-        let handle = state.definitions.as_ref().expect("requested definitions");
+        let handle = state
+            .definitions
+            .as_ref()
+            .expect("set on an earlier frame; cleared only by a full state reset");
         if crate::world_publication::asset_failed(&asset_server, handle.id()) {
             state.fail("item-box definitions failed to load");
             return;
@@ -364,7 +367,10 @@ fn drive_world_object_load(
                 Some(asset_server.load(scenario_root.resolve(&manifest.item_box.sprite)));
             return;
         }
-        let box_atlas_handle = state.box_atlas.as_ref().expect("set above");
+        let box_atlas_handle = state
+            .box_atlas
+            .as_ref()
+            .expect("set on an earlier frame; cleared only by a full state reset");
         if crate::world_publication::asset_failed(&asset_server, box_atlas_handle.id()) {
             state.fail("item-box sprite or image dependency failed to load");
             return;
@@ -378,8 +384,8 @@ fn drive_world_object_load(
         return;
     }
 
-    let map_id_value = RuntimeMapId::try_new(map_id.to_owned())
-        .expect("GameState current map id is validated nonempty");
+    let map_id_value =
+        RuntimeMapId::try_new(map_id.to_owned()).expect("round-trips a RuntimeMapId");
     // Legacy metadata boxes carry their own ids; resolve every key before publishing any sign
     // or chest so an empty authored id fails the layer instead of panicking mid-spawn.
     let legacy_boxes = if state

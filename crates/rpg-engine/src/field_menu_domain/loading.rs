@@ -207,8 +207,14 @@ pub(super) fn track_catalog_load(
     {
         return;
     }
-    let field_handle = load.field_use.as_ref().expect("checked above");
-    let quest_handle = load.quests.as_ref().expect("checked above");
+    let field_handle = load
+        .field_use
+        .as_ref()
+        .expect("the is_none early return above");
+    let quest_handle = load
+        .quests
+        .as_ref()
+        .expect("the is_none early return above");
     if let Some(failure) = first_load_failure(&asset_server, &load, field_handle, quest_handle) {
         catalog.status = CatalogStatus::Failed;
         catalog.failure = Some(failure);
@@ -441,7 +447,12 @@ fn build_items(
     let mut items = BTreeMap::new();
     let mut item_order = Vec::new();
     for (_, handle) in &load.items {
-        for item in assets.items.get(handle).expect("all checked").entries() {
+        for item in assets
+            .items
+            .get(handle)
+            .expect("all_loaded confirmed this handle earlier in the same system")
+            .entries()
+        {
             item_order.push(item.id().to_owned());
             items.insert(item.id().to_owned(), item.clone());
         }
@@ -457,7 +468,7 @@ fn build_field_uses(
     assets
         .field_uses
         .get(field_handle)
-        .expect("checked")
+        .expect("all_loaded confirmed this handle earlier in the same system")
         .entries()
         .iter()
         .map(|entry| (entry.id().to_owned(), entry.clone()))
@@ -471,7 +482,11 @@ fn build_classes(
     load.classes
         .iter()
         .map(|(_, handle)| {
-            let class = assets.classes.get(handle).expect("all checked").clone();
+            let class = assets
+                .classes
+                .get(handle)
+                .expect("all_loaded confirmed this handle earlier in the same system")
+                .clone();
             (class.class_id.clone(), class)
         })
         .collect()
@@ -486,16 +501,25 @@ fn build_maps_and_warp_destinations(
     let mut maps = BTreeMap::new();
     let mut warp_sources = Vec::with_capacity(load.maps.len());
     for (stem, metadata_handle, tmx_handle) in &load.maps {
-        let metadata = assets.maps.get(metadata_handle).expect("all checked");
+        let metadata = assets
+            .maps
+            .get(metadata_handle)
+            .expect("all_loaded confirmed this handle earlier in the same system");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
-        let tmx = assets.tmx.get(tmx_handle).expect("all checked");
+        let tmx = assets
+            .tmx
+            .get(tmx_handle)
+            .expect("all_loaded confirmed this handle earlier in the same system");
         // A malformed `portals` layer is a TMX-authoring concern outside this catalog's scope;
         // treat it as "no outgoing portals from this source" rather than failing catalog load.
         let portals = runtime_portals(tmx.document()).unwrap_or_default();
         warp_sources.push((stem.as_str(), metadata, portals));
     }
     for (stem, metadata_handle) in &load.service_maps {
-        let metadata = assets.maps.get(metadata_handle).expect("all checked");
+        let metadata = assets
+            .maps
+            .get(metadata_handle)
+            .expect("all_loaded confirmed this handle earlier in the same system");
         maps.insert(metadata.effective_id(stem).to_owned(), metadata.clone());
     }
     let warp_sources_ref: Vec<(&str, &MapMetadata, &[RuntimePortal])> = warp_sources
@@ -531,7 +555,7 @@ fn build_recipes(load: &FieldMenuCatalogLoad, assets: &CatalogAssets) -> Vec<Rec
             assets
                 .recipes
                 .get(handle)
-                .expect("checked")
+                .expect("all_loaded confirmed this handle earlier in the same system")
                 .entries()
                 .iter()
                 .cloned()
@@ -546,7 +570,7 @@ fn build_quests(
     assets
         .quests
         .get(quest_handle)
-        .expect("checked")
+        .expect("all_loaded confirmed this handle earlier in the same system")
         .entries()
         .to_vec()
 }

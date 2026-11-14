@@ -494,12 +494,12 @@ pub(super) fn prepare(world: &mut World) -> PublicationStatus {
             world.insert_resource(FieldMenuCatalog::default());
             world
                 .run_system_once(crate::field_menu_domain::begin_catalog_load)
-                .expect("catalog restart system");
+                .expect("plugin registers every resource the restart system reads");
         }
         if world.contains_resource::<TransportCatalogLoad>() {
             world
                 .run_system_once(crate::transport_domain::begin_transport_load)
-                .expect("transport restart system");
+                .expect("plugin registers every resource the restart system reads");
         }
         world.resource_mut::<HotReload>().prepared = true;
         return PublicationStatus::Pending;

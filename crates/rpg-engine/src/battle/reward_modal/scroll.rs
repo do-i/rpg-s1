@@ -281,7 +281,7 @@ pub(in crate::battle) fn update_reward_scroll_chrome(mut chrome: RewardScrollChr
             .map(|part| part.0)
             .or_else(|| thumb.map(|part| part.0))
             .or_else(|| edge.map(|part| part.list))
-            .unwrap();
+            .expect("RewardScrollPartFilter requires a track, thumb or edge");
         let Ok((node, position, _)) = chrome.lists.get(list_id) else {
             continue;
         };

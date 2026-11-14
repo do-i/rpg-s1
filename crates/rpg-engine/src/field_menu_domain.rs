@@ -713,7 +713,7 @@ pub(crate) fn equip_item(
     let displaced = game
         .party_mut()
         .member_mut(member_id)
-        .expect("validated above")
+        .expect("member was found with ok_or above and the party is unchanged since")
         .equip(slot, item_id.to_owned())
         .map_err(|error| MenuMutationError::Repository(error.to_string()))?;
     if let Some(old_id) = &displaced {
@@ -743,7 +743,7 @@ pub(crate) fn unequip_item(
     let removed = game
         .party_mut()
         .member_mut(member_id)
-        .expect("validated above")
+        .expect("member was found with ok_or above and the party is unchanged since")
         .unequip(slot)
         .expect("the slot was populated above");
     let _outcome = game
@@ -816,12 +816,12 @@ pub(crate) fn cast_heal(
     };
     game.party_mut()
         .member_mut(caster_id)
-        .expect("validated")
+        .expect("member was found with ok_or above and the party is unchanged since")
         .spend_mana(ability.mp_cost);
     Ok(game
         .party_mut()
         .member_mut(target_id)
-        .expect("validated")
+        .expect("member was found with ok_or above and the party is unchanged since")
         .restore_health(amount))
 }
 
@@ -879,7 +879,7 @@ pub(crate) fn cast_party_heal(
     }
     game.party_mut()
         .member_mut(caster_id)
-        .expect("validated")
+        .expect("member was found with ok_or above and the party is unchanged since")
         .spend_mana(ability.mp_cost);
     Ok(hurt
         .into_iter()
@@ -1008,7 +1008,10 @@ pub(crate) fn use_field_item(
     if !applicable {
         return Err(MenuMutationError::InvalidTarget);
     }
-    let member = game.party_mut().member_mut(target_id).expect("validated");
+    let member = game
+        .party_mut()
+        .member_mut(target_id)
+        .expect("member was found with ok_or above and the party is unchanged since");
     let changed = match &effect {
         FieldUseDefinition::RestoreHp { amount, .. } => member.restore_health(amount.get()),
         FieldUseDefinition::RestoreMp { amount, .. } => member.restore_mana(amount.get()),

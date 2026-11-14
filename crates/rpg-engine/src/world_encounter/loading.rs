@@ -199,7 +199,10 @@ pub(super) fn drive_active_encounter_assets(
         return;
     }
 
-    let zone_handle = state.zone.clone().expect("requested above");
+    let zone_handle = state
+        .zone
+        .clone()
+        .expect("set on an earlier frame; cleared only by a full state reset");
     if let LoadState::Failed(error) = asset_server.load_state(zone_handle.id()) {
         if optional_scenario_asset_is_missing(&error) {
             // The zone vanished after inventory discovery; treat it like an absent zone.

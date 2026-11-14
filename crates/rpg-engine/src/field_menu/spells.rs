@@ -123,7 +123,7 @@ pub(super) fn handle_input(
                     state
                         .pending_id
                         .as_deref()
-                        .expect("spell target requires ability"),
+                        .expect("this mode is only entered after pending_id is set (ItemList/SpellList confirm)"),
                 )
                 .cloned() else {
                     return;
