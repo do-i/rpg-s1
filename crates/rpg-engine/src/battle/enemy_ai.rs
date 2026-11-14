@@ -117,7 +117,7 @@ fn pick_weighted_move<'a>(moves: &[&'a EnemyMove], rng: &mut GameplayRng) -> Opt
     if total == 0 {
         return None;
     }
-    let mut roll = rng.next_u64() % total;
+    let mut roll = rng.below(total);
     for &movement in moves {
         let weight = u64::from(move_weight(movement));
         if roll < weight {
@@ -187,7 +187,7 @@ pub(super) fn resolve_targets(
         EnemyOverrideTarget::HighestHp => pool.iter().max_by_key(|actor| actor.health).copied(),
         EnemyOverrideTarget::HighestDex => pool.iter().max_by_key(|actor| actor.dexterity).copied(),
         EnemyOverrideTarget::RandomAlive => pool
-            .get((rng.next_u64() % pool.len().max(1) as u64) as usize)
+            .get((rng.below(pool.len().max(1) as u64)) as usize)
             .copied(),
         EnemyOverrideTarget::AllParty | EnemyOverrideTarget::SelfTarget => unreachable!(),
     };

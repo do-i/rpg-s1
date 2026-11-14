@@ -151,7 +151,7 @@ pub fn pick_weighted_formation<'a>(
     if total == 0 {
         return None;
     }
-    pick_weighted_formation_at(entries, rng.next_u64() % total)
+    pick_weighted_formation_at(entries, rng.below(total))
 }
 
 fn pick_weighted_formation_at(

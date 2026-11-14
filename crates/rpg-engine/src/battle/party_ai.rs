@@ -153,7 +153,7 @@ fn heal(
     rng: &mut GameplayRng,
 ) -> Option<AutoAction> {
     // A little jitter keeps the healer from topping up at exactly the same HP every time.
-    let threshold = 0.4 + (rng.next_u64() % 21) as f64 / 100.0;
+    let threshold = 0.4 + (rng.below(21)) as f64 / 100.0;
     let wounded = living(state, BattleSide::Party)
         .filter(|ally| ratio(ally.health, ally.max_health) < threshold)
         .collect::<Vec<_>>();
@@ -334,7 +334,7 @@ fn random_living(
     if pool.is_empty() {
         return None;
     }
-    Some(pool[(rng.next_u64() % pool.len() as u64) as usize].key)
+    Some(pool[(rng.below(pool.len() as u64)) as usize].key)
 }
 
 fn living(state: &BattleState, side: BattleSide) -> impl Iterator<Item = &BattleCombatant> {

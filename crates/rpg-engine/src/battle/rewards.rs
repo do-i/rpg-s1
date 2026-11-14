@@ -157,7 +157,7 @@ pub(super) fn calculate_rewards(
         if bonus_pool.is_empty() {
             break;
         }
-        let index = (rng.next_u64() % bonus_pool.len() as u64) as usize;
+        let index = (rng.below(bonus_pool.len() as u64)) as usize;
         bonuses.push(bonus_pool.remove(index));
     }
     let members = party
@@ -428,7 +428,7 @@ fn calculate_loot(
         };
         let shattered = !drops.mc.is_empty()
             && break_percent > 0
-            && rng.next_u64() % 100 < u64::from(break_percent.min(100));
+            && rng.below(100) < u64::from(break_percent.min(100));
         if shattered {
             shattered_cores += 1;
         }
@@ -468,7 +468,7 @@ fn pick_loot<'a>(pool: &'a [EnemyLootEntry], rng: &mut GameplayRng) -> Option<&'
     if total == 0 {
         return None;
     }
-    let mut roll = rng.next_u64() % total;
+    let mut roll = rng.below(total);
     for entry in pool {
         let weight = u64::from(entry.weight.get());
         if roll < weight {

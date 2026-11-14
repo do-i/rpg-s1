@@ -49,6 +49,13 @@ impl GameplayRng {
         value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         value ^ (value >> 31)
     }
+
+    /// Returns exactly `self.next_u64() % n`: one draw, deliberately biased, panics when `n` is 0.
+    ///
+    /// Not an unbiased range method; changing it would change every seeded outcome.
+    pub fn below(&mut self, n: u64) -> u64 {
+        self.next_u64() % n
+    }
 }
 
 /// Installs the deterministic gameplay stream with its startup default seed.
@@ -67,6 +74,20 @@ mod tests {
     fn sequence(seed: u64, length: usize) -> Vec<u64> {
         let mut rng = GameplayRng::from_seed(seed);
         (0..length).map(|_| rng.next_u64()).collect()
+    }
+
+    #[test]
+    fn below_is_one_next_u64_draw_modulo_n() {
+        for seed in [0, 1, 42, u64::MAX] {
+            for n in [1, 2, 3, 7, 100, u64::from(u32::MAX) + 1, u64::MAX] {
+                let mut rng = GameplayRng::from_seed(seed);
+                let mut reference = rng.clone();
+                for _ in 0..8 {
+                    assert_eq!(rng.below(n), reference.next_u64() % n);
+                    assert_eq!(rng, reference);
+                }
+            }
+        }
     }
 
     #[test]

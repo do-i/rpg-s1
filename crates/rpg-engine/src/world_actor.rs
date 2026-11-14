@@ -547,8 +547,8 @@ fn pick_wander_target(
     let max_offset = actor.range.saturating_mul(TILE_SIZE as i32);
     let span = u64::try_from(max_offset.saturating_mul(2).saturating_add(1)).ok()?;
     for _ in 0..8 {
-        let x = i32::try_from(rng.next_u64() % span).ok()? - max_offset;
-        let y = i32::try_from(rng.next_u64() % span).ok()? - max_offset;
+        let x = i32::try_from(rng.below(span)).ok()? - max_offset;
+        let y = i32::try_from(rng.below(span)).ok()? - max_offset;
         let target = character_top_left(actor.origin) + Vec2::new(x as f32, y as f32);
         let target_rect = character_collision_rect(target);
         if !collision.is_rect_blocked(

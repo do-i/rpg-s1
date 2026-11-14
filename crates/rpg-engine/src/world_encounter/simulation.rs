@@ -97,7 +97,7 @@ pub(super) fn update_world_enemies(
                 .map(|(entity, _, _)| *entity)
                 .collect::<Vec<_>>();
             if !inactive.is_empty() {
-                let index = (game.rng_mut().next_u64() % inactive.len() as u64) as usize;
+                let index = (game.rng_mut().below(inactive.len() as u64)) as usize;
                 if let Ok((_, mut enemy, _, _)) = enemies.get_mut(inactive[index]) {
                     enemy.active = true;
                     enemy.engaged = false;
@@ -231,8 +231,8 @@ pub(super) fn pick_wander_target(
     const SPAN: u64 = (RANGE_PIXELS as u64 * 2) + 1;
     let origin = enemy_top_left(enemy.origin);
     for _ in 0..8 {
-        let x = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE_PIXELS;
-        let y = i32::try_from(rng.next_u64() % SPAN).ok()? - RANGE_PIXELS;
+        let x = i32::try_from(rng.below(SPAN)).ok()? - RANGE_PIXELS;
+        let y = i32::try_from(rng.below(SPAN)).ok()? - RANGE_PIXELS;
         let target = origin + Vec2::new(x as f32, y as f32);
         if !enemy_blocked(target, entity, snapshot, collision) {
             return Some(target);
