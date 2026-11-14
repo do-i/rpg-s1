@@ -8,8 +8,9 @@ use crate::{
     scenario_balance::BalanceData,
     scenario_new_game_assets::ActiveNewGameInputs,
     scenario_spatial::{
-        CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
-        world_collision::WorldCollision,
+        CardinalDirection, Position,
+        collision_occupancy::CollisionOccupancy,
+        world_collision::{WorldCollision, character_collision_rect},
     },
     tile_coordinates::TILE_SIZE,
     tmx_ground_asset::world_entity_y_z,
@@ -286,12 +287,7 @@ pub(super) fn enemy_top_left(position: Position) -> Vec2 {
 }
 
 pub(super) fn enemy_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
-    CharacterCollisionRect {
-        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
-        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
-        width: CHARACTER_COLLISION_WIDTH,
-        height: CHARACTER_COLLISION_HEIGHT,
-    }
+    character_collision_rect(top_left)
 }
 
 pub(super) fn enemy_tile_position(top_left: Vec2) -> Position {

@@ -3,9 +3,16 @@
 use bevy::prelude::*;
 
 use crate::{
-    app_state::AppState, game_state::GameState, scenario_inventory::ScenarioInventory,
-    scenario_root::ScenarioRoot, scenario_spatial::collision_occupancy::CollisionOccupancy,
+    app_state::AppState,
+    game_state::GameState,
+    scenario_inventory::ScenarioInventory,
+    scenario_root::ScenarioRoot,
+    scenario_spatial::collision_occupancy::CollisionOccupancy,
     tmx_ground_asset::TmxGroundAsset,
+    world_player::{
+        CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
+        CHARACTER_COLLISION_WIDTH, CharacterCollisionRect,
+    },
 };
 
 pub(crate) struct WorldCollisionPlugin;
@@ -20,6 +27,20 @@ impl Plugin for WorldCollisionPlugin {
                     .run_if(in_state(AppState::World)),
             )
             .add_systems(OnExit(AppState::World), clear_world_collision);
+    }
+}
+
+/// Collision box of a character whose sprite top-left is `top_left` in source pixels.
+///
+/// Anchoring is the caller's business: players and enemies keep a collision-centred `top_left`,
+/// NPCs keep the tile-corner one; both are the same uncentered sprite origin, so one fixed
+/// 20x18 box at (22, 41) from it serves all of them.
+pub(crate) fn character_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
+    CharacterCollisionRect {
+        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
+        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+        width: CHARACTER_COLLISION_WIDTH,
+        height: CHARACTER_COLLISION_HEIGHT,
     }
 }
 
@@ -146,4 +167,38 @@ fn load_world_collision(
 
 fn clear_world_collision(mut collision: ResMut<WorldCollision>) {
     *collision = WorldCollision::default();
+}
+
+#[cfg(test)]
+mod character_collision_rect_tests {
+    use super::*;
+
+    /// The four pre-consolidation copies (player, NPC, enemy, movement) all spelled this.
+    fn old_formula(top_left: Vec2) -> CharacterCollisionRect {
+        CharacterCollisionRect {
+            x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
+            y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
+            width: CHARACTER_COLLISION_WIDTH,
+            height: CHARACTER_COLLISION_HEIGHT,
+        }
+    }
+
+    #[test]
+    fn shared_rect_is_bit_identical_to_the_old_per_module_formula() {
+        let coords = [
+            -4096.0, -100.5, -22.0, -0.1, 0.0, 0.1, 0.333, 15.999, 22.0, 41.0, 1000.7, 4095.999,
+            4096.0, 4096.5, 1.0e6,
+        ];
+        for x in coords {
+            for y in coords {
+                let top_left = Vec2::new(x, y);
+                let new = character_collision_rect(top_left);
+                let old = old_formula(top_left);
+                assert_eq!(new.x.to_bits(), old.x.to_bits());
+                assert_eq!(new.y.to_bits(), old.y.to_bits());
+                assert_eq!(new.width.to_bits(), old.width.to_bits());
+                assert_eq!(new.height.to_bits(), old.height.to_bits());
+            }
+        }
+    }
 }

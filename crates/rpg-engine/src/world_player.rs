@@ -110,12 +110,7 @@ impl WorldPlayerMotion {
     }
 
     pub(crate) fn collision_rect(self) -> CharacterCollisionRect {
-        CharacterCollisionRect {
-            x: self.top_left.x + CHARACTER_COLLISION_OFFSET_X,
-            y: self.top_left.y + CHARACTER_COLLISION_OFFSET_Y,
-            width: CHARACTER_COLLISION_WIDTH,
-            height: CHARACTER_COLLISION_HEIGHT,
-        }
+        crate::scenario_spatial::world_collision::character_collision_rect(self.top_left)
     }
 
     pub(crate) fn sprite_center_world(self, z: f32) -> Vec3 {

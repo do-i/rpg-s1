@@ -12,17 +12,14 @@ use crate::{
     },
     scenario_root::ScenarioRoot,
     scenario_spatial::{
-        CardinalDirection, Position, collision_occupancy::CollisionOccupancy,
-        world_collision::WorldCollision,
+        CardinalDirection, Position,
+        collision_occupancy::CollisionOccupancy,
+        world_collision::{WorldCollision, character_collision_rect},
     },
     tile_coordinates::TILE_SIZE,
     tmx_ground_asset::world_entity_y_z,
     tsx_atlas_asset::TsxAtlasAsset,
-    world_player::{
-        CHARACTER_COLLISION_HEIGHT, CHARACTER_COLLISION_OFFSET_X, CHARACTER_COLLISION_OFFSET_Y,
-        CHARACTER_COLLISION_WIDTH, CHARACTER_SPRITE_SIZE, CharacterCollisionRect,
-        WorldPlayerMotion,
-    },
+    world_player::{CHARACTER_SPRITE_SIZE, CharacterCollisionRect, WorldPlayerMotion},
 };
 
 const SPRITE_HALF_HEIGHT: f32 = 32.0;
@@ -178,12 +175,7 @@ impl WorldNpc {
     }
 
     pub(crate) fn collision_rect(&self) -> CharacterCollisionRect {
-        CharacterCollisionRect {
-            x: self.top_left.x + CHARACTER_COLLISION_OFFSET_X,
-            y: self.top_left.y + CHARACTER_COLLISION_OFFSET_Y,
-            width: CHARACTER_COLLISION_WIDTH,
-            height: CHARACTER_COLLISION_HEIGHT,
-        }
+        crate::scenario_spatial::world_collision::character_collision_rect(self.top_left)
     }
 }
 
@@ -647,15 +639,6 @@ fn is_facing_toward(from: Vec2, to: Vec2, facing: CardinalDirection) -> bool {
         CardinalDirection::Down => delta.y > 0.0,
         CardinalDirection::Left => delta.x < 0.0,
         CardinalDirection::Right => delta.x > 0.0,
-    }
-}
-
-fn character_collision_rect(top_left: Vec2) -> CharacterCollisionRect {
-    CharacterCollisionRect {
-        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
-        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
-        width: CHARACTER_COLLISION_WIDTH,
-        height: CHARACTER_COLLISION_HEIGHT,
     }
 }
 

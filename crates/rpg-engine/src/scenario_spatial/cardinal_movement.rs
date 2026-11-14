@@ -9,8 +9,9 @@ use crate::{
     app_state::AppState,
     game_state::GameState,
     scenario_spatial::{
-        CardinalDirection, EightWayDirection, collision_occupancy::CollisionOccupancy,
-        world_collision::WorldCollision,
+        CardinalDirection, EightWayDirection,
+        collision_occupancy::CollisionOccupancy,
+        world_collision::{WorldCollision, character_collision_rect},
     },
     world_actor::WorldNpc,
     world_object::WorldItemBox,
@@ -169,7 +170,7 @@ fn clamp_top_left(position: Vec2, collision: &CollisionOccupancy) -> Vec2 {
 }
 
 fn tile_collision(top_left: Vec2, collision: &CollisionOccupancy) -> bool {
-    let rect = player_rect(top_left);
+    let rect = character_collision_rect(top_left);
     collision.is_rect_blocked(rect.x, rect.y, rect.width, rect.height)
 }
 
@@ -181,7 +182,7 @@ fn dynamic_collision(
 ) -> bool {
     let tile_width = collision.tile_width() as f32;
     let tile_height = collision.tile_height() as f32;
-    let rect = player_rect(top_left);
+    let rect = character_collision_rect(top_left);
     npcs.iter().any(|npc| rect.overlaps(npc.collision_rect()))
         || boxes.iter().any(|item_box| {
             let tile = item_box.tile_position();
@@ -192,15 +193,6 @@ fn dynamic_collision(
                 height: tile_height,
             })
         })
-}
-
-fn player_rect(top_left: Vec2) -> CharacterCollisionRect {
-    CharacterCollisionRect {
-        x: top_left.x + CHARACTER_COLLISION_OFFSET_X,
-        y: top_left.y + CHARACTER_COLLISION_OFFSET_Y,
-        width: CHARACTER_COLLISION_WIDTH,
-        height: CHARACTER_COLLISION_HEIGHT,
-    }
 }
 
 fn movement_vector(direction: EightWayDirection) -> Vec2 {
