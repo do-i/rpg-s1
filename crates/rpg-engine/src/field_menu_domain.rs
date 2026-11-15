@@ -157,21 +157,13 @@ impl FieldMenuCatalog {
             .collect()
     }
 
-    /// The abilities a member brings into battle. Normally the unlocked set; the temporary
-    /// status-pose test switch hands over the whole class list instead.
+    /// The abilities a member brings into battle: the unlocked set.
     pub(crate) fn battle_abilities(
         &self,
         class_id: &str,
         level: u32,
         flags: &crate::runtime_flags::RuntimeFlags,
     ) -> Vec<&Ability> {
-        if crate::status_test_mode::enabled() {
-            return self
-                .class(class_id)
-                .into_iter()
-                .flat_map(|class| &class.abilities)
-                .collect();
-        }
         self.unlocked_abilities(class_id, level, flags)
     }
 

@@ -487,12 +487,6 @@ fn apply_side_effects(
                 ),
             ),
         };
-        // TEMPORARY: the status-pose test switch makes every side effect land.
-        let chance = if crate::status_test_mode::enabled() {
-            1.0
-        } else {
-            chance
-        };
         if roll_succeeds(rng, chance)
             && state
                 .actor_mut(target)

@@ -16,8 +16,6 @@ pub(crate) const MUTE_AUDIO: &str = "RPG_S1_MUTE_AUDIO";
 pub(crate) const DEBUG_COLLISION: &str = "RPG_S1_DEBUG_COLLISION";
 /// Enables transactional scenario polling in the idle World. Presence check: any value counts.
 pub(crate) const HOT_RELOAD: &str = "RPG_S1_HOT_RELOAD";
-/// TEMPORARY v2 status-pose review switch. Read as a value: `0` is off, any other value is on.
-pub(crate) const STATUS_TEST: &str = "RPG_S1_STATUS_TEST";
 
 /// Test-only: directory that receives a copy of the persistence fixture YAML for the persistence export checklist.
 #[cfg(test)]
