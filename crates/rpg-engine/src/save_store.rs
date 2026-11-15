@@ -193,6 +193,19 @@ impl SaveStore {
         balance: &BalanceData,
         before_replace: impl FnOnce(&Path, &Path) -> Result<(), SaveStoreError>,
     ) -> Result<PathBuf, SaveStoreError> {
+        self.prepare(slot, envelope, overwrite, balance)?
+            .publish_with_hook(self, before_replace)
+    }
+
+    /// Everything a write does before touching the destination: slot check, directory creation,
+    /// encoding and the first decode verification.
+    pub(crate) fn prepare(
+        &self,
+        slot: usize,
+        envelope: &NativeSaveEnvelope,
+        overwrite: bool,
+        balance: &BalanceData,
+    ) -> Result<PreparedSave, SaveStoreError> {
         require_slot(slot)?;
         fs::create_dir_all(&self.root).map_err(|error| SaveStoreError::Io {
             operation: "create save directory",
@@ -210,9 +223,53 @@ impl SaveStore {
             balance,
         )
         .map_err(SaveStoreError::Native)?;
+        Ok(PreparedSave {
+            slot,
+            overwrite,
+            destination,
+            bytes,
+            scenario_id: envelope.scenario_id.clone(),
+            scenario_version: envelope.scenario_version.clone(),
+            balance: balance.clone(),
+        })
+    }
+}
+
+/// An encoded, verified save that is ready to be published. Holds only plain data, so it can be
+/// published on another thread.
+#[derive(Debug)]
+pub(crate) struct PreparedSave {
+    slot: usize,
+    overwrite: bool,
+    destination: PathBuf,
+    bytes: Vec<u8>,
+    scenario_id: String,
+    scenario_version: String,
+    balance: BalanceData,
+}
+
+impl PreparedSave {
+    pub(crate) fn publish(self, store: &SaveStore) -> Result<PathBuf, SaveStoreError> {
+        self.publish_with_hook(store, |_, _| Ok(()))
+    }
+
+    fn publish_with_hook(
+        self,
+        store: &SaveStore,
+        before_replace: impl FnOnce(&Path, &Path) -> Result<(), SaveStoreError>,
+    ) -> Result<PathBuf, SaveStoreError> {
+        let Self {
+            slot,
+            overwrite,
+            destination,
+            bytes,
+            scenario_id,
+            scenario_version,
+            balance,
+        } = self;
         let mut before_replace = Some(before_replace);
         Publication {
-            directory: &self.root,
+            directory: &store.root,
             destination: &destination,
             temporary_stem: &format!("{slot:03}"),
             policy: if overwrite {
@@ -224,25 +281,20 @@ impl SaveStore {
         .publish(
             &bytes,
             |verified| {
-                NativeSaveEnvelope::decode(
-                    verified,
-                    &envelope.scenario_id,
-                    &envelope.scenario_version,
-                    balance,
-                )
-                .map(drop)
-                .map_err(SaveStoreError::Native)
+                NativeSaveEnvelope::decode(verified, &scenario_id, &scenario_version, &balance)
+                    .map(drop)
+                    .map_err(SaveStoreError::Native)
             },
             |step, temp, destination| match step {
                 PublishStep::Publish => before_replace
                     .take()
                     .map_or(Ok(()), |hook| hook(temp, destination)),
                 #[cfg(test)]
-                PublishStep::WriteTemporary => self.inject_failure("write temporary save"),
+                PublishStep::WriteTemporary => store.inject_failure("write temporary save"),
                 #[cfg(test)]
-                PublishStep::SyncTemporary => self.inject_failure("sync temporary save"),
+                PublishStep::SyncTemporary => store.inject_failure("sync temporary save"),
                 #[cfg(test)]
-                PublishStep::SyncDirectory => self.inject_failure("sync save directory"),
+                PublishStep::SyncDirectory => store.inject_failure("sync save directory"),
                 _ => Ok(()),
             },
         )

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     app_state::AppStateTransitionPlugin,
-    autosave::AutosavePlugin,
+    autosave::{AutosavePlugin, autosave_writer_idle},
     encounter_assets::EncounterAssetPlugin,
     field_menu_domain::FieldMenuCatalog,
     save_data::tests::{fixture_balance, fixture_game},
@@ -172,6 +172,7 @@ fn wait_for(app: &mut App, phase: TransitionPhase) {
     for _ in 0..4_000 {
         app.update();
         if app.world().resource::<WorldTransition>().phase == phase {
+            settle_autosave(app);
             return;
         }
         thread::sleep(Duration::from_millis(1));
@@ -180,6 +181,19 @@ fn wait_for(app: &mut App, phase: TransitionPhase) {
         "did not reach {phase:?}: {:?}",
         app.world().resource::<WorldTransition>()
     );
+}
+
+/// The autosave publishes on a worker a few frames after arrival; tests that read the slot file
+/// wait for that write to land.
+fn settle_autosave(app: &mut App) {
+    for _ in 0..4_000 {
+        if autosave_writer_idle(app.world()) {
+            return;
+        }
+        app.update();
+        thread::sleep(Duration::from_millis(1));
+    }
+    panic!("the autosave writer never became idle");
 }
 
 fn press(app: &mut App, key: KeyCode) {

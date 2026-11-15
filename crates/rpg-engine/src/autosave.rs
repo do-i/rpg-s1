@@ -10,7 +10,12 @@
 //! random encounter or a cutscene replays the same fade as a real map change. Comparing the map
 //! id instead keeps one checkpoint per arrival and leaves battle and dialogue round trips alone.
 
-use bevy::prelude::*;
+use std::path::PathBuf;
+
+use bevy::{
+    prelude::*,
+    tasks::{IoTaskPool, Task, block_on, futures_lite::future},
+};
 
 use crate::{
     app_state::AppState,
@@ -19,7 +24,7 @@ use crate::{
     persistence_status::PersistenceStatus,
     runtime_map::RuntimeMapId,
     save_data::NativeSaveEnvelope,
-    save_store::{SaveStore, unix_timestamp_now},
+    save_store::{PreparedSave, SaveStore, SaveStoreError, unix_timestamp_now},
     save_ui::SaveSlotCatalog,
     world_transition::WorldTransition,
 };
@@ -31,6 +36,7 @@ pub(crate) struct AutosavePlugin;
 impl Plugin for AutosavePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AutosaveTracker>()
+            .init_resource::<AutosaveWriter>()
             .init_resource::<PersistenceStatus>()
             // A title visit is a session boundary: the next World entry belongs to a different
             // playthrough, so it must checkpoint even when it starts on the same map.
@@ -40,6 +46,14 @@ impl Plugin for AutosavePlugin {
                 autosave_on_map_arrival
                     .after(crate::world_publication::WorldPublicationSet::Barrier)
                     .run_if(in_state(AppState::World)),
+            )
+            // Not gated on a state: a write started just before a title return still completes.
+            .add_systems(Update, complete_autosave_write)
+            // Closing the last window writes `AppExit` from `exit_on_all_closed` inside `Last`, so
+            // the drain must run after it to see that message in the same frame.
+            .add_systems(
+                Last,
+                drain_autosave_writer_on_exit.after(bevy::window::ExitSystems),
             );
     }
 }
@@ -59,6 +73,130 @@ impl AutosaveTracker {
     }
 }
 
+/// The slot-0 publication running off the frame. Slot 0 has one writer, so at most one write is in
+/// flight; an arrival that prepares a save meanwhile replaces `queued`, so the newest snapshot
+/// wins and writes land in arrival order. The task is always awaited, never dropped, because
+/// dropping a Bevy task cancels it.
+#[derive(Default, Resource)]
+struct AutosaveWriter {
+    in_flight: Option<Task<Result<PathBuf, SaveStoreError>>>,
+    queued: Option<PreparedSave>,
+}
+
+impl AutosaveWriter {
+    fn submit(&mut self, store: &SaveStore, prepared: PreparedSave) {
+        if self.in_flight.is_some() {
+            self.queued = Some(prepared);
+        } else {
+            self.start(store, prepared);
+        }
+    }
+
+    fn start(&mut self, store: &SaveStore, prepared: PreparedSave) {
+        let store = store.clone();
+        self.in_flight = Some(
+            IoTaskPool::get_or_init(Default::default)
+                .spawn(async move { prepared.publish(&store) }),
+        );
+    }
+
+    #[cfg(test)]
+    fn is_idle(&self) -> bool {
+        self.in_flight.is_none() && self.queued.is_none()
+    }
+}
+
+/// Whether no autosave write is in flight or queued; true when the plugin is not installed.
+#[cfg(test)]
+pub(crate) fn autosave_writer_idle(world: &World) -> bool {
+    world
+        .get_resource::<AutosaveWriter>()
+        .is_none_or(AutosaveWriter::is_idle)
+}
+
+/// Applies the outcome of one autosave write: `Err` carries the error text and whether the file
+/// was nevertheless published.
+fn apply_autosave_outcome(
+    result: Result<(), (String, bool)>,
+    tracker: &mut AutosaveTracker,
+    status: &mut PersistenceStatus,
+    saves: &mut SaveSlotCatalog,
+) {
+    match result {
+        Ok(()) => {
+            tracker.failure = None;
+            saves.request_slot_refresh(AUTOSAVE_SLOT);
+            status
+                .autosave
+                .report("Autosave saved to disk.".to_owned(), false);
+        }
+        Err((error, published)) => {
+            let message = if published {
+                saves.request_slot_refresh(AUTOSAVE_SLOT);
+                format!(
+                    "Autosave file published, but disk durability could not be confirmed: {error}. Retry after fixing the storage problem."
+                )
+            } else {
+                format!(
+                    "Autosave could not be saved to disk: {error}. Progress remains active in this session; the previous save is preserved. Retry after fixing the storage problem."
+                )
+            };
+            status.autosave.report(message, true);
+            tracker.failure = Some(error);
+        }
+    }
+}
+
+fn write_outcome(result: Result<PathBuf, SaveStoreError>) -> Result<(), (String, bool)> {
+    result
+        .map(drop)
+        .map_err(|error| (error.to_string(), error.published()))
+}
+
+/// Collects a finished slot-0 write, reports it, and starts the newest queued snapshot.
+fn complete_autosave_write(
+    mut writer: ResMut<AutosaveWriter>,
+    mut tracker: ResMut<AutosaveTracker>,
+    mut status: ResMut<PersistenceStatus>,
+    store: Res<SaveStore>,
+    mut saves: ResMut<SaveSlotCatalog>,
+) {
+    let Some(task) = writer.in_flight.as_mut() else {
+        return;
+    };
+    let Some(result) = block_on(future::poll_once(task)) else {
+        return;
+    };
+    writer.in_flight = None;
+    apply_autosave_outcome(write_outcome(result), &mut tracker, &mut status, &mut saves);
+    if let Some(prepared) = writer.queued.take() {
+        writer.start(&store, prepared);
+    }
+}
+
+/// A clean quit must leave the newest checkpoint on disk, as the synchronous write did: wait for
+/// the write in flight, then publish any queued snapshot on this thread.
+fn drain_autosave_writer_on_exit(
+    mut exits: MessageReader<AppExit>,
+    mut writer: ResMut<AutosaveWriter>,
+    mut tracker: ResMut<AutosaveTracker>,
+    mut status: ResMut<PersistenceStatus>,
+    store: Res<SaveStore>,
+    mut saves: ResMut<SaveSlotCatalog>,
+) {
+    if exits.read().count() == 0 {
+        return;
+    }
+    if let Some(task) = writer.in_flight.take() {
+        let result = block_on(task);
+        apply_autosave_outcome(write_outcome(result), &mut tracker, &mut status, &mut saves);
+    }
+    if let Some(prepared) = writer.queued.take() {
+        let result = prepared.publish(&store);
+        apply_autosave_outcome(write_outcome(result), &mut tracker, &mut status, &mut saves);
+    }
+}
+
 fn reset_autosave_tracker(
     mut tracker: ResMut<AutosaveTracker>,
     mut status: ResMut<PersistenceStatus>,
@@ -74,6 +212,7 @@ fn reset_autosave_tracker(
 fn autosave_on_map_arrival(
     transition: Res<WorldTransition>,
     mut tracker: ResMut<AutosaveTracker>,
+    mut writer: ResMut<AutosaveWriter>,
     mut status: ResMut<PersistenceStatus>,
     store: Res<SaveStore>,
     mut saves: ResMut<SaveSlotCatalog>,
@@ -135,31 +274,12 @@ fn autosave_on_map_arrival(
         })
         .and_then(|envelope| {
             store
-                .write(AUTOSAVE_SLOT, &envelope, true, &balance)
+                .prepare(AUTOSAVE_SLOT, &envelope, true, &balance)
                 .map_err(|error| (error.to_string(), error.published()))
         });
     match result {
-        Ok(_) => {
-            tracker.failure = None;
-            saves.request_slot_refresh(AUTOSAVE_SLOT);
-            status
-                .autosave
-                .report("Autosave saved to disk.".to_owned(), false);
-        }
-        Err((error, published)) => {
-            let message = if published {
-                saves.request_slot_refresh(AUTOSAVE_SLOT);
-                format!(
-                    "Autosave file published, but disk durability could not be confirmed: {error}. Retry after fixing the storage problem."
-                )
-            } else {
-                format!(
-                    "Autosave could not be saved to disk: {error}. Progress remains active in this session; the previous save is preserved. Retry after fixing the storage problem."
-                )
-            };
-            status.autosave.report(message, true);
-            tracker.failure = Some(error);
-        }
+        Ok(prepared) => writer.submit(&store, prepared),
+        Err(error) => apply_autosave_outcome(Err(error), &mut tracker, &mut status, &mut saves),
     }
 }
 
@@ -212,9 +332,27 @@ mod tests {
             .insert_resource(fixture_game())
             .insert_resource(Time::<Real>::default())
             .init_resource::<AutosaveTracker>()
+            .init_resource::<AutosaveWriter>()
             .init_resource::<PersistenceStatus>()
-            .add_systems(Update, autosave_on_map_arrival);
+            .add_systems(
+                Update,
+                (autosave_on_map_arrival, complete_autosave_write).chain(),
+            )
+            .add_systems(Last, drain_autosave_writer_on_exit);
         app
+    }
+
+    /// Runs one frame, then more until the background write and its queue have settled.
+    fn update_settled(app: &mut App) {
+        app.update();
+        for _ in 0..5000 {
+            if app.world().resource::<AutosaveWriter>().is_idle() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            app.update();
+        }
+        panic!("the autosave writer never became idle");
     }
 
     fn move_to_map(app: &mut App, map_id: &str) {
@@ -234,7 +372,7 @@ mod tests {
         // `WorldTransition::default()` is the mid-fade-in state every real World entry starts in.
         let mut app = build_app(dir.0.clone(), WorldTransition::default());
 
-        app.update();
+        update_settled(&mut app);
 
         assert!(!dir.autosave_path().exists());
         assert!(app.world().resource::<AutosaveTracker>().last_map.is_none());
@@ -245,7 +383,7 @@ mod tests {
         let dir = TempSaveDir::new("arrival");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
 
-        app.update();
+        update_settled(&mut app);
 
         assert!(dir.autosave_path().exists());
         assert!(
@@ -258,8 +396,8 @@ mod tests {
         // Deleting the checkpoint makes a redundant rewrite unambiguous: staying on the same map
         // must leave the slot alone, so the file must not reappear.
         fs::remove_file(dir.autosave_path()).unwrap();
-        app.update();
-        app.update();
+        update_settled(&mut app);
+        update_settled(&mut app);
         assert!(!dir.autosave_path().exists());
     }
 
@@ -269,9 +407,9 @@ mod tests {
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
         app.insert_resource(DebugSession);
 
-        app.update();
+        update_settled(&mut app);
         move_to_map(&mut app, "town_01_ardel");
-        app.update();
+        update_settled(&mut app);
 
         assert!(!dir.autosave_path().exists());
         assert!(app.world().resource::<AutosaveTracker>().last_map.is_none());
@@ -282,12 +420,12 @@ mod tests {
         let dir = TempSaveDir::new("map-change");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
 
-        app.update();
+        update_settled(&mut app);
         let first = fs::read_to_string(dir.autosave_path()).unwrap();
         assert!(first.contains("zone_01_starting_forest"));
 
         move_to_map(&mut app, "town_01_ardel");
-        app.update();
+        update_settled(&mut app);
 
         let second = fs::read_to_string(dir.autosave_path()).unwrap();
         assert!(second.contains("town_01_ardel"));
@@ -299,15 +437,15 @@ mod tests {
         let dir = TempSaveDir::new("round-trip");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
 
-        app.update();
+        update_settled(&mut app);
         fs::remove_file(dir.autosave_path()).unwrap();
 
         // Leaving and re-entering World resets the transition to its locked fade-in, which is the
         // exact shape a real map arrival has. Only the unchanged map id distinguishes them.
         *app.world_mut().resource_mut::<WorldTransition>() = WorldTransition::default();
-        app.update();
+        update_settled(&mut app);
         *app.world_mut().resource_mut::<WorldTransition>() = WorldTransition::idle_for_test();
-        app.update();
+        update_settled(&mut app);
 
         assert!(!dir.autosave_path().exists());
     }
@@ -316,14 +454,16 @@ mod tests {
     fn a_title_visit_lets_the_next_session_checkpoint_the_same_map_again() {
         let dir = TempSaveDir::new("title-reset");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
-        app.add_systems(Update, reset_autosave_tracker);
 
-        app.update();
+        update_settled(&mut app);
         assert!(dir.autosave_path().exists());
         fs::remove_file(dir.autosave_path()).unwrap();
 
-        // `reset_autosave_tracker` stands in for the real `OnEnter(AppState::Title)` schedule.
-        app.update();
+        // Running `reset_autosave_tracker` stands in for the real `OnEnter(AppState::Title)`.
+        app.world_mut()
+            .run_system_cached(reset_autosave_tracker)
+            .unwrap();
+        update_settled(&mut app);
 
         assert!(dir.autosave_path().exists());
     }
@@ -338,7 +478,7 @@ mod tests {
         fs::set_permissions(&root, permissions).unwrap();
 
         let mut app = build_app(root.clone(), WorldTransition::idle_for_test());
-        app.update();
+        update_settled(&mut app);
 
         // Assert on the write itself, so the test cannot pass because the checkpoint was skipped
         // for some earlier reason. Requires a non-root user; root ignores the readonly bit.
@@ -373,7 +513,7 @@ mod tests {
             .resource_mut::<SaveSlotCatalog>()
             .apply_refresh(&store, "my_rpg_story", "1.0.0", &balance);
 
-        app.update();
+        update_settled(&mut app);
         let before = store.inspected.load(Ordering::Relaxed);
         app.world_mut()
             .resource_mut::<SaveSlotCatalog>()
@@ -394,14 +534,14 @@ mod tests {
         for operation in ["write temporary save", "sync temporary save"] {
             let dir = TempSaveDir::new(operation);
             let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
-            app.update();
+            update_settled(&mut app);
             let previous = fs::read(dir.autosave_path()).unwrap();
             app.world_mut()
                 .resource_mut::<SaveSlotCatalog>()
                 .clear_refresh_for_test();
             move_to_map(&mut app, "town_01_ardel");
             app.world_mut().resource_mut::<SaveStore>().fail_operation = Some(operation);
-            app.update();
+            update_settled(&mut app);
             assert_eq!(fs::read(dir.autosave_path()).unwrap(), previous);
             let notice = &app.world().resource::<PersistenceStatus>().autosave;
             assert!(notice.failed);
@@ -419,8 +559,8 @@ mod tests {
             );
             // Repair does not itself retry, even across multiple frames.
             app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
-            app.update();
-            app.update();
+            update_settled(&mut app);
+            update_settled(&mut app);
             assert_eq!(fs::read(dir.autosave_path()).unwrap(), previous);
             app.world_mut()
                 .resource_mut::<GameState>()
@@ -434,7 +574,7 @@ mod tests {
                 .resource_mut::<PersistenceStatus>()
                 .autosave
                 .retry_requested = true;
-            app.update();
+            update_settled(&mut app);
             let notice = &app.world().resource::<PersistenceStatus>().autosave;
             assert!(!notice.failed);
             assert_eq!(notice.message, "Autosave saved to disk.");
@@ -467,13 +607,13 @@ mod tests {
     fn directory_sync_failure_reports_published_checkpoint_and_refreshes_catalog() {
         let dir = TempSaveDir::new("directory-sync");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
-        app.update();
+        update_settled(&mut app);
         app.world_mut()
             .resource_mut::<SaveSlotCatalog>()
             .clear_refresh_for_test();
         app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("sync save directory");
         move_to_map(&mut app, "town_01_ardel");
-        app.update();
+        update_settled(&mut app);
         assert!(
             app.world()
                 .resource::<PersistenceStatus>()
@@ -498,7 +638,7 @@ mod tests {
             .resource_mut::<PersistenceStatus>()
             .autosave
             .retry_requested = true;
-        app.update();
+        update_settled(&mut app);
         assert!(!app.world().resource::<PersistenceStatus>().autosave.failed);
     }
 
@@ -507,7 +647,7 @@ mod tests {
         let dir = TempSaveDir::new("failed-publication");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
         app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("write temporary save");
-        app.update();
+        update_settled(&mut app);
         app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
         app.world_mut()
             .resource_mut::<WorldTransition>()
@@ -516,7 +656,7 @@ mod tests {
             .resource_mut::<PersistenceStatus>()
             .autosave
             .retry_requested = true;
-        app.update();
+        update_settled(&mut app);
         assert!(!dir.autosave_path().exists());
         assert!(
             !app.world()
@@ -525,7 +665,7 @@ mod tests {
                 .retry_requested
         );
         *app.world_mut().resource_mut::<WorldTransition>() = WorldTransition::idle_for_test();
-        app.update();
+        update_settled(&mut app);
         assert!(
             !dir.autosave_path().exists(),
             "no deferred retry on recovery"
@@ -537,14 +677,14 @@ mod tests {
         let dir = TempSaveDir::new("stale-retry");
         let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
         app.world_mut().resource_mut::<SaveStore>().fail_operation = Some("write temporary save");
-        app.update();
+        update_settled(&mut app);
         app.world_mut().resource_mut::<SaveStore>().fail_operation = None;
         move_to_map(&mut app, "town_01_ardel");
         app.world_mut()
             .resource_mut::<PersistenceStatus>()
             .autosave
             .retry_requested = true;
-        app.update();
+        update_settled(&mut app);
         assert!(!dir.autosave_path().exists());
         move_to_map(&mut app, "zone_01_starting_forest");
         app.insert_resource(SaveSlotCatalog::ready_for_test(
@@ -556,7 +696,7 @@ mod tests {
             .resource_mut::<PersistenceStatus>()
             .autosave
             .retry_requested = true;
-        app.update();
+        update_settled(&mut app);
         assert!(!dir.autosave_path().exists());
         app.world_mut()
             .run_system_cached(reset_autosave_tracker)
@@ -580,5 +720,114 @@ mod tests {
                 .autosave
                 .retry_requested
         );
+    }
+
+    /// Occupies the writer with a write that stays in flight for `hold`, so later arrivals are
+    /// prepared while it is still running.
+    fn hold_writer_in_flight(app: &mut App, hold: std::time::Duration) {
+        app.world_mut().resource_mut::<AutosaveWriter>().in_flight =
+            Some(IoTaskPool::get_or_init(Default::default).spawn(async move {
+                std::thread::sleep(hold);
+                Ok(PathBuf::new())
+            }));
+    }
+
+    #[test]
+    fn a_second_arrival_during_an_in_flight_write_queues_and_the_newest_snapshot_lands() {
+        let dir = TempSaveDir::new("queued-newest");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        hold_writer_in_flight(&mut app, std::time::Duration::from_millis(300));
+        // Three arrivals prepare saves while the first write is still running.
+        app.update();
+        move_to_map(&mut app, "town_01_ardel");
+        app.update();
+        app.world_mut()
+            .resource_mut::<GameState>()
+            .map_mut()
+            .move_to(
+                RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+                Position::new(7, 7),
+                CardinalDirection::Left,
+            );
+        app.update();
+        assert!(app.world().resource::<AutosaveWriter>().queued.is_some());
+        assert!(!dir.autosave_path().exists());
+        update_settled(&mut app);
+
+        let (_, saved_game) = app
+            .world()
+            .resource::<SaveStore>()
+            .load(0, "my_rpg_story", "1.0.0", &fixture_balance())
+            .unwrap();
+        assert_eq!(saved_game.map().position(), Position::new(7, 7));
+        assert!(
+            fs::read_to_string(dir.autosave_path())
+                .unwrap()
+                .contains("current: zone_01_starting_forest"),
+            "the superseded Ardel snapshot must never be written"
+        );
+        assert_eq!(fs::read_dir(&dir.0).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn an_app_exit_with_a_write_in_flight_leaves_the_slot_written_and_reports_it() {
+        let dir = TempSaveDir::new("exit-drain");
+        let mut app = build_app(dir.0.clone(), WorldTransition::idle_for_test());
+        hold_writer_in_flight(&mut app, std::time::Duration::from_millis(200));
+        move_to_map(&mut app, "town_01_ardel");
+        app.update();
+        assert!(!app.world().resource::<AutosaveWriter>().is_idle());
+        assert!(!dir.autosave_path().exists());
+
+        app.world_mut().write_message(AppExit::Success);
+        app.update();
+
+        assert!(app.world().resource::<AutosaveWriter>().is_idle());
+        assert!(
+            fs::read_to_string(dir.autosave_path())
+                .unwrap()
+                .contains("town_01_ardel")
+        );
+        let notice = &app.world().resource::<PersistenceStatus>().autosave;
+        assert!(!notice.failed);
+        assert_eq!(notice.message, "Autosave saved to disk.");
+    }
+
+    #[test]
+    fn a_title_return_with_a_write_in_flight_still_completes() {
+        use bevy::state::app::StatesPlugin;
+
+        let dir = TempSaveDir::new("title-in-flight");
+        let mut app = App::new();
+        app.add_plugins(StatesPlugin)
+            .insert_state(AppState::World)
+            .insert_resource(SaveStore::new(dir.0.clone()))
+            .insert_resource(SaveSlotCatalog::ready_for_test(
+                "my_rpg_story",
+                "1.0.0",
+                fixture_balance(),
+            ))
+            .insert_resource(WorldTransition::idle_for_test())
+            .insert_resource(fixture_game())
+            .insert_resource(Time::<Real>::default())
+            .add_plugins(AutosavePlugin);
+        hold_writer_in_flight(&mut app, std::time::Duration::from_millis(100));
+        // The arrival queues its snapshot behind the running write; the player then quits to the
+        // title, where nothing but the ungated completion system can still publish it.
+        app.update();
+        assert!(app.world().resource::<AutosaveWriter>().queued.is_some());
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::Title);
+        update_settled(&mut app);
+
+        assert_eq!(
+            *app.world().resource::<State<AppState>>().get(),
+            AppState::Title
+        );
+        assert!(dir.autosave_path().exists());
+        let notice = &app.world().resource::<PersistenceStatus>().autosave;
+        assert!(!notice.failed);
+        assert_eq!(notice.message, "Autosave saved to disk.");
     }
 }
