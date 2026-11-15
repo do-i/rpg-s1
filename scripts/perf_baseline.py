@@ -46,12 +46,16 @@ all of them. Raw data stays under temp/ (gitignored).
 from __future__ import annotations
 
 import argparse
+import ctypes
+import ctypes.util
 import datetime
 import os
 import shutil
 import statistics
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -101,15 +105,29 @@ LEAK_CHECK_LOOPS = {
             (["hold 12 move_down"], "town_01_ardel"),
         ],
     ),
+    # Large maps (TMX tiles: pass_01 76x58, pass_02 84x64, Frostholm 61x35) for map-load costs.
+    "leak-check-pass": (
+        "zone_06_mountain_pass_01",
+        "74,16",
+        [(["hold 8 move_right"], "zone_06_mountain_pass_02"), (["hold 5 move_left"], "zone_06_mountain_pass_01")],
+    ),
+    "leak-check-frostholm": (
+        "zone_06_mountain_pass_01",
+        "10,56",
+        [(["hold 4 move_down"], "town_04_frostholm"), (["hold 8 move_up"], "zone_06_mountain_pass_01")],
+    ),
 }
 
 
-def leak_check_script(start: str, legs: list, crossings: int) -> str:
+def leak_check_script(
+    start: str, legs: list, crossings: int, settle: int = LEAK_CHECK_SETTLE_FRAMES, prefix=()
+) -> str:
     """Crosses a map boundary `crossings` times and snapshots after each settled arrival."""
     lines = [
+        *prefix,
         "wait_state World",
         f"wait_map {start}",
-        f"wait {LEAK_CHECK_SETTLE_FRAMES}",
+        f"wait {settle}",
         # The window is only required by the script format; a snapshot run ends with its script.
         "measure 200000",
         f"snapshot start {start}",
@@ -120,7 +138,7 @@ def leak_check_script(start: str, legs: list, crossings: int) -> str:
             *steps,
             f"wait_map {destination}",
             "wait_state World",
-            f"wait {LEAK_CHECK_SETTLE_FRAMES}",
+            f"wait {settle}",
             f"snapshot arrive {crossing:02d} {destination}",
         ]
     return "\n".join(lines) + "\n"
@@ -139,6 +157,100 @@ def leak_check_workload(name: str, crossings: int) -> dict:
         "expect_snapshots": crossings + 1,
         "timeout_s": 120 + 12 * crossings,
     }
+
+
+# Cost-attribution workloads (a window over a whole scripted loop; read the per-frame CSV together
+# with the `trace:` lines of report.txt, whose `frame=` is the frame number used in the CSV).
+SAVE_LOAD_STEPS = [
+    "wait_state Title",
+    "wait_text Load Game",
+    "wait 10",
+    "press menu_down",
+    "wait 5",
+    "press confirm",
+    "wait_text Golden Aric",
+    "wait 10",
+    "press confirm",
+]
+
+
+def item_ids() -> list[str]:
+    """Every item id the scenario ships, in file order (used to fill a long inventory)."""
+    ids: list[str] = []
+    for path in sorted((REPO / "assets/scenarios/rusted_kingdoms/data/items").glob("*.yaml")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("- id: "):
+                ids.append(line[6:].strip())
+    return ids
+
+
+def big_inventory_save(count: int = 80) -> str:
+    """The fixture save with `count` distinct items in the pouch instead of one potion."""
+    text = SAVE_FIXTURE.read_text(encoding="utf-8")
+    start = text.index("    items:\n")
+    end = text.index("loot_batch: 1\n", start) + len("loot_batch: 1\n")
+    rows = "".join(
+        f"    - id: {item}\n      quantity: 2\n      tags: []\n      locked: false\n"
+        "      is_loot: false\n      loot_batch: 1\n"
+        for item in item_ids()[:count]
+    )
+    return text[:start] + "    items:\n" + rows + text[end:]
+
+
+def snapshot_loop_workload(about: str, args: list, script: str, **extra) -> dict:
+    """A looped script whose window is the whole script; one closing snapshot ends the run."""
+    return {
+        "about": about,
+        "args": args,
+        "script": script,
+        "expect_snapshots": 1,
+        "timeout_s": extra.pop("timeout_s", 400),
+        **extra,
+    }
+
+
+def autosave_loop_script(crossings: int, settle: int) -> str:
+    """Load the fixture save, then cross Starting Forest <-> Ardel; each arrival autosaves."""
+    legs = LEAK_CHECK_LOOPS["leak-check"][2]
+    lines = [*SAVE_LOAD_STEPS, "wait_state World", "wait_map zone_01_starting_forest", "wait 90"]
+    lines += ["measure 200000", "snapshot start"]
+    for crossing in range(crossings):
+        steps, destination = (["hold 20 move_up"], "town_01_ardel") if crossing % 2 == 0 else (
+            ["hold 15 move_down"], "zone_01_starting_forest")
+        lines += [*steps, f"wait_map {destination}", "wait_state World", f"wait {settle}"]
+    lines.append("snapshot end")
+    return "\n".join(lines) + "\n"
+
+
+def menu_list_script(open_steps: list[str], page_text: str | None) -> str:
+    """Open a field-menu list page from the world and move its cursor under the window.
+
+    `open_steps` is empty for a page opened by an injected physical key (see `x_keys`): the script
+    idles in the world, the key arrives meanwhile, and `page_text` shows when it has opened."""
+    lines = [*SAVE_LOAD_STEPS, "wait_state World", "wait_map zone_01_starting_forest", "wait 90"]
+    lines += ["measure 200000", "wait 240", *open_steps]
+    lines += [f"wait_text {page_text}" if page_text else "wait 20", "wait 10", "dump_text"]
+    # idle on the page, then one move every frame, then a human pace (a move every 3 frames).
+    lines += ["wait 120", "hold 120 menu_down", "wait 60", "hold 120 menu_up", "wait 60"]
+    for _ in range(40):
+        lines += ["press menu_down", "wait 2"]
+    for _ in range(40):
+        lines += ["press menu_up", "wait 2"]
+    lines += ["wait 60", "press back", "wait 30", "snapshot end"]
+    return "\n".join(lines) + "\n"
+
+
+def flag_change_script() -> str:
+    """Walk up to Elise in Ardel and finish her recruitment talk; completion sets
+    `npc_elise_joined`, which changes the active flag set and so respawns every Ardel NPC."""
+    lines = ["wait_state World", "wait_map town_01_ardel", "wait 60", "measure 200000", "wait 60",
+             "dump_text", "hold 3 move_up", "wait 10", "press confirm", "wait 20"]
+    # Each line needs one Confirm to finish its typewriter and one to advance; five lines, then
+    # the completion actions (flag, join_party) run on the closing Confirm.
+    for _ in range(13):
+        lines += ["press confirm", "wait 15"]
+    lines += ["dump_text", "wait 240", "snapshot end"]
+    return "\n".join(lines) + "\n"
 
 
 WORKLOADS: dict[str, dict] = {
@@ -306,6 +418,48 @@ wait_state World
 for _name in LEAK_CHECK_LOOPS:
     WORKLOADS[_name] = leak_check_workload(_name, LEAK_CHECK_CROSSINGS)
 WORKLOADS["leak-check-long"] = leak_check_workload("leak-check", 3 * LEAK_CHECK_CROSSINGS)
+
+WORKLOADS["autosave-loop"] = snapshot_loop_workload(
+    "load the fixture save, cross Starting Forest <-> Ardel 24 times (every arrival autosaves "
+    "slot 0); the window spans the whole loop",
+    [],
+    autosave_loop_script(24, 90),
+    save_fixture=True,
+    expect_autosave="zone_01_starting_forest",
+)
+WORKLOADS["autosave-loop"]["expect_snapshots"] = 2
+WORKLOADS["autosave-control"] = snapshot_loop_workload(
+    "the same 24 crossings as autosave-loop from a debug start, which never autosaves",
+    ["--start-map", "zone_01_starting_forest", "--start-position", "29,1"],
+    leak_check_script(
+        "zone_01_starting_forest", LEAK_CHECK_LOOPS["leak-check"][2], 24, 90
+    ),
+    expect_autosave=None,
+)
+WORKLOADS["autosave-control"]["expect_snapshots"] = 25
+WORKLOADS["menu-items"] = snapshot_loop_workload(
+    "fixture save with 80 distinct items: open the field menu, Items page, idle, then cursor "
+    "moves every frame and every third frame",
+    [],
+    menu_list_script([], "ALL POUCH"),
+    save_text=big_inventory_save(),
+    x_keys=[(7.0, "i")],
+)
+WORKLOADS["menu-quests"] = snapshot_loop_workload(
+    "fixture save: open the field menu on the Quests page (physical Q key), idle, then cursor "
+    "moves every frame and every third frame",
+    [],
+    menu_list_script([], "QUEST BOARD"),
+    save_fixture=True,
+    x_keys=[(7.0, "q")],
+)
+WORKLOADS["flag-change"] = snapshot_loop_workload(
+    "Ardel (6 NPCs): talk to Elise until her dialogue completes and sets npc_elise_joined, which "
+    "changes the flag set and respawns every NPC on the map; debug session",
+    ["--start-map", "town_01_ardel", "--start-position", "12,8", "--set-flag", "story_quest_started"],
+    flag_change_script(),
+    expect_autosave=None,
+)
 
 # Metrics shown per run and given a noise band, as (report key, field) pairs.
 METRICS = [
@@ -490,6 +644,59 @@ def load_average() -> str:
         return "unknown"
 
 
+def send_x_keys(server_num: int, keys: list[tuple[float, str]], started: float) -> None:
+    """Sends physical key presses to the private Xvfb display with XTest, `delay` seconds after
+    `started`. Some field-menu shortcuts (I, S, Q, the horizontal arrows) read the physical
+    keyboard, which a `--perf-script` cannot inject; this reaches them without touching the game.
+    The pointer is parked over the window so a window-manager-less X server focuses it."""
+    x11 = ctypes.CDLL(ctypes.util.find_library("X11"))
+    xtst = ctypes.CDLL(ctypes.util.find_library("Xtst"))
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XStringToKeysym.restype = ctypes.c_ulong
+    x11.XStringToKeysym.argtypes = [ctypes.c_char_p]
+    x11.XKeysymToKeycode.restype = ctypes.c_ubyte
+    x11.XKeysymToKeycode.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    x11.XFlush.argtypes = [ctypes.c_void_p]
+    x11.XDefaultRootWindow.restype = ctypes.c_ulong
+    x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+    x11.XSetInputFocus.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+    x11.XQueryTree.argtypes = [ctypes.c_void_p, ctypes.c_ulong] + [ctypes.c_void_p] * 4
+    x11.XFree.argtypes = [ctypes.c_void_p]
+    xtst.XTestFakeKeyEvent.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_int, ctypes.c_ulong]
+    xtst.XTestFakeMotionEvent.argtypes = [
+        ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong
+    ]
+    display = None
+    deadline = time.monotonic() + 20
+    while display is None and time.monotonic() < deadline:
+        display = x11.XOpenDisplay(f":{server_num}".encode())
+        if display is None:
+            time.sleep(0.1)
+    if display is None:
+        return
+    for delay, key in keys:
+        time.sleep(max(0.0, started + delay - time.monotonic()))
+        xtst.XTestFakeMotionEvent(display, 0, 300, 300, 0)
+        # Focus the game's top-level window (the only child of the root without a window manager).
+        root, parent = ctypes.c_ulong(), ctypes.c_ulong()
+        children, count = ctypes.c_void_p(), ctypes.c_uint()
+        x11.XQueryTree(
+            display, x11.XDefaultRootWindow(display), ctypes.byref(root), ctypes.byref(parent),
+            ctypes.byref(children), ctypes.byref(count),
+        )
+        if count.value:
+            window = ctypes.cast(children, ctypes.POINTER(ctypes.c_ulong))[count.value - 1]
+            x11.XSetInputFocus(display, window, 1, 0)
+            x11.XFree(children)
+        code = x11.XKeysymToKeycode(display, x11.XStringToKeysym(key.encode()))
+        xtst.XTestFakeKeyEvent(display, code, 1, 0)
+        x11.XFlush(display)
+        time.sleep(0.05)
+        xtst.XTestFakeKeyEvent(display, code, 0, 0)
+        x11.XFlush(display)
+
+
 def run_once(name: str, workload: dict, run_dir: Path, seed: int, binary: Path) -> dict:
     save_dir = run_dir / "save"
     config_dir = run_dir / "config"
@@ -497,6 +704,8 @@ def run_once(name: str, workload: dict, run_dir: Path, seed: int, binary: Path) 
     config_dir.mkdir()
     if workload.get("save_fixture"):
         shutil.copyfile(SAVE_FIXTURE, save_dir / "001.yaml")
+    if workload.get("save_text"):
+        (save_dir / "001.yaml").write_text(workload["save_text"], encoding="utf-8")
     script = run_dir / f"{name}.script"
     script.write_text(workload["script"], encoding="utf-8")
     report_path = run_dir / "report.txt"
@@ -511,11 +720,14 @@ def run_once(name: str, workload: dict, run_dir: Path, seed: int, binary: Path) 
     )
     environment.pop("RPG_S1_PARTY_PRESET", None)
     load = load_average()
+    x_keys = workload.get("x_keys")
+    # A fixed server number lets the key helper find the display; otherwise let xvfb-run choose.
+    display_args = ["-n", str(940 + os.getpid() % 50)] if x_keys else ["-a"]
     command = [
         "timeout",
         str(workload.get("timeout_s", RUN_TIMEOUT_SECONDS)),
         "xvfb-run",
-        "-a",
+        *display_args,
         "-s",
         XVFB_SCREEN,
         str(binary),
@@ -528,6 +740,11 @@ def run_once(name: str, workload: dict, run_dir: Path, seed: int, binary: Path) 
         "--perf-report",
         str(report_path),
     ]
+    started = time.monotonic()
+    if x_keys:
+        threading.Thread(
+            target=send_x_keys, args=(int(display_args[1]), x_keys, started), daemon=True
+        ).start()
     with open(run_dir / "game.log", "w", encoding="utf-8") as log:
         completed = subprocess.run(
             command, cwd=REPO, env=environment, stdout=log, stderr=subprocess.STDOUT
