@@ -17,6 +17,14 @@
 - id: zone2-bg-1280x468
   ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
 
+# Open Plains caves: keep enemy feet on the broad foreground floor.
+- id: zone2-cave-bg-1280x468
+  ground_rect: { x: 80, y: 280, width: 1120, height: 188 }
+
+# Open Plains Cave 02: keep enemies on the visible foreground floor.
+- id: zone2-cave-cliffs-bg-1280x468
+  ground_rect: { x: 80, y: 330, width: 1120, height: 138 }
+
 - id: zone3-bg-1280x468
   ground_rect: { x: 0, y: 0, width: 1280, height: 468 }
 

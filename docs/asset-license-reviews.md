@@ -99,3 +99,39 @@ Composition: portrait 2:3 aspect ratio, edge-to-edge continuous painted composit
 Style: polished painterly fantasy game art, restrained texture, elegant atmospheric forms, dark charcoal and midnight slate foundation with muted elemental accents. Match an understated gold-trimmed dark RPG menu.
 Lighting: dark, low contrast and low saturation throughout, sparse soft highlights at the edges of the motifs. The center band stays quiet so overlaid cream spell-group labels remain readable.
 Constraints: one background only; no letters, no text, no labels, no runes resembling text, no buttons, no UI, no diamonds, no borders, no gold frame, no panels, no characters, no watermark. Opaque background. Keep all seven themes visible within the portrait crop.
+
+## Zone 2 cave battle background — 2026-11-15
+
+Generated at the repository owner's direction with the built-in OpenAI imagegen tool on 2026-11-15 to give both Open Plains cave maps their own battle image. No third-party image was supplied to the generator. Home-grown AI-generated artwork follows this repository's MIT policy.
+
+Destination: `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone2-cave-bg-1280x468.webp` (`ALI-1839`). The generated opaque PNG was resized to 1280×468 and encoded as WebP at quality 92 with ImageMagick. The ground rectangle is restricted to the open foreground floor. Cave 01 references this background; Cave 02 has its own cliff-ravine background documented below.
+
+Generation prompt:
+
+```text
+Use case: stylized-concept
+Asset type: one ultrawide fantasy RPG battle background for the underground Open Plains caves in Zone 2 of Rusted Kingdoms.
+Primary request: a dedicated dry natural cave interior with a broad unobstructed earthen and stone battle floor.
+Style/medium: polished painterly fantasy game environment, realistic rock forms with softly painted detail, matching traditional illustrated RPG battle backdrops.
+Composition/framing: panoramic 1280:468 aspect ratio (about 2.735:1), edge-to-edge opaque artwork. Camera at standing eye level looking slightly downward into a broad low-ceilinged cavern. Layered weathered brown-gray limestone walls, a dark winding tunnel receding in the rear, a few small stalactites overhead. The lower 40 percent is a continuous flat dusty tan-gray rocky floor, clearly visible and evenly lit across the central 85 percent of the frame, with enough empty floor for a group of enemy sprites. Keep boulders and stalagmites confined to the extreme sides and distant wall; no pillars obstructing the arena.
+Lighting/mood: subdued underground atmosphere, soft reflected daylight filtering from an unseen entrance, warm earthy rock with cooler gray shadows, floor bright enough to read silhouettes. Distant tunnel stays dark, foreground floor stays readable.
+Constraints: no characters, no creatures, no items, no treasure, no structures, no water, no shipwreck, no glowing crystals, no text, no UI, no borders, no watermark. One landscape image only. Fully underground; no visible sky or outdoor vista.
+```
+
+## Zone 2 Cave 02 battle background — 2026-11-15
+
+Generated at the repository owner's direction with the built-in OpenAI imagegen tool on 2026-11-15 for Cave 02 in Zone 2. No third-party image was supplied as input. Home-grown AI-generated artwork follows this repository's MIT policy.
+
+Destination: `assets/scenarios/rusted_kingdoms/media/images/battle_bg/zone2-cave-cliffs-bg-1280x468.webp` (`ALI-1840`). The opaque generated PNG was resized to 1280×468 and encoded as WebP at quality 92 with ImageMagick. Cave 02's battle ground rectangle covers the visible foreground floor, and its encounter document references this background.
+
+Generation prompt:
+
+```text
+Use case: stylized-concept
+Asset type: dedicated panoramic fantasy RPG battle background for the second Zone 2 cave in Rusted Kingdoms.
+Primary request: a very dark subterranean rocky chasm battle arena, with sheer cliff faces instead of enclosed cave walls and a high shadowed ceiling.
+Style/medium: polished painterly fantasy game environment, detailed natural stone, consistent with the approved Zone 2 cave battle backdrop.
+Composition/framing: 1280:468 panoramic landscape, edge-to-edge opaque image. Ground-level camera looking slightly down across a broad clear rocky floor. Massive steep layered cliffs rise on both sides and taper into deep perspective, forming a narrow ravine-like cavern with a very high roof lost in shadow. Keep the distant view short: darkness and atmospheric haze close off the ravine within the middle distance, with no far vista. The upper half feels vertically vast and almost black; only faint charcoal rock contours reveal the high overhead darkness. Maintain enough soft local light on the central foreground floor so enemy silhouettes and feet remain clearly visible. Leave the center open for several enemy sprites; keep cliff debris tight to the side edges.
+Lighting/mood: considerably darker and more enclosed than a sunlit ravine, deep charcoal and muted cool brown stone shadows, very sparse faint reflected light on the floor, a short pool of readable visibility around the battle area, distant background quickly disappearing into darkness.
+Constraints: no ordinary vertical cave walls, no obvious low ceiling, no sky, no visible exterior, no characters or creatures, no objects, no ruins, no water, no crystals, no torches, no text, no UI, no border, no watermark. One opaque landscape image only.
+```

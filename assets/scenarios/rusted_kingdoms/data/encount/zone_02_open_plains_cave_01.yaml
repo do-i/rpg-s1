@@ -1,6 +1,6 @@
 id: zone_02_open_plains_cave_01
 name: Open Plains Cave
-background: zone2-bg-1280x468
+background: zone2-cave-bg-1280x468
 density: 0.35
 spawn_frequency: 28.0
 
