@@ -48,6 +48,19 @@ class CutoutTests(unittest.TestCase):
         self.assertEqual(a[620, 620], 0)      # the gap stays see-through
         self.assertEqual(a[20, 20], 0)        # field
 
+    def test_mauve_wing_connected_to_field_survives(self):
+        src, dst = f"{self.tmp}/wing.jpg", f"{self.tmp}/wing.png"
+        render(src,
+               "-fill", "rgb(130,70,100)", "-draw", "rectangle 180,250 550,650",
+               "-fill", "rgb(60,50,140)", "-draw", "rectangle 480,200 720,800",
+               "-fill", FIELD, "-draw", "rectangle 580,400 620,450")
+        res = run(src, dst)
+        self.assertEqual(res.returncode, 0, res.stdout)
+        a = self.alpha(dst)
+        self.assertEqual(a[400, 250], 255)  # wing open to the outer field
+        self.assertEqual(a[425, 600], 0)    # real gap
+        self.assertEqual(a[100, 100], 0)    # background
+
     def test_flame_tinted_field_gap_is_not_a_hole(self):
         # field seen through a gap and tinted redder by flame glow (b/r a hair under the key's) stays
         # see-through and must not trip the enclosed-hole check, however large the gap is

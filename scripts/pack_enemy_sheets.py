@@ -36,7 +36,7 @@ def main():
 
     src = {}
     for f in glob.glob(os.path.join(a.cutouts_dir, f"{glob.escape(a.id)}-[0-9][0-9]-*.png")):
-        m = re.search(r"-\d\d-(.+)\.png$", f)
+        m = re.search(r"-\d\d-(.+)\.png$", os.path.basename(f))
         if m: src[m.group(1)] = f
     ready = os.path.join(a.cutouts_dir, "ready.png")
     if os.path.isfile(ready): src["ready"] = ready

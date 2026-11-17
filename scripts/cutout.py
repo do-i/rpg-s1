@@ -198,7 +198,11 @@ def cutout(src, report):
 
     dkey = np.linalg.norm(src - key, axis=-1)
     cap = hue_cap(key)
-    halo = (np.minimum(r, b) - g > HALO_T) & (b >= 0.4 * r) & (b < cap * r)
+    # Muted mauve membranes share the key's hue, but contain much more green.
+    # Only saturated field/halo colours may flood into the outer silhouette.
+    # Without this guard a wing connected to the background is erased wholesale.
+    saturated = g < 0.35 * np.minimum(r, b)
+    halo = (np.minimum(r, b) - g > HALO_T) & (b >= 0.4 * r) & (b < cap * r) & saturated
     f = hue_scale(key)
     plum = (b - g > 18) & (r - g > 30) & (b >= 0.55 * f * r) & (b < cap * r)
     plum_loose = (b - g > 12) & (r - g > 25) & (b >= 0.5 * f * r) & (b < cap * r)
@@ -284,7 +288,7 @@ def cutout(src, report):
     # gaps that the hue guard above kept as art. Magenta-ish art further inside is left alone.
     ro, go, bo = col[..., 0], col[..., 1], col[..., 2]
     near_gap = dilate(alpha < 0.5, STRAY_REACH)
-    pink_out = (ro - go > 60) & (bo - go > 60) & (np.abs(ro - bo) < 90) & (bo < cap * ro)
+    pink_out = (ro - go > 60) & (bo - go > 60) & (np.abs(ro - bo) < 90) & (bo < cap * ro) & (go < 0.35 * np.minimum(ro, bo))
     stray = (alpha > 0) & near_gap & pink_out
     report.append(f"stray field: {int(stray.sum())} px cleared")
     alpha = np.where(stray, 0.0, alpha)
@@ -318,8 +322,8 @@ def verify(src, out, report):
     # Fringe and halo only exist at the silhouette: mauve tongues, violet membranes and dark-red
     # embers inside the figure are art, so only count pixels within EDGE_BAND of transparency.
     rim = dilate(al < 128, EDGE_BAND)
-    pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90) & (b < cap * r)).sum())
-    plum = int((rim & (al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (b < cap * r) & (r < 140)).sum())
+    pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90) & (b < cap * r) & (g < 0.35 * np.minimum(r, b))).sum())
+    plum = int((rim & (al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (b < cap * r) & (r < 140) & (g < 0.35 * np.minimum(r, b))).sum())
     report.append(f"check: {pink} bright-magenta px, {plum} opaque plum px")
     if pink > PINK_MAX:
         fails.append(f"{pink} visible magenta pixels remain")
