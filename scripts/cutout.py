@@ -40,10 +40,11 @@ KEY = [None]       # key colour of the image being processed, shared with verify
 OUTLINE_MAX = 14  # max painted-outline width to peel
 PINK_MAX = 100    # leftover magenta px allowed (~6px at the 256px tile; real fringe is thousands)
 PLUM_MAX = 400     # opaque plum px at the rim allowed (real fringe is thousands; ember and membrane edges give a few hundred)
+PLUM_VERIFY_HUE_MARGIN = 0.05  # verifier stays close to the key so violet cloth and feathers remain art
 EDGE_BAND = 6     # px from transparency where verify() looks for fringe / shadow leftovers
 POCKET_REACH = 14  # px a pure-field seed spreads through an enclosed pocket before the rest counts as art
 HOLES_MAX = 150   # enclosed see-through body-colour px allowed (open ribcages give ~100; real holes give hundreds to thousands)
-STRAY_REACH = 8   # px from a gap within which leftover field colour is cleared
+STRAY_REACH = 80  # px from a gap within which field colour visible through broad pose gaps is cleared
 HUE_TOL = 0.07    # max |b/r - key b/r| for an enclosed pixel to count as field
 
 
@@ -180,8 +181,25 @@ def shadowish(r, g, b, key):
     """Dark, key-hued pixel: a shaded patch of the magenta field."""
     ratio = b / np.maximum(r, 1.0)
     f = hue_scale(key)
-    return ((np.minimum(r, b) - g > 14) & (ratio > 0.38 * f) & (ratio < max(0.80 * f, key[2] / max(key[0], 1.0) + 0.15))
+    # Dark red cloth and leathery wings often sit below the key hue (b/r ~0.30-0.38);
+    # the field's contact shadow stays closer to the key. Keep those reds out of this mask.
+    return ((np.minimum(r, b) - g > 14) & (ratio > 0.42 * f) & (ratio < max(0.80 * f, key[2] / max(key[0], 1.0) + 0.15))
             & (g < 0.35 * b) & (r < 0.85 * key[0]))
+
+
+def clear_stray(alpha, col, key):
+    """Clear bright field spill and adjacent shadowed field inside broad pose gaps."""
+    ro, go, bo = col[..., 0], col[..., 1], col[..., 2]
+    near_gap = dilate(alpha < 0.5, STRAY_REACH)
+    pink_out = ((ro - go > 60) & (bo - go > 60) & (np.abs(ro - bo) < 90)
+                & (bo < hue_cap(key) * ro) & (go < 0.35 * np.minimum(ro, bo)))
+    # Shadowed magenta field can remain opaque where a broad gap is enclosed by the pose.
+    # Clear those dark field pixels only when they sit beside unmistakable magenta spill.
+    shadow_spill = shadowish(ro, go, bo, key) & dilate(pink_out, 12)
+    stray = (alpha > 0) & near_gap & (pink_out | shadow_spill)
+    alpha = np.where(stray, 0.0, alpha)
+    col = np.where((alpha > 0)[..., None], col, 0)
+    return alpha, col, int(stray.sum())
 
 
 def cutout(src, report):
@@ -286,13 +304,8 @@ def cutout(src, report):
     # 8. stray field: opaque pixels that verify() would call visible magenta, within STRAY_REACH of any
     # transparency (an inner gap or the outer silhouette), are field seen through bone, rib or strap
     # gaps that the hue guard above kept as art. Magenta-ish art further inside is left alone.
-    ro, go, bo = col[..., 0], col[..., 1], col[..., 2]
-    near_gap = dilate(alpha < 0.5, STRAY_REACH)
-    pink_out = (ro - go > 60) & (bo - go > 60) & (np.abs(ro - bo) < 90) & (bo < cap * ro) & (go < 0.35 * np.minimum(ro, bo))
-    stray = (alpha > 0) & near_gap & pink_out
-    report.append(f"stray field: {int(stray.sum())} px cleared")
-    alpha = np.where(stray, 0.0, alpha)
-    col = np.where((alpha > 0)[..., None], col, 0)
+    alpha, col, stray = clear_stray(alpha, col, key)
+    report.append(f"stray field: {stray} px cleared")
     return np.dstack([col, alpha * 255])
 
 
@@ -323,7 +336,10 @@ def verify(src, out, report):
     # embers inside the figure are art, so only count pixels within EDGE_BAND of transparency.
     rim = dilate(al < 128, EDGE_BAND)
     pink = int((vis & (r - g > 60) & (b - g > 60) & (abs(r - b) < 90) & (b < cap * r) & (g < 0.35 * np.minimum(r, b))).sum())
-    plum = int((rim & (al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (b < cap * r) & (r < 140) & (g < 0.35 * np.minimum(r, b))).sum())
+    # The cutter uses a broad hue cap to preserve border-connected plum art. Verification
+    # uses a tighter key-hue band, so violet robes and feathers are not reported as fringe.
+    key_ratio = KEY[0][2] / max(KEY[0][0], 1.0)
+    plum = int((rim & (al > 128) & (b - g > 18) & (r - g > 30) & (b >= 0.55 * hue_scale(KEY[0]) * r) & (b < (key_ratio + PLUM_VERIFY_HUE_MARGIN) * r) & (r < 140) & (g < 0.35 * np.minimum(r, b))).sum())
     report.append(f"check: {pink} bright-magenta px, {plum} opaque plum px")
     if pink > PINK_MAX:
         fails.append(f"{pink} visible magenta pixels remain")
