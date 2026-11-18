@@ -223,7 +223,7 @@ impl<'a> Validator<'a> {
     fn validate_enemy_sprite(&mut self, owner_path: &str, base: &str, enemy_id: &str) {
         self.report.checked_references += 1;
         let ordinary = format!("media/sprites/enemies/{enemy_id}.tsx");
-        let battle = format!("media/sprites/enemies/{enemy_id}_battle.tsx");
+        let battle = format!("media/sprites/enemies/v2/{enemy_id}-status.tsx");
         let exists = [ordinary.as_str(), battle.as_str()]
             .iter()
             .any(|candidate| {

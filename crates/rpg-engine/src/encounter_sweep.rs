@@ -398,7 +398,11 @@ fn collect_assets(
         .filter(|participant| participant.side == BattleSide::Enemy)
     {
         if let Ok(path) = ScenarioRelativePath::try_from(
-            format!("media/sprites/enemies/{}_battle.tsx", participant.sprite_id).as_str(),
+            format!(
+                "media/sprites/enemies/v2/{}-status.tsx",
+                participant.sprite_id
+            )
+            .as_str(),
         ) {
             atlases.insert(path);
         }

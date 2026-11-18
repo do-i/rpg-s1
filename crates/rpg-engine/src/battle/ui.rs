@@ -20,7 +20,7 @@ use crate::{
     scenario_enemy::EnemySize,
     scenario_inventory::ScenarioInventory,
     scenario_new_game_assets::ActiveNewGameInputs,
-    scenario_path::{ScenarioRelativePath, ScenarioRelativePathError},
+    scenario_path::ScenarioRelativePath,
     scenario_root::ScenarioRoot,
     sfx_cue::{MenuSfx, PlaySfx, cue},
     spell_images::SpellIcon,
@@ -31,7 +31,6 @@ use crate::{
 
 use super::{
     ability::{AbilityError, AbilityTargetPlan, resolve_ability, target_plan},
-    fx::AttackKind,
     item::{ItemUseError, auto_items, battle_item, resolve_item, target_plan as item_target_plan},
     model::{
         BattleCommand, BattleItemChoice, BattlePhase, BattleState, CombatantKey, FleeOutcome,
@@ -47,15 +46,6 @@ mod input;
 
 use input::handle_battle_input;
 
-const LPC_COLUMNS: u32 = 9;
-/// LPC row layout, shared by every authored `*_battle.tsx` sheet: row 2 is spellcast-facing-down
-/// over 7 frames, row 6 is thrust-facing-down over 8. The
-/// idle pose is the first frame of the spellcast row.
-const SPELLCAST_ROW: u32 = 2;
-const SPELLCAST_FRAMES: u32 = 7;
-const THRUST_ROW: u32 = 6;
-const THRUST_FRAMES: u32 = 8;
-const BATTLE_IDLE_TILE: u32 = SPELLCAST_ROW * LPC_COLUMNS;
 const ENEMY_AREA_HEIGHT: f32 = 468.0;
 const ENEMY_CANVAS_WIDTH: f32 = 1280.0;
 const ENEMY_GROUND_NUDGE: f32 = 10.0;
@@ -270,9 +260,8 @@ struct BattleTargetText;
 
 #[derive(Debug, Resource)]
 pub(super) struct BattleAssetState {
-    atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
-    /// The optional v2 status sheet per enemy; one that is missing or fails to load is skipped
-    /// and the enemy keeps its v1 sheet.
+    /// The v2 status sheet per enemy. One that is missing or fails to load draws no body; the
+    /// battle still plays.
     status_atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
     /// The optional v2 attack sheet per enemy, used only alongside that enemy's status sheet.
     attack_atlases: Vec<Option<Handle<TsxAtlasAsset>>>,
@@ -287,7 +276,6 @@ impl BattleAssetState {
     /// An asset set with nothing loaded, for systems that only read the font handle.
     pub(super) fn test_stub() -> Self {
         Self {
-            atlases: Vec::new(),
             status_atlases: Vec::new(),
             attack_atlases: Vec::new(),
             v2_enemies: Vec::new(),
@@ -295,12 +283,6 @@ impl BattleAssetState {
             font: Handle::default(),
         }
     }
-}
-
-fn battle_enemy_atlas_path(
-    sprite_id: &str,
-) -> Result<ScenarioRelativePath, ScenarioRelativePathError> {
-    ScenarioRelativePath::try_from(format!("media/sprites/enemies/{sprite_id}_battle.tsx").as_str())
 }
 
 /// Fill all badge slots for the session-only layout review without changing normal battles.
@@ -368,16 +350,6 @@ fn enter_battle(
             })
         })
         .collect();
-    let atlases = entry
-        .participants
-        .iter()
-        .filter(|participant| participant.side == BattleSide::Enemy)
-        .map(|participant| {
-            battle_enemy_atlas_path(&participant.sprite_id)
-                .ok()
-                .map(|path| asset_server.load(root.resolve(&path)))
-        })
-        .collect::<Vec<_>>();
     let v2_enemies = entry
         .participants
         .iter()
@@ -450,7 +422,6 @@ fn enter_battle(
             );
         });
     commands.insert_resource(BattleAssetState {
-        atlases,
         status_atlases,
         attack_atlases,
         v2_enemies,
@@ -1478,22 +1449,6 @@ fn battle_mana() -> Color {
     Color::srgb_u8(88, 72, 138)
 }
 
-/// The sheet tile an enemy shows this frame.
-///
-/// An idle enemy holds the resting pose; a mid-action one steps through its row, holding the last
-/// frame at the end rather than wrapping.
-fn enemy_sprite_tile(animation: Option<(AttackKind, f32)>) -> u32 {
-    let Some((kind, progress)) = animation else {
-        return BATTLE_IDLE_TILE;
-    };
-    let (row, frames) = match kind {
-        AttackKind::Thrust => (THRUST_ROW, THRUST_FRAMES),
-        AttackKind::Spellcast => (SPELLCAST_ROW, SPELLCAST_FRAMES),
-    };
-    let frame = ((progress * frames as f32) as u32).min(frames - 1);
-    row * LPC_COLUMNS + frame
-}
-
 enum Sheet<'a> {
     Absent,
     Pending,
@@ -1540,11 +1495,10 @@ fn drive_battle_assets(
         let actor = state
             .as_deref()
             .and_then(|state| state.actor(CombatantKey::enemy(marker.index)));
-        // A v2 status sheet owns the body; the v1 sheet covers only enemies without one. While
-        // the v2 sheet is still loading nothing is drawn, so v1 never flashes up first. A swing
-        // shows the attack sheet when there is one and otherwise holds the status pose.
+        // The v2 status sheet owns the body; an enemy without a loadable one draws nothing. A
+        // swing shows the attack sheet when there is one and otherwise holds the status pose.
         let (atlas, tile) = match (sheet(&assets.status_atlases), actor) {
-            (Sheet::Pending, _) => continue,
+            (Sheet::Pending | Sheet::Absent, _) | (Sheet::Ready(_), None) => continue,
             (Sheet::Ready(status), Some(actor)) => {
                 let alive = actor.is_alive();
                 let swing = animation.filter(|_| alive).and_then(|(kind, _)| {
@@ -1562,10 +1516,6 @@ fn drive_battle_assets(
                     )
                 })
             }
-            (Sheet::Ready(_) | Sheet::Absent, _) => match sheet(&assets.atlases) {
-                Sheet::Ready(atlas) => (atlas, enemy_sprite_tile(animation)),
-                Sheet::Absent | Sheet::Pending => continue,
-            },
         };
         // A sheet with fewer tiles than the table expects shows its first pose rather than
         // freezing on whatever the body last drew.
@@ -2217,19 +2167,6 @@ mod tests {
     }
 
     #[test]
-    fn battle_idle_frame_faces_down() {
-        assert_eq!(BATTLE_IDLE_TILE, 18);
-    }
-
-    #[test]
-    fn battle_uses_dedicated_enemy_sheet() {
-        assert_eq!(
-            battle_enemy_atlas_path("goblin").unwrap().as_str(),
-            "media/sprites/enemies/goblin_battle.tsx"
-        );
-    }
-
-    #[test]
     fn original_battle_layout_spacing_is_preserved() {
         assert_eq!(enemy_layout_offset(1, 0), (0.0, 0.0));
         assert_eq!(enemy_layout_offset(3, 0), (-110.0, -30.0));
@@ -2310,38 +2247,6 @@ mod tests {
         assert_eq!(filled.border, empty.border);
         assert_eq!(filled.width, px(PARTY_CARD_WIDTH));
         assert_eq!(filled.height, px(PARTY_CARD_HEIGHT));
-    }
-
-    #[test]
-    fn an_idle_enemy_holds_the_resting_pose() {
-        assert_eq!(BATTLE_IDLE_TILE, 18);
-        assert_eq!(enemy_sprite_tile(None), BATTLE_IDLE_TILE);
-        // The resting pose is the spellcast row's first frame, so an attack that has only just
-        // begun casting is indistinguishable from idle — by design, not by accident.
-        assert_eq!(
-            enemy_sprite_tile(Some((AttackKind::Spellcast, 0.0))),
-            BATTLE_IDLE_TILE
-        );
-    }
-
-    #[test]
-    fn an_attack_walks_its_whole_row_and_stops_on_the_last_frame() {
-        // Thrust: row 6, 8 frames — tiles 54..=61.
-        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 0.0))), 54);
-        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 0.5))), 58);
-        assert_eq!(enemy_sprite_tile(Some((AttackKind::Thrust, 1.0))), 61);
-        // Spellcast: row 2, 7 frames — tiles 18..=24. One frame shorter, so the two rows must
-        // never share a step schedule.
-        assert_eq!(enemy_sprite_tile(Some((AttackKind::Spellcast, 0.5))), 21);
-        assert_eq!(enemy_sprite_tile(Some((AttackKind::Spellcast, 1.0))), 24);
-
-        // Every frame of both rows exists on the authored sheets (108 tiles, 9 columns).
-        for progress in 0..=10 {
-            for kind in [AttackKind::Thrust, AttackKind::Spellcast] {
-                let tile = enemy_sprite_tile(Some((kind, progress as f32 / 10.0)));
-                assert!(tile < 108, "{kind:?} at {progress}/10 ran off the sheet");
-            }
-        }
     }
 
     #[test]
