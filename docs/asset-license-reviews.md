@@ -39,7 +39,7 @@ assets.
 
 ## LPC sprites
 
-The ledger identifies 257 shipped sprite PNGs as third-party LPC artwork.
+The ledger identifies 155 shipped sprite PNGs as third-party LPC artwork.
 
 **Terms.** The [generator's licensing guidance](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator#licensing-and-attribution-credits)
 permits use under each layer's open license, including in public repositories and commercial
@@ -49,20 +49,14 @@ license identification, and ShareAlike for adapted art.
 identification of changes. Do not treat this art as MIT or assume every layer offers the same
 choices.
 
-**Attribution.** `credits/` holds a credit file for each party member and these two notices:
+**Attribution.** `credits/` holds a credit file for each party member and this notice:
 
 - `LPC-CREDITS.csv` is the generator's unchanged `CREDITS.csv` at revision
   `86160e7507d6841259cff624a51a63c1d4847ee3`. The generator permits shipping this file in place
   of a composed attribution list.
-- `LPC-BATTLE-MODIFICATIONS.txt` records the 102 LPC-derived `*_battle.png` sheets, enlarged
-  from 64×64 to 256×256 per frame with smoothing. They keep their original licenses, including
-  ShareAlike, because enlarging does not make them MIT artwork. Cinder Marshal's sprites are
-  aliases of `fallen_angel_ash_wing` and are covered by the same notice. The Titch pair is
-  project-generated and is not included.
 
 **Limits.** The current generator list may differ from the version that made these sprites, so
-the exact layers and license choice of each PNG are not independently established. The smoothing
-filter is also unspecified. The owner has approved release with these limits.
+the exact layers and license choice of each PNG are not independently established. The owner has approved release with these limits.
 
 ## Fonts
 
