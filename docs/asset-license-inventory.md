@@ -947,7 +947,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0943 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/corrupted_forest_warden.yaml` | `7d12873e0015c016ad999d0c2c72a9e9954da332b618c6b2dfa00a7863dae3c3` | scenario YAML / corrupted_forest_warden.yaml |
 | ALI-0944 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/corrupted_herbalist.yaml` | `1b10eb98b5949d05acb78c3fc1b46206bd6b5b50813258c3241eb7f7ee5ebf62` | scenario YAML / corrupted_herbalist.yaml |
 | ALI-0075 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/elder_intro.yaml` | `2ded827b1a12cf88d019c83e6c47374b09aef36189bc2e693e77900549468895` | scenario YAML / elder_intro.yaml |
-| ALI-0076 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/elise_join.yaml` | `6462df82dc276b9342835663dcb50773715cc2cdbbc0b31351d064f6f542b5fa` | scenario YAML / elise_join.yaml |
+| ALI-0076 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/elise_join.yaml` | `6b4f9851b0b4043e0b78cab75611d6dfcbc6c9ecc1e7787cb518b920721245a4` | scenario YAML / elise_join.yaml |
 | ALI-0945 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/foothills_trailhand.yaml` | `160d3f3e1b834d325877b46cbdcc98ef6502de807f60679b717e485ecd348448` | scenario YAML / foothills_trailhand.yaml |
 | ALI-0946 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/forest_ranger.yaml` | `171a9f2c0a1b43513bc09058047e2b2264a45aa6f8e0a30659e89cd2188a1702` | scenario YAML / forest_ranger.yaml |
 | ALI-0142 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/frostholm_beggar.yaml` | `b2394be62bee64b4cdb5ad439da68278a9b7097f14e4e76134fb820a7aaa012e` | scenario YAML / frostholm_beggar.yaml |
@@ -987,7 +987,7 @@ Everything not listed above. Shared fields for every row:
 | ALI-0163 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_harborgate.yaml` | `d108167a42b415a30ccf1eb2fbcca0e86bb87fd9b494e36f934526fe2257673c` | scenario YAML / item_shop_harborgate.yaml |
 | ALI-0164 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_millhaven.yaml` | `3bbcf712d28e5e89500a10f02335295488e8aa0ba6a98e53ab3d7175262fb635` | scenario YAML / item_shop_millhaven.yaml |
 | ALI-0165 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/item_shop_ruinwatch.yaml` | `5208e3879e8b47a4ca043213183e714ed81bee0e207a76490dd11392670c795d` | scenario YAML / item_shop_ruinwatch.yaml |
-| ALI-0166 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/jep_join.yaml` | `8a8615b7e8914d20a3a5ee158cf64f2ba6d7c7075691829ecc12a957e8955c61` | scenario YAML / jep_join.yaml |
+| ALI-0166 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/jep_join.yaml` | `e651e48df57c73d997f6dc94dc4dbcb2feb9261b97a90dcb2465e4dbed433286` | scenario YAML / jep_join.yaml |
 | ALI-0167 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/kael_join.yaml` | `609ed2307ce322b9eb10e742c9c34583761cd4a12adff062b17a5ce676737c57` | scenario YAML / kael_join.yaml |
 | ALI-0955 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/marsh_farmer.yaml` | `c14bceae5001e0b90b24075a786d5c2b85ac2ae6e987cf1e3fadd60caedb5635` | scenario YAML / marsh_farmer.yaml |
 | ALI-0956 | author / AI agents | `assets/scenarios/rusted_kingdoms/data/dialogue/marshland_reedcutter.yaml` | `b96cdd41981bc0ab4470497434a03785402f8b5c1ecdb361df77dcd2978f2450` | scenario YAML / marshland_reedcutter.yaml |
