@@ -23,6 +23,9 @@ entries:
       - "I've been through every passage in here. Twice."
       - "I won't slow you down. I'm fast, I'm quiet, and I can open anything."
       - "Besides — you're the first people I've seen in three days. I'm coming with you."
+      - "That survey of yours is pretty. Useless, but pretty."
+      - "Veiled or not, things that walk leave marks. Bent reeds, wet stone, the smell."
+      - "Give it here. I'll mark where they're moving. You just try not to walk into them."
     on_complete:
       set_flag: npc_jep_joined
       join_party: jep

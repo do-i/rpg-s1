@@ -23,6 +23,10 @@ entries:
       - "The forest is rusting from the inside, and the elder keeps looking at you like she knows why."
       - "I can heal. I can read old shrine script. And I am done being protected from answers."
       - "Please. Let me come."
+      - "And before you answer, take this. A survey from the shrine archive."
+      - "It's old, but the paths haven't moved. Open it whenever you lose your bearings."
+      - "It won't show what's out there with us, though. Whatever the Rust breeds, it hides."
+      - "You'll feel them before you see them. If one finds us, it won't be gentle about it."
     on_complete:
       set_flag: npc_elise_joined
       join_party: elise
