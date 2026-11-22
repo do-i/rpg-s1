@@ -21,6 +21,7 @@ use crate::{
     service_ui::ServiceUiState,
     sfx_cue::{MenuSfx, cue},
     transport_ui::TransportUiState,
+    world_encounter::BattleTransition,
     world_interaction::WorldInteractionState,
     world_transition::WorldTransition,
 };
@@ -45,7 +46,11 @@ pub(super) struct MenuInput<'a> {
 pub(super) fn handle_field_menu_input(
     keys: Res<ButtonInput<KeyCode>>,
     actions: Res<ActionState>,
-    (catalog, inventory): (Res<FieldMenuCatalog>, Option<Res<ScenarioInventory>>),
+    (catalog, inventory, battle): (
+        Res<FieldMenuCatalog>,
+        Option<Res<ScenarioInventory>>,
+        Option<Res<BattleTransition>>,
+    ),
     mut menu_settings: MenuSettings,
     interaction: Res<WorldInteractionState>,
     service: Option<Res<ServiceUiState>>,
@@ -73,6 +78,8 @@ pub(super) fn handle_field_menu_input(
         if interaction.input_locked()
             || service.as_deref().is_some_and(ServiceUiState::input_locked)
             || transition.input_locked()
+            // A field enemy was touched: the contact beat and the flash hold the World still.
+            || battle.as_deref().is_some_and(BattleTransition::input_locked)
         {
             return;
         }

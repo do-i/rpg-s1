@@ -221,8 +221,12 @@ fn request_npc_dialogue(
     boxes: Query<&WorldItemBox>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldInteractionState>,
+    battle: Option<Res<crate::world_encounter::BattleTransition>>,
 ) {
     if state.input_locked()
+        || battle
+            .as_deref()
+            .is_some_and(crate::world_encounter::BattleTransition::input_locked)
         || field_menu.input_locked()
         || service.input_locked()
         || transport
