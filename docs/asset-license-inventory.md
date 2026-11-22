@@ -10,7 +10,7 @@ Assets fall into two categories, third-party first:
    SIL OFL fonts, and Leohpaz sound effects. Their own licenses apply and their
    required notices ship beside them. All current entries approved; owner
    approvals and subsequent evidence reviews are recorded below.
-2. **Home-grown** (973 files): made by the author, in Tiled or by hand,
+2. **Home-grown** (984 files): made by the author, in Tiled or by hand,
    or generated at the author's direction by AI agents (Codex, Claude Code) and
    AI music tools. All are **MIT** and free to redistribute.
 
@@ -2287,6 +2287,17 @@ Everything not listed above. Shared fields for every row:
 | ALI-1982 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/wartotaur_warlord_base-status.tsx` | `c4f135af4893a9a6c7e310e2243db419af99d9c66fb1d4819ffbe95d4c01de92` | Tiled tileset / wartotaur_warlord_base v2 status sheet |
 | ALI-1983 | AI-generated (Grok), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/wartotaur_warlord_base-attack.png` | `01af84af9b2e165986338d1ecf7f5312475133527e24228e76c3ca39572eb261` | enemy battler sheet / wartotaur_warlord_base v2 attack poses; 512x256 transparent PNG, 2 attack tiles of 256px |
 | ALI-1984 | author / AI agents | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/v2/wartotaur_warlord_base-attack.tsx` | `35377c24e47bca290fa8b26fcaa0a6835278ed0c3467b0dc0da35dce59f67894` | Tiled tileset / wartotaur_warlord_base v2 attack sheet |
+| ALI-1985 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/grik_the_grin.png` | `65f2d67fec754ac1d8281ae84c03daf12a93721eec22d1647ccb37b2bb4234d3` | boss field standee / grik_the_grin; 64x64 transparent PNG, one standing frame |
+| ALI-1986 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/wolf_beast_black_fur.png` | `9a22129e216cbcc2e986fc22e49773f1824e79d30dff54a86d3293e453e2336e` | boss field standee / wolf_beast_black_fur; 64x64 transparent PNG, one standing frame |
+| ALI-1987 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/ratkin_plague_doctor_black_mask_doctor.png` | `33d0099e5adac2b2979af92981ed1b2b22d6ebfa96ac494017996ef97bb68ee0` | boss field standee / ratkin_plague_doctor_black_mask_doctor; 64x64 transparent PNG, one standing frame |
+| ALI-1988 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/skeleton_knight_base.png` | `0e084914a8ada47d0585baf0515067a7b607039aef8f78c59f10a808e70bcbc5` | boss field standee / skeleton_knight_base; 64x64 transparent PNG, one standing frame |
+| ALI-1989 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/titch_the_ticker.png` | `29ac03839835b939504423072f1752a19896e7a8d234095e98d12be6d77834e2` | boss field standee / titch_the_ticker; 80x80 transparent PNG, one standing frame |
+| ALI-1990 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/orc_shaman_red_hood_shaman.png` | `7b16d4e2b44b6792eb47c73ba62504cca0be04292e757df529df72870c8a2869` | boss field standee / orc_shaman_red_hood_shaman; 64x64 transparent PNG, one standing frame |
+| ALI-1991 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/pirate_captain_eyepatch_captain.png` | `c5772598947fae98987cdc59f8b1090945eb54d1517fa84ab8f1826394b1b3fc` | boss field standee / pirate_captain_eyepatch_captain; 64x64 transparent PNG, one standing frame |
+| ALI-1992 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/troll_shaman_base.png` | `9f47ba8b8bdbb0c47a16a4bed4988449bc5a9651c50170d58f34bb77ce7d0c42` | boss field standee / troll_shaman_base; 80x80 transparent PNG, one standing frame |
+| ALI-1993 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/wartotaur_warlord_blackhorn_chief.png` | `dfd75c1d701b078a8c665953a39495e4b21760c23ea680b1f84e43e28daedb91` | boss field standee / wartotaur_warlord_blackhorn_chief; 80x80 transparent PNG, one standing frame |
+| ALI-1994 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/fallen_angel_red_judicator.png` | `ef940920694efef3801d2587f14d77d8e6c0ed43085a383caddb2593a41d23ce` | boss field standee / fallen_angel_red_judicator; 80x80 transparent PNG, one standing frame |
+| ALI-1995 | AI-generated (Codex), author-directed | `assets/scenarios/rusted_kingdoms/media/sprites/enemies/standee/hearth_effigy_ashen_crown.png` | `bf248345703016324799aacce289b51785a6614318ce32be3d868fc33c76af64` | boss field standee / hearth_effigy_ashen_crown; 80x80 transparent PNG, one standing frame |
 
 ## Third-party: LPC attribution records
 
