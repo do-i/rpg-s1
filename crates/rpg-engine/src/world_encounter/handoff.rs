@@ -50,6 +50,15 @@ pub(crate) struct BattleTransition {
 }
 
 impl BattleTransition {
+    /// A transition caught mid-flash, for tests of the systems that must hold still around it.
+    #[cfg(test)]
+    pub(crate) fn flashing_for_test() -> Self {
+        Self {
+            phase: BattleTransitionPhase::Flashing,
+            ..Self::default()
+        }
+    }
+
     pub(crate) const fn input_locked(&self) -> bool {
         !matches!(self.phase, BattleTransitionPhase::Idle)
     }

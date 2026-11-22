@@ -1563,6 +1563,34 @@ mod tests {
         }
     }
 
+    /// 74418b0: a field enemy's contact beat and flash hold the World still, so confirming next to
+    /// a sign must not open its dialogue while a battle transition runs.
+    #[test]
+    fn confirm_next_to_a_sign_is_ignored_while_a_battle_transition_runs() {
+        let open_with = |battle: crate::world_encounter::BattleTransition| {
+            let mut app = interaction_app("town_03_harborgate", Position::new(5, 5));
+            app.insert_resource(battle);
+            app.world_mut().spawn(WorldSign::for_test(
+                "harborgate_sign",
+                "sign_town_03_harborgate",
+                Position::new(5, 6),
+            ));
+            press_confirm_and_settle(&mut app);
+            app.world()
+                .resource::<WorldInteractionState>()
+                .session
+                .is_some()
+        };
+        assert!(
+            open_with(crate::world_encounter::BattleTransition::default()),
+            "positive control: an idle transition lets the dialogue open"
+        );
+        assert!(
+            !open_with(crate::world_encounter::BattleTransition::flashing_for_test()),
+            "confirm must not open dialogue during a battle transition"
+        );
+    }
+
     /// Regression: `DialogueEngine.resolve` returns `None` for a missing dialogue document, and
     /// the dialogue overlay — the only place a sound is tied to interaction — only opens once
     /// `resolve` returns a match. A missing sign document is therefore a fully silent no-op.

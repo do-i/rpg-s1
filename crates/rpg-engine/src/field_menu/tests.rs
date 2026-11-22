@@ -2832,6 +2832,48 @@ fn confirmed_field_menu_quit_emits_app_exit_without_discarding_the_session() {
     );
 }
 
+/// Presses the menu key on the world with the given battle transition and reports whether the
+/// field menu opened.
+fn menu_key_opens_menu(battle: crate::world_encounter::BattleTransition) -> bool {
+    let mut app = App::new();
+    let mut keys = ButtonInput::<KeyCode>::default();
+    keys.press(KeyCode::KeyM);
+    app.insert_resource(keys)
+        .insert_resource(ActionState::default())
+        .insert_resource(FieldMenuCatalog::default())
+        .insert_resource(WorldInteractionState::default())
+        .init_resource::<EngineSettings>()
+        .insert_resource(WorldTransition::idle_for_test())
+        .insert_resource(battle)
+        .insert_resource(fixture_game())
+        .insert_resource(SaveStore::new(
+            std::env::temp_dir().join("rpg-s1-field-menu-battle-lock-test-unused"),
+        ))
+        .insert_resource(SaveSlotCatalog::default())
+        .insert_resource(Time::<Real>::default())
+        .init_resource::<ServiceUiState>()
+        .init_resource::<FieldMenuState>()
+        .add_message::<AppExit>()
+        .add_message::<PlaySfx>()
+        .add_message::<KeyboardInput>()
+        .add_systems(Update, handle_field_menu_input);
+    app.update();
+    app.world().resource::<FieldMenuState>().open
+}
+
+#[test]
+fn the_field_menu_stays_closed_while_a_battle_transition_runs() {
+    use crate::world_encounter::BattleTransition;
+    assert!(
+        menu_key_opens_menu(BattleTransition::default()),
+        "positive control: an idle transition lets the menu key open the menu"
+    );
+    assert!(
+        !menu_key_opens_menu(BattleTransition::flashing_for_test()),
+        "the menu key must not open the menu during a battle transition"
+    );
+}
+
 /// A pouch holding one visible Leather Vest, which Aric can wear and Elise cannot.
 fn game_with_pouched_vest() -> GameState {
     let mut game = fixture_game_with_recruit();
