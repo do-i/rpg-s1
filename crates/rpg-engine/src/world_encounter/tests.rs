@@ -1665,12 +1665,12 @@ fn first_zone_app_with_boss_standee(image: Option<Image>) -> (App, Option<Handle
 }
 
 #[test]
-fn a_boss_standee_bobs_only_its_head_and_shoulders_over_planted_feet() {
+fn a_boss_standee_breathes_with_its_chest_and_head_over_planted_feet() {
     use bevy::{
         asset::RenderAssetUsages,
         render::render_resource::{Extent3d, TextureDimension, TextureFormat},
     };
-    // A fully opaque 16x20 figure: the shoulder cut lands 40 % down, at row 8.
+    // A fully opaque 16x20 figure: the breath cut lands 55 % down, at row 11.
     let image = Image::new_fill(
         Extent3d {
             width: 16,
@@ -1688,14 +1688,32 @@ fn a_boss_standee_bobs_only_its_head_and_shoulders_over_planted_feet() {
     let world = app.world_mut();
     let mut bosses = world.query_filtered::<(&Sprite, &Children), With<EnemyStandee>>();
     let (lower, children) = bosses.single(world).expect("one standee boss");
-    assert_eq!(lower.rect, Some(Rect::new(0.0, 8.0, 16.0, 20.0)));
-    assert_eq!(children.len(), 1);
-    let upper_entity = children[0];
+    assert_eq!(lower.rect, Some(Rect::new(0.0, 11.0, 16.0, 20.0)));
+    let children: Vec<Entity> = children.iter().collect();
+    let upper_entity = children
+        .iter()
+        .copied()
+        .find(|&child| {
+            world
+                .get::<super::simulation::StandeeUpper>(child)
+                .is_some()
+        })
+        .expect("an upper slice");
+    let seam_entity = children
+        .iter()
+        .copied()
+        .find(|&child| world.get::<super::simulation::StandeeSeam>(child).is_some())
+        .expect("a seam");
+    assert_eq!(children.len(), 2);
     let upper = world.get::<Sprite>(upper_entity).unwrap();
-    assert_eq!(upper.rect, Some(Rect::new(0.0, 0.0, 16.0, 8.0)));
-    // The upper slice rests on top of the lower one and only ever dips into it.
+    assert_eq!(upper.rect, Some(Rect::new(0.0, 0.0, 16.0, 11.0)));
+    let seam = world.get::<Sprite>(seam_entity).unwrap();
+    assert_eq!(seam.rect, Some(Rect::new(0.0, 10.0, 16.0, 11.0)));
+    // The upper slice rests on the lower one and only ever rises; the seam fills exactly the gap.
     let y = world.get::<Transform>(upper_entity).unwrap().translation.y;
-    assert!((10.0..=12.0).contains(&y), "upper slice at {y}");
+    let gap = world.get::<Transform>(seam_entity).unwrap().scale.y;
+    assert!((9.0..=11.0).contains(&y), "upper slice at {y}");
+    assert_eq!(gap, y - 9.0);
 }
 
 #[test]
