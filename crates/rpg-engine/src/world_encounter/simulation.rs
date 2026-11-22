@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     contact_cue::UnseenChaseStarted,
-    state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy},
+    state::{EnemyStandee, WorldEncounterState, WorldEncounterStatus, WorldEnemy},
 };
 
 pub(super) const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
@@ -344,6 +344,27 @@ pub(super) fn enemy_world_translation(top_left: Vec2) -> Vec3 {
         world_y,
         world_entity_y_z(world_y, ENEMY_SPRITE_HALF_HEIGHT),
     )
+}
+
+/// Where a standee's bottom-centre anchor goes: the middle of the bottom edge of the enemy's
+/// collision footprint, so a 64 or 96 pixel frame both stand on the same spot. Depth reuses the
+/// enemy frame's own sort value, so the standee orders against the player like any other actor.
+pub(super) fn enemy_standee_translation(top_left: Vec2) -> Vec3 {
+    let rect = enemy_collision_rect(top_left);
+    Vec3::new(
+        rect.x + rect.width / 2.0,
+        -(rect.y + rect.height),
+        enemy_world_translation(top_left).z,
+    )
+}
+
+/// Keeps each standee on its feet after `update_world_enemies` writes the frame-centred position.
+pub(super) fn place_enemy_standees(
+    mut standees: Query<(&WorldEnemy, &mut Transform), With<EnemyStandee>>,
+) {
+    for (enemy, mut transform) in &mut standees {
+        transform.translation = enemy_standee_translation(enemy.top_left);
+    }
 }
 
 pub(super) fn direction_toward(from: Vec2, to: Vec2) -> CardinalDirection {

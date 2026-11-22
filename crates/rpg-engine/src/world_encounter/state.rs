@@ -29,6 +29,10 @@ pub(crate) enum WorldEncounterStatus {
     Failed,
 }
 
+/// Marks a boss drawn with its optional field standee image instead of staying invisible.
+#[derive(Component)]
+pub(super) struct EnemyStandee;
+
 #[derive(Clone, Debug, Default, Resource)]
 pub(crate) struct WorldEncounterState {
     pub(super) map_id: Option<String>,
@@ -41,6 +45,8 @@ pub(crate) struct WorldEncounterState {
     pub(super) encounter_sfx: Option<String>,
     pub(super) pending: Vec<PendingWorldEnemy>,
     pub(super) sprite_handles: BTreeMap<String, Handle<TsxAtlasAsset>>,
+    /// Boss field standee images, keyed by boss id; only bosses whose file exists appear here.
+    pub(super) standee_handles: BTreeMap<String, Handle<Image>>,
     pub(super) cadence: Option<SpawnCadence>,
     pub(super) status: WorldEncounterStatus,
     pub(super) failure: Option<String>,
@@ -83,6 +89,7 @@ impl WorldEncounterState {
             .chain(self.backgrounds.iter().map(|h| h.id().untyped()))
             .chain(self.sfx_index.iter().map(|h| h.id().untyped()))
             .chain(self.sprite_handles.values().map(|h| h.id().untyped()))
+            .chain(self.standee_handles.values().map(|h| h.id().untyped()))
             .collect()
     }
 
@@ -269,4 +276,5 @@ pub(super) fn cleanup_world_encounters(
     }
     state.pending.clear();
     state.sprite_handles.clear();
+    state.standee_handles.clear();
 }

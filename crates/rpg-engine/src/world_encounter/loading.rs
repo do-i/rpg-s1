@@ -27,10 +27,13 @@ use crate::{
 };
 
 use super::{
-    simulation::{enemy_tile, enemy_top_left, enemy_world_translation, random_pause},
+    simulation::{
+        enemy_standee_translation, enemy_tile, enemy_top_left, enemy_world_translation,
+        random_pause,
+    },
     state::{
-        PendingWorldEnemy, WorldEncounterRestore, WorldEncounterState, WorldEncounterStatus,
-        WorldEnemy, fail_encounter,
+        EnemyStandee, PendingWorldEnemy, WorldEncounterRestore, WorldEncounterState,
+        WorldEncounterStatus, WorldEnemy, fail_encounter,
     },
 };
 
@@ -107,6 +110,7 @@ pub(super) fn drive_active_encounter_assets(
     background_assets: Res<Assets<BattleBackgroundCatalog>>,
     sfx_assets: Res<Assets<SfxIndex>>,
     atlas_assets: Res<Assets<TsxAtlasAsset>>,
+    image_assets: Res<Assets<Image>>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     restore: Option<Res<WorldEncounterRestore>>,
@@ -401,6 +405,12 @@ pub(super) fn drive_active_encounter_assets(
             .iter()
             .filter_map(|enemy| enemy.formation.first().cloned())
             .collect::<Vec<_>>();
+        let boss_ids = state
+            .pending
+            .iter()
+            .filter(|enemy| enemy.boss)
+            .filter_map(|enemy| enemy.formation.first().cloned())
+            .collect::<std::collections::BTreeSet<_>>();
         for sprite_id in sprite_ids {
             if catalog.enemy(&sprite_id).is_none() {
                 fail_encounter(
@@ -420,6 +430,16 @@ pub(super) fn drive_active_encounter_assets(
                 .sprite_handles
                 .entry(sprite_id.clone())
                 .or_insert_with(|| asset_server.load(root.resolve(&path)));
+            // Only a boss with a standee file on disk asks for one; the listing comes from the
+            // inventory so an absent file is never requested.
+            if boss_ids.contains(&sprite_id)
+                && let Some(standee) = inventory.enemy_standee(&sprite_id)
+            {
+                state
+                    .standee_handles
+                    .entry(sprite_id.clone())
+                    .or_insert_with(|| asset_server.load(root.resolve(&standee)));
+            }
         }
         commands.insert_resource(catalog);
         return;
@@ -434,9 +454,21 @@ pub(super) fn drive_active_encounter_assets(
         return;
     }
     if state
+        .standee_handles
+        .values()
+        .any(|handle| crate::world_publication::asset_failed(asset_server, handle.id()))
+    {
+        fail_encounter(&mut state, "boss field standee failed to load".to_owned());
+        return;
+    }
+    if state
         .sprite_handles
         .values()
         .any(|handle| !asset_server.is_loaded_with_dependencies(handle.id()))
+        || state
+            .standee_handles
+            .values()
+            .any(|handle| !image_assets.contains(handle))
     {
         return;
     }
@@ -470,12 +502,30 @@ pub(super) fn drive_active_encounter_assets(
         } else {
             Vec3::ZERO
         };
-        commands.spawn((
+        // Field enemies are never drawn; the sprite stays so movement and contact are untouched.
+        // The one exception is a boss whose optional standee image ships: that single frame is
+        // drawn instead, feet on the collision footprint. Everything else stays hidden.
+        let standee = pending
+            .boss
+            .then(|| state.standee_handles.get(&pending.formation[0]))
+            .flatten();
+        let is_standee = standee.is_some();
+        let (sprite, translation, visibility) = match standee {
+            Some(image) => (
+                Sprite::from_image(image.clone()),
+                enemy_standee_translation(top_left),
+                Visibility::Inherited,
+            ),
+            None => (
+                sprite,
+                enemy_world_translation(top_left),
+                Visibility::Hidden,
+            ),
+        };
+        let mut entity = commands.spawn((
             sprite,
-            Transform::from_translation(enemy_world_translation(top_left)).with_scale(scale),
-            // Field enemies are never drawn, bosses included; the sprite stays so movement and
-            // contact are untouched. Bosses may later get optional standee art shown instead.
-            Visibility::Hidden,
+            Transform::from_translation(translation).with_scale(scale),
+            visibility,
             WorldEnemy {
                 encounter_id: pending.encounter_id.clone(),
                 formation: pending.formation.clone(),
@@ -494,6 +544,9 @@ pub(super) fn drive_active_encounter_assets(
                 chasing: false,
             },
         ));
+        if is_standee {
+            entity.insert((bevy::sprite::Anchor::BOTTOM_CENTER, EnemyStandee));
+        }
     }
     let interval = metadata
         .enemy_spawn

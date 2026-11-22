@@ -319,11 +319,14 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         app.world().resource::<WorldEncounterState>().failure()
     );
     {
-        // Field enemies are never drawn, but still exist for contact.
+        // Field enemies are never drawn, but still exist for contact. Only a boss whose
+        // optional standee ships is visible, so this holds whichever standees exist.
         let world = app.world_mut();
-        let mut enemies = world.query::<(&WorldEnemy, &Visibility)>();
+        let mut enemies = world.query::<(&WorldEnemy, &Visibility, Option<&EnemyStandee>)>();
         assert!(enemies.iter(world).count() > 0);
-        assert!(enemies.iter(world).all(|(_, v)| *v == Visibility::Hidden));
+        assert!(enemies.iter(world).all(|(enemy, v, standee)| {
+            *v == Visibility::Hidden || (enemy.is_boss() && standee.is_some())
+        }));
     }
     // The shipped enemy count, including the Cinder Marshal.
     assert_eq!(app.world().resource::<EnemyCatalog>().len(), 105);
@@ -753,11 +756,14 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         app.world().resource::<WorldEncounterState>().failure()
     );
     {
-        // Field enemies are never drawn, but still exist for contact.
+        // Field enemies are never drawn, but still exist for contact. Only a boss whose
+        // optional standee ships is visible, so this holds whichever standees exist.
         let world = app.world_mut();
-        let mut enemies = world.query::<(&WorldEnemy, &Visibility)>();
+        let mut enemies = world.query::<(&WorldEnemy, &Visibility, Option<&EnemyStandee>)>();
         assert!(enemies.iter(world).count() > 0);
-        assert!(enemies.iter(world).all(|(_, v)| *v == Visibility::Hidden));
+        assert!(enemies.iter(world).all(|(enemy, v, standee)| {
+            *v == Visibility::Hidden || (enemy.is_boss() && standee.is_some())
+        }));
     }
     let expected_party_stats = {
         let world = app.world();
@@ -1568,4 +1574,145 @@ fn variant_b_warns_once_when_unseen_enemies_start_a_chase_and_variant_a_never_do
     let a = chase_warning_run(false);
     assert_eq!(a.starts, 5);
     assert_eq!(a.warnings, 0);
+}
+
+/// Boots the production first zone and, once its enemies are pending, hands the boss a standee
+/// image as the asset-loading pass would for a `standee/{boss}.png` that exists on disk. Returns
+/// the app after the enemies spawned.
+fn first_zone_app_with_boss_standee(image: Option<Image>) -> (App, Option<Handle<Image>>) {
+    let mut app = headless_title_app_with_asset_base(
+        AppState::NameEntry,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+        ScenarioRoot::default(),
+    );
+    app.add_plugins(ImagePlugin::default_nearest())
+        .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+        .add_plugins(TsxAtlasAssetPlugin)
+        .add_plugins(TmxGroundAssetPlugin)
+        .add_plugins(EncounterAssetPlugin)
+        .add_plugins(FieldMenuDomainPlugin)
+        .add_plugins(WorldAudioPlugin)
+        .init_asset::<SfxIndex>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
+        .add_plugins(WorldEncounterPlugin)
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<ActiveNewGameInputs>().status()
+            == ActiveNewGameInputsStatus::Ready
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<Messages<NameEntryConfirmed>>()
+        .write(NameEntryConfirmed::for_test("Aric"));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().get_resource::<GameState>().is_some() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .map_mut()
+        .move_to(
+            RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+            Position::new(9, 8),
+            CardinalDirection::Down,
+        );
+    // Ignore any standee the package ships, so the test controls the only one.
+    app.world_mut()
+        .resource_mut::<crate::scenario_inventory::ScenarioInventory>()
+        .enemy_standees
+        .clear();
+    app.world_mut()
+        .resource_mut::<NextState<AppState>>()
+        .set(AppState::World);
+    let handle = image.map(|image| app.world_mut().resource_mut::<Assets<Image>>().add(image));
+    let mut injected = false;
+    for _ in 0..5_000 {
+        app.update();
+        let mut state = app.world_mut().resource_mut::<WorldEncounterState>();
+        if let Some(handle) = handle.as_ref()
+            && !injected
+            && state.status == WorldEncounterStatus::Loading
+            && !state.pending.is_empty()
+        {
+            state
+                .standee_handles
+                .insert("grik_the_grin".to_owned(), handle.clone());
+            injected = true;
+        }
+        if state.status() == WorldEncounterStatus::Spawned {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        app.world().resource::<WorldEncounterState>().status(),
+        WorldEncounterStatus::Spawned,
+        "{:?}",
+        app.world().resource::<WorldEncounterState>().failure()
+    );
+    assert_eq!(injected, handle.is_some());
+    (app, handle)
+}
+
+#[test]
+fn a_boss_with_a_standee_is_drawn_with_it_and_regular_enemies_stay_hidden() {
+    let image = Image::default();
+    let (mut app, handle) = first_zone_app_with_boss_standee(Some(image));
+    let handle = handle.unwrap();
+    app.update();
+    let world = app.world_mut();
+    let mut enemies = world.query::<(
+        &WorldEnemy,
+        &Sprite,
+        &Visibility,
+        &Transform,
+        Option<&bevy::sprite::Anchor>,
+    )>();
+    let mut bosses = 0;
+    let mut regular = 0;
+    for (enemy, sprite, visibility, transform, anchor) in enemies.iter(world) {
+        if enemy.is_boss() {
+            bosses += 1;
+            assert_eq!(sprite.image, handle);
+            assert_eq!(*visibility, Visibility::Inherited);
+            assert_eq!(anchor, Some(&bevy::sprite::Anchor::BOTTOM_CENTER));
+            let rect = enemy.collision_rect();
+            assert_eq!(transform.translation.x, rect.x + rect.width / 2.0);
+            assert_eq!(transform.translation.y, -(rect.y + rect.height));
+            // Sorts against the player by the same band value as the hidden frame would.
+            assert_eq!(
+                transform.translation.z,
+                super::simulation::enemy_world_translation(enemy.top_left).z
+            );
+        } else {
+            regular += 1;
+            assert_eq!(*visibility, Visibility::Hidden);
+            assert_ne!(anchor, Some(&bevy::sprite::Anchor::BOTTOM_CENTER));
+        }
+    }
+    assert_eq!(bosses, 1);
+    assert!(regular > 0);
+}
+
+#[test]
+fn a_boss_without_a_standee_and_every_regular_enemy_stay_invisible() {
+    let (mut app, _) = first_zone_app_with_boss_standee(None);
+    let world = app.world_mut();
+    let mut enemies = world.query::<(&WorldEnemy, &Visibility, Option<&EnemyStandee>)>();
+    assert!(enemies.iter(world).any(|(enemy, _, _)| enemy.is_boss()));
+    assert!(
+        enemies
+            .iter(world)
+            .all(|(_, visibility, standee)| *visibility == Visibility::Hidden && standee.is_none())
+    );
 }

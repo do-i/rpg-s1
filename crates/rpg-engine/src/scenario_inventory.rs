@@ -35,6 +35,10 @@ pub(crate) struct ScenarioInventory {
     /// The optional v2 enemy battler sheets that exist on disk. Only these are requested, so an
     /// enemy still on its v1 sheet never asks the asset server for a file it would report missing.
     pub(crate) enemy_battler_sheets: std::collections::BTreeSet<ScenarioRelativePath>,
+    /// Optional one-frame boss field standees that exist on disk, one `{boss_id}.png` each. A boss
+    /// is drawn in the World only when its standee is listed; every other field enemy, and a boss
+    /// without one, stays invisible. Listing keeps an absent file from ever being requested.
+    pub(crate) enemy_standees: std::collections::BTreeSet<ScenarioRelativePath>,
     /// Keeper faces and recipe-status icons the service overlays draw.
     pub(crate) service_art: ServiceArt,
     pub(crate) map_directory: Option<ScenarioRelativePath>,
@@ -80,7 +84,19 @@ pub(crate) struct ServiceArt {
     pub(crate) armor_shop_keeper: Option<ScenarioRelativePath>,
 }
 
+/// Where the optional boss field standees live, relative to the scenario package.
+pub(crate) const ENEMY_STANDEE_DIRECTORY: &str = "media/sprites/enemies/standee";
+
 impl ScenarioInventory {
+    /// The standee image for `boss_id`, when the package ships one.
+    pub(crate) fn enemy_standee(&self, boss_id: &str) -> Option<ScenarioRelativePath> {
+        let path = ScenarioRelativePath::try_from(
+            format!("{ENEMY_STANDEE_DIRECTORY}/{boss_id}.png").as_str(),
+        )
+        .ok()?;
+        self.enemy_standees.contains(&path).then_some(path)
+    }
+
     pub(crate) fn sprite_variant_index(&self, game: &crate::game_state::GameState) -> usize {
         self.protagonist_sprite_variants
             .iter()
@@ -313,6 +329,13 @@ fn discover(asset_base: &Path, root: &ScenarioRoot) -> Result<ScenarioInventory,
             .into_iter()
             .collect();
     }
+    let standees = ScenarioRelativePath::try_from(ENEMY_STANDEE_DIRECTORY)
+        .expect("the enemy standee directory is scenario-relative");
+    if package.join(standees.as_str()).is_dir() {
+        inventory.enemy_standees = extension_files(&package, &standees, "png")?
+            .into_iter()
+            .collect();
+    }
     for id in ["haste", "slow", "regen"] {
         if let Some(path) = inventory.status_images.get(id) {
             inventory
@@ -523,6 +546,21 @@ mod tests {
         let error = discover_item_images(&package, &directory).unwrap_err();
         assert!(error.0.contains("`gown` exists twice"), "{}", error.0);
         fs::remove_dir_all(&package).unwrap();
+    }
+
+    #[test]
+    fn a_boss_standee_is_found_only_when_its_file_is_listed() {
+        let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let mut inventory = ScenarioInventory::discover(&asset_base, &ScenarioRoot::default());
+        assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
+        // The optional directory is allowed to be absent, and then no boss has a standee.
+        assert!(inventory.enemy_standee("grik_the_grin").is_none());
+        let listed =
+            ScenarioRelativePath::try_from("media/sprites/enemies/standee/grik_the_grin.png")
+                .unwrap();
+        inventory.enemy_standees.insert(listed.clone());
+        assert_eq!(inventory.enemy_standee("grik_the_grin"), Some(listed));
+        assert!(inventory.enemy_standee("wolf_beast_black_fur").is_none());
     }
 
     #[test]
