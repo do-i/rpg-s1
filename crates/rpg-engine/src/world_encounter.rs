@@ -1,5 +1,6 @@
 //! Visible World enemies and the transactional World-to-Battle handoff.
 
+mod contact_cue;
 mod fixtures;
 mod handoff;
 mod loading;
@@ -12,11 +13,16 @@ mod tests;
 use bevy::{ecs::schedule::ApplyDeferred, prelude::*};
 
 pub(crate) use self::{
+    contact_cue::contact_beat_inactive,
     handoff::{BattleTransition, ScriptedBattleRequest},
     presentation::BattleBgmFadeOut,
     state::{WorldEncounterRestore, WorldEncounterState, WorldEnemy},
 };
 use self::{
+    contact_cue::{
+        ChaseWarningClock, ContactCueSettings, EnemyContactCue, UnseenChaseStarted,
+        animate_encounter_cues, cleanup_encounter_cues, drive_encounter_cues,
+    },
     handoff::{
         advance_battle_transition, cleanup_battle_flash_overlay, detect_enemy_contact,
         spawn_battle_flash_overlay, start_scripted_battle, update_battle_flash_overlay,
@@ -35,8 +41,17 @@ pub(crate) struct WorldEncounterPlugin;
 
 impl Plugin for WorldEncounterPlugin {
     fn build(&self, app: &mut App) {
+        if !app.world().contains_resource::<ContactCueSettings>() {
+            app.insert_resource(ContactCueSettings::from_environment(|name| {
+                std::env::var_os(name)
+            }));
+        }
         app.init_resource::<WorldEncounterState>()
             .init_resource::<BattleTransition>()
+            .init_resource::<ChaseWarningClock>()
+            .add_message::<EnemyContactCue>()
+            .add_message::<UnseenChaseStarted>()
+            .add_message::<crate::sfx_cue::PlaySfx>()
             .add_systems(
                 OnEnter(AppState::World),
                 (reset_world_encounters, spawn_battle_flash_overlay).chain(),
@@ -57,6 +72,8 @@ impl Plugin for WorldEncounterPlugin {
                         .run_if(crate::world_pause::world_simulation_running)
                         .after(crate::world_publication::WorldPublicationSet::Barrier),
                     start_scripted_battle.run_if(crate::world_transition::transition_settled),
+                    drive_encounter_cues,
+                    animate_encounter_cues,
                     advance_battle_transition,
                     update_battle_flash_overlay,
                 )
@@ -65,7 +82,11 @@ impl Plugin for WorldEncounterPlugin {
             )
             .add_systems(
                 OnExit(AppState::World),
-                (cleanup_world_encounters, cleanup_battle_flash_overlay),
+                (
+                    cleanup_world_encounters,
+                    cleanup_battle_flash_overlay,
+                    cleanup_encounter_cues,
+                ),
             );
     }
 }

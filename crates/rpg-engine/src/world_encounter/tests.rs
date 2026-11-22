@@ -58,6 +58,8 @@ fn snowbound_monster_house_enemies_charge_and_start_an_indoor_battle() {
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
         .add_plugins(crate::scenario_spatial::world_collision::WorldCollisionPlugin)
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -164,6 +166,8 @@ fn the_enemy_just_defeated_is_restored_hidden_from_its_first_frame() {
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -259,6 +263,8 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -469,6 +475,8 @@ fn production_open_plains_and_caves_spawn_encounters_and_treasure() {
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)
@@ -687,6 +695,8 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -906,6 +916,8 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         .add_plugins(WorldAudioPlugin)
         .init_asset::<SfxIndex>()
         .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        // These harnesses assert the hand-off itself, so contact hands off without a beat.
+        .insert_resource(super::contact_cue::ContactCueSettings::immediate())
         .add_plugins(WorldEncounterPlugin)
         .add_plugins(WorldActorPlugin)
         .add_plugins(WorldObjectPlugin)
@@ -1268,4 +1280,292 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
         entry.return_context.world_bgm_key.as_deref(),
         Some("zone.ruins")
     );
+}
+
+/// Loads the Starting Forest with moving enemies and NPCs, then walks onto the stationary boss and
+/// records the hand-off frame by frame. Returns the frames from contact to `AppState::Battle`.
+fn contact_beat_run(beat_seconds: f32) -> usize {
+    use super::{contact_cue::EncounterCueKind, handoff::BattleTransitionPhase};
+    use crate::sfx_cue::PlaySfx;
+
+    let mut app = headless_title_app_with_asset_base(
+        AppState::NameEntry,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+        ScenarioRoot::default(),
+    );
+    app.add_plugins(ImagePlugin::default_nearest())
+        .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+        .add_plugins(TsxAtlasAssetPlugin)
+        .add_plugins(TmxGroundAssetPlugin)
+        .add_plugins(EncounterAssetPlugin)
+        .add_plugins(FieldMenuDomainPlugin)
+        .add_plugins(WorldAudioPlugin)
+        .init_asset::<SfxIndex>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        .add_plugins(crate::scenario_spatial::world_collision::WorldCollisionPlugin)
+        .insert_resource(super::contact_cue::ContactCueSettings {
+            chase_warning: false,
+            beat_seconds,
+        })
+        .add_plugins(WorldEncounterPlugin)
+        .add_plugins(WorldActorPlugin)
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<ActiveNewGameInputs>().status()
+            == ActiveNewGameInputsStatus::Ready
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<Messages<NameEntryConfirmed>>()
+        .write(NameEntryConfirmed::for_test("Aric"));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().contains_resource::<GameState>() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .map_mut()
+        .move_to(
+            RuntimeMapId::try_new("zone_01_starting_forest").unwrap(),
+            Position::new(9, 8),
+            CardinalDirection::Down,
+        );
+    app.world_mut()
+        .resource_mut::<NextState<AppState>>()
+        .set(AppState::World);
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<WorldEncounterState>().status() == WorldEncounterStatus::Spawned
+            && app.world().resource::<FieldMenuCatalog>().status() == CatalogStatus::Ready
+            && app
+                .world()
+                .resource::<crate::scenario_spatial::world_collision::WorldCollision>()
+                .occupancy_for("zone_01_starting_forest")
+                .is_some()
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        app.world().resource::<WorldEncounterState>().status(),
+        WorldEncounterStatus::Spawned
+    );
+    let boss_position = {
+        let world = app.world_mut();
+        world
+            .query::<&WorldEnemy>()
+            .iter(world)
+            .find(|enemy| enemy.is_boss())
+            .unwrap()
+            .tile_position()
+    };
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .map_mut()
+        .set_position(boss_position);
+    // The contact frame.
+    app.update();
+    assert!(app.world().contains_resource::<BattleEntry>());
+    let sounds = app
+        .world()
+        .resource::<Messages<PlaySfx>>()
+        .iter_current_update_messages()
+        .copied()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        sounds,
+        [PlaySfx::new(super::contact_cue::CONTACT_STING)],
+        "the sting sounds on the contact frame"
+    );
+    let marks = {
+        let world = app.world_mut();
+        world
+            .query::<&super::contact_cue::EncounterCueMark>()
+            .iter(world)
+            .map(|mark| mark.kind)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(marks, [EncounterCueKind::Contact], "the \"!\" is up");
+
+    let snapshot = |app: &mut App| {
+        let world = app.world_mut();
+        let enemies = world
+            .query::<&WorldEnemy>()
+            .iter(world)
+            .map(|enemy| enemy.top_left)
+            .collect::<Vec<_>>();
+        let npcs = world
+            .query_filtered::<&Transform, With<crate::world_actor::WorldNpc>>()
+            .iter(world)
+            .map(|transform| transform.translation)
+            .collect::<Vec<_>>();
+        let game = world.resource::<GameState>();
+        (enemies, npcs, game.rng().clone(), game.map().position())
+    };
+    let mut frames = 1;
+    if beat_seconds > 0.0 {
+        assert_eq!(
+            app.world().resource::<BattleTransition>().phase,
+            BattleTransitionPhase::ContactBeat
+        );
+        let frozen = snapshot(&mut app);
+        // 0.1 s of the beat runs on the contact frame and the flash starts on its last frame;
+        // every frame between holds the World still.
+        let beat_frames = (beat_seconds / 0.1).round() as usize;
+        for _ in 2..beat_frames {
+            app.update();
+            frames += 1;
+            assert_eq!(
+                app.world().resource::<BattleTransition>().phase,
+                BattleTransitionPhase::ContactBeat
+            );
+            assert_eq!(snapshot(&mut app), frozen, "nothing moves during the beat");
+            assert_eq!(
+                app.world().resource::<State<AppState>>().get(),
+                &AppState::World
+            );
+        }
+    } else {
+        assert_eq!(
+            app.world().resource::<BattleTransition>().phase,
+            BattleTransitionPhase::Flashing,
+            "a zero beat flashes on the contact frame"
+        );
+    }
+    for _ in 0..30 {
+        if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+            break;
+        }
+        app.update();
+        frames += 1;
+    }
+    assert_eq!(
+        app.world().resource::<State<AppState>>().get(),
+        &AppState::Battle
+    );
+    let entry = app.world().resource::<BattleEntry>();
+    assert_eq!(entry.encounter_id, "zone_01_starting_forest:boss");
+    assert_eq!(entry.bgm_key, "battle.boss");
+    frames
+}
+
+#[test]
+fn contact_cues_then_holds_the_beat_before_the_same_battle_hand_off() {
+    let immediate = contact_beat_run(0.0);
+    let held = contact_beat_run(0.5);
+    assert_eq!(
+        held,
+        immediate + 5,
+        "a 0.5 s beat at 0.1 s frames delays the hand-off by exactly five frames"
+    );
+}
+
+#[derive(Default, Resource)]
+struct ChaseCueCounts {
+    starts: usize,
+    warnings: usize,
+}
+
+fn count_chase_cues(
+    mut starts: MessageReader<super::contact_cue::UnseenChaseStarted>,
+    mut sounds: MessageReader<crate::sfx_cue::PlaySfx>,
+    mut counts: ResMut<ChaseCueCounts>,
+) {
+    counts.starts += starts.read().count();
+    counts.warnings += sounds
+        .read()
+        .filter(|sound| sound.key() == super::contact_cue::CHASE_WARNING_SOUND)
+        .count();
+}
+
+/// The Snowbound monster house sets five unseen enemies charging the arrival at once.
+fn chase_warning_run(chase_warning: bool) -> ChaseCueCounts {
+    let mut app = headless_title_app_with_asset_base(
+        AppState::NameEntry,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets").to_owned(),
+        ScenarioRoot::default(),
+    );
+    app.add_plugins(ImagePlugin::default_nearest())
+        .register_asset_loader(ImageLoader::new(CompressedImageFormats::empty()))
+        .add_plugins(TsxAtlasAssetPlugin)
+        .add_plugins(TmxGroundAssetPlugin)
+        .add_plugins(EncounterAssetPlugin)
+        .add_plugins(FieldMenuDomainPlugin)
+        .add_plugins(WorldAudioPlugin)
+        .init_asset::<SfxIndex>()
+        .register_asset_loader(ScenarioYamlLoader::<SfxIndex>::new("SFX index"))
+        .add_plugins(crate::scenario_spatial::world_collision::WorldCollisionPlugin)
+        .insert_resource(super::contact_cue::ContactCueSettings {
+            chase_warning,
+            beat_seconds: 0.0,
+        })
+        .add_plugins(WorldEncounterPlugin)
+        .init_resource::<ChaseCueCounts>()
+        .add_systems(Update, count_chase_cues)
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            100,
+        )));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<ActiveNewGameInputs>().status()
+            == ActiveNewGameInputsStatus::Ready
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<Messages<NameEntryConfirmed>>()
+        .write(NameEntryConfirmed::for_test("Aric"));
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().contains_resource::<GameState>() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    app.world_mut()
+        .resource_mut::<GameState>()
+        .map_mut()
+        .move_to(
+            RuntimeMapId::try_new("zone_06_mountain_pass_01_house").unwrap(),
+            Position::new(10, 13),
+            CardinalDirection::Up,
+        );
+    app.world_mut()
+        .resource_mut::<NextState<AppState>>()
+        .set(AppState::World);
+    for _ in 0..5_000 {
+        app.update();
+        if app.world().resource::<State<AppState>>().get() == &AppState::Battle {
+            break;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        app.world().resource::<State<AppState>>().get(),
+        &AppState::Battle
+    );
+    std::mem::take(&mut *app.world_mut().resource_mut::<ChaseCueCounts>())
+}
+
+#[test]
+fn variant_b_warns_once_when_unseen_enemies_start_a_chase_and_variant_a_never_does() {
+    let b = chase_warning_run(true);
+    // Each of the five charging enemies starts one chase; holding it never fires again.
+    assert_eq!(b.starts, 5, "one start per charging enemy");
+    assert_eq!(b.warnings, 1, "five starts together give one warning");
+    let a = chase_warning_run(false);
+    assert_eq!(a.starts, 5);
+    assert_eq!(a.warnings, 0);
 }

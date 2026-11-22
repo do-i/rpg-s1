@@ -51,6 +51,9 @@ impl Plugin for WorldActorPlugin {
                 update_world_npcs
                     .run_if(in_state(AppState::World))
                     .run_if(crate::world_transition::transition_settled)
+                    // NPC wandering draws from the gameplay RNG, so it holds for the contact beat
+                    // and the beat length cannot change how many draws precede a battle.
+                    .run_if(crate::world_encounter::contact_beat_inactive)
                     .after(crate::world_publication::WorldPublicationSet::Barrier),
             )
             .add_systems(OnExit(AppState::World), cleanup_world_actors);

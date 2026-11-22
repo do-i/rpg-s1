@@ -21,7 +21,10 @@ use crate::{
     },
 };
 
-use super::state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy};
+use super::{
+    contact_cue::UnseenChaseStarted,
+    state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy},
+};
 
 pub(super) const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
 pub(super) const ENEMY_WALK_ROW_OFFSET: u32 = 8;
@@ -51,9 +54,16 @@ pub(super) fn update_world_enemies(
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
-    mut enemies: Query<(Entity, &mut WorldEnemy, &mut Sprite, &mut Transform)>,
+    mut enemies: Query<(
+        Entity,
+        &mut WorldEnemy,
+        &mut Sprite,
+        &mut Transform,
+        &Visibility,
+    )>,
     mut snapshot: Local<Vec<(Entity, CharacterCollisionRect, bool)>>,
     mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
+    mut chase_starts: MessageWriter<UnseenChaseStarted>,
 ) {
     let _measurement = timings
         .as_deref_mut()
@@ -92,7 +102,7 @@ pub(super) fn update_world_enemies(
     snapshot.extend(
         enemies
             .iter()
-            .map(|(entity, enemy, _, _)| (entity, enemy.collision_rect(), enemy.active)),
+            .map(|(entity, enemy, _, _, _)| (entity, enemy.collision_rect(), enemy.active)),
     );
     let delta = time.delta_secs().min(MAX_ENEMY_DELTA_SECONDS);
 
@@ -106,7 +116,7 @@ pub(super) fn update_world_enemies(
                 .collect::<Vec<_>>();
             if !inactive.is_empty() {
                 let index = (game.rng_mut().below(inactive.len() as u64)) as usize;
-                if let Ok((_, mut enemy, _, _)) = enemies.get_mut(inactive[index]) {
+                if let Ok((_, mut enemy, _, _, _)) = enemies.get_mut(inactive[index]) {
                     enemy.active = true;
                     enemy.engaged = false;
                     enemy.position = enemy.origin;
@@ -118,9 +128,12 @@ pub(super) fn update_world_enemies(
         }
     }
 
-    for (entity, mut enemy, mut sprite, mut transform) in &mut enemies {
+    for (entity, mut enemy, mut sprite, mut transform, visibility) in &mut enemies {
         if !enemy.active {
             transform.scale = Vec3::ZERO;
+            if enemy.chasing {
+                enemy.chasing = false;
+            }
             continue;
         }
         transform.scale = Vec3::ONE;
@@ -130,7 +143,14 @@ pub(super) fn update_world_enemies(
                 .saturating_sub(modifiers.chase_range_reduction);
             let distance_tiles =
                 (player_top_left - enemy.top_left).abs().max_element() / TILE_SIZE as f32;
-            let moved = if effective_chase > 0 && distance_tiles <= effective_chase as f32 {
+            let chasing = effective_chase > 0 && distance_tiles <= effective_chase as f32;
+            if chasing && !enemy.chasing && *visibility == Visibility::Hidden {
+                chase_starts.write(UnseenChaseStarted);
+            }
+            if enemy.chasing != chasing {
+                enemy.chasing = chasing;
+            }
+            let moved = if chasing {
                 chase_enemy(
                     &mut enemy,
                     entity,
@@ -397,6 +417,7 @@ mod tests {
             frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
+            chasing: false,
         };
         let origin = enemy.top_left;
         let other_rect = enemy_collision_rect(enemy_top_left(Position::new(1, 1)));
@@ -454,6 +475,7 @@ mod tests {
             frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
+            chasing: false,
         };
         let snapshot = [
             (entity, enemy.collision_rect(), true),
@@ -522,6 +544,7 @@ mod tests {
             frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
+            chasing: false,
         }
     }
 

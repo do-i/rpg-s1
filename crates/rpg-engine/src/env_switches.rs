@@ -17,6 +17,14 @@ pub(crate) const DEBUG_COLLISION: &str = "RPG_S1_DEBUG_COLLISION";
 /// Enables transactional scenario polling in the idle World. Presence check: any value counts.
 pub(crate) const HOT_RELOAD: &str = "RPG_S1_HOT_RELOAD";
 
+/// UAT-only: contact-cue variant, `A` (contact cue only, the default) or `B` (adds a chase
+/// warning). Read as a value; anything else keeps `A`. Left out of the CLI help while the owner
+/// compares variants; see `world_encounter::contact_cue`.
+pub(crate) const CUE_VARIANT: &str = "RPG_S1_CUE_VARIANT";
+/// UAT-only: seconds the World holds still between the contact cue and the battle flash, clamped
+/// to 0..=1.5; `0` hands off at once. Anything that is not a number keeps the 0.5 default.
+pub(crate) const CUE_BEAT: &str = "RPG_S1_CUE_BEAT";
+
 /// Test-only: directory that receives a copy of the persistence fixture YAML for the persistence export checklist.
 #[cfg(test)]
 pub(crate) const RF10_EXPORT: &str = "RPG_S1_RF10_EXPORT";

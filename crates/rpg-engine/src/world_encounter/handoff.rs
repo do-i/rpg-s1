@@ -21,6 +21,7 @@ use crate::{
 };
 
 use super::{
+    contact_cue::{ContactCueSettings, EnemyContactCue},
     fixtures::apply_debug_battle_fixture,
     simulation::{enemy_collision_rect, enemy_top_left},
     state::{WorldEncounterState, WorldEncounterStatus, WorldEnemy, fail_encounter},
@@ -32,6 +33,8 @@ pub(super) const BATTLE_FLASH_SECONDS: f32 = 0.55;
 pub(super) enum BattleTransitionPhase {
     #[default]
     Idle,
+    /// The contact cue is up and the World holds still; the flash has not begun.
+    ContactBeat,
     Flashing,
     Requested,
 }
@@ -40,6 +43,10 @@ pub(super) enum BattleTransitionPhase {
 pub(crate) struct BattleTransition {
     pub(super) phase: BattleTransitionPhase,
     pub(super) elapsed: f32,
+    /// Length of the current contact beat; meaningful only in `ContactBeat`.
+    pub(super) beat_seconds: f32,
+    /// The encounter sound deferred from contact to the start of the flash.
+    pub(super) pending_sfx: Option<String>,
 }
 
 impl BattleTransition {
@@ -47,11 +54,27 @@ impl BattleTransition {
         !matches!(self.phase, BattleTransitionPhase::Idle)
     }
 
+    /// True while the contact beat holds the World still, before the flash starts.
+    pub(crate) const fn in_contact_beat(&self) -> bool {
+        matches!(self.phase, BattleTransitionPhase::ContactBeat)
+    }
+
     pub(super) fn request(&mut self) -> bool {
+        self.request_after_beat(0.0)
+    }
+
+    /// Starts the hand-off, holding a contact beat first when `beat_seconds` is positive. A zero
+    /// beat starts the flash at once, exactly as [`Self::request`] does.
+    pub(super) fn request_after_beat(&mut self, beat_seconds: f32) -> bool {
         if self.phase != BattleTransitionPhase::Idle {
             return false;
         }
-        self.phase = BattleTransitionPhase::Flashing;
+        self.phase = if beat_seconds > 0.0 {
+            BattleTransitionPhase::ContactBeat
+        } else {
+            BattleTransitionPhase::Flashing
+        };
+        self.beat_seconds = beat_seconds.max(0.0);
         self.elapsed = 0.0;
         true
     }
@@ -115,8 +138,9 @@ pub(super) fn detect_enemy_contact(
     active: Res<ActiveNewGameInputs>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
-    mut battle_transition: ResMut<BattleTransition>,
+    (mut battle_transition, cue_settings): (ResMut<BattleTransition>, Res<ContactCueSettings>),
     mut enemies: Query<(Entity, &mut WorldEnemy)>,
+    mut contact_cues: MessageWriter<EnemyContactCue>,
 ) {
     if state.status != WorldEncounterStatus::Spawned || battle_transition.input_locked() {
         return;
@@ -203,13 +227,19 @@ pub(super) fn detect_enemy_contact(
         state.failure = Some("encounter SFX was not resolved before contact".to_owned());
         return;
     };
-    if !battle_transition.request() {
+    if !battle_transition.request_after_beat(cue_settings.beat_seconds) {
         return;
     }
-    commands.spawn((
-        AudioPlayer::new(asset_server.load(encounter_sfx)),
-        PlaybackSettings::DESPAWN,
-    ));
+    contact_cues.write(EnemyContactCue);
+    if battle_transition.in_contact_beat() {
+        // The encounter whoosh belongs to the flash; the contact sting covers the beat.
+        battle_transition.pending_sfx = Some(encounter_sfx);
+    } else {
+        commands.spawn((
+            AudioPlayer::new(asset_server.load(encounter_sfx)),
+            PlaybackSettings::DESPAWN,
+        ));
+    }
     let Ok((_, mut enemy)) = enemies.get_mut(contact_entity) else {
         return;
     };
@@ -371,10 +401,26 @@ pub(super) fn fail_scripted_battle(
 }
 
 pub(super) fn advance_battle_transition(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
     mut transition: ResMut<BattleTransition>,
     mut requests: MessageWriter<AppStateTransitionRequest>,
 ) {
+    if transition.phase == BattleTransitionPhase::ContactBeat {
+        transition.elapsed += time.delta_secs();
+        if transition.elapsed >= transition.beat_seconds {
+            transition.phase = BattleTransitionPhase::Flashing;
+            transition.elapsed = 0.0;
+            if let Some(encounter_sfx) = transition.pending_sfx.take() {
+                commands.spawn((
+                    AudioPlayer::new(asset_server.load(encounter_sfx)),
+                    PlaybackSettings::DESPAWN,
+                ));
+            }
+        }
+        return;
+    }
     if transition.phase != BattleTransitionPhase::Flashing {
         return;
     }
@@ -399,7 +445,10 @@ pub(super) fn update_battle_flash_overlay(
     };
     for (mut color, mut visibility) in &mut overlays {
         color.0 = Color::srgba(1.0, 1.0, 1.0, alpha);
-        *visibility = if transition.phase == BattleTransitionPhase::Idle {
+        *visibility = if matches!(
+            transition.phase,
+            BattleTransitionPhase::Idle | BattleTransitionPhase::ContactBeat
+        ) {
             Visibility::Hidden
         } else {
             Visibility::Visible
@@ -434,5 +483,18 @@ mod tests {
         assert!(transition.request());
         assert!(!transition.request());
         assert!(transition.input_locked());
+        assert!(!transition.in_contact_beat());
+    }
+
+    #[test]
+    fn a_positive_beat_holds_before_the_flash_and_a_zero_beat_does_not() {
+        let mut held = BattleTransition::default();
+        assert!(held.request_after_beat(0.5));
+        assert!(held.in_contact_beat());
+        assert!(held.input_locked());
+        assert!(!held.request_after_beat(0.5));
+        let mut immediate = BattleTransition::default();
+        assert!(immediate.request_after_beat(0.0));
+        assert_eq!(immediate.phase, BattleTransitionPhase::Flashing);
     }
 }

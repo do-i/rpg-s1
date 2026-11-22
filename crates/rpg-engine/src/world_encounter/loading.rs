@@ -491,6 +491,7 @@ pub(super) fn drive_active_encounter_assets(
                 frame_elapsed: 0.0,
                 wander_pause: random_pause(game.rng_mut()),
                 wander_target: None,
+                chasing: false,
             },
         ));
     }

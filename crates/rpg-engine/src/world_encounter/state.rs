@@ -183,6 +183,8 @@ pub(crate) struct WorldEnemy {
     pub(super) frame_elapsed: f32,
     pub(super) wander_pause: f32,
     pub(super) wander_target: Option<Vec2>,
+    /// Whether the last simulation step had this enemy chasing, so only a chase start warns.
+    pub(super) chasing: bool,
 }
 
 impl WorldEnemy {
@@ -236,6 +238,7 @@ impl WorldEnemy {
             frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
+            chasing: false,
         }
     }
 
