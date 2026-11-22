@@ -366,7 +366,9 @@ pub(super) fn place_enemy_standees(
     render: Res<crate::tmx_ground_asset::StaticMapRenderState>,
     maps: Res<Assets<crate::tmx_ground_asset::TmxGroundAsset>>,
     images: Res<Assets<Image>>,
+    time: Res<Time>,
 ) {
+    let bob = standee_bob_offset(time.elapsed_secs());
     let map_x = render.map(&maps).map(|map| {
         let bounds = map.pixel_bounds();
         (bounds.min().x, bounds.max().x)
@@ -377,8 +379,22 @@ pub(super) fn place_enemy_standees(
             translation.x =
                 clamp_standee_x(translation.x, image.width() as f32 / 2.0, min_x, max_x);
         }
+        translation.y += bob;
         transform.translation = translation;
     }
+}
+
+/// How high a standee's idle bob rises, in whole pixels.
+const STANDEE_BOB_PIXELS: f32 = 2.0;
+/// One full rise and fall of the idle bob, in seconds.
+const STANDEE_BOB_PERIOD: f32 = 1.2;
+
+/// The idle bob's lift at `seconds` of game time: a smooth rise and fall between 0 and
+/// `STANDEE_BOB_PIXELS`, snapped to whole pixels so the pixel art never resamples. Visual only;
+/// collision and contact keep using the enemy's unmoved footprint.
+pub(super) fn standee_bob_offset(seconds: f32) -> f32 {
+    let phase = (seconds / STANDEE_BOB_PERIOD).fract() * std::f32::consts::TAU;
+    ((1.0 - phase.cos()) / 2.0 * STANDEE_BOB_PIXELS).round()
 }
 
 /// The standee centre `x`, moved inward so `half_width` either side stays within `min_x..max_x`.
@@ -425,6 +441,25 @@ pub(super) fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
 mod tests {
     use super::*;
     use crate::scenario_path::ScenarioRelativePath;
+
+    #[test]
+    fn the_standee_bob_stays_on_whole_pixels_within_its_height_and_cycles() {
+        let samples: Vec<f32> = (0..120)
+            .map(|frame| super::standee_bob_offset(frame as f32 / 60.0))
+            .collect();
+        assert!(samples.iter().all(|y| y.fract() == 0.0));
+        assert!(
+            samples
+                .iter()
+                .all(|y| (0.0..=super::STANDEE_BOB_PIXELS).contains(y))
+        );
+        assert_eq!(super::standee_bob_offset(0.0), 0.0);
+        assert_eq!(
+            super::standee_bob_offset(super::STANDEE_BOB_PERIOD / 2.0),
+            super::STANDEE_BOB_PIXELS
+        );
+        assert_eq!(super::standee_bob_offset(super::STANDEE_BOB_PERIOD), 0.0);
+    }
 
     #[test]
     fn a_standee_on_the_map_edge_is_moved_inside_and_others_stay_put() {

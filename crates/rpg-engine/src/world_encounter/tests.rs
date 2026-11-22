@@ -1688,7 +1688,12 @@ fn a_boss_with_a_standee_is_drawn_with_it_and_regular_enemies_stay_hidden() {
             assert_eq!(anchor, Some(&bevy::sprite::Anchor::BOTTOM_CENTER));
             let rect = enemy.collision_rect();
             assert_eq!(transform.translation.x, rect.x + rect.width / 2.0);
-            assert_eq!(transform.translation.y, -(rect.y + rect.height));
+            // Feet on the footprint's bottom edge, lifted only by the whole-pixel idle bob.
+            let lift = transform.translation.y + (rect.y + rect.height);
+            assert!(
+                (0.0..=2.0).contains(&lift) && lift.fract() == 0.0,
+                "lift {lift}"
+            );
             // Sorts against the player by the same band value as the hidden frame would.
             assert_eq!(
                 transform.translation.z,
