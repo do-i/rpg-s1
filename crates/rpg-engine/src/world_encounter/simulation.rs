@@ -361,141 +361,25 @@ pub(super) fn enemy_standee_translation(top_left: Vec2) -> Vec3 {
 /// Keeps each standee on its feet after `update_world_enemies` writes the frame-centred position,
 /// shifted sideways only as far as needed to keep the whole image inside the map: a boss on the
 /// map's edge column (zone 01's west gate) would otherwise hang half outside the visible world.
-///
-/// The idle bob is a slow breath: the chest and everything above rise and settle while the legs
-/// and feet stay planted. On its first frame a standee is split at its waist line: the boss entity
-/// keeps the lower slice, a child draws the upper slice, which rises by whole pixels, and a second
-/// child stretches the upper slice's bottom row over the gap, so nothing is ever covered or torn.
+/// Standees are still: no idle animation suited every boss's proportions.
 pub(super) fn place_enemy_standees(
-    mut commands: Commands,
-    mut standees: Query<StandeeParts, With<EnemyStandee>>,
-    mut breathing: Query<BreathingParts, Without<EnemyStandee>>,
+    mut standees: Query<(&WorldEnemy, &Sprite, &mut Transform), With<EnemyStandee>>,
     render: Res<crate::tmx_ground_asset::StaticMapRenderState>,
     maps: Res<Assets<crate::tmx_ground_asset::TmxGroundAsset>>,
     images: Res<Assets<Image>>,
-    time: Res<Time>,
 ) {
-    let lift = standee_bob_offset(time.elapsed_secs());
     let map_x = render.map(&maps).map(|map| {
         let bounds = map.pixel_bounds();
         (bounds.min().x, bounds.max().x)
     });
-    for (entity, enemy, mut sprite, mut transform, split) in &mut standees {
-        let image = images.get(&sprite.image);
+    for (enemy, sprite, mut transform) in &mut standees {
         let mut translation = enemy_standee_translation(enemy.top_left);
-        if let (Some((min_x, max_x)), Some(image)) = (map_x, image) {
+        if let (Some((min_x, max_x)), Some(image)) = (map_x, images.get(&sprite.image)) {
             translation.x =
                 clamp_standee_x(translation.x, image.width() as f32 / 2.0, min_x, max_x);
         }
         transform.translation = translation;
-        if !split && let Some(image) = image {
-            let (width, height) = (image.width() as f32, image.height() as f32);
-            let cut = standee_breath_row(image) as f32;
-            let handle = sprite.image.clone();
-            let slice = |top: f32, bottom: f32| Sprite {
-                rect: Some(Rect::new(0.0, top, width, bottom)),
-                ..Sprite::from_image(handle.clone())
-            };
-            sprite.rect = Some(Rect::new(0.0, cut, width, height));
-            let base_y = height - cut;
-            commands
-                .entity(entity)
-                .insert(StandeeSplit)
-                .with_child((
-                    slice(0.0, cut),
-                    bevy::sprite::Anchor::BOTTOM_CENTER,
-                    Transform::from_xyz(0.0, base_y, 0.001),
-                    StandeeUpper { base_y },
-                ))
-                .with_child((
-                    // The upper slice's bottom row, stretched over the gap its rise opens.
-                    slice(cut - 1.0, cut),
-                    bevy::sprite::Anchor::BOTTOM_CENTER,
-                    Transform::from_xyz(0.0, base_y, 0.0005).with_scale(Vec3::new(1.0, 0.0, 1.0)),
-                    StandeeSeam,
-                ));
-        }
     }
-    for (upper, seam, mut transform) in &mut breathing {
-        if let Some(upper) = upper {
-            transform.translation.y = upper.base_y + lift;
-        } else if seam {
-            transform.scale.y = lift;
-        }
-    }
-}
-
-/// A standee's breathing children: the upper slice rises, the seam stretches over the gap.
-type BreathingParts = (
-    Option<&'static StandeeUpper>,
-    Has<StandeeSeam>,
-    &'static mut Transform,
-);
-
-/// A standee boss: its entity, enemy, image slice, placement and whether it is split yet.
-type StandeeParts = (
-    Entity,
-    &'static WorldEnemy,
-    &'static mut Sprite,
-    &'static mut Transform,
-    Has<StandeeSplit>,
-);
-
-/// Marks a standee already split into its planted lower slice and bobbing upper slice.
-#[derive(Component)]
-pub(super) struct StandeeSplit;
-
-/// The one-row seam under a standee's upper slice; its height follows the breath's lift.
-#[derive(Component)]
-pub(super) struct StandeeSeam;
-
-/// The chest-and-up slice of a standee; `base_y` is its resting height above the feet.
-#[derive(Component)]
-pub(super) struct StandeeUpper {
-    base_y: f32,
-}
-
-/// Where the breathing upper slice ends, as an image row: 55 % down the visible figure, below the
-/// chest, so a 1:2 head (one third of the height) and the chest move as one piece and tall hats or
-/// crowns never split the head. The figure's top and bottom come from the first and last rows
-/// holding any opaque pixel, so canvas margins do not move the cut.
-pub(super) fn standee_breath_row(image: &Image) -> u32 {
-    let (width, height) = (image.width(), image.height());
-    let opaque_row = |y: u32| {
-        (0..width).any(|x| {
-            image
-                .get_color_at(x, y)
-                .is_ok_and(|color| color.alpha() > 0.5)
-        })
-    };
-    let top = (0..height).find(|&y| opaque_row(y)).unwrap_or(0);
-    let bottom = (0..height)
-        .rev()
-        .find(|&y| opaque_row(y))
-        .unwrap_or(height.saturating_sub(1));
-    breath_row_between(top, bottom)
-}
-
-/// The breath cut for a figure whose opaque rows run from `top` to `bottom` inclusive; at least
-/// row 1, so the upper slice always has a bottom row to stretch.
-pub(super) fn breath_row_between(top: u32, bottom: u32) -> u32 {
-    let figure = bottom.saturating_sub(top) + 1;
-    (top + (figure as f32 * STANDEE_BREATH_CUT).round() as u32).max(1)
-}
-
-/// How far down the visible figure the breathing upper slice ends.
-const STANDEE_BREATH_CUT: f32 = 0.55;
-/// How far a standee's chest and head rise at the top of a breath, in whole pixels.
-const STANDEE_BOB_PIXELS: f32 = 2.0;
-/// One full breath, in and out, in seconds.
-const STANDEE_BOB_PERIOD: f32 = 2.4;
-
-/// The breath's lift at `seconds` of game time: a smooth rise and return between 0 and
-/// `STANDEE_BOB_PIXELS`, snapped to whole pixels so the pixel art never resamples. Visual only;
-/// collision and contact keep using the enemy's unmoved footprint.
-pub(super) fn standee_bob_offset(seconds: f32) -> f32 {
-    let phase = (seconds / STANDEE_BOB_PERIOD).fract() * std::f32::consts::TAU;
-    ((1.0 - phase.cos()) / 2.0 * STANDEE_BOB_PIXELS).round()
 }
 
 /// The standee centre `x`, moved inward so `half_width` either side stays within `min_x..max_x`.
@@ -542,35 +426,6 @@ pub(super) fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
 mod tests {
     use super::*;
     use crate::scenario_path::ScenarioRelativePath;
-
-    #[test]
-    fn the_breath_cut_sits_below_the_chest_fifty_five_percent_down_the_figure() {
-        // A 60 px figure from row 4 (64 px canvas): cut 33 rows below its top.
-        assert_eq!(super::breath_row_between(4, 63), 37);
-        // A 76 px figure from row 4 (80 px canvas).
-        assert_eq!(super::breath_row_between(4, 79), 46);
-        // A single opaque row still yields a row inside the image, never row 0.
-        assert_eq!(super::breath_row_between(0, 0), 1);
-    }
-
-    #[test]
-    fn the_standee_bob_stays_on_whole_pixels_within_its_height_and_cycles() {
-        let samples: Vec<f32> = (0..120)
-            .map(|frame| super::standee_bob_offset(frame as f32 / 60.0))
-            .collect();
-        assert!(samples.iter().all(|y| y.fract() == 0.0));
-        assert!(
-            samples
-                .iter()
-                .all(|y| (0.0..=super::STANDEE_BOB_PIXELS).contains(y))
-        );
-        assert_eq!(super::standee_bob_offset(0.0), 0.0);
-        assert_eq!(
-            super::standee_bob_offset(super::STANDEE_BOB_PERIOD / 2.0),
-            super::STANDEE_BOB_PIXELS
-        );
-        assert_eq!(super::standee_bob_offset(super::STANDEE_BOB_PERIOD), 0.0);
-    }
 
     #[test]
     fn a_standee_on_the_map_edge_is_moved_inside_and_others_stay_put() {

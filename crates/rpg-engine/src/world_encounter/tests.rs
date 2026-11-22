@@ -1665,58 +1665,6 @@ fn first_zone_app_with_boss_standee(image: Option<Image>) -> (App, Option<Handle
 }
 
 #[test]
-fn a_boss_standee_breathes_with_its_chest_and_head_over_planted_feet() {
-    use bevy::{
-        asset::RenderAssetUsages,
-        render::render_resource::{Extent3d, TextureDimension, TextureFormat},
-    };
-    // A fully opaque 16x20 figure: the breath cut lands 55 % down, at row 11.
-    let image = Image::new_fill(
-        Extent3d {
-            width: 16,
-            height: 20,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        &[255, 255, 255, 255],
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::default(),
-    );
-    let (mut app, _) = first_zone_app_with_boss_standee(Some(image));
-    app.update();
-    app.update();
-    let world = app.world_mut();
-    let mut bosses = world.query_filtered::<(&Sprite, &Children), With<EnemyStandee>>();
-    let (lower, children) = bosses.single(world).expect("one standee boss");
-    assert_eq!(lower.rect, Some(Rect::new(0.0, 11.0, 16.0, 20.0)));
-    let children: Vec<Entity> = children.iter().collect();
-    let upper_entity = children
-        .iter()
-        .copied()
-        .find(|&child| {
-            world
-                .get::<super::simulation::StandeeUpper>(child)
-                .is_some()
-        })
-        .expect("an upper slice");
-    let seam_entity = children
-        .iter()
-        .copied()
-        .find(|&child| world.get::<super::simulation::StandeeSeam>(child).is_some())
-        .expect("a seam");
-    assert_eq!(children.len(), 2);
-    let upper = world.get::<Sprite>(upper_entity).unwrap();
-    assert_eq!(upper.rect, Some(Rect::new(0.0, 0.0, 16.0, 11.0)));
-    let seam = world.get::<Sprite>(seam_entity).unwrap();
-    assert_eq!(seam.rect, Some(Rect::new(0.0, 10.0, 16.0, 11.0)));
-    // The upper slice rests on the lower one and only ever rises; the seam fills exactly the gap.
-    let y = world.get::<Transform>(upper_entity).unwrap().translation.y;
-    let gap = world.get::<Transform>(seam_entity).unwrap().scale.y;
-    assert!((9.0..=11.0).contains(&y), "upper slice at {y}");
-    assert_eq!(gap, y - 9.0);
-}
-
-#[test]
 fn a_boss_with_a_standee_is_drawn_with_it_and_regular_enemies_stay_hidden() {
     let image = Image::default();
     let (mut app, handle) = first_zone_app_with_boss_standee(Some(image));
@@ -1740,12 +1688,8 @@ fn a_boss_with_a_standee_is_drawn_with_it_and_regular_enemies_stay_hidden() {
             assert_eq!(anchor, Some(&bevy::sprite::Anchor::BOTTOM_CENTER));
             let rect = enemy.collision_rect();
             assert_eq!(transform.translation.x, rect.x + rect.width / 2.0);
-            // Feet on the footprint's bottom edge, lifted only by the whole-pixel idle bob.
-            let lift = transform.translation.y + (rect.y + rect.height);
-            assert!(
-                (0.0..=2.0).contains(&lift) && lift.fract() == 0.0,
-                "lift {lift}"
-            );
+            // Feet on the footprint's bottom edge; standees do not move.
+            assert_eq!(transform.translation.y, -(rect.y + rect.height));
             // Sorts against the player by the same band value as the hidden frame would.
             assert_eq!(
                 transform.translation.z,
