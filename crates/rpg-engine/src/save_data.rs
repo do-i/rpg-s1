@@ -207,6 +207,7 @@ impl NativeSaveEnvelope {
         if envelope.scenario_id == "my_rpg_story" {
             envelope.migrate_legacy_harborgate_map_ids();
             envelope.migrate_legacy_gendered_item_ids();
+            envelope.restore_missing_recruit_flags();
         }
         let game = envelope.payload.clone().into_game_state(balance)?;
         envelope.validate_metadata(&game)?;
@@ -249,6 +250,22 @@ impl NativeSaveEnvelope {
         self.metadata.location = migrate_legacy_harborgate_map_id(&self.metadata.location);
     }
 
+    /// A recruit in the roster without its joined flag (found in a real save with Jep) loses
+    /// the flag's gates: Jep's enemy-map dots and his vault NPC's removal. The roster is the truth.
+    fn restore_missing_recruit_flags(&mut self) {
+        for (member_id, flag) in RECRUIT_JOINED_FLAGS {
+            let recruited = self
+                .payload
+                .party
+                .iter()
+                .any(|member| member.id == member_id);
+            if recruited && !self.payload.flags.iter().any(|saved| saved == flag) {
+                self.payload.flags.push(flag.to_owned());
+                self.payload.flags.sort();
+            }
+        }
+    }
+
     /// Gendered body armor gained `_f`/`_m` ids. A worn piece follows its wearer; a carried one
     /// becomes the variant the shops and drops hand out. Forge levels and cracks carry over.
     fn migrate_legacy_gendered_item_ids(&mut self) {
@@ -279,6 +296,14 @@ impl NativeSaveEnvelope {
         self.payload.repository.items = merged;
     }
 }
+
+/// Rusted Kingdoms recruits and the flag their join dialogue sets (`party.yaml` `joined_flag`).
+const RECRUIT_JOINED_FLAGS: [(&str, &str); 4] = [
+    ("elise", "npc_elise_joined"),
+    ("reiya", "npc_reiya_joined"),
+    ("jep", "npc_jep_joined"),
+    ("kael", "npc_kael_joined"),
+];
 
 pub(crate) fn migrate_legacy_gendered_item_id(id: &str, female: bool) -> String {
     let parsed = crate::forge::parse_id(id);
@@ -994,6 +1019,32 @@ pub(crate) mod tests {
                 .as_str(),
             "town_03_harborgate_inn"
         );
+    }
+
+    #[test]
+    fn a_recruit_in_the_roster_gets_its_missing_joined_flag_back_on_load() {
+        let mut envelope = fixture_envelope();
+        let mut jep = envelope.payload.party[0].clone();
+        jep.id = "jep".to_owned();
+        jep.name = "Jep".to_owned();
+        jep.protagonist = false;
+        envelope.payload.party.push(jep);
+        envelope
+            .payload
+            .flags
+            .retain(|flag| flag != "npc_jep_joined");
+
+        let (decoded, restored) = NativeSaveEnvelope::decode(
+            &envelope.encode().unwrap(),
+            "my_rpg_story",
+            "1.0.0",
+            &fixture_balance(),
+        )
+        .unwrap();
+
+        assert!(decoded.payload.flags.iter().any(|f| f == "npc_jep_joined"));
+        assert!(restored.flags().is_set("npc_jep_joined"));
+        assert!(!restored.flags().is_set("npc_kael_joined"));
     }
 
     #[test]
