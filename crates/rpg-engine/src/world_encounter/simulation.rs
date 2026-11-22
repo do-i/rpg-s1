@@ -361,35 +361,106 @@ pub(super) fn enemy_standee_translation(top_left: Vec2) -> Vec3 {
 /// Keeps each standee on its feet after `update_world_enemies` writes the frame-centred position,
 /// shifted sideways only as far as needed to keep the whole image inside the map: a boss on the
 /// map's edge column (zone 01's west gate) would otherwise hang half outside the visible world.
+///
+/// The idle bob moves only the head and shoulders. On its first frame a standee is split at its
+/// shoulder line: the boss entity keeps the lower slice, feet planted, and a child draws the upper
+/// slice, which dips into the lower one and back so no gap can open at the seam.
 pub(super) fn place_enemy_standees(
-    mut standees: Query<(&WorldEnemy, &Sprite, &mut Transform), With<EnemyStandee>>,
+    mut commands: Commands,
+    mut standees: Query<StandeeParts, With<EnemyStandee>>,
+    mut uppers: Query<(&StandeeUpper, &mut Transform), Without<EnemyStandee>>,
     render: Res<crate::tmx_ground_asset::StaticMapRenderState>,
     maps: Res<Assets<crate::tmx_ground_asset::TmxGroundAsset>>,
     images: Res<Assets<Image>>,
     time: Res<Time>,
 ) {
-    let bob = standee_bob_offset(time.elapsed_secs());
+    let dip = standee_bob_offset(time.elapsed_secs());
     let map_x = render.map(&maps).map(|map| {
         let bounds = map.pixel_bounds();
         (bounds.min().x, bounds.max().x)
     });
-    for (enemy, sprite, mut transform) in &mut standees {
+    for (entity, enemy, mut sprite, mut transform, split) in &mut standees {
+        let image = images.get(&sprite.image);
         let mut translation = enemy_standee_translation(enemy.top_left);
-        if let (Some((min_x, max_x)), Some(image)) = (map_x, images.get(&sprite.image)) {
+        if let (Some((min_x, max_x)), Some(image)) = (map_x, image) {
             translation.x =
                 clamp_standee_x(translation.x, image.width() as f32 / 2.0, min_x, max_x);
         }
-        translation.y += bob;
         transform.translation = translation;
+        if !split && let Some(image) = image {
+            let (width, height) = (image.width() as f32, image.height() as f32);
+            let cut = standee_shoulder_row(image) as f32;
+            let upper = Sprite {
+                rect: Some(Rect::new(0.0, 0.0, width, cut)),
+                ..Sprite::from_image(sprite.image.clone())
+            };
+            sprite.rect = Some(Rect::new(0.0, cut, width, height));
+            let base_y = height - cut;
+            commands.entity(entity).insert(StandeeSplit).with_child((
+                upper,
+                bevy::sprite::Anchor::BOTTOM_CENTER,
+                // Just above the lower slice, so the dipping shoulders cover its top rows.
+                Transform::from_xyz(0.0, base_y, 0.001),
+                StandeeUpper { base_y },
+            ));
+        }
+    }
+    for (upper, mut transform) in &mut uppers {
+        transform.translation.y = upper.base_y - dip;
     }
 }
 
-/// How high a standee's idle bob rises, in whole pixels.
+/// A standee boss: its entity, enemy, image slice, placement and whether it is split yet.
+type StandeeParts = (
+    Entity,
+    &'static WorldEnemy,
+    &'static mut Sprite,
+    &'static mut Transform,
+    Has<StandeeSplit>,
+);
+
+/// Marks a standee already split into its planted lower slice and bobbing upper slice.
+#[derive(Component)]
+pub(super) struct StandeeSplit;
+
+/// The head-and-shoulders slice of a standee; `base_y` is its resting height above the feet.
+#[derive(Component)]
+pub(super) struct StandeeUpper {
+    base_y: f32,
+}
+
+/// Where the head-and-shoulders slice ends, as an image row: 40 % down the visible figure, just
+/// below a 1:2 head (one third of the height). The figure's top and bottom come from the first
+/// and last rows holding any opaque pixel, so canvas margins do not move the cut.
+pub(super) fn standee_shoulder_row(image: &Image) -> u32 {
+    let (width, height) = (image.width(), image.height());
+    let opaque_row = |y: u32| {
+        (0..width).any(|x| {
+            image
+                .get_color_at(x, y)
+                .is_ok_and(|color| color.alpha() > 0.5)
+        })
+    };
+    let top = (0..height).find(|&y| opaque_row(y)).unwrap_or(0);
+    let bottom = (0..height)
+        .rev()
+        .find(|&y| opaque_row(y))
+        .unwrap_or(height.saturating_sub(1));
+    shoulder_row_between(top, bottom)
+}
+
+/// The shoulder row for a figure whose opaque rows run from `top` to `bottom` inclusive.
+pub(super) fn shoulder_row_between(top: u32, bottom: u32) -> u32 {
+    let figure = bottom.saturating_sub(top) + 1;
+    top + (figure as f32 * 0.4).round() as u32
+}
+
+/// How far a standee's head and shoulders dip during the idle bob, in whole pixels.
 const STANDEE_BOB_PIXELS: f32 = 2.0;
-/// One full rise and fall of the idle bob, in seconds.
+/// One full dip and return of the idle bob, in seconds.
 const STANDEE_BOB_PERIOD: f32 = 1.2;
 
-/// The idle bob's lift at `seconds` of game time: a smooth rise and fall between 0 and
+/// The idle bob's dip at `seconds` of game time: a smooth fall and return between 0 and
 /// `STANDEE_BOB_PIXELS`, snapped to whole pixels so the pixel art never resamples. Visual only;
 /// collision and contact keep using the enemy's unmoved footprint.
 pub(super) fn standee_bob_offset(seconds: f32) -> f32 {
@@ -441,6 +512,16 @@ pub(super) fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
 mod tests {
     use super::*;
     use crate::scenario_path::ScenarioRelativePath;
+
+    #[test]
+    fn the_shoulder_cut_sits_forty_percent_down_the_visible_figure() {
+        // Grik: opaque rows 13..=63 on a 64 px canvas, 51 rows tall -> cut 20 rows below the top.
+        assert_eq!(super::shoulder_row_between(13, 63), 33);
+        // A figure filling the canvas.
+        assert_eq!(super::shoulder_row_between(0, 59), 24);
+        // A single opaque row still yields a row inside the image.
+        assert_eq!(super::shoulder_row_between(5, 5), 5);
+    }
 
     #[test]
     fn the_standee_bob_stays_on_whole_pixels_within_its_height_and_cycles() {

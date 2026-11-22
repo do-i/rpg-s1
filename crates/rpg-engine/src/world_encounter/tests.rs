@@ -1665,6 +1665,40 @@ fn first_zone_app_with_boss_standee(image: Option<Image>) -> (App, Option<Handle
 }
 
 #[test]
+fn a_boss_standee_bobs_only_its_head_and_shoulders_over_planted_feet() {
+    use bevy::{
+        asset::RenderAssetUsages,
+        render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+    };
+    // A fully opaque 16x20 figure: the shoulder cut lands 40 % down, at row 8.
+    let image = Image::new_fill(
+        Extent3d {
+            width: 16,
+            height: 20,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &[255, 255, 255, 255],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    let (mut app, _) = first_zone_app_with_boss_standee(Some(image));
+    app.update();
+    app.update();
+    let world = app.world_mut();
+    let mut bosses = world.query_filtered::<(&Sprite, &Children), With<EnemyStandee>>();
+    let (lower, children) = bosses.single(world).expect("one standee boss");
+    assert_eq!(lower.rect, Some(Rect::new(0.0, 8.0, 16.0, 20.0)));
+    assert_eq!(children.len(), 1);
+    let upper_entity = children[0];
+    let upper = world.get::<Sprite>(upper_entity).unwrap();
+    assert_eq!(upper.rect, Some(Rect::new(0.0, 0.0, 16.0, 8.0)));
+    // The upper slice rests on top of the lower one and only ever dips into it.
+    let y = world.get::<Transform>(upper_entity).unwrap().translation.y;
+    assert!((10.0..=12.0).contains(&y), "upper slice at {y}");
+}
+
+#[test]
 fn a_boss_with_a_standee_is_drawn_with_it_and_regular_enemies_stay_hidden() {
     let image = Image::default();
     let (mut app, handle) = first_zone_app_with_boss_standee(Some(image));
