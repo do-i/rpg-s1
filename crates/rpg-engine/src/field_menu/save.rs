@@ -24,10 +24,14 @@ pub(super) fn handle_input(
 ) {
     match state.mode {
         FieldMenuMode::Browse => {
-            if let Some(delta) = input.vertical {
-                state.selected = (state.selected as isize + delta)
-                    .clamp(FIRST_PLAYER_SLOT as isize, LAST_PLAYER_SLOT as isize)
-                    as usize;
+            if let Some(moved) = crate::save_ui::stepped_slot(
+                state.selected,
+                input.vertical,
+                input.page,
+                super::ui::SAVE_VISIBLE_ROWS,
+                FIRST_PLAYER_SLOT..=LAST_PLAYER_SLOT,
+            ) {
+                state.selected = moved;
             }
             if input.confirm {
                 let Some(slot) = saves.slots().get(state.selected) else {

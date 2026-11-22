@@ -319,6 +319,19 @@ impl SaveSlotCatalog {
     }
 }
 
+/// A slot list's next selection: Up/Down step one slot, Left/Right jump `page_rows`, and the
+/// result clamps to `slots` instead of wrapping. `None` when neither direction was pressed.
+pub(crate) fn stepped_slot(
+    selected: usize,
+    vertical: Option<isize>,
+    page: Option<isize>,
+    page_rows: usize,
+    slots: std::ops::RangeInclusive<usize>,
+) -> Option<usize> {
+    let delta = vertical.or_else(|| page.map(|delta| delta * page_rows as isize))?;
+    Some((selected as isize + delta).clamp(*slots.start() as isize, *slots.end() as isize) as usize)
+}
+
 #[expect(
     clippy::too_many_arguments,
     reason = "title load coordinates input, assets, storage, session installation, and state transition"
@@ -346,11 +359,15 @@ fn handle_title_load_input(
         menu_sfx.cancel();
         return;
     }
-    if let Some(delta) = actions.menu_navigation() {
+    if let Some(moved) = stepped_slot(
+        load_menu.selected,
+        actions.menu_navigation(),
+        actions.menu_navigation_horizontal(),
+        LOAD_VISIBLE_ROWS,
+        0..=SAVE_SLOT_COUNT - 1,
+    ) {
         // Selection clamps rather than wraps, so a press at either end moves nothing and must
         // stay silent instead of implying the cursor went somewhere.
-        let moved =
-            (load_menu.selected as isize + delta).clamp(0, (SAVE_SLOT_COUNT - 1) as isize) as usize;
         if moved != load_menu.selected {
             menu_sfx.hover();
         }
@@ -603,6 +620,7 @@ fn load_picker_hint(bindings: &InputBindings) -> String {
                 &[HintKey::Pair(AppAction::Up, AppAction::Down)],
                 "SELECT SLOT",
             ),
+            (&[HintKey::Pair(AppAction::Left, AppAction::Right)], "PAGE"),
             (&[HintKey::Action(AppAction::Confirm)], "LOAD"),
             (&[HintKey::Action(AppAction::Back)], "BACK"),
         ],
@@ -1092,6 +1110,22 @@ mod tests {
     }
 
     #[test]
+    fn slot_lists_step_by_one_and_page_by_visible_rows_clamping_at_the_ends() {
+        let all = 0..=24;
+        assert_eq!(stepped_slot(3, None, None, 7, all.clone()), None);
+        assert_eq!(stepped_slot(3, Some(1), None, 7, all.clone()), Some(4));
+        assert_eq!(stepped_slot(3, None, Some(1), 7, all.clone()), Some(10));
+        assert_eq!(stepped_slot(10, None, Some(-1), 7, all.clone()), Some(3));
+        // Paging past either end lands on the end slot rather than wrapping.
+        assert_eq!(stepped_slot(20, None, Some(1), 7, all.clone()), Some(24));
+        assert_eq!(stepped_slot(2, None, Some(-1), 7, all.clone()), Some(0));
+        // Up/Down wins a frame that also pressed Left/Right.
+        assert_eq!(stepped_slot(3, Some(-1), Some(1), 7, all), Some(2));
+        // The field Save page starts at the first player slot.
+        assert_eq!(stepped_slot(4, None, Some(-1), 8, 1..=24), Some(1));
+    }
+
+    #[test]
     fn load_picker_selects_latest_valid_slot_and_clamps_navigation() {
         let slots = vec![
             SaveSlot {
@@ -1123,7 +1157,7 @@ mod tests {
     fn the_load_picker_footer_matches_the_shipped_text_and_follows_a_rebound_confirm() {
         assert_eq!(
             load_picker_hint(&InputBindings::default()),
-            "UP/DOWN   SELECT SLOT      ENTER   LOAD      ESC   BACK"
+            "UP/DOWN   SELECT SLOT      LEFT/RIGHT   PAGE      ENTER   LOAD      ESC   BACK"
         );
         let mut bindings = InputBindings::default();
         bindings
@@ -1134,7 +1168,7 @@ mod tests {
             .expect("a nonempty row");
         assert_eq!(
             load_picker_hint(&bindings),
-            "UP/DOWN   SELECT SLOT      G   LOAD      ESC   BACK"
+            "UP/DOWN   SELECT SLOT      LEFT/RIGHT   PAGE      G   LOAD      ESC   BACK"
         );
 
         let catalog = SaveSlotCatalog::default();
@@ -1152,7 +1186,10 @@ mod tests {
             .map(|text| text.0.clone())
             .collect::<Vec<_>>();
         assert!(
-            texts.contains(&"UP/DOWN   SELECT SLOT      G   LOAD      ESC   BACK".to_owned()),
+            texts.contains(
+                &"UP/DOWN   SELECT SLOT      LEFT/RIGHT   PAGE      G   LOAD      ESC   BACK"
+                    .to_owned()
+            ),
             "{texts:?}"
         );
     }

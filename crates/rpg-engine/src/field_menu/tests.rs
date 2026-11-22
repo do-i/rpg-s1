@@ -1031,7 +1031,7 @@ fn save_page_footer_matches_the_shipped_text_under_default_bindings() {
     let bindings = crate::input_bindings::InputBindings::default();
     assert_eq!(
         save_page_hint(FieldMenuMode::Browse, &bindings),
-        "UP/DOWN   SELECT SLOT      ENTER   SAVE      ESC   BACK      M   CLOSE"
+        "UP/DOWN   SELECT SLOT      LEFT/RIGHT   PAGE      ENTER   SAVE      ESC   BACK      M   CLOSE"
     );
     assert_eq!(
         save_page_hint(FieldMenuMode::SaveConfirm, &bindings),
@@ -1049,7 +1049,7 @@ fn save_page_footer_follows_a_rebound_confirm() {
         .expect("a nonempty row");
     assert_eq!(
         save_page_hint(FieldMenuMode::Browse, &bindings),
-        "UP/DOWN   SELECT SLOT      G   SAVE      ESC   BACK      M   CLOSE"
+        "UP/DOWN   SELECT SLOT      LEFT/RIGHT   PAGE      G   SAVE      ESC   BACK      M   CLOSE"
     );
     assert_eq!(
         save_page_hint(FieldMenuMode::SaveConfirm, &bindings),

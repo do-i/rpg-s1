@@ -57,6 +57,13 @@ pub(in crate::field_menu) fn save_page_hint(
     } else {
         &[
             (&[UP_DOWN], "SELECT SLOT"),
+            (
+                &[HintKey::Pair(
+                    crate::input_bindings::AppAction::Left,
+                    crate::input_bindings::AppAction::Right,
+                )],
+                "PAGE",
+            ),
             (&[CONFIRM], "SAVE"),
             (&[BACK], "BACK"),
             (&[Fixed("M")], "CLOSE"),
