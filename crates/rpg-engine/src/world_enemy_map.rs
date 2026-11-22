@@ -9,6 +9,7 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use crate::{
     action_input::ActionState,
     app_state::AppState,
+    game_state::GameState,
     input_bindings::AppAction,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
     world_encounter::WorldEnemy,
@@ -17,6 +18,9 @@ use crate::{
     world_transition::runtime_portals,
 };
 
+const MAP_FLAG_ELISE: &str = "npc_elise_joined";
+const MAP_FLAG_REIYA: &str = "npc_reiya_joined";
+const ENEMY_DOTS_FLAG: &str = "npc_jep_joined";
 /// The largest box the panel may fill; the panel shrinks inside it to the map's own aspect.
 const PANEL_MAX: Vec2 = Vec2::new(256.0, 192.0);
 const PANEL_MARGIN: f32 = 16.0;
@@ -111,12 +115,41 @@ fn reset_overlay(mut overlay: ResMut<EnemyMapOverlay>) {
     overlay.mode = MapMode::Off;
 }
 
+/// The map is unavailable until Elise or Reiya has joined. Joined flags persist when a member is
+/// benched, so the party cap never takes the map away.
+fn map_available(game: Option<&GameState>) -> bool {
+    game.is_some_and(|game| {
+        game.flags().is_set(MAP_FLAG_ELISE) || game.flags().is_set(MAP_FLAG_REIYA)
+    })
+}
+
+/// Enemy and boss dots are drawn only once Jep has joined.
+fn enemy_dots_available(game: Option<&GameState>) -> bool {
+    game.is_some_and(|game| game.flags().is_set(ENEMY_DOTS_FLAG))
+}
+
+/// The enemies that get dots: none until Jep has joined.
+fn dotted_enemies<'a>(
+    game: Option<&GameState>,
+    enemies: impl Iterator<Item = &'a WorldEnemy>,
+) -> Vec<&'a WorldEnemy> {
+    if enemy_dots_available(game) {
+        enemies.collect()
+    } else {
+        Vec::new()
+    }
+}
+
 fn toggle_overlay(
     actions: Res<ActionState>,
     overlays: WorldOverlays,
+    game: Option<Res<GameState>>,
     mut overlay: ResMut<EnemyMapOverlay>,
 ) {
-    if actions.just_pressed(AppAction::EnemyMap) && !overlays.any_active() {
+    if actions.just_pressed(AppAction::EnemyMap)
+        && !overlays.any_active()
+        && map_available(game.as_deref())
+    {
         overlay.mode = overlay.mode.next();
     }
 }
@@ -185,6 +218,7 @@ fn dot_bundle(centre: Vec2, size: f32, color: Color) -> impl Bundle {
 struct MapSources<'w, 's> {
     maps: Res<'w, Assets<TmxGroundAsset>>,
     render: Res<'w, StaticMapRenderState>,
+    game: Option<Res<'w, GameState>>,
     enemies: Query<'w, 's, &'static WorldEnemy>,
     players: Query<'w, 's, &'static WorldPlayerMotion, With<WorldPlayer>>,
 }
@@ -245,7 +279,12 @@ fn sync_panel(
     if sources.maps.is_changed() {
         portal_cache.invalidate();
     }
-    let Some(theme) = overlay.mode.theme() else {
+    let theme = if map_available(sources.game.as_deref()) {
+        overlay.mode.theme()
+    } else {
+        None
+    };
+    let Some(theme) = theme else {
         for (root, ..) in &roots {
             commands.entity(root).despawn();
         }
@@ -275,7 +314,7 @@ fn sync_panel(
         Err(_) => spawn_root(&mut commands, theme, size),
     };
 
-    let enemies: Vec<&WorldEnemy> = sources.enemies.iter().collect();
+    let enemies = dotted_enemies(sources.game.as_deref(), sources.enemies.iter());
     let player = sources.players.iter().next().map(|motion| {
         let rect = motion.collision_rect();
         Vec2::new(rect.x + rect.width / 2.0, rect.y + rect.height / 2.0)
@@ -603,7 +642,8 @@ mod tests {
 
     fn toggle_app() -> App {
         let mut app = App::new();
-        app.init_resource::<ActionState>()
+        app.insert_resource(crate::field_menu_domain::tests::game(["npc_elise_joined"]))
+            .init_resource::<ActionState>()
             .init_resource::<EnemyMapOverlay>()
             .add_systems(Update, toggle_overlay);
         app
@@ -656,5 +696,43 @@ mod tests {
         app.world_mut().resource_mut::<EnemyMapOverlay>().mode = MapMode::Light;
         app.update();
         assert_eq!(mode(&app), MapMode::Off);
+    }
+
+    #[test]
+    fn the_action_does_nothing_until_elise_or_reiya_has_joined() {
+        for (flags, expected) in [
+            (&[][..], MapMode::Off),
+            (&["npc_jep_joined"][..], MapMode::Off),
+            (&["npc_elise_joined"][..], MapMode::Dark),
+            (&["npc_reiya_joined"][..], MapMode::Dark),
+        ] {
+            let mut app = toggle_app();
+            app.insert_resource(crate::field_menu_domain::tests::game([]));
+            for flag in flags {
+                app.world_mut()
+                    .resource_mut::<crate::game_state::GameState>()
+                    .flags_mut()
+                    .set(*flag);
+            }
+            press_enemy_map(&mut app);
+            assert_eq!(mode(&app), expected, "{flags:?}");
+        }
+    }
+
+    #[test]
+    fn enemy_dots_need_jep_and_appear_as_soon_as_he_joins() {
+        use crate::scenario_spatial::Position;
+        let normal = WorldEnemy::for_test(Position::new(2, 2), false, true, false);
+        let boss = WorldEnemy::for_test(Position::new(3, 3), true, true, false);
+        let mut game = crate::field_menu_domain::tests::game(["npc_elise_joined"]);
+
+        assert!(dotted_enemies(None, [&normal, &boss].into_iter()).is_empty());
+        assert!(dotted_enemies(Some(&game), [&normal, &boss].into_iter()).is_empty());
+
+        game.flags_mut().set("npc_jep_joined");
+        assert_eq!(
+            dotted_enemies(Some(&game), [&normal, &boss].into_iter()).len(),
+            2
+        );
     }
 }

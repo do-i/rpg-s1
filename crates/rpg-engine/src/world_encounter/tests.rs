@@ -312,6 +312,13 @@ fn production_first_zone_spawns_and_contact_builds_one_complete_battle_handoff()
         "{:?}",
         app.world().resource::<WorldEncounterState>().failure()
     );
+    {
+        // Field enemies are never drawn, but still exist for contact.
+        let world = app.world_mut();
+        let mut enemies = world.query::<(&WorldEnemy, &Visibility)>();
+        assert!(enemies.iter(world).count() > 0);
+        assert!(enemies.iter(world).all(|(_, v)| *v == Visibility::Hidden));
+    }
     // The shipped enemy count, including the Cinder Marshal.
     assert_eq!(app.world().resource::<EnemyCatalog>().len(), 105);
     let expected_party_stats = {
@@ -735,6 +742,13 @@ fn production_marshland_spawns_and_contact_builds_one_complete_boss_battle_hando
         "{:?}",
         app.world().resource::<WorldEncounterState>().failure()
     );
+    {
+        // Field enemies are never drawn, but still exist for contact.
+        let world = app.world_mut();
+        let mut enemies = world.query::<(&WorldEnemy, &Visibility)>();
+        assert!(enemies.iter(world).count() > 0);
+        assert!(enemies.iter(world).all(|(_, v)| *v == Visibility::Hidden));
+    }
     let expected_party_stats = {
         let world = app.world();
         let member = world

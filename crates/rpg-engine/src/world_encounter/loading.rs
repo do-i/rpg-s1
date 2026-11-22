@@ -473,6 +473,9 @@ pub(super) fn drive_active_encounter_assets(
         commands.spawn((
             sprite,
             Transform::from_translation(enemy_world_translation(top_left)).with_scale(scale),
+            // Field enemies are never drawn, bosses included; the sprite stays so movement and
+            // contact are untouched. Bosses may later get optional standee art shown instead.
+            Visibility::Hidden,
             WorldEnemy {
                 encounter_id: pending.encounter_id.clone(),
                 formation: pending.formation.clone(),
