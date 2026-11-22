@@ -39,7 +39,7 @@ assets.
 
 ## LPC sprites
 
-The ledger identifies 155 shipped sprite PNGs as third-party LPC artwork.
+The ledger identifies 53 shipped sprite PNGs as third-party LPC artwork.
 
 **Terms.** The [generator's licensing guidance](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator#licensing-and-attribution-credits)
 permits use under each layer's open license, including in public repositories and commercial
