@@ -241,9 +241,9 @@ in `party.yaml` wearing armor for another gender; `validate-scenario` reports th
 
 ## Enemy battler sheets
 
-Optional v2 sheets live at `media/sprites/enemies/v2/{id}-status.tsx` and
-`{id}-attack.tsx`. An enemy without them draws from its v1 LPC sheet (9 columns, idle
-tile 18). Each v2 tile is 256×256. Poses share one scale, set by the widest pose, and
+Every enemy needs a v2 status sheet at `media/sprites/enemies/v2/{id}-status.tsx`;
+`validate-scenario` reports one that is missing. The `{id}-attack.tsx` sheet is optional.
+Field enemies are never drawn, so they have no world sheet. Each v2 tile is 256×256. Poses share one scale, set by the widest pose, and
 feet sit 4 pixels above the bottom of the cell. Sheets are transparent, with no labels
 or grid lines.
 

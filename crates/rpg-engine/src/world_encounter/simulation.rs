@@ -27,9 +27,6 @@ use super::{
 };
 
 pub(super) const ENEMY_SPRITE_HALF_HEIGHT: f32 = 32.0;
-pub(super) const ENEMY_WALK_ROW_OFFSET: u32 = 8;
-pub(super) const ENEMY_ATLAS_COLUMNS: u32 = 9;
-pub(super) const ENEMY_FRAME_SECONDS: f32 = 0.15;
 pub(super) const MAX_ENEMY_DELTA_SECONDS: f32 = 0.1;
 
 /// World pixels per second an enemy covers while chasing or wandering.
@@ -54,13 +51,7 @@ pub(super) fn update_world_enemies(
     game: Option<ResMut<GameState>>,
     players: Query<&WorldPlayerMotion, With<WorldPlayer>>,
     mut state: ResMut<WorldEncounterState>,
-    mut enemies: Query<(
-        Entity,
-        &mut WorldEnemy,
-        &mut Sprite,
-        &mut Transform,
-        &Visibility,
-    )>,
+    mut enemies: Query<(Entity, &mut WorldEnemy, &mut Transform, &Visibility)>,
     mut snapshot: Local<Vec<(Entity, CharacterCollisionRect, bool)>>,
     mut timings: Option<ResMut<crate::frame_timing::FrameTimings>>,
     mut chase_starts: MessageWriter<UnseenChaseStarted>,
@@ -102,7 +93,7 @@ pub(super) fn update_world_enemies(
     snapshot.extend(
         enemies
             .iter()
-            .map(|(entity, enemy, _, _, _)| (entity, enemy.collision_rect(), enemy.active)),
+            .map(|(entity, enemy, _, _)| (entity, enemy.collision_rect(), enemy.active)),
     );
     let delta = time.delta_secs().min(MAX_ENEMY_DELTA_SECONDS);
 
@@ -116,7 +107,7 @@ pub(super) fn update_world_enemies(
                 .collect::<Vec<_>>();
             if !inactive.is_empty() {
                 let index = (game.rng_mut().below(inactive.len() as u64)) as usize;
-                if let Ok((_, mut enemy, _, _, _)) = enemies.get_mut(inactive[index]) {
+                if let Ok((_, mut enemy, _, _)) = enemies.get_mut(inactive[index]) {
                     enemy.active = true;
                     enemy.engaged = false;
                     enemy.position = enemy.origin;
@@ -128,7 +119,7 @@ pub(super) fn update_world_enemies(
         }
     }
 
-    for (entity, mut enemy, mut sprite, mut transform, visibility) in &mut enemies {
+    for (entity, mut enemy, mut transform, visibility) in &mut enemies {
         if !enemy.active {
             transform.scale = Vec3::ZERO;
             if enemy.chasing {
@@ -150,7 +141,7 @@ pub(super) fn update_world_enemies(
             if enemy.chasing != chasing {
                 enemy.chasing = chasing;
             }
-            let moved = if chasing {
+            if chasing {
                 chase_enemy(
                     &mut enemy,
                     entity,
@@ -159,7 +150,7 @@ pub(super) fn update_world_enemies(
                     snapshot.as_slice(),
                     collision,
                     tuning,
-                )
+                );
             } else {
                 wander_enemy(
                     &mut enemy,
@@ -169,14 +160,8 @@ pub(super) fn update_world_enemies(
                     collision,
                     game.rng_mut(),
                     tuning,
-                )
-            };
-            if moved {
-                advance_enemy_frame(&mut enemy, delta);
+                );
             }
-        }
-        if let Some(atlas) = sprite.texture_atlas.as_mut() {
-            atlas.index = enemy_tile(enemy.facing, enemy.frame) as usize;
         }
         transform.translation = enemy_world_translation(enemy.top_left);
     }
@@ -218,7 +203,6 @@ pub(super) fn wander_enemy(
 ) -> bool {
     if enemy.wander_target.is_none() {
         enemy.wander_pause -= delta;
-        enemy.frame = 0;
         if enemy.wander_pause <= 0.0 {
             enemy.wander_target =
                 pick_wander_target(enemy, entity, snapshot, collision, rng, tuning);
@@ -238,7 +222,6 @@ pub(super) fn wander_enemy(
         let moved = try_move_enemy(enemy, entity, target, snapshot, collision);
         enemy.wander_target = None;
         enemy.wander_pause = random_pause(rng);
-        enemy.frame = 0;
         return moved;
     }
     enemy.facing = direction_toward(enemy.top_left, target);
@@ -249,7 +232,6 @@ pub(super) fn wander_enemy(
     if !try_move_enemy(enemy, entity, enemy.top_left + step, snapshot, collision) {
         enemy.wander_target = None;
         enemy.wander_pause = random_pause(rng);
-        enemy.frame = 0;
         return false;
     }
     true
@@ -305,14 +287,6 @@ pub(super) fn enemy_blocked(
         || snapshot.iter().any(|(other, occupied, active)| {
             *other != entity && *active && rect.overlaps(*occupied)
         })
-}
-
-pub(super) fn advance_enemy_frame(enemy: &mut WorldEnemy, delta: f32) {
-    enemy.frame_elapsed += delta;
-    while enemy.frame_elapsed >= ENEMY_FRAME_SECONDS {
-        enemy.frame_elapsed -= ENEMY_FRAME_SECONDS;
-        enemy.frame = next_walk_frame(enemy.frame);
-    }
 }
 
 pub(super) fn enemy_top_left(position: Position) -> Vec2 {
@@ -404,20 +378,6 @@ pub(super) fn direction_toward(from: Vec2, to: Vec2) -> CardinalDirection {
     }
 }
 
-pub(super) const fn enemy_tile(direction: CardinalDirection, frame: u32) -> u32 {
-    let direction_row = match direction {
-        CardinalDirection::Up => 0,
-        CardinalDirection::Left => 1,
-        CardinalDirection::Down => 2,
-        CardinalDirection::Right => 3,
-    };
-    (ENEMY_WALK_ROW_OFFSET + direction_row) * ENEMY_ATLAS_COLUMNS + frame
-}
-
-pub(super) const fn next_walk_frame(frame: u32) -> u32 {
-    if frame >= 8 { 1 } else { frame + 1 }
-}
-
 pub(super) fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
     1.0 + (rng.next_u64() as f64 / u64::MAX as f64 * 2.5) as f32
 }
@@ -435,14 +395,6 @@ mod tests {
         assert_eq!(super::clamp_standee_x(400.0, 32.0, 0.0, 1600.0), 400.0);
         // Wider than the map: left where it was rather than flipping the clamp bounds.
         assert_eq!(super::clamp_standee_x(10.0, 48.0, 0.0, 64.0), 10.0);
-    }
-
-    #[test]
-    fn enemy_walk_tiles_use_the_lpc_rows_eight_through_eleven() {
-        assert_eq!(enemy_tile(CardinalDirection::Up, 0), 72);
-        assert_eq!(enemy_tile(CardinalDirection::Left, 0), 81);
-        assert_eq!(enemy_tile(CardinalDirection::Down, 0), 90);
-        assert_eq!(enemy_tile(CardinalDirection::Right, 8), 107);
     }
 
     #[test]
@@ -466,8 +418,6 @@ mod tests {
             active: true,
             engaged: false,
             facing: CardinalDirection::Down,
-            frame: 0,
-            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
             chasing: false,
@@ -524,8 +474,6 @@ mod tests {
             active: true,
             engaged: false,
             facing: CardinalDirection::Down,
-            frame: 0,
-            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
             chasing: false,
@@ -593,8 +541,6 @@ mod tests {
             active: true,
             engaged: false,
             facing: CardinalDirection::Down,
-            frame: 0,
-            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
             chasing: false,

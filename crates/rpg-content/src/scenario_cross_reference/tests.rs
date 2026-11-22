@@ -700,7 +700,7 @@ targeting:
   default: random_alive
 "#,
     );
-    fixture.touch("media/sprites/enemies/cinder_marshal.tsx");
+    fixture.touch("media/sprites/enemies/v2/cinder_marshal-status.tsx");
 }
 
 #[test]

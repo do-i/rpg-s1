@@ -22,14 +22,12 @@ use crate::{
     scenario_spatial::{CardinalDirection, Position},
     tile_coordinates::TILE_SIZE,
     tmx_ground_asset::{StaticMapRenderState, TmxGroundAsset},
-    tsx_atlas_asset::TsxAtlasAsset,
     world_publication::WorldLayerState,
 };
 
 use super::{
     simulation::{
-        enemy_standee_translation, enemy_tile, enemy_top_left, enemy_world_translation,
-        random_pause,
+        enemy_standee_translation, enemy_top_left, enemy_world_translation, random_pause,
     },
     state::{
         EnemyStandee, PendingWorldEnemy, WorldEncounterRestore, WorldEncounterState,
@@ -48,13 +46,6 @@ fn empty_formation_failure(pending: &[PendingWorldEnemy]) -> Option<String> {
         .iter()
         .find(|enemy| enemy.formation.is_empty())
         .map(|enemy| format!("spawn `{}` has an empty formation", enemy.encounter_id))
-}
-
-/// The sprite sheet path for a world enemy, or the encounter-load failure when the enemy id
-/// cannot form a scenario-relative path (for example one containing `:` or `\`).
-fn enemy_sprite_path(sprite_id: &str) -> Result<ScenarioRelativePath, String> {
-    ScenarioRelativePath::try_from(format!("media/sprites/enemies/{sprite_id}.tsx").as_str())
-        .map_err(|error| format!("enemy `{sprite_id}` cannot name a sprite path: {error}"))
 }
 
 pub(super) fn request_active_encounter_assets(
@@ -109,7 +100,6 @@ pub(super) fn drive_active_encounter_assets(
     boss_move_set_assets: Res<Assets<BossMoveSet>>,
     background_assets: Res<Assets<BattleBackgroundCatalog>>,
     sfx_assets: Res<Assets<SfxIndex>>,
-    atlas_assets: Res<Assets<TsxAtlasAsset>>,
     image_assets: Res<Assets<Image>>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
@@ -419,17 +409,6 @@ pub(super) fn drive_active_encounter_assets(
                 );
                 return;
             }
-            let path = match enemy_sprite_path(&sprite_id) {
-                Ok(path) => path,
-                Err(failure) => {
-                    fail_encounter(&mut state, failure);
-                    return;
-                }
-            };
-            state
-                .sprite_handles
-                .entry(sprite_id.clone())
-                .or_insert_with(|| asset_server.load(root.resolve(&path)));
             // Only a boss with a standee file on disk asks for one; the listing comes from the
             // inventory so an absent file is never requested.
             if boss_ids.contains(&sprite_id)
@@ -446,14 +425,6 @@ pub(super) fn drive_active_encounter_assets(
     }
 
     if state
-        .sprite_handles
-        .values()
-        .any(|handle| crate::world_publication::asset_failed(asset_server, handle.id()))
-    {
-        fail_encounter(&mut state, "world-enemy sprite failed to load".to_owned());
-        return;
-    }
-    if state
         .standee_handles
         .values()
         .any(|handle| crate::world_publication::asset_failed(asset_server, handle.id()))
@@ -462,37 +433,14 @@ pub(super) fn drive_active_encounter_assets(
         return;
     }
     if state
-        .sprite_handles
+        .standee_handles
         .values()
-        .any(|handle| !asset_server.is_loaded_with_dependencies(handle.id()))
-        || state
-            .standee_handles
-            .values()
-            .any(|handle| !image_assets.contains(handle))
+        .any(|handle| !image_assets.contains(handle))
     {
         return;
     }
 
     for pending in &state.pending {
-        let sprite_id = pending
-            .formation
-            .first()
-            .expect("only nonempty formations are pending");
-        let sprite = state
-            .sprite_handles
-            .get(sprite_id)
-            .and_then(|handle| atlas_assets.get(handle))
-            .and_then(|atlas| {
-                atlas
-                    .sprite_for_tile(enemy_tile(CardinalDirection::Down, 0))
-                    .ok()
-            })
-            .unwrap_or_else(|| {
-                Sprite::from_color(
-                    Color::srgb(0.8, 0.2, 0.2),
-                    Vec2::splat((2 * TILE_SIZE) as f32),
-                )
-            });
         let top_left = enemy_top_left(pending.position);
         // An inactive enemy (the one just beaten, restored after its battle) must spawn hidden.
         // `update_world_enemies` hides it too, but only from its next run, which let the defeated
@@ -502,7 +450,8 @@ pub(super) fn drive_active_encounter_assets(
         } else {
             Vec3::ZERO
         };
-        // Field enemies are never drawn; the sprite stays so movement and contact are untouched.
+        // Field enemies are never drawn and load no sheet: a hidden default sprite keeps the
+        // entity's shape, so movement and contact are untouched.
         // The one exception is a boss whose optional standee image ships: that single frame is
         // drawn instead, feet on the collision footprint. Everything else stays hidden.
         let standee = pending
@@ -517,7 +466,7 @@ pub(super) fn drive_active_encounter_assets(
                 Visibility::Inherited,
             ),
             None => (
-                sprite,
+                Sprite::default(),
                 enemy_world_translation(top_left),
                 Visibility::Hidden,
             ),
@@ -537,8 +486,6 @@ pub(super) fn drive_active_encounter_assets(
                 active: pending.active,
                 engaged: false,
                 facing: pending.facing,
-                frame: 0,
-                frame_elapsed: 0.0,
                 wander_pause: random_pause(game.rng_mut()),
                 wander_target: None,
                 chasing: false,
@@ -633,22 +580,5 @@ mod tests {
             Some("spawn `fixture_zone:spawn:1` has an empty formation")
         );
         assert_eq!(empty_formation_failure(&spawns[..1]), None);
-    }
-
-    /// Enemy ids are free text, so one can fail to form its sprite path; that must fail the
-    /// encounter load rather than panic, while an ordinary id keeps its exact path.
-    #[test]
-    fn an_enemy_id_that_cannot_form_a_sprite_path_fails_the_encounter_load() {
-        assert_eq!(
-            enemy_sprite_path("moss_hare").unwrap().as_str(),
-            "media/sprites/enemies/moss_hare.tsx"
-        );
-        assert_eq!(
-            enemy_sprite_path("orc:raider").unwrap_err(),
-            format!(
-                "enemy `orc:raider` cannot name a sprite path: {}",
-                ScenarioRelativePath::try_from("media/sprites/enemies/orc:raider.tsx").unwrap_err()
-            )
-        );
     }
 }

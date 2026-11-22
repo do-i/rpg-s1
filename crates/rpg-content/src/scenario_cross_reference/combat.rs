@@ -222,22 +222,18 @@ impl<'a> Validator<'a> {
 
     fn validate_enemy_sprite(&mut self, owner_path: &str, base: &str, enemy_id: &str) {
         self.report.checked_references += 1;
-        let ordinary = format!("media/sprites/enemies/{enemy_id}.tsx");
+        // Battle draws only the v2 status sheet; the field never draws an ordinary enemy.
         let battle = format!("media/sprites/enemies/v2/{enemy_id}-status.tsx");
-        let exists = [ordinary.as_str(), battle.as_str()]
-            .iter()
-            .any(|candidate| {
-                ScenarioRelativePath::try_from(*candidate).is_ok_and(|path| {
-                    probe_path(self.physical_root, self.canonical_root.as_deref(), &path)
-                        == ScenarioPathProbeResult::File
-                })
-            });
+        let exists = ScenarioRelativePath::try_from(battle.as_str()).is_ok_and(|path| {
+            probe_path(self.physical_root, self.canonical_root.as_deref(), &path)
+                == ScenarioPathProbeResult::File
+        });
         if !exists {
             self.error(
                 "path.missing",
                 owner_path,
                 format!("{base}.$derived_sprite"),
-                format!("enemy `{enemy_id}` has neither `{ordinary}` nor `{battle}`"),
+                format!("enemy `{enemy_id}` has no battle sheet `{battle}`"),
             );
         }
     }

@@ -12,7 +12,6 @@ use crate::{
     scenario_enemy::{BossMoveSet, EnemyCatalogFile},
     scenario_map::MapMetadata,
     scenario_spatial::{CardinalDirection, Position},
-    tsx_atlas_asset::TsxAtlasAsset,
     world_player::CharacterCollisionRect,
     world_publication::WorldLayerState,
 };
@@ -44,7 +43,6 @@ pub(crate) struct WorldEncounterState {
     pub(super) sfx_index: Option<Handle<SfxIndex>>,
     pub(super) encounter_sfx: Option<String>,
     pub(super) pending: Vec<PendingWorldEnemy>,
-    pub(super) sprite_handles: BTreeMap<String, Handle<TsxAtlasAsset>>,
     /// Boss field standee images, keyed by boss id; only bosses whose file exists appear here.
     pub(super) standee_handles: BTreeMap<String, Handle<Image>>,
     pub(super) cadence: Option<SpawnCadence>,
@@ -88,7 +86,6 @@ impl WorldEncounterState {
             .chain(self.boss_move_sets.iter().map(|(_, h)| h.id().untyped()))
             .chain(self.backgrounds.iter().map(|h| h.id().untyped()))
             .chain(self.sfx_index.iter().map(|h| h.id().untyped()))
-            .chain(self.sprite_handles.values().map(|h| h.id().untyped()))
             .chain(self.standee_handles.values().map(|h| h.id().untyped()))
             .collect()
     }
@@ -186,8 +183,6 @@ pub(crate) struct WorldEnemy {
     pub(super) active: bool,
     pub(super) engaged: bool,
     pub(super) facing: CardinalDirection,
-    pub(super) frame: u32,
-    pub(super) frame_elapsed: f32,
     pub(super) wander_pause: f32,
     pub(super) wander_target: Option<Vec2>,
     /// Whether the last simulation step had this enemy chasing, so only a chase start warns.
@@ -241,8 +236,6 @@ impl WorldEnemy {
             active,
             engaged,
             facing: CardinalDirection::Down,
-            frame: 0,
-            frame_elapsed: 0.0,
             wander_pause: 0.0,
             wander_target: None,
             chasing: false,
@@ -275,6 +268,5 @@ pub(super) fn cleanup_world_encounters(
         commands.entity(entity).despawn();
     }
     state.pending.clear();
-    state.sprite_handles.clear();
     state.standee_handles.clear();
 }
