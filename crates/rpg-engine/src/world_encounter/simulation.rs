@@ -358,13 +358,34 @@ pub(super) fn enemy_standee_translation(top_left: Vec2) -> Vec3 {
     )
 }
 
-/// Keeps each standee on its feet after `update_world_enemies` writes the frame-centred position.
+/// Keeps each standee on its feet after `update_world_enemies` writes the frame-centred position,
+/// shifted sideways only as far as needed to keep the whole image inside the map: a boss on the
+/// map's edge column (zone 01's west gate) would otherwise hang half outside the visible world.
 pub(super) fn place_enemy_standees(
-    mut standees: Query<(&WorldEnemy, &mut Transform), With<EnemyStandee>>,
+    mut standees: Query<(&WorldEnemy, &Sprite, &mut Transform), With<EnemyStandee>>,
+    render: Res<crate::tmx_ground_asset::StaticMapRenderState>,
+    maps: Res<Assets<crate::tmx_ground_asset::TmxGroundAsset>>,
+    images: Res<Assets<Image>>,
 ) {
-    for (enemy, mut transform) in &mut standees {
-        transform.translation = enemy_standee_translation(enemy.top_left);
+    let map_x = render.map(&maps).map(|map| {
+        let bounds = map.pixel_bounds();
+        (bounds.min().x, bounds.max().x)
+    });
+    for (enemy, sprite, mut transform) in &mut standees {
+        let mut translation = enemy_standee_translation(enemy.top_left);
+        if let (Some((min_x, max_x)), Some(image)) = (map_x, images.get(&sprite.image)) {
+            translation.x =
+                clamp_standee_x(translation.x, image.width() as f32 / 2.0, min_x, max_x);
+        }
+        transform.translation = translation;
     }
+}
+
+/// The standee centre `x`, moved inward so `half_width` either side stays within `min_x..max_x`.
+/// A standee wider than the map stays centred where it was.
+pub(super) fn clamp_standee_x(x: f32, half_width: f32, min_x: f32, max_x: f32) -> f32 {
+    let (low, high) = (min_x + half_width, max_x - half_width);
+    if low > high { x } else { x.clamp(low, high) }
 }
 
 pub(super) fn direction_toward(from: Vec2, to: Vec2) -> CardinalDirection {
@@ -404,6 +425,16 @@ pub(super) fn random_pause(rng: &mut crate::gameplay_rng::GameplayRng) -> f32 {
 mod tests {
     use super::*;
     use crate::scenario_path::ScenarioRelativePath;
+
+    #[test]
+    fn a_standee_on_the_map_edge_is_moved_inside_and_others_stay_put() {
+        // Zone 01's boss stands on column 0: centre x 16 with a 64 px image would hang 16 px out.
+        assert_eq!(super::clamp_standee_x(16.0, 32.0, 0.0, 1600.0), 32.0);
+        assert_eq!(super::clamp_standee_x(1590.0, 32.0, 0.0, 1600.0), 1568.0);
+        assert_eq!(super::clamp_standee_x(400.0, 32.0, 0.0, 1600.0), 400.0);
+        // Wider than the map: left where it was rather than flipping the clamp bounds.
+        assert_eq!(super::clamp_standee_x(10.0, 48.0, 0.0, 64.0), 10.0);
+    }
 
     #[test]
     fn enemy_walk_tiles_use_the_lpc_rows_eight_through_eleven() {
