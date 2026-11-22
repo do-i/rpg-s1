@@ -35,6 +35,8 @@ use crate::{
 
 /// Slot rows drawn per load-picker page.
 const LOAD_VISIBLE_ROWS: usize = 7;
+/// Every slot card is this tall, badged or not, so scrolling never changes the list's height.
+const LOAD_ROW_HEIGHT: f32 = 70.0;
 
 #[derive(Default)]
 struct LoadSlotHighlights {
@@ -447,34 +449,37 @@ fn sync_title_load_overlay(
         .load_icon
         .as_ref()
         .map(|path| asset_server.load(root.resolve(path)));
-    commands
-        .spawn((
-            Node {
-                position_type: PositionType::Absolute,
-                width: percent(100),
-                height: percent(100),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                padding: UiRect::all(px(28)),
-                ..default()
-            },
-            BackgroundColor(UiTheme::OVERLAY_PANEL),
-            GlobalZIndex(5_000),
-            Name::new("Load picker"),
-            TitleLoadRoot,
-        ))
-        .with_children(|root| {
-            let default = PlayerOptions::default();
-            let options = options.as_deref().unwrap_or(&default);
-            spawn_load_panel(
-                root,
-                &font,
-                &catalog,
-                &load_menu,
-                load_icon.as_ref(),
-                &options.bindings,
-            );
-        });
+    spawn_load_overlay_root(&mut commands).with_children(|root| {
+        let default = PlayerOptions::default();
+        let options = options.as_deref().unwrap_or(&default);
+        spawn_load_panel(
+            root,
+            &font,
+            &catalog,
+            &load_menu,
+            load_icon.as_ref(),
+            &options.bindings,
+        );
+    });
+}
+
+/// The full-screen scrim the load panel is centred in.
+fn spawn_load_overlay_root<'a>(commands: &'a mut Commands) -> EntityCommands<'a> {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: UiRect::all(px(28)),
+            ..default()
+        },
+        BackgroundColor(UiTheme::OVERLAY_PANEL),
+        GlobalZIndex(5_000),
+        Name::new("Load picker"),
+        TitleLoadRoot,
+    ))
 }
 
 fn spawn_load_panel(
@@ -488,8 +493,9 @@ fn spawn_load_panel(
     parent
         .spawn((
             Node {
+                // A fixed frame: its contents scroll and change, the frame never resizes.
                 width: px(820),
-                max_height: percent(100),
+                height: percent(100),
                 flex_direction: FlexDirection::Column,
                 row_gap: px(6),
                 padding: UiRect::all(px(16)),
@@ -511,17 +517,27 @@ fn spawn_load_panel(
                     LOAD_VISIBLE_ROWS,
                 );
                 let highlights = LoadSlotHighlights::from_slots(&catalog.slots);
-                spawn_scroll_list(panel, window, scroll_list_node(6.0), |panel| {
-                    for slot in &catalog.slots[window.indices()] {
-                        spawn_load_slot_row(
-                            panel,
-                            font,
-                            slot,
-                            slot.index == menu.selected,
-                            highlights.badges(slot),
-                        );
-                    }
-                });
+                panel
+                    .spawn(Node {
+                        flex_grow: 1.0,
+                        min_height: px(0),
+                        flex_direction: FlexDirection::Column,
+                        overflow: Overflow::clip(),
+                        ..default()
+                    })
+                    .with_children(|area| {
+                        spawn_scroll_list(area, window, scroll_list_node(6.0), |list| {
+                            for slot in &catalog.slots[window.indices()] {
+                                spawn_load_slot_row(
+                                    list,
+                                    font,
+                                    slot,
+                                    slot.index == menu.selected,
+                                    highlights.badges(slot),
+                                );
+                            }
+                        });
+                    });
             } else {
                 panel
                     .spawn(Node {
@@ -555,9 +571,24 @@ fn spawn_load_panel(
                 14.0,
                 status_muted(),
             );
-            if !menu.message.is_empty() {
-                spawn_save_message(panel, font, &menu.message, status_border_active());
-            }
+            // The message line is always laid out, hidden when empty, so it never moves the list.
+            panel
+                .spawn((
+                    Node::default(),
+                    if menu.message.is_empty() {
+                        Visibility::Hidden
+                    } else {
+                        Visibility::Inherited
+                    },
+                ))
+                .with_children(|slot| {
+                    let message = if menu.message.is_empty() {
+                        " "
+                    } else {
+                        &menu.message
+                    };
+                    spawn_save_message(slot, font, message, status_border_active());
+                });
         });
 }
 
@@ -672,10 +703,12 @@ fn spawn_load_slot_row(
     let mut row = parent.spawn((
         Node {
             width: percent(100),
-            min_height: px(56),
+            height: px(LOAD_ROW_HEIGHT),
+            flex_shrink: 0.0,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
-            padding: UiRect::axes(px(12), px(7)),
+            padding: UiRect::axes(px(12), px(4)),
+            overflow: Overflow::clip(),
             border: UiRect::all(px(if selected { 2 } else { 1 })),
             border_radius: BorderRadius::all(px(4)),
             ..default()
@@ -1122,5 +1155,176 @@ mod tests {
             texts.contains(&"UP/DOWN   SELECT SLOT      G   LOAD      ESC   BACK".to_owned()),
             "{texts:?}"
         );
+    }
+
+    fn load_layout_app() -> (App, Handle<Font>) {
+        use bevy::{asset::AssetPlugin, image::ImagePlugin, text::TextPlugin, ui::UiPlugin};
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            AssetPlugin::default(),
+            ImagePlugin::default(),
+            TextPlugin,
+            bevy::input::InputPlugin,
+            bevy::picking::DefaultPickingPlugins,
+            bevy::window::WindowPlugin {
+                primary_window: Some(Window {
+                    resolution: (1280, 766).into(),
+                    ..default()
+                }),
+                ..default()
+            },
+            bevy::transform::TransformPlugin,
+            UiPlugin,
+        ))
+        .init_asset::<TextureAtlasLayout>();
+        let font = app
+            .world_mut()
+            .resource_mut::<Assets<Font>>()
+            .add(Font::from_bytes(
+                include_bytes!(scenario_file!("media/fonts/Philosopher-Regular.ttf")).to_vec(),
+            ));
+        app.world_mut().spawn((
+            Camera2d,
+            Camera {
+                computed: bevy::camera::ComputedCameraValues {
+                    target_info: Some(bevy::camera::RenderTargetInfo {
+                        physical_size: UVec2::new(1280, 766),
+                        scale_factor: 1.0,
+                    }),
+                    ..default()
+                },
+                ..default()
+            },
+        ));
+        (app, font)
+    }
+
+    /// Lays the picker out with `menu` and returns the outer frame's size and every row height.
+    fn measure_load_panel(
+        app: &mut App,
+        font: &Handle<Font>,
+        catalog: &SaveSlotCatalog,
+        menu: &TitleLoadMenu,
+    ) -> (Vec2, Vec<f32>) {
+        let mut queue = bevy::ecs::world::CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, app.world());
+        let root = spawn_load_overlay_root(&mut commands)
+            .with_children(|root| {
+                spawn_load_panel(root, font, catalog, menu, None, &InputBindings::default());
+            })
+            .id();
+        queue.apply(app.world_mut());
+        for _ in 0..3 {
+            app.update();
+        }
+        let world = app.world_mut();
+        let panel = world.get::<Children>(root).unwrap()[0];
+        let size = world.get::<ComputedNode>(panel).unwrap().size();
+        let rows: Vec<_> = world
+            .query_filtered::<(Entity, &ComputedNode, &UiGlobalTransform), With<TitleLoadSlotRow>>()
+            .iter(world)
+            .map(|(row, node, transform)| (row, node.size().y, transform.translation.y))
+            .collect();
+        let bottom = |entity: Entity| {
+            world
+                .get::<UiGlobalTransform>(entity)
+                .unwrap()
+                .translation
+                .y
+                + world.get::<ComputedNode>(entity).unwrap().size().y / 2.0
+        };
+        let rows = rows
+            .into_iter()
+            .map(|(row, height, centre)| {
+                let list = world.get::<ChildOf>(row).unwrap().parent();
+                let area = world.get::<ChildOf>(list).unwrap().parent();
+                let edge = bottom(area);
+                assert!(
+                    centre + height / 2.0 <= edge + 0.5,
+                    "a row is clipped below {edge}: {}",
+                    centre + height / 2.0
+                );
+                height
+            })
+            .collect();
+        let texts: Vec<_> = world
+            .query_filtered::<Entity, With<Text>>()
+            .iter(world)
+            .collect();
+        let rect = |entity: Entity| {
+            Rect::from_center_size(
+                world.get::<UiGlobalTransform>(entity).unwrap().translation,
+                world.get::<ComputedNode>(entity).unwrap().size(),
+            )
+        };
+        for text in texts {
+            let mut ancestor = Some(text);
+            while let Some(node) = ancestor {
+                if world.get::<TitleLoadSlotRow>(node).is_some() {
+                    let (row, inner) = (rect(node).inflate(0.5), rect(text));
+                    assert!(
+                        row.contains(inner.min) && row.contains(inner.max),
+                        "row text clipped: {inner:?} in {row:?}"
+                    );
+                    break;
+                }
+                ancestor = world.get::<ChildOf>(node).map(ChildOf::parent);
+            }
+        }
+        world.entity_mut(root).despawn();
+        (size, rows)
+    }
+
+    #[test]
+    fn the_load_frame_keeps_one_size_while_scrolling_and_showing_a_message() {
+        let (mut app, font) = load_layout_app();
+        let mut slots: Vec<_> = (0..SAVE_SLOT_COUNT)
+            .map(|index| SaveSlot {
+                index,
+                state: SaveSlotState::Empty,
+                metadata: None,
+                saved_at_unix_seconds: None,
+            })
+            .collect();
+        // Badged rows are the tallest; scatter them so some windows hold none and some several.
+        slots[0] = recorded_slot(0, 40, 9_000, Some(900));
+        slots[3] = recorded_slot(3, 12, 500, Some(100));
+        slots[20] = recorded_slot(20, 3, 20, Some(50));
+        slots[2].state = SaveSlotState::Corrupt("unreadable".to_owned());
+        let catalog = SaveSlotCatalog {
+            slots,
+            ready: true,
+            ..default()
+        };
+        let mut sizes = Vec::new();
+        for (selected, message) in [
+            (0, ""),
+            (12, ""),
+            (30, ""),
+            (100, ""),
+            (0, "Slot 5 is empty."),
+        ] {
+            let menu = TitleLoadMenu {
+                open: true,
+                selected,
+                message: message.to_owned(),
+                ..default()
+            };
+            let (size, rows) = measure_load_panel(&mut app, &font, &catalog, &menu);
+            assert_eq!(rows.len(), LOAD_VISIBLE_ROWS);
+            assert!(
+                rows.iter().all(|height| (height - rows[0]).abs() < 0.5),
+                "rows differ in height at {selected}: {rows:?}"
+            );
+            sizes.push(size);
+        }
+        assert!(
+            sizes
+                .iter()
+                .all(|size| (*size - sizes[0]).abs().max_element() < 0.5),
+            "the load frame resized: {sizes:?}"
+        );
+        assert!(sizes[0].y <= 766.0 - 56.0, "{sizes:?}");
     }
 }
