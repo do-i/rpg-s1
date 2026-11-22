@@ -553,7 +553,8 @@ mod tests {
         let asset_base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let mut inventory = ScenarioInventory::discover(&asset_base, &ScenarioRoot::default());
         assert!(inventory.failure.is_none(), "{:?}", inventory.failure);
-        // The optional directory is allowed to be absent, and then no boss has a standee.
+        // Whatever standees the package ships, an empty listing gives no boss a standee.
+        inventory.enemy_standees.clear();
         assert!(inventory.enemy_standee("grik_the_grin").is_none());
         let listed =
             ScenarioRelativePath::try_from("media/sprites/enemies/standee/grik_the_grin.png")
