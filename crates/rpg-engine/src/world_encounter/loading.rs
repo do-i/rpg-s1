@@ -35,10 +35,11 @@ use super::{
     },
 };
 
-pub(super) const STANDEE_SHADOW_WIDTH: f32 = 58.0;
-const STANDEE_SHADOW_FEET_Y: f32 = 3.0;
+pub(super) const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
 
-const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
+/// A boss standee's ground shadow: width in pixels, and its centre above the standee's feet.
+const STANDEE_SHADOW_WIDTH: f32 = 58.0;
+const STANDEE_SHADOW_FEET_Y: f32 = 3.0;
 
 /// The encounter-load failure for the first pending spawn whose formation names no enemy.
 ///
