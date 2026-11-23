@@ -1614,9 +1614,11 @@ fn position_enemy_cards(
 }
 
 /// Idle breathing, held flat while an enemy is mid-swing so the squash does not fight the attack
-/// frames — the same suspension the attack animation expects.
+/// frames — the same suspension the attack animation expects. A frozen enemy is held flat too:
+/// ice does not breathe.
 fn animate_enemy_breathing(
     time: Res<Time>,
+    state: Option<Res<BattleState>>,
     attacks: Option<Res<super::fx::BattleAttackAnimations>>,
     mut upper_bodies: Query<(&BattleEnemyUpperBody, &mut Node)>,
 ) {
@@ -1624,7 +1626,12 @@ fn animate_enemy_breathing(
         let attacking = attacks
             .as_deref()
             .is_some_and(|attacks| attacks.progress(marker.index).is_some());
-        let squash = if attacking {
+        let frozen = state.as_deref().is_some_and(|state| {
+            state
+                .actor(CombatantKey::enemy(marker.index))
+                .is_some_and(|enemy| enemy.has_status(super::status::StatusEffect::Freeze))
+        });
+        let squash = if attacking || frozen {
             0.0
         } else {
             breath_squash(time.elapsed_secs(), marker.index)
