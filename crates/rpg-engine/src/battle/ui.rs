@@ -510,7 +510,12 @@ fn spawn_enemy_area(
                                     height: px(shadow_height),
                                     ..default()
                                 },
-                                ImageNode::new(shadow.clone()),
+                                ImageNode::new(shadow.clone()).with_color(Color::srgba(
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    crate::blob_shadow::BATTLE_OPACITY,
+                                )),
                                 Pickable::IGNORE,
                                 BattleEnemyShadow(index),
                             ));
@@ -1317,7 +1322,7 @@ struct EnemyCardLayout {
 /// An enemy's floor shadow: its width as a share of the sprite, its height as a share of that
 /// width (a flat ellipse, as the camera sees the floor), and how far above the tile's bottom edge
 /// the painted feet land.
-const ENEMY_SHADOW_WIDTH_FRACTION: f32 = 0.62;
+const ENEMY_SHADOW_WIDTH_FRACTION: f32 = 0.8;
 const ENEMY_SHADOW_ASPECT: f32 = 0.24;
 const ENEMY_SHADOW_FEET_INSET: f32 = 14.0;
 

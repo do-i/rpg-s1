@@ -485,7 +485,9 @@ pub(super) fn animate_battle_dissolve(
         // The floor shadow goes with the figure rather than lingering under nothing.
         for (shadow, mut image) in &mut shadows {
             if shadow.0 == frame.0 {
-                image.color = image.color.with_alpha(alpha);
+                image.color = image
+                    .color
+                    .with_alpha(alpha * crate::blob_shadow::BATTLE_OPACITY);
             }
         }
     }
