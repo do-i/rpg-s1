@@ -352,6 +352,8 @@ pub struct BattleEntry {
     pub participants: Vec<BattleParticipant>,
     pub background_id: String,
     pub background_asset: String,
+    /// The depth rows enemies may stand on in this battle.
+    pub enemy_rows: rpg_content::scenario_encounter::EnemyRows,
     pub bgm_key: String,
     pub boss_completion_flag: Option<String>,
     /// Flags a *scripted* battle sets on victory, and only on victory.
@@ -491,6 +493,7 @@ pub(crate) fn build_battle_entry(
         participants,
         background_id: zone.background.clone(),
         background_asset: format!("media/images/battle_bg/{}.webp", zone.background),
+        enemy_rows: zone.enemy_rows,
         bgm_key: if boss { "battle.boss" } else { "battle.normal" }.to_owned(),
         boss_completion_flag: boss
             .then_some(zone.boss.as_ref())

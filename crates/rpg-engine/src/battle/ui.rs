@@ -17,6 +17,7 @@ use crate::{
     runtime_party::RuntimeParty,
     scenario_balance::BalanceData,
     scenario_battle_background::{BattleBackgroundCatalog, GroundRect},
+    scenario_encounter::EnemyRows,
     scenario_enemy::EnemySize,
     scenario_inventory::ScenarioInventory,
     scenario_new_game_assets::ActiveNewGameInputs,
@@ -408,7 +409,8 @@ fn enter_battle(
             BattleUi,
         ))
         .with_children(|root_node| {
-            spawn_enemy_area(root_node, &entry, &v2_enemies, background, &font);
+            let shadow = images.add(crate::blob_shadow::shadow_image());
+            spawn_enemy_area(root_node, &entry, &v2_enemies, background, &shadow, &font);
             deck::spawn_log_overlay(root_node, &font);
             deck::spawn_panels(
                 root_node,
@@ -439,6 +441,7 @@ fn spawn_enemy_area(
     entry: &BattleEntry,
     v2_enemies: &[bool],
     background: Handle<Image>,
+    shadow: &Handle<Image>,
     font: &Handle<Font>,
 ) {
     let enemies = entry
@@ -472,6 +475,7 @@ fn spawn_enemy_area(
                         full_enemy_ground(),
                         participant,
                         v2_enemies,
+                        entry.enemy_rows,
                         enemies.len(),
                         index,
                     );
@@ -491,6 +495,25 @@ fn spawn_enemy_area(
                             BattleEnemyCard(index),
                         ))
                         .with_children(|card| {
+                            // Behind the sprite, so it reads as a shadow on the floor under the
+                            // feet. Absolute, so the card's layout and health bar don't move.
+                            let shadow_width = (sprite_size * ENEMY_SHADOW_WIDTH_FRACTION).round();
+                            let shadow_height = (shadow_width * ENEMY_SHADOW_ASPECT).round();
+                            card.spawn((
+                                Node {
+                                    position_type: PositionType::Absolute,
+                                    left: px((layout.card_width - shadow_width) / 2.0),
+                                    top: px(sprite_size + 4.0
+                                        - ENEMY_SHADOW_FEET_INSET
+                                        - shadow_height / 2.0),
+                                    width: px(shadow_width),
+                                    height: px(shadow_height),
+                                    ..default()
+                                },
+                                ImageNode::new(shadow.clone()),
+                                Pickable::IGNORE,
+                                BattleEnemyShadow(index),
+                            ));
                             card.spawn((
                                 Node {
                                     width: px(sprite_size + 4.0),
@@ -1291,6 +1314,17 @@ struct EnemyCardLayout {
     bar_width: Option<f32>,
 }
 
+/// An enemy's floor shadow: its width as a share of the sprite, its height as a share of that
+/// width (a flat ellipse, as the camera sees the floor), and how far above the tile's bottom edge
+/// the painted feet land.
+const ENEMY_SHADOW_WIDTH_FRACTION: f32 = 0.62;
+const ENEMY_SHADOW_ASPECT: f32 = 0.24;
+const ENEMY_SHADOW_FEET_INSET: f32 = 14.0;
+
+/// Marks an enemy's floor shadow so a dead or hidden enemy can drop it with its sprite.
+#[derive(Component)]
+pub(super) struct BattleEnemyShadow(pub(super) usize);
+
 /// The health bar under a v2 battler. Its card is as wide as the 256-300px tile, and a bar that
 /// wide would run into its neighbours'.
 const ENEMY_V2_BAR_WIDTH: f32 = 160.0;
@@ -1301,6 +1335,7 @@ fn enemy_card_layout(
     ground: GroundRect,
     participant: &crate::encounter::BattleParticipant,
     v2_enemies: &[bool],
+    rows: EnemyRows,
     enemy_count: usize,
     index: usize,
 ) -> EnemyCardLayout {
@@ -1318,7 +1353,7 @@ fn enemy_card_layout(
             bar_width: None,
         };
     }
-    let (center_x, row) = super::enemy_depth::depth_slot(enemy_count, index);
+    let (center_x, row) = super::enemy_depth::depth_slot(enemy_count, index, rows);
     let v2 = v2_enemies.get(index).copied().unwrap_or(false);
     let sprite_size = if v2 {
         row.sprite_size()
@@ -1569,6 +1604,7 @@ fn position_enemy_cards(
             ground,
             participant,
             &assets.v2_enemies,
+            entry.enemy_rows,
             enemies.len(),
             marker.0,
         );
@@ -2070,8 +2106,14 @@ mod tests {
         let orc = layout_participant(EnemySize::Small, 270);
         for count in 1..=5 {
             for index in 0..count {
-                let layout =
-                    enemy_card_layout(full_enemy_ground(), &orc, &vec![false; count], count, index);
+                let layout = enemy_card_layout(
+                    full_enemy_ground(),
+                    &orc,
+                    &vec![false; count],
+                    EnemyRows::All,
+                    count,
+                    index,
+                );
                 let (left, top) =
                     enemy_card_position(full_enemy_ground(), 140.0, 140.0, count, index);
                 assert_eq!(
@@ -2090,10 +2132,38 @@ mod tests {
     }
 
     #[test]
+    fn back_mid_zones_keep_every_enemy_off_the_front_row() {
+        let orc = layout_participant(EnemySize::Small, 270);
+        for count in 1..=5 {
+            for index in 0..count {
+                let layout = enemy_card_layout(
+                    full_enemy_ground(),
+                    &orc,
+                    &vec![true; count],
+                    EnemyRows::BackMid,
+                    count,
+                    index,
+                );
+                assert!(layout.sprite_size < 300.0, "{count}/{index}");
+                assert!(layout.z < 2, "{count}/{index}");
+            }
+        }
+    }
+
+    #[test]
     fn five_v2_enemies_take_the_approved_rows_on_the_mountain_pass() {
         let orc = layout_participant(EnemySize::Small, 270);
         let layouts = (0..5)
-            .map(|index| enemy_card_layout(full_enemy_ground(), &orc, &[true; 5], 5, index))
+            .map(|index| {
+                enemy_card_layout(
+                    full_enemy_ground(),
+                    &orc,
+                    &[true; 5],
+                    EnemyRows::All,
+                    5,
+                    index,
+                )
+            })
             .map(|layout| {
                 (
                     layout.left + layout.card_width / 2.0,
@@ -2118,7 +2188,14 @@ mod tests {
     #[test]
     fn a_mixed_battle_seats_v1_enemies_in_depth_rows_at_their_own_size() {
         let bruiser = layout_participant(EnemySize::Medium, 100);
-        let layout = enemy_card_layout(full_enemy_ground(), &bruiser, &[false, true], 2, 0);
+        let layout = enemy_card_layout(
+            full_enemy_ground(),
+            &bruiser,
+            &[false, true],
+            EnemyRows::All,
+            2,
+            0,
+        );
         assert_eq!(layout.sprite_size, 64.0);
         assert_eq!(layout.bar_width, None);
         assert_eq!(layout.left + layout.card_width / 2.0, 450.0);
@@ -2151,7 +2228,14 @@ mod tests {
         ] {
             for count in 1..=5 {
                 for index in 0..count {
-                    let layout = enemy_card_layout(ground, &orc, &vec![true; count], count, index);
+                    let layout = enemy_card_layout(
+                        ground,
+                        &orc,
+                        &vec![true; count],
+                        EnemyRows::All,
+                        count,
+                        index,
+                    );
                     let bottom = layout.top + layout.sprite_size + 4.0 + 4.0 + 22.0;
                     assert!(
                         bottom <= ENEMY_AREA_HEIGHT,

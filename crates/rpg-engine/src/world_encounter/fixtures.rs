@@ -342,6 +342,7 @@ mod tests {
             ],
             background_id: "fixture".to_owned(),
             background_asset: "fixture.webp".to_owned(),
+            enemy_rows: Default::default(),
             bgm_key: "battle.normal".to_owned(),
             boss_completion_flag: None,
             victory_flags: Vec::new(),

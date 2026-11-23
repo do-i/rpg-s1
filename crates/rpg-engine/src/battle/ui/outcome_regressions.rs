@@ -30,6 +30,7 @@ fn fixture(phase: BattlePhase) -> App {
         participants: vec![],
         background_id: String::new(),
         background_asset: String::new(),
+        enemy_rows: Default::default(),
         bgm_key: String::new(),
         boss_completion_flag: Some("boss_zone01_defeated".into()),
         victory_flags: vec!["story_act2_started".into()],

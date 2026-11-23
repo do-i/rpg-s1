@@ -37,6 +37,21 @@ pub struct EncounterZone {
     /// Positive seconds between reactivation ticks. Missing and null use later fallback layers.
     #[serde(default)]
     pub spawn_frequency: Option<PositiveFinite>,
+    /// Which depth rows enemies may stand on. Absent means all three.
+    #[serde(default)]
+    pub enemy_rows: EnemyRows,
+}
+
+/// The depth rows a zone's battle background lets enemies stand on.
+///
+/// `BackMid` keeps the front row empty, for backgrounds with foreground scenery (a rock) where a
+/// front-row enemy's feet would land on it.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum EnemyRows {
+    #[default]
+    All,
+    BackMid,
 }
 
 impl EncounterZone {

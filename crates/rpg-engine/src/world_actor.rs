@@ -29,6 +29,10 @@ const WANDER_PIXELS_PER_SECOND: f32 = 60.0;
 const WANDER_PAUSE_MIN: f32 = 1.0;
 const WANDER_PAUSE_SPAN: f32 = 2.5;
 
+/// An NPC's ground shadow: width in pixels, and its centre below the 64px sprite's centre.
+const NPC_SHADOW_WIDTH: f32 = 40.0;
+const NPC_SHADOW_FEET_Y: f32 = -26.0;
+
 pub(crate) struct WorldActorPlugin;
 
 impl Plugin for WorldActorPlugin {
@@ -280,6 +284,8 @@ fn drive_world_actor_load(
     game: Option<ResMut<GameState>>,
     actors: Query<(), With<WorldNpc>>,
     mut state: ResMut<WorldActorState>,
+    mut images: ResMut<Assets<Image>>,
+    mut shadow: Local<Option<Handle<Image>>>,
 ) {
     if matches!(
         state.status,
@@ -394,6 +400,11 @@ fn drive_world_actor_load(
                 world_entity_y_z(-center.y, SPRITE_HALF_HEIGHT),
             )),
             actor,
+            children![crate::blob_shadow::field_shadow(
+                crate::blob_shadow::shared_handle(&mut images, &mut shadow),
+                NPC_SHADOW_WIDTH,
+                NPC_SHADOW_FEET_Y,
+            )],
         ));
     }
     state.status = WorldActorStatus::Spawned;

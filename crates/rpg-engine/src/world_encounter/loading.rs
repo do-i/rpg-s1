@@ -35,7 +35,10 @@ use super::{
     },
 };
 
-pub(super) const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
+pub(super) const STANDEE_SHADOW_WIDTH: f32 = 58.0;
+const STANDEE_SHADOW_FEET_Y: f32 = 3.0;
+
+const DEFAULT_RESPAWN_SECONDS: f32 = 30.0;
 
 /// The encounter-load failure for the first pending spawn whose formation names no enemy.
 ///
@@ -100,7 +103,8 @@ pub(super) fn drive_active_encounter_assets(
     boss_move_set_assets: Res<Assets<BossMoveSet>>,
     background_assets: Res<Assets<BattleBackgroundCatalog>>,
     sfx_assets: Res<Assets<SfxIndex>>,
-    image_assets: Res<Assets<Image>>,
+    mut image_assets: ResMut<Assets<Image>>,
+    mut shadow: Local<Option<Handle<Image>>>,
     maps: Res<Assets<TmxGroundAsset>>,
     render: Res<StaticMapRenderState>,
     restore: Option<Res<WorldEncounterRestore>>,
@@ -493,6 +497,12 @@ pub(super) fn drive_active_encounter_assets(
         ));
         if is_standee {
             entity.insert((bevy::sprite::Anchor::BOTTOM_CENTER, EnemyStandee));
+            // The standee's feet are its origin, so the shadow sits just above it.
+            entity.with_child(crate::blob_shadow::field_shadow(
+                crate::blob_shadow::shared_handle(&mut image_assets, &mut shadow),
+                STANDEE_SHADOW_WIDTH,
+                STANDEE_SHADOW_FEET_Y,
+            ));
         }
     }
     let interval = metadata

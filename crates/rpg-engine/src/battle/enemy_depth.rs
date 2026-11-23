@@ -5,6 +5,8 @@
 //! A battle uses it when any enemy has a v2 status sheet; a battle of v1 enemies only keeps the
 //! legacy preset layout untouched.
 
+use rpg_content::scenario_encounter::EnemyRows;
+
 /// One of the three ground rows.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum DepthRow {
@@ -47,8 +49,31 @@ impl DepthRow {
 
 /// The canvas center x and row of one formation slot. Slots run left to right in formation order,
 /// so target cycling still moves across the screen.
-pub(super) fn depth_slot(count: usize, index: usize) -> (f32, DepthRow) {
+pub(super) fn depth_slot(count: usize, index: usize, rows: EnemyRows) -> (f32, DepthRow) {
     use DepthRow::{Back, Front, Mid};
+    if rows == EnemyRows::BackMid {
+        // No front row: foreground scenery sits where those feet would land.
+        const ONE: [(f32, DepthRow); 1] = [(640.0, Mid)];
+        const TWO: [(f32, DepthRow); 2] = [(450.0, Mid), (830.0, Mid)];
+        const THREE: [(f32, DepthRow); 3] = [(400.0, Mid), (640.0, Back), (880.0, Mid)];
+        const FOUR: [(f32, DepthRow); 4] =
+            [(330.0, Back), (450.0, Mid), (830.0, Mid), (950.0, Back)];
+        const FIVE: [(f32, DepthRow); 5] = [
+            (330.0, Back),
+            (450.0, Mid),
+            (640.0, Back),
+            (830.0, Mid),
+            (950.0, Back),
+        ];
+        let slots = match count {
+            0 | 1 => &ONE[..],
+            2 => &TWO[..],
+            3 => &THREE[..],
+            4 => &FOUR[..],
+            _ => &FIVE[..],
+        };
+        return slots.get(index).copied().unwrap_or((640.0, Mid));
+    }
     const ONE: [(f32, DepthRow); 1] = [(640.0, Front)];
     const TWO: [(f32, DepthRow); 2] = [(450.0, Front), (830.0, Front)];
     const THREE: [(f32, DepthRow); 3] = [(400.0, Front), (640.0, Front), (880.0, Front)];
@@ -78,7 +103,7 @@ mod tests {
     #[test]
     fn five_enemies_use_the_approved_rows_and_sizes() {
         let rows = (0..5)
-            .map(|index| depth_slot(5, index))
+            .map(|index| depth_slot(5, index, EnemyRows::All))
             .map(|(x, row)| (x, row.sprite_size()))
             .collect::<Vec<_>>();
         assert_eq!(
@@ -97,7 +122,7 @@ mod tests {
     fn slots_run_left_to_right_and_nearer_rows_sit_lower_and_on_top() {
         for count in 1..=5 {
             let xs = (0..count)
-                .map(|index| depth_slot(count, index).0)
+                .map(|index| depth_slot(count, index, EnemyRows::All).0)
                 .collect::<Vec<_>>();
             assert!(
                 xs.windows(2).all(|pair| pair[0] < pair[1]),
@@ -109,6 +134,17 @@ mod tests {
             assert!(pair[0].tile_bottom() < pair[1].tile_bottom());
             assert!(pair[0].z() < pair[1].z());
             assert!(pair[0].sprite_size() < pair[1].sprite_size());
+        }
+    }
+
+    #[test]
+    fn back_mid_zones_never_use_the_front_row() {
+        for count in 1..=5 {
+            let slots = (0..count)
+                .map(|index| depth_slot(count, index, EnemyRows::BackMid))
+                .collect::<Vec<_>>();
+            assert!(slots.iter().all(|(_, row)| *row != DepthRow::Front));
+            assert!(slots.windows(2).all(|pair| pair[0].0 < pair[1].0));
         }
     }
 }

@@ -1,6 +1,8 @@
 id: zone_06_mountain_pass_01
 name: Mountain Pass
 background: zone6-bg-1280x468
+# The big foreground rock sits where a front-row enemy would stand.
+enemy_rows: back_mid
 density: 0.14
 
 entries:

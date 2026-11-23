@@ -10,6 +10,7 @@ mod autosave;
 mod battle;
 mod battle_log;
 pub mod battle_tactics;
+mod blob_shadow;
 mod cli;
 mod credits;
 mod debug_launch;
