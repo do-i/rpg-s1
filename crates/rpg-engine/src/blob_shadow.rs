@@ -1,5 +1,6 @@
-//! One soft elliptical ground shadow, shared by the field (NPCs, boss standees) and the battle
-//! scene (enemy battlers). It is generated at runtime, so it adds no asset and no ledger row.
+//! Ground shadows: one soft elliptical blob for the field (NPCs, boss standees), and the shear
+//! math the battle scene uses to cast an enemy's own pose onto the ground. The blob is generated
+//! at runtime, so it adds no asset and no ledger row.
 //!
 //! Shadows ground a sprite on the 45-degree-camera floor and keep a figure readable against a
 //! busy background. They are deliberately soft and weak: dark enough to anchor a foot, never
@@ -19,8 +20,6 @@ const EDGE_FADE: f32 = 0.45;
 /// How dark a field shadow is. The texture's core is fully opaque, so each use sets its own
 /// strength through the tint alpha.
 pub(crate) const FIELD_OPACITY: f32 = 0.6;
-/// How dark a battle shadow is: stronger than the field, against painted, dappled backgrounds.
-pub(crate) const BATTLE_OPACITY: f32 = 0.8;
 /// Child z under the owning sprite. Half the Y-sort step, so it never crosses a neighbour's band.
 const CHILD_Z: f32 = -0.0005;
 
@@ -70,9 +69,80 @@ pub(crate) fn field_shadow(image: Handle<Image>, size: Vec2, feet_y: f32) -> (Sp
     (sprite, Transform::from_xyz(0.0, feet_y, CHILD_Z))
 }
 
+/// A 2x2 linear map split as `rotate(outer) * scale * rotate(inner)`, the only shape a pair of
+/// nested Bevy transforms (world or UI) can express. Nesting is how a shadow gets a shear: neither
+/// transform type has one of its own.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct NestedLinear {
+    pub(crate) outer_rotation: f32,
+    pub(crate) scale: Vec2,
+    pub(crate) inner_rotation: f32,
+}
+
+impl NestedLinear {
+    /// Closed-form 2x2 singular value decomposition. `scale.y` comes out negative for a map that
+    /// mirrors, which both transform types accept.
+    pub(crate) fn from_mat2(matrix: Mat2) -> Self {
+        let (a, c) = (matrix.x_axis.x, matrix.x_axis.y);
+        let (b, d) = (matrix.y_axis.x, matrix.y_axis.y);
+        let e = (a + d) / 2.0;
+        let f = (a - d) / 2.0;
+        let g = (c + b) / 2.0;
+        let h = (c - b) / 2.0;
+        let q = (e * e + h * h).sqrt();
+        let r = (f * f + g * g).sqrt();
+        let a1 = g.atan2(f);
+        let a2 = h.atan2(e);
+        Self {
+            outer_rotation: (a2 + a1) / 2.0,
+            scale: Vec2::new(q + r, q - r),
+            inner_rotation: (a2 - a1) / 2.0,
+        }
+    }
+
+    #[cfg(test)]
+    fn to_mat2(self) -> Mat2 {
+        Mat2::from_angle(self.outer_rotation)
+            * Mat2::from_diagonal(self.scale)
+            * Mat2::from_angle(self.inner_rotation)
+    }
+}
+
+/// The map that lays a standing figure on the ground as its cast shadow, about the feet, in a
+/// y-down frame such as UI layout: a point `h` above the feet (y = -h) lands `lean * h` to the
+/// right and `length * h` up. Light comes from the south-west, so the shadow falls to the
+/// north-east, like the map's buildings.
+pub(crate) fn cast_shadow_y_down(lean: f32, length: f32) -> Mat2 {
+    Mat2::from_cols(Vec2::new(1.0, 0.0), Vec2::new(-lean, length))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nested_rotations_and_scale_rebuild_a_shear() {
+        for matrix in [
+            cast_shadow_y_down(0.6, 0.4),
+            Mat2::IDENTITY,
+            Mat2::from_cols(Vec2::new(2.0, 0.3), Vec2::new(-0.7, 0.9)),
+        ] {
+            let rebuilt = NestedLinear::from_mat2(matrix).to_mat2();
+            assert!(
+                rebuilt.abs_diff_eq(matrix, 1e-5),
+                "{matrix:?} -> {rebuilt:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_cast_shadow_falls_north_east_of_the_feet() {
+        // "Above" is negative y, and the head's shadow goes up-right on screen.
+        let head = cast_shadow_y_down(0.5, 0.45) * Vec2::new(0.0, -60.0);
+        assert!(head.x > 0.0 && head.y < 0.0, "{head:?}");
+        // The feet stay put.
+        assert_eq!(cast_shadow_y_down(0.5, 0.45) * Vec2::ZERO, Vec2::ZERO);
+    }
 
     #[test]
     fn the_shadow_is_soft_centred_and_transparent_at_the_rim() {

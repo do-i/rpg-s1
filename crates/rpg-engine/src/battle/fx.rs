@@ -6,10 +6,7 @@ use super::{
     action::BattleEvent,
     model::{BattleState, CombatantKey},
     status::{StatusEffect, StatusPotency},
-    ui::{
-        BattleAssetState, BattleEnemyFrame, BattleEnemyImage, BattleEnemyShadow, BattlePartyCard,
-        BattleUi,
-    },
+    ui::{BattleAssetState, BattleEnemyFrame, BattleEnemyImage, BattlePartyCard, BattleUi},
 };
 use crate::{
     encounter::BattleSide,
@@ -471,23 +468,17 @@ pub(super) fn animate_battle_dissolve(
     time: Res<Time>,
     mut dissolving: Query<(&mut BattleDeathDissolve, &BattleEnemyFrame)>,
     mut sprites: Query<(&BattleEnemyImage, &mut ImageNode)>,
-    mut shadows: Query<(&BattleEnemyShadow, &mut ImageNode), Without<BattleEnemyImage>>,
 ) {
     let delta = time.delta_secs().max(0.0);
     for (mut dissolve, frame) in &mut dissolving {
         dissolve.elapsed += delta;
         let alpha = dissolve_frame(dissolve.elapsed);
+        // The cast shadow is one of these images, so it goes with the figure rather than
+        // lingering under nothing.
         for (sprite, mut image) in &mut sprites {
             if sprite.index == frame.0 {
-                image.color = image.color.with_alpha(alpha);
-            }
-        }
-        // The floor shadow goes with the figure rather than lingering under nothing.
-        for (shadow, mut image) in &mut shadows {
-            if shadow.0 == frame.0 {
-                image.color = image
-                    .color
-                    .with_alpha(alpha * crate::blob_shadow::BATTLE_OPACITY);
+                let full = sprite.full_color();
+                image.color = full.with_alpha(full.alpha() * alpha);
             }
         }
     }

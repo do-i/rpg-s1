@@ -157,6 +157,8 @@ pub(super) struct BattleUi;
 enum EnemySpritePart {
     Upper,
     Lower,
+    /// The whole pose, drawn black as the cast shadow.
+    Shadow,
 }
 
 #[derive(Component)]
@@ -164,6 +166,17 @@ pub(super) struct BattleEnemyImage {
     pub(super) index: usize,
     part: EnemySpritePart,
     split_fraction: f32,
+}
+
+impl BattleEnemyImage {
+    /// The tint at full presence: the body as painted, the shadow as a translucent black. The
+    /// death fade scales its alpha.
+    pub(super) fn full_color(&self) -> Color {
+        match self.part {
+            EnemySpritePart::Upper | EnemySpritePart::Lower => Color::WHITE,
+            EnemySpritePart::Shadow => Color::srgba(0.0, 0.0, 0.0, ENEMY_SHADOW_OPACITY),
+        }
+    }
 }
 
 #[derive(Component)]
@@ -409,8 +422,7 @@ fn enter_battle(
             BattleUi,
         ))
         .with_children(|root_node| {
-            let shadow = images.add(crate::blob_shadow::shadow_image());
-            spawn_enemy_area(root_node, &entry, &v2_enemies, background, &shadow, &font);
+            spawn_enemy_area(root_node, &entry, &v2_enemies, background, &font);
             deck::spawn_log_overlay(root_node, &font);
             deck::spawn_panels(
                 root_node,
@@ -441,7 +453,6 @@ fn spawn_enemy_area(
     entry: &BattleEntry,
     v2_enemies: &[bool],
     background: Handle<Image>,
-    shadow: &Handle<Image>,
     font: &Handle<Font>,
 ) {
     let enemies = entry
@@ -470,6 +481,19 @@ fn spawn_enemy_area(
                 ..default()
             })
             .with_children(|battlefield| {
+                // Every shadow first, so they lie on the ground under all the bodies: a front
+                // enemy's shadow must not paint over the enemy behind it.
+                for (index, participant) in enemies.iter().enumerate() {
+                    let layout = enemy_card_layout(
+                        full_enemy_ground(),
+                        participant,
+                        v2_enemies,
+                        entry.enemy_rows,
+                        enemies.len(),
+                        index,
+                    );
+                    spawn_enemy_cast_shadow(battlefield, index, layout);
+                }
                 for (index, participant) in enemies.iter().enumerate() {
                     let layout = enemy_card_layout(
                         full_enemy_ground(),
@@ -495,30 +519,6 @@ fn spawn_enemy_area(
                             BattleEnemyCard(index),
                         ))
                         .with_children(|card| {
-                            // Behind the sprite, so it reads as a shadow on the floor under the
-                            // feet. Absolute, so the card's layout and health bar don't move.
-                            let shadow_width = (sprite_size * ENEMY_SHADOW_WIDTH_FRACTION).round();
-                            let shadow_height = (shadow_width * ENEMY_SHADOW_ASPECT).round();
-                            card.spawn((
-                                Node {
-                                    position_type: PositionType::Absolute,
-                                    left: px((layout.card_width - shadow_width) / 2.0),
-                                    top: px(sprite_size + 4.0
-                                        - ENEMY_SHADOW_FEET_INSET
-                                        - shadow_height / 2.0),
-                                    width: px(shadow_width),
-                                    height: px(shadow_height),
-                                    ..default()
-                                },
-                                ImageNode::new(shadow.clone()).with_color(Color::srgba(
-                                    1.0,
-                                    1.0,
-                                    1.0,
-                                    crate::blob_shadow::BATTLE_OPACITY,
-                                )),
-                                Pickable::IGNORE,
-                                BattleEnemyShadow(index),
-                            ));
                             card.spawn((
                                 Node {
                                     width: px(sprite_size + 4.0),
@@ -1319,16 +1319,89 @@ struct EnemyCardLayout {
     bar_width: Option<f32>,
 }
 
-/// An enemy's floor shadow: its width as a share of the sprite, its height as a share of that
-/// width (a flat ellipse, as the camera sees the floor), and how far above the tile's bottom edge
-/// the painted feet land.
-const ENEMY_SHADOW_WIDTH_FRACTION: f32 = 0.8;
-const ENEMY_SHADOW_ASPECT: f32 = 0.24;
-const ENEMY_SHADOW_FEET_INSET: f32 = 14.0;
+/// An enemy's cast shadow: its own current pose, laid on the ground from the feet toward the
+/// north-east, the way the light falls on the field map. A point `h` above the feet lands
+/// `LEAN * h` right and `LENGTH * h` up the screen.
+const ENEMY_SHADOW_LEAN: f32 = 0.7;
+const ENEMY_SHADOW_LENGTH: f32 = 0.45;
+/// How far above the tile's bottom edge the painted feet land.
+const ENEMY_SHADOW_FEET_INSET: f32 = 10.0;
+/// How dark the cast shadow is. Hard-edged, so lighter than the soft field blob.
+const ENEMY_SHADOW_OPACITY: f32 = 0.55;
 
-/// Marks an enemy's floor shadow so a dead or hidden enemy can drop it with its sprite.
-#[derive(Component)]
-pub(super) struct BattleEnemyShadow(pub(super) usize);
+/// The cast shadow's nested rotate-scale-rotate and the translation that pins its pivot to the
+/// feet rather than the tile centre, where UI transforms turn.
+fn enemy_shadow_slant(sprite_size: f32) -> (crate::blob_shadow::NestedLinear, Vec2) {
+    let slant = crate::blob_shadow::cast_shadow_y_down(ENEMY_SHADOW_LEAN, ENEMY_SHADOW_LENGTH);
+    let feet_below_centre = Vec2::new(0.0, sprite_size / 2.0 - ENEMY_SHADOW_FEET_INSET);
+    (
+        crate::blob_shadow::NestedLinear::from_mat2(slant),
+        feet_below_centre - slant * feet_below_centre,
+    )
+}
+
+/// Lays one enemy's cast shadow on the ground. The holder sits exactly where the enemy's card
+/// does (and carries its [`BattleEnemyCard`] marker, so it moves and hides with the card); inside,
+/// two nested nodes over the sprite tile shear the pose image about the feet. Neither UI transform
+/// shears on its own, so the slant is split into rotate-scale (outer) and rotate (inner).
+fn spawn_enemy_cast_shadow(
+    battlefield: &mut ChildSpawnerCommands<'_>,
+    index: usize,
+    layout: EnemyCardLayout,
+) {
+    let sprite_size = layout.sprite_size;
+    let (parts, shift) = enemy_shadow_slant(sprite_size);
+    battlefield
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(layout.left),
+                top: px(layout.top),
+                width: px(layout.card_width),
+                height: px(sprite_size + 4.0),
+                ..default()
+            },
+            Pickable::IGNORE,
+            BattleEnemyCard(index),
+        ))
+        .with_children(|holder| {
+            holder
+                .spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: px((layout.card_width - sprite_size) / 2.0),
+                        top: px(2.0),
+                        width: px(sprite_size),
+                        height: px(sprite_size),
+                        ..default()
+                    },
+                    UiTransform {
+                        translation: Val2::px(shift.x, shift.y),
+                        scale: parts.scale,
+                        rotation: Rot2::radians(parts.outer_rotation),
+                    },
+                    Pickable::IGNORE,
+                ))
+                .with_child((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: px(0),
+                        top: px(0),
+                        width: percent(100),
+                        height: percent(100),
+                        ..default()
+                    },
+                    UiTransform::from_rotation(Rot2::radians(parts.inner_rotation)),
+                    ImageNode::solid_color(Color::NONE),
+                    Pickable::IGNORE,
+                    BattleEnemyImage {
+                        index,
+                        part: EnemySpritePart::Shadow,
+                        split_fraction: 1.0,
+                    },
+                ));
+        });
+}
 
 /// The health bar under a v2 battler. Its card is as wide as the 256-300px tile, and a bar that
 /// wide would run into its neighbours'.
@@ -1571,9 +1644,10 @@ fn drive_battle_assets(
             image.rect = Some(match marker.part {
                 EnemySpritePart::Upper => Rect::new(0.0, 0.0, source_width, split),
                 EnemySpritePart::Lower => Rect::new(0.0, split, source_width, source_height),
+                EnemySpritePart::Shadow => Rect::new(0.0, 0.0, source_width, source_height),
             });
             image.image_mode = NodeImageMode::Stretch;
-            image.color = Color::WHITE;
+            image.color = marker.full_color();
         }
     }
 }
@@ -2140,6 +2214,28 @@ mod tests {
                     }
                 );
             }
+        }
+    }
+
+    #[test]
+    fn the_cast_shadow_starts_at_the_feet_and_falls_north_east() {
+        for sprite_size in [256.0, 273.0, 300.0, 64.0] {
+            let (parts, shift) = enemy_shadow_slant(sprite_size);
+            // The nested UI transforms, applied about the tile centre as Bevy does.
+            let place = |from_centre: Vec2| {
+                shift
+                    + Mat2::from_angle(parts.outer_rotation)
+                        * Mat2::from_diagonal(parts.scale)
+                        * Mat2::from_angle(parts.inner_rotation)
+                        * from_centre
+            };
+            let feet = Vec2::new(0.0, sprite_size / 2.0 - ENEMY_SHADOW_FEET_INSET);
+            assert!(place(feet).abs_diff_eq(feet, 1e-3), "{sprite_size}");
+            let head = Vec2::new(0.0, -sprite_size / 2.0);
+            let shadow_head = place(head);
+            assert!(shadow_head.x > 0.0, "falls east: {shadow_head:?}");
+            assert!(shadow_head.y < feet.y, "falls north: {shadow_head:?}");
+            assert!(shadow_head.y > head.y, "lies flatter than the figure");
         }
     }
 
