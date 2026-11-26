@@ -25,15 +25,30 @@ const CHILD_Z: f32 = -0.0005;
 
 /// The shared shadow texture: an opaque black core falling off smoothly to a transparent rim.
 pub(crate) fn shadow_image() -> Image {
+    shaped_shadow_image(EDGE_FADE)
+}
+
+/// A flat, hard-edged oval: one even tone, no fade at the rim.
+fn solid_shadow_image() -> Image {
+    shaped_shadow_image(0.0)
+}
+
+fn shaped_shadow_image(edge_fade: f32) -> Image {
     let mut data = Vec::with_capacity((WIDTH * HEIGHT * 4) as usize);
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
             let dx = (x as f32 + 0.5) / WIDTH as f32 * 2.0 - 1.0;
             let dy = (y as f32 + 0.5) / HEIGHT as f32 * 2.0 - 1.0;
             let distance = (dx * dx + dy * dy).sqrt();
-            let falloff = ((1.0 - distance) / EDGE_FADE).clamp(0.0, 1.0);
-            // Smoothstep: a soft edge rather than a hard disc.
-            let alpha = falloff * falloff * (3.0 - 2.0 * falloff);
+            let alpha = if edge_fade > 0.0 {
+                let falloff = ((1.0 - distance) / edge_fade).clamp(0.0, 1.0);
+                // Smoothstep: a soft edge rather than a hard disc.
+                falloff * falloff * (3.0 - 2.0 * falloff)
+            } else if distance <= 1.0 {
+                1.0
+            } else {
+                0.0
+            };
             data.extend_from_slice(&[0, 0, 0, (alpha * 255.0).round() as u8]);
         }
     }
@@ -58,6 +73,39 @@ pub(crate) fn shared_handle(
     cache
         .get_or_insert_with(|| images.add(shadow_image()))
         .clone()
+}
+
+/// Returns the shared flat-oval shadow handle, creating the texture on first use.
+pub(crate) fn shared_solid_handle(
+    images: &mut Assets<Image>,
+    cache: &mut Option<Handle<Image>>,
+) -> Handle<Image> {
+    cache
+        .get_or_insert_with(|| images.add(solid_shadow_image()))
+        .clone()
+}
+
+/// A flat oval laid along the ground from `start` (between the feet) to `tip`, `width` pixels
+/// across and `opacity` strong, positioned relative to its parent's origin. Cast toward the
+/// north-east like the map's buildings. The oval is stretched a fifth past `tip - start` so
+/// its drawn ends meet the two points.
+pub(crate) fn cast_oval_shadow(
+    image: Handle<Image>,
+    start: Vec2,
+    tip: Vec2,
+    width: f32,
+    opacity: f32,
+) -> (Sprite, Transform) {
+    let run = tip - start;
+    let mut sprite = Sprite::from_image(image);
+    sprite.custom_size = Some(Vec2::new(run.length() * 1.2, width));
+    sprite.color = Color::srgba(1.0, 1.0, 1.0, opacity);
+    let centre = start + run / 2.0;
+    (
+        sprite,
+        Transform::from_xyz(centre.x, centre.y, CHILD_Z)
+            .with_rotation(Quat::from_rotation_z(run.y.atan2(run.x))),
+    )
 }
 
 /// A field shadow child, `size` pixels across, centred `feet_y` above (negative: below) its

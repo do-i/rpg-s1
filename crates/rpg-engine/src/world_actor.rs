@@ -29,10 +29,12 @@ const WANDER_PIXELS_PER_SECOND: f32 = 60.0;
 const WANDER_PAUSE_MIN: f32 = 1.0;
 const WANDER_PAUSE_SPAN: f32 = 2.5;
 
-/// An NPC's ground shadow, in pixels, and its centre below the 64px sprite's centre. Wide and
-/// flat so it shows past the feet on both sides; a narrower one hid behind the legs.
-const NPC_SHADOW_SIZE: Vec2 = Vec2::new(48.0, 16.0);
-const NPC_SHADOW_FEET_Y: f32 = -27.0;
+/// An NPC's cast shadow, in pixels from the 64px sprite's centre: a flat oval from just between
+/// the feet up and to the right, ending near the elbow, so it shows past the body.
+const NPC_SHADOW_START: Vec2 = Vec2::new(-2.0, -30.0);
+const NPC_SHADOW_TIP: Vec2 = Vec2::new(16.0, -12.0);
+const NPC_SHADOW_WIDTH: f32 = 18.0;
+const NPC_SHADOW_OPACITY: f32 = 0.45;
 
 pub(crate) struct WorldActorPlugin;
 
@@ -401,10 +403,12 @@ fn drive_world_actor_load(
                 world_entity_y_z(-center.y, SPRITE_HALF_HEIGHT),
             )),
             actor,
-            children![crate::blob_shadow::field_shadow(
-                crate::blob_shadow::shared_handle(&mut images, &mut shadow),
-                NPC_SHADOW_SIZE,
-                NPC_SHADOW_FEET_Y,
+            children![crate::blob_shadow::cast_oval_shadow(
+                crate::blob_shadow::shared_solid_handle(&mut images, &mut shadow),
+                NPC_SHADOW_START,
+                NPC_SHADOW_TIP,
+                NPC_SHADOW_WIDTH,
+                NPC_SHADOW_OPACITY,
             )],
         ));
     }
