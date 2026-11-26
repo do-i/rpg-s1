@@ -1103,7 +1103,7 @@ fn production_ancient_ruins_maps_spawn_barriers_and_build_the_sanctum_boss_hando
             ] {
                 assert_eq!(collision.is_blocked(column, row), Some(false));
             }
-            for (column, row) in [(31, 4), (34, 2), (9, 2), (5, 52), (32, 52)] {
+            for (column, row) in [(31, 1), (34, 2), (9, 2), (5, 52), (32, 52)] {
                 assert_eq!(collision.is_blocked(column, row), Some(true));
             }
         }

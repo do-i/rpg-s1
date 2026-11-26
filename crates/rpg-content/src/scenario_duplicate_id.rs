@@ -586,7 +586,7 @@ mod tests {
                 (CatalogNamespace::Enemies, 105),
                 (CatalogNamespace::BossMoveSets, 11),
                 (CatalogNamespace::Encounters, 22),
-                (CatalogNamespace::BattleBackgrounds, 14),
+                (CatalogNamespace::BattleBackgrounds, 16),
                 (CatalogNamespace::Recipes, 17),
                 (CatalogNamespace::Quests, 18),
                 (CatalogNamespace::Bgm, 13),
