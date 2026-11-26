@@ -19,6 +19,7 @@
 # Settings come from ~/.imggen.env (or the environment):
 #   IMGGEN_STAGE   work area; each enemy gets STAGE/ID/
 #   ENEMY_CONCEPTS concepts file (ID|description|keep-list|item per line); with no arguments, imggen lists its ids not yet in v2/
+#                  For a one-image experiment: ID|complete prompt|single_image|aspect ratio|optional reference image
 #   ENEMY_GEN_CMD  image generator, one image per call: $ENEMY_GEN_CMD OUT.jpg PROMPT_FILE [REF.jpg]
 #                  no REF = new image; REF = edit seeded from it. Request settings arrive as env vars
 #                  scoped to the call: GEN_MODEL GEN_RESOLUTION GEN_ASPECT GEN_QUALITY (may be empty).
@@ -200,6 +201,24 @@ step1() {
   : "${ENEMY_GEN_CMD:?set ENEMY_GEN_CMD in ~/.imggen.env}" "${ENEMY_GEN_MODEL:?set ENEMY_GEN_MODEL in ~/.imggen.env}" "${ENEMY_CONCEPTS:?set ENEMY_CONCEPTS in ~/.imggen.env}"
   : "${ENEMY_GEN_DELAY:?set ENEMY_GEN_DELAY (seconds between generator calls) in ~/.imggen.env}"
   [[ $ENEMY_GEN_DELAY =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "ENEMY_GEN_DELAY must be a number of seconds, got '$ENEMY_GEN_DELAY'" >&2; return 1; }
+  if [ "$(concept 3)" = single_image ]; then
+    [ $# -eq 0 ] || { echo "single-image experiments do not accept pose arguments" >&2; return 1; }
+    [ ! -e "$raw/ready.jpg" ] || { echo "image already exists: $raw/ready.jpg" >&2; return 1; }
+    local prompt aspect reference rc
+    prompt=$(concept 2); aspect=$(concept 4); reference=$(concept 5)
+    [ -n "$prompt" ] && [ -n "$aspect" ] || { echo "single-image entry requires a prompt and aspect ratio" >&2; return 1; }
+    mkdir -p "$raw/prompts"
+    printf '%s' "$prompt" > "$raw/prompts/ready.txt"
+    if [ -n "$reference" ]; then
+      [ -f "$reference" ] || { echo "reference image not found: $reference" >&2; return 1; }
+      GEN_ASPECT_RATIO=$aspect gen_one "$raw/ready.jpg" "$raw/prompts/ready.txt" "$reference"; rc=$?
+    else
+      GEN_ASPECT_RATIO=$aspect gen_one "$raw/ready.jpg" "$raw/prompts/ready.txt"; rc=$?
+    fi
+    [ $rc -eq 0 ] || return "$rc"
+    echo "review single image: $raw/ready.jpg"
+    return
+  fi
   if [ $# -gt 0 ]; then
     check_poses "$@" || return 1
     [ -s "$raw/ready.jpg" ] || { echo "no $raw/ready.jpg to re-roll from; run: scripts/imggen $id 1" >&2; return 1; }
