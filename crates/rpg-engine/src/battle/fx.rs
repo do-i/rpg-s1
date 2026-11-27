@@ -6,7 +6,10 @@ use super::{
     action::BattleEvent,
     model::{BattleState, CombatantKey},
     status::{StatusEffect, StatusPotency},
-    ui::{BattleAssetState, BattleEnemyFrame, BattleEnemyImage, BattlePartyCard, BattleUi},
+    ui::{
+        BattleAssetState, BattleEnemyFrame, BattleEnemyImage, BattleEnemyShadowShift,
+        BattlePartyCard, BattleUi,
+    },
 };
 use crate::{
     encounter::BattleSide,
@@ -433,25 +436,48 @@ pub(super) fn animate_battle_fx(
     }
 }
 
-/// Nudges every shaking frame sideways and clears the offset when the shake burns out.
+/// Nudges every shaking frame sideways and clears the offset when the shake burns out. An enemy's
+/// cast shadow lives outside its frame, so it is nudged by the same amount to stay under the feet.
 ///
 /// Separate from [`animate_battle_fx`] because both want `&mut Node`, and one system may not hold
 /// two mutable borrows of the same component.
 pub(super) fn animate_battle_shake(
     mut commands: Commands,
     time: Res<Time>,
-    mut shakes: Query<(Entity, &mut BattleHurtShake, &mut Node)>,
+    mut shakes: Query<(
+        Entity,
+        &mut BattleHurtShake,
+        &mut Node,
+        Option<&BattleEnemyFrame>,
+    )>,
+    mut shadows: Query<(&BattleEnemyShadowShift, &mut Node), Without<BattleHurtShake>>,
 ) {
     let delta = time.delta_secs().max(0.0);
-    for (entity, mut shake, mut node) in &mut shakes {
+    let mut enemy_offsets = Vec::new();
+    for (entity, mut shake, mut node, enemy) in &mut shakes {
         shake.elapsed += delta;
         let (offset, expired) = match shake.motion {
             ImpactMotion::Hurt => shake_frame(shake.elapsed, shake.amplitude_scale),
             ImpactMotion::Dodge => dodge_frame(shake.elapsed),
         };
         node.left = px(offset);
+        if let Some(enemy) = enemy {
+            enemy_offsets.push((enemy.0, offset));
+        }
         if expired {
             commands.entity(entity).remove::<BattleHurtShake>();
+        }
+    }
+    // Every shadow is written, not just shaking ones, so a shake removed by anything else still
+    // leaves its shadow back at rest.
+    for (shift, mut node) in &mut shadows {
+        let offset = enemy_offsets
+            .iter()
+            .find_map(|&(index, offset)| (index == shift.0).then_some(offset))
+            .unwrap_or(0.0);
+        let left = px(offset);
+        if node.left != left {
+            node.left = left;
         }
     }
 }
@@ -1674,6 +1700,58 @@ mod tests {
                 "the float crosses neighbouring cards, so it has to leave the frame's context"
             );
         }
+    }
+
+    #[test]
+    fn an_enemy_shadow_shakes_with_its_frame_and_comes_back_to_rest() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_systems(Update, animate_battle_shake);
+        let frame = app
+            .world_mut()
+            .spawn((
+                Node::default(),
+                BattleEnemyFrame(1),
+                BattleHurtShake {
+                    // A quarter of the way in, the wobble is well off centre.
+                    elapsed: SHAKE_DURATION_SECONDS / 4.0,
+                    motion: ImpactMotion::Hurt,
+                    amplitude_scale: 1.0,
+                },
+            ))
+            .id();
+        let shadow = app
+            .world_mut()
+            .spawn((Node::default(), BattleEnemyShadowShift(1)))
+            .id();
+        let other_shadow = app
+            .world_mut()
+            .spawn((Node::default(), BattleEnemyShadowShift(0)))
+            .id();
+        app.update();
+        let left = |app: &App, entity| app.world().get::<Node>(entity).map(|node| node.left);
+        assert_ne!(left(&app, frame), Some(px(0)), "the frame is mid-shake");
+        assert_eq!(
+            left(&app, shadow),
+            left(&app, frame),
+            "its shadow moves with it"
+        );
+        assert_eq!(
+            left(&app, other_shadow),
+            Some(px(0)),
+            "other shadows stay put"
+        );
+
+        app.world_mut()
+            .get_mut::<BattleHurtShake>(frame)
+            .expect("the shake is still running")
+            .elapsed = SHAKE_DURATION_SECONDS;
+        app.update();
+        assert_eq!(
+            left(&app, shadow),
+            Some(px(0)),
+            "the shadow settles with the frame"
+        );
     }
 
     /// Drives the real router against a real frame entity, because the pure functions above only

@@ -179,6 +179,11 @@ impl BattleEnemyImage {
     }
 }
 
+/// The node a cast shadow hangs from, nudged sideways with its enemy's hurt shake or dodge so the
+/// shadow stays under the feet.
+#[derive(Component)]
+pub(super) struct BattleEnemyShadowShift(pub(super) usize);
+
 #[derive(Component)]
 struct BattleEnemyUpperBody {
     index: usize,
@@ -1369,37 +1374,52 @@ fn spawn_enemy_cast_shadow(
                 .spawn((
                     Node {
                         position_type: PositionType::Absolute,
-                        left: px((layout.card_width - sprite_size) / 2.0),
-                        top: px(2.0),
-                        width: px(sprite_size),
-                        height: px(sprite_size),
-                        ..default()
-                    },
-                    UiTransform {
-                        translation: Val2::px(shift.x, shift.y),
-                        scale: parts.scale,
-                        rotation: Rot2::radians(parts.outer_rotation),
-                    },
-                    Pickable::IGNORE,
-                ))
-                .with_child((
-                    Node {
-                        position_type: PositionType::Absolute,
                         left: px(0),
                         top: px(0),
                         width: percent(100),
                         height: percent(100),
                         ..default()
                     },
-                    UiTransform::from_rotation(Rot2::radians(parts.inner_rotation)),
-                    ImageNode::solid_color(Color::NONE),
                     Pickable::IGNORE,
-                    BattleEnemyImage {
-                        index,
-                        part: EnemySpritePart::Shadow,
-                        split_fraction: 1.0,
-                    },
-                ));
+                    BattleEnemyShadowShift(index),
+                ))
+                .with_children(|nudge| {
+                    nudge
+                        .spawn((
+                            Node {
+                                position_type: PositionType::Absolute,
+                                left: px((layout.card_width - sprite_size) / 2.0),
+                                top: px(2.0),
+                                width: px(sprite_size),
+                                height: px(sprite_size),
+                                ..default()
+                            },
+                            UiTransform {
+                                translation: Val2::px(shift.x, shift.y),
+                                scale: parts.scale,
+                                rotation: Rot2::radians(parts.outer_rotation),
+                            },
+                            Pickable::IGNORE,
+                        ))
+                        .with_child((
+                            Node {
+                                position_type: PositionType::Absolute,
+                                left: px(0),
+                                top: px(0),
+                                width: percent(100),
+                                height: percent(100),
+                                ..default()
+                            },
+                            UiTransform::from_rotation(Rot2::radians(parts.inner_rotation)),
+                            ImageNode::solid_color(Color::NONE),
+                            Pickable::IGNORE,
+                            BattleEnemyImage {
+                                index,
+                                part: EnemySpritePart::Shadow,
+                                split_fraction: 1.0,
+                            },
+                        ));
+                });
         });
 }
 
