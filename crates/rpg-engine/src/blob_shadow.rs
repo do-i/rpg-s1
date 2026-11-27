@@ -1,6 +1,6 @@
-//! Ground shadows: one soft elliptical blob for the field (NPCs, boss standees), and the shear
-//! math the battle scene uses to cast an enemy's own pose onto the ground. The blob is generated
-//! at runtime, so it adds no asset and no ledger row.
+//! Ground shadows: a soft elliptical blob under field boss standees, a flat oval NPCs cast toward
+//! the north-east, and the shear math the battle scene uses to cast an enemy's own pose onto the
+//! ground. Both textures are generated at runtime, so they add no asset and no ledger row.
 //!
 //! Shadows ground a sprite on the 45-degree-camera floor and keep a figure readable against a
 //! busy background. They are deliberately soft and weak: dark enough to anchor a foot, never
@@ -87,8 +87,8 @@ pub(crate) fn shared_solid_handle(
 
 /// A flat oval laid along the ground from `start` (between the feet) to `tip`, `width` pixels
 /// across and `opacity` strong, positioned relative to its parent's origin. Cast toward the
-/// north-east like the map's buildings. The oval is stretched a fifth past `tip - start` so
-/// its drawn ends meet the two points.
+/// north-east like the map's buildings. The oval is drawn a fifth longer than `tip - start`,
+/// centred between them, so each end reaches a tenth of that distance past its point.
 pub(crate) fn cast_oval_shadow(
     image: Handle<Image>,
     start: Vec2,
